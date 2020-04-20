@@ -1,6 +1,9 @@
 """
 This utility class validates xmlfiles against xsd files
+
 """
+from metadata_backend.logger import LOG
+
 
 class XMLValidator():
     """Handles validation of xml strings against xsd schemas"""
@@ -19,7 +22,8 @@ class XMLValidator():
         """
         try:
             schema = schema_loader.get_schema(schema_name)
-        except ValueError:
-            # LOG error here
-            return False 
-        return schema.is_valid(xml_content) 
+        except ValueError as error:
+            LOG.info("Not able to find schema with given name,"
+                     f"Error message: {error}")
+            return False
+        return schema.is_valid(xml_content)
