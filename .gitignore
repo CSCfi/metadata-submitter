@@ -109,3 +109,4 @@ venv.bak/
 
 ### Editor conficuration files
 .vim/
+.idea/
