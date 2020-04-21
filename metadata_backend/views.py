@@ -13,7 +13,7 @@ async def submit(request):
     """
     reader = await request.multipart()
     field = await reader.next()
-    schema = field.name.lower()
+    schema = field.name
     result = []
     while True:
         chunk = await field.read_chunk()
