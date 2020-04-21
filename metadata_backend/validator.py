@@ -2,7 +2,6 @@
 This utility class validates xmlfiles against xsd files
 
 """
-from metadata_backend.logger import LOG
 
 
 class XMLValidator():
@@ -19,11 +18,10 @@ class XMLValidator():
         :param schame_name: schema used for validation
         :param schema_loader: SchemaLoader-object which used to access xsd
         schemas
+        :raises ValueError: If schema with schema_name doesn't exist
         """
         try:
             schema = schema_loader.get_schema(schema_name)
         except ValueError as error:
-            LOG.info("Not able to find schema with given name,"
-                     f"Error message: {error}")
-            return False
+            raise error
         return schema.is_valid(xml_content)

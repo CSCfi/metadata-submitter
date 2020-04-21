@@ -23,12 +23,14 @@ async def submit(request):
     xml_content = ''.join(x.decode('UTF-8') for x in result)
 
     schema_loader = SchemaLoader()
-    valid_xml = XMLValidator.validate(xml_content, schema, schema_loader)
+    try:
+        valid_xml = XMLValidator.validate(xml_content, schema, schema_loader)
+    except ValueError as error:
+        reason = f"{error} {schema}"
+        raise web.HTTPBadRequest(reason=reason)
 
     if not valid_xml:
         reason = f"Submitted XML file was not valid against schema {schema}"
-        raise web.HTTPBadRequest()
-        return web.json_response({'Validation error': reason})
+        raise web.HTTPBadRequest(reason=reason)
 
-    raise web.HTTPCreated()
-    return web.json_response({'content': xml_content})
+    raise web.HTTPCreated(body=xml_content, content_type="text/xml")

@@ -8,6 +8,7 @@ Current implementation relies on search schemas from folder with xsd files
 """
 
 from pathlib import Path
+from metadata_backend.logger import LOG
 import xmlschema
 SCHEMAS_ROOT = Path(__file__).parent / 'schemas'
 
@@ -30,13 +31,16 @@ class SchemaLoader():
         :returns: XMLSchema-object
         :raises ValueError: If schema with schema_name doesn't exist
         """
+        schema_name = schema_name.lower()
         schema_file = None
         for file in [x for x in self.path.iterdir()]:
             if schema_name in file.name:
                 with file.open() as f:
                     schema_file = f.read()
         if not schema_file:
-            raise ValueError('There is no xsd file for given schema')
+            reason = "There is no xsd file for given schema"
+            LOG.info(f"Error: {reason}")
+            raise ValueError(reason)
         schema = xmlschema.XMLSchema(schema_file,
                                      base_url=self.path.as_posix())
         return schema
