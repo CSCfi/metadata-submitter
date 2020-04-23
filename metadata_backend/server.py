@@ -23,7 +23,7 @@ def main():
     """Do the server."""
     host = '0.0.0.0'  # nosec
     port = 5430
-
+    init_loadenv()
     LOG.info(f"Started server on {host}:{port}")
     web.run_app(init(), host=host, port=port, shutdown_timeout=0)
 

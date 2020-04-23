@@ -1,0 +1,15 @@
+version: "3"
+services:
+  database:
+    image: "mongo"
+    container_name: "metadata_db_database"
+    restart: on-failure
+    env_file: 
+      - .env
+    volumes:
+      - data:/data/db
+    ports:
+      - "${MONGO_PORT}:${MONGO_PORT}"
+
+volumes:
+  data: 
