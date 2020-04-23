@@ -107,6 +107,6 @@ venv.bak/
 ### Python Patch ###
 .venv/
 
-### Editor conficuration files
+### Editor conficuration files ###
 .vim/
 .idea/
