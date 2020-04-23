@@ -1,0 +1,3 @@
+# ENV variables for initial db setup 
+MONGO_INITDB_ROOT_USERNAME=metadata_backend_admin
+MONGO_INITDB_ROOT_PASSWORD=metadata_backend_admin_pass
