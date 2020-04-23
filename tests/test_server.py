@@ -4,7 +4,6 @@ from aiohttp import web, FormData
 from metadata_backend.server import init, main
 from unittest import mock
 from pathlib import Path
-from metadata_backend.logger import LOG
 
 
 class AppTestCase(AioHTTPTestCase):
@@ -28,11 +27,31 @@ class AppTestCase(AioHTTPTestCase):
                        content_type='text/xml')
         return data
 
+    def mocked_create(self, dbservice, collection, data):
+        # TODO: Fix method to respond with result object similar to
+        # mondodb return (after code itself has been fixed)
+        return "Mocked string response"
+
+    def mocked_init(self):
+        self.submission_db_service = mock.Mock()
+
     @unittest_run_loop
-    async def test_submission_works_correct_form_schema_and_valid_input(self):
+    @mock.patch("metadata_backend.db_services.CRUDService.create")
+    @mock.patch("metadata_backend.views.SiteHandler.__init__")
+    async def test_submit_works_correct_schema_valid_input(self,
+                                                           mocked_mongodb_serv,
+                                                           mocked_crudservice):
+        """
+        Test that submission is created correctly through /submit-endpoint.
+        Test mocks database connection objects and CRUDservice that are
+        normally used to talk with the database.
+        """
+
         filename = "SUBMISSION.xml"
         headers = {'accept': '*/*'}
         data = self.create_submission_data(filename)
+        mocked_crudservice.side_effect = self.mocked_create
+        mocked_mongodb_serv.side_effect = self.mocked_init
         response = await self.client.request("POST", "/submit",
                                              headers=headers, data=data)
         path_to_file = self.TESTFILES_ROOT / filename
@@ -41,7 +60,7 @@ class AppTestCase(AioHTTPTestCase):
         assert 201 == response.status
 
     @unittest_run_loop
-    async def test_submission_fails_correct_schema_and_invalid_input(self):
+    async def test_submit_fails_correct_schema_invalid_input(self):
         headers = {'accept': '*/*'}
         filename = "invalid_SUBMISSION.xml"
         data = self.create_submission_data(filename)
@@ -53,7 +72,7 @@ class AppTestCase(AioHTTPTestCase):
         assert 400 == response.status
 
     @unittest_run_loop
-    async def test_submission_fails_incorrect_schema(self):
+    async def test_submit_fails_incorrect_schema(self):
         headers = {'accept': '*/*'}
         data = FormData()
         data.add_field('NULL', "", filename="", content_type='text/xml')
