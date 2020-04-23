@@ -1,4 +1,6 @@
 aiohttp
-uvloop
 gunicorn
+pymongo
+python-dotenv
+uvloop
 xmlschema

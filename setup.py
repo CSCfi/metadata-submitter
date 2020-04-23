@@ -1,11 +1,11 @@
 from setuptools import setup
 from metadata_backend import __version__, __author__, __title__
-from os import path
-
-here = path.abspath(path.dirname(__file__))
 
 # main module source folder, will be used for imports as the main module
 _main_module = 'metadata_backend'
+
+with open("requirements.txt") as reqs:
+    requirements = reqs.read().splitlines()
 
 setup(
     # There are some restrictions on what makes a valid project name
@@ -33,15 +33,13 @@ setup(
 
     # For an analysis of "install_requires" vs pip's requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
-    install_requires=['aiohttp', 'gunicorn', 'uvloop',
-                      'xmlschema'],  # Optional
+    install_requires=requirements,
 
     extras_require={  # Optional
-        'test': ['coverage', 'pytest', 'pytest-cov', 'coveralls', 'tox'],
-        'docs': ['sphinx', 'sphinx_rtd_theme']
+        'test': ['pytest']
     },
 
-    package_data={'': ['data/*.json', 'schemas/*.xsd']},  # Optional
+    package_data={'': ['schemas/*.xsd']},  # Optional
     include_package_data=True,
 
     entry_points={  # Optional

@@ -5,25 +5,22 @@ Minimum viable product that:
 - Validates XML files against EGA XSD metadata models 
 - Saves XML files to database
 
-## TODO
-- Write tests
-- Write middlewares
-- Handle authentication via oauth token 
-
 ## Install and Run
 
-```
-$ pip install .
-```
+Clone project and install it by running: `pip install .`
 
-After install the application can be started with: `$ `
+Server expects to find mongodb instance running at localhost in port 27017. Instance can be started with `docker-compose up -d` after setting up following environmental variables to .env file:
 
-## Tests and Documentation
-
-In order to run the tests: `$ tox` in the root directory of the git project. Install tox with pip, if not already in system
-
-To build documentation locally:
 ```
-$ cd docs
-$ make html
+MONGO_INITDB_ROOT_USERNAME=metadata_backend_admin
+MONGO_INITDB_ROOT_PASSWORD=metadata_backend_admin_pass
+MONGO_PORT=27017
 ```
+Paste lines above to .env file on projects root foleder or use env_example file.
+
+After installing and setting up database, server can be launched with `metadata_backend`.
+
+
+## Tests
+
+Run tests with simple `python -m unittest`, tox and mocking db tests will be condigured later.
