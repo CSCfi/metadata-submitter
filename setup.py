@@ -36,7 +36,8 @@ setup(
     install_requires=requirements,
 
     extras_require={  # Optional
-        'test': ['pytest']
+        'test': ['coverage', 'pytest', 'pytest-asyncio', 'pytest-cov',
+                 'coveralls', 'tox']
     },
 
     package_data={'': ['schemas/*.xsd']},  # Optional
