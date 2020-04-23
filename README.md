@@ -23,4 +23,4 @@ After installing and setting up database, server can be launched with `metadata_
 
 ## Tests
 
-Run tests with simple `python -m unittest`, tox and mocking db tests will be condigured later.
+Tests, flake8 style checks and bandit security checks can be run with tox automation: just run `tox` on project root (remember to install it first with `pip install tox`.
