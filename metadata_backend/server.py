@@ -5,7 +5,6 @@ from metadata_backend.config import init_loadenv
 from metadata_backend.views import SiteHandler
 import asyncio
 import uvloop
-import os
 
 routes = web.RouteTableDef()
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())

@@ -3,7 +3,6 @@ import xmlschema
 
 from pathlib import Path
 from metadata_backend.schema_load import SchemaLoader
-from metadata_backend.logger import LOG
 
 TESTFILES_ROOT = Path(__file__).parent / 'test_files'
 

@@ -44,7 +44,6 @@ class SiteHandler:
             reason = f"Submitted XML file was not valid against schema {schema}"
             raise web.HTTPBadRequest(reason=reason)
 
-
         # TODO: Parse metadata XML to valid JSON object here, follow JSON
         # schmema. At the moment XML is just dumped to db as one chunk
 
