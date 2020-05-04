@@ -5,7 +5,7 @@ services:
     container_name: "metadata_db_database"
     restart: on-failure
     env_file: 
-      - .env
+      - ../../.env
     volumes:
       - data:/data/db
     ports:
