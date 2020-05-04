@@ -1,26 +1,25 @@
-## Metadata submission backend
+## Submission interface backend
 
-Minimum viable product that:
-- Accepts HTTP POST submissions of EGA metadata XML files 
-- Validates XML files against EGA XSD metadata models 
-- Saves XML files to database
+Currently minimum viable product that:
+- accepts HTTP POST submissions of EGA metadata XML files 
+- validates XML files against EGA XSD metadata models 
+- saves XML files to Mondogb database
 
 ## Install and Run
 
 Clone project and install it by running: `pip install .`
 
-Server expects to find mongodb instance running at localhost in port 27017. Instance can be started with `docker-compose up -d` after setting up following environmental variables to .env file:
+Server expects to find mongodb instance running, spesified by following environmental variables:
+- `MONGO_INITDB_ROOT_USERNAME`, username for admin user to mondogb instance
+- `MONGO_INITDB_ROOT_PASSWORD`, password for admin user to mondogb instance
+- `MONGODB_HOST`, host and port for mongodb instance (e.g. `localhost:27017`)
 
-```
-MONGO_INITDB_ROOT_USERNAME=metadata_backend_admin
-MONGO_INITDB_ROOT_PASSWORD=metadata_backend_admin_pass
-MONGO_PORT=27017
-```
-Paste lines above to .env file on projects root foleder or use env_example file.
+Server looks for current environmental variables first and if needed variables aren't found, checks .env file. This allows running server without writing variables with .env file.
+
+If wanted (e.g. when running locally), suitable mongodb instance can be launched with help of docker-compose file present in project root. Correct environmental variables for both docker-compose and server are set in .env -file.
 
 After installing and setting up database, server can be launched with `metadata_backend`.
 
-
 ## Tests
 
-Tests, flake8 style checks and bandit security checks can be run with tox automation: just run `tox` on project root (remember to install it first with `pip install tox`.
+Tests and flake8 style checks can be run with tox automation: just run `tox` on project root (remember to install it first with `pip install tox`).

@@ -16,9 +16,9 @@ class MongoClientService():
         init_loadenv()
         mongo_user = os.getenv("MONGO_INITDB_ROOT_USERNAME")
         mongo_password = os.getenv("MONGO_INITDB_ROOT_PASSWORD")
-        mongo_port = os.getenv("MONGO_PORT")
-        URI = f"mongodb://{mongo_user}:{mongo_password}@localhost:{mongo_port}"
-        self.client = MongoClient(URI)
+        mongo_host = os.getenv("MONGODB_HOST")
+        url = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}"
+        self.client = MongoClient(url)
 
 
 class MongoDBService(MongoClientService):
