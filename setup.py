@@ -28,6 +28,10 @@ setup(
 
     author=__author__,  # Optional
 
+    classifiers=[
+        'License :: OSI Approved :: MIT License'
+    ],
+
     # Alternative for listing individual packages
     packages=[_main_module],
 

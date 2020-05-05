@@ -24,3 +24,7 @@ After installing and setting up database, server can be launched with `metadata_
 ## Tests
 
 Tests, flake8 style checks and bandit security checks can be run with tox automation: just run `tox` on project root (remember to install it first with `pip install tox`.
+
+## License
+
+Metadata submission interface is released under `MIT`, see [LICENSE](LICENSE).
