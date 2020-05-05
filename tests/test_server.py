@@ -1,9 +1,11 @@
 import unittest
-from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
-from aiohttp import web, FormData
-from metadata_backend.server import init, main
-from unittest import mock
 from pathlib import Path
+from unittest import mock
+
+from aiohttp import FormData, web
+from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
+
+from metadata_backend.server import init, main
 
 
 class AppTestCase(AioHTTPTestCase):
@@ -34,12 +36,14 @@ class AppTestCase(AioHTTPTestCase):
 
     def mocked_init(self):
         self.submission_db_service = mock.Mock()
+        self.schema_db_service = mock.Mock()
+        self.backup_db_service = mock.Mock()
 
     @unittest_run_loop
-    @mock.patch("metadata_backend.db_services.CRUDService.create")
-    @mock.patch("metadata_backend.views.SiteHandler.__init__")
-    async def test_submit_works_correct_schema_valid_input(self,
-                                                           mocked_mongodb_serv,
+    @mock.patch("api.views.SiteHandler.__init__")
+    @mock.patch("database.db_services.CRUDService.create")
+    async def submit_works_correct_schema_valid_input(self,
+                                                           mocked_sitehandler,
                                                            mocked_crudservice):
         """
         Test that submission is created correctly through /submit-endpoint.
@@ -50,8 +54,8 @@ class AppTestCase(AioHTTPTestCase):
         filename = "SUBMISSION.xml"
         headers = {'accept': '*/*'}
         data = self.create_submission_data(filename)
+        mocked_sitehandler.side_effect = self.mocked_init
         mocked_crudservice.side_effect = self.mocked_create
-        mocked_mongodb_serv.side_effect = self.mocked_init
         response = await self.client.request("POST", "/submit",
                                              headers=headers, data=data)
         path_to_file = self.TESTFILES_ROOT / filename
