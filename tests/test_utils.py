@@ -1,6 +1,6 @@
 import unittest
-import xmlschema
 
+import xmlschema
 from helpers.schema_load import SchemaLoader
 
 

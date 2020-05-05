@@ -10,8 +10,8 @@ setup(
     description=__title__,
     author=__author__,
 
-    # Instead of listing each package manually, we can use find_packages() to 
-    # automatically discover all packages and subpackages. 
+    # Instead of listing each package manually, we can use find_packages() to
+    # automatically discover all packages and subpackages.
     packages=find_packages(exclude=["tests"]),
 
     install_requires=requirements,

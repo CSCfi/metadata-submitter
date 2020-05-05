@@ -4,7 +4,6 @@ from unittest import mock
 
 from aiohttp import FormData, web
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
-
 from metadata_backend.server import init, main
 
 
@@ -42,9 +41,9 @@ class AppTestCase(AioHTTPTestCase):
     @unittest_run_loop
     @mock.patch("api.views.SiteHandler.__init__")
     @mock.patch("database.db_services.CRUDService.create")
-    async def submit_works_correct_schema_valid_input(self,
-                                                           mocked_sitehandler,
-                                                           mocked_crudservice):
+    # TODO: Fix this test to use mongomock
+    async def submit_works_correct_schema_valid_input(self, mocked_sitehandler,
+                                                      mocked_crudservice):
         """
         Test that submission is created correctly through /submit-endpoint.
         Test mocks database connection objects and CRUDservice that are
