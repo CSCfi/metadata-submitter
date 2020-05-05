@@ -31,3 +31,11 @@ Install docker and [S2I (Source-To-Image)](https://github.com/openshift/source-t
 s2i build . centos/python-36-centos7 metadata_backend
 docker run -p 5430:5430 -e APP_FILE=metadata_backend/server.py metadata_backend
 ```
+
+## License
+
+Metadata submission interface is released under `MIT`, see [LICENSE](LICENSE).
+
+## Contibuting
+
+If you want to contribute to a project and make it better, your help is very welcome. For more info about how to contribute, see [CONTRIBUTING](CONTRIBUTING.md).
