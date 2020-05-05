@@ -1,7 +1,5 @@
-from setuptools import setup
-from metadata_backend import __version__, __author__, __title__
-
-_main_module = 'metadata_backend'
+from setuptools import setup, find_packages
+from metadata_backend import __author__, __title__, __version__
 
 with open("requirements.txt") as reqs:
     requirements = reqs.read().splitlines()
@@ -12,7 +10,9 @@ setup(
     description=__title__,
     author=__author__,
 
-    packages=[_main_module],
+    # Instead of listing each package manually, we can use find_packages() to 
+    # automatically discover all packages and subpackages. 
+    packages=find_packages(exclude=["tests"]),
 
     install_requires=requirements,
 
