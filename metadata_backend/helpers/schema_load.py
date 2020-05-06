@@ -11,7 +11,7 @@ from pathlib import Path
 
 import xmlschema
 
-from helpers.logger import LOG
+from ..helpers.logger import LOG
 
 SCHEMAS_ROOT = Path(__file__).parent / 'schemas'
 

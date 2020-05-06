@@ -3,9 +3,9 @@ import asyncio
 import uvloop
 from aiohttp import web
 
-from api.views import SiteHandler
-from helpers.config import init_loadenv
-from helpers.logger import LOG
+from .api.views import SiteHandler
+from .helpers.config import init_loadenv
+from .helpers.logger import LOG
 
 routes = web.RouteTableDef()
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
