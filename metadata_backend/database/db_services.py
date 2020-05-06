@@ -2,18 +2,17 @@
 Service that handles database connections. Currently implemented with MongoDB.
 """
 
-from pymongo import MongoClient
-from metadata_backend.config import init_loadenv
 import os
+
+from pymongo import MongoClient
 
 
 class MongoClientService():
-    """Database connection initialiser."""
+    """Database connection initializer."""
 
     def __init__(self):
         """ Creates mongoDB client with admin access. Admin access is needed in
         order to create new databases during runtime """
-        init_loadenv()
         mongo_user = os.getenv("MONGO_INITDB_ROOT_USERNAME")
         mongo_password = os.getenv("MONGO_INITDB_ROOT_PASSWORD")
         mongo_host = os.getenv("MONGODB_HOST")
