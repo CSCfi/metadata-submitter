@@ -1,8 +1,6 @@
-from setuptools import setup
-from metadata_backend import __version__, __author__, __title__
+from setuptools import find_packages, setup
 
-# main module source folder, will be used for imports as the main module
-_main_module = 'metadata_backend'
+from metadata_backend import __author__, __title__, __version__
 
 with open("requirements.txt") as reqs:
     requirements = reqs.read().splitlines()
@@ -28,24 +26,31 @@ setup(
 
     author=__author__,  # Optional
 
-    # Alternative for listing individual packages
-    packages=[_main_module],
+    classifiers=[
+        'License :: OSI Approved :: MIT License'
+    ],
 
-    # For an analysis of "install_requires" vs pip's requirements files see:
-    # https://packaging.python.org/en/latest/requirements.html
+    # Instead of listing each package manually, we can use find_packages() to
+    # automatically discover all packages and subpackages.
+    packages=find_packages(exclude=["tests"]),
+
     install_requires=requirements,
 
-    extras_require={  # Optional
+    extras_require={
         'test': ['coverage', 'pytest', 'pytest-asyncio', 'pytest-cov',
                  'coveralls', 'tox']
     },
 
-    package_data={'': ['schemas/*.xsd']},  # Optional
+    package_data={'': ['schemas/*.xsd']},
     include_package_data=True,
 
-    entry_points={  # Optional
+    entry_points={
         'console_scripts': [
-            'metadata_backend=metadata_backend.server:main',
+            'metadata_submitter=metadata_backend.server:main',
         ],
+    },
+
+    project_urls={
+        'Source': 'https://github.com/CSCfi/metadata_submitter',
     },
 )

@@ -1,6 +1,5 @@
 """
-This utility class validates xmlfiles against xsd files
-
+This utility class validates XML files against xsd files
 """
 
 
@@ -15,7 +14,7 @@ class XMLValidator():
         Validates xml string against schema found with schema_name.
 
         :param xml_content: xml to be validated
-        :param schame_name: schema used for validation
+        :param schema_name: schema used for validation
         :param schema_loader: SchemaLoader-object which used to access xsd
         schemas
         :raises ValueError: If schema with schema_name doesn't exist
