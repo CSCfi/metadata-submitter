@@ -1,11 +1,8 @@
 language: python
 
-matrix:
-  include:
-    - python: 3.6
-      env: TOXENV=py36
-
 install: pip install tox
+
+script: tox
 
 stages:
   - name: stylechecks
@@ -22,7 +19,7 @@ jobs:
         - pip install tox-travis
       script: tox -e flake8
     - stage: stylecheks
-      name: "isort check"
+      name: "Isort check"
       python: 3.6
       before_script:
         - pip install tox-travis
@@ -39,8 +36,6 @@ jobs:
       before_script:
         - pip install tox-travis
       script: tox -e py37
-    script:
-      - python run_test.py
 
 notifications:
   email: false
