@@ -1,5 +1,8 @@
 ## Submission interface backend
 
+[![Build Status](https://travis-ci.org/CSCfi/metadata_submitter.svg?branch=master)](https://travis-ci.org/CSCfi/metadata_submitter)
+[![Coverage Status](https://coveralls.io/repos/github/CSCfi/metadata-submitter/badge.svg?branch=master)](https://coveralls.io/github/CSCfi/metadata-submitter?branch=master)
+
 Currently minimum viable product that:
 - accepts HTTP POST submissions of EGA metadata XML files 
 - validates XML files against EGA XSD metadata models 
