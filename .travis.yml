@@ -5,20 +5,18 @@ install: pip install tox
 script: tox
 
 stages:
-  - name: stylechecks
-    if: type IN (push, pull_request)
   - name: tests
     if: type IN (push, pull_request)
 
 jobs:
   include:
-    - stage: stylechecks
+    - stage: tests
       name: "Code style check"
       python: 3.6
       before_script:
         - pip install tox-travis
       script: tox -e flake8
-    - stage: stylecheks
+    - stage: tests
       name: "Isort check"
       python: 3.6
       before_script:
