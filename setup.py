@@ -1,4 +1,5 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
+
 from metadata_backend import __author__, __title__, __version__
 
 with open("requirements.txt") as reqs:
