@@ -1,10 +1,7 @@
 import unittest
+
 import xmlschema
-
-from pathlib import Path
-from metadata_backend.schema_load import SchemaLoader
-
-TESTFILES_ROOT = Path(__file__).parent / 'test_files'
+from metadata_backend.helpers.schema_load import SchemaLoader
 
 
 class TestUtilClasses(unittest.TestCase):
@@ -30,8 +27,7 @@ class TestUtilClasses(unittest.TestCase):
     def test_schemaLoader_raises_error_with_invalid_schema(self):
         schema_name = "NULL"
         schemaloader = SchemaLoader()
-        self.assertRaises(ValueError, schemaloader.get_schema,
-                          schema_name)
+        self.assertRaises(ValueError, schemaloader.get_schema, schema_name)
 
 
 if __name__ == '__main__':

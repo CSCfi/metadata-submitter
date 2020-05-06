@@ -1,0 +1,39 @@
+language: python
+
+install: pip install tox
+
+script: tox
+
+stages:
+  - name: tests
+    if: type IN (push, pull_request)
+
+jobs:
+  include:
+    - stage: tests
+      name: "Code style check"
+      python: 3.6
+      before_script:
+        - pip install tox-travis
+      script: tox -e flake8
+    - stage: tests
+      name: "Isort check"
+      python: 3.6
+      before_script:
+        - pip install tox-travis
+      script: tox -e isort
+    - stage: tests
+      name: "Unit Tests Python 3.6"
+      python: 3.6
+      before_script:
+        - pip install tox-travis
+      script: tox -e py36
+    - stage: tests
+      name: "Unit Tests Python 3.7"
+      python: 3.7
+      before_script:
+        - pip install tox-travis
+      script: tox -e py37
+
+notifications:
+  email: false

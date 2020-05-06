@@ -8,8 +8,11 @@ Current implementation relies on search schemas from folder with xsd files
 """
 
 from pathlib import Path
-from metadata_backend.logger import LOG
+
 import xmlschema
+
+from ..helpers.logger import LOG
+
 SCHEMAS_ROOT = Path(__file__).parent / 'schemas'
 
 

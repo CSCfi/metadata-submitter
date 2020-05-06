@@ -1,8 +1,8 @@
 from aiohttp import web
-from metadata_backend.schema_load import SchemaLoader
-from metadata_backend.validator import XMLValidator
-from metadata_backend.db_services import MongoDBService
-from metadata_backend.db_services import CRUDService
+
+from ..database.db_services import CRUDService, MongoDBService
+from ..helpers.schema_load import SchemaLoader
+from ..helpers.validator import XMLValidator
 
 
 class SiteHandler:
@@ -16,12 +16,12 @@ class SiteHandler:
 
     async def submit(self, request):
         """Handles submission to server
-
         :param request: POST request sent
         :raises: HTTP Exceptions with status code 201 or 400
         :returns: JSON response with submitted xml_content or validation error
         reason
         """
+
         reader = await request.multipart()
         field = await reader.next()
         schema = field.name
@@ -45,7 +45,7 @@ class SiteHandler:
             raise web.HTTPBadRequest(reason=reason)
 
         # TODO: Parse metadata XML to valid JSON object here, follow JSON
-        # schmema. At the moment XML is just dumped to db as one chunk
+        # schema. At the moment XML is just dumped to db as one chunk
 
         xml_content_json = {"content": xml_content}
         CRUDService.create(self.submission_db_service, schema, xml_content_json)
