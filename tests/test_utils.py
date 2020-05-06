@@ -1,7 +1,7 @@
 import unittest
 
 import xmlschema
-from helpers.schema_load import SchemaLoader
+from metadata_backend.helpers.schema_load import SchemaLoader
 
 
 class TestUtilClasses(unittest.TestCase):
