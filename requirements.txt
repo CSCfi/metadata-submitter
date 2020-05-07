@@ -1,6 +1,6 @@
 aiohttp
 gunicorn
 pymongo
-python-dotenv
 uvloop
 xmlschema
+xmltodict

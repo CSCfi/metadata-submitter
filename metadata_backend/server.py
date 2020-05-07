@@ -4,7 +4,6 @@ import uvloop
 from aiohttp import web
 
 from .api.views import SiteHandler
-from .helpers.config import init_loadenv
 from .helpers.logger import LOG
 
 routes = web.RouteTableDef()
@@ -13,7 +12,6 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 async def init():
     """Initialise server and setup routes."""
-    init_loadenv()
     server = web.Application()
     handler = SiteHandler()
     server.router.add_post('/submit', handler.submit)
