@@ -7,7 +7,7 @@ import os
 from pymongo import MongoClient
 
 
-class MongoClientService():
+class MongoClientService:
     """Database connection initializer."""
 
     def __init__(self):
@@ -27,8 +27,7 @@ class MongoDBService(MongoClientService):
     client service. Makes it possible to create separate databases for
     different purposes (e.g. submissions and backups).
 
-    :param mongoClientService: mongoClientService object which can connect to
-    mongoDB instance
+    #@param MongoClientService: class with client which can connect mongoDB instance
     """
 
     def __init__(self, database_name):
@@ -41,7 +40,7 @@ class MongoDBService(MongoClientService):
         self.database = self.client[database_name]
 
 
-class CRUDService():
+class CRUDService:
     """ Static methods to handle CRUD operations for given database """
 
     @staticmethod
