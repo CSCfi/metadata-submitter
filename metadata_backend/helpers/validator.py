@@ -3,7 +3,7 @@ This utility class validates XML files against xsd files
 """
 
 
-class XMLValidator():
+class XMLValidator:
     """Handles validation of xml strings against xsd schemas"""
     def __init__(self):
         pass
