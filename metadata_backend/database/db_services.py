@@ -12,10 +12,12 @@ class MongoClientService():
 
     def __init__(self):
         """ Creates mongoDB client with admin access. Admin access is needed in
-        order to create new databases during runtime """
-        mongo_user = os.getenv("MONGO_INITDB_ROOT_USERNAME")
-        mongo_password = os.getenv("MONGO_INITDB_ROOT_PASSWORD")
-        mongo_host = os.getenv("MONGODB_HOST")
+        order to create new databases during runtime.
+        Default values are the same that are used in docker-compose file 
+        found from deploy/mongodb. """
+        mongo_user = os.getenv("MONGO_INITDB_ROOT_PASSWORD", "admin")
+        mongo_password = os.getenv("MONGO_INITDB_ROOT_PASSWORD", "admin")
+        mongo_host = os.getenv("MONGODB_HOST", "localhost:27017")
         url = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}"
         self.client = MongoClient(url)
 
