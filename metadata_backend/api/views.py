@@ -2,7 +2,6 @@ import xmltodict
 from aiohttp import web
 
 from ..database.db_services import CRUDService, MongoDBService
-from ..helpers.logger import LOG, get_attributes
 from ..helpers.schema_load import SchemaLoader
 from ..helpers.validator import XMLValidator
 
@@ -23,13 +22,12 @@ class SiteHandler:
         @param request: POST request sent
         @return: List of dictionaries containing type and content for each xml file sent through POST
         """
-        submissions = []
+        submissions = {}
         reader = await request.multipart()
         while True:
             part = await reader.next()
             if not part:
                 break
-            # TODO: test what happens if no name is given
             xml_type = part.name.lower()
             data = []
             while True:
@@ -38,11 +36,31 @@ class SiteHandler:
                     break
                 data.append(chunk)
             xml_content = ''.join(x.decode('UTF-8') for x in data)
-            submissions.append({xml_type: xml_content})
+            submissions[xml_type] = xml_content
         return submissions
 
-    def get_actions_from_submission(self, submission):
-        pass
+    def get_actions_from_submission_xml(self, submission_content):
+        """
+        Parses actions from submission.xml
+        @param submission_content: XML string containing submission.xml with actions
+        @return: dictionary containing actions as keys and list with info of data to perform
+        action against as values
+        """
+        self.check_if_submission_is_valid("submission", submission_content)
+        submission_as_json = xmltodict.parse(submission_content)
+        action_list = submission_as_json["SUBMISSION_SET"]["SUBMISSION"]["ACTIONS"]["ACTION"]
+        actions = {}
+        for action_dict in action_list:
+            for action, data in action_dict.items():
+                if data:
+                    action_info = {}
+                    for attribute, value in data.items():
+                        action_info[attribute[1:]] = value
+                    action = action.lower()
+                    if action not in actions:
+                        actions[action] = []
+                    actions[action].append(action_info)
+        return actions
 
     @staticmethod
     def check_if_submission_is_valid(xml_type, xml_content):
@@ -65,9 +83,11 @@ class SiteHandler:
         """
         submissions = await self.extract_submission_from_request(request)
 
-        if not any("submission" in xml_types for xml_types in submissions):
+        if not "submission" in submissions:
             reason = "There must be a submission.xml file in submission"
             raise web.HTTPBadRequest(reason=reason)
+
+        actions = self.get_actions_from_submission_xml(submissions["submission"])
 
         # for submission in submissions:
         #    submission_json = xmltodict.parse(xml_content)
