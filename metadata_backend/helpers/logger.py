@@ -1,6 +1,7 @@
 """Logging formatting and functions for debugging"""
 
 import logging
+import json
 
 FORMAT = "[%(asctime)s][%(name)s][%(process)d %(processName)s]" \
          "[%(levelname)-8s](L:%(lineno)s) %(funcName)s: %(message)s"
@@ -20,3 +21,11 @@ def get_attributes(obj):
             LOG.info("obj.%s = %r" % (attr, getattr(obj, attr)))
         except AttributeError as error:
             LOG.info("Error: ", error)
+
+
+def pprint_json(content):
+    """
+    Prints given json object to LOG
+    @param content: json-formatted content to be printed
+    """
+    LOG.info(json.dumps(content, indent=4))
