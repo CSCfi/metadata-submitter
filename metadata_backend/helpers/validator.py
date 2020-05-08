@@ -2,6 +2,9 @@
 This utility class validates XML files against xsd files
 """
 
+from xml.etree.ElementTree import ParseError
+from ..helpers.logger import LOG
+
 
 class XMLValidator:
     """Handles validation of xml strings against xsd schemas"""
@@ -23,4 +26,9 @@ class XMLValidator:
             schema = schema_loader.get_schema(schema_name)
         except ValueError as error:
             raise error
-        return schema.is_valid(xml_content)
+        try:
+            is_valid = schema.is_valid(xml_content)
+        except ParseError as error:
+            LOG.info(f"Error when parsing xml file: {error}")
+            is_valid = False
+        return is_valid
