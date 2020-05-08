@@ -4,16 +4,52 @@ from aiohttp import web
 from ..database.db_services import CRUDService, MongoDBService
 from ..helpers.schema_load import SchemaLoader
 from ..helpers.validator import XMLValidator
+from ..helpers.logger import LOG
 
 
-class SiteHandler:
-    """ Backend feature handling, speaks to db via db_service objects"""
-
-    def __init__(self):
-        """ Create needed services for connecting to database. """
-        self.schema_db_service = MongoDBService("schemas")
+class SubmissionActionsToCRUD:
+    """
+    Results submission actions to CRUD requests.
+    """
+    # TODO: decide whether to raise error and exit if one fails or just raise errors?
+    
+    def __init__(self, submissions):
+        """
+        Create needed services for connecting to database.
+        :@param submissions: all submissions submitted via xml
+        """
+        self.submissions = submissions
         self.submission_db_service = MongoDBService("submissions")
         self.backup_db_service = MongoDBService("backups")
+        
+    def generate_accession_number_and_alias(self):
+        """
+        random stuff
+        @return: 
+        """
+        return (1,2)
+        
+
+    def add(self, data):
+        s = data["schema"]
+        d = self.submissions[s]
+        
+        check_if_submission_is_valid(s, d)
+        numbers = self.generate_accession_number_and_alias()
+        submission_json = xmltodict.parse(d)
+        backup_json = {"accession": numbers[0],
+                       "alias": numbers[1],
+                       "content": d}
+        result = CRUDService.create(self.submission_db_service, s, submission_json)
+        result = CRUDService.create(self.backup_db_service, s, backup_json)
+
+
+    def modify(self, data):
+        LOG.info("modifying stuff!")
+
+        numbers = self.generate_accession_number_and_alias()
+class SiteHandler:
+    """ Backend feature handling, speaks to db via db_service objects"""
 
     @staticmethod
     async def extract_submission_from_request(request):
@@ -46,7 +82,7 @@ class SiteHandler:
         @return: dictionary containing actions as keys and list with info of data to perform
         action against as values
         """
-        self.check_if_submission_is_valid("submission", submission_content)
+        check_if_submission_is_valid("submission", submission_content)
         submission_as_json = xmltodict.parse(submission_content)
         action_list = submission_as_json["SUBMISSION_SET"]["SUBMISSION"]["ACTIONS"]["ACTION"]
         actions = {}
@@ -62,17 +98,6 @@ class SiteHandler:
                     actions[action].append(action_info)
         return actions
 
-    @staticmethod
-    def check_if_submission_is_valid(xml_type, xml_content):
-        try:
-            valid_xml = XMLValidator.validate(xml_content, xml_type, SchemaLoader())
-        except ValueError as error:
-            reason = f"{error} {xml_type}"
-            raise web.HTTPBadRequest(reason=reason)
-        if not valid_xml:
-            reason = f"Submitted XML file was not valid against schema {xml_type}"
-            raise web.HTTPBadRequest(reason=reason)
-
     async def submit(self, request):
         """
         Handles submission to server
@@ -83,17 +108,18 @@ class SiteHandler:
         """
         submissions = await self.extract_submission_from_request(request)
 
-        if not "submission" in submissions:
+        # TODO: allow submissions without xml file when using correct parameters (this helps submitting from frontend)
+        if "submission" not in submissions:
             reason = "There must be a submission.xml file in submission"
             raise web.HTTPBadRequest(reason=reason)
 
         actions = self.get_actions_from_submission_xml(submissions["submission"])
+        
+        submitter = SubmissionActionsToCRUD(submissions)
 
-        # for submission in submissions:
-        #    submission_json = xmltodict.parse(xml_content)
-        #    backup_json = {"content": xml_content}
-        # result = CRUDService.create(self.submission_db_service, schema, submission_json)
-        # result = CRUDService.create(self.backup_db_service, schema, backup_json)
+        for action, li in actions.items():
+            for l in li:
+                getattr(submitter, action)(l)
 
         receipt = """<RECEIPT receiptDate = "2014-12-02T16:06:20.871Z" success = "true" >
                          <RUN accession = "ERR049536" alias = "run_1" status = "PRIVATE" />
@@ -101,3 +127,14 @@ class SiteHandler:
                          <ACTIONS>ADD</ACTIONS>
                      </RECEIPT>"""
         raise web.HTTPCreated(body=receipt, content_type="text/xml")
+
+
+def check_if_submission_is_valid(xml_type, xml_content):
+    try:
+        valid_xml = XMLValidator.validate(xml_content, xml_type, SchemaLoader())
+    except ValueError as error:
+        reason = f"{error} {xml_type}"
+        raise web.HTTPBadRequest(reason=reason)
+    if not valid_xml:
+        reason = f"Submitted XML file was not valid against schema {xml_type}"
+        raise web.HTTPBadRequest(reason=reason)
