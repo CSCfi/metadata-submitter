@@ -5,7 +5,7 @@ omit =
     */.local/*
     # omit everything in /usr
     /usr/*
-    metadata_backend/__init__.py
+    metadata_backend/helpers/logger.py
 
 [report]
 # Regexes for lines to exclude from consideration
