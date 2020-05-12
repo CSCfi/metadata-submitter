@@ -1,5 +1,5 @@
-"""
-API endpoints.
+"""API endpoints and other api-related classes.
+
 Endpoints:
 * ``/`` - General information about the endpoint
 * ``/submit`` - Submission API for metadata XML file submissions
