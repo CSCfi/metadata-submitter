@@ -1,10 +1,9 @@
 import unittest
-
 from unittest import mock
 
+from aiohttp import web
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
 from metadata_backend.server import init, main
-from aiohttp import web
 
 
 class TestBasicFunctionsApp(unittest.TestCase):
