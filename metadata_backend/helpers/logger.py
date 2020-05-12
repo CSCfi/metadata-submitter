@@ -1,7 +1,7 @@
-"""Logging formatting and functions for debugging"""
+"""Logging formatting and functions for debugging."""
 
-import logging
 import json
+import logging
 
 FORMAT = "[%(asctime)s][%(name)s][%(process)d %(processName)s]" \
          "[%(levelname)-8s](L:%(lineno)s) %(funcName)s: %(message)s"
@@ -12,9 +12,9 @@ LOG.setLevel(logging.INFO)
 
 
 def get_attributes(obj):
-    """
-    Prints all attributes of given object
-    @param obj: Any object
+    """Print all attributes of given object.
+
+    :param obj: Any kind of object
     """
     for attr in dir(obj):
         try:
@@ -24,8 +24,8 @@ def get_attributes(obj):
 
 
 def pprint_json(content):
-    """
-    Prints given json object to LOG
-    @param content: json-formatted content to be printed
+    """Print given json object to LOG.
+
+    :param content: json-formatted content to be printed
     """
     LOG.info(json.dumps(content, indent=4))

@@ -1,3 +1,1 @@
-"""
-Database connections, db initialisation etc.
-"""
+"""Database services, initialisation and other tools."""
