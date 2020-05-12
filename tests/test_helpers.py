@@ -1,8 +1,8 @@
 import unittest
 
 import xmlschema
-from metadata_backend.helpers.schema_load import SchemaLoader
-from metadata_backend.helpers.schema_load import SchemaNotFoundException
+from metadata_backend.helpers.schema_load import (SchemaLoader,
+                                                  SchemaNotFoundException)
 
 
 class TestUtilClasses(unittest.TestCase):
