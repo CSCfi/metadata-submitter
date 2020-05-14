@@ -3,18 +3,18 @@
 import asyncio
 
 import uvloop
-from aiohttp import web
+from aiohttp.web import Application, RouteTableDef, run_app
 
 from .api.views import SiteHandler
 from .helpers.logger import LOG
 
-routes = web.RouteTableDef()
+routes = RouteTableDef()
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
-async def init():
+async def init() -> Application:
     """Initialise server and setup routes."""
-    server = web.Application()
+    server = Application()
     handler = SiteHandler()
     server.router.add_post('/submit', handler.submit)
     LOG.info("Server configurations and routes loaded")
@@ -26,7 +26,7 @@ def main():
     host = '0.0.0.0'  # nosec
     port = 5430
     LOG.info(f"Started server on {host}:{port}")
-    web.run_app(init(), host=host, port=port, shutdown_timeout=0)
+    run_app(init(), host=host, port=port, shutdown_timeout=0)
 
 
 if __name__ == '__main__':
