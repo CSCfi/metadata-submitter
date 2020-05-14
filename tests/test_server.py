@@ -1,5 +1,5 @@
 import unittest
-from unittest import mock
+from unittest.mock import patch
 
 from aiohttp import web
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
@@ -9,8 +9,8 @@ from metadata_backend.server import init, main
 class TestBasicFunctionsApp(unittest.TestCase):
     """Test basic functions from web app."""
 
-    @mock.patch('metadata_backend.server.web')
-    @mock.patch('metadata_backend.server.init')
+    @patch('metadata_backend.server.web')
+    @patch('metadata_backend.server.init')
     def test_main(self, mock_init, mock_webapp):
         """Should start the webapp."""
         main()
