@@ -3,4 +3,3 @@ gunicorn
 pymongo
 uvloop
 xmlschema
-xmltodict
