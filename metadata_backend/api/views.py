@@ -1,58 +1,71 @@
+"""Handle HTTP methods for server."""
+from typing import Dict
+
 from aiohttp import web
 
-from ..database.db_services import CRUDService, MongoDBService
-from ..helpers.schema_load import SchemaLoader
-from ..helpers.validator import XMLValidator
+from .parser import SubmissionXMLToJSONParser
+from .translator import ActionToCRUDTranslator
 
 
 class SiteHandler:
-    """ Backend feature handling, speaks to db via db_service objects"""
+    """Backend HTTP method handler."""
 
-    def __init__(self):
-        """ Create needed services for connecting to database. """
-        self.schema_db_service = MongoDBService("schemas")
-        self.submission_db_service = MongoDBService("submissions")
-        self.backup_db_service = MongoDBService("backups")
+    @staticmethod
+    async def extract_submissions_from_request(request) -> Dict[str, str]:
+        """Extract xml-files and their types from multi-part request.
+
+        :param request: Multi-part POST request
+        :return: List of dictionaries containing type and content for each
+        XML file in request
+        """
+        submissions = {}
+        reader = await request.multipart()
+        while True:
+            part = await reader.next()
+            if not part:
+                break
+            xml_type = part.name.lower()
+            data = []
+            while True:
+                chunk = await part.read_chunk()
+                if not chunk:
+                    break
+                data.append(chunk)
+            xml_content = ''.join(x.decode('UTF-8') for x in data)
+            submissions[xml_type] = xml_content
+        return submissions
 
     async def submit(self, request):
-        """Handles submission to server
-        :param request: POST request sent
+        """Handle submission to server.
+
+        First submission info is parsed and then for every action in submission
+        (such as "add", or "modify") corresponding operation is performed.
+        Finally submission info itself is added.
+
+        :param request: POST request
         :raises: HTTP Exceptions with status code 201 or 400
-        :returns: JSON response with submitted xml_content or validation error
-        reason
+        :returns: XML-based receipt from submission
         """
+        submissions = await self.extract_submissions_from_request(request)
 
-        reader = await request.multipart()
-        field = await reader.next()
-        schema = field.name
-        result = []
-        while True:
-            chunk = await field.read_chunk()
-            if not chunk:
-                break
-            result.append(chunk)
-        xml_content = ''.join(x.decode('UTF-8') for x in result)
-        schema_loader = SchemaLoader()
-        try:
-            valid_xml = XMLValidator.validate(xml_content, schema,
-                                              schema_loader)
-        except ValueError as error:
-            reason = f"{error} {schema}"
+        if "submission" not in submissions:
+            reason = "There must be a submission.xml file in submission"
             raise web.HTTPBadRequest(reason=reason)
 
-        if not valid_xml:
-            reason = f"Submitted XML file was not valid against schema {schema}"
-            raise web.HTTPBadRequest(reason=reason)
+        parser = SubmissionXMLToJSONParser()
+        translator = ActionToCRUDTranslator(submissions)
+        submission_json = parser.parse("submission", submissions["submission"])
 
-        # TODO: Parse metadata XML to valid JSON object here, follow JSON
-        # schema. At the moment XML is just dumped to db as one chunk
+        for action_info in submission_json["action_infos"]:
+            try:
+                action = action_info["action"]
+                getattr(translator, action)(action_info)
+            except AttributeError as error:
+                reason = (f"Unfortunately this feature has not yet been "
+                          f"implemented. More info: {error}")
+                raise web.HTTPBadRequest(reason=reason)
 
-        xml_content_json = {"content": xml_content}
-        CRUDService.create(self.submission_db_service, schema, xml_content_json)
+        translator.add({"schema": "submission"})
 
-        # TODO: Create xml backup to different database here
-
-        # TODO: Create correct response here (e.g. get REST api address
-        # to document that was inserted to db and return it with inserted
-        # json data
-        raise web.HTTPCreated(body=xml_content, content_type="text/xml")
+        raise web.HTTPCreated(body=translator.generate_receipt(),
+                              content_type="text/xml")
