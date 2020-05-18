@@ -1,8 +1,8 @@
 """Tool to parse XML files to JSON."""
 
-import random
-from pprint import pprint
-from typing import Dict, List
+import secrets
+import string
+from typing import Dict, List, Union
 
 from aiohttp import web
 from xmlschema import XMLSchema, XMLSchemaException
@@ -17,7 +17,7 @@ class SubmissionXMLToJSONParser:
     just by flattening them.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Create SchemaLoader instance for loading schemas."""
         self.loader = SchemaLoader()
 
@@ -59,7 +59,7 @@ class SubmissionXMLToJSONParser:
         return sorted(data, key=lambda x: order[x["schema"]])
 
     @staticmethod
-    def flatten_and_parse_json(data):
+    def flatten_and_parse_json(data: Dict) -> Dict:
         """Recursively flatten json and parse away unwanted characters.
 
         :param data: JSON to be flattened
@@ -67,7 +67,7 @@ class SubmissionXMLToJSONParser:
         """
         out = {}
 
-        def flatten(content, name=""):
+        def flatten(content: Union[Dict, List], name: str = ""):
             if type(content) is dict:
                 for key in content:
                     flatten(content[key], name + key + "_")
@@ -96,7 +96,17 @@ class SubmissionXMLToJSONParser:
         try:
             schema.validate(content)
         except (ValueError, XMLSchemaException) as error:
-            raise web.HTTPBadRequest(reason=error)
+            reason = f"Validation error happened. Details: {error}"
+            raise web.HTTPBadRequest(reason=reason)
+
+    @staticmethod
+    def generate_accession() -> str:
+        """Generate accession number.
+
+        returns: generated accession number
+        """
+        sequence = ''.join(secrets.choice(string.digits) for i in range(16))
+        return f"EDAG{sequence}"
 
     def parse_study(self, data: Dict) -> Dict:
         """Parse data from study-type XML.
@@ -109,7 +119,7 @@ class SubmissionXMLToJSONParser:
         """
         flattened_data = self.flatten_and_parse_json(data)
         if "accession" not in flattened_data:
-            flattened_data["accession"] = random.randint(1, 10000)
+            flattened_data["accession"] = self.generate_accession()
         return flattened_data
 
     def parse_sample(self, data: Dict) -> Dict:
@@ -218,8 +228,14 @@ class SubmissionXMLToJSONParser:
                                 action_info[attribute] = value
                             action_info["action"] = action.lower()
                             action_infos.append(action_info)
+                        else:
+                            reason = (f"You also need to provide necessary"
+                                      f" information for submission action."
+                                      f" Now {action} was provided without any"
+                                      f" extra information.")
+                            raise web.HTTPBadRequest(reason=reason)
+                        action_infos.append(action_info)
                 sorted_infos = self.sort_actions_by_schemas(action_infos)
-                pprint(sorted_infos)
                 parsed["action_infos"] = sorted_infos
         return parsed
 
@@ -235,5 +251,5 @@ class SubmissionXMLToJSONParser:
         """
         schema = self.load_schema(xml_type)
         self.validate(content, schema)
-        content_json_raw = schema.to_dict(content)[xml_type.upper()]
-        return getattr(self, f"parse_{xml_type}")(content_json_raw[0])
+        content_json_raw = schema.to_dict(content)[xml_type.upper()][0]
+        return getattr(self, f"parse_{xml_type}")(content_json_raw)
