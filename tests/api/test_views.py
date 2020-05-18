@@ -1,11 +1,10 @@
-import unittest
-
+from pathlib import Path
 from unittest.mock import patch
+
 from aiohttp import FormData
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
+
 from metadata_backend.server import init
-from pathlib import Path
-from typing import List, Dict
 
 
 class SiteHandlerTestCase(AioHTTPTestCase):
@@ -31,7 +30,7 @@ class SiteHandlerTestCase(AioHTTPTestCase):
         self.addCleanup(patch_parser.stop)
         self.addCleanup(patch_translator.stop)
 
-    def create_submission_data(self, files: List) -> Dict:
+    def create_submission_data(self, files):
         """Creates request data from pairs of schemas and filenames."""
         data = FormData()
         for schema, filename in files:
@@ -46,7 +45,7 @@ class SiteHandlerTestCase(AioHTTPTestCase):
     async def test_submission_is_processed_and_receipt_has_correct_info(self):
         """Test that submission with SUBMISSION.xml is extracted corretly."""
         files = []
-        files.append(("submission", "ERA521986.xml"))
+        files.append(("submission", "ERA521986_valid.xml"))
         data = self.create_submission_data(files)
         response = await self.client.request("POST", "/submit", data=data)
         receipt = await response.text()
@@ -71,8 +70,8 @@ class SiteHandlerTestCase(AioHTTPTestCase):
     async def test_submission_fails_with_many_submission_xmls(self):
         """User should be notified if submission contains too many xml-files"""
         files = []
-        files.append(("submission", "ERA521986.xml"))
-        files.append(("submission", "ERA521986_copy.xml"))
+        files.append(("submission", "ERA521986_valid.xml"))
+        files.append(("submission", "ERA521986_valid2.xml"))
         data = self.create_submission_data(files)
         response = await self.client.request("POST", "/submit", data=data)
         failure_text = "You should submit only one submission.xml file."

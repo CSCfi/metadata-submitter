@@ -1,5 +1,7 @@
 #!/bin/env/python
 
+"""Coveralls settings for travis and local usage."""
+
 import os
 import sys
 from subprocess import call

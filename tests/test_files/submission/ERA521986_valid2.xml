@@ -17,9 +17,6 @@
             <ACTION>
                 <ADD schema="analysis" source="processed_reads_analysis_template.xml"/>
             </ACTION>
-            <ACTION>
-                <HOLD/>
-            </ACTION>
         </ACTIONS>
     </SUBMISSION>
 </SUBMISSION_SET>

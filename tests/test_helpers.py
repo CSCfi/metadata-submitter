@@ -1,6 +1,7 @@
 import unittest
 
 import xmlschema
+
 from metadata_backend.helpers.schema_load import (SchemaLoader,
                                                   SchemaNotFoundException)
 
