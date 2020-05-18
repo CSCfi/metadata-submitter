@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 from aiohttp import web
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
+
 from metadata_backend.server import init, main
 
 
