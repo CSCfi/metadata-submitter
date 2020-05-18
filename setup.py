@@ -1,3 +1,5 @@
+"""Settings for building package."""
+
 from setuptools import find_packages, setup
 
 from metadata_backend import __author__, __title__, __version__
@@ -9,22 +11,21 @@ setup(
     # There are some restrictions on what makes a valid project name
     # specification here:
     # https://packaging.python.org/specifications/core-metadata/#name
-    name='metadata_backend',  # Required
+    name='metadata_backend',
 
     # Versions should comply with PEP 440:
     # https://www.python.org/dev/peps/pep-0440/
-    #
     # For a discussion on single-sourcing the version across setup.py and the
     # project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version=__version__,  # Required
+    version=__version__,
 
     # This is a one-line description or tagline of what your project does. This
     # corresponds to the "Summary" metadata field:
     # https://packaging.python.org/specifications/core-metadata/#summary
-    description=__title__,  # Required
+    description=__title__,
 
-    author=__author__,  # Optional
+    author=__author__,
 
     classifiers=[
         'License :: OSI Approved :: MIT License'
