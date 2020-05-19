@@ -156,6 +156,7 @@ class SubmissionXMLToJSONParser:
 
         Currently just flattens JSON.
 
+        :param data: XML content as JSON
         :returns: Parsed data as JSON
         """
         return self.flatten_and_parse_json(data)
