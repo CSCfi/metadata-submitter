@@ -9,16 +9,13 @@
         </IDENTIFIERS>
         <ACTIONS>
             <ACTION>
-                <ADD schema="sample" source="SRS001433.xml"/>
+                <ADD schema="study" source="study_template.xml"/>
             </ACTION>
             <ACTION>
-                <ADD schema="run" source="ERR000076.xml"/>
+                <ADD schema="sample" source="sample_template.xml"/>
             </ACTION>
             <ACTION>
-                <ADD schema="study" source="SRP000539.xml"/>
-            </ACTION>
-            <ACTION>
-                <HOLD/>
+                <ADD schema="analysis" source="processed_reads_analysis_template.xml"/>
             </ACTION>
         </ACTIONS>
     </SUBMISSION>

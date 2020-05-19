@@ -1,16 +1,19 @@
+"""Tests for server module."""
+
 import unittest
-from unittest import mock
+from unittest.mock import patch
 
 from aiohttp import web
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
+
 from metadata_backend.server import init, main
 
 
 class TestBasicFunctionsApp(unittest.TestCase):
     """Test basic functions from web app."""
 
-    @mock.patch('metadata_backend.server.web')
-    @mock.patch('metadata_backend.server.init')
+    @patch('metadata_backend.server.web')
+    @patch('metadata_backend.server.init')
     def test_main(self, mock_init, mock_webapp):
         """Should start the webapp."""
         main()
@@ -22,6 +25,7 @@ if __name__ == '__main__':
 
 
 class AppTestCase(AioHTTPTestCase):
+    """Async tests for web app."""
 
     async def get_application(self):
         """Retrieve web Application for test."""
@@ -29,6 +33,6 @@ class AppTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_init(self):
-        """Test everything works in init()"""
+        """Test everything works in init()."""
         server = await self.get_application()
         self.assertIs(type(server), web.Application)

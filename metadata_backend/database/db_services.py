@@ -5,7 +5,6 @@ from typing import Dict
 
 from pymongo import MongoClient, errors
 from pymongo.cursor import Cursor
-from pymongo.results import InsertOneResult
 
 
 class MongoClientCreator:
@@ -30,8 +29,8 @@ class DBService(MongoClientCreator):
 
     Service creates client for itself with MongoClientCreator. This makes
     it possible to create separate databases for different purposes
-    (e.g. submissions and backups) with different MongoDBService instances.
 
+    (e.g. submissions and backups) with different MongoDBService instances.
     :param MongoClientCreator: Class which creates client for MongoDB
     """
 
@@ -50,18 +49,17 @@ class CRUDService:
     """Static methods to handle CRUD operations."""
 
     @staticmethod
-    def create(db_service: DBService, collection: str,
-               document: Dict) -> InsertOneResult:
+    def create(db_service: DBService, collection: str, document: Dict):
         """Insert document to collection in database.
 
         :param db_service: Service that connects to database
         :param collection: Collection where document should be inserted
         :param document: Document to be inserted
-        :returns: Pymongo's InsertOneResult object (dictionary)
+        :raises: Error when write fails for any Mongodb related reason
         """
         try:
-            return db_service.database[collection].insert_one(document)
-        except errors.ConnectionFailure:
+            db_service.database[collection].insert_one(document)
+        except errors.PyMongoError:
             raise
 
     @staticmethod
@@ -73,6 +71,7 @@ class CRUDService:
         :param collection: Collection where document should be searched from
         :param query: Query for document(s) that should be found
         :returns: Pymongo's Cursor object (iterator)
+        :raises: Error when read fails for any Mongodb related reason
         """
         try:
             return db_service.database[collection].find(query)
