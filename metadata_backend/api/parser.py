@@ -114,7 +114,7 @@ class SubmissionXMLToJSONParser:
         Currently just flattens JSON and generates random accession number as
         placeholder (numbers are later on fetched from an another source).
 
-        :param xml_content: XML content as JSON
+        :param data: XML content as JSON
         :returns: Parsed data as JSON
         """
         flattened_data = self.flatten_and_parse_json(data)
@@ -127,7 +127,7 @@ class SubmissionXMLToJSONParser:
 
         Currently just flattens JSON.
 
-        :param xml_content: XML content as JSON
+        :param data: XML content as JSON
         :returns: Parsed data as JSON
         """
         return self.flatten_and_parse_json(data)
@@ -137,7 +137,6 @@ class SubmissionXMLToJSONParser:
 
         Currently just flattens JSON.
 
-        :param xml_content: XML content as JSON
         :returns: Parsed data as JSON
         """
         return self.flatten_and_parse_json(data)
@@ -147,7 +146,7 @@ class SubmissionXMLToJSONParser:
 
         Currently just flattens JSON.
 
-        :param xml_content: XML content as JSON
+        :param data: XML content as JSON
         :returns: Parsed data as JSON
         """
         return self.flatten_and_parse_json(data)
@@ -157,7 +156,6 @@ class SubmissionXMLToJSONParser:
 
         Currently just flattens JSON.
 
-        :param xml_content: XML content as JSON
         :returns: Parsed data as JSON
         """
         return self.flatten_and_parse_json(data)
@@ -167,7 +165,7 @@ class SubmissionXMLToJSONParser:
 
         Currently just flattens JSON.
 
-        :param xml_content: XML content as JSON
+        :param data: XML content as JSON
         :returns: Parsed data as JSON
         """
         return self.flatten_and_parse_json(data)
@@ -177,7 +175,7 @@ class SubmissionXMLToJSONParser:
 
         Currently just flattens JSON.
 
-        :param xml_content: XML content as JSON
+        :param data: XML content as JSON
         :returns: Parsed data as JSON
         """
         return self.flatten_and_parse_json(data)
@@ -187,7 +185,7 @@ class SubmissionXMLToJSONParser:
 
         Currently just flattens JSON.
 
-        :param xml_content: XML content as JSON
+        :param data: XML content as JSON
         :returns: Parsed data as JSON
         """
         return self.flatten_and_parse_json(data)
@@ -197,7 +195,7 @@ class SubmissionXMLToJSONParser:
 
         Currently just flattens JSON.
 
-        :param xml_content: XML content as JSON
+        :param data: XML content as JSON
         :returns: Parsed data as JSON
         """
         return self.flatten_and_parse_json(data)
@@ -209,7 +207,7 @@ class SubmissionXMLToJSONParser:
         schema, action and other attributes. This allows XMLs to be sorted
         according to their
 
-        :param xml_content: XML content as JSON
+        :param data: XML content as JSON
         :returns: Parsed data as JSON
         """
         parsed = {}
@@ -222,10 +220,10 @@ class SubmissionXMLToJSONParser:
                     for action, data in action_set.items():
                         if data:
                             action_info = {}
-                            for attribute, value in data.items():
+                            for attribute, content in data.items():
                                 if attribute[0] == "@":
                                     attribute = attribute[1:]
-                                action_info[attribute] = value
+                                action_info[attribute] = content
                             action_info["action"] = action.lower()
                             action_infos.append(action_info)
                         else:

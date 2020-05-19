@@ -1,3 +1,5 @@
+"""Tests for server module."""
+
 import unittest
 from unittest.mock import patch
 
@@ -23,6 +25,7 @@ if __name__ == '__main__':
 
 
 class AppTestCase(AioHTTPTestCase):
+    """Async tests for web app."""
 
     async def get_application(self):
         """Retrieve web Application for test."""
@@ -30,6 +33,6 @@ class AppTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_init(self):
-        """Test everything works in init()"""
+        """Test everything works in init()."""
         server = await self.get_application()
         self.assertIs(type(server), web.Application)

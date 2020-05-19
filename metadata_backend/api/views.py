@@ -16,7 +16,7 @@ class SiteHandler:
     async def extract_submissions(req: Request) -> Dict[str, Dict[str, str]]:
         """Extract submitted xml-files from multi-part request.
 
-        :param request: Multi-part POST request
+        :param req: Multi-part POST request
         :returns: Filename and content for each submitted xml, grouped by
         schemas
         """
@@ -52,7 +52,8 @@ class SiteHandler:
             submissions[xml_type][filename] = xml_content
         return submissions
 
-    def generate_receipt(self, successful: List, unsuccessful: List) -> str:
+    @staticmethod
+    def generate_receipt(successful: List, unsuccessful: List) -> str:
         """Generate receipt XML after all submissions have ran through.
 
         Not currently valid receipt (against schema), will be changed later.
@@ -75,7 +76,7 @@ class SiteHandler:
         (such as "add", or "modify") corresponding operation is performed.
         Finally submission info itself is added.
 
-        :param request: POST request
+        :param req: POST request
         :raises: HTTP Exceptions with status code 201 or 400
         :returns: XML-based receipt from submission
         """

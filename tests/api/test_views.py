@@ -1,3 +1,5 @@
+"""Test api endpoints from views module."""
+
 from pathlib import Path
 from unittest.mock import patch
 
@@ -8,6 +10,7 @@ from metadata_backend.server import init
 
 
 class SiteHandlerTestCase(AioHTTPTestCase):
+    """Api endpoint class testcases."""
 
     TESTFILES_ROOT = Path(__file__).parent.parent / 'test_files'
 
@@ -16,11 +19,7 @@ class SiteHandlerTestCase(AioHTTPTestCase):
         return await init()
 
     async def setUpAsync(self):
-        """Patch api classes that have been imported to views.py module.
-
-        Aiohttp response needs correct body (not just MagicMock-object), so
-        receipt generating function needs to be mocked here as well.
-        """
+        """Patch api classes that have been imported to views.py module."""
         class_parser = "metadata_backend.api.views.SubmissionXMLToJSONParser"
         class_translator = "metadata_backend.api.views.ActionToCRUDTranslator"
         patch_parser = patch(class_parser)
@@ -31,7 +30,7 @@ class SiteHandlerTestCase(AioHTTPTestCase):
         self.addCleanup(patch_translator.stop)
 
     def create_submission_data(self, files):
-        """Creates request data from pairs of schemas and filenames."""
+        """Create request data from pairs of schemas and filenames."""
         data = FormData()
         for schema, filename in files:
             path_to_file = self.TESTFILES_ROOT / schema / filename
@@ -44,38 +43,40 @@ class SiteHandlerTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_submission_is_processed_and_receipt_has_correct_info(self):
         """Test that submission with SUBMISSION.xml is extracted corretly."""
-        files = []
-        files.append(("submission", "ERA521986_valid.xml"))
+        files = [("submission", "ERA521986_valid.xml")]
         data = self.create_submission_data(files)
         response = await self.client.request("POST", "/submit", data=data)
         receipt = await response.text()
 
-        assert 201 == response.status
+        assert response.status == 201
         for schema, _ in files:
             self.assertIn(schema, receipt)
 
     @unittest_run_loop
     async def test_submission_fails_without_submission_xml(self):
-        """User should be notified if submission doesn't contain xml-file
-        about submission actions"""
-        files = []
-        files.append(("analysis", "ERZ266973.xml"))
+        """Test that basic POST submission fails with no submission.xml.
+
+        User should also be notified for missing file.
+        """
+        files = [("analysis", "ERZ266973.xml")]
         data = self.create_submission_data(files)
         response = await self.client.request("POST", "/submit", data=data)
         failure_text = "There must be a submission.xml file in submission."
-        assert 400 == response.status
+        assert response.status == 400
         self.assertIn(failure_text, await response.text())
 
     @unittest_run_loop
     async def test_submission_fails_with_many_submission_xmls(self):
-        """User should be notified if submission contains too many xml-files"""
-        files = []
-        files.append(("submission", "ERA521986_valid.xml"))
-        files.append(("submission", "ERA521986_valid2.xml"))
+        """Test submission fails when there's too many submission.xml -files.
+
+        User should be notified for submitting too many files.
+        """
+        files = [("submission", "ERA521986_valid.xml"),
+                 ("submission", "ERA521986_valid2.xml")]
         data = self.create_submission_data(files)
         response = await self.client.request("POST", "/submit", data=data)
         failure_text = "You should submit only one submission.xml file."
-        assert 400 == response.status
+        assert response.status == 400
         self.assertIn(failure_text, await response.text())
 
     # TODO: write following tests: receipt contains fails and messages,
