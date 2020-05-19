@@ -29,8 +29,8 @@ class DBService(MongoClientCreator):
 
     Service creates client for itself with MongoClientCreator. This makes
     it possible to create separate databases for different purposes
-    (e.g. submissions and backups) with different MongoDBService instances.
 
+    (e.g. submissions and backups) with different MongoDBService instances.
     :param MongoClientCreator: Class which creates client for MongoDB
     """
 
