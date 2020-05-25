@@ -55,8 +55,21 @@ class SiteHandler:
             for filename in filenames.keys():
                 accessionId = translator.add({"schema": schema,
                                               "source": filename})
-
         return web.Response(body=accessionId)
+
+    async def get_object_from_alias_address(self, req: Request) -> Response:
+        """Redirect requests to /<schema> to /object/<schema>.
+
+        This implements restful way to serve content from canonical uri.
+
+        :param req: GET request
+        :raises: HTTPFound for redirection
+        """
+        accessionId = req.match_info['accessionId']
+        schema = req.match_info['schema']
+        uri = req.app.router['get_object'].url_for(schema=schema,
+                                                   accessionId=accessionId)
+        raise web.HTTPFound(location=uri)
 
     @staticmethod
     def generate_receipt(successful: List, unsuccessful: List) -> str:
@@ -64,8 +77,8 @@ class SiteHandler:
 
         Not currently valid receipt (against schema), will be changed later.
 
-        :param successful: Succesful submissions and their info
-        :param unsuccessful: Unuccesful submissions and their info
+        :param successful: Successful submissions and their info
+        :param unsuccessful: Unsuccessful submissions and their info
         :returns: XML-based receipt
         """
         date = datetime.now()
