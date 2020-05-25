@@ -1,4 +1,5 @@
 aiohttp
 pymongo
+python-dateutil
 uvloop
 xmlschema
