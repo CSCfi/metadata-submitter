@@ -38,8 +38,8 @@ class SubmissionXMLToJSONParser:
         self._validate(content, schema)
         content_json_raw = schema.to_dict(content, converter=AbderaConverter,
                                           decimal_type=float, dict_class=dict)
-        content_json_raw["accession"] = self._generate_accession()
         content_json_formatted = self._to_lowercase(content_json_raw)
+        content_json_formatted["accessionId"] = self._generate_accessionId()
         return getattr(self, f"_parse_{xml_type}")(content_json_formatted)
 
     def _load_schema(self, xml_type: str) -> XMLSchema:
@@ -72,7 +72,7 @@ class SubmissionXMLToJSONParser:
             raise web.HTTPBadRequest(reason=reason)
 
     @staticmethod
-    def _generate_accession() -> str:
+    def _generate_accessionId() -> str:
         """Generate accession number.
 
         returns: generated accession number

@@ -25,18 +25,20 @@ class ActionToCRUDTranslator:
         self.parser = SubmissionXMLToJSONParser()
         self.submissions = submissions
 
-    def add(self, target: Dict) -> None:
+    def add(self, target: Dict) -> Dict:
         """Submit new metadata object (ADD action in submission.xml).
 
         :param target: Attributes for add action, e.g. information about which
         file to save to database
         :raises: HTTP error when inserting file to database fails
+        :returns Json containing accession id for object that has been
+        inserted to database
         """
         xml_type = target["schema"]
         source = target["source"]
         content_xml = self.submissions[xml_type][source]
         content_json = self.parser.parse(xml_type, content_xml)
-        backup_json = {"accession": content_json["accession"],
+        backup_json = {"accessionId": content_json["accessionId"],
                        "content": content_xml}
         try:
             CRUDService.create(self.submission_db_service, xml_type,
@@ -53,23 +55,26 @@ class ActionToCRUDTranslator:
             reason = f"Error happened when backing up {source} to database."
             raise web.HTTPBadRequest(reason=reason)
         LOG.info(f"Inserting file {source} to database succeeded")
+        return content_json["accessionId"]
 
-    def get_all(self) -> Dict:
-        """Get all objects from the database.
+    def get_object_with_accessionId(self, schema: str,
+                                    accessionId: str) -> Dict:
+        """Get object from database according to given accession id.
 
-        Objects are grabbed from all collections with empty query,
-        which in MongoDB returns everything from that collection.
-
-        This will load all the objects into program memory and should
-        since be refactored at some point.
-
+        param: accessionId: Accession id for object to be searched
+        raises: HTTPBadRequest if error happened when connection to database
+        and HTTPNotFound error if file with given accession id is not found.
         returns: JSON containing all objects.
         """
-        schemas = ["study", "sample", "experiment", "run",
-                   "analysis", "dac", "policy", "dataset", "project"]
+        try:
+            data = CRUDService.read(self.submission_db_service, schema,
+                                    {"accessionId": accessionId})
+            if data is not None:
+                return json_util.dumps(data)
 
-        objects = []
-        for schema in schemas:
-            objects.extend(list(CRUDService.read(self.submission_db_service,
-                                                 schema, {})))
-        return json_util.dumps(objects)
+        except errors.PyMongoError as error:
+            LOG.info(f"error, reason: {error}")
+            reason = "Error happened while getting file from database."
+            raise web.HTTPBadRequest(reason=reason)
+
+        raise web.HTTPNotFound

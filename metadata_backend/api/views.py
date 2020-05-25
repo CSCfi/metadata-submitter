@@ -12,30 +12,38 @@ from .translator import ActionToCRUDTranslator
 class SiteHandler:
     """Backend HTTP method handler."""
 
+    async def get_object(self, req: Request) -> Response:
+        """Get one object by its accession id.
+
+        :param req: Multi-part POST request
+        :returns: JSON response containing metadata object
+        """
+        translator = ActionToCRUDTranslator({})
+        accessionId = req.match_info['accessionId']
+        schema = req.match_info['schema']
+        object = translator.get_object_with_accessionId(schema, accessionId)
+        return web.Response(body=object)
+
     async def submit_object(self, req: Request) -> Response:
         """Submit and save metadata object to database.
 
+        This currently relies on the same method as submission.xml parsing.
+        It would be probably better to have a separate
+        method for parsing, since form submissions can be done asynchronously
+        in frontend.
+
         :param req: Multi-part POST request containing xml file to be saved
-        :returns: JSON response containing info about submission
+        :returns: JSON response containing accessionId for submitted file
         """
         submissions = await self.extract_submissions(req)
         translator = ActionToCRUDTranslator(submissions)
 
         for schema, filenames in submissions.items():
             for filename in filenames.keys():
-                translator.add({"schema": schema, "source": filename})
+                accessionId = translator.add({"schema": schema,
+                                              "source": filename})
 
-        return web.Response(text="Stuff added to database")
-
-    async def get_all_objects(self, req: Request) -> Response:
-        """Fetch all metadata objects from all collections.
-
-        :param req: Multi-part POST request
-        :returns: JSON response containing everything in database
-        """
-        translator = ActionToCRUDTranslator({})
-        submissions = translator.get_all()
-        return web.Response(body=submissions)
+        return web.Response(body=accessionId)
 
     @staticmethod
     def generate_receipt(successful: List, unsuccessful: List) -> str:
