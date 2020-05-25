@@ -37,7 +37,6 @@ class ActionToCRUDTranslator:
         content_xml = self.submissions[xml_type][source]
         content_json = self.parser.parse(xml_type, content_xml)
         backup_json = {"accession": content_json["accession"],
-                       "alias": content_json["alias"],
                        "content": content_xml}
         try:
             CRUDService.create(self.submission_db_service, xml_type,

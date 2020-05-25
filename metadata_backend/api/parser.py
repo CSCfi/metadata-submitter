@@ -1,11 +1,14 @@
 """Tool to parse XML files to JSON."""
 
+import re
 import secrets
 import string
-from typing import Dict, List, Union
+from datetime import datetime
+from typing import Dict, List
 
 from aiohttp import web
-from xmlschema import XMLSchema, XMLSchemaException
+from dateutil.relativedelta import relativedelta
+from xmlschema import AbderaConverter, XMLSchema, XMLSchemaException
 
 from ..helpers.schema_load import SchemaLoader, SchemaNotFoundException
 
@@ -13,7 +16,7 @@ from ..helpers.schema_load import SchemaLoader, SchemaNotFoundException
 class SubmissionXMLToJSONParser:
     """Methods to parse necessary data from different xml types.
 
-    Currently only submission-type is parsed excplicitly, others are parsed
+    Currently only submission-type is parsed explicitly, others are parsed
     just by flattening them.
     """
 
@@ -21,7 +24,25 @@ class SubmissionXMLToJSONParser:
         """Create SchemaLoader instance for loading schemas."""
         self.loader = SchemaLoader()
 
-    def load_schema(self, xml_type: str) -> XMLSchema:
+    def parse(self, xml_type: str, content: str) -> Dict:
+        """Parse necessary data from XML to make it queryable later.
+
+        All submitted objects first are ran through generic parser,
+        formatted and then passed to specific parser based on objects schema.
+
+        :param xml_type: Submission type (schema) to be used
+        :param content: XML content to be parsed
+        :returns: XML parsed to JSON
+        """
+        schema = self._load_schema(xml_type)
+        self._validate(content, schema)
+        content_json_raw = schema.to_dict(content, converter=AbderaConverter,
+                                          decimal_type=float, dict_class=dict)
+        content_json_raw["accession"] = self._generate_accession()
+        content_json_formatted = self._to_lowercase(content_json_raw)
+        return getattr(self, f"_parse_{xml_type}")(content_json_formatted)
+
+    def _load_schema(self, xml_type: str) -> XMLSchema:
         """Load schema for validation and xml-to-json decoding.
 
         :param xml_type: Schema to be loaded
@@ -36,56 +57,7 @@ class SubmissionXMLToJSONParser:
         return schema
 
     @staticmethod
-    def sort_actions_by_schemas(data: List) -> List:
-        """Sort schemas according to their priority.
-
-        Schemas need to be processed in certain order (for example 'study'
-        submission needs to processed first in order to generate accession
-        number for other submissions.
-
-        Sorting order is based on ENA Metadata Model:
-        https://ena-docs.readthedocs.io/en/latest/submit/general-guide/metadata.html
-
-        This should probably be refactored later, since submissions can be also
-        made via front-end or with actions in POST-request (i.e. without
-        submission.xml).
-
-        :param data: Data to be sorted
-        :returns: Sorted list
-        """
-        order = {"study": 1, "sample": 2, "experiment": 3, "run": 4,
-                 "analysis": 5, "dac": 6, "policy": 7, "dataset": 8,
-                 "project": 9}
-        return sorted(data, key=lambda x: order[x["schema"]])
-
-    @staticmethod
-    def flatten_and_parse_json(data: Dict) -> Dict:
-        """Recursively flatten json and parse away unwanted characters.
-
-        :param data: JSON to be flattened
-        :returns: Flattened JSON
-        """
-        out = {}
-
-        def flatten(content: Union[Dict, List], name: str = ""):
-            if type(content) is dict:
-                for key in content:
-                    flatten(content[key], name + key + "_")
-            elif type(content) is list:
-                i = 0
-                for element in content:
-                    flatten(element, name + str(i) + "_")
-                    i += 1
-            else:
-                if name[0] == "@":
-                    name = name[1:]
-                out[name[:-1]] = content
-
-        flatten(data)
-        return out
-
-    @staticmethod
-    def validate(content: str, schema: XMLSchema) -> None:
+    def _validate(content: str, schema: XMLSchema) -> None:
         """Validate XML with XMLSchema instance.
 
         :param content: XML to be validated
@@ -100,7 +72,7 @@ class SubmissionXMLToJSONParser:
             raise web.HTTPBadRequest(reason=reason)
 
     @staticmethod
-    def generate_accession() -> str:
+    def _generate_accession() -> str:
         """Generate accession number.
 
         returns: generated accession number
@@ -108,100 +80,103 @@ class SubmissionXMLToJSONParser:
         sequence = ''.join(secrets.choice(string.digits) for i in range(16))
         return f"EDAG{sequence}"
 
-    def parse_study(self, data: Dict) -> Dict:
+    def _parse_study(self, data: Dict) -> Dict:
         """Parse data from study-type XML.
 
-        Currently just flattens JSON and generates random accession number as
-        placeholder (numbers are later on fetched from an another source).
+        Adds study publicity status information to study object. By default
+        this is two months from submission date (based on ENA submission
+        model). Dates are written to database in UTC (see pymongo docs:
+        https://api.mongodb.com/python/current/examples/datetimes.html)
+
+        Should be later modified to give user possibility to set publicity
+        status in submission from front-end / via POST.
 
         :param data: XML content as JSON
         :returns: Parsed data as JSON
         """
-        flattened_data = self.flatten_and_parse_json(data)
-        if "accession" not in flattened_data:
-            flattened_data["accession"] = self.generate_accession()
-        return flattened_data
+        data["publishDate"] = datetime.now() + relativedelta(months=2)
+        return data
 
-    def parse_sample(self, data: Dict) -> Dict:
+    def _parse_sample(self, data: Dict) -> Dict:
         """Parse data from sample-type XML.
 
-        Currently just flattens JSON.
+        Currently doesn't add anything extra.
 
         :param data: XML content as JSON
         :returns: Parsed data as JSON
         """
-        return self.flatten_and_parse_json(data)
+        return data
 
-    def parse_experiment(self, data: Dict) -> Dict:
+    def _parse_experiment(self, data: Dict) -> Dict:
         """Parse data from experiment-type XML.
 
-        Currently just flattens JSON.
+        Currently doesn't add anything extra.
 
         :returns: Parsed data as JSON
         """
-        return self.flatten_and_parse_json(data)
+        return data
 
-    def parse_run(self, data: Dict) -> Dict:
+    def _parse_run(self, data: Dict) -> Dict:
         """Parse data from run-type XML.
 
-        Currently just flattens JSON.
+        Currently doesn't add anything extra.
 
         :param data: XML content as JSON
         :returns: Parsed data as JSON
         """
-        return self.flatten_and_parse_json(data)
+        return data
 
-    def parse_analysis(self, data: Dict) -> Dict:
+    def _parse_analysis(self, data: Dict) -> Dict:
         """Parse data from sample-type XML.
 
-        Currently just flattens JSON.
+        Currently doesn't add anything extra.
 
         :param data: XML content as JSON
         :returns: Parsed data as JSON
         """
-        return self.flatten_and_parse_json(data)
+        return data
 
-    def parse_dac(self, data: Dict) -> Dict:
+    def _parse_dac(self, data: Dict) -> Dict:
         """Parse data from dac-type XML.
 
-        Currently just flattens JSON.
+        Currently doesn't add anything extra.
 
         :param data: XML content as JSON
         :returns: Parsed data as JSON
         """
-        return self.flatten_and_parse_json(data)
+        return data
 
-    def parse_policy(self, data: Dict) -> Dict:
+    def _parse_policy(self, data: Dict) -> Dict:
         """Parse data from sample-type XML.
 
-        Currently just flattens JSON.
+        Currently doesn't add anything extra.
 
         :param data: XML content as JSON
         :returns: Parsed data as JSON
         """
-        return self.flatten_and_parse_json(data)
+        return data
 
-    def parse_dataset(self, data: Dict) -> Dict:
+    def _parse_dataset(self, data: Dict) -> Dict:
         """Parse data from dataset-type XML.
 
-        Currently just flattens JSON.
+        Currently doesn't add anything extra.
 
         :param data: XML content as JSON
         :returns: Parsed data as JSON
         """
-        return self.flatten_and_parse_json(data)
+        return data
 
-    def parse_project(self, data: Dict) -> Dict:
+    def _parse_project(self, data: Dict) -> Dict:
         """Parse data from project-type XML.
 
-        Currently just flattens JSON.
+        Currently doesn't add anything extra.
 
         :param data: XML content as JSON
         :returns: Parsed data as JSON
         """
-        return self.flatten_and_parse_json(data)
+        return data
 
-    def parse_submission(self, data: Dict) -> Dict:
+    def _parse_submission(self, data: Dict) -> Dict:
         """Parse data from submission-type XML.
 
         Especially for every submitted XML, we create a dict with info about
@@ -209,6 +184,8 @@ class SubmissionXMLToJSONParser:
         according to their
 
         :param data: XML content as JSON
+        :raises HTTPError if there ins't enough data in submission.xml to
+        process files later
         :returns: Parsed data as JSON
         """
         parsed = {}
@@ -234,21 +211,47 @@ class SubmissionXMLToJSONParser:
                                       f" extra information.")
                             raise web.HTTPBadRequest(reason=reason)
                         action_infos.append(action_info)
-                sorted_infos = self.sort_actions_by_schemas(action_infos)
+                sorted_infos = self._sort_actions_by_schemas(action_infos)
                 parsed["action_infos"] = sorted_infos
         return parsed
 
-    def parse(self, xml_type: str, content: str) -> Dict:
-        """Parse necessary data from XML to make it queryable later.
+    @staticmethod
+    def _sort_actions_by_schemas(data: List) -> List:
+        """Sort schemas according to their priority.
 
-        Since all XML types need to be parsed a bit differently, this method
-        calls for correct parser based on given type.
+        Schemas need to be processed in certain order (for example 'study'
+        submission needs to processed first in order to generate accession
+        number for other submissions.
 
-        :param xml_type: Submission type (schema) to be used
-        :param content: XML content to be parsed
-        :returns: XML parsed to JSON
+        Sorting order is based on ENA Metadata Model:
+        https://ena-docs.readthedocs.io/en/latest/submit/general-guide/metadata.html
+
+        This should probably be refactored later, since submissions can be also
+        made via front-end (i.e. without submission.xml).
+
+        :param data: Data to be sorted
+        :returns: Sorted list
         """
-        schema = self.load_schema(xml_type)
-        self.validate(content, schema)
-        content_json_raw = schema.to_dict(content)[xml_type.upper()][0]
-        return getattr(self, f"parse_{xml_type}")(content_json_raw)
+        order = {"study": 1, "sample": 2, "experiment": 3, "run": 4,
+                 "analysis": 5, "dac": 6, "policy": 7, "dataset": 8,
+                 "project": 9}
+        return sorted(data, key=lambda x: order[x["schema"]])
+
+    def _to_lowercase(self, obj):
+        """Make dictionary lowercase and convert to CamelCase."""
+
+        def _to_camel(name):
+            """Convert underscore char notation to CamelCase."""
+            _under_regex = re.compile(r'_([a-z])')
+            return _under_regex.sub(lambda x: x.group(1).upper(), name)
+
+        if isinstance(obj, dict):
+            return {_to_camel(k.lower()): self._to_lowercase(v)
+                    for k, v in obj.items()}
+        elif isinstance(obj, (list, set, tuple)):
+            t = type(obj)
+            return t(self._to_lowercase(o) for o in obj)
+        elif isinstance(obj, str):
+            return _to_camel(obj)
+        else:
+            return obj
