@@ -78,8 +78,3 @@ class SiteHandlerTestCase(AioHTTPTestCase):
         failure_text = "You should submit only one submission.xml file."
         assert response.status == 400
         self.assertIn(failure_text, await response.text())
-
-    # TODO: write following tests: receipt contains fails and messages,
-    # failures in validation with wrong schema etc or with invalid stuff
-    # (especially test response statuses with blackbox testing)
-    # TODO: test receipt does not contain extra messages

@@ -15,7 +15,10 @@ async def init() -> web.Application:
     """Initialise server and setup routes."""
     server = web.Application()
     handler = SiteHandler()
-    server.router.add_post('/submit', handler.submit)
+    routes = [web.get('/objects', handler.get_all_objects),
+              web.post('/objects', handler.submit_object),
+              web.post('/submit', handler.submit)]
+    server.router.add_routes(routes)
     LOG.info("Server configurations and routes loaded")
     return server
 
