@@ -1,4 +1,5 @@
 """Handle HTTP methods for server."""
+import json
 from datetime import datetime
 from typing import Dict, List, cast
 
@@ -11,6 +12,18 @@ from .translator import ActionToCRUDTranslator
 
 class SiteHandler:
     """Backend HTTP method handler."""
+
+    async def get_object_types(self, req: Request) -> Response:
+        """Get all possible object types from database.
+
+        Basically returns which objects user can submit and query for.
+        :param req: GET Request
+        :returns JSON list of object types
+        """
+        object_types = json.dumps(["submission", "study", "sample",
+                                  "experiment", "run", "analysis", "dac",
+                                   "policy", "dataset", "project"])
+        return web.Response(body=object_types)
 
     async def get_object(self, req: Request) -> Response:
         """Get one object by its accession id.
