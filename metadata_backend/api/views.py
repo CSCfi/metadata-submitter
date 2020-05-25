@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Dict, List, cast
 
 from aiohttp import BodyPartReader, web
-from aiohttp.web import Request, StreamResponse
+from aiohttp.web import Request, Response
 
 from .parser import SubmissionXMLToJSONParser
 from .translator import ActionToCRUDTranslator
@@ -12,45 +12,30 @@ from .translator import ActionToCRUDTranslator
 class SiteHandler:
     """Backend HTTP method handler."""
 
-    @staticmethod
-    async def extract_submissions(req: Request) -> Dict[str, Dict[str, str]]:
-        """Extract submitted xml-files from multi-part request.
+    async def submit_object(self, req: Request) -> Response:
+        """Submit and save metadata object to database.
+
+        :param req: Multi-part POST request containing xml file to be saved
+        :returns: JSON response containing info about submission
+        """
+        submissions = await self.extract_submissions(req)
+        translator = ActionToCRUDTranslator(submissions)
+
+        for schema, filenames in submissions.items():
+            for filename in filenames.keys():
+                translator.add({"schema": schema, "source": filename})
+
+        return web.Response(text="Stuff added to database")
+
+    async def get_all_objects(self, req: Request) -> Response:
+        """Fetch all metadata objects from all collections.
 
         :param req: Multi-part POST request
-        :returns: Filename and content for each submitted xml, grouped by
-        schemas
+        :returns: JSON response containing everything in database
         """
-        # Schemas are used also in action sorting, so they probably should be
-        # used via class later. Refactor this in the future:
-        ok_types = {"submission", "study", "sample", "experiment", "run",
-                    "analysis", "dac", "policy", "dataset", "project"}
-        submissions: Dict[str, Dict[str, str]] = {}
-        reader = await req.multipart()
-        while True:
-            part = await reader.next()
-            # Following is probably error in aiohttp type hints, fixing so
-            # mypy doesn't complain about it. No runtime consequences.
-            part = cast(BodyPartReader, part)
-            if not part:
-                break
-            xml_type = part.name.lower()
-            # Check if sent form contains correct information
-            if xml_type not in ok_types:
-                raise web.HTTPBadRequest(reason="Not ok type")
-            if part.filename is None:
-                raise web.HTTPBadRequest(reason="Filename should be incluced.")
-            filename = part.filename
-            data = []
-            while True:
-                chunk = await part.read_chunk()
-                if not chunk:
-                    break
-                data.append(chunk)
-            xml_content = ''.join(x.decode('UTF-8') for x in data)
-            if xml_type not in submissions:
-                submissions[xml_type] = {}
-            submissions[xml_type][filename] = xml_content
-        return submissions
+        translator = ActionToCRUDTranslator({})
+        submissions = translator.get_all()
+        return web.Response(body=submissions)
 
     @staticmethod
     def generate_receipt(successful: List, unsuccessful: List) -> str:
@@ -69,14 +54,17 @@ class SiteHandler:
                    f"</RECEIPT>")
         return receipt
 
-    async def submit(self, req: Request) -> StreamResponse:
-        """Handle submission to server.
+    async def submit(self, req: Request) -> Response:
+        """Handle submission to server containing submission.xml file.
+
+        Note: This handles only direct POST XML submissions, frontend uses
+        REST api for submissions.
 
         First submission info is parsed and then for every action in submission
         (such as "add", or "modify") corresponding operation is performed.
         Finally submission info itself is added.
 
-        :param req: POST request
+        :param req: Multipart POST request with submission.xml and files
         :raises: HTTP Exceptions with status code 201 or 400
         :returns: XML-based receipt from submission
         """
@@ -115,3 +103,43 @@ class SiteHandler:
         receipt = self.generate_receipt(successful, unsuccessful)
 
         return web.Response(body=receipt, status=201, content_type="text/xml")
+
+    @staticmethod
+    async def extract_submissions(req: Request) -> Dict[str, Dict[str, str]]:
+        """Extract submitted xml-files from multi-part request.
+
+        :param req: Multi-part POST request
+        :returns: Filename and content for each submitted xml, grouped by
+        schemas
+        """
+        # Schemas are used also in action sorting, so they probably should be
+        # used via class later. Refactor this in the future:
+        ok_types = {"submission", "study", "sample", "experiment", "run",
+                    "analysis", "dac", "policy", "dataset", "project"}
+        submissions: Dict[str, Dict[str, str]] = {}
+        reader = await req.multipart()
+        while True:
+            part = await reader.next()
+            # Following is probably error in aiohttp type hints, fixing so
+            # mypy doesn't complain about it. No runtime consequences.
+            part = cast(BodyPartReader, part)
+            if not part:
+                break
+            xml_type = part.name.lower()
+            # Check if sent form contains correct information
+            if xml_type not in ok_types:
+                raise web.HTTPBadRequest(reason="Not ok type")
+            if part.filename is None:
+                raise web.HTTPBadRequest(reason="Filename should be included.")
+            filename = part.filename
+            data = []
+            while True:
+                chunk = await part.read_chunk()
+                if not chunk:
+                    break
+                data.append(chunk)
+            xml_content = ''.join(x.decode('UTF-8') for x in data)
+            if xml_type not in submissions:
+                submissions[xml_type] = {}
+            submissions[xml_type][filename] = xml_content
+        return submissions
