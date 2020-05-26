@@ -13,29 +13,26 @@ from .parser import SubmissionXMLToJSONParser
 class ActionToCRUDTranslator:
     """Wrapper that turns submission actions to CRUD operations."""
 
-    def __init__(self, submissions: Dict) -> None:
-        """Create needed services for connecting to database.
-
-        :param submissions: Original XML types and contents for each submitted
-        file
-        """
+    def __init__(self) -> None:
+        """Create needed services for connecting to database."""
         self.submission_db_service = DBService("submissions")
         self.backup_db_service = DBService("backups")
         self.parser = SubmissionXMLToJSONParser()
-        self.submissions = submissions
 
-    def add(self, target: Dict) -> Dict:
+    def add(self, target: Dict, submissions: Dict) -> Dict:
         """Submit new metadata object (ADD action in submission.xml).
 
         :param target: Attributes for add action, e.g. information about which
         file to save to database
+        :param submissions: Submission xml data grouped by schemas and
+        filenames
         :raises: HTTP error when inserting file to database fails
         :returns Json containing accession id for object that has been
         inserted to database
         """
         xml_type = target["schema"]
         source = target["source"]
-        content_xml = self.submissions[xml_type][source]
+        content_xml = submissions[xml_type][source]
         content_json = self.parser.parse(xml_type, content_xml)
         backup_json = {"accessionId": content_json["accessionId"],
                        "content": content_xml}

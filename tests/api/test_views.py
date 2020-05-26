@@ -22,8 +22,9 @@ class SiteHandlerTestCase(AioHTTPTestCase):
         """Patch api classes that have been imported to views.py module."""
         class_parser = "metadata_backend.api.views.SubmissionXMLToJSONParser"
         class_translator = "metadata_backend.api.views.ActionToCRUDTranslator"
-        patch_parser = patch(class_parser)
-        patch_translator = patch(class_translator)
+        patch_parser = patch(class_parser, autospec=True)
+        patch_translator = patch(class_translator, autospec=True)
+
         self.MockedParser = patch_parser.start()
         self.MockedTranslator = patch_translator.start()
         self.addCleanup(patch_parser.stop)
