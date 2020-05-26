@@ -28,14 +28,26 @@ class SiteHandler:
     async def get_object(self, req: Request) -> Response:
         """Get one object by its accession id.
 
+        Returns xml object if format query parameter is set, otherwise json.
+
         :param req: Multi-part POST request
-        :returns: JSON response containing metadata object
+        :returns: JSON or XML response containing metadata object
         """
         translator = ActionToCRUDTranslator({})
         accessionId = req.match_info['accessionId']
         schema = req.match_info['schema']
-        object = translator.get_object_with_accessionId(schema, accessionId)
-        return web.Response(body=object)
+        queries = req.rel_url.query
+        return_xml = False
+        content_type = "application/json"
+        try:
+            if queries["format"].lower() == "xml":
+                return_xml = True
+                content_type = "text/xml"
+        except KeyError:
+            pass
+        object = translator.get_object_with_accessionId(schema, accessionId,
+                                                        return_xml)
+        return web.Response(body=object, content_type=content_type)
 
     async def submit_object(self, req: Request) -> Response:
         """Submit and save metadata object to database.

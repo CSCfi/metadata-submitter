@@ -1,5 +1,4 @@
 """Handle translating API endpoint functionalities to CRUD operations."""
-
 from typing import Dict
 
 from aiohttp import web
@@ -57,8 +56,8 @@ class ActionToCRUDTranslator:
         LOG.info(f"Inserting file {source} to database succeeded")
         return content_json["accessionId"]
 
-    def get_object_with_accessionId(self, schema: str,
-                                    accessionId: str) -> Dict:
+    def get_object_with_accessionId(self, schema: str, accessionId: str,
+                                    return_xml: bool) -> Dict:
         """Get object from database according to given accession id.
 
         param: accessionId: Accession id for object to be searched
@@ -67,10 +66,17 @@ class ActionToCRUDTranslator:
         returns: JSON containing all objects.
         """
         try:
-            data = CRUDService.read(self.submission_db_service, schema,
-                                    {"accessionId": accessionId})
+            if return_xml:
+                data_raw = CRUDService.read(self.backup_db_service, schema,
+                                            {"accessionId": accessionId})
+                data = list(data_raw)[0]["content"]
+            else:
+                data_raw = CRUDService.read(self.submission_db_service, schema,
+                                            {"accessionId": accessionId})
+                data = json_util.dumps(data_raw)
+
             if data is not None:
-                return json_util.dumps(data)
+                return data
 
         except errors.PyMongoError as error:
             LOG.info(f"error, reason: {error}")
