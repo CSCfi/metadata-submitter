@@ -14,11 +14,7 @@ from ..helpers.schema_load import SchemaLoader, SchemaNotFoundException
 
 
 class SubmissionXMLToJSONParser:
-    """Methods to parse necessary data from different xml types.
-
-    Currently only submission-type is parsed explicitly, others are parsed
-    just by flattening them.
-    """
+    """Methods to parse necessary data from different xml types."""
 
     def __init__(self) -> None:
         """Create SchemaLoader instance for loading schemas."""
