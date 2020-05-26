@@ -13,6 +13,10 @@ from .translator import ActionToCRUDTranslator
 class SiteHandler:
     """Backend HTTP method handler."""
 
+    def __init__(self) -> None:
+        """Init interface class which handles database connections."""
+        self.translator = ActionToCRUDTranslator()
+
     async def get_object_types(self, req: Request) -> Response:
         """Get all possible object types from database.
 
@@ -33,7 +37,6 @@ class SiteHandler:
         :param req: Multi-part POST request
         :returns: JSON or XML response containing metadata object
         """
-        translator = ActionToCRUDTranslator({})
         accessionId = req.match_info['accessionId']
         schema = req.match_info['schema']
         queries = req.rel_url.query
@@ -45,8 +48,9 @@ class SiteHandler:
                 content_type = "text/xml"
         except KeyError:
             pass
-        object = translator.get_object_with_accessionId(schema, accessionId,
-                                                        return_xml)
+        object = self.translator.get_object_with_accessionId(schema,
+                                                             accessionId,
+                                                             return_xml)
         return web.Response(body=object, content_type=content_type)
 
     async def submit_object(self, req: Request) -> Response:
@@ -61,12 +65,12 @@ class SiteHandler:
         :returns: JSON response containing accessionId for submitted file
         """
         submissions = await self.extract_submissions(req)
-        translator = ActionToCRUDTranslator(submissions)
 
         for schema, filenames in submissions.items():
             for filename in filenames.keys():
-                accessionId = translator.add({"schema": schema,
-                                              "source": filename})
+                accessionId = self.translator.add({"schema": schema,
+                                                   "source": filename},
+                                                  submissions)
         return web.Response(body=accessionId)
 
     async def get_object_from_alias_address(self, req: Request) -> Response:
@@ -125,7 +129,6 @@ class SiteHandler:
             raise web.HTTPBadRequest(reason=reason)
 
         parser = SubmissionXMLToJSONParser()
-        translator = ActionToCRUDTranslator(submissions)
         submission_xml = list(submissions["submission"].values())[0]
         submission_json = parser.parse("submission", submission_xml)
 
@@ -135,7 +138,7 @@ class SiteHandler:
         for action_info in submission_json["action_infos"]:
             try:
                 action = action_info["action"]
-                if getattr(translator, action)(action_info):
+                if getattr(self.translator, action)(action_info, submissions):
                     successful.append(action)
                 else:
                     unsuccessful.append(action)
@@ -145,9 +148,7 @@ class SiteHandler:
                           f"implemented. More info: {error}")
                 raise web.HTTPBadRequest(reason=reason)
 
-        # translator.add({"schema": "submission"})
         receipt = self.generate_receipt(successful, unsuccessful)
-
         return web.Response(body=receipt, status=201, content_type="text/xml")
 
     @staticmethod
