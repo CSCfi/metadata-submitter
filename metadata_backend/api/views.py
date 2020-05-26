@@ -13,10 +13,6 @@ from .translator import ActionToCRUDTranslator
 class SiteHandler:
     """Backend HTTP method handler."""
 
-    def __init__(self) -> None:
-        """Init interface class which handles database connections."""
-        self.translator = ActionToCRUDTranslator()
-
     async def get_object_types(self, req: Request) -> Response:
         """Get all possible object types from database.
 
@@ -27,7 +23,7 @@ class SiteHandler:
         object_types = json.dumps(["submission", "study", "sample",
                                   "experiment", "run", "analysis", "dac",
                                    "policy", "dataset", "project"])
-        return web.Response(body=object_types)
+        return web.Response(body=object_types, status=200)
 
     async def get_object(self, req: Request) -> Response:
         """Get one object by its accession id.
@@ -48,10 +44,12 @@ class SiteHandler:
                 content_type = "text/xml"
         except KeyError:
             pass
-        object = self.translator.get_object_with_accessionId(schema,
-                                                             accessionId,
-                                                             return_xml)
-        return web.Response(body=object, content_type=content_type)
+        translator = ActionToCRUDTranslator()
+        object = translator.get_object_with_accessionId(schema,
+                                                        accessionId,
+                                                        return_xml)
+        return web.Response(body=object, status=200,
+                            content_type=content_type)
 
     async def submit_object(self, req: Request) -> Response:
         """Submit and save metadata object to database.
@@ -66,12 +64,15 @@ class SiteHandler:
         """
         submissions = await self.extract_submissions(req)
 
+        translator = ActionToCRUDTranslator()
         for schema, filenames in submissions.items():
             for filename in filenames.keys():
-                accessionId = self.translator.add({"schema": schema,
-                                                   "source": filename},
-                                                  submissions)
-        return web.Response(body=accessionId)
+                accessionId = translator.add({"schema": schema,
+                                              "source": filename},
+                                             submissions)
+        body = json.dumps({"accessionId": accessionId})
+        return web.Response(body=body, status=201,
+                            content_type="application/json")
 
     async def get_object_from_alias_address(self, req: Request) -> Response:
         """Redirect requests to /<schema> to /object/<schema>.
@@ -135,10 +136,11 @@ class SiteHandler:
         successful: List = []
         unsuccessful: List = []
 
+        translator = ActionToCRUDTranslator()
         for action_info in submission_json["action_infos"]:
             try:
                 action = action_info["action"]
-                if getattr(self.translator, action)(action_info, submissions):
+                if getattr(translator, action)(action_info, submissions):
                     successful.append(action)
                 else:
                     unsuccessful.append(action)
