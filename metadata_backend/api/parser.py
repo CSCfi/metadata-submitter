@@ -4,7 +4,7 @@ import re
 import secrets
 import string
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Dict, List
 
 from aiohttp import web
 from dateutil.relativedelta import relativedelta
@@ -233,7 +233,7 @@ class SubmissionXMLToJSONParser:
                  "project": 9}
         return sorted(data, key=lambda x: order[x["schema"]])
 
-    def _to_lowercase(self, obj) -> Any:
+    def _to_lowercase(self, obj: Dict) -> Dict:
         """Make dictionary lowercase and convert to CamelCase."""
 
         def _to_camel(name):
