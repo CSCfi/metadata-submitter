@@ -4,7 +4,7 @@ import re
 import secrets
 import string
 from datetime import datetime
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from aiohttp import web
 from dateutil.relativedelta import relativedelta
@@ -14,11 +14,7 @@ from ..helpers.schema_load import SchemaLoader, SchemaNotFoundException
 
 
 class SubmissionXMLToJSONParser:
-    """Methods to parse necessary data from different xml types.
-
-    Currently only submission-type is parsed explicitly, others are parsed
-    just by flattening them.
-    """
+    """Methods to parse necessary data from different xml types."""
 
     def __init__(self) -> None:
         """Create SchemaLoader instance for loading schemas."""
@@ -237,7 +233,7 @@ class SubmissionXMLToJSONParser:
                  "project": 9}
         return sorted(data, key=lambda x: order[x["schema"]])
 
-    def _to_lowercase(self, obj):
+    def _to_lowercase(self, obj) -> Any:
         """Make dictionary lowercase and convert to CamelCase."""
 
         def _to_camel(name):
