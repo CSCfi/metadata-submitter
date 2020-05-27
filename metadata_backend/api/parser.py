@@ -236,7 +236,7 @@ class SubmissionXMLToJSONParser:
     def _to_lowercase(self, obj: Dict) -> Dict:
         """Make dictionary lowercase and convert to CamelCase."""
 
-        def _to_camel(name):
+        def _to_camel(name: str) -> str:
             """Convert underscore char notation to CamelCase."""
             _under_regex = re.compile(r'_([a-z])')
             return _under_regex.sub(lambda x: x.group(1).upper(), name)

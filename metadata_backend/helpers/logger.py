@@ -2,6 +2,7 @@
 
 import json
 import logging
+from typing import Any, Dict
 
 FORMAT = "[%(asctime)s][%(name)s][%(process)d %(processName)s]" \
          "[%(levelname)-8s](L:%(lineno)s) %(funcName)s: %(message)s"
@@ -11,7 +12,7 @@ LOG = logging.getLogger("server")
 LOG.setLevel(logging.INFO)
 
 
-def get_attributes(obj):
+def get_attributes(obj: Any) -> None:
     """Print all attributes of given object.
 
     :param obj: Any kind of object
@@ -23,7 +24,7 @@ def get_attributes(obj):
             LOG.info("Error: ", error)
 
 
-def pprint_json(content):
+def pprint_json(content: Dict) -> None:
     """Print given json object to LOG.
 
     :param content: json-formatted content to be printed

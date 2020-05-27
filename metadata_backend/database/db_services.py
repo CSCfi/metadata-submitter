@@ -10,7 +10,7 @@ from pymongo.cursor import Cursor
 class MongoClientCreator:
     """Database connection initializer."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Create mongoDB client with admin access.
 
         Admin access is needed in order to create new databases during runtime.
@@ -49,7 +49,7 @@ class CRUDService:
     """Static methods to handle CRUD operations."""
 
     @staticmethod
-    def create(db_service: DBService, collection: str, document: Dict):
+    def create(db_service: DBService, collection: str, document: Dict) -> None:
         """Insert document to collection in database.
 
         :param db_service: Service that connects to database
