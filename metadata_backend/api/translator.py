@@ -71,13 +71,11 @@ class ActionToCRUDTranslator:
                 data_raw = CRUDService.read(self.submission_db_service, schema,
                                             {"accessionId": accessionId})
                 data = json_util.dumps(data_raw)
-
-            if data is not None:
-                return data
+            if data_raw.retrieved == 0:
+                raise web.HTTPNotFound
+            return data
 
         except errors.PyMongoError as error:
             LOG.info(f"error, reason: {error}")
             reason = "Error happened while getting file from database."
             raise web.HTTPBadRequest(reason=reason)
-
-        raise web.HTTPNotFound
