@@ -16,10 +16,6 @@ from ..helpers.schema_load import SchemaLoader, SchemaNotFoundException
 class SubmissionXMLToJSONParser:
     """Methods to parse necessary data from different xml types."""
 
-    def __init__(self) -> None:
-        """Create SchemaLoader instance for loading schemas."""
-        self.loader = SchemaLoader()
-
     def parse(self, xml_type: str, content: str) -> Dict:
         """Parse necessary data from XML to make it queryable later.
 
@@ -45,8 +41,9 @@ class SubmissionXMLToJSONParser:
         :returns: Schema instance matching the given schema
         :raises: HTTPBadRequest if schema wasn't found
         """
+        loader = SchemaLoader()
         try:
-            schema = self.loader.get_schema(xml_type)
+            schema = loader.get_schema(xml_type)
         except (SchemaNotFoundException, XMLSchemaException) as error:
             reason = f"{error} {xml_type}"
             raise web.HTTPBadRequest(reason=reason)
