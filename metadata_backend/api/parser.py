@@ -5,6 +5,7 @@ import secrets
 import string
 from datetime import datetime
 from typing import Dict, List
+from xml.etree.ElementTree import ParseError
 
 from aiohttp import web
 from dateutil.relativedelta import relativedelta
@@ -60,7 +61,7 @@ class SubmissionXMLToJSONParser:
         """
         try:
             schema.validate(content)
-        except (ValueError, XMLSchemaException) as error:
+        except (ParseError, XMLSchemaException) as error:
             reason = f"Validation error happened. Details: {error}"
             raise web.HTTPBadRequest(reason=reason)
 
@@ -68,7 +69,7 @@ class SubmissionXMLToJSONParser:
     def _generate_accessionId() -> str:
         """Generate accession number.
 
-        returns: generated accession number
+        :returns: generated accession number
         """
         sequence = ''.join(secrets.choice(string.digits) for i in range(16))
         return f"EDAG{sequence}"
