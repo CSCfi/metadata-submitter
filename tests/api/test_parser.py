@@ -1,5 +1,4 @@
 """Test api endpoints from views module."""
-
 from pathlib import Path
 
 from metadata_backend.api.parser import SubmissionXMLToJSONParser
@@ -151,6 +150,6 @@ class ParserTestCase(unittest.TestCase):
                             'submitterId': {
                                 'attributes': {'namespace': 'BGI'},
                                 'children': ['BGI-FC304RWAAXX']}}}
-
-        self.assertTrue("children" not in data['file']['attributes'])
-        self.assertTrue("children" in data['identifiers']['submitterId'])
+        cleaned = self.parser._to_lowercase(data)
+        self.assertTrue("children" not in cleaned['file']['attributes'])
+        self.assertTrue("children" in cleaned['identifiers']['submitterid'])

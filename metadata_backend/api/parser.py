@@ -41,11 +41,8 @@ class SubmissionXMLToJSONParser:
         del content_json_raw['children']
         content_json_elevated = {**content_json_raw, **to_be_elevated}
 
-        # Clear empty lists
-        content_json_cleared = self._remove_empty_lists(content_json_elevated)
-
         # Format content to json-style formatting
-        content_json_formatted = self._to_lowercase(content_json_cleared)
+        content_json_formatted = self._to_lowercase(content_json_elevated)
 
         # Add accessionId
         content_json_formatted["accessionId"] = self._generate_accessionId()
@@ -250,8 +247,11 @@ class SubmissionXMLToJSONParser:
         return sorted(data, key=lambda x: order[x["schema"]])
 
     def _to_lowercase(self, obj: Dict) -> Dict:
-        """Make dictionary lowercase and convert to CamelCase."""
+        """Make dictionary lowercase and convert keys to CamelCase.
 
+        Also clears away any empty elements that xml-json -conversion
+        caused.
+        """
         def _to_camel(name: str) -> str:
             """Convert underscore char notation to CamelCase."""
             _under_regex = re.compile(r'_([a-z])')
@@ -259,17 +259,11 @@ class SubmissionXMLToJSONParser:
 
         if isinstance(obj, dict):
             return {_to_camel(k.lower()): self._to_lowercase(v)
-                    for k, v in obj.items()}
+                    for k, v in obj.items() if v}
         elif isinstance(obj, (list, set, tuple)):
             t = type(obj)
-            return t(self._to_lowercase(o) for o in obj)
+            return t(self._to_lowercase(o) for o in obj if o)
         elif isinstance(obj, str):
             return _to_camel(obj)
         else:
             return obj
-
-    def _remove_empty_lists(self, obj: Dict) -> Dict:
-        """Parse away empty lists created in xml-json conversion."""
-        return {k: (v if not isinstance(v, dict) else
-                    self._remove_empty_lists(v)) for k, v in
-                obj.items() if v}
