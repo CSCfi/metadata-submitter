@@ -20,19 +20,34 @@ class SubmissionXMLToJSONParser:
     def parse(self, xml_type: str, content: str) -> Dict:
         """Parse necessary data from XML to make it queryable later.
 
-        All submitted objects first are ran through generic parser,
-        formatted and then passed to specific parser based on objects schema.
+        All submitted objects are first parsed on generic level, then formatted
+        formatted and finally passed to schema-specific parser.
 
         :param xml_type: Submission type (schema) to be used
         :param content: XML content to be parsed
         :returns: XML parsed to JSON
         """
+        # Validate
         schema = self._load_schema(xml_type)
         self._validate(content, schema)
+
+        # Parse json from XML
         content_json_raw = schema.to_dict(content, converter=AbderaConverter,
-                                          decimal_type=float, dict_class=dict)
-        content_json_formatted = self._to_lowercase(content_json_raw)
+                                          decimal_type=float,
+                                          dict_class=dict)[xml_type.upper()]
+
+        # Elevate content from ['children'][0] to top level
+        to_be_elevated = content_json_raw['children'][0]
+        del content_json_raw['children']
+        content_json_elevated = {**content_json_raw, **to_be_elevated}
+
+        # Format content to json-style formatting
+        content_json_formatted = self._to_lowercase(content_json_elevated)
+
+        # Add accessionId
         content_json_formatted["accessionId"] = self._generate_accessionId()
+
+        # Run through schema-specific parser and return the result
         return getattr(self, f"_parse_{xml_type}")(content_json_formatted)
 
     def _load_schema(self, xml_type: str) -> XMLSchema:
@@ -232,8 +247,11 @@ class SubmissionXMLToJSONParser:
         return sorted(data, key=lambda x: order[x["schema"]])
 
     def _to_lowercase(self, obj: Dict) -> Dict:
-        """Make dictionary lowercase and convert to CamelCase."""
+        """Make dictionary lowercase and convert keys to CamelCase.
 
+        Also clears away any empty elements that xml-json -conversion
+        caused.
+        """
         def _to_camel(name: str) -> str:
             """Convert underscore char notation to CamelCase."""
             _under_regex = re.compile(r'_([a-z])')
@@ -241,10 +259,10 @@ class SubmissionXMLToJSONParser:
 
         if isinstance(obj, dict):
             return {_to_camel(k.lower()): self._to_lowercase(v)
-                    for k, v in obj.items()}
+                    for k, v in obj.items() if v}
         elif isinstance(obj, (list, set, tuple)):
             t = type(obj)
-            return t(self._to_lowercase(o) for o in obj)
+            return t(self._to_lowercase(o) for o in obj if o)
         elif isinstance(obj, str):
             return _to_camel(obj)
         else:

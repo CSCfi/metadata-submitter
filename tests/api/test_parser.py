@@ -1,14 +1,11 @@
 """Test api endpoints from views module."""
-
 from pathlib import Path
-
 
 from metadata_backend.api.parser import SubmissionXMLToJSONParser
 from aiohttp import web
 from metadata_backend.helpers.schema_load import SchemaLoader
 import unittest
 import datetime
-from pprint import pprint
 
 from unittest.mock import patch
 
@@ -55,11 +52,9 @@ class ParserTestCase(unittest.TestCase):
         self.assertEqual(datetime.datetime(2020, 6, 14, 0, 0),
                          study_json['publishDate'])
         self.assertIn("Highly integrated epigenome maps in Arabidopsis",
-                      study_json['study']['children'][0]['descriptor'][
-                          'studyTitle'])
-        self.assertIn("18423832",
-                      study_json['study']['children'][0]['studyLinks'][
-                          'studyLink']['xrefLink']['id'])
+                      study_json['descriptor']['studyTitle'])
+        self.assertIn("18423832", study_json['studyLinks']['studyLink'][
+            'xrefLink']['id'])
 
     def test_sample_is_parsed(self):
         """Test that sample is parsed correctly and accessionId is set.
@@ -70,10 +65,9 @@ class ParserTestCase(unittest.TestCase):
         sample_json = self.parser.parse("sample", sample_xml)
         self.assertEqual(self.mock_accessionId, sample_json['accessionId'])
         self.assertIn("Human HapMap individual NA18758",
-                      sample_json['sample']['children'][0]['description'])
+                      sample_json['description'])
         self.assertIn("Homo sapiens",
-                      sample_json['sample']['children'][0]['sampleName'][
-                          'scientificName'])
+                      sample_json['sampleName']['scientificName'])
 
     def test_experiment_is_parsed(self):
         """Test that experiment is parsed correctly and accessionId is set.
@@ -84,8 +78,7 @@ class ParserTestCase(unittest.TestCase):
         experiment_json = self.parser.parse("experiment", experiment_xml)
         self.assertEqual(self.mock_accessionId, experiment_json['accessionId'])
         self.assertIn("SOLiD sequencing of Human HapMap individual NA18504",
-                      experiment_json['experiment']['children'][0][
-                          'design']['designDescription'])
+                      experiment_json['design']['designDescription'])
 
     def test_run_is_parsed(self):
         """Test that run is parsed correctly and accessionId is set.
@@ -96,11 +89,10 @@ class ParserTestCase(unittest.TestCase):
         run_json = self.parser.parse("run", run_xml)
         self.assertEqual(self.mock_accessionId, run_json['accessionId'])
         self.assertIn("ERA000/ERA000014/srf/BGI-FC304RWAAXX_5.srf",
-                      run_json['run']['children'][0][
-                          'dataBlock']['files']['file']['attributes'][
+                      run_json['dataBlock']['files']['file']['attributes'][
                           'filename'])
-        self.assertIn("ERX000037", run_json['run']['children'][0][
-            'experimentRef']['attributes']['accession'])
+        self.assertIn("ERX000037", run_json['experimentRef']['attributes'][
+            'accession'])
 
     def test_analysis_is_parsed(self):
         """Test that run is parsed correctly and accessionId is set.
@@ -109,12 +101,10 @@ class ParserTestCase(unittest.TestCase):
         """
         analysis_xml = self.load_xml_from_file("analysis", "ERZ266973.xml")
         analysis_json = self.parser.parse("analysis", analysis_xml)
-        pprint(analysis_json)
         self.assertEqual(self.mock_accessionId, analysis_json['accessionId'])
-        self.assertIn("GCA_000001405.1", analysis_json['analysis'][
-            'children'][0][
-            'analysisType']['processedReads']['assembly']['standard'][
-            'attributes']['accession'])
+        self.assertIn("GCA_000001405.1", analysis_json['analysisType'][
+            'processedReads']['assembly']['standard']['attributes'][
+            'accession'])
 
     def test_error_raised_when_schema_not_found(self):
         """Test 400 is returned when schema."""
@@ -148,3 +138,18 @@ class ParserTestCase(unittest.TestCase):
                      {"schema": "dac", "content": "foo"}]
         sorted_list = self.parser._sort_actions_by_schemas(original_list)
         self.assertEqual(goal_list, sorted_list)
+
+    def test_empty_lists_are_removed_from_json(self):
+        """Check empty lists are removed and non-empty are retained."""
+        data = {'file': {'attributes': {
+            'checksum': '3dfebb4b30211523853805439fbd7cec',
+            'checksumMethod': 'MD5',
+            'filetype': 'srf'},
+            'children': []},
+            'identifiers': {'primaryId': 'ERR000076',
+                            'submitterId': {
+                                'attributes': {'namespace': 'BGI'},
+                                'children': ['BGI-FC304RWAAXX']}}}
+        cleaned = self.parser._to_lowercase(data)
+        self.assertTrue("children" not in cleaned['file']['attributes'])
+        self.assertTrue("children" in cleaned['identifiers']['submitterid'])
