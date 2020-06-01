@@ -13,6 +13,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+command -v misspell > /dev/null 2>&1 || echo "Misspell not installed, not running as pre-commit hook" && exit 0
 echo "Running misspell as a pre-commit hook"
 # Checking misspell against files and folder not in .gitignore
 files=$(git ls-tree HEAD | awk '{print $4}' | tr '\n' ' ')
