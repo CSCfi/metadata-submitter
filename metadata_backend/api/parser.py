@@ -4,7 +4,8 @@ import re
 import secrets
 import string
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Dict, List
+from xml.etree.ElementTree import ParseError
 
 from aiohttp import web
 from dateutil.relativedelta import relativedelta
@@ -15,10 +16,6 @@ from ..helpers.schema_load import SchemaLoader, SchemaNotFoundException
 
 class SubmissionXMLToJSONParser:
     """Methods to parse necessary data from different xml types."""
-
-    def __init__(self) -> None:
-        """Create SchemaLoader instance for loading schemas."""
-        self.loader = SchemaLoader()
 
     def parse(self, xml_type: str, content: str) -> Dict:
         """Parse necessary data from XML to make it queryable later.
@@ -45,8 +42,9 @@ class SubmissionXMLToJSONParser:
         :returns: Schema instance matching the given schema
         :raises: HTTPBadRequest if schema wasn't found
         """
+        loader = SchemaLoader()
         try:
-            schema = self.loader.get_schema(xml_type)
+            schema = loader.get_schema(xml_type)
         except (SchemaNotFoundException, XMLSchemaException) as error:
             reason = f"{error} {xml_type}"
             raise web.HTTPBadRequest(reason=reason)
@@ -63,7 +61,7 @@ class SubmissionXMLToJSONParser:
         """
         try:
             schema.validate(content)
-        except (ValueError, XMLSchemaException) as error:
+        except (ParseError, XMLSchemaException) as error:
             reason = f"Validation error happened. Details: {error}"
             raise web.HTTPBadRequest(reason=reason)
 
@@ -71,7 +69,7 @@ class SubmissionXMLToJSONParser:
     def _generate_accessionId() -> str:
         """Generate accession number.
 
-        returns: generated accession number
+        :returns: generated accession number
         """
         sequence = ''.join(secrets.choice(string.digits) for i in range(16))
         return f"EDAG{sequence}"
@@ -233,10 +231,10 @@ class SubmissionXMLToJSONParser:
                  "project": 9}
         return sorted(data, key=lambda x: order[x["schema"]])
 
-    def _to_lowercase(self, obj) -> Any:
+    def _to_lowercase(self, obj: Dict) -> Dict:
         """Make dictionary lowercase and convert to CamelCase."""
 
-        def _to_camel(name):
+        def _to_camel(name: str) -> str:
             """Convert underscore char notation to CamelCase."""
             _under_regex = re.compile(r'_([a-z])')
             return _under_regex.sub(lambda x: x.group(1).upper(), name)
