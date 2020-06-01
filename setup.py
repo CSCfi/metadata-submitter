@@ -38,7 +38,8 @@ setup(
     install_requires=requirements,
 
     extras_require={
-        'test': ['coverage', 'pytest', 'pytest-cov', 'coveralls', 'tox']
+        'test': ['coverage', 'pytest', 'pytest-cov', 'coveralls', 'tox',
+                 'mongomock']
     },
 
     package_data={'': ['schemas/*.xsd']},
