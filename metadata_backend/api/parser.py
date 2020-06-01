@@ -95,7 +95,6 @@ class SubmissionXMLToJSONParser:
         """Parse data from sample-type XML.
 
         Currently doesn't add anything extra.
-        ceva
 
         :param data: XML content as JSON
         :returns: Parsed data as JSON
