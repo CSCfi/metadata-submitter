@@ -1,4 +1,12 @@
-"""Services that handle database connections. Implemented with MongoDB."""
+"""Services that handle database connections. Implemented with MongoDB.
+
+MongoDB client should be shared across the whole application, so it's created
+here as module level variable.
+
+Admin access is needed in order to create new databases during runtime.
+Default values are the same that are used in docker-compose file
+found from deploy/mongodb.
+"""
 
 import os
 from typing import Dict
@@ -6,32 +14,22 @@ from typing import Dict
 from pymongo import MongoClient, errors
 from pymongo.cursor import Cursor
 
-
-class MongoClientCreator:
-    """Database connection initializer."""
-
-    def __init__(self) -> None:
-        """Create mongoDB client with admin access.
-
-        Admin access is needed in order to create new databases during runtime.
-        Default values are the same that are used in docker-compose file
-        found from deploy/mongodb.
-        """
-        mongo_user = os.getenv("MONGO_INITDB_ROOT_PASSWORD", "admin")
-        mongo_password = os.getenv("MONGO_INITDB_ROOT_PASSWORD", "admin")
-        mongo_host = os.getenv("MONGODB_HOST", "localhost:27017")
-        url = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}"
-        self.client = MongoClient(url)
+# Set up database client
+mongo_user = os.getenv("MONGO_INITDB_ROOT_PASSWORD", "admin")
+mongo_password = os.getenv("MONGO_INITDB_ROOT_PASSWORD", "admin")
+mongo_host = os.getenv("MONGODB_HOST", "localhost:27017")
+url = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}"
+db_client = MongoClient(url)
 
 
-class DBService(MongoClientCreator):
+class DBService:
     """Create database service used to communicate with database.
 
-    Service creates client for itself with MongoClientCreator. This makes
-    it possible to create separate databases for different purposes
+    With this class, it is possible to create separate databases for different
+    purposes (e.g. submissions and backups).
 
-    (e.g. submissions and backups) with different MongoDBService instances.
-    :param MongoClientCreator: Class which creates client for MongoDB
+    All services should use the same client, since pymongo handles pooling
+    automatically.
     """
 
     def __init__(self, database_name: str) -> None:
@@ -41,8 +39,7 @@ class DBService(MongoClientCreator):
         created during first read-write operation if not already present.
         :param database_name: Name of database to be used
         """
-        MongoClientCreator.__init__(self)
-        self.database = self.client[database_name]
+        self.database = db_client[database_name]
 
 
 class CRUDService:
