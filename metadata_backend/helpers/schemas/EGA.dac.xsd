@@ -16,7 +16,7 @@
 
 	<xs:complexType name="DacType">
 		<xs:annotation>
-			<xs:documentation>Describes an object that contains data access comittee  information including contacts.
+			<xs:documentation>Describes an object that contains data access committee  information including contacts.
     </xs:documentation>
 		</xs:annotation>
 		<xs:complexContent>

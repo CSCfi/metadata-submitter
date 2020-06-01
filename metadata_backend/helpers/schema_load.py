@@ -14,7 +14,7 @@ SCHEMAS_ROOT = Path(__file__).parent / 'schemas'
 class SchemaNotFoundException(Exception):
     """Custom exception to be raised when schema is not found."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Set up exception message."""
         Exception.__init__(self, "There is no xsd file for given schema.")
 
@@ -22,7 +22,7 @@ class SchemaNotFoundException(Exception):
 class SchemaLoader:
     """Loader implementation."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Load schemas folder on initialization."""
         self.path = SCHEMAS_ROOT
 
