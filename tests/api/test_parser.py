@@ -2,13 +2,11 @@
 
 from pathlib import Path
 
-
 from metadata_backend.api.parser import SubmissionXMLToJSONParser
 from aiohttp import web
 from metadata_backend.helpers.schema_load import SchemaLoader
 import unittest
 import datetime
-from pprint import pprint
 
 from unittest.mock import patch
 
@@ -104,7 +102,6 @@ class ParserTestCase(unittest.TestCase):
         """
         analysis_xml = self.load_xml_from_file("analysis", "ERZ266973.xml")
         analysis_json = self.parser.parse("analysis", analysis_xml)
-        pprint(analysis_json)
         self.assertEqual(self.mock_accessionId, analysis_json['accessionId'])
         self.assertIn("GCA_000001405.1", analysis_json['analysisType'][
             'processedReads']['assembly']['standard']['attributes'][
@@ -142,3 +139,18 @@ class ParserTestCase(unittest.TestCase):
                      {"schema": "dac", "content": "foo"}]
         sorted_list = self.parser._sort_actions_by_schemas(original_list)
         self.assertEqual(goal_list, sorted_list)
+
+    def test_empty_lists_are_removed_from_json(self):
+        """Check empty lists are removed and non-empty are retained."""
+        data = {'file': {'attributes': {
+            'checksum': '3dfebb4b30211523853805439fbd7cec',
+            'checksumMethod': 'MD5',
+            'filetype': 'srf'},
+            'children': []},
+            'identifiers': {'primaryId': 'ERR000076',
+                            'submitterId': {
+                                'attributes': {'namespace': 'BGI'},
+                                'children': ['BGI-FC304RWAAXX']}}}
+
+        self.assertTrue("children" not in data['file']['attributes'])
+        self.assertTrue("children" in data['identifiers']['submitterId'])
