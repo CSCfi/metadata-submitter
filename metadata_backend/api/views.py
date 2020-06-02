@@ -21,7 +21,7 @@ class SiteHandler:
         :returns JSON list of object types
         """
         object_types = json.dumps(["submission", "study", "sample",
-                                  "experiment", "run", "analysis", "dac",
+                                   "experiment", "run", "analysis", "dac",
                                    "policy", "dataset", "project"])
         return web.Response(body=object_types, status=200)
 
@@ -33,23 +33,15 @@ class SiteHandler:
         :param req: Multi-part POST request
         :returns: JSON or XML response containing metadata object
         """
+        translator = ActionToCRUDTranslator()
         accessionId = req.match_info['accessionId']
         schema = req.match_info['schema']
-        queries = req.rel_url.query
-        return_xml = False
-        content_type = "application/json"
-        try:
-            if queries["format"].lower() == "xml":
-                return_xml = True
-                content_type = "text/xml"
-        except KeyError:
-            pass
-        translator = ActionToCRUDTranslator()
-        object = translator.get_object_with_accessionId(schema,
-                                                        accessionId,
-                                                        return_xml)
-        return web.Response(body=object, status=200,
-                            content_type=content_type)
+        format = req.query.get("format", "json").lower()
+        use_xml, type = (True, "text/xml") if format == "xml" \
+            else (False, "application/json")
+        object = translator.get_object_with_accessionId(schema, accessionId,
+                                                        use_xml)
+        return web.Response(body=object, status=200, content_type=type)
 
     async def submit_object(self, req: Request) -> Response:
         """Submit and save metadata object to database.
