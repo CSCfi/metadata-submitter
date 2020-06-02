@@ -23,7 +23,7 @@ db_client = MongoClient(url)
 
 
 class DBService:
-    """Create database service used to communicate with database.
+    """Create service used for database communication.
 
     With this class, it is possible to create separate databases for different
     purposes (e.g. submissions and backups).
