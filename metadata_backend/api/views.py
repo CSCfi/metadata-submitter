@@ -74,20 +74,6 @@ class SiteHandler:
         return web.Response(body=body, status=201,
                             content_type="application/json")
 
-    async def get_object_from_alias_address(self, req: Request) -> Response:
-        """Redirect requests to /<schema> to /object/<schema>.
-
-        This implements restful way to serve content from canonical uri.
-
-        :param req: GET request
-        :raises: HTTPFound for redirection
-        """
-        accessionId = req.match_info['accessionId']
-        schema = req.match_info['schema']
-        uri = req.app.router['get_object'].url_for(schema=schema,
-                                                   accessionId=accessionId)
-        raise web.HTTPFound(location=uri)
-
     @staticmethod
     def generate_receipt(successful: List, unsuccessful: List) -> str:
         """Generate receipt XML after all submissions have ran through.
