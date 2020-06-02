@@ -1,37 +1,21 @@
 """Services that handle database connections. Implemented with MongoDB."""
 
-import os
 from typing import Dict
 
-from pymongo import MongoClient, errors
 from pymongo.cursor import Cursor
+from pymongo.errors import ConnectionFailure, OperationFailure, PyMongoError
+
+from ..conf.conf import db_client
 
 
-class MongoClientCreator:
-    """Database connection initializer."""
+class DBService:
+    """Create service used for database communication.
 
-    def __init__(self) -> None:
-        """Create mongoDB client with admin access.
+    With this class, it is possible to create separate databases for different
+    purposes (e.g. submissions and backups).
 
-        Admin access is needed in order to create new databases during runtime.
-        Default values are the same that are used in docker-compose file
-        found from deploy/mongodb.
-        """
-        mongo_user = os.getenv("MONGO_INITDB_ROOT_PASSWORD", "admin")
-        mongo_password = os.getenv("MONGO_INITDB_ROOT_PASSWORD", "admin")
-        mongo_host = os.getenv("MONGODB_HOST", "localhost:27017")
-        url = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}"
-        self.client = MongoClient(url)
-
-
-class DBService(MongoClientCreator):
-    """Create database service used to communicate with database.
-
-    Service creates client for itself with MongoClientCreator. This makes
-    it possible to create separate databases for different purposes
-
-    (e.g. submissions and backups) with different MongoDBService instances.
-    :param MongoClientCreator: Class which creates client for MongoDB
+    All services should use the same client, since pymongo handles pooling
+    automatically.
     """
 
     def __init__(self, database_name: str) -> None:
@@ -41,8 +25,7 @@ class DBService(MongoClientCreator):
         created during first read-write operation if not already present.
         :param database_name: Name of database to be used
         """
-        MongoClientCreator.__init__(self)
-        self.database = self.client[database_name]
+        self.database = db_client[database_name]
 
 
 class CRUDService:
@@ -59,15 +42,15 @@ class CRUDService:
         """
         try:
             db_service.database[collection].insert_one(document)
-        except errors.PyMongoError:
+        except (ConnectionFailure, OperationFailure, PyMongoError):
             raise
 
     @staticmethod
     def read(db_service: DBService, collection: str,
              query: Dict) -> Cursor:
-        """Insert document to collection in database.
+        """Query from collection in database.
 
-        :param db_service: Database object which connect to MongoDB database
+        :param db_service: Service that connects to MongoDB database
         :param collection: Collection where document should be searched from
         :param query: Query for document(s) that should be found
         :returns: Pymongo's Cursor object (iterator)
@@ -75,5 +58,60 @@ class CRUDService:
         """
         try:
             return db_service.database[collection].find(query)
-        except errors.ConnectionFailure:
+        except (ConnectionFailure, OperationFailure, PyMongoError):
+            raise
+
+    @staticmethod
+    def update(db_service: DBService, collection: str,
+               accession_id: str, data_to_be_updated: Dict) -> None:
+        """Update some elements of object by its accessionId.
+
+        :param db_service: Service that connects to MongoDB database
+        :param collection: Collection where document should be searched from
+        :param accession_id: Accession id for object to be updated
+        :param data_to_be_updated: JSON representing the data that should be
+        updated to object, can replace previous fields and add new ones.
+        :raises: Error when read fails for any Mongodb related reason
+        """
+        try:
+            find_by_id_query = {"accessionId": accession_id}
+            update_operation = {"$set": data_to_be_updated}
+            db_service.database[collection].update_one(find_by_id_query,
+                                                       update_operation)
+        except (ConnectionFailure, OperationFailure, PyMongoError):
+            raise
+
+    @staticmethod
+    def replace(db_service: DBService, collection: str,
+                accession_id: str, data_to_be_updated: Dict) -> None:
+        """Replace whole object by its accessionId.
+
+        :param db_service: Service that connects to MongoDB database
+        :param collection: Collection where document should be searched from
+        :param accession_id: Accession id for object to be updated
+        :param data_to_be_updated: JSON representing the data that replaces
+        old data
+        :raises: Error when read fails for any Mongodb related reason
+        """
+        try:
+            find_by_id_query = {"accessionId": accession_id}
+            db_service.database[collection].replace_one(find_by_id_query,
+                                                        data_to_be_updated)
+        except (ConnectionFailure, OperationFailure, PyMongoError):
+            raise
+
+    @staticmethod
+    def delete(db_service: DBService, collection: str,
+               accession_id: str) -> None:
+        """Delete object by its accessionId.
+
+        :param db_service: Service that connects to MongoDB database
+        :param collection: Collection where document should be searched from
+        :param accession_id: Accession id for object to be updated
+        :raises: Error when read fails for any Mongodb related reason
+        """
+        try:
+            find_by_id_query = {"accessionId": accession_id}
+            db_service.database[collection].delete_one(find_by_id_query)
+        except (ConnectionFailure, OperationFailure, PyMongoError):
             raise
