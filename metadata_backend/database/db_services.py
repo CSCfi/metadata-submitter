@@ -2,8 +2,8 @@
 
 from typing import Dict
 
-from pymongo import errors
 from pymongo.cursor import Cursor
+from pymongo.errors import ConnectionFailure, OperationFailure, PyMongoError
 
 from ..conf.conf import db_client
 
@@ -42,7 +42,7 @@ class CRUDService:
         """
         try:
             db_service.database[collection].insert_one(document)
-        except errors.PyMongoError:
+        except (ConnectionFailure, OperationFailure, PyMongoError):
             raise
 
     @staticmethod
@@ -58,7 +58,7 @@ class CRUDService:
         """
         try:
             return db_service.database[collection].find(query)
-        except errors.ConnectionFailure:
+        except (ConnectionFailure, OperationFailure, PyMongoError):
             raise
 
     @staticmethod
@@ -78,7 +78,7 @@ class CRUDService:
             update_operation = {"$set": data_to_be_updated}
             db_service.database[collection].update_one(find_by_id_query,
                                                        update_operation)
-        except errors.ConnectionFailure:
+        except (ConnectionFailure, OperationFailure, PyMongoError):
             raise
 
     @staticmethod
@@ -97,7 +97,7 @@ class CRUDService:
             find_by_id_query = {"accessionId": accession_id}
             db_service.database[collection].replace_one(find_by_id_query,
                                                         data_to_be_updated)
-        except errors.ConnectionFailure:
+        except (ConnectionFailure, OperationFailure, PyMongoError):
             raise
 
     @staticmethod
@@ -113,5 +113,5 @@ class CRUDService:
         try:
             find_by_id_query = {"accessionId": accession_id}
             db_service.database[collection].delete_one(find_by_id_query)
-        except errors.ConnectionFailure:
+        except (ConnectionFailure, OperationFailure, PyMongoError):
             raise
