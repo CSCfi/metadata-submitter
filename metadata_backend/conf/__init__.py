@@ -1,1 +1,1 @@
-"""Metadata-backend configurations."""
+"""App configurations."""
