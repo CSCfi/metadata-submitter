@@ -1,4 +1,4 @@
-"""Python configurations for metadata_backend.
+"""Python-based app configurations.
 
 1) Database configurations
 You need to specify the necessary environmental variables for connecting to
