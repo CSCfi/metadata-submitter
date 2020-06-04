@@ -3,8 +3,8 @@ import unittest
 
 import xmlschema
 
-from metadata_backend.helpers.schema_load import (SchemaLoader,
-                                                  SchemaNotFoundException)
+from metadata_backend.helpers.schema_loader import (SchemaLoader,
+                                                    SchemaNotFoundException)
 
 
 class TestSchemaLoader(unittest.TestCase):

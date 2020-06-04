@@ -12,10 +12,10 @@ from dateutil.relativedelta import relativedelta
 from xmlschema import AbderaConverter, XMLSchema, XMLSchemaException
 
 from ..conf.conf import object_types
-from ..helpers.schema_load import SchemaLoader, SchemaNotFoundException
+from .schema_loader import SchemaLoader, SchemaNotFoundException
 
 
-class SubmissionXMLToJSONParser:
+class XMLToJSONParser:
     """Methods to parse necessary data from different xml types."""
 
     def parse(self, xml_type: str, content: str) -> Dict:
@@ -46,7 +46,7 @@ class SubmissionXMLToJSONParser:
         content_json_formatted = self._to_lowercase(content_json_elevated)
 
         # Add accessionId
-        content_json_formatted["accessionId"] = self._generate_accessionId()
+        content_json_formatted["accessionId"] = self._generate_accession_id()
 
         # Run through schema-specific parser and return the result
         return getattr(self, f"_parse_{xml_type}")(content_json_formatted)
@@ -82,7 +82,7 @@ class SubmissionXMLToJSONParser:
             raise web.HTTPBadRequest(reason=reason)
 
     @staticmethod
-    def _generate_accessionId() -> str:
+    def _generate_accession_id() -> str:
         """Generate accession number.
 
         :returns: generated accession number

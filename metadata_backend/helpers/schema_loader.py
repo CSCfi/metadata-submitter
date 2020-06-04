@@ -44,5 +44,4 @@ class SchemaLoader:
                     schema_file = f.read()
         if not schema_file:
             raise SchemaNotFoundException
-        schema = XMLSchema(schema_file, base_url=self.path.as_posix())
-        return schema
+        return XMLSchema(schema_file, base_url=self.path.as_posix())

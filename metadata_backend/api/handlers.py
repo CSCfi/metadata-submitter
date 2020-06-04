@@ -8,7 +8,7 @@ from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
 
 from ..conf.conf import object_types
-from .parser import SubmissionXMLToJSONParser
+from ..helpers.parser import XMLToJSONParser
 from .translator import ActionToCRUDTranslator
 
 
@@ -39,8 +39,8 @@ class RESTApiHandler:
         format = req.query.get("format", "json").lower()
         use_xml, type = (True, "text/xml") if format == "xml" \
             else (False, "application/json")
-        object = translator.get_object_with_accessionId(schema, accession_id,
-                                                        use_xml)
+        object = translator.get_object_with_accession_id(schema, accession_id,
+                                                         use_xml)
         return web.Response(body=object, status=200, content_type=type)
 
     async def post_object(self, req: Request) -> Response:
@@ -57,7 +57,7 @@ class RESTApiHandler:
         if req.content_type == "multipart/form-data":
             files = await _extract_xml_upload(req)
             content_xml, _ = files[0]
-            parser = SubmissionXMLToJSONParser()
+            parser = XMLToJSONParser()
             content_json = parser.parse(type, content_xml)
             accession_id = translator.add(content_json, type, content_xml)
         else:
@@ -93,7 +93,7 @@ class SubmissionAPIHandler:
             reason = "You should submit only one submission.xml file."
             raise web.HTTPBadRequest(reason=reason)
 
-        parser = SubmissionXMLToJSONParser()
+        parser = XMLToJSONParser()
         submission_xml = files[0][0]
         submission_json = parser.parse("submission", submission_xml)
 

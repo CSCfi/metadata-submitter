@@ -7,7 +7,7 @@ from pymongo import errors
 
 from ..database.db_services import CRUDService, DBService
 from ..helpers.logger import LOG
-from .parser import SubmissionXMLToJSONParser
+from ..helpers.parser import XMLToJSONParser
 
 
 class ActionToCRUDTranslator:
@@ -17,7 +17,7 @@ class ActionToCRUDTranslator:
         """Create needed services for connecting to database."""
         self.submission_db_service = DBService("submissions")
         self.backup_db_service = DBService("backups")
-        self.parser = SubmissionXMLToJSONParser()
+        self.parser = XMLToJSONParser()
 
     def add(self, content_json: Dict, type: str, content_xml: str = None) -> \
             Dict:
@@ -51,8 +51,8 @@ class ActionToCRUDTranslator:
             LOG.info("Inserting file to database succeeded")
         return content_json["accessionId"]
 
-    def get_object_with_accessionId(self, schema: str, accessionId: str,
-                                    return_xml: bool) -> Dict:
+    def get_object_with_accession_id(self, schema: str, accession_id: str,
+                                     return_xml: bool) -> Dict:
         """Get object from database according to given accession id.
 
         param: accessionId: Accession id for object to be searched
@@ -63,11 +63,11 @@ class ActionToCRUDTranslator:
         try:
             if return_xml:
                 data_raw = CRUDService.read(self.backup_db_service, schema,
-                                            {"accessionId": accessionId})
+                                            {"accessionId": accession_id})
                 data = list(data_raw)[0]["content"]
             else:
                 data_raw = CRUDService.read(self.submission_db_service, schema,
-                                            {"accessionId": accessionId})
+                                            {"accessionId": accession_id})
                 data = json_util.dumps(data_raw)
             if data_raw.retrieved == 0:
                 raise web.HTTPNotFound

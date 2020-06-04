@@ -14,7 +14,7 @@ from metadata_backend.server import init
 class SiteHandlerTestCase(AioHTTPTestCase):
     """Api endpoint class test cases."""
 
-    TESTFILES_ROOT = Path(__file__).parent.parent / 'test_files'
+    TESTFILES_ROOT = Path(__file__).parent / 'test_files'
 
     async def get_application(self):
         """Retrieve web Application for test."""
@@ -50,12 +50,12 @@ class SiteHandlerTestCase(AioHTTPTestCase):
         self.metadata_xml = path_to_xml_file.read_text()
 
         class_parser = \
-            "metadata_backend.api.handlers.SubmissionXMLToJSONParser"
+            "metadata_backend.api.handlers.XMLToJSONParser"
         class_translator = \
             "metadata_backend.api.handlers.ActionToCRUDTranslator"
         translator_config = {'add.return_value': self.test_ega_string,
-                             'get_object_with_accessionId.side_effect':
-                             self.fake_translator_get_object_with_accessionId}
+                             'get_object_with_accession_id.side_effect':
+                             self.fake_translator_get_object_with_accession_id}
         self.patch_parser = patch(class_parser, spec=True)
         self.patch_translator = patch(class_translator, **translator_config,
                                       spec=True)
@@ -78,9 +78,8 @@ class SiteHandlerTestCase(AioHTTPTestCase):
                            content_type='text/xml')
         return data
 
-    def fake_translator_get_object_with_accessionId(self, schema,
-                                                    accessionId,
-                                                    return_xml):
+    def fake_translator_get_object_with_accession_id(self, schema,
+                                                     accession_id, return_xml):
         """Fakes translator modules get_object method for testing."""
         return self.metadata_xml if return_xml else self.metadata_json
 
