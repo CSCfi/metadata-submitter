@@ -1,9 +1,9 @@
 """Test api endpoints from views module."""
 from pathlib import Path
 
-from metadata_backend.api.parser import SubmissionXMLToJSONParser
+from metadata_backend.helpers.parser import XMLToJSONParser
 from aiohttp import web
-from metadata_backend.helpers.schema_load import SchemaLoader
+from metadata_backend.helpers.schema_loader import SchemaLoader
 import unittest
 import datetime
 
@@ -13,15 +13,15 @@ from unittest.mock import patch
 class ParserTestCase(unittest.TestCase):
     """Api endpoint class test cases."""
 
-    TESTFILES_ROOT = Path(__file__).parent.parent / 'test_files'
+    TESTFILES_ROOT = Path(__file__).parent / 'test_files'
 
     def setUp(self):
         """Configure default values and test variables for tests."""
-        self.mock_accessionId = "EGA123456"
-        self.parser = SubmissionXMLToJSONParser()
+        self.accession_id = "EGA123456"
+        self.parser = XMLToJSONParser()
         self.patch_accession = patch.object(self.parser,
-                                            "_generate_accessionId",
-                                            return_value=self.mock_accessionId,
+                                            "_generate_accession_id",
+                                            return_value=self.accession_id,
                                             autospec=True)
         self.patch_accession.start()
 
@@ -36,10 +36,10 @@ class ParserTestCase(unittest.TestCase):
 
     def test_accessionId_is_generated(self):
         """Test for accessionId."""
-        accession = self.parser._generate_accessionId()
-        assert accession == self.mock_accessionId
+        accession = self.parser._generate_accession_id()
+        assert accession == self.accession_id
 
-    @patch('metadata_backend.api.parser.datetime')
+    @patch('metadata_backend.helpers.parser.datetime')
     def test_study_is_parsed(self, mocked_datetime):
         """Test that study is parsed correctly and accessionId is set.
 
@@ -48,7 +48,7 @@ class ParserTestCase(unittest.TestCase):
         mocked_datetime.now.return_value = datetime.datetime(2020, 4, 14)
         study_xml = self.load_xml_from_file("study", "SRP000539.xml")
         study_json = self.parser.parse("study", study_xml)
-        self.assertEqual(self.mock_accessionId, study_json['accessionId'])
+        self.assertEqual(self.accession_id, study_json['accessionId'])
         self.assertEqual(datetime.datetime(2020, 6, 14, 0, 0),
                          study_json['publishDate'])
         self.assertIn("Highly integrated epigenome maps in Arabidopsis",
@@ -63,7 +63,7 @@ class ParserTestCase(unittest.TestCase):
         """
         sample_xml = self.load_xml_from_file("sample", "SRS001433.xml")
         sample_json = self.parser.parse("sample", sample_xml)
-        self.assertEqual(self.mock_accessionId, sample_json['accessionId'])
+        self.assertEqual(self.accession_id, sample_json['accessionId'])
         self.assertIn("Human HapMap individual NA18758",
                       sample_json['description'])
         self.assertIn("Homo sapiens",
@@ -76,7 +76,7 @@ class ParserTestCase(unittest.TestCase):
         """
         experiment_xml = self.load_xml_from_file("experiment", "ERX000119.xml")
         experiment_json = self.parser.parse("experiment", experiment_xml)
-        self.assertEqual(self.mock_accessionId, experiment_json['accessionId'])
+        self.assertEqual(self.accession_id, experiment_json['accessionId'])
         self.assertIn("SOLiD sequencing of Human HapMap individual NA18504",
                       experiment_json['design']['designDescription'])
 
@@ -87,7 +87,7 @@ class ParserTestCase(unittest.TestCase):
         """
         run_xml = self.load_xml_from_file("run", "ERR000076.xml")
         run_json = self.parser.parse("run", run_xml)
-        self.assertEqual(self.mock_accessionId, run_json['accessionId'])
+        self.assertEqual(self.accession_id, run_json['accessionId'])
         self.assertIn("ERA000/ERA000014/srf/BGI-FC304RWAAXX_5.srf",
                       run_json['dataBlock']['files']['file']['attributes'][
                           'filename'])
@@ -101,7 +101,7 @@ class ParserTestCase(unittest.TestCase):
         """
         analysis_xml = self.load_xml_from_file("analysis", "ERZ266973.xml")
         analysis_json = self.parser.parse("analysis", analysis_xml)
-        self.assertEqual(self.mock_accessionId, analysis_json['accessionId'])
+        self.assertEqual(self.accession_id, analysis_json['accessionId'])
         self.assertIn("GCA_000001405.1", analysis_json['analysisType'][
             'processedReads']['assembly']['standard']['attributes'][
             'accession'])
