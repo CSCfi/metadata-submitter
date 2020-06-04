@@ -19,6 +19,9 @@ async def init() -> web.Application:
     be used for route names, so they're easy to use in other parts of the
     application. Note: if using variable resources (such as {schema}), add
     specific ones on top of more generic ones.
+
+    # TODO : Schemas should be renamed to types?
+    # TODO: Remove names from routes?
     """
     server = web.Application()
     handler = SiteHandler()
