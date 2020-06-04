@@ -5,9 +5,8 @@ from aiohttp import web
 from bson import json_util
 from pymongo import errors
 
-from ..database.db_services import CRUDService, DBService
+from ..database.db_service import DBService
 from ..helpers.logger import LOG
-from ..helpers.parser import XMLToJSONParser
 
 
 class ActionToCRUDTranslator:
@@ -17,7 +16,6 @@ class ActionToCRUDTranslator:
         """Create needed services for connecting to database."""
         self.submission_db_service = DBService("submissions")
         self.backup_db_service = DBService("backups")
-        self.parser = XMLToJSONParser()
 
     def add(self, content_json: Dict, type: str, content_xml: str = None) -> \
             Dict:
@@ -32,8 +30,7 @@ class ActionToCRUDTranslator:
         inserted to database
         """
         try:
-            CRUDService.create(self.submission_db_service, type,
-                               content_json)
+            self.submission_db_service.create(type, content_json)
         except errors.PyMongoError as error:
             LOG.info(f"error, reason: {error}")
             reason = "Error happened when saving file to database."
@@ -43,7 +40,7 @@ class ActionToCRUDTranslator:
             backup_json = {"accessionId": content_json["accessionId"],
                            "content": content_xml}
             try:
-                CRUDService.create(self.backup_db_service, type, backup_json)
+                self.backup_db_service.create(type, backup_json)
             except errors.PyMongoError as error:
                 LOG.info(f"error, reason: {error}")
                 reason = "Error happened when backing up to database."
@@ -62,12 +59,11 @@ class ActionToCRUDTranslator:
         """
         try:
             if return_xml:
-                data_raw = CRUDService.read(self.backup_db_service, schema,
-                                            {"accessionId": accession_id})
+                data_raw = self.backup_db_service.read(schema, accession_id)
                 data = list(data_raw)[0]["content"]
             else:
-                data_raw = CRUDService.read(self.submission_db_service, schema,
-                                            {"accessionId": accession_id})
+                data_raw = self.submission_db_service.read(schema,
+                                                           accession_id)
                 data = json_util.dumps(data_raw)
             if data_raw.retrieved == 0:
                 raise web.HTTPNotFound
