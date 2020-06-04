@@ -7,6 +7,7 @@ from typing import List, Tuple, cast
 from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
 
+from ..conf.conf import object_types
 from .parser import SubmissionXMLToJSONParser
 from .translator import ActionToCRUDTranslator
 
@@ -21,10 +22,8 @@ class RESTApiHandler:
         :param req: GET Request
         :returns JSON list of object types
         """
-        object_types = json.dumps(["submission", "study", "sample",
-                                   "experiment", "run", "analysis", "dac",
-                                   "policy", "dataset", "project"])
-        return web.Response(body=object_types, status=200)
+        types_json = json.dumps(list(object_types.keys()))
+        return web.Response(body=types_json, status=200)
 
     async def get_object(self, req: Request) -> Response:
         """Get one metadata object by its accession id.
@@ -145,12 +144,8 @@ async def _extract_xml_upload(req: Request) -> List[Tuple]:
     """Extract submitted xml-file(s) from multi-part request.
 
     :param req: POST request containing "multipart/form-data" upload
-    :returns: xml_content and schema for each uploaded file
+    :returns: content and type for each uploaded file, sorted by type
     """
-    # Schemas are used also in action sorting, so they probably should be
-    # used via class later. Refactor this in the future:
-    ok_types = {"submission", "study", "sample", "experiment", "run",
-                "analysis", "dac", "policy", "dataset", "project"}
     files: List[Tuple] = []
     reader = await req.multipart()
     while True:
@@ -161,8 +156,7 @@ async def _extract_xml_upload(req: Request) -> List[Tuple]:
         if not part:
             break
         xml_type = part.name.lower()
-        # Check if sent form contains correct information
-        if xml_type not in ok_types:
+        if xml_type not in object_types:
             raise web.HTTPBadRequest(reason="Not ok type")
         data = []
         while True:
@@ -172,5 +166,4 @@ async def _extract_xml_upload(req: Request) -> List[Tuple]:
             data.append(chunk)
         xml_content = ''.join(x.decode('UTF-8') for x in data)
         files.append((xml_content, xml_type))
-    # TODO: sort files here
-    return files
+    return sorted(files, key=lambda x: object_types[x[1]])

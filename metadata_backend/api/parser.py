@@ -11,6 +11,7 @@ from aiohttp import web
 from dateutil.relativedelta import relativedelta
 from xmlschema import AbderaConverter, XMLSchema, XMLSchemaException
 
+from ..conf.conf import object_types
 from ..helpers.schema_load import SchemaLoader, SchemaNotFoundException
 
 
@@ -241,10 +242,7 @@ class SubmissionXMLToJSONParser:
         :param data: Data to be sorted
         :returns: Sorted list
         """
-        order = {"study": 1, "sample": 2, "experiment": 3, "run": 4,
-                 "analysis": 5, "dac": 6, "policy": 7, "dataset": 8,
-                 "project": 9}
-        return sorted(data, key=lambda x: order[x["schema"]])
+        return sorted(data, key=lambda x: object_types[x["schema"]])
 
     def _to_lowercase(self, obj: Dict) -> Dict:
         """Make dictionary lowercase and convert keys to CamelCase.
