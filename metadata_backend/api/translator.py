@@ -19,8 +19,9 @@ class ActionToCRUDTranslator:
         self.backup_db_service = DBService("backups")
         self.parser = SubmissionXMLToJSONParser()
 
-    def add(self, target: Dict, submissions: Dict) -> Dict:
-        """Submit new metadata object (ADD action in submission.xml).
+    def add(self, content_json: Dict, type: str, content_xml: str = None) -> \
+            Dict:
+        """Submit new metadata object.
 
         :param target: Attributes for add action, e.g. information about which
         file to save to database
@@ -30,27 +31,24 @@ class ActionToCRUDTranslator:
         :returns Json containing accession id for object that has been
         inserted to database
         """
-        xml_type = target["schema"]
-        source = target["source"]
-        content_xml = submissions[xml_type][source]
-        content_json = self.parser.parse(xml_type, content_xml)
-        backup_json = {"accessionId": content_json["accessionId"],
-                       "content": content_xml}
         try:
-            CRUDService.create(self.submission_db_service, xml_type,
+            CRUDService.create(self.submission_db_service, type,
                                content_json)
         except errors.PyMongoError as error:
             LOG.info(f"error, reason: {error}")
-            reason = f"Error happened when saving file {source} to database."
+            reason = "Error happened when saving file to database."
             raise web.HTTPBadRequest(reason=reason)
 
-        try:
-            CRUDService.create(self.backup_db_service, xml_type, backup_json)
-        except errors.PyMongoError as error:
-            LOG.info(f"error, reason: {error}")
-            reason = f"Error happened when backing up {source} to database."
-            raise web.HTTPBadRequest(reason=reason)
-        LOG.info(f"Inserting file {source} to database succeeded")
+        if content_xml:
+            backup_json = {"accessionId": content_json["accessionId"],
+                           "content": content_xml}
+            try:
+                CRUDService.create(self.backup_db_service, type, backup_json)
+            except errors.PyMongoError as error:
+                LOG.info(f"error, reason: {error}")
+                reason = "Error happened when backing up to database."
+                raise web.HTTPBadRequest(reason=reason)
+            LOG.info("Inserting file to database succeeded")
         return content_json["accessionId"]
 
     def get_object_with_accessionId(self, schema: str, accessionId: str,
