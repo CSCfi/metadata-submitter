@@ -11,10 +11,10 @@ from .parser import SubmissionXMLToJSONParser
 from .translator import ActionToCRUDTranslator
 
 
-class SiteHandler:
-    """Backend HTTP method handler."""
+class RESTApiHandler:
+    """Handler for REST API methods."""
 
-    async def get_object_types(self, req: Request) -> Response:
+    async def get_objects(self, req: Request) -> Response:
         """Get all possible metadata object types from database.
 
         Basically returns which objects user can submit and query for.
@@ -44,8 +44,8 @@ class SiteHandler:
                                                         use_xml)
         return web.Response(body=object, status=200, content_type=type)
 
-    async def submit_object(self, req: Request) -> Response:
-        """Submit and save metadata object to database.
+    async def post_object(self, req: Request) -> Response:
+        """Save metadata object to database.
 
         If request is xml file upload, it is first parsed to json. Otherwise
         json from body is used.
@@ -56,7 +56,7 @@ class SiteHandler:
         translator = ActionToCRUDTranslator()
         type = req.match_info['schema']
         if req.content_type == "multipart/form-data":
-            files = await self._extract_xml_upload(req)
+            files = await _extract_xml_upload(req)
             content_xml, _ = files[0]
             parser = SubmissionXMLToJSONParser()
             content_json = parser.parse(type, content_xml)
@@ -68,11 +68,12 @@ class SiteHandler:
         return web.Response(body=body, status=201,
                             content_type="application/json")
 
-    async def submit(self, req: Request) -> Response:
-        """Handle submission to server containing submission.xml file.
 
-        Note: This handles only direct POST XML submissions, frontend uses
-        REST api for submissions.
+class SubmissionAPIHandler:
+    """Handler for non-rest API methods."""
+
+    async def submit(self, req: Request) -> Response:
+        """Handle submission.xml containing submissions to server.
 
         First submission info is parsed and then for every action in submission
         (such as "add", or "modify") corresponding operation is performed.
@@ -82,7 +83,7 @@ class SiteHandler:
         :raises: HTTP Exceptions with status code 201 or 400
         :returns: XML-based receipt from submission
         """
-        files = await self._extract_xml_upload(req)
+        files = await _extract_xml_upload(req)
         types = Counter(file[1] for file in files)
 
         if "submission" not in types:
@@ -117,39 +118,9 @@ class SiteHandler:
         receipt = self.generate_receipt(successful, unsuccessful)
         return web.Response(body=receipt, status=201, content_type="text/xml")
 
-    async def _extract_xml_upload(self, req: Request) -> List[Tuple]:
-        """Extract submitted xml-file(s) from multi-part request.
-
-        :param req: POST request containing "multipart/form-data" upload
-        :returns: xml_content and schema for each uploaded file
-        """
-        # Schemas are used also in action sorting, so they probably should be
-        # used via class later. Refactor this in the future:
-        ok_types = {"submission", "study", "sample", "experiment", "run",
-                    "analysis", "dac", "policy", "dataset", "project"}
-        files: List[Tuple] = []
-        reader = await req.multipart()
-        while True:
-            part = await reader.next()
-            # Following is probably error in aiohttp type hints, fixing so
-            # mypy doesn't complain about it. No runtime consequences.
-            part = cast(BodyPartReader, part)
-            if not part:
-                break
-            xml_type = part.name.lower()
-            # Check if sent form contains correct information
-            if xml_type not in ok_types:
-                raise web.HTTPBadRequest(reason="Not ok type")
-            data = []
-            while True:
-                chunk = await part.read_chunk()
-                if not chunk:
-                    break
-                data.append(chunk)
-            xml_content = ''.join(x.decode('UTF-8') for x in data)
-            files.append((xml_content, xml_type))
-        # TODO: sort files here
-        return files
+    async def validate(self, req: Request) -> Response:
+        """Validate xml file sent to endpoint."""
+        return web.Response(text="Validated!")
 
     @staticmethod
     def generate_receipt(successful: List, unsuccessful: List) -> str:
@@ -167,3 +138,39 @@ class SiteHandler:
                    f"{infos}"
                    f"</RECEIPT>")
         return receipt
+
+
+# Private functions shared between handlers
+async def _extract_xml_upload(req: Request) -> List[Tuple]:
+    """Extract submitted xml-file(s) from multi-part request.
+
+    :param req: POST request containing "multipart/form-data" upload
+    :returns: xml_content and schema for each uploaded file
+    """
+    # Schemas are used also in action sorting, so they probably should be
+    # used via class later. Refactor this in the future:
+    ok_types = {"submission", "study", "sample", "experiment", "run",
+                "analysis", "dac", "policy", "dataset", "project"}
+    files: List[Tuple] = []
+    reader = await req.multipart()
+    while True:
+        part = await reader.next()
+        # Following is probably error in aiohttp type hints, fixing so
+        # mypy doesn't complain about it. No runtime consequences.
+        part = cast(BodyPartReader, part)
+        if not part:
+            break
+        xml_type = part.name.lower()
+        # Check if sent form contains correct information
+        if xml_type not in ok_types:
+            raise web.HTTPBadRequest(reason="Not ok type")
+        data = []
+        while True:
+            chunk = await part.read_chunk()
+            if not chunk:
+                break
+            data.append(chunk)
+        xml_content = ''.join(x.decode('UTF-8') for x in data)
+        files.append((xml_content, xml_type))
+    # TODO: sort files here
+    return files

@@ -49,8 +49,10 @@ class SiteHandlerTestCase(AioHTTPTestCase):
         path_to_xml_file = self.TESTFILES_ROOT / "study" / "SRP000539.xml"
         self.metadata_xml = path_to_xml_file.read_text()
 
-        class_parser = "metadata_backend.api.views.SubmissionXMLToJSONParser"
-        class_translator = "metadata_backend.api.views.ActionToCRUDTranslator"
+        class_parser = \
+            "metadata_backend.api.handlers.SubmissionXMLToJSONParser"
+        class_translator = \
+            "metadata_backend.api.handlers.ActionToCRUDTranslator"
         translator_config = {'add.return_value': self.test_ega_string,
                              'get_object_with_accessionId.side_effect':
                              self.fake_translator_get_object_with_accessionId}
