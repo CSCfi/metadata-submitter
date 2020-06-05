@@ -4,13 +4,12 @@ import secrets
 import string
 from collections import Counter
 from datetime import datetime
-from typing import List, Tuple, cast
+from typing import Dict, List, Tuple, cast
 
 from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
 
 from ..conf.conf import object_types
-from ..helpers.logger import LOG
 from ..helpers.parser import XMLToJSONParser
 from .operators import Operator, XMLOperator
 
@@ -105,12 +104,41 @@ class SubmissionAPIHandler:
         parser = XMLToJSONParser()
         submission_xml = files[0][0]
         submission_json = parser.parse("submission", submission_xml)
-        LOG.info(submission_json)
-
-        successful: List = []
-        unsuccessful: List = []
-        # TODO: Implement this
-        receipt = self.generate_receipt(successful, unsuccessful)
+        # Check what actions should be performed, collect them to dictionary
+        actions = {}
+        for action_set in submission_json["actions"]['action']:
+            for action, attr in action_set.items():
+                if not attr:
+                    reason = (f"You also need to provide necessary"
+                              f" information for submission action."
+                              f" Now {action} was provided without any"
+                              f" extra information.")
+                    raise web.HTTPBadRequest(reason=reason)
+                actions[attr["schema"]] = action
+        # Go through parsed files and do the actual action
+        # Only "add" action is supported now, and uses same code as the
+        # REST api method. This should be refactored later.
+        for file in files:
+            content_xml = file[0]
+            type = file[1]
+            if type == "submission":
+                continue  # No need to use submission xml
+            action = actions[type]
+            if action == "add":
+                accession_id = _generate_accession_id()
+                backup_json = {"accessionId": accession_id,
+                               "content": content_xml}
+                xmloperator = XMLOperator()
+                xmloperator.create_metadata_object(type, backup_json)
+                parser = XMLToJSONParser()
+                content_json = parser.parse(type, content_xml)
+                content_json["accessionId"] = accession_id
+                operator = Operator()
+                operator.create_metadata_object(type, content_json)
+            else:
+                reason = f"action {action} is not supported yet"
+                return web.HTTPBadRequest(reason=reason)
+        receipt = self.generate_receipt(actions)
         return web.Response(body=receipt, status=201, content_type="text/xml")
 
     async def validate(self, req: Request) -> Response:
@@ -118,13 +146,12 @@ class SubmissionAPIHandler:
         return web.Response(text="Validated!")
 
     @staticmethod
-    def generate_receipt(successful: List, unsuccessful: List) -> str:
+    def generate_receipt(actions: Dict) -> str:
         """Generate receipt XML after all submissions have ran through.
 
-        Not currently valid receipt (against schema), will be changed later.
+        Does not currently generate anything special, should be changed later.
 
-        :param successful: Successful submissions and their info
-        :param unsuccessful: Unsuccessful submissions and their info
+        :param actions: Info about actions that were performed
         :returns: XML-based receipt
         """
         date = datetime.now()
@@ -138,6 +165,9 @@ class SubmissionAPIHandler:
 # Private functions shared between handlers
 async def _extract_xml_upload(req: Request) -> List[Tuple]:
     """Extract submitted xml-file(s) from multi-part request.
+
+    Files are sorted to spesific order by object type priorities (e.g.
+    submission should be processed before study).
 
     :param req: POST request containing "multipart/form-data" upload
     :returns: content and type for each uploaded file, sorted by type
@@ -166,5 +196,9 @@ async def _extract_xml_upload(req: Request) -> List[Tuple]:
 
 
 def _generate_accession_id() -> str:
+    """Generate random accession id.
+
+    Will be replaced later with external id generator.
+    """
     sequence = ''.join(secrets.choice(string.digits) for i in range(16))
     return f"EDAG{sequence}"
