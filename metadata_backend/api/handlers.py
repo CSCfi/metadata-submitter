@@ -28,14 +28,13 @@ class RESTApiHandler:
         return web.Response(body=types_json, status=200)
 
     async def get_object(self, req: Request) -> Response:
-        """Get one metadata object by its accession id.
+        """Get metadata object(s) according to request parameters.
 
-        Returns original xml object from backup if format query parameter is
-        set, otherwise json.
+        If accession_id is specified, database is searched for that id.
+        Otherwise given query parameters are used. If no parameters or id is
+        specified, everything from that collection is returned.
 
-        :param req: Multi-part POST request
-        :raises: HTTPBadRequest if error happened when connection to database
-        and HTTPNotFound error if file with given accession id is not found.
+        :param req: GET request
         :returns: JSON or XML response containing metadata object
         """
         accession_id = req.match_info['accessionId']
@@ -52,7 +51,6 @@ class RESTApiHandler:
         to backup database. Otherwise json from body is used.
 
         :param req: POST request
-        :raises: HTTP error if inserting file to database fails
         :returns: JSON response containing accessionId for submitted object
         """
         type = req.match_info['schema']
@@ -73,6 +71,18 @@ class RESTApiHandler:
         operator.create_metadata_object(type, content_json)
         body = json.dumps({"accessionId": accession_id})
         return web.Response(body=body, status=201,
+                            content_type="application/json")
+
+    async def query_objects(self, req: Request) -> Response:
+        """Query metadata objects from database.
+
+        :param req: GET request with query parameters (can be empty).
+        :returns: Query results as JSON
+        """
+        type = req.match_info['schema']
+        operator = Operator()
+        result = operator.query_metadata_database(type, req.query)
+        return web.Response(body=result, status=200,
                             content_type="application/json")
 
 

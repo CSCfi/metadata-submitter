@@ -1,9 +1,11 @@
 """Operators for handling database-related operations."""
+import re
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Tuple, Union
 
 from aiohttp import web
 from bson import json_util
+from multidict import MultiDictProxy
 from pymongo import errors
 from pymongo.cursor import Cursor
 
@@ -57,6 +59,71 @@ class BaseOperator(ABC):
             raise web.HTTPBadRequest(reason=reason)
         LOG.info(f"Inserting file to database succeeded: {type}, "
                  f"{self.content_type}")
+
+    def query_metadata_database(self, type: str, que: MultiDictProxy) -> Dict:
+        """Create database query based on url query parameters.
+
+        Querys are mapped below to match database structure and then query
+        is sent to mongodb. Resulting query is returned.
+
+        Keys in map are url query parameters, values are corresponding
+        database query parameters.
+
+        :param type: Type of the object to read.
+        :param que: Dict containing query information
+        :raises: HTTPBadRequest if error happened when connection to database
+        and HTTPNotFound error if file with given accession id is not found.
+        """
+        query_map = {
+            "title": "title",
+            "description": "description",
+            "centerName": "attributes.centerName",
+            "name": "name",
+            "studyTitle": "descriptor.studyTitle",
+            "studyType": "descriptor.studyType.attributes.existingStudyType",
+            "studyAbstract": "descriptor.studyAbstract",
+            "studyAttributes": {"base": "studyAttributes.studyAttribute",
+                                "keys": ["tag", "value"]},
+            "sampleName": {"base": "sampleName",
+                           "keys": ["taxonId", "scientificName",
+                                    "commonName"]},
+            "scientificName": "submissionProject.organism.scientificName",
+            "fileType": "dataBlock.files.file.attributes.filetype",
+            "studyReference": {"base": "studyRef.attributes",
+                               "keys": ["accession", "refname", "refcenter"]},
+            "sampleReference": {"base": "sampleRef.attributes",
+                                "keys": ["accession", "label", "refname",
+                                         "refcenter"]},
+            "experimentReference": {"base": "experimentRef.attributes",
+                                    "keys": ["accession", "refname",
+                                             "refcenter"]},
+            "runReference": {"base": "runRef.attributes",
+                             "keys": ["accession", "refname", "refcenter"]},
+            "analysisReference": {"base": "analysisRef.attributes",
+                                  "keys": ["accession", "refname",
+                                           "refcenter"]},
+        }
+        # Generate mongodb query from query parameters
+        mongo_query: Dict = {}
+        for query, value in que.items():
+            if query in query_map:
+                regx = re.compile(f".*{value}.*", re.IGNORECASE)
+                if isinstance(query_map[query], dict):
+                    # Make or-query for keys in dictionary
+                    base = query_map[query]["base"]  # type: ignore
+                    if "$or" not in mongo_query:
+                        mongo_query["$or"] = []
+                    ors = [{f"{base}.{key}": regx} for key
+                           in query_map[query]["keys"]]  # type: ignore
+                    mongo_query["$or"].extend(ors)
+                else:
+                    # Query with regex from just one field
+                    mongo_query = {query_map[query]: regx}
+        cursor = self.db_service.query(type, mongo_query)
+        result = json_util.dumps(cursor)
+        if result == "[]":
+            raise web.HTTPNotFound
+        return result
 
     @abstractmethod
     def _format_read_data(self, data_raw: Any) -> Any:
