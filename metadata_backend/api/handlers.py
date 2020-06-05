@@ -1,5 +1,7 @@
 """Handle HTTP methods for server."""
 import json
+import secrets
+import string
 from collections import Counter
 from datetime import datetime
 from typing import List, Tuple, cast
@@ -8,8 +10,9 @@ from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
 
 from ..conf.conf import object_types
+from ..helpers.logger import LOG
 from ..helpers.parser import XMLToJSONParser
-from .translator import ActionToCRUDTranslator
+from .operators import Operator, XMLOperator
 
 
 class RESTApiHandler:
@@ -28,41 +31,47 @@ class RESTApiHandler:
     async def get_object(self, req: Request) -> Response:
         """Get one metadata object by its accession id.
 
-        Returns xml object if format query parameter is set, otherwise json.
+        Returns original xml object from backup if format query parameter is
+        set, otherwise json.
 
         :param req: Multi-part POST request
+        :raises: HTTPBadRequest if error happened when connection to database
+        and HTTPNotFound error if file with given accession id is not found.
         :returns: JSON or XML response containing metadata object
         """
-        translator = ActionToCRUDTranslator()
         accession_id = req.match_info['accessionId']
-        schema = req.match_info['schema']
+        type = req.match_info['schema']
         format = req.query.get("format", "json").lower()
-        use_xml, type = (True, "text/xml") if format == "xml" \
-            else (False, "application/json")
-        object = translator.get_object_with_accession_id(schema, accession_id,
-                                                         use_xml)
-        return web.Response(body=object, status=200, content_type=type)
+        operator = XMLOperator() if format == "xml" else Operator()
+        data, content_type = operator.read_metadata_object(type, accession_id)
+        return web.Response(body=data, status=200, content_type=content_type)
 
     async def post_object(self, req: Request) -> Response:
         """Save metadata object to database.
 
-        If request is xml file upload, it is first parsed to json. Otherwise
-        json from body is used.
+        If request is xml file upload, it is first parsed to json and saved
+        to backup database. Otherwise json from body is used.
 
         :param req: POST request
+        :raises: HTTP error if inserting file to database fails
         :returns: JSON response containing accessionId for submitted object
         """
-        translator = ActionToCRUDTranslator()
         type = req.match_info['schema']
+        accession_id = _generate_accession_id()
         if req.content_type == "multipart/form-data":
             files = await _extract_xml_upload(req)
             content_xml, _ = files[0]
+            backup_json = {"accessionId": accession_id,
+                           "content": content_xml}
+            xmloperator = XMLOperator()
+            xmloperator.create_metadata_object(type, backup_json)
             parser = XMLToJSONParser()
             content_json = parser.parse(type, content_xml)
-            accession_id = translator.add(content_json, type, content_xml)
         else:
             content_json = await req.json()
-            accession_id = translator.add(content_json, type)
+        operator = Operator()
+        content_json["accessionId"] = accession_id
+        operator.create_metadata_object(type, content_json)
         body = json.dumps({"accessionId": accession_id})
         return web.Response(body=body, status=201,
                             content_type="application/json")
@@ -96,24 +105,11 @@ class SubmissionAPIHandler:
         parser = XMLToJSONParser()
         submission_xml = files[0][0]
         submission_json = parser.parse("submission", submission_xml)
+        LOG.info(submission_json)
 
         successful: List = []
         unsuccessful: List = []
-
-        translator = ActionToCRUDTranslator()
-        for action_info in submission_json["action_infos"]:
-            try:
-                action = action_info["action"]
-                if getattr(translator, action)(action_info):
-                    successful.append(action)
-                else:
-                    unsuccessful.append(action)
-                    break
-            except AttributeError as error:
-                reason = (f"Unfortunately this feature has not yet been "
-                          f"implemented. More info: {error}")
-                raise web.HTTPBadRequest(reason=reason)
-
+        # TODO: Implement this
         receipt = self.generate_receipt(successful, unsuccessful)
         return web.Response(body=receipt, status=201, content_type="text/xml")
 
@@ -167,3 +163,8 @@ async def _extract_xml_upload(req: Request) -> List[Tuple]:
         xml_content = ''.join(x.decode('UTF-8') for x in data)
         files.append((xml_content, xml_type))
     return sorted(files, key=lambda x: object_types[x[1]])
+
+
+def _generate_accession_id() -> str:
+    sequence = ''.join(secrets.choice(string.digits) for i in range(16))
+    return f"EDAG{sequence}"

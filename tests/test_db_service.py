@@ -38,11 +38,9 @@ class DatabaseTestCase(unittest.TestCase):
         # copies to avoid side effects
         self.test_service.create("test", copy.deepcopy(data))
         # Read
-        cursor = self.test_service.read("test", "EGA123456")
-        results = [x for x in cursor]
-        del results[0]["_id"]
-        assert len(results) == 1
-        assert results[0] == data
+        results = self.test_service.read("test", "EGA123456")
+        del results["_id"]
+        assert results == data
 
     def test_crud_update_works(self):
         """Test that update operation works as expected."""
@@ -56,16 +54,15 @@ class DatabaseTestCase(unittest.TestCase):
         update_data = {"identifiers.submitterId.attributes.namespace": "ABC"}
         self.test_service.update("test", "EGA123456", update_data)
         # Read
-        cursor = self.test_service.read("test", "EGA123456")
-        results = [x for x in cursor]
-        del results[0]["_id"]
+        results = self.test_service.read("test", "EGA123456")
+        del results["_id"]
         goal_data = {"accessionId": "EGA123456",
                      'identifiers': {'primaryId': 'ERR000076',
                                      'submitterId': {
                                          'attributes': {'namespace': 'ABC'},
                                          'children': ['BGI-FC304RWAAXX']}}}
-        assert len(results) == 1
-        assert results[0] == goal_data
+        print(results)
+        assert results == goal_data
 
     def test_crud_replace_works(self):
         """Test that replace operation works as expected."""
@@ -81,11 +78,9 @@ class DatabaseTestCase(unittest.TestCase):
                                     'foo': 'bar'}}
         self.test_service.replace("test", "EGA123456", copy.deepcopy(new_data))
         # Read
-        cursor = self.test_service.read("test", "EGA123456")
-        results = [x for x in cursor]
-        del results[0]["_id"]
-        assert len(results) == 1
-        assert results[0] == new_data
+        results = self.test_service.read("test", "EGA123456")
+        del results["_id"]
+        assert results == new_data
 
     def test_crud_delete_works(self):
         """Test that replace operation works as expected."""
@@ -97,6 +92,5 @@ class DatabaseTestCase(unittest.TestCase):
         self.test_service.create("test", copy.deepcopy(data))
         self.test_service.delete("test", "EGA123456")
         # Read
-        cursor = self.test_service.read("test", "EGA123456")
-        results = [x for x in cursor]
-        assert len(results) == 0
+        results = self.test_service.read("test", "EGA123456")
+        assert results is None
