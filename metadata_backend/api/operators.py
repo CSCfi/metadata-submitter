@@ -9,6 +9,7 @@ from multidict import MultiDictProxy
 from pymongo import errors
 from pymongo.cursor import Cursor
 
+from ..conf.conf import query_map
 from ..database.db_service import DBService
 from ..helpers.logger import LOG
 
@@ -74,35 +75,6 @@ class BaseOperator(ABC):
         :raises: HTTPBadRequest if error happened when connection to database
         and HTTPNotFound error if file with given accession id is not found.
         """
-        query_map = {
-            "title": "title",
-            "description": "description",
-            "centerName": "attributes.centerName",
-            "name": "name",
-            "studyTitle": "descriptor.studyTitle",
-            "studyType": "descriptor.studyType.attributes.existingStudyType",
-            "studyAbstract": "descriptor.studyAbstract",
-            "studyAttributes": {"base": "studyAttributes.studyAttribute",
-                                "keys": ["tag", "value"]},
-            "sampleName": {"base": "sampleName",
-                           "keys": ["taxonId", "scientificName",
-                                    "commonName"]},
-            "scientificName": "submissionProject.organism.scientificName",
-            "fileType": "dataBlock.files.file.attributes.filetype",
-            "studyReference": {"base": "studyRef.attributes",
-                               "keys": ["accession", "refname", "refcenter"]},
-            "sampleReference": {"base": "sampleRef.attributes",
-                                "keys": ["accession", "label", "refname",
-                                         "refcenter"]},
-            "experimentReference": {"base": "experimentRef.attributes",
-                                    "keys": ["accession", "refname",
-                                             "refcenter"]},
-            "runReference": {"base": "runRef.attributes",
-                             "keys": ["accession", "refname", "refcenter"]},
-            "analysisReference": {"base": "analysisRef.attributes",
-                                  "keys": ["accession", "refname",
-                                           "refcenter"]},
-        }
         # Generate mongodb query from query parameters
         mongo_query: Dict = {}
         for query, value in que.items():
