@@ -18,7 +18,9 @@ found from deploy/mongodb.
 Object types (such as "submission", "study", "sample") are needed in
 different parts of the application.
 
-
+3) Mongodb query mappings
+Mappings are needed to turn incoming REST api queries into mongodb queries.
+Change these if database structure changes.
 """
 
 import os
@@ -43,3 +45,34 @@ object_types = {"submission": 1,
                 "dac": 8,
                 "policy": 9,
                 "dataset": 10}
+
+# 3) Define mapping between url query parameters and mongodb queries
+query_map = {
+    "title": "title",
+    "description": "description",
+    "centerName": "attributes.centerName",
+    "name": "name",
+    "studyTitle": "descriptor.studyTitle",
+    "studyType": "descriptor.studyType.attributes.existingStudyType",
+    "studyAbstract": "descriptor.studyAbstract",
+    "studyAttributes": {"base": "studyAttributes.studyAttribute",
+                        "keys": ["tag", "value"]},
+    "sampleName": {"base": "sampleName",
+                   "keys": ["taxonId", "scientificName",
+                            "commonName"]},
+    "scientificName": "submissionProject.organism.scientificName",
+    "fileType": "dataBlock.files.file.attributes.filetype",
+    "studyReference": {"base": "studyRef.attributes",
+                       "keys": ["accession", "refname", "refcenter"]},
+    "sampleReference": {"base": "sampleRef.attributes",
+                        "keys": ["accession", "label", "refname",
+                                 "refcenter"]},
+    "experimentReference": {"base": "experimentRef.attributes",
+                            "keys": ["accession", "refname",
+                                     "refcenter"]},
+    "runReference": {"base": "runRef.attributes",
+                     "keys": ["accession", "refname", "refcenter"]},
+    "analysisReference": {"base": "analysisRef.attributes",
+                          "keys": ["accession", "refname",
+                                   "refcenter"]},
+}
