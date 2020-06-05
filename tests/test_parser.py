@@ -30,7 +30,7 @@ class ParserTestCase(unittest.TestCase):
 
         Tests for some values that converted json should have.
         """
-        mocked_datetime.now.return_value = datetime.datetime(2020, 4, 14)
+        mocked_datetime.utcnow.return_value = datetime.datetime(2020, 4, 14)
         study_xml = self.load_xml_from_file("study", "SRP000539.xml")
         study_json = self.parser.parse("study", study_xml)
         self.assertEqual(datetime.datetime(2020, 6, 14, 0, 0),
@@ -105,19 +105,6 @@ class ParserTestCase(unittest.TestCase):
         study_xml = self.load_xml_from_file("study", "SRP000539_invalid.xml")
         with self.assertRaises(web.HTTPBadRequest):
             self.parser._validate(study_xml, schema)
-
-    def test_submission_xml_actions_are_sorted(self):
-        """Check xmls are sorted to correct order."""
-        original_list = [{"schema": "dac", "content": "foo"},
-                         {"schema": "analysis", "content": "bar"},
-                         {"schema": "study", "content": "foo"},
-                         {"schema": "sample", "content": "bar"}]
-        goal_list = [{"schema": "study", "content": "foo"},
-                     {"schema": "sample", "content": "bar"},
-                     {"schema": "analysis", "content": "bar"},
-                     {"schema": "dac", "content": "foo"}]
-        sorted_list = self.parser._sort_actions_by_schemas(original_list)
-        self.assertEqual(goal_list, sorted_list)
 
     def test_empty_lists_are_removed_from_json(self):
         """Check empty lists are removed and non-empty are retained."""
