@@ -11,10 +11,10 @@ from bson import json_util
 from metadata_backend.server import init
 
 
-class SiteHandlerTestCase(AioHTTPTestCase):
+class HandlersTestCase(AioHTTPTestCase):
     """Api endpoint class test cases."""
 
-    TESTFILES_ROOT = Path(__file__).parent.parent / 'test_files'
+    TESTFILES_ROOT = Path(__file__).parent / 'test_files'
 
     async def get_application(self):
         """Retrieve web Application for test."""
@@ -48,22 +48,35 @@ class SiteHandlerTestCase(AioHTTPTestCase):
             }])
         path_to_xml_file = self.TESTFILES_ROOT / "study" / "SRP000539.xml"
         self.metadata_xml = path_to_xml_file.read_text()
+        self.accession_id = "EGA123456"
+        self.patch_accession = patch(
+            "metadata_backend.api.handlers._generate_accession_id",
+            return_value=self.accession_id,
+            autospec=True)
 
-        class_parser = "metadata_backend.api.views.SubmissionXMLToJSONParser"
-        class_translator = "metadata_backend.api.views.ActionToCRUDTranslator"
-        translator_config = {'add.return_value': self.test_ega_string,
-                             'get_object_with_accessionId.side_effect':
-                             self.fake_translator_get_object_with_accessionId}
+        class_parser = "metadata_backend.api.handlers.XMLToJSONParser"
+        class_operator = "metadata_backend.api.handlers.Operator"
+        class_xmloperator = "metadata_backend.api.handlers.XMLOperator"
+        operator_config = {'read_metadata_object.side_effect':
+                           self.fake_operator_read_metadata_object}
+        xmloperator_config = {'read_metadata_object.side_effect':
+                              self.fake_xmloperator_read_metadata_object}
         self.patch_parser = patch(class_parser, spec=True)
-        self.patch_translator = patch(class_translator, **translator_config,
-                                      spec=True)
+        self.patch_operator = patch(class_operator, **operator_config,
+                                    spec=True)
+        self.patch_xmloperator = patch(class_xmloperator, **xmloperator_config,
+                                       spec=True)
         self.MockedParser = self.patch_parser.start()
-        self.MockedTranslator = self.patch_translator.start()
+        self.MockedOperator = self.patch_operator.start()
+        self.MockedXMLOperator = self.patch_xmloperator.start()
+        self.patch_accession.start()
 
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
         self.patch_parser.stop()
-        self.patch_translator.stop()
+        self.patch_operator.stop()
+        self.patch_xmloperator.stop()
+        self.patch_accession.stop()
 
     def create_submission_data(self, files):
         """Create request data from pairs of schemas and filenames."""
@@ -76,11 +89,13 @@ class SiteHandlerTestCase(AioHTTPTestCase):
                            content_type='text/xml')
         return data
 
-    def fake_translator_get_object_with_accessionId(self, schema,
-                                                    accessionId,
-                                                    return_xml):
-        """Fakes translator modules get_object method for testing."""
-        return self.metadata_xml if return_xml else self.metadata_json
+    def fake_operator_read_metadata_object(self, type, accession_id):
+        """Fake read operation to return mocked json."""
+        return self.metadata_json, "application/json"
+
+    def fake_xmloperator_read_metadata_object(self, type, accession_id):
+        """Fake read operation to return mocked xml."""
+        return self.metadata_xml, "text/xml"
 
     @unittest_run_loop
     async def test_submission_is_processed_and_receipt_has_correct_info(self):

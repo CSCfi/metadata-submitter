@@ -12,7 +12,8 @@ class DBService:
     """Create service used for database communication.
 
     With this class, it is possible to create separate databases for different
-    purposes (e.g. submissions and backups).
+    purposes (e.g. submissions and backups). Normal CRUD and some basic query
+    operations are implemented.
 
     All services should use the same client, since pymongo handles pooling
     automatically.
@@ -27,46 +28,36 @@ class DBService:
         """
         self.database = db_client[database_name]
 
-
-class CRUDService:
-    """Static methods to handle CRUD operations."""
-
-    @staticmethod
-    def create(db_service: DBService, collection: str, document: Dict) -> None:
+    def create(self, collection: str, document: Dict) -> None:
         """Insert document to collection in database.
 
-        :param db_service: Service that connects to database
         :param collection: Collection where document should be inserted
         :param document: Document to be inserted
         :raises: Error when write fails for any Mongodb related reason
         """
         try:
-            db_service.database[collection].insert_one(document)
+            self.database[collection].insert_one(document)
         except (ConnectionFailure, OperationFailure, PyMongoError):
             raise
 
-    @staticmethod
-    def read(db_service: DBService, collection: str,
-             query: Dict) -> Cursor:
-        """Query from collection in database.
+    def read(self, collection: str, accession_id: str) -> Cursor:
+        """Find object by its accessionId.
 
-        :param db_service: Service that connects to MongoDB database
         :param collection: Collection where document should be searched from
-        :param query: Query for document(s) that should be found
+        :param accession_id: Accession id of the document to be searched
         :returns: Pymongo's Cursor object (iterator)
         :raises: Error when read fails for any Mongodb related reason
         """
         try:
-            return db_service.database[collection].find(query)
+            find_by_id_query = {"accessionId": accession_id}
+            return self.database[collection].find_one(find_by_id_query)
         except (ConnectionFailure, OperationFailure, PyMongoError):
             raise
 
-    @staticmethod
-    def update(db_service: DBService, collection: str,
-               accession_id: str, data_to_be_updated: Dict) -> None:
+    def update(self, collection: str, accession_id: str,
+               data_to_be_updated: Dict) -> None:
         """Update some elements of object by its accessionId.
 
-        :param db_service: Service that connects to MongoDB database
         :param collection: Collection where document should be searched from
         :param accession_id: Accession id for object to be updated
         :param data_to_be_updated: JSON representing the data that should be
@@ -76,17 +67,15 @@ class CRUDService:
         try:
             find_by_id_query = {"accessionId": accession_id}
             update_operation = {"$set": data_to_be_updated}
-            db_service.database[collection].update_one(find_by_id_query,
-                                                       update_operation)
+            self.database[collection].update_one(find_by_id_query,
+                                                 update_operation)
         except (ConnectionFailure, OperationFailure, PyMongoError):
             raise
 
-    @staticmethod
-    def replace(db_service: DBService, collection: str,
-                accession_id: str, data_to_be_updated: Dict) -> None:
+    def replace(self, collection: str, accession_id: str,
+                data_to_be_updated: Dict) -> None:
         """Replace whole object by its accessionId.
 
-        :param db_service: Service that connects to MongoDB database
         :param collection: Collection where document should be searched from
         :param accession_id: Accession id for object to be updated
         :param data_to_be_updated: JSON representing the data that replaces
@@ -95,23 +84,20 @@ class CRUDService:
         """
         try:
             find_by_id_query = {"accessionId": accession_id}
-            db_service.database[collection].replace_one(find_by_id_query,
-                                                        data_to_be_updated)
+            self.database[collection].replace_one(find_by_id_query,
+                                                  data_to_be_updated)
         except (ConnectionFailure, OperationFailure, PyMongoError):
             raise
 
-    @staticmethod
-    def delete(db_service: DBService, collection: str,
-               accession_id: str) -> None:
+    def delete(self, collection: str, accession_id: str) -> None:
         """Delete object by its accessionId.
 
-        :param db_service: Service that connects to MongoDB database
         :param collection: Collection where document should be searched from
         :param accession_id: Accession id for object to be updated
         :raises: Error when read fails for any Mongodb related reason
         """
         try:
             find_by_id_query = {"accessionId": accession_id}
-            db_service.database[collection].delete_one(find_by_id_query)
+            self.database[collection].delete_one(find_by_id_query)
         except (ConnectionFailure, OperationFailure, PyMongoError):
             raise
