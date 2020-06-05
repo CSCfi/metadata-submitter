@@ -28,11 +28,10 @@ class RESTApiHandler:
         return web.Response(body=types_json, status=200)
 
     async def get_object(self, req: Request) -> Response:
-        """Get metadata object(s) according to request parameters.
+        """Get one metadata object by its accession id.
 
-        If accession_id is specified, database is searched for that id.
-        Otherwise given query parameters are used. If no parameters or id is
-        specified, everything from that collection is returned.
+        Returns original xml object from backup if format query parameter is
+        set, otherwise json.
 
         :param req: GET request
         :returns: JSON or XML response containing metadata object
