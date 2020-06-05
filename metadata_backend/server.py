@@ -5,7 +5,7 @@ import asyncio
 import uvloop
 from aiohttp import web
 
-from .api.views import SiteHandler
+from .api.handlers import RESTApiHandler, SubmissionAPIHandler
 from .helpers.logger import LOG
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -18,17 +18,20 @@ async def init() -> web.Application:
     POST and GET for same path grouped together). Handler method names should
     be used for route names, so they're easy to use in other parts of the
     application.
-
+    Note:: if using variable resources (such as {schema}), add
+    specific ones on top of more generic ones.
     """
     server = web.Application()
-    handler = SiteHandler()
-    routes = [web.get('/objects', handler.get_object_types),
-              web.get('/object/{schema}/{accessionId}', handler.get_object,
-                      name='get_object'),
-              web.post('/object/{schema}', handler.submit_object),
-              web.get('/{schema}/{accessionId}',
-                      handler.get_object_from_alias_address),
-              web.post('/submit', handler.submit)]
+    rest_handler = RESTApiHandler()
+    submission_handler = SubmissionAPIHandler()
+    routes = [
+        web.get('/objects', rest_handler.get_objects),
+        web.get('/object/{schema}/{accessionId}', rest_handler.get_object),
+        web.post('/object/{schema}', rest_handler.post_object),
+        web.post('/submit', submission_handler.submit),
+        web.post('/validate', submission_handler.validate),
+        web.get('/{schema}/{accessionId}', rest_handler.get_object),
+        web.post('/{schema}', rest_handler.post_object)]
     server.router.add_routes(routes)
     LOG.info("Server configurations and routes loaded")
     return server
