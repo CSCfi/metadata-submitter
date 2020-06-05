@@ -69,8 +69,8 @@ class RESTApiHandler:
             content_json = parser.parse(type, content_xml)
         else:
             content_json = await req.json()
-        operator = Operator()
         content_json["accessionId"] = accession_id
+        operator = Operator()
         operator.create_metadata_object(type, content_json)
         body = json.dumps({"accessionId": accession_id})
         return web.Response(body=body, status=201,

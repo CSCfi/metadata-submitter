@@ -2,38 +2,34 @@
 
 import re
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict
 from xml.etree.ElementTree import ParseError
 
 from aiohttp import web
 from dateutil.relativedelta import relativedelta
 from xmlschema import AbderaConverter, XMLSchema, XMLSchemaException
 
-from ..conf.conf import object_types
 from .schema_loader import SchemaLoader, SchemaNotFoundException
 
 
 class XMLToJSONParser:
     """Methods to parse necessary data from different xml types."""
 
-    def parse(self, xml_type: str, content: str) -> Dict:
+    def parse(self, type: str, content: str) -> Dict:
         """Parse necessary data from XML to make it queryable later.
 
-        All submitted objects are first parsed on generic level, then formatted
-        formatted and finally passed to schema-specific parser.
-
-        :param xml_type: Submission type (schema) to be used
+        :param type: Submission type (schema) to be used
         :param content: XML content to be parsed
         :returns: XML parsed to JSON
         """
         # Validate
-        schema = self._load_schema(xml_type)
+        schema = self._load_schema(type)
         self._validate(content, schema)
 
         # Parse json from XML
         content_json_raw = schema.to_dict(content, converter=AbderaConverter,
                                           decimal_type=float,
-                                          dict_class=dict)[xml_type.upper()]
+                                          dict_class=dict)[type.upper()]
 
         # Elevate content from ['children'][0] to top level
         to_be_elevated = content_json_raw['children'][0]
@@ -41,12 +37,14 @@ class XMLToJSONParser:
         content_json_elevated = {**content_json_raw, **to_be_elevated}
 
         # Format content to json-style formatting
-        content_json_formatted = self._to_lowercase(content_json_elevated)
+        content_json = self._to_lowercase(content_json_elevated)
 
-        # Run through schema-specific parser and return the result
-        return getattr(self, f"_parse_{xml_type}")(content_json_formatted)
+        if type == "study":
+            content_json = self._modify_publish_dates(content_json)
+        return content_json
 
-    def _load_schema(self, xml_type: str) -> XMLSchema:
+    @staticmethod
+    def _load_schema(xml_type: str) -> XMLSchema:
         """Load schema for validation and xml-to-json decoding.
 
         :param xml_type: Schema to be loaded
@@ -76,159 +74,19 @@ class XMLToJSONParser:
             reason = f"Validation error happened. Details: {error}"
             raise web.HTTPBadRequest(reason=reason)
 
-    def _parse_study(self, data: Dict) -> Dict:
-        """Parse data from study-type XML.
-
-        Adds study publicity status information to study object. By default
-        this is two months from submission date (based on ENA submission
-        model). Dates are written to database in UTC (see pymongo docs:
-        https://api.mongodb.com/python/current/examples/datetimes.html)
-
-        Should be later modified to give user possibility to set publicity
-        status in submission from front-end / via POST.
-
-        :param data: XML content as JSON
-        :returns: Parsed data as JSON
-        """
-        data["publishDate"] = datetime.now() + relativedelta(months=2)
-        return data
-
-    def _parse_sample(self, data: Dict) -> Dict:
-        """Parse data from sample-type XML.
-
-        Currently doesn't add anything extra.
-
-        :param data: XML content as JSON
-        :returns: Parsed data as JSON
-        """
-        return data
-
-    def _parse_experiment(self, data: Dict) -> Dict:
-        """Parse data from experiment-type XML.
-
-        Currently doesn't add anything extra.
-
-        :returns: Parsed data as JSON
-        """
-        return data
-
-    def _parse_run(self, data: Dict) -> Dict:
-        """Parse data from run-type XML.
-
-        Currently doesn't add anything extra.
-
-        :param data: XML content as JSON
-        :returns: Parsed data as JSON
-        """
-        return data
-
-    def _parse_analysis(self, data: Dict) -> Dict:
-        """Parse data from sample-type XML.
-
-        Currently doesn't add anything extra.
-
-        :param data: XML content as JSON
-        :returns: Parsed data as JSON
-        """
-        return data
-
-    def _parse_dac(self, data: Dict) -> Dict:
-        """Parse data from dac-type XML.
-
-        Currently doesn't add anything extra.
-
-        :param data: XML content as JSON
-        :returns: Parsed data as JSON
-        """
-        return data
-
-    def _parse_policy(self, data: Dict) -> Dict:
-        """Parse data from sample-type XML.
-
-        Currently doesn't add anything extra.
-
-        :param data: XML content as JSON
-        :returns: Parsed data as JSON
-        """
-        return data
-
-    def _parse_dataset(self, data: Dict) -> Dict:
-        """Parse data from dataset-type XML.
-
-        Currently doesn't add anything extra.
-
-        :param data: XML content as JSON
-        :returns: Parsed data as JSON
-        """
-        return data
-
-    def _parse_project(self, data: Dict) -> Dict:
-        """Parse data from project-type XML.
-
-        Currently doesn't add anything extra.
-
-        :param data: XML content as JSON
-        :returns: Parsed data as JSON
-        """
-        return data
-
-    def _parse_submission(self, data: Dict) -> Dict:
-        """Parse data from submission-type XML.
-
-        Especially for every submitted XML, we create a dict with info about
-        schema, action and other attributes. This allows XMLs to be sorted
-        according to their
-
-        :param data: XML content as JSON
-        :raises HTTPError if there ins't enough data in submission.xml to
-        process files later
-        :returns: Parsed data as JSON
-        """
-        parsed = {}
-        for key, value in data.items():
-            if key[0] == "@":
-                parsed[key[1:].lower()] = value.lower()
-            if key == "ACTIONS":
-                action_infos = []
-                for action_set in value["ACTION"]:
-                    for action, data in action_set.items():
-                        if data:
-                            action_info = {}
-                            for attribute, content in data.items():
-                                if attribute[0] == "@":
-                                    attribute = attribute[1:]
-                                action_info[attribute] = content
-                            action_info["action"] = action.lower()
-                            action_infos.append(action_info)
-                        else:
-                            reason = (f"You also need to provide necessary"
-                                      f" information for submission action."
-                                      f" Now {action} was provided without any"
-                                      f" extra information.")
-                            raise web.HTTPBadRequest(reason=reason)
-                        action_infos.append(action_info)
-                sorted_infos = self._sort_actions_by_schemas(action_infos)
-                parsed["action_infos"] = sorted_infos
-        return parsed
-
     @staticmethod
-    def _sort_actions_by_schemas(data: List) -> List:
-        """Sort schemas according to their priority.
+    def _modify_publish_dates(data: Dict) -> Dict:
+        """Add study publicity status information to study object.
 
-        Schemas need to be processed in certain order (for example 'study'
-        submission needs to processed first in order to generate accession
-        number for other submissions.
+        By default this is two months from submission date (based on ENA
+        submission model). Dates are written to database in UTC (see pymongo
+        docs: https://api.mongodb.com/python/current/examples/datetimes.html)
 
-        Sorting order is based on ENA Metadata Model:
-        https://ena-docs.readthedocs.io/en/latest/submit/general-guide/metadata.html
-
-        This should probably be refactored later, since submissions can be also
-        made via front-end (i.e. without submission.xml).
-
-        :param data: Data to be sorted
-        :returns: Sorted list
+        :param data: Study data as JSON
+        :returns: Data extended with public date
         """
-        return sorted(data, key=lambda x: object_types[x["schema"]])
+        data["publishDate"] = datetime.utcnow() + relativedelta(months=2)
+        return data
 
     def _to_lowercase(self, obj: Dict) -> Dict:
         """Make dictionary lowercase and convert keys to CamelCase.
