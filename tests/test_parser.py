@@ -16,28 +16,13 @@ class ParserTestCase(unittest.TestCase):
     TESTFILES_ROOT = Path(__file__).parent / 'test_files'
 
     def setUp(self):
-        """Configure default values and test variables for tests."""
-        self.accession_id = "EGA123456"
+        """Configure variables for tests."""
         self.parser = XMLToJSONParser()
-        self.patch_accession = patch.object(self.parser,
-                                            "_generate_accession_id",
-                                            return_value=self.accession_id,
-                                            autospec=True)
-        self.patch_accession.start()
-
-    def tearDown(self):
-        """Cleanup patches."""
-        self.patch_accession.stop()
 
     def load_xml_from_file(self, submission, filename):
         """Load xml as string from given file."""
         path_to_xml_file = self.TESTFILES_ROOT / submission / filename
         return path_to_xml_file.read_text()
-
-    def test_accessionId_is_generated(self):
-        """Test for accessionId."""
-        accession = self.parser._generate_accession_id()
-        assert accession == self.accession_id
 
     @patch('metadata_backend.helpers.parser.datetime')
     def test_study_is_parsed(self, mocked_datetime):
@@ -48,7 +33,6 @@ class ParserTestCase(unittest.TestCase):
         mocked_datetime.now.return_value = datetime.datetime(2020, 4, 14)
         study_xml = self.load_xml_from_file("study", "SRP000539.xml")
         study_json = self.parser.parse("study", study_xml)
-        self.assertEqual(self.accession_id, study_json['accessionId'])
         self.assertEqual(datetime.datetime(2020, 6, 14, 0, 0),
                          study_json['publishDate'])
         self.assertIn("Highly integrated epigenome maps in Arabidopsis",
@@ -63,7 +47,6 @@ class ParserTestCase(unittest.TestCase):
         """
         sample_xml = self.load_xml_from_file("sample", "SRS001433.xml")
         sample_json = self.parser.parse("sample", sample_xml)
-        self.assertEqual(self.accession_id, sample_json['accessionId'])
         self.assertIn("Human HapMap individual NA18758",
                       sample_json['description'])
         self.assertIn("Homo sapiens",
@@ -76,7 +59,6 @@ class ParserTestCase(unittest.TestCase):
         """
         experiment_xml = self.load_xml_from_file("experiment", "ERX000119.xml")
         experiment_json = self.parser.parse("experiment", experiment_xml)
-        self.assertEqual(self.accession_id, experiment_json['accessionId'])
         self.assertIn("SOLiD sequencing of Human HapMap individual NA18504",
                       experiment_json['design']['designDescription'])
 
@@ -87,7 +69,6 @@ class ParserTestCase(unittest.TestCase):
         """
         run_xml = self.load_xml_from_file("run", "ERR000076.xml")
         run_json = self.parser.parse("run", run_xml)
-        self.assertEqual(self.accession_id, run_json['accessionId'])
         self.assertIn("ERA000/ERA000014/srf/BGI-FC304RWAAXX_5.srf",
                       run_json['dataBlock']['files']['file']['attributes'][
                           'filename'])
@@ -101,7 +82,6 @@ class ParserTestCase(unittest.TestCase):
         """
         analysis_xml = self.load_xml_from_file("analysis", "ERZ266973.xml")
         analysis_json = self.parser.parse("analysis", analysis_xml)
-        self.assertEqual(self.accession_id, analysis_json['accessionId'])
         self.assertIn("GCA_000001405.1", analysis_json['analysisType'][
             'processedReads']['assembly']['standard']['attributes'][
             'accession'])

@@ -1,8 +1,6 @@
 """Tool to parse XML files to JSON."""
 
 import re
-import secrets
-import string
 from datetime import datetime
 from typing import Dict, List
 from xml.etree.ElementTree import ParseError
@@ -45,9 +43,6 @@ class XMLToJSONParser:
         # Format content to json-style formatting
         content_json_formatted = self._to_lowercase(content_json_elevated)
 
-        # Add accessionId
-        content_json_formatted["accessionId"] = self._generate_accession_id()
-
         # Run through schema-specific parser and return the result
         return getattr(self, f"_parse_{xml_type}")(content_json_formatted)
 
@@ -80,15 +75,6 @@ class XMLToJSONParser:
         except (ParseError, XMLSchemaException) as error:
             reason = f"Validation error happened. Details: {error}"
             raise web.HTTPBadRequest(reason=reason)
-
-    @staticmethod
-    def _generate_accession_id() -> str:
-        """Generate accession number.
-
-        :returns: generated accession number
-        """
-        sequence = ''.join(secrets.choice(string.digits) for i in range(16))
-        return f"EDAG{sequence}"
 
     def _parse_study(self, data: Dict) -> Dict:
         """Parse data from study-type XML.

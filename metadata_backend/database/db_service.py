@@ -50,7 +50,7 @@ class DBService:
         """
         try:
             find_by_id_query = {"accessionId": accession_id}
-            return self.database[collection].find(find_by_id_query)
+            return self.database[collection].find_one(find_by_id_query)
         except (ConnectionFailure, OperationFailure, PyMongoError):
             raise
 
