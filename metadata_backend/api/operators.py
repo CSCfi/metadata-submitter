@@ -1,12 +1,15 @@
 """Operators for handling database-related operations."""
+import re
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Tuple, Union
 
 from aiohttp import web
 from bson import json_util
+from multidict import MultiDictProxy
 from pymongo import errors
 from pymongo.cursor import Cursor
 
+from ..conf.conf import query_map
 from ..database.db_service import DBService
 from ..helpers.logger import LOG
 
@@ -57,6 +60,39 @@ class BaseOperator(ABC):
             raise web.HTTPBadRequest(reason=reason)
         LOG.info(f"Inserting file to database succeeded: {type}, "
                  f"{self.content_type}")
+
+    def query_metadata_database(self, type: str, que: MultiDictProxy) -> Dict:
+        """Create database query based on url query parameters.
+
+        Url queries are mapped to mongodb queries based on query_map in
+        apps config.
+
+        :param type: Type of the object to read.
+        :param que: Dict containing query information
+        :raises: HTTPBadRequest if error happened when connection to database
+        and HTTPNotFound error if file with given accession id is not found.
+        """
+        # Generate mongodb query from query parameters
+        mongo_query: Dict = {}
+        for query, value in que.items():
+            if query in query_map:
+                regx = re.compile(f".*{value}.*", re.IGNORECASE)
+                if isinstance(query_map[query], dict):
+                    # Make or-query for keys in dictionary
+                    base = query_map[query]["base"]  # type: ignore
+                    if "$or" not in mongo_query:
+                        mongo_query["$or"] = []
+                    ors = [{f"{base}.{key}": regx} for key
+                           in query_map[query]["keys"]]  # type: ignore
+                    mongo_query["$or"].extend(ors)
+                else:
+                    # Query with regex from just one field
+                    mongo_query = {query_map[query]: regx}
+        cursor = self.db_service.query(type, mongo_query)
+        result = json_util.dumps(cursor)
+        if result == "[]":
+            raise web.HTTPNotFound
+        return result
 
     @abstractmethod
     def _format_read_data(self, data_raw: Any) -> Any:

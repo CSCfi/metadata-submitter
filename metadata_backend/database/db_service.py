@@ -101,3 +101,15 @@ class DBService:
             self.database[collection].delete_one(find_by_id_query)
         except (ConnectionFailure, OperationFailure, PyMongoError):
             raise
+
+    def query(self, collection: str, query: Dict) -> Cursor:
+        """Query database with given query.
+
+        :param collection: Collection where document should be searched from
+        :param query: query to be used
+        :raises: Error when read fails for any Mongodb related reason
+        """
+        try:
+            return self.database[collection].find(query)
+        except (ConnectionFailure, OperationFailure, PyMongoError):
+            raise
