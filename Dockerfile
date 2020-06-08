@@ -17,7 +17,7 @@ FROM python:3.7-alpine3.9
 
 RUN apk add --no-cache --update bash
 
-LABEL maintainer "otahontas"
+LABEL maintainer="otahontas"
 LABEL org.label-schema.schema-version="1.0"
 LABEL org.label-schema.vcs-url="https://github.com/CSCfi/metadata_submitter"
 

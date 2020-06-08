@@ -8,17 +8,14 @@
             <SUBMITTER_ID namespace="EBI">Thu_Oct_08_14_06_52_BST_2015_EBI</SUBMITTER_ID>
         </IDENTIFIERS>
         <ACTIONS>
-            <FRACTION>
+            <ACTION>
                 <ADD schema="study" source="study_template.xml"/>
-            </FRACTION>
-            <ACTION>
-                <ADD schema="simple" source="sample_template.xml"/>
             </ACTION>
             <ACTION>
-                <DENY schema="analysis" source="processed_reads_analysis_template.xml"/>
+                <ADD schema="sample" source="sample_template.xml"/>
             </ACTION>
             <ACTION>
-                <THRESHOLD/>
+                <ADD schema="analysis" source="processed_reads_analysis_template.xml"/>
             </ACTION>
         </ACTIONS>
     </SUBMISSION>

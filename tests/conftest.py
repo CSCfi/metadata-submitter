@@ -1,3 +1,6 @@
+"""Testing configurations."""
+
+
 def pytest_itemcollected(item):
     """Configure tests to print the docstrings (and class+function names if \
     no docstrings)."""

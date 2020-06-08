@@ -4,8 +4,10 @@ services:
     image: "mongo"
     container_name: "metadata_db_database"
     restart: on-failure
-    env_file: 
-      - ../../.env
+    environment:
+      - "MONGO_INITDB_ROOT_USERNAME=admin"
+      - "MONGO_INITDB_ROOT_PASSWORD=admin"
+      - "MONGODB_HOST=localhost:27017"
     volumes:
       - data:/data/db
     ports:
