@@ -54,6 +54,8 @@ class HandlersTestCase(AioHTTPTestCase):
             return_value=self.accession_id,
             autospec=True)
 
+        # Classes below no longer in /metadata_backend/api/handlers.py
+        # Should these be changed to metadata_backend.api.operators... instead?
         class_parser = "metadata_backend.api.handlers.XMLToJSONParser"
         class_operator = "metadata_backend.api.handlers.Operator"
         class_xmloperator = "metadata_backend.api.handlers.XMLOperator"
@@ -193,3 +195,22 @@ class HandlersTestCase(AioHTTPTestCase):
         args = self.MockedOperator().query_metadata_database.call_args[0]
         assert "study" in args[0]
         assert "studyType': 'foo', 'name': 'bar'" in str(args[1])
+
+    @unittest_run_loop
+    async def test_validation_passes_for_valid_xml(self):
+        """Test that a valid xml validates against the correct schema."""
+        files = [("study", "SRP000539.xml")]
+        data = self.create_submission_data(files)
+        response = await self.client.post("/validate", data=data)
+        self.assertEqual(response.status, 200)
+        self.assertIn("The file is valid!", await response.text())
+
+    @unittest_run_loop
+    async def test_validation_fails_for_invalid_xml(self):
+        """Test that an invalid xml does not validate against its schema."""
+        # FIX: The below should return with a raised error
+        files = [("study", "SRP000539_invalid.xml")]
+        data = self.create_submission_data(files)
+        response = await self.client.post("/validate", data=data)
+        self.assertEqual(response.status, 400)
+        self.assertIn("Error", await response.text())
