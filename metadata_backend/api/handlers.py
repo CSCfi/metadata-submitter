@@ -151,8 +151,25 @@ class SubmissionAPIHandler:
         return web.Response(body=receipt, status=201, content_type="text/xml")
 
     async def validate(self, req: Request) -> Response:
-        """Validate xml file sent to endpoint."""
-        return web.Response(text="Validated!")
+        """Validate xml file sent to endpoint.
+
+        :param req: Multipart POST request with submission.xml and files
+        :raises: HTTP Exception with status code 400
+        :returns: Text indicating success
+        """
+        files = await _extract_xml_upload(req)
+
+        # FIX: No errors get raised and method always returns valid
+        for file in files:
+            # Loading schema
+            xml_type = file[1]
+            schema = XMLToJSONParser._load_schema(xml_type)
+
+            # Validating requested XML file against the schema
+            xml_content = file[0]
+            XMLToJSONParser._validate(xml_content, schema)
+
+        return web.Response(text="The file is valid!")
 
     @staticmethod
     def generate_receipt(actions: Dict) -> str:
