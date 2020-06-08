@@ -61,7 +61,6 @@ class DatabaseTestCase(unittest.TestCase):
                                      'submitterId': {
                                          'attributes': {'namespace': 'ABC'},
                                          'children': ['BGI-FC304RWAAXX']}}}
-        print(results)
         assert results == goal_data
 
     def test_crud_replace_works(self):

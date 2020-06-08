@@ -64,11 +64,8 @@ class BaseOperator(ABC):
     def query_metadata_database(self, type: str, que: MultiDictProxy) -> Dict:
         """Create database query based on url query parameters.
 
-        Querys are mapped below to match database structure and then query
-        is sent to mongodb. Resulting query is returned.
-
-        Keys in map are url query parameters, values are corresponding
-        database query parameters.
+        Url queries are mapped to mongodb queries based on query_map in
+        apps config.
 
         :param type: Type of the object to read.
         :param que: Dict containing query information

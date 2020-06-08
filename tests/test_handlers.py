@@ -58,7 +58,9 @@ class HandlersTestCase(AioHTTPTestCase):
         class_operator = "metadata_backend.api.handlers.Operator"
         class_xmloperator = "metadata_backend.api.handlers.XMLOperator"
         operator_config = {'read_metadata_object.side_effect':
-                           self.fake_operator_read_metadata_object}
+                           self.fake_operator_read_metadata_object,
+                           "query_metadata_database.side_effect":
+                           self.fake_operator_query_metadata_object}
         xmloperator_config = {'read_metadata_object.side_effect':
                               self.fake_xmloperator_read_metadata_object}
         self.patch_parser = patch(class_parser, spec=True)
@@ -92,6 +94,10 @@ class HandlersTestCase(AioHTTPTestCase):
     def fake_operator_read_metadata_object(self, type, accession_id):
         """Fake read operation to return mocked json."""
         return self.metadata_json, "application/json"
+
+    def fake_operator_query_metadata_object(self, type, query):
+        """Fake query operation to return mocked json."""
+        return self.metadata_json
 
     def fake_xmloperator_read_metadata_object(self, type, accession_id):
         """Fake read operation to return mocked xml."""
@@ -173,3 +179,17 @@ class HandlersTestCase(AioHTTPTestCase):
         assert response.status == 200
         assert response.content_type == "text/xml"
         self.assertEqual(self.metadata_xml, await response.text())
+
+    @unittest_run_loop
+    async def test_query_is_called(self):
+        """Test query method calls operator and returns status correctly."""
+        url = "/object/study?studyType=foo&name=bar"
+
+        response = await self.client.get(url)
+        assert response.status == 200
+        assert response.content_type == "application/json"
+
+        self.MockedOperator().query_metadata_database.assert_called_once()
+        args = self.MockedOperator().query_metadata_database.call_args[0]
+        assert "study" in args[0]
+        assert "studyType': 'foo', 'name': 'bar'" in str(args[1])
