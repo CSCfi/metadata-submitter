@@ -11,6 +11,12 @@ stages:
 jobs:
   include:
     - stage: tests
+      name: "Type hints check"
+      python: 3.6
+      before_script:
+        - pip install tox-travis
+      script: tox -e mypy
+    - stage: tests
       name: "Code style check"
       python: 3.6
       before_script:

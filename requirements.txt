@@ -1,6 +1,5 @@
 aiohttp
-gunicorn
 pymongo
-python-dotenv
+python-dateutil
 uvloop
 xmlschema
