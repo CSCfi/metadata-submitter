@@ -5,12 +5,15 @@ import string
 from collections import Counter
 from datetime import datetime
 from typing import Dict, List, Tuple, cast
+from xml.etree.ElementTree import ParseError
 
 from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
+from xmlschema import XMLSchemaException
 
 from ..conf.conf import object_types
 from ..helpers.parser import XMLToJSONParser
+from ..helpers.schema_loader import SchemaLoader, SchemaNotFoundException
 from .operators import Operator, XMLOperator
 
 
@@ -146,7 +149,7 @@ class SubmissionAPIHandler:
                 operator.create_metadata_object(type, content_json)
             else:
                 reason = f"action {action} is not supported yet"
-                return web.HTTPBadRequest(reason=reason)
+                raise web.HTTPBadRequest(reason=reason)
         receipt = self.generate_receipt(actions)
         return web.Response(body=receipt, status=201, content_type="text/xml")
 
@@ -159,16 +162,23 @@ class SubmissionAPIHandler:
         """
         files = await _extract_xml_upload(req)
 
-        # FIX: No errors get raised and method always returns valid
         for file in files:
             # Loading schema
             xml_type = file[1]
-            schema = XMLToJSONParser._load_schema(xml_type)
+            loader = SchemaLoader()
+            try:
+                schema = loader.get_schema(xml_type)
+            except (SchemaNotFoundException, XMLSchemaException) as error:
+                reason = f"{error} {xml_type}"
+                raise web.HTTPBadRequest(reason=reason)
 
             # Validating requested XML file against the schema
             xml_content = file[0]
-            XMLToJSONParser._validate(xml_content, schema)
-
+            try:
+                schema.validate(xml_content)
+            except (ParseError, XMLSchemaException) as error:
+                reason = f"Validation error happened. Details: {error}"
+                raise web.HTTPBadRequest(reason=reason)
         return web.Response(text="The file is valid!")
 
     @staticmethod
