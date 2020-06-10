@@ -201,7 +201,7 @@ class HandlersTestCase(AioHTTPTestCase):
         data = self.create_submission_data(files)
         response = await self.client.post("/validate", data=data)
         self.assertEqual(response.status, 200)
-        self.assertIn("XML file is valid", await response.text())
+        self.assertIn('{"isValid": true}', await response.text())
 
     @unittest_run_loop
     async def test_validation_fails_for_invalid_xml_syntax(self):
@@ -209,7 +209,7 @@ class HandlersTestCase(AioHTTPTestCase):
         files = [("study", "SRP000539_invalid.xml")]
         data = self.create_submission_data(files)
         response = await self.client.post("/validate", data=data)
-        self.assertEqual(response.status, 400)
+        self.assertEqual(response.status, 200)
         self.assertIn("Faulty XML file was given", await response.text())
 
     @unittest_run_loop
@@ -218,5 +218,5 @@ class HandlersTestCase(AioHTTPTestCase):
         files = [("study", "SRP000539_invalid2.xml")]
         data = self.create_submission_data(files)
         response = await self.client.post("/validate", data=data)
-        self.assertEqual(response.status, 400)
+        self.assertEqual(response.status, 200)
         self.assertIn("XML file is not valid", await response.text())
