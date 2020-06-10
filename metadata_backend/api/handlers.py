@@ -170,12 +170,15 @@ class SubmissionAPIHandler:
                 schema = SchemaLoader().get_schema(xml_type)
                 # Validating requested XML file against the schema
                 schema.validate(xml_content)
+            # Error with loading schema
             except SchemaNotFoundException as error:
                 reason = f"{error} ({xml_type})"
                 raise web.HTTPBadRequest(reason=reason)
+            # Error with validating XML syntax
             except ParseError as error:
                 reason = f"Faulty XML file was given. Details: {error}"
                 raise web.HTTPBadRequest(reason=reason)
+            # Error with validating XML against schema
             except XMLSchemaValidationError as error:
                 reason = f"XML file is not valid. Details: {error}"
                 raise web.HTTPBadRequest(reason=reason)
