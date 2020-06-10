@@ -109,3 +109,6 @@ venv.bak/
 ### Editor conficuration files ###
 .vim/
 .idea/
+
+# Mac OS store
+.DS_Store
