@@ -220,3 +220,14 @@ class HandlersTestCase(AioHTTPTestCase):
         response = await self.client.post("/validate", data=data)
         self.assertEqual(response.status, 200)
         self.assertIn("XML file is not valid", await response.text())
+
+    @unittest_run_loop
+    async def test_validation_fails_with_too_many_files(self):
+        """Test validation endpoint for invalid xml."""
+        files = [("submission", "ERA521986_valid.xml"),
+                 ("submission", "ERA521986_valid2.xml")]
+        data = self.create_submission_data(files)
+        response = await self.client.post("/validate", data=data)
+        self.assertEqual(response.status, 400)
+        self.assertIn("Only 1 file can be validated at a time",
+                      await response.text())
