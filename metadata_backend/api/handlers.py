@@ -157,8 +157,8 @@ class SubmissionAPIHandler:
         """Validate xml file sent to endpoint.
 
         :param req: Multipart POST request with submission.xml and files
-        :raises: HTTP Exception with status code 400
-        :returns: Text indicating success
+        :raises: HTTP Exception with status code 400 if schema load fails
+        :returns: Json response indicating if validation was successful or not
         """
         files = await _extract_xml_upload(req)
 
@@ -177,12 +177,17 @@ class SubmissionAPIHandler:
             # Error with validating XML syntax
             except ParseError as error:
                 reason = f"Faulty XML file was given. Details: {error}"
-                raise web.HTTPBadRequest(reason=reason)
+                body = json.dumps({"isValid": False, "reason": reason})
+                return web.Response(body=body,
+                                    content_type="application/json")
             # Error with validating XML against schema
             except XMLSchemaValidationError as error:
                 reason = f"XML file is not valid. Details: {error}"
-                raise web.HTTPBadRequest(reason=reason)
-        return web.Response(text="XML file is valid!")
+                body = json.dumps({"isValid": False, "reason": reason})
+                return web.Response(body=body,
+                                    content_type="application/json")
+        body = json.dumps({"isValid": True})
+        return web.Response(body=body, content_type="application/json")
 
     @staticmethod
     def generate_receipt(actions: Dict) -> str:
