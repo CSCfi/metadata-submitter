@@ -161,31 +161,31 @@ class SubmissionAPIHandler:
         :returns: Json response indicating if validation was successful or not
         """
         files = await _extract_xml_upload(req)
+        if len(files) > 1:
+            reason = "Only 1 file can be validated at a time."
+            raise web.HTTPBadRequest(reason=reason)
 
-        for file in files:
-            xml_type = file[1]
-            xml_content = file[0]
-            try:
-                # Load schema
-                schema = SchemaLoader().get_schema(xml_type)
-                # Validating requested XML file against the schema
-                schema.validate(xml_content)
-            # Error with loading schema
-            except SchemaNotFoundException as error:
-                reason = f"{error} ({xml_type})"
-                raise web.HTTPBadRequest(reason=reason)
-            # Error with validating XML syntax
-            except ParseError as error:
-                reason = f"Faulty XML file was given. Details: {error}"
-                body = json.dumps({"isValid": False, "reason": reason})
-                return web.Response(body=body,
-                                    content_type="application/json")
-            # Error with validating XML against schema
-            except XMLSchemaValidationError as error:
-                reason = f"XML file is not valid. Details: {error}"
-                body = json.dumps({"isValid": False, "reason": reason})
-                return web.Response(body=body,
-                                    content_type="application/json")
+        xml_type = files[0][1]
+        xml_content = files[0][0]
+        try:
+            schema = SchemaLoader().get_schema(xml_type)
+            schema.validate(xml_content)
+
+        except SchemaNotFoundException as error:
+            reason = f"{error} ({xml_type})"
+            raise web.HTTPBadRequest(reason=reason)
+
+        except ParseError as error:
+            reason = f"Faulty XML file was given. Details: {error}"
+            body = json.dumps({"isValid": False, "reason": reason})
+            return web.Response(body=body,
+                                content_type="application/json")
+
+        except XMLSchemaValidationError as error:
+            reason = f"XML file is not valid. Details: {error}"
+            body = json.dumps({"isValid": False, "reason": reason})
+            return web.Response(body=body,
+                                content_type="application/json")
         body = json.dumps({"isValid": True})
         return web.Response(body=body, content_type="application/json")
 
