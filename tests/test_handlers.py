@@ -196,18 +196,27 @@ class HandlersTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_validation_passes_for_valid_xml(self):
-        """Test that a valid xml validates against the correct schema."""
+        """Test validation endpoint for valid xml."""
         files = [("study", "SRP000539.xml")]
         data = self.create_submission_data(files)
         response = await self.client.post("/validate", data=data)
         self.assertEqual(response.status, 200)
-        self.assertIn("The file is valid!", await response.text())
+        self.assertIn("XML file is valid", await response.text())
 
     @unittest_run_loop
-    async def test_validation_fails_for_invalid_xml(self):
-        """Test that an invalid xml does not validate against its schema."""
+    async def test_validation_fails_for_invalid_xml_syntax(self):
+        """Test validation endpoint for xml with bad syntax."""
         files = [("study", "SRP000539_invalid.xml")]
         data = self.create_submission_data(files)
         response = await self.client.post("/validate", data=data)
         self.assertEqual(response.status, 400)
-        self.assertIn("Validation error happened", await response.text())
+        self.assertIn("Faulty XML file was given", await response.text())
+
+    @unittest_run_loop
+    async def test_validation_fails_for_invalid_xml(self):
+        """Test validation endpoint for invalid xml."""
+        files = [("study", "SRP000539_invalid2.xml")]
+        data = self.create_submission_data(files)
+        response = await self.client.post("/validate", data=data)
+        self.assertEqual(response.status, 400)
+        self.assertIn("XML file is not valid", await response.text())

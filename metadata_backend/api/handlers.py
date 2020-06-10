@@ -9,7 +9,7 @@ from xml.etree.ElementTree import ParseError
 
 from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
-from xmlschema import XMLSchemaException
+from xmlschema import XMLSchemaValidationError
 
 from ..conf.conf import object_types
 from ..helpers.parser import XMLToJSONParser
@@ -163,23 +163,23 @@ class SubmissionAPIHandler:
         files = await _extract_xml_upload(req)
 
         for file in files:
-            # Loading schema
             xml_type = file[1]
-            loader = SchemaLoader()
-            try:
-                schema = loader.get_schema(xml_type)
-            except (SchemaNotFoundException, XMLSchemaException) as error:
-                reason = f"{error} {xml_type}"
-                raise web.HTTPBadRequest(reason=reason)
-
-            # Validating requested XML file against the schema
             xml_content = file[0]
             try:
+                # Load schema
+                schema = SchemaLoader().get_schema(xml_type)
+                # Validating requested XML file against the schema
                 schema.validate(xml_content)
-            except (ParseError, XMLSchemaException) as error:
-                reason = f"Validation error happened. Details: {error}"
+            except SchemaNotFoundException as error:
+                reason = f"{error} ({xml_type})"
                 raise web.HTTPBadRequest(reason=reason)
-        return web.Response(text="The file is valid!")
+            except ParseError as error:
+                reason = f"Faulty XML file was given. Details: {error}"
+                raise web.HTTPBadRequest(reason=reason)
+            except XMLSchemaValidationError as error:
+                reason = f"XML file is not valid. Details: {error}"
+                raise web.HTTPBadRequest(reason=reason)
+        return web.Response(text="XML file is valid!")
 
     @staticmethod
     def generate_receipt(actions: Dict) -> str:
