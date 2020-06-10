@@ -158,7 +158,7 @@ class SubmissionAPIHandler:
 
         :param req: Multipart POST request with submission.xml and files
         :raises: HTTP Exception with status code 400 if schema load fails
-        :returns: Json response indicating if validation was successful or not
+        :returns: JSON response indicating if validation was successful or not
         """
         files = await _extract_xml_upload(req)
         if len(files) > 1:
