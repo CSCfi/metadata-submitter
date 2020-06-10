@@ -5,12 +5,15 @@ import string
 from collections import Counter
 from datetime import datetime
 from typing import Dict, List, Tuple, cast
+from xml.etree.ElementTree import ParseError
 
 from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
+from xmlschema import XMLSchemaValidationError
 
 from ..conf.conf import object_types
 from ..helpers.parser import XMLToJSONParser
+from ..helpers.schema_loader import SchemaLoader, SchemaNotFoundException
 from .operators import Operator, XMLOperator
 
 
@@ -146,13 +149,45 @@ class SubmissionAPIHandler:
                 operator.create_metadata_object(type, content_json)
             else:
                 reason = f"action {action} is not supported yet"
-                return web.HTTPBadRequest(reason=reason)
+                raise web.HTTPBadRequest(reason=reason)
         receipt = self.generate_receipt(actions)
         return web.Response(body=receipt, status=201, content_type="text/xml")
 
     async def validate(self, req: Request) -> Response:
-        """Validate xml file sent to endpoint."""
-        return web.Response(text="Validated!")
+        """Validate xml file sent to endpoint.
+
+        :param req: Multipart POST request with submission.xml and files
+        :raises: HTTP Exception with status code 400 if schema load fails
+        :returns: JSON response indicating if validation was successful or not
+        """
+        files = await _extract_xml_upload(req)
+        if len(files) > 1:
+            reason = "Only 1 file can be validated at a time."
+            raise web.HTTPBadRequest(reason=reason)
+
+        xml_type = files[0][1]
+        xml_content = files[0][0]
+        try:
+            schema = SchemaLoader().get_schema(xml_type)
+            schema.validate(xml_content)
+
+        except SchemaNotFoundException as error:
+            reason = f"{error} ({xml_type})"
+            raise web.HTTPBadRequest(reason=reason)
+
+        except ParseError as error:
+            reason = f"Faulty XML file was given. Details: {error}"
+            body = json.dumps({"isValid": False, "reason": reason})
+            return web.Response(body=body,
+                                content_type="application/json")
+
+        except XMLSchemaValidationError as error:
+            reason = f"XML file is not valid. Details: {error}"
+            body = json.dumps({"isValid": False, "reason": reason})
+            return web.Response(body=body,
+                                content_type="application/json")
+        body = json.dumps({"isValid": True})
+        return web.Response(body=body, content_type="application/json")
 
     @staticmethod
     def generate_receipt(actions: Dict) -> str:

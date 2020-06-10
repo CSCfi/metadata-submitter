@@ -193,3 +193,41 @@ class HandlersTestCase(AioHTTPTestCase):
         args = self.MockedOperator().query_metadata_database.call_args[0]
         assert "study" in args[0]
         assert "studyType': 'foo', 'name': 'bar'" in str(args[1])
+
+    @unittest_run_loop
+    async def test_validation_passes_for_valid_xml(self):
+        """Test validation endpoint for valid xml."""
+        files = [("study", "SRP000539.xml")]
+        data = self.create_submission_data(files)
+        response = await self.client.post("/validate", data=data)
+        self.assertEqual(response.status, 200)
+        self.assertIn('{"isValid": true}', await response.text())
+
+    @unittest_run_loop
+    async def test_validation_fails_for_invalid_xml_syntax(self):
+        """Test validation endpoint for xml with bad syntax."""
+        files = [("study", "SRP000539_invalid.xml")]
+        data = self.create_submission_data(files)
+        response = await self.client.post("/validate", data=data)
+        self.assertEqual(response.status, 200)
+        self.assertIn("Faulty XML file was given", await response.text())
+
+    @unittest_run_loop
+    async def test_validation_fails_for_invalid_xml(self):
+        """Test validation endpoint for invalid xml."""
+        files = [("study", "SRP000539_invalid2.xml")]
+        data = self.create_submission_data(files)
+        response = await self.client.post("/validate", data=data)
+        self.assertEqual(response.status, 200)
+        self.assertIn("XML file is not valid", await response.text())
+
+    @unittest_run_loop
+    async def test_validation_fails_with_too_many_files(self):
+        """Test validation endpoint for invalid xml."""
+        files = [("submission", "ERA521986_valid.xml"),
+                 ("submission", "ERA521986_valid2.xml")]
+        data = self.create_submission_data(files)
+        response = await self.client.post("/validate", data=data)
+        self.assertEqual(response.status, 400)
+        self.assertIn("Only 1 file can be validated at a time",
+                      await response.text())
