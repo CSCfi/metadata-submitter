@@ -1,12 +1,12 @@
 ## Submission interface backend
 
-[![Build Status](https://travis-ci.org/CSCfi/metadata-submitter.svg?branch=master)](https://travis-ci.org/CSCfi/metadata-ubmitter)
+[![Build Status](https://travis-ci.org/CSCfi/metadata-submitter.svg?branch=master)](https://travis-ci.org/CSCfi/metadata-submitter)
 [![Coverage Status](https://coveralls.io/repos/github/CSCfi/metadata-submitter/badge.svg?branch=master)](https://coveralls.io/github/CSCfi/metadata-submitter?branch=master)
 
 Currently minimum viable product that:
 - accepts HTTP POST submissions of EGA metadata XML files 
 - validates XML files against EGA XSD metadata models 
-- saves XML files to Mondogb database
+- saves content from XML files to Mondogb database
 
 ## Install and Run
 
@@ -17,7 +17,7 @@ Server expects to find mongodb instance running, spesified by following environm
 - `MONGO_INITDB_ROOT_PASSWORD`, password for admin user to mondogb instance
 - `MONGODB_HOST`, host and port for mongodb instance (e.g. `localhost:27017`)
 
-Server looks for current environmental variables first and if needed variables aren't found, checks .env file. This allows running server without writing variables with .env file.
+Server looks for current environmental variables first and if needed variables aren't found, it uses MongoDB Docker images default values.
 
 If wanted (e.g. when running locally), suitable mongodb instance can be launched with help of docker-compose file present in folder `deploy/mongodb`. Correct environmental variables for both docker-compose and server are set in .env -file present in project root.
 

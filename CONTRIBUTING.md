@@ -28,29 +28,23 @@ All Pull Requests related to features should be done against `develop` branch, r
 
 Give your branch a short descriptive name (like the names between the `<>` below) and prefix the name with something representative for that branch:
 
-   * `feature/<feature-name>` - used when an enhancement or new feature was implemented;
-   * `docs/<what-the-docs>` - missing docs or keeping them up to date;
-   * `bugfix/<caught-it>` - solved a bug;
-   * `test/<thank-you>` - adding missing tests for a feature, we would prefer they would come with the `feature` but still `thank you`;
-   * `refactor/<that-name-is-confusing>` - well we hope we don't mess anything and we don't get to use this;
-   * `hotfix/<oh-no>` - for when things needed to be fixed yesterday.
+   * `feature/<feature-name>` - used when an enhancement or new feature was implemented
+   * `docs/<what-the-docs>` - missing docs or keeping them up to date
+   * `bugfix/<caught-it>` - solved a bug
+   * `test/<thank-you>` - adding missing tests for a feature, we would prefer they would come with the `feature` but still `thank you`
+   * `refactor/<that-name-is-confusing>` - well we hope we don't mess anything and we don't get to use this
+   * `hotfix/<oh-no>` - for when things needed to be fixed yesterday
 
 
 ### Coding conventions
 
 We do optimize for readability, and it would be awesome if you go through the code and see what conventions we've used so far, some are also explained here:
-
-* Indentation should be 4 *spaces*
-
-* 80 character limit is almost strict, but can be broken in documentation when hyperlinks go over the limits
-
-* Python
-
-  - We follow [pep8](https://www.python.org/dev/peps/pep-0008/) and [pep257](https://www.python.org/dev/peps/pep-0257/) with some small exceptions. You can see the stated exceptions in `tox.ini` configuration file
-  - Imports should be sorted according to `isort` guidelines.
-  - We like to keep things simple, so when possible avoid importing any big libraries.
-
-* Tools to help you:
+- Indentation should be 4 *spaces*
+- 80 character limit is almost strict, but can be broken in documentation when hyperlinks go over the limits
+- We follow [pep8](https://www.python.org/dev/peps/pep-0008/) and [pep257](https://www.python.org/dev/peps/pep-0257/) with some small exceptions. You can see the stated exceptions in `tox.ini` configuration file
+- Imports should be sorted according to `isort` guidelines.
+- We like to keep things simple, so when possible avoid importing any big libraries.
+- Tools to help you:
   - Tox is configured to run bunch of tests: flake8, docstrings, isort, missing type hints, mypy.
   - Tox is also ran in our CI, so you probably want to run tox before each push to this repo
   - If you like things to happen automagically, you can add pre-commit hook to your git workflow! Hook can be found from [scripts-folder](scripts) and it includes settings for tox and [misspell](https://github.com/client9/misspell)(which is there just for, well, spelling errors).
