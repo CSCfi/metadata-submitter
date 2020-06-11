@@ -155,12 +155,23 @@ class HandlersTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_submit_object(self):
-        """Test that correct submission returns accessionId."""
+        """Test that submission is handled correctly."""
         files = [("study", "SRP000539.xml")]
         data = self.create_submission_data(files)
         response = await self.client.post("/object/study", data=data)
         assert response.status == 201
         self.assertIn(self.test_ega_string, await response.text())
+
+    @unittest_run_loop
+    async def test_submit_object_fails_with_too_many_files(self):
+        """Test that sending two files to endpoint results failure."""
+        files = [("study", "SRP000539.xml"),
+                 ("study", "SRP000539_copy.xml")]
+        data = self.create_submission_data(files)
+        response = await self.client.post("/object/study", data=data)
+        reason = "Only one file can be sent to this endpoint at a time."
+        self.assertEqual(response.status, 400)
+        self.assertIn(reason, await response.text())
 
     @unittest_run_loop
     async def test_get_object(self):
@@ -223,11 +234,11 @@ class HandlersTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_validation_fails_with_too_many_files(self):
-        """Test validation endpoint for invalid xml."""
+        """Test validation endpoint for too many files."""
         files = [("submission", "ERA521986_valid.xml"),
                  ("submission", "ERA521986_valid2.xml")]
         data = self.create_submission_data(files)
         response = await self.client.post("/validate", data=data)
+        reason = "Only one file can be sent to this endpoint at a time."
         self.assertEqual(response.status, 400)
-        self.assertIn("Only 1 file can be validated at a time",
-                      await response.text())
+        self.assertIn(reason, await response.text())
