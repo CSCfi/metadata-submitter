@@ -58,19 +58,16 @@ class RESTApiHandler:
         type = req.match_info['schema']
         accession_id = _generate_accession_id()
         if req.content_type == "multipart/form-data":
-            files = await _extract_xml_upload(req)
+            files = await _extract_xml_upload(req, extract_one=True)
             content_xml, _ = files[0]
             backup_json = {"accessionId": accession_id,
                            "content": content_xml}
-            xmloperator = XMLOperator()
-            xmloperator.create_metadata_object(type, backup_json)
-            parser = XMLToJSONParser()
-            content_json = parser.parse(type, content_xml)
+            XMLOperator().create_metadata_object(type, backup_json)
+            content_json = XMLToJSONParser().parse(type, content_xml)
         else:
             content_json = await req.json()
         content_json["accessionId"] = accession_id
-        operator = Operator()
-        operator.create_metadata_object(type, content_json)
+        Operator().create_metadata_object(type, content_json)
         body = json.dumps({"accessionId": accession_id})
         return web.Response(body=body, status=201,
                             content_type="application/json")
@@ -82,8 +79,7 @@ class RESTApiHandler:
         :returns: Query results as JSON
         """
         type = req.match_info['schema']
-        operator = Operator()
-        result = operator.query_metadata_database(type, req.query)
+        result = Operator().query_metadata_database(type, req.query)
         return web.Response(body=result, status=200,
                             content_type="application/json")
 
@@ -140,13 +136,11 @@ class SubmissionAPIHandler:
                 accession_id = _generate_accession_id()
                 backup_json = {"accessionId": accession_id,
                                "content": content_xml}
-                xmloperator = XMLOperator()
-                xmloperator.create_metadata_object(type, backup_json)
+                XMLOperator().create_metadata_object(type, backup_json)
                 parser = XMLToJSONParser()
                 content_json = parser.parse(type, content_xml)
                 content_json["accessionId"] = accession_id
-                operator = Operator()
-                operator.create_metadata_object(type, content_json)
+                Operator().create_metadata_object(type, content_json)
             else:
                 reason = f"action {action} is not supported yet"
                 raise web.HTTPBadRequest(reason=reason)
@@ -160,13 +154,8 @@ class SubmissionAPIHandler:
         :raises: HTTP Exception with status code 400 if schema load fails
         :returns: JSON response indicating if validation was successful or not
         """
-        files = await _extract_xml_upload(req)
-        if len(files) > 1:
-            reason = "Only 1 file can be validated at a time."
-            raise web.HTTPBadRequest(reason=reason)
-
-        xml_type = files[0][1]
-        xml_content = files[0][0]
+        files = await _extract_xml_upload(req, extract_one=True)
+        xml_content, xml_type = files[0]
         try:
             schema = SchemaLoader().get_schema(xml_type)
             schema.validate(xml_content)
@@ -207,16 +196,17 @@ class SubmissionAPIHandler:
 
 
 # Private functions shared between handlers
-async def _extract_xml_upload(req: Request) -> List[Tuple]:
+async def _extract_xml_upload(req: Request, extract_one: bool = False
+                              ) -> List[Tuple[str, str]]:
     """Extract submitted xml-file(s) from multi-part request.
 
     Files are sorted to spesific order by object type priorities (e.g.
     submission should be processed before study).
 
     :param req: POST request containing "multipart/form-data" upload
-    :returns: content and type for each uploaded file, sorted by type
+    :returns: content and type for each uploaded file, sorted by type.
     """
-    files: List[Tuple] = []
+    files: List[Tuple[str, str]] = []
     reader = await req.multipart()
     while True:
         part = await reader.next()
@@ -225,6 +215,9 @@ async def _extract_xml_upload(req: Request) -> List[Tuple]:
         part = cast(BodyPartReader, part)
         if not part:
             break
+        if extract_one and files:
+            reason = "Only one file can be sent to this endpoint at a time."
+            raise web.HTTPBadRequest(reason=reason)
         xml_type = part.name.lower()
         if xml_type not in object_types:
             raise web.HTTPBadRequest(reason="Not ok type")
