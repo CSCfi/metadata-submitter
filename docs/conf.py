@@ -1,19 +1,7 @@
-# Configuration file for the Sphinx documentation builder.
-#
-# This file only contains a selection of the most common options. For a full
-# list see the documentation:
-# https://www.sphinx-doc.org/en/master/usage/configuration.html
+"""Configuration file for the Sphinx documentation builder."""
 
-# -- Path setup --------------------------------------------------------------
-
-# If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-#
-# import os
-# import sys
 import datetime
-# sys.path.insert(0, os.path.abspath('.'))
+from typing import Callable
 
 
 # -- Project information -----------------------------------------------------
@@ -71,6 +59,13 @@ html_theme_options = {
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
+
+def setup(app: Callable) -> None:
+    """Add custom stylesheet."""
+    app.add_css_file('custom.css')
+
+
 htmlhelp_basename = 'metadata-submitter'
 man_pages = [(master_doc, 'metadata-submitter', [author], 1)]
-texinfo_documents = [(master_doc, 'metadata-submitter', author, 'Miscellaneous')]
+texinfo_documents = [(master_doc, 'metadata-submitter',
+                     author, 'Miscellaneous')]
