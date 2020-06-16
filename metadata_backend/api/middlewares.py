@@ -12,7 +12,7 @@ def error_middleware() -> Callable:
     """
 
     @middleware
-    async def http_error_handler(req: Request, handler) -> Response:
+    async def http_error_handler(req: Request, handler: Callable) -> Response:
         """Handle HTTP errors.
 
         :param req: A request instance
