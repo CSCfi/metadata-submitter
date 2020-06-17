@@ -1,0 +1,316 @@
+openapi: 3.0.0
+info:
+  description: |-
+    This is a definition of CSC Metadata Submitter API.
+
+  version: 1.0.0
+  title: CSC Metadata Submitter API
+  license:
+    name: License Apache 2.0
+    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+tags:
+  - name: Submission Endpoints
+    description: 'Endpoints used in submission'
+  - name: Query Endpoints
+    description: Endpoints used for data retrieval
+paths:
+  /submit:
+    post:
+      tags:
+        - Submission Endpoints
+      summary: XML submission endpoint, will also trigger validation.
+      requestBody:
+        content:
+          multipart/form-data::
+            schema:
+              type: string
+              format: binary
+      responses:
+        200:
+          description: OK
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+  /validate:
+    post:
+      tags:
+        - Submission Endpoints
+      summary: Validate XML before submission.
+      responses:
+        200:
+          description: OK
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+  /schemas:
+    get:
+      tags:
+        - Query Endpoints
+      summary: List of available schemas
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchemasList'
+        404:
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/404NotFound"
+  /objects:
+    get:
+      tags:
+        - Query Endpoints
+      summary: List of objects.
+      responses:
+        '200':
+          description: OK
+  /objects/{schema}:
+    get:
+      tags:
+        - Query Endpoints
+      summary: Filter objects from a specific schema using various query string parameters
+      parameters:
+      - name: schema
+        in: path
+        description: Title of the XML schema.
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: title
+        schema:
+          type: string
+        description: Some description for title
+      - in: query
+        name: studyType
+        schema:
+          type: string
+        description: Some description for studyType
+      - in: query
+        name: studyAbstract
+        schema:
+          type: string
+        description: Some description for studyAbstract
+      - in: query
+        name: projectID
+        schema:
+          type: string
+        description: Some description for projectID
+      - in: query
+        name: relatedStudies
+        schema:
+          type: string
+        description: Some description for relatedStudies
+      - in: query
+        name: studyAttributes
+        schema:
+          type: string
+        description: Some description for studyAttributes
+      - in: query
+        name: sampleName
+        schema:
+          type: string
+        description: Some description for sampleName
+      - in: query
+        name: scientificName
+        schema:
+          type: string
+        description: Some description for scientificName
+      - in: query
+        name: commonName
+        schema:
+          type: string
+        description: Some description for commonName
+      - in: query
+        name: fileType
+        schema:
+          type: string
+        description: Some description for fileType
+      - in: query
+        name: studyReference
+        schema:
+          type: string
+        description: Some description for studyReference
+      - in: query
+        name: sampleReference
+        schema:
+          type: string
+        description: Some description for sampleReference
+      - in: query
+        name: experimentReference
+        schema:
+          type: string
+        description: Some description for experimentReference
+      - in: query
+        name: runReference
+        schema:
+          type: string
+        description: Some description for runReference
+      - in: query
+        name: analysisReference
+        schema:
+          type: string
+        description: Some description for analysisReference
+      - in: query
+        name: analysisType
+        schema:
+          type: string
+        description: Some description for analysisType
+      responses:
+        200:
+          description: OK
+    post:
+      tags:
+        - Submission Endpoints
+      summary: Submit data to a specific schema
+      parameters:
+      - name: schema
+        in: path
+        description: Title of the XML schema.
+        schema:
+          type: string
+        required: true
+      requestBody:
+        content:
+          multipart/form-data::
+            schema:
+              type: string
+              format: binary
+      responses:
+        200:
+          description: OK
+  /objects/{schema}/{accessionId}:
+    get:
+      tags:
+        - Query Endpoints
+      summary: List of objects.
+      parameters:
+      - name: schema
+        in: path
+        description: Unique id of the targeted service.
+        schema:
+          type: string
+        required: true
+      - name: accessionId
+        in: path
+        description: filter objects in schema using accession ID
+        schema:
+          type: string
+        required: true
+        
+      responses:
+        '200':
+          description: OK
+components:
+  schemas:
+    ErrorModel:
+      type: object
+      description: Response when some error(s) occured in one of the endpoints
+      required: 
+        - errors
+      properties:
+        errors:
+          type: array
+          description: list of erros that occured
+          items:
+            type: object
+            required: 
+              - code
+              - detail
+              - title
+            properties:
+              code:
+                type: string
+                description: internal errorCode
+              title: 
+                type: string
+                description: Short message, human readable
+              detail:
+                type: string
+                description: details about what error occured while processing the request
+    400BadRequest:
+      allOf:
+        - $ref: '#/components/schemas/ErrorModel'
+      properties:
+        errors:
+          items:
+            type: object
+            properties:
+              code:
+                example: badRequest
+              title: 
+                example: Bad Request
+              detail:
+                example: the current request could not be processed as the submitted file was not valid
+    404NotFound:
+      allOf:
+        - $ref: '#/components/schemas/ErrorModel'
+      properties:
+        errors:
+          items:
+            type: object
+            properties:
+              code:
+                example: notFound
+              title: 
+                example: Not Found
+              detail:
+                example: the current endpoint does not retrieve any results
+    401Unauthorized:
+      allOf:
+        - $ref: '#/components/schemas/ErrorModel'
+      properties:
+        errors:
+          items:
+            type: object
+            properties:
+              code:
+                example: Unauthorized
+              title: 
+                example: Unauthorized
+              detail:
+                example: the request cannot be authorized
+    403Forbidden:
+      allOf:
+        - $ref: '#/components/schemas/ErrorModel'
+      properties:
+        errors:
+          items:
+            type: object
+            properties:
+              code:
+                example: Forbidden
+              title: 
+                example: Forbidden
+              detail:
+                example: the request does not contain the right permissions
+    SchemasList:
+      type: array
+      items:
+        type: object
+        required:
+          - title
+          - detail
+        properties:
+          title: 
+            type: string
+            description: Short message, human readable
+            example: Sample
+          detail:
+            type: string
+            description: Description of the schema
+            example: Sample defines an isolate of sequenceable material upon which sequencing experiments can be based.
+          url:
+            type: string
+            description: URL pointing to the schema source
+            example: https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.sample.xsd
