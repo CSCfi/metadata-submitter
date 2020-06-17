@@ -1,5 +1,7 @@
 """Test API middlewares."""
 
+from pathlib import Path
+
 from aiohttp import FormData
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
 
@@ -21,7 +23,7 @@ class MiddlewaresTestCase(AioHTTPTestCase):
                        filename='file', content_type='text/xml')
         response = await self.client.post("/submit", data=data)
         # Submission method in API handlers raises Bad Request error
-        # if no submission type is included on the first field of request
+        # if submission type is not included on the first field of request
         self.assertEqual(response.status, 400)
         self.assertEqual(response.content_type, "application/json")
         self.assertIn("detail", await response.json())
@@ -36,4 +38,14 @@ class MiddlewaresTestCase(AioHTTPTestCase):
         self.assertEqual(response.content_type, "application/json")
         self.assertIn("detail", await response.json())
 
-    # TODO: Test for 404 and test for non error
+    @unittest_run_loop
+    async def test_error_middleware_does_not_affect_good_responses(self):
+        """Test that middleware does not convert non error into error JSON."""
+        file = Path(__file__).parent / 'test_files/study/SRP000539_invalid.xml'
+        data = FormData()
+        data.add_field("study",
+                       open(file.as_posix(), 'r'),
+                       filename='SRP000539_invalid.xml',
+                       content_type='text/xml')
+        response = await self.client.post("/validate", data=data)
+        self.assertNotIn("error", await response.json())
