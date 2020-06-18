@@ -21,16 +21,9 @@ def error_middleware() -> Callable:
         """
         try:
             response = await handler(req)
-            if response.status == 404:
-                return _json_exception(response.status,
-                                       Exception(response.message))
             return response
         except HTTPError as error:
             return _json_exception(error.status, error)
-
-        # If something else goes wrong, convert to Internal Server Error
-        # except Exception as ex:
-            # return _json_exception(500, ex)
 
     return http_error_handler
 
