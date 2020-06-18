@@ -1,4 +1,5 @@
 aiohttp
+gunicorn
 pymongo
 python-dateutil
 uvloop
