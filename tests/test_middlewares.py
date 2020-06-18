@@ -1,7 +1,5 @@
 """Test API middlewares."""
 
-from pathlib import Path
-
 from aiohttp import FormData
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
 
@@ -29,9 +27,9 @@ class MiddlewaresTestCase(AioHTTPTestCase):
         self.assertIn("detail", await response.json())
 
     @unittest_run_loop
-    async def test_random_error_converts_into_json_response(self):
-        """Test that middleware converts random error into a JSON response."""
-        response = await self.client.post("/submit", data=None)
-        self.assertEqual(response.status, 400)
+    async def test_bad_url_returns_json_response(self):
+        """Test that an unrouted url returns a 404 in JSON format."""
+        response = await self.client.get("/bad_url")
+        self.assertEqual(response.status, 404)
         self.assertEqual(response.content_type, "application/json")
         self.assertIn("detail", await response.json())
