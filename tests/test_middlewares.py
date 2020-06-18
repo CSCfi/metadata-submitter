@@ -32,8 +32,6 @@ class MiddlewaresTestCase(AioHTTPTestCase):
     async def test_random_error_converts_into_json_response(self):
         """Test that middleware converts random error into a JSON response."""
         response = await self.client.post("/submit", data=None)
-        # POST requesting nothing results in an assertion error
-        # which is not an HTTP error. Thus error status should be 500.
-        self.assertEqual(response.status, 500)
+        self.assertEqual(response.status, 400)
         self.assertEqual(response.content_type, "application/json")
         self.assertIn("detail", await response.json())

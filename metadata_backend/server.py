@@ -32,9 +32,7 @@ async def init() -> web.Application:
         web.post('/object/{schema}', rest_handler.post_object),
         web.post('/submit', submission_handler.submit),
         web.post('/validate', submission_handler.validate),
-        web.get('/{schema}/{accessionId}', rest_handler.get_object),
-        web.get('/{schema}', rest_handler.query_objects),
-        web.post('/{schema}', rest_handler.post_object)]
+    ]
     server.router.add_routes(routes)
     LOG.info("Server configurations and routes loaded")
     return server
