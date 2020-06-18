@@ -37,15 +37,3 @@ class MiddlewaresTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 500)
         self.assertEqual(response.content_type, "application/json")
         self.assertIn("detail", await response.json())
-
-    @unittest_run_loop
-    async def test_error_middleware_does_not_affect_good_responses(self):
-        """Test that middleware does not convert non error into error JSON."""
-        file = Path(__file__).parent / 'test_files/study/SRP000539_invalid.xml'
-        data = FormData()
-        data.add_field("study",
-                       open(file.as_posix(), 'r'),
-                       filename='SRP000539_invalid.xml',
-                       content_type='text/xml')
-        response = await self.client.post("/validate", data=data)
-        self.assertNotIn("error", await response.json())

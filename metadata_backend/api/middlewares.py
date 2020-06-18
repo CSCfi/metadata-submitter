@@ -43,7 +43,7 @@ def _json_exception(status: int, exception: Exception) -> Response:
     :returns: Response in JSON format
     """
     body = json.dumps({
-        'error': exception.__class__.__name__,
+        'error': status,
         'detail': str(exception)
     }).encode('utf-8')
     return Response(status=status, body=body,
