@@ -29,8 +29,8 @@ def error_middleware() -> Callable:
             return _json_exception(error.status, error)
 
         # If something else goes wrong, convert to Internal Server Error
-        except Exception as ex:
-            return _json_exception(500, ex)
+        # except Exception as ex:
+            # return _json_exception(500, ex)
 
     return http_error_handler
 
