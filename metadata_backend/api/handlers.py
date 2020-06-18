@@ -1,9 +1,11 @@
 """Handle HTTP methods for server."""
 import json
+import mimetypes
 import secrets
 import string
 from collections import Counter
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List, Tuple, cast
 from xml.etree.ElementTree import ParseError
 
@@ -193,6 +195,35 @@ class SubmissionAPIHandler:
                    f"{infos}"
                    f"</RECEIPT>")
         return receipt
+
+
+class StaticHandler:
+    """Handler for static routes, mostly frontend and 404."""
+
+    def __init__(self, frontend_static_files: Path) -> None:
+        """Initialize path to frontend static files folder."""
+        self.path = frontend_static_files
+
+    async def frontend(self, req: Request) -> Response:
+        """Serve requests related to frontend SPA.
+
+        :param req: GET request
+        :raises: HTTP Exceptions if error happens
+        :returns: Response containing frontpage static file
+        """
+        index_path = self.path / "index.html"
+        return Response(body=index_path.read_bytes(),
+                        content_type="text/html")
+
+    def setup_static(self) -> Path:
+        """Set path for static js files and correct return mimetypes.
+
+        :returns: Path to static js files folder
+        """
+        mimetypes.init()
+        mimetypes.types_map[".js"] = "application/javascript"
+        mimetypes.types_map[".js.map"] = "application/json"
+        return self.path / "static"
 
 
 # Private functions shared between handlers
