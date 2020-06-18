@@ -4,6 +4,8 @@ from typing import Callable
 
 from aiohttp.web import HTTPError, Request, Response, middleware
 
+from ..helpers.logger import LOG
+
 
 def error_middleware() -> Callable:
     """Middleware for handling exceptions recieved from the API methods.
@@ -39,5 +41,6 @@ def _json_exception(status: int, exception: Exception) -> Response:
         'error': status,
         'detail': str(exception)
     }).encode('utf-8')
+    LOG.info(str(body))
     return Response(status=status, body=body,
                     content_type='application/json')
