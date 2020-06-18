@@ -21,9 +21,14 @@ different parts of the application.
 3) Mongodb query mappings
 Mappings are needed to turn incoming REST api queries into mongodb queries.
 Change these if database structure changes.
+
+4) Frontend static files folder
+Production version gets frontend SPA from this folder, after it has been built
+and inserted here in projects Dockerfile.
 """
 
 import os
+from pathlib import Path
 
 from pymongo import MongoClient
 
@@ -76,3 +81,6 @@ query_map = {
                           "keys": ["accession", "refname",
                                    "refcenter"]},
 }
+
+# 4) Set frontend folder to be inside metadata_backend modules root
+frontend_static_files = Path(__file__).parent.parent / "frontend"
