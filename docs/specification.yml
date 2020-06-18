@@ -9,15 +9,17 @@ info:
     name: License Apache 2.0
     url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
 tags:
-  - name: Submission Endpoints
-    description: 'Endpoints used in submission'
-  - name: Query Endpoints
+  - name: Submission
+    description: Endpoints used in submission
+  - name: Query
     description: Endpoints used for data retrieval
+  - name: Manage
+    description: Endpoints used for managing data
 paths:
   /submit:
     post:
       tags:
-        - Submission Endpoints
+        - Submission
       summary: XML submission endpoint, will also trigger validation.
       requestBody:
         content:
@@ -26,32 +28,52 @@ paths:
               type: string
               format: binary
       responses:
-        200:
-          description: OK
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ObjectCreated"
         400:
           description: Bad Request
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
   /validate:
     post:
       tags:
-        - Submission Endpoints
+        - Submission
       summary: Validate XML before submission.
       responses:
-        200:
-          description: OK
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ObjectCreated"
         400:
           description: Bad Request
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
   /schemas:
     get:
       tags:
-        - Query Endpoints
+        - Query
       summary: List of available schemas
       responses:
         200:
@@ -66,18 +88,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/404NotFound"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
   /objects:
     get:
       tags:
-        - Query Endpoints
+        - Query
       summary: List of objects.
       responses:
-        '200':
+        200:
           description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ObjectList"
   /objects/{schema}:
     get:
       tags:
-        - Query Endpoints
+        - Query
       summary: Filter objects from a specific schema using various query string parameters
       parameters:
       - name: schema
@@ -169,9 +201,31 @@ paths:
       responses:
         200:
           description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ObjectList"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
     post:
       tags:
-        - Submission Endpoints
+        - Submission
       summary: Submit data to a specific schema
       parameters:
       - name: schema
@@ -187,13 +241,29 @@ paths:
               type: string
               format: binary
       responses:
-        200:
-          description: OK
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ObjectCreated"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
   /objects/{schema}/{accessionId}:
     get:
       tags:
-        - Query Endpoints
-      summary: List of objects.
+        - Query
+      summary: List of object by accession ID.
       parameters:
       - name: schema
         in: path
@@ -207,10 +277,151 @@ paths:
         schema:
           type: string
         required: true
-        
       responses:
-        '200':
+        200:
           description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Object"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
+    patch:
+      tags:
+        - Manage
+      summary: Update information on an object, on success return the updated object
+      parameters:
+      - name: schema
+        in: path
+        description: Unique id of the targeted service.
+        schema:
+          type: string
+        required: true
+      - name: accessionId
+        in: path
+        description: filter objects in schema using accession ID
+        schema:
+          type: string
+        required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Object"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
+    put:
+      tags:
+        - Manage
+      summary: Update the whole object object, on success return the updated object
+      parameters:
+      - name: schema
+        in: path
+        description: Unique id of the targeted service.
+        schema:
+          type: string
+        required: true
+      - name: accessionId
+        in: path
+        description: filter objects in schema using accession ID
+        schema:
+          type: string
+        required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Object"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
+    delete:
+      tags:
+        - Manage
+      summary: Delete object from a schema with a specified accession ID
+      parameters:
+      - name: schema
+        in: path
+        description: Unique id of the targeted service.
+        schema:
+          type: string
+        required: true
+      - name: accessionId
+        in: path
+        description: filter objects in schema using accession ID
+        schema:
+          type: string
+        required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ObjectDeleted"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
 components:
   schemas:
     ErrorModel:
@@ -314,3 +525,46 @@ components:
             type: string
             description: URL pointing to the schema source
             example: https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.sample.xsd
+    Object:
+      type: object
+      required:
+        - accessionId
+        - publishDate
+        - accessType
+      additionalProperties: true
+      properties:
+        accessioniId:
+          type: string
+          description: accession id generated to identify an object
+        publishedDate:
+          type: string
+          description: datetime in ISO8601 format
+        accesstype:
+          type: string
+          enum: ["PUBLIC", "REGISTERED", "CONTROLLED"]
+          description: in order to determine if a dataset requires a user to be registered or it can be public or it requires special permission or controlled access
+    ObjectList:
+      type: array
+      items:
+        $ref: '#/components/schemas/Object'
+    ObjectDeleted:
+      type: object
+      required:
+        - accessionId
+      additionalProperties: false
+      properties:
+        accessionId:
+          type: string
+          description: accession id generated to identify an object
+        detail:
+          type: string
+          description: detail if the operation was done successfully or not
+    ObjectCreated:
+      type: object
+      required:
+        - accessionId
+      additionalProperties: false
+      properties:
+        accessionId:
+          type: string
+          description: accession id generated to identify an object
