@@ -6,6 +6,7 @@ import uvloop
 from aiohttp import web
 
 from .api.handlers import RESTApiHandler, SubmissionAPIHandler
+from .api.middlewares import error_middleware
 from .helpers.logger import LOG
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -21,7 +22,7 @@ async def init() -> web.Application:
     Note:: if using variable resources (such as {schema}), add
     specific ones on top of more generic ones.
     """
-    server = web.Application()
+    server = web.Application(middlewares=[error_middleware()])
     rest_handler = RESTApiHandler()
     submission_handler = SubmissionAPIHandler()
     routes = [
@@ -31,9 +32,7 @@ async def init() -> web.Application:
         web.post('/object/{schema}', rest_handler.post_object),
         web.post('/submit', submission_handler.submit),
         web.post('/validate', submission_handler.validate),
-        web.get('/{schema}/{accessionId}', rest_handler.get_object),
-        web.get('/{schema}', rest_handler.query_objects),
-        web.post('/{schema}', rest_handler.post_object)]
+    ]
     server.router.add_routes(routes)
     LOG.info("Server configurations and routes loaded")
     return server
