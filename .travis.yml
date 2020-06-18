@@ -40,6 +40,13 @@ jobs:
       before_script:
         - pip install tox-travis
       script: tox -e py37
+    - stage: tests
+      name: "Documentation Tests"
+      python: 3.6
+      before_script:
+        - pip install tox-travis
+      script:
+        - tox -e docs
 
 notifications:
   email: false
