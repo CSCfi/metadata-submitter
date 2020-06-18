@@ -2,4 +2,4 @@
 
 __title__ = 'metadata_backend'
 __version__ = VERSION = '0.1.0'
-__author__ = 'otahontas, csc-jm, blankdots'
+__author__ = 'CSC Developers'
