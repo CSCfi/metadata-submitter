@@ -244,3 +244,11 @@ class HandlersTestCase(AioHTTPTestCase):
         reason = "Only one file can be sent to this endpoint at a time."
         self.assertEqual(response.status, 400)
         self.assertIn(reason, await response.text())
+
+    @unittest_run_loop
+    async def test_bad_submit_object(self):
+        """Test 404 error is raised if incorrect schema name is given."""
+        response = await self.client.get("/object/bad_scehma_name/some_id")
+        self.assertEqual(response.status, 404)
+        json_resp = await response.json()
+        self.assertIn("Theres no schema", json_resp['detail'])
