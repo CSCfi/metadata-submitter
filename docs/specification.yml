@@ -544,9 +544,17 @@ components:
           enum: ["PUBLIC", "REGISTERED", "CONTROLLED"]
           description: in order to determine if a dataset requires a user to be registered or it can be public or it requires special permission or controlled access
     ObjectList:
-      type: array
-      items:
-        $ref: '#/components/schemas/Object'
+      type: object
+      required:
+        - objects
+        - page
+      properties:
+        page:
+          $ref: '#/components/schemas/Pagination' 
+        objects:
+          type: array
+          items:
+            $ref: '#/components/schemas/Object'
     ObjectDeleted:
       type: object
       required:
@@ -559,6 +567,23 @@ components:
         detail:
           type: string
           description: detail if the operation was done successfully or not
+    Pagination:
+      type: object
+      required:
+        - page
+        - size
+        - totalPages
+        - totalObjects
+      properties:
+        page:
+          description: current page number
+          type: integer
+        size:
+          type: integer
+        totalPages:
+          type: integer
+        totalObjects:
+          type: integer
     ObjectCreated:
       type: object
       required:
