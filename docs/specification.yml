@@ -98,7 +98,18 @@ paths:
     get:
       tags:
         - Query
-      summary: List of objects.
+      summary: List of objects. By default it will show 10 results per page.
+      parameters:
+      - in: query
+        name: page
+        schema:
+          type: string
+        description: Page number
+      - in: query
+        name: per_page
+        schema:
+          type: string
+        description: Results per page
       responses:
         200:
           description: OK
@@ -110,7 +121,7 @@ paths:
     get:
       tags:
         - Query
-      summary: Filter objects from a specific schema using various query string parameters
+      summary: Filter objects from a specific schema using various query string parameters.By default it will show 10 results per page.
       parameters:
       - name: schema
         in: path
@@ -118,6 +129,16 @@ paths:
         schema:
           type: string
         required: true
+      - in: query
+        name: page
+        schema:
+          type: string
+        description: Page number
+      - in: query
+        name: per_page
+        schema:
+          type: string
+        description: Results per page
       - in: query
         name: title
         schema:
