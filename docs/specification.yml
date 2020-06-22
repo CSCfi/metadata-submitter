@@ -63,7 +63,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ObjectCreated"
+                $ref: "#/components/schemas/ObjectValidated"
         400:
           description: Bad Request
           content:
@@ -123,6 +123,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ObjectList"
+        404:
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/404NotFound"
   /objects/{schema}:
     get:
       tags:
@@ -250,6 +256,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
+        404:
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/404NotFound"
     post:
       tags:
         - Submission
@@ -323,6 +335,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
+        404:
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/404NotFound"
     patch:
       tags:
         - Manage
