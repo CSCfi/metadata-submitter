@@ -560,7 +560,7 @@ components:
         publishedDate:
           type: string
           description: datetime in ISO8601 format
-        accesstype:
+        accessType:
           type: string
           enum: ["PUBLIC", "REGISTERED", "CONTROLLED"]
           description: in order to determine if a dataset requires a user to be registered or it can be public or it requires special permission or controlled access
