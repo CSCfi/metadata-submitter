@@ -43,6 +43,8 @@ class RESTApiHandler:
         """
         accession_id = req.match_info['accessionId']
         type = req.match_info['schema']
+        if type not in object_types.keys():
+            raise web.HTTPNotFound(reason=f"Theres no schema with name {type}")
         format = req.query.get("format", "json").lower()
         operator = XMLOperator() if format == "xml" else Operator()
         data, content_type = operator.read_metadata_object(type, accession_id)
@@ -58,6 +60,8 @@ class RESTApiHandler:
         :returns: JSON response containing accessionId for submitted object
         """
         type = req.match_info['schema']
+        if type not in object_types.keys():
+            raise web.HTTPNotFound(reason=f"Theres no schema with name {type}")
         accession_id = _generate_accession_id()
         if req.content_type == "multipart/form-data":
             files = await _extract_xml_upload(req, extract_one=True)
@@ -238,7 +242,11 @@ async def _extract_xml_upload(req: Request, extract_one: bool = False
     :returns: content and type for each uploaded file, sorted by type.
     """
     files: List[Tuple[str, str]] = []
-    reader = await req.multipart()
+    try:
+        reader = await req.multipart()
+    except AssertionError:
+        reason = "Request does not have valid multipart/form content"
+        raise web.HTTPBadRequest(reason=reason)
     while True:
         part = await reader.next()
         # Following is probably error in aiohttp type hints, fixing so
