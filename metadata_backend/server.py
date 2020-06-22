@@ -32,7 +32,7 @@ async def init() -> web.Application:
         web.get('/object/{schema}', rest_handler.query_objects),
         web.post('/object/{schema}', rest_handler.post_object),
         web.post('/submit', submission_handler.submit),
-        web.post('/validate', submission_handler.validate),
+        web.post('/validate', submission_handler.validate)
     ]
     server.router.add_routes(api_routes)
     if frontend_static_files.exists():
