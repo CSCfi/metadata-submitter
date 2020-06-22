@@ -23,7 +23,7 @@ paths:
       summary: XML submission endpoint, will also trigger validation.
       requestBody:
         content:
-          multipart/form-data::
+          multipart/form-data:
             schema:
               type: string
               format: binary
