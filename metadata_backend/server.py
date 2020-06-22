@@ -5,8 +5,9 @@ import asyncio
 import uvloop
 from aiohttp import web
 
-from .api.handlers import RESTApiHandler, SubmissionAPIHandler
+from .api.handlers import RESTApiHandler, StaticHandler, SubmissionAPIHandler
 from .api.middlewares import error_middleware
+from .conf.conf import frontend_static_files
 from .helpers.logger import LOG
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -25,7 +26,7 @@ async def init() -> web.Application:
     server = web.Application(middlewares=[error_middleware()])
     rest_handler = RESTApiHandler()
     submission_handler = SubmissionAPIHandler()
-    routes = [
+    api_routes = [
         web.get('/objects', rest_handler.get_objects),
         web.get('/object/{schema}/{accessionId}', rest_handler.get_object),
         web.get('/object/{schema}', rest_handler.query_objects),
@@ -33,7 +34,14 @@ async def init() -> web.Application:
         web.post('/submit', submission_handler.submit),
         web.post('/validate', submission_handler.validate),
     ]
-    server.router.add_routes(routes)
+    server.router.add_routes(api_routes)
+    if frontend_static_files.exists():
+        static_handler = StaticHandler(frontend_static_files)
+        frontend_routes = [
+            web.static('/static', static_handler.setup_static()),
+            web.get('/{path:.*}', static_handler.frontend),
+        ]
+        server.router.add_routes(frontend_routes)
     LOG.info("Server configurations and routes loaded")
     return server
 
