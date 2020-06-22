@@ -43,7 +43,7 @@ setup(
         'docs': ['sphinx >= 1.4', 'sphinx_rtd_theme'],
     },
 
-    package_data={'': ['schemas/*.xsd']},
+    package_data={'': ['schemas/*.xsd', 'frontend/*', 'frontend/static/js/*']},
     include_package_data=True,
 
     entry_points={
