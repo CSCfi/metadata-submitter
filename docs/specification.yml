@@ -51,9 +51,15 @@ paths:
       tags:
         - Submission
       summary: Validate XML before submission.
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: string
+              format: binary
       responses:
-        201:
-          description: Created
+        200:
+          description: OK
           content:
             application/json:
               schema:
@@ -614,3 +620,14 @@ components:
         accessionId:
           type: string
           description: accession id generated to identify an object
+    ObjectValidated:
+      type: object
+      required:
+        - isValid
+      properties:
+        isValid:
+          type: boolean
+          description: true of false if valid. if false a detail key would be good to detail the error but not required
+        detail:
+          type: string 
+          description: details of the error if there was one.
