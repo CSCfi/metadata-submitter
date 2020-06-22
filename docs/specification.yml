@@ -279,6 +279,9 @@ paths:
             schema:
               type: string
               format: binary
+          application/json:
+              schema:
+                type: object
       responses:
         201:
           description: Created
@@ -345,6 +348,11 @@ paths:
       tags:
         - Manage
       summary: Update information on an object, on success return the updated object
+      requestBody:
+        content:
+          application/json:
+              schema:
+                type: object
       parameters:
       - name: schema
         in: path
@@ -387,6 +395,15 @@ paths:
       tags:
         - Manage
       summary: Update the whole object object, on success return the updated object
+      requestBody:
+        content:
+          multipart/form-data::
+            schema:
+              type: string
+              format: binary
+          application/json:
+              schema:
+                type: object
       parameters:
       - name: schema
         in: path
