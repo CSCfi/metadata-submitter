@@ -33,7 +33,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ObjectCreated"
+                $ref: "#/components/schemas/ObjectsCreated"
         400:
           description: Bad Request
           content:
@@ -655,6 +655,21 @@ components:
         accessionId:
           type: string
           description: accession id generated to identify an object
+    ObjectsCreated:
+      type: array
+      items:
+        type: object
+        required:
+          - schema
+          - accessionId
+        additionalProperties: false
+        properties:
+          accessionId:
+            type: string
+            description: Accession id generated to identify an object
+          schema:
+            type: string
+            description: type of schema this Accession ID relates to and was added in submit
     ObjectValidated:
       type: object
       required:
