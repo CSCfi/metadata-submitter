@@ -36,7 +36,7 @@ class BaseOperator(ABC):
             data_raw = self.db_service.read(type, accession_id)
             if not data_raw:
                 raise web.HTTPNotFound
-            data = self._format_read_data(data_raw)
+            data = self._format_read_data(type, data_raw)
         except errors.PyMongoError as error:
             reason = f"Error happened while getting file: {error}"
             raise web.HTTPBadRequest(reason=reason)
@@ -87,13 +87,14 @@ class BaseOperator(ABC):
                     # Query with regex from just one field
                     mongo_query = {query_map[query]: regx}
         cursor = self.db_service.query(type, mongo_query)
+        # TODO: check this?
         result = json_util.dumps(cursor)
         if result == "[]":
             raise web.HTTPNotFound
         return result
 
     @abstractmethod
-    def _format_read_data(self, data_raw: Any) -> Any:
+    def _format_read_data(self, type: str, data_raw: Any) -> Any:
         """Format data to specific format, must be implemented by subclass."""
 
 
@@ -107,13 +108,26 @@ class Operator(BaseOperator):
         """Initialize database and content-type."""
         super().__init__("objects", "application/json")
 
-    def _format_read_data(self, data_raw: Union[Dict, Cursor]) -> Dict:
+    def _format_read_data(self, type: str,
+                          data_raw: Union[Dict, Cursor]) -> Dict:
         """Get json content from given mongodb data.
 
+        :param type: Type of the object to format
         :param data_raw: Data from mongodb query, can contain multiple results
         :returns: Mongodb query result dumped as json
         """
+        if type == "study":
+            data_raw = self._format_study_publishdate(data_raw)
         return json_util.dumps(data_raw)
+
+    def _format_study_publishdate(self, data_raw: Cursor) -> Cursor:
+        """Format study publish date to ISO 8601 format.
+
+        :param study_data: original data from mongoDb
+        :returns: returns data with formatted publishDates
+        """
+        data_raw["publishDate"] = data_raw["publishDate"].isoformat()
+        return data_raw
 
 
 class XMLOperator(BaseOperator):
@@ -126,7 +140,7 @@ class XMLOperator(BaseOperator):
         """Initialize database and content-type."""
         super().__init__("backups", "text/xml")
 
-    def _format_read_data(self, data_raw: Dict) -> str:
+    def _format_read_data(self, type: str, data_raw: Dict) -> str:
         """Get xml content from given mongodb data.
 
         :param data_raw: Data from mongodb query with single result.
