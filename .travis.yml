@@ -56,7 +56,7 @@ jobs:
       python: 3.6
       before_script:
         - docker-compose up -d --build
-        - pip install aiohttp
+        - pip install aiohttp aiofiles
       script:
         - python tests/integration/run_tests.py
 
