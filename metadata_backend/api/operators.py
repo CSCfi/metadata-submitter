@@ -38,7 +38,6 @@ class BaseOperator(ABC):
                 raise web.HTTPNotFound
             data = self._format_read_data(data_raw)
         except errors.PyMongoError as error:
-            LOG.info(f"error, reason: {error}")
             reason = f"Error happened while getting file: {error}"
             raise web.HTTPBadRequest(reason=reason)
         return data, self.content_type
@@ -55,7 +54,6 @@ class BaseOperator(ABC):
         try:
             self.db_service.create(type, data)
         except errors.PyMongoError as error:
-            LOG.info(f"error, reason: {error}")
             reason = f"Error happened while getting file: {error}"
             raise web.HTTPBadRequest(reason=reason)
         LOG.info(f"Inserting file to database succeeded: {type}, "
