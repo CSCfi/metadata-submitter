@@ -1,5 +1,6 @@
 """Run integration tests against backend api endpoints."""
 import asyncio
+import aiofiles
 import aiohttp
 import logging
 from aiohttp import FormData
@@ -14,7 +15,7 @@ LOG.setLevel(logging.DEBUG)
 TESTFILES_ROOT = Path(__file__).parent.parent / 'test_files'
 
 
-def create_submission_data(schema, filename):
+async def create_submission_data(schema, filename):
     """Create request data from pairs of schemas and filenames.
 
     :param schema: name of the schema (folder) used for testing
@@ -22,10 +23,12 @@ def create_submission_data(schema, filename):
     """
     data = FormData()
     path_to_file = TESTFILES_ROOT / schema / filename
-    data.add_field(schema.upper(),
-                   open(path_to_file.as_posix(), 'r'),
-                   filename=path_to_file.name,
-                   content_type='text/xml')
+    path = path_to_file.as_posix()
+    async with aiofiles.open(path, mode='r') as f:
+        data.add_field(schema.upper(),
+                       await f.read(),
+                       filename=filename,
+                       content_type='text/xml')
     return data
 
 
@@ -41,7 +44,7 @@ async def test_post_and_get_works(schema, filename):
     async with aiohttp.ClientSession() as session:
         LOG.debug(f"Testing POST with {schema}")
         base_url = "http://localhost:5430/object"
-        data = create_submission_data(schema, filename)
+        data = await create_submission_data(schema, filename)
         async with session.post(f"{base_url}/{schema}", data=data) as resp:
             assert resp.status == 201, 'HTTP Status code error'
             ans = await resp.json()
@@ -53,12 +56,15 @@ async def test_post_and_get_works(schema, filename):
 
 async def main():
     """Launch bunch of test tasks and run them asyncronously."""
+    test_files = [
+        ("study", "SRP000539.xml"),
+        ("sample", "SRS001433.xml"),
+        ("run", "ERR000076.xml"),
+        ("experiment", "ERX000119.xml"),
+        ("analysis", "ERZ266973.xml")
+    ]
     await asyncio.gather(
-        test_post_and_get_works("study", "SRP000539.xml"),
-        test_post_and_get_works("sample", "SRS001433.xml"),
-        test_post_and_get_works("run", "ERR000076.xml"),
-        test_post_and_get_works("experiment", "ERX000119.xml"),
-        test_post_and_get_works("analysis", "ERZ266973.xml")
+        *[test_post_and_get_works(schema, file) for schema, file in test_files]
     )
 
 if __name__ == '__main__':
