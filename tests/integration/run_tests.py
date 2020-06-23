@@ -55,7 +55,7 @@ async def test_post_and_get_works(schema, filename):
 
 
 async def main():
-    """Launch bunch of test tasks and run them asyncronously."""
+    """Launch 500 test tasks and run them asyncronously."""
     test_files = [
         ("study", "SRP000539.xml"),
         ("sample", "SRS001433.xml"),
@@ -64,7 +64,8 @@ async def main():
         ("analysis", "ERZ266973.xml")
     ]
     await asyncio.gather(
-        *[test_post_and_get_works(schema, file) for schema, file in test_files]
+        *[test_post_and_get_works(schema, file) for schema, file in test_files
+          for _ in range(100)]
     )
 
 if __name__ == '__main__':
