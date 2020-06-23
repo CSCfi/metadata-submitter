@@ -1,0 +1,683 @@
+openapi: 3.0.0
+info:
+  description: |-
+    This is a definition of CSC Metadata Submitter API.
+
+  version: 1.0.0
+  title: CSC Metadata Submitter API
+  license:
+    name: License Apache 2.0
+    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+tags:
+  - name: Submission
+    description: Endpoints used in submission
+  - name: Query
+    description: Endpoints used for data retrieval
+  - name: Manage
+    description: Endpoints used for managing data
+paths:
+  /submit:
+    post:
+      tags:
+        - Submission
+      summary: XML submission endpoint, will also trigger validation.
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: string
+              format: binary
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ObjectsCreated"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+  /validate:
+    post:
+      tags:
+        - Submission
+      summary: Validate XML before submission.
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: string
+              format: binary
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ObjectValidated"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+  /schemas:
+    get:
+      tags:
+        - Query
+      summary: List of available schemas
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchemasList'
+        404:
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/404NotFound"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+  /objects:
+    get:
+      tags:
+        - Query
+      summary: List of objects. By default it will show 10 results per page.
+      parameters:
+      - in: query
+        name: page
+        schema:
+          type: string
+        description: Page number
+      - in: query
+        name: per_page
+        schema:
+          type: string
+        description: Results per page
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ObjectList"
+        404:
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/404NotFound"
+  /objects/{schema}:
+    get:
+      tags:
+        - Query
+      summary: Filter objects from a specific schema using various query string parameters.By default it will show 10 results per page.
+      parameters:
+      - name: schema
+        in: path
+        description: Title of the XML schema.
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: page
+        schema:
+          type: string
+        description: Page number
+      - in: query
+        name: per_page
+        schema:
+          type: string
+        description: Results per page
+      - in: query
+        name: title
+        schema:
+          type: string
+        description: Some description for title
+      - in: query
+        name: studyType
+        schema:
+          type: string
+        description: Some description for studyType
+      - in: query
+        name: studyAbstract
+        schema:
+          type: string
+        description: Some description for studyAbstract
+      - in: query
+        name: projectID
+        schema:
+          type: string
+        description: Some description for projectID
+      - in: query
+        name: relatedStudies
+        schema:
+          type: string
+        description: Some description for relatedStudies
+      - in: query
+        name: studyAttributes
+        schema:
+          type: string
+        description: Some description for studyAttributes
+      - in: query
+        name: sampleName
+        schema:
+          type: string
+        description: Some description for sampleName
+      - in: query
+        name: scientificName
+        schema:
+          type: string
+        description: Some description for scientificName
+      - in: query
+        name: commonName
+        schema:
+          type: string
+        description: Some description for commonName
+      - in: query
+        name: fileType
+        schema:
+          type: string
+        description: Some description for fileType
+      - in: query
+        name: studyReference
+        schema:
+          type: string
+        description: Some description for studyReference
+      - in: query
+        name: sampleReference
+        schema:
+          type: string
+        description: Some description for sampleReference
+      - in: query
+        name: experimentReference
+        schema:
+          type: string
+        description: Some description for experimentReference
+      - in: query
+        name: runReference
+        schema:
+          type: string
+        description: Some description for runReference
+      - in: query
+        name: analysisReference
+        schema:
+          type: string
+        description: Some description for analysisReference
+      - in: query
+        name: analysisType
+        schema:
+          type: string
+        description: Some description for analysisType
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ObjectList"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
+        404:
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/404NotFound"
+    post:
+      tags:
+        - Submission
+      summary: Submit data to a specific schema
+      parameters:
+      - name: schema
+        in: path
+        description: Title of the XML schema.
+        schema:
+          type: string
+        required: true
+      requestBody:
+        content:
+          multipart/form-data::
+            schema:
+              type: string
+              format: binary
+          application/json:
+              schema:
+                type: object
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ObjectCreated"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+  /objects/{schema}/{accessionId}:
+    get:
+      tags:
+        - Query
+      summary: List of object by accession ID.
+      parameters:
+      - name: schema
+        in: path
+        description: Unique id of the targeted service.
+        schema:
+          type: string
+        required: true
+      - name: accessionId
+        in: path
+        description: filter objects in schema using accession ID
+        schema:
+          type: string
+        required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Object"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
+        404:
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/404NotFound"
+    patch:
+      tags:
+        - Manage
+      summary: Update information on an object, on success return the updated object
+      requestBody:
+        content:
+          application/json:
+              schema:
+                type: object
+      parameters:
+      - name: schema
+        in: path
+        description: Unique id of the targeted service.
+        schema:
+          type: string
+        required: true
+      - name: accessionId
+        in: path
+        description: filter objects in schema using accession ID
+        schema:
+          type: string
+        required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Object"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
+    put:
+      tags:
+        - Manage
+      summary: Update the whole object object, on success return the updated object
+      requestBody:
+        content:
+          multipart/form-data::
+            schema:
+              type: string
+              format: binary
+          application/json:
+              schema:
+                type: object
+      parameters:
+      - name: schema
+        in: path
+        description: Unique id of the targeted service.
+        schema:
+          type: string
+        required: true
+      - name: accessionId
+        in: path
+        description: filter objects in schema using accession ID
+        schema:
+          type: string
+        required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Object"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
+    delete:
+      tags:
+        - Manage
+      summary: Delete object from a schema with a specified accession ID
+      parameters:
+      - name: schema
+        in: path
+        description: Unique id of the targeted service.
+        schema:
+          type: string
+        required: true
+      - name: accessionId
+        in: path
+        description: filter objects in schema using accession ID
+        schema:
+          type: string
+        required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ObjectDeleted"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
+components:
+  schemas:
+    ErrorModel:
+      type: object
+      description: Response when some error(s) occured in one of the endpoints
+      required: 
+        - errors
+      properties:
+        errors:
+          type: array
+          description: list of erros that occured
+          items:
+            type: object
+            required: 
+              - code
+              - detail
+              - title
+            properties:
+              code:
+                type: string
+                description: internal errorCode
+              title: 
+                type: string
+                description: Short message, human readable
+              detail:
+                type: string
+                description: details about what error occured while processing the request
+    400BadRequest:
+      allOf:
+        - $ref: '#/components/schemas/ErrorModel'
+      properties:
+        errors:
+          items:
+            type: object
+            properties:
+              code:
+                example: badRequest
+              title: 
+                example: Bad Request
+              detail:
+                example: the current request could not be processed as the submitted file was not valid
+    404NotFound:
+      allOf:
+        - $ref: '#/components/schemas/ErrorModel'
+      properties:
+        errors:
+          items:
+            type: object
+            properties:
+              code:
+                example: notFound
+              title: 
+                example: Not Found
+              detail:
+                example: the current endpoint does not retrieve any results
+    401Unauthorized:
+      allOf:
+        - $ref: '#/components/schemas/ErrorModel'
+      properties:
+        errors:
+          items:
+            type: object
+            properties:
+              code:
+                example: Unauthorized
+              title: 
+                example: Unauthorized
+              detail:
+                example: the request cannot be authorized
+    403Forbidden:
+      allOf:
+        - $ref: '#/components/schemas/ErrorModel'
+      properties:
+        errors:
+          items:
+            type: object
+            properties:
+              code:
+                example: Forbidden
+              title: 
+                example: Forbidden
+              detail:
+                example: the request does not contain the right permissions
+    SchemasList:
+      type: array
+      items:
+        type: object
+        required:
+          - title
+          - detail
+        properties:
+          title: 
+            type: string
+            description: Short message, human readable
+            example: Sample
+          detail:
+            type: string
+            description: Description of the schema
+            example: Sample defines an isolate of sequenceable material upon which sequencing experiments can be based.
+          url:
+            type: string
+            description: URL pointing to the schema source
+            example: https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.sample.xsd
+    Object:
+      type: object
+      required:
+        - accessionId
+        - publishDate
+        - accessType
+      additionalProperties: true
+      properties:
+        accessioniId:
+          type: string
+          description: accession id generated to identify an object
+        publishedDate:
+          type: string
+          description: datetime in ISO8601 format
+        accessType:
+          type: string
+          enum: ["PUBLIC", "REGISTERED", "CONTROLLED"]
+          description: in order to determine if a dataset requires a user to be registered or it can be public or it requires special permission or controlled access
+    ObjectList:
+      type: object
+      required:
+        - objects
+        - page
+      properties:
+        page:
+          $ref: '#/components/schemas/Pagination' 
+        objects:
+          type: array
+          items:
+            $ref: '#/components/schemas/Object'
+    ObjectDeleted:
+      type: object
+      required:
+        - accessionId
+      additionalProperties: false
+      properties:
+        accessionId:
+          type: string
+          description: accession id generated to identify an object
+        detail:
+          type: string
+          description: detail if the operation was done successfully or not
+    Pagination:
+      type: object
+      required:
+        - page
+        - size
+        - totalPages
+        - totalObjects
+      properties:
+        page:
+          description: current page number
+          type: integer
+        size:
+          type: integer
+        totalPages:
+          type: integer
+        totalObjects:
+          type: integer
+    ObjectCreated:
+      type: object
+      required:
+        - accessionId
+      additionalProperties: false
+      properties:
+        accessionId:
+          type: string
+          description: accession id generated to identify an object
+    ObjectsCreated:
+      type: array
+      items:
+        type: object
+        required:
+          - schema
+          - accessionId
+        additionalProperties: false
+        properties:
+          accessionId:
+            type: string
+            description: Accession id generated to identify an object
+          schema:
+            type: string
+            description: type of schema this Accession ID relates to and was added in submit
+    ObjectValidated:
+      type: object
+      required:
+        - isValid
+      properties:
+        isValid:
+          type: boolean
+          description: true of false if valid. if false a detail key would be good to detail the error but not required
+        detail:
+          type: string 
+          description: details of the error if there was one.
