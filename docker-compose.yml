@@ -1,0 +1,26 @@
+version: "3"
+services:
+  web:
+    build:
+      dockerfile: Dockerfile-dev
+      context: .
+    container_name: "metadata_db_backend"
+    ports:
+      - 5430:5430
+    depends_on:
+      - database
+  database:
+    image: "mongo"
+    container_name: "metadata_db_database"
+    restart: on-failure
+    environment:
+      - "MONGO_INITDB_ROOT_USERNAME=admin"
+      - "MONGO_INITDB_ROOT_PASSWORD=admin"
+      - "MONGODB_HOST=localhost:27017"
+    volumes:
+      - data:/data/db
+    expose:
+      - 27017
+
+volumes:
+  data: 
