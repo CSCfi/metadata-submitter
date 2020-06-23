@@ -43,8 +43,6 @@ class AppTestCase(AioHTTPTestCase):
     async def test_api_routes_are_set(self):
         """Test correct amount of api (no frontend) routes is set."""
         server = await self.get_application()
-        for route in server.router.resources():
-            print(route)
         self.assertIs(len(server.router.resources()), 5)
 
     @unittest_run_loop
