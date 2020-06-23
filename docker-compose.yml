@@ -4,7 +4,7 @@ services:
     build:
       dockerfile: Dockerfile-dev
       context: .
-    container_name: "metadata_db_backend"
+    container_name: "metadata_db_backend_dev"
     ports:
       - 5430:5430
     depends_on:
@@ -14,7 +14,7 @@ services:
       - "MONGODB_HOST=database:27017"
   database:
     image: "mongo"
-    container_name: "metadata_db_database"
+    container_name: "metadata_db_database_dev"
     restart: on-failure
     environment:
       - "MONGO_INITDB_ROOT_USERNAME=admin"
