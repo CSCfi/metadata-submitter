@@ -86,6 +86,10 @@ class RESTApiHandler:
         :returns: Query results as JSON
         """
         type = req.match_info['schema']
+        format = req.query.get("format", "json").lower()
+        if format == "xml":
+            reason = "xml-formatted query results are not supported"
+            raise web.HTTPBadRequest(reason=reason)
         result = Operator().query_metadata_database(type, req.query)
         return web.Response(body=result, status=200,
                             content_type="application/json")
