@@ -4,7 +4,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/CSCfi/metadata-submitter/badge.svg?branch=master)](https://coveralls.io/github/CSCfi/metadata-submitter?branch=master)
 
 Metadata submission service to handle submissions of EGA metadata, either as XML files or via form submissions. Submissions through graphical frontend and POST are supported.
-Service also validates submissions against EGA XSD metadata models and saves submissions to database.
+Service also validates submitted metadata objects against EGA XSD metadata models and saves objects to database.
 
 ## Install and run
 
@@ -13,17 +13,17 @@ Requirements:
 - Mongodb
 - Docker + docker-compose
 
-For quick testing, server and database can be started with Docker by running `docker-compose up  --build` (add `-d` flag to run containers in background). Server can then be found from `http://localhost:5430`.
+For quick testing, go to the `development` folde and launch server and database with Docker by running `docker-compose up  --build` (add `-d` flag to run containers in background). Server can then be found from `http://localhost:5430`.
 
 For more detailed setup, do following:
-- Install project by running: `pip install .`
-- Setup mongodb
+- Install project by running: `pip install .` in project root
+- Setup mongodb and env variables via desired way, details:
   - Server expects to find mongodb instance running, spesified with following environmental variables:
     - `MONGO_INITDB_ROOT_USERNAME`, username for admin user to mondogb instance
     - `MONGO_INITDB_ROOT_PASSWORD`, password for admin user to mondogb instance
     - `MONGODB_HOST`, host and port for mongodb instance (e.g. `localhost:27017`)
-  - Server looks for current environmental variables first and if needed variables aren't found, it uses MongoDB Docker images default values.
-  - Suitable mongodb instance can be launched with Docker by running `docker-compose up` in `mongodb` folder
+  - As a default, server uses default values from MongoDB Docker image.
+  - Suitable mongodb instance can be launched with Docker by running `docker-compose up` in `development/mongodb-docker` folder
 - After installing and setting up database, server can be launched with `metadata_submitter`.
 
 If you also need frontend for development, check out [frontend repository](https://github.com/CSCfi/metadata-submitter-frontend/).
