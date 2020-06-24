@@ -24,7 +24,7 @@ class TestOperators(unittest.TestCase):
             "accessionId": "EDAG3945644754983408"
         }
         operator = Operator()
-        result = operator._format_study_publishdate(study_test)
+        result = operator._format_publish_date(study_test)
         assert result["publishDate"] == "2020-06-14T00:00:00"
 
 
