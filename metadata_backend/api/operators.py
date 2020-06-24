@@ -1,5 +1,7 @@
 """Operators for handling database-related operations."""
 import re
+import secrets
+import string
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Tuple, Union
 
@@ -12,6 +14,7 @@ from pymongo.cursor import Cursor
 from ..conf.conf import query_map
 from ..database.db_service import DBService
 from ..helpers.logger import LOG
+from ..helpers.parser import XMLToJSONParser
 
 
 class BaseOperator(ABC):
@@ -42,26 +45,42 @@ class BaseOperator(ABC):
             raise web.HTTPBadRequest(reason=reason)
         return data, self.content_type
 
-    def create_metadata_object(self, type: str, data: Dict) -> None:
-        """Create new object to database.
+    def create_metadata_object(self, type: str,
+                               data: Union[Dict, str]) -> str:
+        """Create new object and add it to database.
 
-        Formats data to specific format and adds accession_id.
-
-        :param type: Type of the object to read.
+        :param type: Type of the object to be added.
         :param data: Data to be saved to database.
-        :returns: Accession id for the object created.
+        :returns: Accession id for the object added.
         """
-        try:
-            self.db_service.create(type, data)
-        except errors.PyMongoError as error:
-            reason = f"Error happened while getting file: {error}"
-            raise web.HTTPBadRequest(reason=reason)
+        accession_id = self._generate_accession_id()
+        self._handle_data_and_add_to_db(type, data, accession_id)
         LOG.info(f"Inserting file to database succeeded: {type}, "
                  f"{self.content_type}")
+        return accession_id
+
+    def _generate_accession_id(self) -> str:
+        """Generate random accession id.
+
+        Will be replaced later with external id generator.
+        """
+        sequence = ''.join(secrets.choice(string.digits) for i in range(16))
+        return f"EDAG{sequence}"
 
     @abstractmethod
     def _format_read_data(self, type: str, data_raw: Any) -> Any:
-        """Format data to specific format, must be implemented by subclass."""
+        """Format data read from db to specific format.
+
+        Must be implemented by subclass.
+        """
+
+    @abstractmethod
+    def _handle_data_and_add_to_db(self, type: str, data: Any,
+                                   accession_id: str) -> None:
+        """Handle needed conversions and parsing, then add data to database.
+
+        Must be implemented by subclass.
+        """
 
 
 class Operator(BaseOperator):
@@ -134,6 +153,7 @@ class Operator(BaseOperator):
     def _format_single_dict(self, type: str, doc: Dict) -> Dict:
         """Format single result dictionary.
 
+        Delete mongodb internal id from returned result.
         For studies, publish date is formatted to ISO 8601.
 
         :param doc: single document from mongodb
@@ -143,6 +163,23 @@ class Operator(BaseOperator):
         if type == "study":
             doc["publishDate"] = doc["publishDate"].isoformat()
         return doc
+
+    def _handle_data_and_add_to_db(self, type: str, data: Dict,
+                                   accession_id: str) -> None:
+        """Format added json metadata object and add it to db.
+
+        Adds necessary additional information to object before adding to db.
+
+        :param type: Type of the object to format
+        :param data: Metadata object
+        :param accession_id: objects accession id
+        """
+        data["accessionId"] = accession_id
+        try:
+            self.db_service.create(type, data)
+        except errors.PyMongoError as error:
+            reason = f"Error happened while getting file: {error}"
+            raise web.HTTPBadRequest(reason=reason)
 
 
 class XMLOperator(BaseOperator):
@@ -158,7 +195,30 @@ class XMLOperator(BaseOperator):
     def _format_read_data(self, type: str, data_raw: Dict) -> str:
         """Get xml content from given mongodb data.
 
+        :param type: Type of the object to format
         :param data_raw: Data from mongodb query with single result.
         :returns: XML content
         """
         return data_raw["content"]
+
+    def _handle_data_and_add_to_db(self, type: str, data: str,
+                                   accession_id: str) -> None:
+        """Format added xml metadata object and add it to db.
+
+        XML is validated parsed to json with parser-class and json is added
+        to database with Operator-class. After success, xml itself is backed
+        up to database.
+
+        :param type: Type of the object to format
+        :param data: Original xml content
+        :param accession_id: objects accession id
+        """
+        data_as_json = XMLToJSONParser().parse(type, data)
+        Operator()._handle_data_and_add_to_db(type, data_as_json, accession_id)
+
+        try:
+            self.db_service.create(type, {"accessionId": accession_id,
+                                          "content": data})
+        except errors.PyMongoError as error:
+            reason = f"Error happened while getting file: {error}"
+            raise web.HTTPBadRequest(reason=reason)
