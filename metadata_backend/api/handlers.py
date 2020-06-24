@@ -2,7 +2,6 @@
 import json
 import mimetypes
 from collections import Counter
-from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Tuple, Union, cast
 from xml.etree.ElementTree import ParseError
@@ -143,7 +142,6 @@ class SubmissionAPIHandler:
             else:
                 reason = f"action {action} is not supported yet"
                 raise web.HTTPBadRequest(reason=reason)
-        # receipt = self.generate_receipt(actions)
         body = json.dumps(results)
         return web.Response(body=body, status=201,
                             content_type="application/json")
@@ -178,22 +176,6 @@ class SubmissionAPIHandler:
                                 content_type="application/json")
         body = json.dumps({"isValid": True})
         return web.Response(body=body, content_type="application/json")
-
-    @staticmethod
-    def generate_receipt(actions: Dict) -> str:
-        """Generate receipt XML after all submissions have ran through.
-
-        Does not currently generate anything special, should be changed later.
-
-        :param actions: Info about actions that were performed
-        :returns: XML-based receipt
-        """
-        date = datetime.now()
-        infos = "<SUBMISSION accession=\"ERA521986\" alias=\"submission_1\" />"
-        receipt = (f"<RECEIPT receiptDate = \"{date}\" success = \"true\" >"
-                   f"{infos}"
-                   f"</RECEIPT>")
-        return receipt
 
 
 class StaticHandler:
