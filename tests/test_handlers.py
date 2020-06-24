@@ -49,10 +49,12 @@ class HandlersTestCase(AioHTTPTestCase):
         path_to_xml_file = self.TESTFILES_ROOT / "study" / "SRP000539.xml"
         self.metadata_xml = path_to_xml_file.read_text()
         self.accession_id = "EGA123456"
-        self.patch_accession = patch(
-            "metadata_backend.api.handlers._generate_accession_id",
-            return_value=self.accession_id,
-            autospec=True)
+        # TODO: Move these!
+        # self.patch_accession = patch(
+        #    "metadata_backend.api.handlers._generate_accession_id",
+        #    return_value=self.accession_id,
+        #    autospec=True)
+        # self.patch_accession.start()
 
         class_parser = "metadata_backend.api.handlers.XMLToJSONParser"
         class_operator = "metadata_backend.api.handlers.Operator"
@@ -62,7 +64,10 @@ class HandlersTestCase(AioHTTPTestCase):
                            "query_metadata_database.side_effect":
                            self.fake_operator_query_metadata_object}
         xmloperator_config = {'read_metadata_object.side_effect':
-                              self.fake_xmloperator_read_metadata_object}
+                              self.fake_xmloperator_read_metadata_object,
+                              'create_metadata_object.side_effect':
+                              self.fake_xmloperator_create_metadata_object,
+                              }
         self.patch_parser = patch(class_parser, spec=True)
         self.patch_operator = patch(class_operator, **operator_config,
                                     spec=True)
@@ -71,14 +76,13 @@ class HandlersTestCase(AioHTTPTestCase):
         self.MockedParser = self.patch_parser.start()
         self.MockedOperator = self.patch_operator.start()
         self.MockedXMLOperator = self.patch_xmloperator.start()
-        self.patch_accession.start()
 
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
         self.patch_parser.stop()
         self.patch_operator.stop()
         self.patch_xmloperator.stop()
-        self.patch_accession.stop()
+        # self.patch_accession.stop() TODO: move this to operators
 
     def create_submission_data(self, files):
         """Create request data from pairs of schemas and filenames."""
@@ -103,21 +107,21 @@ class HandlersTestCase(AioHTTPTestCase):
         """Fake read operation to return mocked xml."""
         return self.metadata_xml, "text/xml"
 
+    def fake_xmloperator_create_metadata_object(self, type, content):
+        """Fake create operation to return mocked accessionId."""
+        return self.test_ega_string
+
     @unittest_run_loop
-    async def test_submission_is_processed_and_receipt_has_correct_info(self):
-        """Test that submission with SUBMISSION.xml is extracted correctly."""
+    async def test_submit_endpoint_submission_does_not_fail(self):
+        """Test that submission with valid SUBMISSION.xml does not fail."""
         files = [("submission", "ERA521986_valid.xml")]
         data = self.create_submission_data(files)
         response = await self.client.post("/submit", data=data)
-        receipt = await response.text()
-
         assert response.status == 201
-        assert response.content_type == "text/xml"
-        for schema, _ in files:
-            self.assertIn(schema, receipt)
+        assert response.content_type == "application/json"
 
     @unittest_run_loop
-    async def test_submission_fails_without_submission_xml(self):
+    async def test_submit_endpoint_fails_without_submission_xml(self):
         """Test that basic POST submission fails with no submission.xml.
 
         User should also be notified for missing file.
@@ -130,7 +134,7 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertIn(failure_text, await response.text())
 
     @unittest_run_loop
-    async def test_submission_fails_with_many_submission_xmls(self):
+    async def test_submit_endpoint_fails_with_many_submission_xmls(self):
         """Test submission fails when there's too many submission.xml -files.
 
         User should be notified for submitting too many files.
@@ -154,7 +158,7 @@ class HandlersTestCase(AioHTTPTestCase):
             self.assertIn(type, response_text)
 
     @unittest_run_loop
-    async def test_submit_object(self):
+    async def test_submit_object_works(self):
         """Test that submission is handled correctly."""
         files = [("study", "SRP000539.xml")]
         data = self.create_submission_data(files)
