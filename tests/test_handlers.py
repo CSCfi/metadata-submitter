@@ -150,7 +150,7 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_correct_object_types_are_returned(self):
         """Test api endpoint for all object types."""
-        response = await self.client.get("/objects")
+        response = await self.client.get("/schemas")
         response_text = await response.text()
         types = ["submission", "study", "sample", "experiment", "run",
                  "analysis", "dac", "policy", "dataset", "project"]
@@ -162,7 +162,7 @@ class HandlersTestCase(AioHTTPTestCase):
         """Test that submission is handled correctly."""
         files = [("study", "SRP000539.xml")]
         data = self.create_submission_data(files)
-        response = await self.client.post("/object/study", data=data)
+        response = await self.client.post("/objects/study", data=data)
         assert response.status == 201
         self.assertIn(self.test_ega_string, await response.text())
 
@@ -172,7 +172,7 @@ class HandlersTestCase(AioHTTPTestCase):
         files = [("study", "SRP000539.xml"),
                  ("study", "SRP000539_copy.xml")]
         data = self.create_submission_data(files)
-        response = await self.client.post("/object/study", data=data)
+        response = await self.client.post("/objects/study", data=data)
         reason = "Only one file can be sent to this endpoint at a time."
         self.assertEqual(response.status, 400)
         self.assertIn(reason, await response.text())
@@ -180,7 +180,7 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_get_object(self):
         """Test that accessionId returns correct json object."""
-        url = f"/object/study/{self.query_accessionId}"
+        url = f"/objects/study/{self.query_accessionId}"
         response = await self.client.get(url)
         assert response.status == 200
         assert response.content_type == "application/json"
@@ -189,7 +189,7 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_get_object_as_xml(self):
         """Test that accessionId  with xml query returns xml object."""
-        url = f"/object/study/{self.query_accessionId}"
+        url = f"/objects/study/{self.query_accessionId}"
         response = await self.client.get(f"{url}?format=xml")
         assert response.status == 200
         assert response.content_type == "text/xml"
@@ -198,7 +198,7 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_query_is_called(self):
         """Test query method calls operator and returns status correctly."""
-        url = "/object/study?studyType=foo&name=bar"
+        url = "/objects/study?studyType=foo&name=bar"
 
         response = await self.client.get(url)
         assert response.status == 200
@@ -252,7 +252,7 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_bad_submit_object(self):
         """Test 404 error is raised if incorrect schema name is given."""
-        response = await self.client.get("/object/bad_scehma_name/some_id")
+        response = await self.client.get("/objects/bad_scehma_name/some_id")
         self.assertEqual(response.status, 404)
         json_resp = await response.json()
         self.assertIn("Theres no schema", json_resp['detail'])
