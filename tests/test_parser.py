@@ -5,9 +5,6 @@ from metadata_backend.helpers.parser import XMLToJSONParser
 from aiohttp import web
 from metadata_backend.helpers.schema_loader import SchemaLoader
 import unittest
-import datetime
-
-from unittest.mock import patch
 
 
 class ParserTestCase(unittest.TestCase):
@@ -24,17 +21,13 @@ class ParserTestCase(unittest.TestCase):
         path_to_xml_file = self.TESTFILES_ROOT / submission / filename
         return path_to_xml_file.read_text()
 
-    @patch('metadata_backend.helpers.parser.datetime')
-    def test_study_is_parsed(self, mocked_datetime):
-        """Test that study is parsed correctly and accessionId is set.
+    def test_study_is_parsed(self):
+        """Test that study is parsed correctly.
 
         Tests for some values that converted json should have.
         """
-        mocked_datetime.utcnow.return_value = datetime.datetime(2020, 4, 14)
         study_xml = self.load_xml_from_file("study", "SRP000539.xml")
         study_json = self.parser.parse("study", study_xml)
-        self.assertEqual(datetime.datetime(2020, 6, 14, 0, 0),
-                         study_json['publishDate'])
         self.assertIn("Highly integrated epigenome maps in Arabidopsis",
                       study_json['descriptor']['studyTitle'])
         self.assertIn("18423832", study_json['studyLinks']['studyLink'][
