@@ -58,6 +58,7 @@ jobs:
         - pip install aiohttp aiofiles
         - cd development
         - docker-compose up -d --build
+        - sleep 20
         - cd ..
       script:
         - python tests/integration/run_tests.py
