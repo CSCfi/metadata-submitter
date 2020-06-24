@@ -1,7 +1,7 @@
 """Operators for handling database-related operations."""
 import re
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 from aiohttp import web
 from bson import json_util
@@ -59,6 +59,21 @@ class BaseOperator(ABC):
         LOG.info(f"Inserting file to database succeeded: {type}, "
                  f"{self.content_type}")
 
+    @abstractmethod
+    def _format_read_data(self, type: str, data_raw: Any) -> Any:
+        """Format data to specific format, must be implemented by subclass."""
+
+
+class Operator(BaseOperator):
+    """Default operator class for handling database operations.
+
+    Operations are implemented with json format.
+    """
+
+    def __init__(self) -> None:
+        """Initialize database and content-type."""
+        super().__init__("objects", "application/json")
+
     def query_metadata_database(self, type: str, que: MultiDictProxy) -> Dict:
         """Create database query based on url query parameters.
 
@@ -86,45 +101,42 @@ class BaseOperator(ABC):
                 else:
                     # Query with regex from just one field
                     mongo_query = {query_map[query]: regx}
-        cursor = self.db_service.query(type, mongo_query)
-        # TODO: check this?
-        result = json_util.dumps(cursor)
-        if result == "[]":
+        try:
+            data_raw = self.db_service.query(type, mongo_query)
+        except errors.PyMongoError as error:
+            reason = f"Error happened while getting file: {error}"
+            raise web.HTTPBadRequest(reason=reason)
+        data = self._format_read_data(type, data_raw)
+        if data == "[]":
             raise web.HTTPNotFound
-        return result
-
-    @abstractmethod
-    def _format_read_data(self, type: str, data_raw: Any) -> Any:
-        """Format data to specific format, must be implemented by subclass."""
-
-
-class Operator(BaseOperator):
-    """Default operator class for handling database operations.
-
-    Operations are implemented with json format.
-    """
-
-    def __init__(self) -> None:
-        """Initialize database and content-type."""
-        super().__init__("objects", "application/json")
+        return data
 
     def _format_read_data(self, type: str,
                           data_raw: Union[Dict, Cursor]) -> Dict:
         """Get json content from given mongodb data.
+
+        If type is study, publish dates need to be parsed.
 
         :param type: Type of the object to format
         :param data_raw: Data from mongodb query, can contain multiple results
         :returns: Mongodb query result dumped as json
         """
         if type == "study":
-            data_raw = self._format_study_publishdate(data_raw)
+            if isinstance(data_raw, dict):
+                data_raw = self._format_publish_date(data_raw)
+            else:
+                formatted: List[Dict] = []
+                for doc in data_raw:
+                    doc = self._format_publish_date(doc)
+                    formatted.append(doc)
+                data_raw = formatted
         return json_util.dumps(data_raw)
 
-    def _format_study_publishdate(self, data_raw: Cursor) -> Cursor:
+    def _format_publish_date(self, data_raw: Dict) -> Dict:
         """Format study publish date to ISO 8601 format.
 
-        :param study_data: original data from mongoDb
-        :returns: returns data with formatted publishDates
+        :param study_data: Single dict document from mongodb
+        :returns: dict with formatted publish date
         """
         data_raw["publishDate"] = data_raw["publishDate"].isoformat()
         return data_raw
