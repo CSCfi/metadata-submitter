@@ -27,6 +27,7 @@ Production version gets frontend SPA from this folder, after it has been built
 and inserted here in projects Dockerfile.
 """
 
+import json
 import os
 from pathlib import Path
 
@@ -39,17 +40,10 @@ mongo_host = os.getenv("MONGODB_HOST", "localhost:27017")
 url = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}"
 db_client = MongoClient(url)
 
-# 2) Define object types and their priorities
-object_types = {"submission": 1,
-                "study": 2,
-                "project": 3,
-                "sample": 4,
-                "experiment": 5,
-                "run": 6,
-                "analysis": 7,
-                "dac": 8,
-                "policy": 9,
-                "dataset": 10}
+# 2) Load object types (schemas) from json
+path_to_schema_file = Path(__file__).parent / "schemas.json"
+with open(path_to_schema_file) as schemas:
+    object_types = json.load(schemas)
 
 # 3) Define mapping between url query parameters and mongodb queries
 query_map = {
