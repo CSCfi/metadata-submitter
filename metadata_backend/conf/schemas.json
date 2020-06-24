@@ -1,81 +1,81 @@
 {"submission": 
   { "priority": 1, 
     "description": {
-      "title": "Sample",
-      "detail": "Sample defines an isolate of sequenceable material upon which sequencing experiments can be based.",
-      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.sample.xsd"
+      "title": "Submission",
+      "detail": "A submission contains submission actions to be performed by the archive. A submission can add more objects to the archive, update already submitted objects or make objects publicly available.",
+      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.submission.xsd"
     }
   },
   "study": 
   { "priority": 2, 
     "description": {
-      "title": "Sample",
-      "detail": "Sample defines an isolate of sequenceable material upon which sequencing experiments can be based.",
-      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.sample.xsd"
+      "title": "Study",
+      "detail": "A study groups together data submitted to the archive. A study accession is typically used when citing data submitted to ENA. Note that all associated data and other objects are made public when the study is released.",
+      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.study.xsd"
     }
   },
   "project": 
   { "priority": 3, 
     "description": {
-      "title": "Sample",
-      "detail": "Sample defines an isolate of sequenceable material upon which sequencing experiments can be based.",
-      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.sample.xsd"
+      "title": "Project",
+      "detail": "A project groups together data submitted to the archive. A project accession is typically used when citing data submitted to ENA. Note that all associated data and other objects are made public when the project is released.",
+      "url": ""
     }
   },
   "sample": 
   { "priority": 4, 
     "description": {
       "title": "Sample",
-      "detail": "Sample defines an isolate of sequenceable material upon which sequencing experiments can be based.",
+      "detail": "A sample contains information about the sequenced source material. Samples are typically associated with checklists, which define the fields used to annotate the samples.",
       "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.sample.xsd"
     }
   },
   "experiment": 
   { "priority": 5, 
     "description": {
-      "title": "Sample",
-      "detail": "Sample defines an isolate of sequenceable material upon which sequencing experiments can be based.",
-      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.sample.xsd"
+      "title": "Experiment",
+      "detail": "An experiment contain information about a sequencing experiment including library and instrument details.",
+      "url": ""
     }
   },
   "run": 
   { "priority": 6, 
     "description": {
-      "title": "Sample",
-      "detail": "Sample defines an isolate of sequenceable material upon which sequencing experiments can be based.",
-      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.sample.xsd"
+      "title": "Run",
+      "detail": "A run is part of an experiment and refers to data files containing sequence reads.",
+      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.run.xsd"
     }
   },
   "analysis": 
   { "priority": 7, 
     "description": {
-      "title": "Sample",
-      "detail": "Sample defines an isolate of sequenceable material upon which sequencing experiments can be based.",
-      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.sample.xsd"
+      "title": "Analysis",
+      "detail": "An analysis contains secondary analysis results derived from sequence reads (e.g. a genome assembly),",
+      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.analysis.xsd"
     }
   },
   "dac": 
   { "priority": 8, 
     "description": {
-      "title": "Sample",
-      "detail": "Sample defines an isolate of sequenceable material upon which sequencing experiments can be based.",
-      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.sample.xsd"
+      "title": "DAC",
+      "detail": "An European Genome-phenome Archive (EGA) data access committee (DAC) is required for authorized access submissions.",
+      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/EGA.dac.xsd"
     }
   },
   "policy": 
   { "priority": 9, 
     "description": {
-      "title": "Sample",
-      "detail": "Sample defines an isolate of sequenceable material upon which sequencing experiments can be based.",
-      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.sample.xsd"
+      "title": "Policy",
+      "detail": "An European Genome-phenome Archive (EGA) data access policy is required for authorized access submissions.",
+      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/EGA.policy.xsd"
     }
   },
   "dataset": 
   { "priority": 10, 
     "description": {
-      "title": "Sample",
-      "detail": "Sample defines an isolate of sequenceable material upon which sequencing experiments can be based.",
-      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.sample.xsd"
+      "title": "Dataset",
+      "detail": "An European Genome-phenome Archive (EGA) data set is required for authorized access submissions.",
+      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/EGA.dataset.xsd"
     }
   }
 }

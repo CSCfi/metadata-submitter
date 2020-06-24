@@ -29,7 +29,8 @@ class RESTApiHandler:
         :param req: GET Request
         :returns JSON list of object types
         """
-        types_json = json.dumps(list(object_types.keys()))
+        types_json = json.dumps([x["description"] for x in
+                                 object_types.values()])
         return web.Response(body=types_json, status=200)
 
     async def get_object(self, req: Request) -> Response:
