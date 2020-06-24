@@ -53,7 +53,7 @@ jobs:
         - tox -e docs
     - stage: integration_tests
       name: "Integration tests"
-      python: 3.6
+      python: 3.7
       before_script:
         - docker-compose up -d --build
         - pip install aiohttp aiofiles
