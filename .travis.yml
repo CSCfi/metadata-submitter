@@ -55,8 +55,9 @@ jobs:
       name: "Integration tests"
       python: 3.7
       before_script:
-        - docker-compose up -d --build
         - pip install aiohttp aiofiles
+        - cd development/
+        - docker-compose up -d --build
       script:
         - python tests/integration/run_tests.py
 
