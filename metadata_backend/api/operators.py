@@ -3,10 +3,12 @@ import re
 import secrets
 import string
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import Any, Dict, List, Tuple, Union
 
 from aiohttp import web
 from bson import json_util
+from dateutil.relativedelta import relativedelta
 from multidict import MultiDictProxy
 from pymongo import errors
 from pymongo.cursor import Cursor
@@ -159,9 +161,15 @@ class Operator(BaseOperator):
         :param doc: single document from mongodb
         :returns: formatted version of document
         """
+        def format_date(key: str, doc: Dict) -> Dict:
+            doc[key] = doc[key].isoformat()
+            return doc
+
         del doc["_id"]
+        doc = format_date("dateCreated", doc)
+        doc = format_date("dateModified", doc)
         if type == "study":
-            doc["publishDate"] = doc["publishDate"].isoformat()
+            doc = format_date("publishDate", doc)
         return doc
 
     def _handle_data_and_add_to_db(self, type: str, data: Dict,
@@ -170,11 +178,19 @@ class Operator(BaseOperator):
 
         Adds necessary additional information to object before adding to db.
 
+        If type is study, publishDate and status is added.
+        By default date is two months from submission date (based on ENA
+        submission model).
+
         :param type: Type of the object to format
         :param data: Metadata object
         :param accession_id: objects accession id
         """
         data["accessionId"] = accession_id
+        data["dateCreated"] = datetime.utcnow()
+        data["dateModified"] = datetime.utcnow()
+        if type == "study":
+            data["publishDate"] = datetime.utcnow() + relativedelta(months=2)
         try:
             self.db_service.create(type, data)
         except errors.PyMongoError as error:
