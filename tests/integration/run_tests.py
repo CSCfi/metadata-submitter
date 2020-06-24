@@ -1,4 +1,10 @@
-"""Run integration tests against backend api endpoints."""
+"""
+Run integration tests against backend api endpoints.
+
+Deleting from db is currently not supported, objects added to db in different
+should be taken into account.
+"""
+
 import asyncio
 import aiofiles
 import aiohttp
@@ -42,7 +48,7 @@ async def test_post_and_get_works(schema, filename):
     :param filename: name of the file used for testing.
     """
     async with aiohttp.ClientSession() as session:
-        base_url = "http://localhost:5430/object"
+        base_url = "http://localhost:5430/objects"
         data = await create_submission_data(schema, filename)
         async with session.post(f"{base_url}/{schema}", data=data) as resp:
             LOG.debug(f"Testing POST with {schema}")
@@ -57,7 +63,7 @@ async def test_post_and_get_works(schema, filename):
 async def test_querying_works():
     """Test query endpoint with working and failing query."""
     async with aiohttp.ClientSession() as session:
-        base_url = "http://localhost:5430/object"
+        base_url = "http://localhost:5430/objects"
         LOG.debug("Querying studies")
         query = "study?studyTitle=yoloswaggingsandthefellowshipofthebling"
         async with session.get(f"{base_url}/{query}") as resp:
@@ -67,11 +73,21 @@ async def test_querying_works():
             assert resp.status == 200, 'HTTP Status code error'
 
 
-async def main(test_repeats: int):
+async def test_getting_all_objects_from_schema_works():
+    """Check that /objects/study returns objects that were added."""
+    async with aiohttp.ClientSession() as session:
+        base_url = "http://localhost:5430/objects/study"
+        async with session.get(f"{base_url}") as resp:
+            assert resp.status == 200
+            ans = await resp.json()
+            assert len(ans) == 5
+
+
+async def main():
     """Launch different test tasks and run them.
 
-    :param test_repeats: how many times to repeat tests. Set high (e.g. 500)
-    if you want to stress test server.
+    Change value in range for how many times to repeat the tests.
+    Set to high value (e.g. 500) if you want to stress test server.
     """
     # Test adding and getting files
     test_files = [
@@ -83,11 +99,14 @@ async def main(test_repeats: int):
     ]
     await asyncio.gather(
         *[test_post_and_get_works(schema, file) for schema, file in test_files
-          for _ in range(test_repeats)]
+          for _ in range(5)]
     )
 
     # Test queries
-    await asyncio.gather(*[test_querying_works() for _ in range(test_repeats)])
+    await test_querying_works()
+
+    # Test /objects/study endpoint
+    await test_getting_all_objects_from_schema_works()
 
 if __name__ == '__main__':
-    asyncio.run(main(1))
+    asyncio.run(main())
