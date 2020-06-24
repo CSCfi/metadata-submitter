@@ -2,7 +2,7 @@ version: "3"
 services:
   database:
     image: "mongo"
-    container_name: "metadata_db_database"
+    container_name: "metadata_submitter_database_mongo"
     restart: on-failure
     environment:
       - "MONGO_INITDB_ROOT_USERNAME=admin"
