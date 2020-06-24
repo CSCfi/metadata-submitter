@@ -115,31 +115,34 @@ class Operator(BaseOperator):
                           data_raw: Union[Dict, Cursor]) -> Dict:
         """Get json content from given mongodb data.
 
-        If type is study, publish dates need to be parsed.
+        Data can be either one result or cursor containing multiple
+        results.
 
         :param type: Type of the object to format
         :param data_raw: Data from mongodb query, can contain multiple results
         :returns: Mongodb query result dumped as json
         """
-        if type == "study":
-            if isinstance(data_raw, dict):
-                data_raw = self._format_publish_date(data_raw)
-            else:
-                formatted: List[Dict] = []
-                for doc in data_raw:
-                    doc = self._format_publish_date(doc)
-                    formatted.append(doc)
-                data_raw = formatted
-        return json_util.dumps(data_raw)
+        formatted: Union[Dict, List]
+        if isinstance(data_raw, dict):
+            formatted = self._format_single_dict(type, data_raw)
+        else:
+            formatted = []
+            for doc in data_raw:
+                formatted.append(self._format_single_dict(type, doc))
+        return json_util.dumps(formatted)
 
-    def _format_publish_date(self, data_raw: Dict) -> Dict:
-        """Format study publish date to ISO 8601 format.
+    def _format_single_dict(self, type: str, doc: Dict) -> Dict:
+        """Format single result dictionary.
 
-        :param study_data: Single dict document from mongodb
-        :returns: dict with formatted publish date
+        For studies, publish date is formatted to ISO 8601.
+
+        :param doc: single document from mongodb
+        :returns: formatted version of document
         """
-        data_raw["publishDate"] = data_raw["publishDate"].isoformat()
-        return data_raw
+        del doc["_id"]
+        if type == "study":
+            doc["publishDate"] = doc["publishDate"].isoformat()
+        return doc
 
 
 class XMLOperator(BaseOperator):
