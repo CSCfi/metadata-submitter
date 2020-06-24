@@ -1,0 +1,81 @@
+{"submission": 
+  { "priority": 1, 
+    "description": {
+      "title": "Sample",
+      "detail": "Sample defines an isolate of sequenceable material upon which sequencing experiments can be based.",
+      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.sample.xsd"
+    }
+  },
+  "study": 
+  { "priority": 2, 
+    "description": {
+      "title": "Sample",
+      "detail": "Sample defines an isolate of sequenceable material upon which sequencing experiments can be based.",
+      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.sample.xsd"
+    }
+  },
+  "project": 
+  { "priority": 3, 
+    "description": {
+      "title": "Sample",
+      "detail": "Sample defines an isolate of sequenceable material upon which sequencing experiments can be based.",
+      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.sample.xsd"
+    }
+  },
+  "sample": 
+  { "priority": 4, 
+    "description": {
+      "title": "Sample",
+      "detail": "Sample defines an isolate of sequenceable material upon which sequencing experiments can be based.",
+      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.sample.xsd"
+    }
+  },
+  "experiment": 
+  { "priority": 5, 
+    "description": {
+      "title": "Sample",
+      "detail": "Sample defines an isolate of sequenceable material upon which sequencing experiments can be based.",
+      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.sample.xsd"
+    }
+  },
+  "run": 
+  { "priority": 6, 
+    "description": {
+      "title": "Sample",
+      "detail": "Sample defines an isolate of sequenceable material upon which sequencing experiments can be based.",
+      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.sample.xsd"
+    }
+  },
+  "analysis": 
+  { "priority": 7, 
+    "description": {
+      "title": "Sample",
+      "detail": "Sample defines an isolate of sequenceable material upon which sequencing experiments can be based.",
+      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.sample.xsd"
+    }
+  },
+  "dac": 
+  { "priority": 8, 
+    "description": {
+      "title": "Sample",
+      "detail": "Sample defines an isolate of sequenceable material upon which sequencing experiments can be based.",
+      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.sample.xsd"
+    }
+  },
+  "policy": 
+  { "priority": 9, 
+    "description": {
+      "title": "Sample",
+      "detail": "Sample defines an isolate of sequenceable material upon which sequencing experiments can be based.",
+      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.sample.xsd"
+    }
+  },
+  "dataset": 
+  { "priority": 10, 
+    "description": {
+      "title": "Sample",
+      "detail": "Sample defines an isolate of sequenceable material upon which sequencing experiments can be based.",
+      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.sample.xsd"
+    }
+  }
+}

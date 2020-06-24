@@ -268,7 +268,7 @@ async def _extract_xml_upload(req: Request, extract_one: bool = False
             data.append(chunk)
         xml_content = ''.join(x.decode('UTF-8') for x in data)
         files.append((xml_content, xml_type))
-    return sorted(files, key=lambda x: object_types[x[1]])
+    return sorted(files, key=lambda x: object_types[x[1]]["priority"])
 
 
 def _generate_accession_id() -> str:
