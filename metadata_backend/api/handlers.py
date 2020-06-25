@@ -105,7 +105,7 @@ class SubmissionAPIHandler:
 
         if "submission" not in types:
             reason = "There must be a submission.xml file in submission."
-            raise web.HTTPBadRequest(reason=reason, text="Bad Request")
+            raise web.HTTPBadRequest(reason=reason)
 
         if types["submission"] > 1:
             reason = "You should submit only one submission.xml file."

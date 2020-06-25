@@ -36,4 +36,5 @@ class MiddlewaresTestCase(AioHTTPTestCase):
         response = await self.client.get("/bad_url")
         self.assertEqual(response.status, 404)
         self.assertEqual(response.content_type, "application/problem+json")
-        self.assertIn("detail", await response.json())
+        resp_dict = await response.json()
+        self.assertIn("Not Found", resp_dict['title'])
