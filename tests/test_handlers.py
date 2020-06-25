@@ -23,7 +23,7 @@ class HandlersTestCase(AioHTTPTestCase):
     async def setUpAsync(self):
         """Configure default values for testing and other modules.
 
-        THis patches used modules and sets default return values for their
+        This patches used modules and sets default return values for their
         methods. Also sets up reusable test variables for different test
         methods.
         """
@@ -61,8 +61,10 @@ class HandlersTestCase(AioHTTPTestCase):
         class_xmloperator = "metadata_backend.api.handlers.XMLOperator"
         operator_config = {'read_metadata_object.side_effect':
                            self.fake_operator_read_metadata_object,
-                           "query_metadata_database.side_effect":
-                           self.fake_operator_query_metadata_object}
+                           'query_metadata_database.side_effect':
+                           self.fake_operator_query_metadata_object,
+                           'create_metadata_object.side_effect':
+                           self.fake_operator_create_metadata_object}
         xmloperator_config = {'read_metadata_object.side_effect':
                               self.fake_xmloperator_read_metadata_object,
                               'create_metadata_object.side_effect':
@@ -108,6 +110,10 @@ class HandlersTestCase(AioHTTPTestCase):
         return self.metadata_xml, "text/xml"
 
     def fake_xmloperator_create_metadata_object(self, type, content):
+        """Fake create operation to return mocked accessionId."""
+        return self.test_ega_string
+
+    def fake_operator_create_metadata_object(self, type, content):
         """Fake create operation to return mocked accessionId."""
         return self.test_ega_string
 
@@ -159,12 +165,23 @@ class HandlersTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_submit_object_works(self):
-        """Test that submission is handled correctly."""
+        """Test that submission is handled, XMLOperator is called."""
         files = [("study", "SRP000539.xml")]
         data = self.create_submission_data(files)
         response = await self.client.post("/objects/study", data=data)
         assert response.status == 201
         self.assertIn(self.test_ega_string, await response.text())
+        self.MockedXMLOperator().create_metadata_object.assert_called_once()
+
+    @unittest_run_loop
+    async def test_submit_object_works_with_json(self):
+        """Test that json submission is handled , operator is called."""
+        json = {"centerName": "GEO",
+                "alias": "GSE10966"}
+        response = await self.client.post("/objects/study", json=json)
+        assert response.status == 201
+        self.assertIn(self.test_ega_string, await response.text())
+        self.MockedOperator().create_metadata_object.assert_called_once()
 
     @unittest_run_loop
     async def test_submit_object_fails_with_too_many_files(self):
@@ -199,15 +216,23 @@ class HandlersTestCase(AioHTTPTestCase):
     async def test_query_is_called(self):
         """Test query method calls operator and returns status correctly."""
         url = "/objects/study?studyType=foo&name=bar"
-
         response = await self.client.get(url)
         assert response.status == 200
         assert response.content_type == "application/json"
-
         self.MockedOperator().query_metadata_database.assert_called_once()
         args = self.MockedOperator().query_metadata_database.call_args[0]
         assert "study" in args[0]
         assert "studyType': 'foo', 'name': 'bar'" in str(args[1])
+
+    @unittest_run_loop
+    async def test_query_fails_with_xml_format(self):
+        """Test query method calls operator and returns status correctly."""
+        url = "/objects/study?studyType=foo&name=bar&format=xml"
+        response = await self.client.get(url)
+        assert response.status == 400
+        json_resp = await response.json()
+        self.assertIn("xml-formatted query results are not supported",
+                      json_resp["detail"])
 
     @unittest_run_loop
     async def test_validation_passes_for_valid_xml(self):
@@ -250,9 +275,13 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertIn(reason, await response.text())
 
     @unittest_run_loop
-    async def test_bad_submit_object(self):
+    async def test_post_and_get_fail_for_wrong_object_type(self):
         """Test 404 error is raised if incorrect schema name is given."""
-        response = await self.client.get("/objects/bad_scehma_name/some_id")
-        self.assertEqual(response.status, 404)
-        json_resp = await response.json()
-        self.assertIn("Theres no schema", json_resp['detail'])
+        get_resp = await self.client.get("/objects/bad_scehma_name/some_id")
+        self.assertEqual(get_resp.status, 404)
+        json_get_resp = await get_resp.json()
+        self.assertIn("Theres no schema", json_get_resp['detail'])
+        post_rep = await self.client.post("/objects/bad_scehma_name")
+        self.assertEqual(post_rep.status, 404)
+        post_json_rep = await post_rep.json()
+        self.assertIn("Theres no schema", post_json_rep['detail'])

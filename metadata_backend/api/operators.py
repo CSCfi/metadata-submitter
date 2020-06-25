@@ -221,9 +221,9 @@ class XMLOperator(BaseOperator):
                                    accession_id: str) -> None:
         """Format added xml metadata object and add it to db.
 
-        XML is validated parsed to json with parser-class and json is added
-        to database with Operator-class. After success, xml itself is backed
-        up to database.
+        XML is validated and parsed to json with parser-class, and then json is
+        added to database with Operator-class. After success, xml itself is
+        backed up to database.
 
         :param type: Type of the object to format
         :param data: Original xml content

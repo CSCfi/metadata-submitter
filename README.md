@@ -13,7 +13,7 @@ Requirements:
 - Mongodb
 - Docker + docker-compose
 
-For quick testing, go to the `development` folde and launch server and database with Docker by running `docker-compose up  --build` (add `-d` flag to run containers in background). Server can then be found from `http://localhost:5430`.
+For quick testing, go to the `development` folder and launch server and database with Docker by running `docker-compose up  --build` (add `-d` flag to run containers in background). Server can then be found from `http://localhost:5430`.
 
 For more detailed setup, do following:
 - Install project by running: `pip install .` in project root
