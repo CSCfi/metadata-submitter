@@ -1,5 +1,6 @@
 """Middleware methods for server."""
 import json
+from http import HTTPStatus
 from typing import Callable
 
 from aiohttp.web import HTTPError, HTTPException, Request, Response, middleware
@@ -41,16 +42,15 @@ def _json_exception(status: int, exception: HTTPException,
     :param status: Status code of the HTTP exception
     :param exception: Exception content
     :param url: Request URL that caused the exception
-    :returns: Response in JSON format
+    :returns: Response in problem detail JSON format
     """
     body = json.dumps({
         'type': "about:blank",
         # Replace type value above with an URL to
         # a custom error document when one exists
-        'title': exception.text,
+        'title': HTTPStatus(status).phrase,
         'detail': exception.reason,
-        'instance': url.path,
-        # Only the url path may not be descriptive enough e.g. with POST
+        'instance': url.path,  # optional and can be removed
     }).encode('utf-8')
     LOG.info(str(body))
     return Response(status=status, body=body,
