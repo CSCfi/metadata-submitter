@@ -164,14 +164,16 @@ class SubmissionAPIHandler:
             raise web.HTTPBadRequest(reason=reason)
 
         except ParseError as error:
-            reason = f"Faulty XML file was given. Details: {error}"
-            body = json.dumps({"isValid": False, "reason": reason})
+            detail = f"Faulty XML file was given.<br/>ERROR: {error}"
+            body = json.dumps({"isValid": False, "detail": detail})
             return web.Response(body=body,
                                 content_type="application/json")
 
         except XMLSchemaValidationError as error:
-            reason = f"XML file is not valid. Details: {error}"
-            body = json.dumps({"isValid": False, "reason": reason})
+            error = str(error).replace('\n', '<br/>')  # for the frontend
+            detail = ("XML file is not valid against schema.<br/>"
+                      f"ERROR: {error}")
+            body = json.dumps({"isValid": False, "detail": detail})
             return web.Response(body=body,
                                 content_type="application/json")
         body = json.dumps({"isValid": True})
