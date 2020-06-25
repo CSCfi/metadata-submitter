@@ -24,7 +24,11 @@ class MiddlewaresTestCase(AioHTTPTestCase):
         # if submission type is not included on the first field of request
         self.assertEqual(response.status, 400)
         self.assertEqual(response.content_type, "application/problem+json")
-        self.assertIn("detail", await response.json())
+        resp_dict = await response.json()
+        self.assertIn("Bad Request", resp_dict['title'])
+        self.assertIn("There must be a submission.xml file in submission.",
+                      resp_dict['detail'])
+        self.assertIn("/submit", resp_dict['instance'])
 
     @unittest_run_loop
     async def test_bad_url_returns_json_response(self):
