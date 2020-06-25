@@ -28,8 +28,8 @@ class MiddlewaresTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_bad_url_returns_json_response(self):
-        """Test that an unrouted url returns a 404 in JSON format."""
-        response = await self.client.get("/bad_url")
+        """Test that an call wrong api sub-url returns a 404 in JSON format."""
+        response = await self.client.get("/objects/swaglittinen")
         self.assertEqual(response.status, 404)
         self.assertEqual(response.content_type, "application/json")
         self.assertIn("detail", await response.json())
