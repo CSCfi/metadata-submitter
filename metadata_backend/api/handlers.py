@@ -1,12 +1,9 @@
 """Handle HTTP methods for server."""
 import json
 import mimetypes
-import secrets
-import string
 from collections import Counter
-from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Tuple, cast
+from typing import Dict, List, Tuple, Union, cast
 from xml.etree.ElementTree import ParseError
 
 from aiohttp import BodyPartReader, web
@@ -29,7 +26,8 @@ class RESTApiHandler:
         :param req: GET Request
         :returns JSON list of object types
         """
-        types_json = json.dumps(list(object_types.keys()))
+        types_json = json.dumps([x["description"] for x in
+                                 object_types.values()])
         return web.Response(body=types_json, status=200)
 
     async def get_object(self, req: Request) -> Response:
@@ -53,27 +51,21 @@ class RESTApiHandler:
     async def post_object(self, req: Request) -> Response:
         """Save metadata object to database.
 
-        If request is xml file upload, it is first parsed to json and saved
-        to backup database. Otherwise json from body is used.
-
         :param req: POST request
         :returns: JSON response containing accessionId for submitted object
         """
         type = req.match_info['schema']
         if type not in object_types.keys():
             raise web.HTTPNotFound(reason=f"Theres no schema with name {type}")
-        accession_id = _generate_accession_id()
+        operator: Union[Operator, XMLOperator]
         if req.content_type == "multipart/form-data":
             files = await _extract_xml_upload(req, extract_one=True)
-            content_xml, _ = files[0]
-            backup_json = {"accessionId": accession_id,
-                           "content": content_xml}
-            XMLOperator().create_metadata_object(type, backup_json)
-            content_json = XMLToJSONParser().parse(type, content_xml)
+            content, _ = files[0]
+            operator = XMLOperator()
         else:
-            content_json = await req.json()
-        content_json["accessionId"] = accession_id
-        Operator().create_metadata_object(type, content_json)
+            content = await req.json()
+            operator = Operator()
+        accession_id = operator.create_metadata_object(type, content)
         body = json.dumps({"accessionId": accession_id})
         return web.Response(body=body, status=201,
                             content_type="application/json")
@@ -85,6 +77,10 @@ class RESTApiHandler:
         :returns: Query results as JSON
         """
         type = req.match_info['schema']
+        format = req.query.get("format", "json").lower()
+        if format == "xml":
+            reason = "xml-formatted query results are not supported"
+            raise web.HTTPBadRequest(reason=reason)
         result = Operator().query_metadata_database(type, req.query)
         return web.Response(body=result, status=200,
                             content_type="application/json")
@@ -115,9 +111,8 @@ class SubmissionAPIHandler:
             reason = "You should submit only one submission.xml file."
             raise web.HTTPBadRequest(reason=reason)
 
-        parser = XMLToJSONParser()
         submission_xml = files[0][0]
-        submission_json = parser.parse("submission", submission_xml)
+        submission_json = XMLToJSONParser().parse("submission", submission_xml)
         # Check what actions should be performed, collect them to dictionary
         actions = {}
         for action_set in submission_json["actions"]['action']:
@@ -130,8 +125,8 @@ class SubmissionAPIHandler:
                     raise web.HTTPBadRequest(reason=reason)
                 actions[attr["schema"]] = action
         # Go through parsed files and do the actual action
-        # Only "add" action is supported now, and uses same code as the
-        # REST api method. This should be refactored later.
+        # Only "add" action is supported for now.
+        results: List[Dict] = []
         for file in files:
             content_xml = file[0]
             type = file[1]
@@ -139,19 +134,17 @@ class SubmissionAPIHandler:
                 continue  # No need to use submission xml
             action = actions[type]
             if action == "add":
-                accession_id = _generate_accession_id()
-                backup_json = {"accessionId": accession_id,
-                               "content": content_xml}
-                XMLOperator().create_metadata_object(type, backup_json)
-                parser = XMLToJSONParser()
-                content_json = parser.parse(type, content_xml)
-                content_json["accessionId"] = accession_id
-                Operator().create_metadata_object(type, content_json)
+                results.append({
+                    "accessionId":
+                    XMLOperator().create_metadata_object(type, content_xml),
+                    "schema": type
+                })
             else:
                 reason = f"action {action} is not supported yet"
                 raise web.HTTPBadRequest(reason=reason)
-        receipt = self.generate_receipt(actions)
-        return web.Response(body=receipt, status=201, content_type="text/xml")
+        body = json.dumps(results)
+        return web.Response(body=body, status=201,
+                            content_type="application/json")
 
     async def validate(self, req: Request) -> Response:
         """Validate xml file sent to endpoint.
@@ -183,22 +176,6 @@ class SubmissionAPIHandler:
                                 content_type="application/json")
         body = json.dumps({"isValid": True})
         return web.Response(body=body, content_type="application/json")
-
-    @staticmethod
-    def generate_receipt(actions: Dict) -> str:
-        """Generate receipt XML after all submissions have ran through.
-
-        Does not currently generate anything special, should be changed later.
-
-        :param actions: Info about actions that were performed
-        :returns: XML-based receipt
-        """
-        date = datetime.now()
-        infos = "<SUBMISSION accession=\"ERA521986\" alias=\"submission_1\" />"
-        receipt = (f"<RECEIPT receiptDate = \"{date}\" success = \"true\" >"
-                   f"{infos}"
-                   f"</RECEIPT>")
-        return receipt
 
 
 class StaticHandler:
@@ -268,13 +245,4 @@ async def _extract_xml_upload(req: Request, extract_one: bool = False
             data.append(chunk)
         xml_content = ''.join(x.decode('UTF-8') for x in data)
         files.append((xml_content, xml_type))
-    return sorted(files, key=lambda x: object_types[x[1]])
-
-
-def _generate_accession_id() -> str:
-    """Generate random accession id.
-
-    Will be replaced later with external id generator.
-    """
-    sequence = ''.join(secrets.choice(string.digits) for i in range(16))
-    return f"EDAG{sequence}"
+    return sorted(files, key=lambda x: object_types[x[1]]["priority"])

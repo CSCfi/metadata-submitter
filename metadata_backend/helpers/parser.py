@@ -1,12 +1,10 @@
 """Tool to parse XML files to JSON."""
 
 import re
-from datetime import datetime
 from typing import Dict
 from xml.etree.ElementTree import ParseError
 
 from aiohttp import web
-from dateutil.relativedelta import relativedelta
 from xmlschema import AbderaConverter, XMLSchema, XMLSchemaException
 
 from .schema_loader import SchemaLoader, SchemaNotFoundException
@@ -36,12 +34,8 @@ class XMLToJSONParser:
         del content_json_raw['children']
         content_json_elevated = {**content_json_raw, **to_be_elevated}
 
-        # Format content to json-style formatting
-        content_json = self._to_lowercase(content_json_elevated)
-
-        if type == "study":
-            content_json = self._modify_publish_dates(content_json)
-        return content_json
+        # Format content to json-style formatting and return
+        return self._to_lowercase(content_json_elevated)
 
     @staticmethod
     def _load_schema(xml_type: str) -> XMLSchema:
@@ -73,20 +67,6 @@ class XMLToJSONParser:
         except (ParseError, XMLSchemaException) as error:
             reason = f"Validation error happened. Details: {error}"
             raise web.HTTPBadRequest(reason=reason)
-
-    @staticmethod
-    def _modify_publish_dates(data: Dict) -> Dict:
-        """Add study publicity status information to study object.
-
-        By default this is two months from submission date (based on ENA
-        submission model). Dates are written to database in UTC (see pymongo
-        docs: https://api.mongodb.com/python/current/examples/datetimes.html)
-
-        :param data: Study data as JSON
-        :returns: Data extended with public date
-        """
-        data["publishDate"] = datetime.utcnow() + relativedelta(months=2)
-        return data
 
     def _to_lowercase(self, obj: Dict) -> Dict:
         """Make dictionary lowercase and convert keys to CamelCase.

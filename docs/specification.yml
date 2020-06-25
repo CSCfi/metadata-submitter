@@ -277,8 +277,11 @@ paths:
         content:
           multipart/form-data::
             schema:
-              type: string
-              format: binary
+              type: object
+              properties:
+                schema:
+                  type: string
+                  format: binary
           application/json:
               schema:
                 type: object
@@ -592,13 +595,20 @@ components:
       required:
         - accessionId
         - publishDate
-        - accessType
+        - dateCreated
+        - dateUpdated
       additionalProperties: true
       properties:
         accessioniId:
           type: string
           description: accession id generated to identify an object
         publishedDate:
+          type: string
+          description: datetime in ISO8601 format
+        dateCreated:
+          type: string
+          description: datetime in ISO8601 format
+        dateUpdated:
           type: string
           description: datetime in ISO8601 format
         accessType:
