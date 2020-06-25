@@ -50,7 +50,7 @@ def _json_exception(status: int, exception: HTTPException,
         # a custom error document when one exists
         'title': HTTPStatus(status).phrase,
         'detail': exception.reason,
-        'instance': url.path,  # optional and can be removed
+        'instance': url.path,  # optional
     }).encode('utf-8')
     LOG.info(str(body))
     return Response(status=status, body=body,
