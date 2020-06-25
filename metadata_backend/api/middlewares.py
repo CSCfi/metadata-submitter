@@ -2,7 +2,7 @@
 import json
 from typing import Callable
 
-from aiohttp.web import HTTPError, Request, Response, middleware
+from aiohttp.web import HTTPError, HTTPException, Request, Response, middleware
 
 from ..helpers.logger import LOG
 
@@ -30,17 +30,26 @@ def error_middleware() -> Callable:
     return http_error_handler
 
 
-def _json_exception(status: int, exception: Exception) -> Response:
-    """Convert an HTTP exception into JSON response.
+def _json_exception(status: int, exception: HTTPException) -> Response:
+    """Convert an HTTP exception into a problem detailed JSON response.
+
+    The problem details are in accordance with RFC 7807.
+    (https://tools.ietf.org/html/rfc7807)
 
     :param status: Status code of the HTTP exception
     :param exception: Exception content
     :returns: Response in JSON format
     """
     body = json.dumps({
-        'error': status,
-        'detail': str(exception)
+        # 'type': ,
+        # type would provide an URL to custom error document
+        # it is optional and assumes "about:blank" if not provided
+        'title': exception.text,
+        'detail': exception.reason,  # FIX text and reason are the same
+        # 'instance': ,
+        # instance would provide the specific URL where the error was received
+        # and is also optional
     }).encode('utf-8')
     LOG.info(str(body))
     return Response(status=status, body=body,
-                    content_type='application/json')
+                    content_type='application/problem+json')
