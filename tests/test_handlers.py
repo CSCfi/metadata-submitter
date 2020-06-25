@@ -49,12 +49,6 @@ class HandlersTestCase(AioHTTPTestCase):
         path_to_xml_file = self.TESTFILES_ROOT / "study" / "SRP000539.xml"
         self.metadata_xml = path_to_xml_file.read_text()
         self.accession_id = "EGA123456"
-        # TODO: Move these!
-        # self.patch_accession = patch(
-        #    "metadata_backend.api.handlers._generate_accession_id",
-        #    return_value=self.accession_id,
-        #    autospec=True)
-        # self.patch_accession.start()
 
         class_parser = "metadata_backend.api.handlers.XMLToJSONParser"
         class_operator = "metadata_backend.api.handlers.Operator"
@@ -84,7 +78,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.patch_parser.stop()
         self.patch_operator.stop()
         self.patch_xmloperator.stop()
-        # self.patch_accession.stop() TODO: move this to operators
 
     def create_submission_data(self, files):
         """Create request data from pairs of schemas and filenames."""
