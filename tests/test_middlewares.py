@@ -23,7 +23,7 @@ class MiddlewaresTestCase(AioHTTPTestCase):
         # Submission method in API handlers raises Bad Request error
         # if submission type is not included on the first field of request
         self.assertEqual(response.status, 400)
-        self.assertEqual(response.content_type, "application/json")
+        self.assertEqual(response.content_type, "application/problem+json")
         self.assertIn("detail", await response.json())
 
     @unittest_run_loop
@@ -31,5 +31,5 @@ class MiddlewaresTestCase(AioHTTPTestCase):
         """Test that an unrouted url returns a 404 in JSON format."""
         response = await self.client.get("/bad_url")
         self.assertEqual(response.status, 404)
-        self.assertEqual(response.content_type, "application/json")
+        self.assertEqual(response.content_type, "application/problem+json")
         self.assertIn("detail", await response.json())
