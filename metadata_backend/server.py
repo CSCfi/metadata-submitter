@@ -27,10 +27,10 @@ async def init() -> web.Application:
     rest_handler = RESTApiHandler()
     submission_handler = SubmissionAPIHandler()
     api_routes = [
-        web.get('/objects', rest_handler.get_objects),
-        web.get('/object/{schema}/{accessionId}', rest_handler.get_object),
-        web.get('/object/{schema}', rest_handler.query_objects),
-        web.post('/object/{schema}', rest_handler.post_object),
+        web.get('/schemas', rest_handler.get_objects),
+        web.get('/objects/{schema}/{accessionId}', rest_handler.get_object),
+        web.get('/objects/{schema}', rest_handler.query_objects),
+        web.post('/objects/{schema}', rest_handler.post_object),
         web.post('/submit', submission_handler.submit),
         web.post('/validate', submission_handler.validate)
     ]
