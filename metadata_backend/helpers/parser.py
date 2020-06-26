@@ -6,7 +6,6 @@ from xml.etree.ElementTree import ParseError
 
 from aiohttp import web
 from xmlschema import XMLSchema, XMLSchemaConverter, XMLSchemaException
-from xmlschema.compat import ordered_dict_class
 
 from .schema_loader import SchemaLoader, SchemaNotFoundException
 
@@ -63,6 +62,9 @@ class MetadataXMLConverter(XMLSchemaConverter):
           parent, otherwise "true" is added as its value.
         - If there is just one children and it is string, it is appended to
           same dictionary with its parents attributes with "value" as its key.
+        - If there is dictionary of object type attributes (e.g.
+          studyAttributes, experimentAttributes), dictionary is replaced with
+          its children, which is a list of those attributes.
         """
         def _to_camel(name: str) -> str:
             """Convert underscore char notation to CamelCase."""
@@ -79,6 +81,9 @@ class MetadataXMLConverter(XMLSchemaConverter):
             children = self.dict()
             for key, value, _ in self.map_content(data.content):
                 key = _to_camel(key.lower())
+                if "Attributes" in key and len(value) == 1:
+                    children[key] = list(value.values())[0]
+                    continue
                 value = self.list() if value is None else value
                 try:
                     children[key].append(value)
@@ -89,7 +94,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
                           and len(value) == 1 and {} in value.values()):
                         children[key] = list(value.keys())[0]
                     else:
-                        value is value if value != {} else "true"
+                        value = value if value != {} else "true"
                         children[key] = value
                 except AttributeError:
                     children[key] = self.list([children[key], value])
