@@ -5,7 +5,8 @@ from typing import Any, Dict, List, Union
 from xml.etree.ElementTree import ParseError
 
 from aiohttp import web
-from xmlschema import XMLSchema, XMLSchemaConverter, XMLSchemaException
+from xmlschema import (XMLSchema, XMLSchemaConverter, XMLSchemaException,
+                       XsdElement, XsdType)
 
 from .schema_loader import SchemaLoader, SchemaNotFoundException
 
@@ -21,8 +22,8 @@ class MetadataXMLConverter(XMLSchemaConverter):
 
     def __init__(self,
                  namespaces: Any = None,
-                 dict_class: Any = None,
-                 list_class: Any = None,
+                 dict_class: dict = None,
+                 list_class: list = None,
                  **kwargs: Any) -> None:
         """Initialize converter and settings.
 
@@ -44,8 +45,8 @@ class MetadataXMLConverter(XMLSchemaConverter):
 
     def element_decode(self,
                        data: Any,
-                       xsd_element: Any,
-                       xsd_type: Any = None,
+                       xsd_element: XsdElement,
+                       xsd_type: XsdType = None,
                        level: int = 0) -> Union[Dict, List, str]:
         """Decode XML to JSON.
 
