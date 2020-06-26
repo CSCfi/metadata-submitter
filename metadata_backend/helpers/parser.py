@@ -56,13 +56,13 @@ class MetadataXMLConverter(XMLSchemaConverter):
         - XML tags and their children are mostly converted to dict, except
           when there are multiple children with same name - then to list.
         - All "accession" keys are converted to "accesionId", key used by
-          this system
+          this program
 
         Corner cases:
-        - Some schemas have self-closing xml tags. These are elevated as values
-          for parent or if they're in root, their value is set to "true"
+        - If possible, self-closing xml tag is elevated as an attribute to its
+          parent, otherwise "true" is added as its value.
         - If there is just one children and it is string, it is appended to
-          same dictionary with its parents attributes.
+          same dictionary with its parents attributes with "value" as its key.
         """
         def _to_camel(name: str) -> str:
             """Convert underscore char notation to CamelCase."""
@@ -79,8 +79,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
             children = self.dict()
             for key, value, _ in self.map_content(data.content):
                 key = _to_camel(key.lower())
-                if value is None:
-                    value = self.list()
+                value = self.list() if value is None else value
                 try:
                     children[key].append(value)
                 except KeyError:
@@ -90,6 +89,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
                           and len(value) == 1 and {} in value.values()):
                         children[key] = list(value.keys())[0]
                     else:
+                        value is value if value != {} else "true"
                         children[key] = value
                 except AttributeError:
                     children[key] = self.list([children[key], value])
