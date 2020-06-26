@@ -78,6 +78,8 @@ class RESTApiHandler:
         :returns: Query results as JSON
         """
         type = req.match_info['schema']
+        if type not in object_types.keys():
+            raise web.HTTPNotFound(reason=f"Theres no schema with name {type}")
         format = req.query.get("format", "json").lower()
         if format == "xml":
             reason = "xml-formatted query results are not supported"
