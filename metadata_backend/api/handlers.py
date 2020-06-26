@@ -170,6 +170,12 @@ class SubmissionAPIHandler:
                                 content_type="application/json")
 
         except XMLSchemaValidationError as error:
+            '''
+            # Parsing the validation error message for reason and instance
+            from xml.etree import ElementTree
+            reason = error.reason
+            instance = ElementTree.tostring(error.elem, encoding="unicode")
+            '''
             detail = f"XML file is not valid against schema.\nERROR: {error}"
             body = json.dumps({"isValid": False, "detail": detail})
             return web.Response(body=body,
