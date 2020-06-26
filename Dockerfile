@@ -2,9 +2,13 @@ FROM node:12-alpine as BUILD-FRONTEND
 
 RUN apk add --update \
     && apk add --no-cache git\
-    && rm -rf /var/cache/apk/* \
-    && git clone https://github.com/CSCfi/metadata-submitter-frontend
+    && rm -rf /var/cache/apk/*
 
+# Check if frotend in master has been updated. If there's no update, Docker
+# uses previous cache
+ADD https://api.github.com/repos/CSCfi/metadata-submitter-frontend/git/refs/heads/test-git-clone-docker-cache-workaround version.json
+
+RUN git clone -b test-git-clone-docker-cache-workaround https://github.com/CSCfi/metadata-submitter-frontend
 
 WORKDIR metadata-submitter-frontend
 RUN npm install && npm run build
