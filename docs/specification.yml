@@ -321,7 +321,12 @@ paths:
         description: filter objects in schema using accession ID
         schema:
           type: string
-        required: true
+      - name: format
+        in: query
+        name: page
+        schema:
+          type: string
+        description: Set response content-type. Will be JSON by default, use XML if you want originally submitted XML file.
       responses:
         200:
           description: OK
@@ -329,6 +334,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Object"
+            text/xml:
+              schema:
+                type: string
+                format: binary
         401:
           description: Unauthorized
           content:
