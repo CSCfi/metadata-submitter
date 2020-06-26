@@ -63,10 +63,8 @@ class ParserTestCase(unittest.TestCase):
         run_xml = self.load_xml_from_file("run", "ERR000076.xml")
         run_json = self.parser.parse("run", run_xml)
         self.assertIn("ERA000/ERA000014/srf/BGI-FC304RWAAXX_5.srf",
-                      run_json['dataBlock']['files']['file']['attributes'][
-                          'filename'])
-        self.assertIn("ERX000037", run_json['experimentRef']['attributes'][
-            'accession'])
+                      run_json['dataBlock']['files']['file']['filename'])
+        self.assertIn("ERX000037", run_json['experimentRef']['accession'])
 
     def test_analysis_is_parsed(self):
         """Test that run is parsed correctly and accessionId is set.
@@ -76,8 +74,7 @@ class ParserTestCase(unittest.TestCase):
         analysis_xml = self.load_xml_from_file("analysis", "ERZ266973.xml")
         analysis_json = self.parser.parse("analysis", analysis_xml)
         self.assertIn("GCA_000001405.1", analysis_json['analysisType'][
-            'processedReads']['assembly']['standard']['attributes'][
-            'accession'])
+            'processedReads']['assembly']['standard']['accession'])
 
     def test_error_raised_when_schema_not_found(self):
         """Test 400 is returned when schema."""
@@ -99,17 +96,17 @@ class ParserTestCase(unittest.TestCase):
         with self.assertRaises(web.HTTPBadRequest):
             self.parser._validate(study_xml, schema)
 
-    def test_empty_lists_are_removed_from_json(self):
-        """Check empty lists are removed and non-empty are retained."""
-        data = {'file': {'attributes': {
-            'checksum': '3dfebb4b30211523853805439fbd7cec',
-            'checksumMethod': 'MD5',
-            'filetype': 'srf'},
-            'children': []},
-            'identifiers': {'primaryId': 'ERR000076',
-                            'submitterId': {
-                                'attributes': {'namespace': 'BGI'},
-                                'children': ['BGI-FC304RWAAXX']}}}
-        cleaned = self.parser._to_lowercase(data)
-        self.assertTrue("children" not in cleaned['file']['attributes'])
-        self.assertTrue("children" in cleaned['identifiers']['submitterid'])
+    # def test_empty_lists_are_removed_from_json(self):
+    #     """Check empty lists are removed and non-empty are retained."""
+    #     data = {'file': {'attributes': {
+    #         'checksum': '3dfebb4b30211523853805439fbd7cec',
+    #         'checksumMethod': 'MD5',
+    #         'filetype': 'srf'},
+    #         'children': []},
+    #         'identifiers': {'primaryId': 'ERR000076',
+    #                         'submitterId': {
+    #                             'attributes': {'namespace': 'BGI'},
+    #                             'children': ['BGI-FC304RWAAXX']}}}
+    #     cleaned = self.parser._to_lowercase(data)
+    #     self.assertTrue("children" not in cleaned['file']['attributes'])
+    #     self.assertTrue("children" in cleaned['identifiers']['submitterid'])
