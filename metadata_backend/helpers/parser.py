@@ -29,16 +29,13 @@ class MetadataXMLConverter(XMLSchemaConverter):
 
         :param namespaces: Map from namespace prefixes to URI.
         :param dict_class: Dictionary class to use for decoded data. Default is
-        `dict` for Python 3.6+ or `OrderedDict` for previous versions.
+        `dict`.
         :param list_class: List class to use for decoded data. Default is
         `list`.
         """
         kwargs.update(attr_prefix='', text_key='', cdata_prefix=None)
         super(MetadataXMLConverter, self).__init__(
-            namespaces,
-            dict_class or ordered_dict_class,
-            list_class,
-            **kwargs
+            namespaces, dict_class, list_class, **kwargs
         )
 
     @property
@@ -51,13 +48,21 @@ class MetadataXMLConverter(XMLSchemaConverter):
                        xsd_element: Any,
                        xsd_type: Any = None,
                        level: int = 0) -> Union[Dict, List, str]:
-        """Decode xml file to json.
+        """Decode XML to JSON.
 
-        Does following things:
-        - Attributes are presented as key-value pairs in dictionaries
-        - Extra whitespace is parsed from strings
+        Decoding strategy:
         - All keys are converted to CamelCase
+        - Whitespace is parsed from strings
+        - XML tags and their children are mostly converted to dict, except
+          when there are multiple children with same name - then to list.
+        - All "accession" keys are converted to "accesionId", key used by
+          this system
 
+        Corner cases:
+        - Some schemas have self-closing xml tags. These are elevated as values
+          for parent or if they're in root, their value is set to "true"
+        - If there is just one children and it is string, it is appended to
+          same dictionary with its parents attributes.
         """
         def _to_camel(name: str) -> str:
             """Convert underscore char notation to CamelCase."""
@@ -70,37 +75,36 @@ class MetadataXMLConverter(XMLSchemaConverter):
                         and data.text != '' else None)
             if isinstance(children, str):
                 children = " ".join(children.split())
-
         else:
             children = self.dict()
-            for name, value, xsd_child in self.map_content(data.content):
-                name = _to_camel(name.lower())
+            for key, value, _ in self.map_content(data.content):
+                key = _to_camel(key.lower())
                 if value is None:
                     value = self.list()
                 try:
-                    children[name].append(value)
+                    children[key].append(value)
                 except KeyError:
                     if isinstance(value, (self.list, list)) and value:
-                        children[name] = self.list([value])
+                        children[key] = self.list([value])
+                    elif (isinstance(value, (self.dict, dict))
+                          and len(value) == 1 and {} in value.values()):
+                        children[key] = list(value.keys())[0]
                     else:
-                        children[name] = value
+                        children[key] = value
                 except AttributeError:
-                    children[name] = self.list([children[name], value])
-
+                    children[key] = self.list([children[key], value])
         if data.attributes:
-            if children != []:
-                tmpdict = self.dict((_to_camel(k.lower()), v) for k, v in
-                                    self.map_attributes(data.attributes))
-                if children is not None:
-                    if isinstance(children, str):
-                        tmpdict["value"] = children.replace('\\n', '\n')
-                    else:
-                        for k, v in children.items():
-                            tmpdict[k] = v
-                return self.dict(tmpdict)
-            else:
-                return self.dict((_to_camel(k.lower()), v) for k, v in
-                                 self.map_attributes(data.attributes))
+            tmp_dict = self.dict((_to_camel(key.lower()), value) for key, value
+                                 in self.map_attributes(data.attributes))
+            if "accession" in tmp_dict:
+                tmp_dict["accessionId"] = tmp_dict.pop("accession")
+            if children is not None:
+                if isinstance(children, dict):
+                    for key, value in children.items():
+                        tmp_dict[key] = value
+                else:
+                    tmp_dict["value"] = children
+            return self.dict(tmp_dict)
         else:
             return children
 
