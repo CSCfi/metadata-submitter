@@ -83,7 +83,9 @@ class MetadataXMLConverter(XMLSchemaConverter):
             for key, value, _ in self.map_content(data.content):
                 key = _to_camel(key.lower())
                 if "Attributes" in key and len(value) == 1:
-                    children[key] = list(value.values())[0]
+                    attrs = list(value.values())
+                    children[key] = (attrs[0] if isinstance(attrs[0], list)
+                                     else attrs)
                     continue
                 value = self.list() if value is None else value
                 try:
@@ -95,7 +97,6 @@ class MetadataXMLConverter(XMLSchemaConverter):
                           and len(value) == 1 and {} in value.values()):
                         children[key] = list(value.keys())[0]
                     else:
-                        value = value if value != {} else "true"
                         children[key] = value
                 except AttributeError:
                     children[key] = self.list([children[key], value])
@@ -107,6 +108,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
             if children is not None:
                 if isinstance(children, dict):
                     for key, value in children.items():
+                        value = value if value != {} else "true"
                         tmp_dict[key] = value
                 else:
                     tmp_dict["value"] = children
