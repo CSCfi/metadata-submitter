@@ -225,7 +225,7 @@ class HandlersTestCase(AioHTTPTestCase):
         assert response.status == 400
         json_resp = await response.json()
         self.assertIn("xml-formatted query results are not supported",
-                      json_resp["detail"])
+                      json_resp['errors'][0]["detail"])
 
     @unittest_run_loop
     async def test_validation_passes_for_valid_xml(self):
@@ -273,8 +273,8 @@ class HandlersTestCase(AioHTTPTestCase):
         get_resp = await self.client.get("/objects/bad_scehma_name/some_id")
         self.assertEqual(get_resp.status, 404)
         json_get_resp = await get_resp.json()
-        self.assertIn("Theres no schema", json_get_resp['detail'])
+        self.assertIn("Theres no schema", json_get_resp['errors'][0]['detail'])
         post_rep = await self.client.post("/objects/bad_scehma_name")
         self.assertEqual(post_rep.status, 404)
         post_json_rep = await post_rep.json()
-        self.assertIn("Theres no schema", post_json_rep['detail'])
+        self.assertIn("Theres no schema", post_json_rep['errors'][0]['detail'])

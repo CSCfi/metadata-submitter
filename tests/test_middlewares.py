@@ -25,10 +25,11 @@ class MiddlewaresTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 400)
         self.assertEqual(response.content_type, "application/problem+json")
         resp_dict = await response.json()
-        self.assertIn("Bad Request", resp_dict['title'])
+        self.assertIn("Bad Request", resp_dict['errors'][0]['title'])
         self.assertIn("There must be a submission.xml file in submission.",
-                      resp_dict['detail'])
-        self.assertIn("/submit", resp_dict['instance'])
+                      resp_dict['errors'][0]['detail'])
+        self.assertIn("/submit", resp_dict['errors'][0]['instance'])
+        self.assertNotIn("status", resp_dict)
 
     @unittest_run_loop
     async def test_bad_url_returns_json_response(self):
@@ -37,4 +38,6 @@ class MiddlewaresTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 404)
         self.assertEqual(response.content_type, "application/problem+json")
         resp_dict = await response.json()
-        self.assertIn("Not Found", resp_dict['title'])
+        self.assertIn("Not Found", resp_dict['errors'][0]['title'])
+        self.assertIn("/bad_url", resp_dict['errors'][0]['instance'])
+        self.assertNotIn("status", resp_dict)
