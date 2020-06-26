@@ -95,18 +95,3 @@ class ParserTestCase(unittest.TestCase):
         study_xml = self.load_xml_from_file("study", "SRP000539_invalid.xml")
         with self.assertRaises(web.HTTPBadRequest):
             self.parser._validate(study_xml, schema)
-
-    # def test_empty_lists_are_removed_from_json(self):
-    #     """Check empty lists are removed and non-empty are retained."""
-    #     data = {'file': {'attributes': {
-    #         'checksum': '3dfebb4b30211523853805439fbd7cec',
-    #         'checksumMethod': 'MD5',
-    #         'filetype': 'srf'},
-    #         'children': []},
-    #         'identifiers': {'primaryId': 'ERR000076',
-    #                         'submitterId': {
-    #                             'attributes': {'namespace': 'BGI'},
-    #                             'children': ['BGI-FC304RWAAXX']}}}
-    #     cleaned = self.parser._to_lowercase(data)
-    #     self.assertTrue("children" not in cleaned['file']['attributes'])
-    #     self.assertTrue("children" in cleaned['identifiers']['submitterid'])
