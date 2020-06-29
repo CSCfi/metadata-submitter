@@ -1,8 +1,10 @@
 """Test api endpoints from views module."""
+import re
 import datetime
 import unittest
 from unittest.mock import patch, MagicMock
 from metadata_backend.api.operators import Operator, XMLOperator
+from multidict import MultiDictProxy, MultiDict
 
 
 class TestOperators(unittest.TestCase):
@@ -95,6 +97,48 @@ class TestOperators(unittest.TestCase):
         operator.delete_metadata_object("sample", "EGA123456")
         assert operator.db_service.delete.call_count == 2
         operator.db_service.delete.assert_called_with("sample", "EGA123456")
+
+    def test_query_params_are_parsed_correctly(self):
+        """Test that database is called with correct query."""
+        operator = Operator()
+        study_test = {
+            "_id": {
+                "$oid": "5ecd28877f55c72e263f45c2"
+            },
+            "publishDate": datetime.datetime(2020, 6, 14, 0, 0),
+            "accessionId": "EDAG3945644754983408",
+            "dateCreated": datetime.datetime(2020, 6, 14, 0, 0),
+            "dateModified": datetime.datetime(2020, 6, 14, 0, 0)
+        }
+        operator.db_service.query = MagicMock(return_value=study_test)
+        query = MultiDictProxy(MultiDict([("studyAttributes", "foo")]))
+        operator.query_metadata_database("study", query)
+        operator.db_service.query.assert_called_once_with(
+            'study', {'$or': [
+                {'studyAttributes.studyAttribute.tag':
+                 re.compile('.*foo.*', re.IGNORECASE)},
+                {'studyAttributes.studyAttribute.value':
+                 re.compile('.*foo.*', re.IGNORECASE)}
+            ]}
+        )
+
+    def test_non_working_query_params_are_not_passed_to_db_query(self):
+        """Test that database is called with correct query."""
+        operator = Operator()
+        study_test = {
+            "_id": {
+                "$oid": "5ecd28877f55c72e263f45c2"
+            },
+            "publishDate": datetime.datetime(2020, 6, 14, 0, 0),
+            "accessionId": "EDAG3945644754983408",
+            "dateCreated": datetime.datetime(2020, 6, 14, 0, 0),
+            "dateModified": datetime.datetime(2020, 6, 14, 0, 0)
+        }
+        operator.db_service.query = MagicMock(return_value=study_test)
+        operator._format_read_data = MagicMock(return_value=study_test)
+        query = MultiDictProxy(MultiDict([("swag", "littinen")]))
+        operator.query_metadata_database("study", query)
+        operator.db_service.query.assert_called_once_with('study', {})
 
 
 if __name__ == '__main__':
