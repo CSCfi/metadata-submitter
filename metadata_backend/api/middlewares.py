@@ -4,7 +4,7 @@ from http import HTTPStatus
 from typing import Callable
 
 from aiohttp import web
-from aiohttp.web import HTTPError, HTTPException, Request, Response, middleware
+from aiohttp.web import Request, Response, middleware
 from yarl import URL
 
 from ..helpers.logger import LOG
@@ -28,8 +28,9 @@ def error_middleware() -> Callable:
         try:
             response = await handler(req)
             return response
-        except HTTPError as error:
+        except web.HTTPError as error:
             details = _json_exception(error.status, error, req.url)
+            LOG.error(details)
             c_type = 'application/problem+json'
             if error.status == 400:
                 raise web.HTTPBadRequest(text=details,
@@ -49,7 +50,7 @@ def error_middleware() -> Callable:
     return http_error_handler
 
 
-def _json_exception(status: int, exception: HTTPException,
+def _json_exception(status: int, exception: web.HTTPException,
                     url: URL) -> str:
     """Convert an HTTP exception into a problem detailed JSON object.
 
@@ -69,5 +70,4 @@ def _json_exception(status: int, exception: HTTPException,
         'detail': exception.reason,
         'instance': url.path,  # optional
     })
-    LOG.info(body)
     return body
