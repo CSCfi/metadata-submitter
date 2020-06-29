@@ -493,77 +493,64 @@ components:
       type: object
       description: Response when some error(s) occured in one of the endpoints
       required:
-        - errors
+        - title
+        - detail
       properties:
-        errors:
-          type: array
-          description: list of erros that occured
-          items:
-            type: object
-            required:
-              - title
-              - detail
-            properties:
-              type:
-                type: string
-                description: reference to a human readable documentation of the problem type
-              title:
-                type: string
-                description: Short message, human readable
-              detail:
-                type: string
-                description: details about what error occured while processing the request
-              instance:
-                type: string
-                description: reference to the specific occurence of the problem
+        type:
+          type: string
+          description: reference to a human readable documentation of the problem type
+        title:
+          type: string
+          description: Short message, human readable
+        detail:
+          type: string
+          description: details about what error occured while processing the request
+        instance:
+          type: string
+          description: reference to the specific occurence of the problem
+        status:
+          type: integer
+          description: return http status
     400BadRequest:
       allOf:
         - $ref: '#/components/schemas/ErrorModel'
       properties:
-        errors:
-          items:
-            type: object
-            properties:
-              title:
-                example: Bad Request
-              detail:
-                example: the current request could not be processed as the submitted file was not valid
+        status:
+          example: 400
+        title:
+          example: Bad Request
+        detail:
+          example: the current request could not be processed as the submitted file was not valid
     404NotFound:
       allOf:
         - $ref: '#/components/schemas/ErrorModel'
       properties:
-        errors:
-          items:
-            type: object
-            properties:
-              title:
-                example: Not Found
-              detail:
-                example: the current endpoint does not retrieve any results
+        status:
+          example: 404
+        title:
+          example: Not Found
+        detail:
+          example: the current endpoint does not retrieve any results
     401Unauthorized:
       allOf:
         - $ref: '#/components/schemas/ErrorModel'
       properties:
-        errors:
-          items:
-            type: object
-            properties:
-              title:
-                example: Unauthorized
-              detail:
-                example: the request cannot be authorized
+        status:
+          example: 401
+        title:
+          example: Unauthorized
+        detail:
+          example: the request cannot be authorized
     403Forbidden:
       allOf:
         - $ref: '#/components/schemas/ErrorModel'
       properties:
-        errors:
-          items:
-            type: object
-            properties:
-              title:
-                example: Forbidden
-              detail:
-                example: the request does not contain the right permissions
+        status:
+          example: 403
+        title:
+          example: Forbidden
+        detail:
+          example: the request does not contain the right permissions
     SchemasList:
       type: array
       items:
