@@ -134,10 +134,10 @@ class SubmissionAPIHandler:
         for action_set in submission_json["actions"]['action']:
             for action, attr in action_set.items():
                 if not attr:
-                    reason = (f"You also need to provide necessary"
-                              f" information for submission action."
-                              f" Now {action} was provided without any"
-                              f" extra information.")
+                    reason = (f"""You also need to provide necessary
+                                  information for submission action.
+                                  Now {action} was provided without any
+                                  extra information.""")
                     raise web.HTTPBadRequest(reason=reason)
                 actions[attr["schema"]] = action
         # Go through parsed files and do the actual action
@@ -253,9 +253,9 @@ async def _extract_xml_upload(req: Request, extract_one: bool = False
         if extract_one and files:
             reason = "Only one file can be sent to this endpoint at a time."
             raise web.HTTPBadRequest(reason=reason)
-        xml_type = part.name.lower()
-        if xml_type not in object_types:
-            raise web.HTTPBadRequest(reason="Not ok type")
+        type = part.name.lower()
+        if type not in object_types:
+            raise web.HTTPNotFound(reason=f"Theres no schema with name {type}")
         data = []
         while True:
             chunk = await part.read_chunk()
@@ -263,5 +263,5 @@ async def _extract_xml_upload(req: Request, extract_one: bool = False
                 break
             data.append(chunk)
         xml_content = ''.join(x.decode('UTF-8') for x in data)
-        files.append((xml_content, xml_type))
+        files.append((xml_content, type))
     return sorted(files, key=lambda x: object_types[x[1]]["priority"])
