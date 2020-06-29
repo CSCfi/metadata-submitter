@@ -51,7 +51,7 @@ def error_middleware() -> Callable:
 
 def _json_exception(status: int, exception: HTTPException,
                     url: URL) -> str:
-    """Convert an HTTP exception into a problem detailed JSON response.
+    """Convert an HTTP exception into a problem detailed JSON object.
 
     The problem details are in accordance with RFC 7807.
     (https://tools.ietf.org/html/rfc7807)
