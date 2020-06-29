@@ -65,7 +65,8 @@ class BaseOperator(ABC):
     def delete_metadata_object(self, type: str, accession_id: str) -> None:
         """Delete object from database.
 
-        Removes JSON from main db and if XML was inserted, also XML.
+        Tries to remove both JSON and original XML from database, passes
+        silently if XML doesn't exist.
 
         :param type: Type of the object to be added.
         :param data: Data to be saved to database.
@@ -77,11 +78,13 @@ class BaseOperator(ABC):
         except errors.PyMongoError as error:
             reason = f"Error happened while getting file: {error}"
             raise web.HTTPBadRequest(reason=reason)
+        LOG.info(f"{accession_id} successfully deleted from JSON colletion")
         try:
             XMLOperator().db_service.delete(type, accession_id)
         except errors.PyMongoError as error:
             reason = f"Error happened while getting file: {error}"
             raise web.HTTPBadRequest(reason=reason)
+        LOG.info(f"{accession_id} successfully deleted from XML colletion")
 
     def _generate_accession_id(self) -> str:
         """Generate random accession id.
