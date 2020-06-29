@@ -2,9 +2,11 @@
 import re
 import datetime
 import unittest
+from aiohttp.web import HTTPNotFound, HTTPBadRequest
 from unittest.mock import patch, MagicMock
 from metadata_backend.api.operators import Operator, XMLOperator
 from multidict import MultiDictProxy, MultiDict
+from pymongo.errors import ConnectionFailure
 
 
 class TestOperators(unittest.TestCase):
@@ -44,6 +46,22 @@ class TestOperators(unittest.TestCase):
         r_data, c_type = operator.read_metadata_object("sample", "EGA123456")
         operator.db_service.read.assert_called_once_with("sample", "EGA123456")
         assert c_type == "application/json"
+
+    def test_reading_with_non_valid_id_raises_error(self):
+        """Test HTTPNotFound is raised."""
+        operator = Operator()
+        operator.db_service.read = MagicMock()
+        operator.db_service.read.side_effect = HTTPNotFound
+        with self.assertRaises(HTTPNotFound):
+            operator.read_metadata_object("study", "EGA123456")
+
+    def test_db_error_raises_400_error(self):
+        """Test HTTPBadRequest is raised."""
+        operator = Operator()
+        operator.db_service.read = MagicMock()
+        operator.db_service.read.side_effect = ConnectionFailure
+        with self.assertRaises(HTTPBadRequest):
+            operator.read_metadata_object("study", "EGA123456")
 
     def test_reading_metadata_works_with_xml(self):
         """Test xml is read from db correctly."""
