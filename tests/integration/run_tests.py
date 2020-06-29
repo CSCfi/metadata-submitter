@@ -47,7 +47,7 @@ async def test_post_and_get_works(schema, filename):
     :param schema: name of the schema (folder) used for testing
     :param filename: name of the file used for testing.
     """
-    async with aiohttp.Clientsess() as sess:
+    async with aiohttp.ClientSession() as sess:
         base_url = "http://localhost:5430/objects"
         data = await create_submission_data(schema, filename)
         async with sess.post(f"{base_url}/{schema}", data=data) as resp:
@@ -72,7 +72,7 @@ async def test_post_and_get_works(schema, filename):
 
 async def test_querying_works():
     """Test query endpoint with working and failing query."""
-    async with aiohttp.Clientsess() as sess:
+    async with aiohttp.ClientSession() as sess:
         base_url = "http://localhost:5430/objects"
 
         # Study-related query endpoints
@@ -143,10 +143,10 @@ async def main():
     )
 
     # Test queries
-    # await test_querying_works()
+    await test_querying_works()
 
     # Test /objects/study endpoint
-    # await test_getting_all_objects_from_schema_works()
+    await test_getting_all_objects_from_schema_works()
 
 if __name__ == '__main__':
     asyncio.run(main())
