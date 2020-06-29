@@ -88,6 +88,14 @@ class TestOperators(unittest.TestCase):
             "publishDate": datetime.datetime(2020, 6, 14)
         })
 
+    def test_deleting_metadata_deletes_json_and_xml(self):
+        """Test xml is read from db correctly."""
+        operator = Operator()
+        operator.db_service.delete = MagicMock()
+        operator.delete_metadata_object("sample", "EGA123456")
+        assert operator.db_service.delete.call_count == 2
+        operator.db_service.delete.assert_called_with("sample", "EGA123456")
+
 
 if __name__ == '__main__':
     unittest.main()
