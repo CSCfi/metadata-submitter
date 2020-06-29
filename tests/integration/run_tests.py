@@ -74,6 +74,8 @@ async def test_querying_works():
     """Test query endpoint with working and failing query."""
     async with aiohttp.ClientSession() as sess:
         base_url = "http://localhost:5430/objects"
+
+        # Study-related query endpoints
         data = await create_submission_data("study", "SRP000539.xml")
         async with sess.post(f"{base_url}/study", data=data) as resp:
             LOG.debug("Adding new object to study")

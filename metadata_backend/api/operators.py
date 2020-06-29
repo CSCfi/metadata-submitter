@@ -58,8 +58,8 @@ class BaseOperator(ABC):
         """
         accession_id = self._generate_accession_id()
         self._handle_data_and_add_to_db(type, data, accession_id)
-        LOG.info(f"Inserting file to database succeeded: {type}, "
-                 f"{self.content_type}")
+        LOG.info(f"""Inserting file to database succeeded: {type}
+                 {self.content_type}""")
         return accession_id
 
     def delete_metadata_object(self, type: str, accession_id: str) -> None:
