@@ -10,8 +10,8 @@ from aiohttp import web
 from bson import json_util
 from dateutil.relativedelta import relativedelta
 from multidict import MultiDictProxy
-from pymongo import errors
 from pymongo.cursor import Cursor
+from pymongo.errors import ConnectionFailure, OperationFailure
 
 from ..conf.conf import query_map
 from ..database.db_service import DBService
@@ -43,7 +43,7 @@ class BaseOperator(ABC):
             if not data_raw:
                 raise web.HTTPNotFound
             data = self._format_read_data(type, data_raw)
-        except errors.PyMongoError as error:
+        except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting file: {error}"
             raise web.HTTPBadRequest(reason=reason)
         return data, self.content_type
@@ -75,13 +75,13 @@ class BaseOperator(ABC):
         """
         try:
             Operator().db_service.delete(type, accession_id)
-        except errors.PyMongoError as error:
+        except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting file: {error}"
             raise web.HTTPBadRequest(reason=reason)
         LOG.info(f"{accession_id} successfully deleted from JSON colletion")
         try:
             XMLOperator().db_service.delete(type, accession_id)
-        except errors.PyMongoError as error:
+        except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting file: {error}"
             raise web.HTTPBadRequest(reason=reason)
         LOG.info(f"{accession_id} successfully deleted from XML colletion")
@@ -149,7 +149,7 @@ class Operator(BaseOperator):
                     mongo_query = {query_map[query]: regx}
         try:
             data_raw = self.db_service.query(type, mongo_query)
-        except errors.PyMongoError as error:
+        except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting file: {error}"
             raise web.HTTPBadRequest(reason=reason)
         data = self._format_read_data(type, data_raw)
@@ -218,7 +218,7 @@ class Operator(BaseOperator):
             data["publishDate"] = datetime.utcnow() + relativedelta(months=2)
         try:
             self.db_service.create(type, data)
-        except errors.PyMongoError as error:
+        except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting file: {error}"
             raise web.HTTPBadRequest(reason=reason)
 
@@ -259,6 +259,6 @@ class XMLOperator(BaseOperator):
         try:
             self.db_service.create(type, {"accessionId": accession_id,
                                           "content": data})
-        except errors.PyMongoError as error:
+        except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting file: {error}"
             raise web.HTTPBadRequest(reason=reason)
