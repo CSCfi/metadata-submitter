@@ -62,7 +62,11 @@ async def test_post_and_get_works(schema, filename):
             LOG.debug(f"Deleting object {accession_id} in {schema}")
             assert resp.status == 204, 'HTTP Status code error'
         async with sess.get(f"{base_url}/{schema}/{accession_id}") as resp:
-            LOG.debug(f"Checking that object {accession_id} was deleted")
+            LOG.debug(f"Checking that json object {accession_id} was deleted")
+            assert resp.status == 404, 'HTTP Status code error'
+        async with sess.get(f"{base_url}/{schema}/{accession_id}"
+                            f"?format=xml") as resp:
+            LOG.debug(f"Checking that xml object {accession_id} was deleted")
             assert resp.status == 404, 'HTTP Status code error'
 
 

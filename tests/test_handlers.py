@@ -218,6 +218,14 @@ class HandlersTestCase(AioHTTPTestCase):
         assert "studyType': 'foo', 'name': 'bar'" in str(args[1])
 
     @unittest_run_loop
+    async def test_delete_is_called(self):
+        """Test query method calls operator and returns status correctly."""
+        url = "/objects/study/EGA123456"
+        response = await self.client.delete(url)
+        assert response.status == 204
+        self.MockedOperator().delete_metadata_object.assert_called_once()
+
+    @unittest_run_loop
     async def test_query_fails_with_xml_format(self):
         """Test query method calls operator and returns status correctly."""
         url = "/objects/study?studyType=foo&name=bar&format=xml"
