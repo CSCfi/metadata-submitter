@@ -29,12 +29,15 @@ async def init() -> web.Application:
     api_routes = [
         web.get('/schemas', rest_handler.get_objects),
         web.get('/objects/{schema}/{accessionId}', rest_handler.get_object),
+        web.delete('/objects/{schema}/{accessionId}',
+                   rest_handler.delete_object),
         web.get('/objects/{schema}', rest_handler.query_objects),
         web.post('/objects/{schema}', rest_handler.post_object),
         web.post('/submit', submission_handler.submit),
         web.post('/validate', submission_handler.validate)
     ]
     server.router.add_routes(api_routes)
+    LOG.info("Server configurations and routes loaded")
     if frontend_static_files.exists():
         static_handler = StaticHandler(frontend_static_files)
         frontend_routes = [
@@ -42,7 +45,7 @@ async def init() -> web.Application:
             web.get('/{path:.*}', static_handler.frontend),
         ]
         server.router.add_routes(frontend_routes)
-    LOG.info("Server configurations and routes loaded")
+        LOG.info("Frontend routes loaded")
     return server
 
 

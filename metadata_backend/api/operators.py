@@ -36,6 +36,7 @@ class BaseOperator(ABC):
 
         :param type: Type of the object to read.
         :param accession_id: Accession Id of the object to read.
+        :raises: 400 if reading was not succesful, 404 if no data found
         """
         try:
             data_raw = self.db_service.read(type, accession_id)
@@ -60,6 +61,27 @@ class BaseOperator(ABC):
         LOG.info(f"Inserting file to database succeeded: {type}, "
                  f"{self.content_type}")
         return accession_id
+
+    def delete_metadata_object(self, type: str, accession_id: str) -> None:
+        """Delete object from database.
+
+        Removes JSON from main db and if XML was inserted, also XML.
+
+        :param type: Type of the object to be added.
+        :param data: Data to be saved to database.
+        :param accession_id: Accession Id of the object to read.
+        :raises: 400 if deleting was not succesful
+        """
+        try:
+            Operator().db_service.delete(type, accession_id)
+        except errors.PyMongoError as error:
+            reason = f"Error happened while getting file: {error}"
+            raise web.HTTPBadRequest(reason=reason)
+        try:
+            XMLOperator().db_service.delete(type, accession_id)
+        except errors.PyMongoError as error:
+            reason = f"Error happened while getting file: {error}"
+            raise web.HTTPBadRequest(reason=reason)
 
     def _generate_accession_id(self) -> str:
         """Generate random accession id.
