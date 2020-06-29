@@ -15,7 +15,7 @@ class MiddlewaresTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_bad_HTTP_request_converts_into_json_response(self):
-        """Test that middleware converts HTTP error into a JSON response."""
+        """Test that middleware reformats 400 error with problem details."""
         data = FormData()
         data.add_field("study", "content of a file",
                        filename='file', content_type='text/xml')
@@ -32,7 +32,7 @@ class MiddlewaresTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_bad_url_returns_json_response(self):
-        """Test that an unrouted url returns a 404 in JSON format."""
+        """Test that middleware reformats 400 error with problem details."""
         response = await self.client.get("/bad_url")
         self.assertEqual(response.status, 404)
         self.assertEqual(response.content_type, "application/problem+json")
