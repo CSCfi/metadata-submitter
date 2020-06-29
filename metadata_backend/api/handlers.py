@@ -88,6 +88,19 @@ class RESTApiHandler:
         return web.Response(body=result, status=200,
                             content_type="application/json")
 
+    async def delete_object(self, req: Request) -> Response:
+        """Delete metadata object from database.
+
+        :param req: POST request
+        :returns: JSON response containing accessionId for submitted object
+        """
+        type = req.match_info['schema']
+        if type not in object_types.keys():
+            raise web.HTTPNotFound(reason=f"Theres no schema with name {type}")
+        accession_id = req.match_info['accessionId']
+        Operator().delete_metadata_object(type, accession_id)
+        return web.Response(status=204)
+
 
 class SubmissionAPIHandler:
     """Handler for non-rest API methods."""
