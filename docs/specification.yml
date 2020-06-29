@@ -508,15 +508,10 @@ components:
         instance:
           type: string
           description: reference to the specific occurence of the problem
-        status:
-          type: integer
-          description: return http status
     400BadRequest:
       allOf:
         - $ref: '#/components/schemas/ErrorModel'
       properties:
-        status:
-          example: 400
         title:
           example: Bad Request
         detail:
@@ -525,8 +520,6 @@ components:
       allOf:
         - $ref: '#/components/schemas/ErrorModel'
       properties:
-        status:
-          example: 404
         title:
           example: Not Found
         detail:
@@ -535,8 +528,7 @@ components:
       allOf:
         - $ref: '#/components/schemas/ErrorModel'
       properties:
-        status:
-          example: 401
+
         title:
           example: Unauthorized
         detail:
@@ -545,8 +537,6 @@ components:
       allOf:
         - $ref: '#/components/schemas/ErrorModel'
       properties:
-        status:
-          example: 403
         title:
           example: Forbidden
         detail:
