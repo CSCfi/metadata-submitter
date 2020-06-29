@@ -660,5 +660,12 @@ components:
           type: boolean
           description: true of false if valid. if false a detail key would be good to detail the error but not required
         detail:
-          type: string
+          type: object
           description: details of the error if there was one.
+          properties:
+            reason:
+              type: string
+              description: reason that caused the validation error
+            instance:
+              type: string
+              description: specific element(s) where error occurred

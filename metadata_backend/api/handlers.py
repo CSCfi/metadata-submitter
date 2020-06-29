@@ -4,6 +4,7 @@ import mimetypes
 from collections import Counter
 from pathlib import Path
 from typing import Dict, List, Tuple, Union, cast
+from xml.etree import ElementTree
 from xml.etree.ElementTree import ParseError
 
 from aiohttp import BodyPartReader, web
@@ -170,14 +171,11 @@ class SubmissionAPIHandler:
                                 content_type="application/json")
 
         except XMLSchemaValidationError as error:
-            '''
-            # Parsing the validation error message for reason and instance
-            from xml.etree import ElementTree
+            # Parsing reason and instance from the validation error message
             reason = error.reason
             instance = ElementTree.tostring(error.elem, encoding="unicode")
-            '''
-            detail = f"XML file is not valid against schema.\nERROR: {error}"
-            body = json.dumps({"isValid": False, "detail": detail})
+            body = json.dumps({"isValid": False, "detail":
+                              {"reason": reason, "instance": instance}})
             return web.Response(body=body,
                                 content_type="application/json")
         body = json.dumps({"isValid": True})
