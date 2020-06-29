@@ -3,6 +3,7 @@ import json
 from http import HTTPStatus
 from typing import Callable
 
+from aiohttp import web
 from aiohttp.web import HTTPError, HTTPException, Request, Response, middleware
 from yarl import URL
 
@@ -21,19 +22,35 @@ def error_middleware() -> Callable:
 
         :param req: A request instance
         :param handler: A request handler
-        :returns: JSON response for the error
+        :raises: Reformatted HTTP Exceptions
+        :returns: Successful requests unaffected
         """
         try:
             response = await handler(req)
             return response
         except HTTPError as error:
-            return _json_exception(error.status, error, req.url)
+            details = _json_exception(error.status, error, req.url)
+            c_type = 'application/problem+json'
+            if error.status == 400:
+                raise web.HTTPBadRequest(text=details,
+                                         content_type=c_type)
+            elif error.status == 401:
+                raise web.HTTPUnauthorized(text=details,
+                                           content_type=c_type)
+            elif error.status == 403:
+                raise web.HTTPForbidden(text=details,
+                                        content_type=c_type)
+            elif error.status == 404:
+                raise web.HTTPNotFound(text=details,
+                                       content_type=c_type)
+            else:
+                raise web.HTTPServerError()
 
     return http_error_handler
 
 
 def _json_exception(status: int, exception: HTTPException,
-                    url: URL) -> Response:
+                    url: URL) -> str:
     """Convert an HTTP exception into a problem detailed JSON response.
 
     The problem details are in accordance with RFC 7807.
@@ -42,7 +59,7 @@ def _json_exception(status: int, exception: HTTPException,
     :param status: Status code of the HTTP exception
     :param exception: Exception content
     :param url: Request URL that caused the exception
-    :returns: Response in problem detail JSON format
+    :returns: Problem detail JSON object as a string
     """
     body = json.dumps({
         'type': "about:blank",
@@ -51,7 +68,6 @@ def _json_exception(status: int, exception: HTTPException,
         'title': HTTPStatus(status).phrase,
         'detail': exception.reason,
         'instance': url.path,  # optional
-    }).encode('utf-8')
-    LOG.info(str(body))
-    return Response(status=status, body=body,
-                    content_type='application/problem+json')
+    })
+    LOG.info(body)
+    return body
