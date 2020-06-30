@@ -31,14 +31,14 @@ import json
 import os
 from pathlib import Path
 
-from pymongo import MongoClient
+from motor.motor_asyncio import AsyncIOMotorClient
 
 # 1) Set up database client
 mongo_user = os.getenv("MONGO_INITDB_ROOT_USERNAME", "admin")
 mongo_password = os.getenv("MONGO_INITDB_ROOT_PASSWORD", "admin")
 mongo_host = os.getenv("MONGODB_HOST", "localhost:27017")
 url = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}"
-db_client = MongoClient(url)
+db_client = AsyncIOMotorClient(url)
 
 # 2) Load schema types and descriptions from json
 path_to_schema_file = Path(__file__).parent / "schemas.json"
