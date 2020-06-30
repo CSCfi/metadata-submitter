@@ -26,20 +26,20 @@ class SchemaLoader:
         """Load schemas folder on initialization."""
         self.path = SCHEMAS_ROOT
 
-    def get_schema(self, schema_name: str) -> XMLSchema:
+    def get_schema(self, schema_type: str) -> XMLSchema:
         """Find schema which is used to match XML files against.
 
         Documentation of XMLSchema project:
         https://xmlschema.readthedocs.io/en/latest/
 
-        :param schema_name: Schema to be searched for
-        :returns: XMLSchema able to validate XML against defined schema
+        :param schema_type: Schema type to be searched for
+        :returns: XMLSchema able to validate XML against defined schema type
         :raises SchemaNotFoundException: If searched schema doesn't exist
         """
-        schema_name = schema_name.lower()
+        schema_type = schema_type.lower()
         schema_file = None
         for file in [x for x in self.path.iterdir()]:
-            if schema_name in file.name:
+            if schema_type in file.name:
                 with file.open() as f:
                     schema_file = f.read()
         if not schema_file:
