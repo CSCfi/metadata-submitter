@@ -39,7 +39,7 @@ Tests and flake8 style checks can be run with tox automation: just run `tox` on 
 
 Production version can be built and run with following docker commands:
 ```
-docker build . -t metadata-submitter
+docker build --no-cache . -t metadata-submitter
 docker run -p 5430:5430 metadata-submitter
 ```
 
