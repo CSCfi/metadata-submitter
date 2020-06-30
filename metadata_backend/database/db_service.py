@@ -2,7 +2,7 @@
 
 from typing import Dict
 
-from pymongo.cursor import Cursor
+from motor.motor_asyncio import AsyncIOMotorCursor
 from pymongo.errors import ConnectionFailure, OperationFailure
 
 from ..conf.conf import db_client
@@ -15,7 +15,7 @@ class DBService:
     purposes (e.g. submissions and backups). Normal CRUD and some basic query
     operations are implemented.
 
-    All services should use the same client, since pymongo handles pooling
+    All services should use the same client, since Motor handles pooling
     automatically.
     """
 
@@ -28,7 +28,7 @@ class DBService:
         """
         self.database = db_client[database_name]
 
-    def create(self, collection: str, document: Dict) -> None:
+    async def create(self, collection: str, document: Dict) -> None:
         """Insert document to collection in database.
 
         :param collection: Collection where document should be inserted
@@ -36,26 +36,26 @@ class DBService:
         :raises: Error when write fails for any Mongodb related reason
         """
         try:
-            self.database[collection].insert_one(document)
+            await self.database[collection].insert_one(document)
         except (ConnectionFailure, OperationFailure):
             raise
 
-    def read(self, collection: str, accession_id: str) -> Cursor:
+    async def read(self, collection: str, accession_id: str) -> Dict:
         """Find object by its accessionId.
 
         :param collection: Collection where document should be searched from
         :param accession_id: Accession id of the document to be searched
-        :returns: Pymongo's Cursor object (iterator)
+        :returns: First document matching the query
         :raises: Error when read fails for any Mongodb related reason
         """
         try:
             find_by_id_query = {"accessionId": accession_id}
-            return self.database[collection].find_one(find_by_id_query)
+            return await self.database[collection].find_one(find_by_id_query)
         except (ConnectionFailure, OperationFailure):
             raise
 
-    def update(self, collection: str, accession_id: str,
-               data_to_be_updated: Dict) -> None:
+    async def update(self, collection: str, accession_id: str,
+                     data_to_be_updated: Dict) -> None:
         """Update some elements of object by its accessionId.
 
         :param collection: Collection where document should be searched from
@@ -67,13 +67,13 @@ class DBService:
         try:
             find_by_id_query = {"accessionId": accession_id}
             update_operation = {"$set": data_to_be_updated}
-            self.database[collection].update_one(find_by_id_query,
-                                                 update_operation)
+            await self.database[collection].update_one(find_by_id_query,
+                                                       update_operation)
         except (ConnectionFailure, OperationFailure):
             raise
 
-    def replace(self, collection: str, accession_id: str,
-                data_to_be_updated: Dict) -> None:
+    async def replace(self, collection: str, accession_id: str,
+                      data_to_be_updated: Dict) -> None:
         """Replace whole object by its accessionId.
 
         :param collection: Collection where document should be searched from
@@ -84,12 +84,12 @@ class DBService:
         """
         try:
             find_by_id_query = {"accessionId": accession_id}
-            self.database[collection].replace_one(find_by_id_query,
-                                                  data_to_be_updated)
+            await self.database[collection].replace_one(find_by_id_query,
+                                                        data_to_be_updated)
         except (ConnectionFailure, OperationFailure):
             raise
 
-    def delete(self, collection: str, accession_id: str) -> None:
+    async def delete(self, collection: str, accession_id: str) -> None:
         """Delete object by its accessionId.
 
         :param collection: Collection where document should be searched from
@@ -98,18 +98,19 @@ class DBService:
         """
         try:
             find_by_id_query = {"accessionId": accession_id}
-            self.database[collection].delete_one(find_by_id_query)
+            await self.database[collection].delete_one(find_by_id_query)
         except (ConnectionFailure, OperationFailure):
             raise
 
-    def query(self, collection: str, query: Dict) -> Cursor:
+    async def query(self, collection: str, query: Dict) -> AsyncIOMotorCursor:
         """Query database with given query.
 
         :param collection: Collection where document should be searched from
         :param query: query to be used
+        :returns: Async cursor instance which should be awaited when iterating
         :raises: Error when read fails for any Mongodb related reason
         """
         try:
-            return self.database[collection].find(query)
+            return await self.database[collection].find(query)
         except (ConnectionFailure, OperationFailure):
             raise
