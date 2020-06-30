@@ -47,8 +47,8 @@ class RESTApiHandler:
             raise web.HTTPNotFound(reason=reason)
         format = req.query.get("format", "json").lower()
         operator = XMLOperator() if format == "xml" else Operator()
-        data, content_type = operator.read_metadata_object(schema_type,
-                                                           accession_id)
+        data, content_type = await operator.read_metadata_object(schema_type,
+                                                                 accession_id)
         return web.Response(body=data, status=200, content_type=content_type)
 
     async def post_object(self, req: Request) -> Response:
@@ -69,7 +69,8 @@ class RESTApiHandler:
         else:
             content = await req.json()
             operator = Operator()
-        accession_id = operator.create_metadata_object(schema_type, content)
+        accession_id = await operator.create_metadata_object(schema_type,
+                                                             content)
         body = json.dumps({"accessionId": accession_id})
         return web.Response(body=body, status=201,
                             content_type="application/json")
