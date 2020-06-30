@@ -122,6 +122,7 @@ class XMLToJSONParser:
 
     def parse(self, schema_type: str, content: str) -> Dict:
         """Validate xml file and parse it to json.
+
         :param schema_type: Schema type to be used
         :param content: XML content to be parsed
         :returns: XML parsed to JSON
@@ -131,7 +132,7 @@ class XMLToJSONParser:
         return schema.to_dict(content,
                               converter=MetadataXMLConverter,
                               decimal_type=float,
-                              dict_class=dict)[schema_type]
+                              dict_class=dict)[schema_type.lower()]
 
     @staticmethod
     def _load_schema(schema_type: str) -> XMLSchema:

@@ -157,9 +157,9 @@ class TestOperators(unittest.TestCase):
         operator.query_metadata_database("study", query)
         operator.db_service.query.assert_called_once_with(
             'study', {'$or': [
-                {'studyAttributes.studyAttribute.tag':
+                {'studyAttributes.tag':
                  re.compile('.*foo.*', re.IGNORECASE)},
-                {'studyAttributes.studyAttribute.value':
+                {'studyAttributes.value':
                  re.compile('.*foo.*', re.IGNORECASE)}
             ]}
         )
