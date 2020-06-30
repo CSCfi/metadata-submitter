@@ -84,7 +84,6 @@ class RESTApiHandler:
         if schema_type not in schema_types.keys():
             reason = f"Theres no schema {schema_type}"
             raise web.HTTPNotFound(reason=reason)
-            raise web.HTTPNotFound(reason=f"Theres no schema with name {type}")
         format = req.query.get("format", "json").lower()
         if format == "xml":
             reason = "xml-formatted query results are not supported"
