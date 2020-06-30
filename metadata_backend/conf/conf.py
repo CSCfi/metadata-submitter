@@ -14,8 +14,8 @@ Admin access is needed in order to create new databases during runtime.
 Default values are the same that are used in docker-compose file
 found from deploy/mongodb.
 
-2) Metadata object types
-Object types (such as "submission", "study", "sample") are needed in
+2) Metadata schema types
+Schema types (such as "submission", "study", "sample") are needed in
 different parts of the application.
 
 3) Mongodb query mappings
@@ -40,10 +40,10 @@ mongo_host = os.getenv("MONGODB_HOST", "localhost:27017")
 url = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}"
 db_client = MongoClient(url)
 
-# 2) Load object types (schemas) from json
+# 2) Load schema types and descriptions from json
 path_to_schema_file = Path(__file__).parent / "schemas.json"
-with open(path_to_schema_file) as schemas:
-    object_types = json.load(schemas)
+with open(path_to_schema_file) as schema_file:
+    schema_types = json.load(schema_file)
 
 # 3) Define mapping between url query parameters and mongodb queries
 query_map = {
