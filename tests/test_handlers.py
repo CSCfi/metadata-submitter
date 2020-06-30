@@ -242,9 +242,9 @@ class HandlersTestCase(AioHTTPTestCase):
         files = [("study", "SRP000539_invalid.xml")]
         data = self.create_submission_data(files)
         response = await self.client.post("/validate", data=data)
+        resp_dict = await response.json()
         self.assertEqual(response.status, 200)
-        self.assertIn("Faulty XML file was given", await response.text())
-        self.assertNotIn("error", await response.json())
+        self.assertIn("Faulty XML file was given", resp_dict['detail'])
 
     @unittest_run_loop
     async def test_validation_fails_for_invalid_xml(self):
@@ -252,9 +252,9 @@ class HandlersTestCase(AioHTTPTestCase):
         files = [("study", "SRP000539_invalid2.xml")]
         data = self.create_submission_data(files)
         response = await self.client.post("/validate", data=data)
+        resp_dict = await response.json()
         self.assertEqual(response.status, 200)
-        self.assertIn("XML file is not valid", await response.text())
-        self.assertNotIn("error", await response.json())
+        self.assertIn("invalid value", resp_dict['detail']['reason'])
 
     @unittest_run_loop
     async def test_validation_fails_with_too_many_files(self):

@@ -64,8 +64,9 @@ class XMLToJSONParser:
         """
         try:
             schema.validate(content)
-        except (ParseError, XMLSchemaException) as error:
-            reason = f"Validation error happened. Details: {error}"
+        except (ParseError, XMLSchemaException):
+            reason = ("Current request could not be processed"
+                      " as the submitted file was not valid")
             raise web.HTTPBadRequest(reason=reason)
 
     def _to_lowercase(self, obj: Dict) -> Dict:
