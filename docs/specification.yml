@@ -492,84 +492,55 @@ components:
     ErrorModel:
       type: object
       description: Response when some error(s) occured in one of the endpoints
-      required: 
-        - errors
+      required:
+        - title
+        - detail
       properties:
-        errors:
-          type: array
-          description: list of erros that occured
-          items:
-            type: object
-            required: 
-              - code
-              - detail
-              - title
-            properties:
-              code:
-                type: string
-                description: internal errorCode
-              title: 
-                type: string
-                description: Short message, human readable
-              detail:
-                type: string
-                description: details about what error occured while processing the request
+        type:
+          type: string
+          description: reference to a human readable documentation of the problem type
+        title:
+          type: string
+          description: Short message, human readable
+        detail:
+          type: string
+          description: details about what error occured while processing the request
+        instance:
+          type: string
+          description: reference to the specific occurence of the problem
     400BadRequest:
       allOf:
         - $ref: '#/components/schemas/ErrorModel'
       properties:
-        errors:
-          items:
-            type: object
-            properties:
-              code:
-                example: badRequest
-              title: 
-                example: Bad Request
-              detail:
-                example: the current request could not be processed as the submitted file was not valid
+        title:
+          example: Bad Request
+        detail:
+          example: the current request could not be processed as the submitted file was not valid
     404NotFound:
       allOf:
         - $ref: '#/components/schemas/ErrorModel'
       properties:
-        errors:
-          items:
-            type: object
-            properties:
-              code:
-                example: notFound
-              title: 
-                example: Not Found
-              detail:
-                example: the current endpoint does not retrieve any results
+        title:
+          example: Not Found
+        detail:
+          example: the current endpoint does not retrieve any results
     401Unauthorized:
       allOf:
         - $ref: '#/components/schemas/ErrorModel'
       properties:
-        errors:
-          items:
-            type: object
-            properties:
-              code:
-                example: Unauthorized
-              title: 
-                example: Unauthorized
-              detail:
-                example: the request cannot be authorized
+
+        title:
+          example: Unauthorized
+        detail:
+          example: the request cannot be authorized
     403Forbidden:
       allOf:
         - $ref: '#/components/schemas/ErrorModel'
       properties:
-        errors:
-          items:
-            type: object
-            properties:
-              code:
-                example: Forbidden
-              title: 
-                example: Forbidden
-              detail:
-                example: the request does not contain the right permissions
+        title:
+          example: Forbidden
+        detail:
+          example: the request does not contain the right permissions
     SchemasList:
       type: array
       items:
@@ -578,7 +549,7 @@ components:
           - title
           - detail
         properties:
-          title: 
+          title:
             type: string
             description: Short message, human readable
             example: Sample
@@ -622,7 +593,7 @@ components:
         - page
       properties:
         page:
-          $ref: '#/components/schemas/Pagination' 
+          $ref: '#/components/schemas/Pagination'
         objects:
           type: array
           items:
@@ -689,5 +660,12 @@ components:
           type: boolean
           description: true of false if valid. if false a detail key would be good to detail the error but not required
         detail:
-          type: string 
+          type: object
           description: details of the error if there was one.
+          properties:
+            reason:
+              type: string
+              description: reason that caused the validation error
+            instance:
+              type: string
+              description: specific element(s) where error occurred
