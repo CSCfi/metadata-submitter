@@ -1,8 +1,13 @@
 """Test api endpoints from views module."""
+import re
 import datetime
+import json
 import unittest
+from aiohttp.web import HTTPNotFound, HTTPBadRequest
 from unittest.mock import patch, MagicMock
 from metadata_backend.api.operators import Operator, XMLOperator
+from multidict import MultiDictProxy, MultiDict
+from pymongo.errors import ConnectionFailure
 
 
 class TestOperators(unittest.TestCase):
@@ -43,6 +48,22 @@ class TestOperators(unittest.TestCase):
         operator.db_service.read.assert_called_once_with("sample", "EGA123456")
         assert c_type == "application/json"
 
+    def test_reading_with_non_valid_id_raises_error(self):
+        """Test HTTPNotFound is raised."""
+        operator = Operator()
+        operator.db_service.read = MagicMock()
+        operator.db_service.read.side_effect = HTTPNotFound
+        with self.assertRaises(HTTPNotFound):
+            operator.read_metadata_object("study", "EGA123456")
+
+    def test_db_error_raises_400_error(self):
+        """Test HTTPBadRequest is raised."""
+        operator = Operator()
+        operator.db_service.read = MagicMock()
+        operator.db_service.read.side_effect = ConnectionFailure
+        with self.assertRaises(HTTPBadRequest):
+            operator.read_metadata_object("study", "EGA123456")
+
     def test_reading_metadata_works_with_xml(self):
         """Test xml is read from db correctly."""
         operator = XMLOperator()
@@ -74,8 +95,18 @@ class TestOperators(unittest.TestCase):
         with self.assertRaises(KeyError):
             result["_Id"]
 
+    def test_create_passes_and_returns_accessionId(self):
+        """Test create method in base abstract class works."""
+        operator = Operator()
+        operator._handle_data_and_add_to_db = MagicMock()
+        accession = operator.create_metadata_object("study", {})
+        operator._handle_data_and_add_to_db.assert_called_once_with("study",
+                                                                    {},
+                                                                    accession)
+        assert accession == self.accession_id
+
     @patch('metadata_backend.api.operators.datetime')
-    def test_create_works_and_correct_info_is_set(self, mocked_datetime):
+    def test_correct_data_is_set_to_json_when_creating(self, mocked_datetime):
         """Test operator creates object and adds necessary info."""
         mocked_datetime.utcnow.return_value = datetime.datetime(2020, 4, 14)
         operator = Operator()
@@ -87,6 +118,108 @@ class TestOperators(unittest.TestCase):
             "dateModified": datetime.datetime(2020, 4, 14),
             "publishDate": datetime.datetime(2020, 6, 14)
         })
+
+    @patch('metadata_backend.api.operators.XMLToJSONParser')
+    def test_correct_data_is_set_to_xml_when_creating(self, mocked_parser):
+        """Test operator creates object and adds necessary info."""
+        mocked_parser.parse.return_value = {"test": "test"}
+        operator = XMLOperator()
+        xml_data = "<TEST></TEST>"
+        operator.db_service.create = MagicMock()
+        operator._handle_data_and_add_to_db("study", xml_data, "EGA123")
+        operator.db_service.create.assert_called_with("study", {
+            "accessionId": "EGA123",
+            "content": xml_data
+        })
+
+    def test_deleting_metadata_deletes_json_and_xml(self):
+        """Test xml is read from db correctly."""
+        operator = Operator()
+        operator.db_service.delete = MagicMock()
+        operator.delete_metadata_object("sample", "EGA123456")
+        assert operator.db_service.delete.call_count == 2
+        operator.db_service.delete.assert_called_with("sample", "EGA123456")
+
+    def test_query_params_are_parsed_correctly(self):
+        """Test that database is called with correct query."""
+        operator = Operator()
+        study_test = {
+            "_id": {
+                "$oid": "5ecd28877f55c72e263f45c2"
+            },
+            "publishDate": datetime.datetime(2020, 6, 14, 0, 0),
+            "accessionId": "EDAG3945644754983408",
+            "dateCreated": datetime.datetime(2020, 6, 14, 0, 0),
+            "dateModified": datetime.datetime(2020, 6, 14, 0, 0)
+        }
+        operator.db_service.query = MagicMock(return_value=study_test)
+        query = MultiDictProxy(MultiDict([("studyAttributes", "foo")]))
+        operator.query_metadata_database("study", query)
+        operator.db_service.query.assert_called_once_with(
+            'study', {'$or': [
+                {'studyAttributes.studyAttribute.tag':
+                 re.compile('.*foo.*', re.IGNORECASE)},
+                {'studyAttributes.studyAttribute.value':
+                 re.compile('.*foo.*', re.IGNORECASE)}
+            ]}
+        )
+
+    def test_non_working_query_params_are_not_passed_to_db_query(self):
+        """Test that database is called with correct query."""
+        operator = Operator()
+        study_test = {
+            "_id": {
+                "$oid": "5ecd28877f55c72e263f45c2"
+            },
+            "publishDate": datetime.datetime(2020, 6, 14, 0, 0),
+            "accessionId": "EDAG3945644754983408",
+            "dateCreated": datetime.datetime(2020, 6, 14, 0, 0),
+            "dateModified": datetime.datetime(2020, 6, 14, 0, 0)
+        }
+        operator.db_service.query = MagicMock(return_value=study_test)
+        operator._format_read_data = MagicMock(return_value=study_test)
+        query = MultiDictProxy(MultiDict([("swag", "littinen")]))
+        operator.query_metadata_database("study", query)
+        operator.db_service.query.assert_called_once_with('study', {})
+
+    def test_multiple_document_result_is_parsed_correctly(self):
+        """Test json is read from db correctly."""
+        operator = Operator()
+        multiple_result = [
+            {
+                "_id": {
+                    "$oid": "5ecd28877f55c72e263f45c2"
+                },
+                "dateCreated": datetime.datetime(2020, 6, 14, 0, 0),
+                "dateModified": datetime.datetime(2020, 6, 14, 0, 0),
+                "accessionId": "EGA123456",
+                "foo": "bar"
+            }, {
+                "_id": {
+                    "$oid": "5ecd28877f55c72e263f45c2"
+                },
+                "dateCreated": datetime.datetime(2020, 6, 14, 0, 0),
+                "dateModified": datetime.datetime(2020, 6, 14, 0, 0),
+                "accessionId": "EGA123456",
+                "foo": "bar"
+            }
+        ]
+        operator.db_service.query = MagicMock(return_value=multiple_result)
+        query = MultiDictProxy(MultiDict([]))
+        parsed = operator.query_metadata_database("sample", query)
+        for doc in json.loads(parsed):
+            assert doc["dateCreated"] == "2020-06-14T00:00:00"
+            assert doc["dateModified"] == "2020-06-14T00:00:00"
+            assert doc["accessionId"] == "EGA123456"
+
+    def test_non_empty_query_result_raises_notfound(self):
+        """Test that 404 is raised."""
+        operator = Operator()
+        operator.db_service.query = MagicMock()
+        operator._format_read_data = MagicMock(return_value="[]")
+        query = MultiDictProxy(MultiDict([]))
+        with self.assertRaises(HTTPNotFound):
+            operator.query_metadata_database("study", query)
 
 
 if __name__ == '__main__':

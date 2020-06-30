@@ -90,23 +90,23 @@ class HandlersTestCase(AioHTTPTestCase):
                            content_type='text/xml')
         return data
 
-    def fake_operator_read_metadata_object(self, type, accession_id):
+    def fake_operator_read_metadata_object(self, schema_type, accession_id):
         """Fake read operation to return mocked json."""
         return self.metadata_json, "application/json"
 
-    def fake_operator_query_metadata_object(self, type, query):
+    def fake_operator_query_metadata_object(self, schema_type, query):
         """Fake query operation to return mocked json."""
         return self.metadata_json
 
-    def fake_xmloperator_read_metadata_object(self, type, accession_id):
+    def fake_xmloperator_read_metadata_object(self, schema_type, accession_id):
         """Fake read operation to return mocked xml."""
         return self.metadata_xml, "text/xml"
 
-    def fake_xmloperator_create_metadata_object(self, type, content):
+    def fake_xmloperator_create_metadata_object(self, schema_type, content):
         """Fake create operation to return mocked accessionId."""
         return self.test_ega_string
 
-    def fake_operator_create_metadata_object(self, type, content):
+    def fake_operator_create_metadata_object(self, schema_type, content):
         """Fake create operation to return mocked accessionId."""
         return self.test_ega_string
 
@@ -147,14 +147,14 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertIn(failure_text, await response.text())
 
     @unittest_run_loop
-    async def test_correct_object_types_are_returned(self):
-        """Test api endpoint for all object types."""
+    async def test_correct_schema_types_are_returned(self):
+        """Test api endpoint for all schema types."""
         response = await self.client.get("/schemas")
         response_text = await response.text()
-        types = ["submission", "study", "sample", "experiment", "run",
-                 "analysis", "dac", "policy", "dataset", "project"]
-        for type in types:
-            self.assertIn(type, response_text)
+        schema_types = ["submission", "study", "sample", "experiment", "run",
+                        "analysis", "dac", "policy", "dataset", "project"]
+        for schema_type in schema_types:
+            self.assertIn(schema_type, response_text)
 
     @unittest_run_loop
     async def test_submit_object_works(self):
@@ -218,6 +218,14 @@ class HandlersTestCase(AioHTTPTestCase):
         assert "studyType': 'foo', 'name': 'bar'" in str(args[1])
 
     @unittest_run_loop
+    async def test_delete_is_called(self):
+        """Test query method calls operator and returns status correctly."""
+        url = "/objects/study/EGA123456"
+        response = await self.client.delete(url)
+        assert response.status == 204
+        self.MockedOperator().delete_metadata_object.assert_called_once()
+
+    @unittest_run_loop
     async def test_query_fails_with_xml_format(self):
         """Test query method calls operator and returns status correctly."""
         url = "/objects/study?studyType=foo&name=bar&format=xml"
@@ -268,7 +276,7 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertIn(reason, await response.text())
 
     @unittest_run_loop
-    async def test_post_and_get_fail_for_wrong_object_type(self):
+    async def test_post_and_get_fail_for_wrong_schema_type(self):
         """Test 404 error is raised if incorrect schema name is given."""
         get_resp = await self.client.get("/objects/bad_scehma_name/some_id")
         self.assertEqual(get_resp.status, 404)

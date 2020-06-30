@@ -2,9 +2,9 @@ FROM node:12-alpine as BUILD-FRONTEND
 
 RUN apk add --update \
     && apk add --no-cache git\
-    && rm -rf /var/cache/apk/* \
-    && git clone https://github.com/CSCfi/metadata-submitter-frontend
+    && rm -rf /var/cache/apk/*
 
+RUN git clone https://github.com/CSCfi/metadata-submitter-frontend.git
 
 WORKDIR metadata-submitter-frontend
 RUN npm install && npm run build

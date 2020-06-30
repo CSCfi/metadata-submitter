@@ -3,7 +3,7 @@
 from typing import Dict
 
 from pymongo.cursor import Cursor
-from pymongo.errors import ConnectionFailure, OperationFailure, PyMongoError
+from pymongo.errors import ConnectionFailure, OperationFailure
 
 from ..conf.conf import db_client
 
@@ -37,7 +37,7 @@ class DBService:
         """
         try:
             self.database[collection].insert_one(document)
-        except (ConnectionFailure, OperationFailure, PyMongoError):
+        except (ConnectionFailure, OperationFailure):
             raise
 
     def read(self, collection: str, accession_id: str) -> Cursor:
@@ -51,7 +51,7 @@ class DBService:
         try:
             find_by_id_query = {"accessionId": accession_id}
             return self.database[collection].find_one(find_by_id_query)
-        except (ConnectionFailure, OperationFailure, PyMongoError):
+        except (ConnectionFailure, OperationFailure):
             raise
 
     def update(self, collection: str, accession_id: str,
@@ -69,7 +69,7 @@ class DBService:
             update_operation = {"$set": data_to_be_updated}
             self.database[collection].update_one(find_by_id_query,
                                                  update_operation)
-        except (ConnectionFailure, OperationFailure, PyMongoError):
+        except (ConnectionFailure, OperationFailure):
             raise
 
     def replace(self, collection: str, accession_id: str,
@@ -86,7 +86,7 @@ class DBService:
             find_by_id_query = {"accessionId": accession_id}
             self.database[collection].replace_one(find_by_id_query,
                                                   data_to_be_updated)
-        except (ConnectionFailure, OperationFailure, PyMongoError):
+        except (ConnectionFailure, OperationFailure):
             raise
 
     def delete(self, collection: str, accession_id: str) -> None:
@@ -99,7 +99,7 @@ class DBService:
         try:
             find_by_id_query = {"accessionId": accession_id}
             self.database[collection].delete_one(find_by_id_query)
-        except (ConnectionFailure, OperationFailure, PyMongoError):
+        except (ConnectionFailure, OperationFailure):
             raise
 
     def query(self, collection: str, query: Dict) -> Cursor:
@@ -111,5 +111,5 @@ class DBService:
         """
         try:
             return self.database[collection].find(query)
-        except (ConnectionFailure, OperationFailure, PyMongoError):
+        except (ConnectionFailure, OperationFailure):
             raise
