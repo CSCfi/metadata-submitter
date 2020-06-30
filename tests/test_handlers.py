@@ -90,23 +90,23 @@ class HandlersTestCase(AioHTTPTestCase):
                            content_type='text/xml')
         return data
 
-    def fake_operator_read_metadata_object(self, type, accession_id):
+    def fake_operator_read_metadata_object(self, schema_type, accession_id):
         """Fake read operation to return mocked json."""
         return self.metadata_json, "application/json"
 
-    def fake_operator_query_metadata_object(self, type, query):
+    def fake_operator_query_metadata_object(self, schema_type, query):
         """Fake query operation to return mocked json."""
         return self.metadata_json
 
-    def fake_xmloperator_read_metadata_object(self, type, accession_id):
+    def fake_xmloperator_read_metadata_object(self, schema_type, accession_id):
         """Fake read operation to return mocked xml."""
         return self.metadata_xml, "text/xml"
 
-    def fake_xmloperator_create_metadata_object(self, type, content):
+    def fake_xmloperator_create_metadata_object(self, schema_type, content):
         """Fake create operation to return mocked accessionId."""
         return self.test_ega_string
 
-    def fake_operator_create_metadata_object(self, type, content):
+    def fake_operator_create_metadata_object(self, schema_type, content):
         """Fake create operation to return mocked accessionId."""
         return self.test_ega_string
 

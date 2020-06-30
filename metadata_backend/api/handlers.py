@@ -20,7 +20,7 @@ from .operators import Operator, XMLOperator
 class RESTApiHandler:
     """Handler for REST API methods."""
 
-    async def get_objects(self, req: Request) -> Response:
+    async def get_schema_types(self, req: Request) -> Response:
         """Get all possible metadata schema types from database.
 
         Basically returns which objects user can submit and query for.
