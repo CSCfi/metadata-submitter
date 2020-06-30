@@ -30,8 +30,8 @@ class BaseOperator(ABC):
         self.db_service = DBService(db_type)
         self.content_type = content_type
 
-    def read_metadata_object(self, schema_type: str, accession_id:
-                             str) -> Tuple[Union[Dict, str], str]:
+    async def read_metadata_object(self, schema_type: str, accession_id:
+                                   str) -> Tuple[Union[Dict, str], str]:
         """Read metadata object from database.
 
         :param schema_type: Schema type of the object to read.
@@ -39,7 +39,7 @@ class BaseOperator(ABC):
         :raises: 400 if reading was not succesful, 404 if no data found
         """
         try:
-            data_raw = self.db_service.read(schema_type, accession_id)
+            data_raw = await self.db_service.read(schema_type, accession_id)
             if not data_raw:
                 raise web.HTTPNotFound
             data = self._format_read_data(schema_type, data_raw)
@@ -48,8 +48,8 @@ class BaseOperator(ABC):
             raise web.HTTPBadRequest(reason=reason)
         return data, self.content_type
 
-    def create_metadata_object(self, schema_type: str,
-                               data: Union[Dict, str]) -> str:
+    async def create_metadata_object(self, schema_type: str,
+                                     data: Union[Dict, str]) -> str:
         """Create new object and add it to database.
 
         :param schema_type: Schema type of the object to read.
@@ -62,8 +62,8 @@ class BaseOperator(ABC):
                  {self.content_type}""")
         return accession_id
 
-    def delete_metadata_object(self, schema_type: str,
-                               accession_id: str) -> None:
+    async def delete_metadata_object(self, schema_type: str,
+                                     accession_id: str) -> None:
         """Delete object from database.
 
         Tries to remove both JSON and original XML from database, passes
@@ -75,13 +75,13 @@ class BaseOperator(ABC):
         :raises: 400 if deleting was not succesful
         """
         try:
-            Operator().db_service.delete(schema_type, accession_id)
+            await Operator().db_service.delete(schema_type, accession_id)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting file: {error}"
             raise web.HTTPBadRequest(reason=reason)
         LOG.info(f"{accession_id} successfully deleted from JSON colletion")
         try:
-            XMLOperator().db_service.delete(schema_type, accession_id)
+            await XMLOperator().db_service.delete(schema_type, accession_id)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting file: {error}"
             raise web.HTTPBadRequest(reason=reason)
@@ -201,8 +201,8 @@ class Operator(BaseOperator):
             doc = format_date("publishDate", doc)
         return doc
 
-    def _handle_data_and_add_to_db(self, schema_type: str, data: Dict,
-                                   accession_id: str) -> None:
+    async def _handle_data_and_add_to_db(self, schema_type: str, data: Dict,
+                                         accession_id: str) -> None:
         """Format added json metadata object and add it to db.
 
         Adds necessary additional information to object before adding to db.
@@ -221,7 +221,7 @@ class Operator(BaseOperator):
         if schema_type == "study":
             data["publishDate"] = datetime.utcnow() + relativedelta(months=2)
         try:
-            self.db_service.create(schema_type, data)
+            await self.db_service.create(schema_type, data)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting file: {error}"
             raise web.HTTPBadRequest(reason=reason)
@@ -246,8 +246,8 @@ class XMLOperator(BaseOperator):
         """
         return data_raw["content"]
 
-    def _handle_data_and_add_to_db(self, schema_type: str, data: str,
-                                   accession_id: str) -> None:
+    async def _handle_data_and_add_to_db(self, schema_type: str, data: str,
+                                         accession_id: str) -> None:
         """Format added xml metadata object and add it to db.
 
         XML is validated, then parsed to json and json is added to database.
@@ -258,12 +258,13 @@ class XMLOperator(BaseOperator):
         :param accession_id: objects accession id
         """
         data_as_json = XMLToJSONParser().parse(schema_type, data)
-        Operator()._handle_data_and_add_to_db(schema_type, data_as_json,
-                                              accession_id)
+        await Operator()._handle_data_and_add_to_db(schema_type, data_as_json,
+                                                    accession_id)
 
         try:
-            self.db_service.create(schema_type, {"accessionId": accession_id,
-                                   "content": data})
+            await self.db_service.create(schema_type,
+                                         {"accessionId": accession_id,
+                                          "content": data})
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting file: {error}"
             raise web.HTTPBadRequest(reason=reason)
