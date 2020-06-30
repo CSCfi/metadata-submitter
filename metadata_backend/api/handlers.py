@@ -11,7 +11,7 @@ from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
 from xmlschema import XMLSchemaValidationError
 
-from ..conf.conf import object_types
+from ..conf.conf import schema_types
 from ..helpers.parser import XMLToJSONParser
 from ..helpers.schema_loader import SchemaLoader, SchemaNotFoundException
 from .operators import Operator, XMLOperator
@@ -28,7 +28,7 @@ class RESTApiHandler:
         :returns JSON list of schema types
         """
         types_json = json.dumps([x["description"] for x in
-                                 object_types.values()])
+                                 schema_types.values()])
         return web.Response(body=types_json, status=200)
 
     async def get_object(self, req: Request) -> Response:
@@ -42,7 +42,7 @@ class RESTApiHandler:
         """
         accession_id = req.match_info['accessionId']
         schema_type = req.match_info['schema']
-        if schema_type not in object_types.keys():
+        if schema_type not in schema_types.keys():
             reason = f"Theres no schema {schema_type}"
             raise web.HTTPNotFound(reason=reason)
         format = req.query.get("format", "json").lower()
@@ -58,7 +58,7 @@ class RESTApiHandler:
         :returns: JSON response containing accessionId for submitted object
         """
         schema_type = req.match_info['schema']
-        if schema_type not in object_types.keys():
+        if schema_type not in schema_types.keys():
             reason = f"Theres no schema {schema_type}"
             raise web.HTTPNotFound(reason=reason)
         operator: Union[Operator, XMLOperator]
@@ -81,7 +81,7 @@ class RESTApiHandler:
         :returns: Query results as JSON
         """
         schema_type = req.match_info['schema']
-        if schema_type not in object_types.keys():
+        if schema_type not in schema_types.keys():
             reason = f"Theres no schema {schema_type}"
             raise web.HTTPNotFound(reason=reason)
         format = req.query.get("format", "json").lower()
@@ -100,7 +100,7 @@ class RESTApiHandler:
         :returns: JSON response containing accessionId for submitted object
         """
         schema_type = req.match_info['schema']
-        if schema_type not in object_types.keys():
+        if schema_type not in schema_types.keys():
             reason = f"Theres no schema {schema_type}"
             raise web.HTTPBadRequest(reason=reason)
         accession_id = req.match_info['accessionId']
@@ -262,7 +262,7 @@ async def _extract_xml_upload(req: Request, extract_one: bool = False
             reason = "Only one file can be sent to this endpoint at a time."
             raise web.HTTPBadRequest(reason=reason)
         schema_type = part.name.lower()
-        if schema_type not in object_types:
+        if schema_type not in schema_types:
             reason = f"Theres no schema {schema_type}"
             raise web.HTTPNotFound(reason=reason)
         data = []
@@ -273,4 +273,4 @@ async def _extract_xml_upload(req: Request, extract_one: bool = False
             data.append(chunk)
         xml_content = ''.join(x.decode('UTF-8') for x in data)
         files.append((xml_content, schema_type))
-    return sorted(files, key=lambda x: object_types[x[1]]["priority"])
+    return sorted(files, key=lambda x: schema_types[x[1]]["priority"])

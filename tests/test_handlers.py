@@ -147,14 +147,14 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertIn(failure_text, await response.text())
 
     @unittest_run_loop
-    async def test_correct_object_types_are_returned(self):
-        """Test api endpoint for all object types."""
+    async def test_correct_schema_types_are_returned(self):
+        """Test api endpoint for all schema types."""
         response = await self.client.get("/schemas")
         response_text = await response.text()
-        types = ["submission", "study", "sample", "experiment", "run",
-                 "analysis", "dac", "policy", "dataset", "project"]
-        for type in types:
-            self.assertIn(type, response_text)
+        schema_types = ["submission", "study", "sample", "experiment", "run",
+                        "analysis", "dac", "policy", "dataset", "project"]
+        for schema_type in schema_types:
+            self.assertIn(schema_type, response_text)
 
     @unittest_run_loop
     async def test_submit_object_works(self):
@@ -276,7 +276,7 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertIn(reason, await response.text())
 
     @unittest_run_loop
-    async def test_post_and_get_fail_for_wrong_object_type(self):
+    async def test_post_and_get_fail_for_wrong_schema_type(self):
         """Test 404 error is raised if incorrect schema name is given."""
         get_resp = await self.client.get("/objects/bad_scehma_name/some_id")
         self.assertEqual(get_resp.status, 404)

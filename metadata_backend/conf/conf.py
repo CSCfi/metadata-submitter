@@ -42,8 +42,8 @@ db_client = MongoClient(url)
 
 # 2) Load object types (schemas) from json
 path_to_schema_file = Path(__file__).parent / "schemas.json"
-with open(path_to_schema_file) as schemas:
-    object_types = json.load(schemas)
+with open(path_to_schema_file) as schema_file:
+    schema_types = json.load(schema_file)
 
 # 3) Define mapping between url query parameters and mongodb queries
 query_map = {
