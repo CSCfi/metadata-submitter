@@ -46,6 +46,8 @@ async def init() -> web.Application:
         ]
         server.router.add_routes(frontend_routes)
         LOG.info("Frontend routes loaded")
+    server['db_client'] = create_db_client()
+    LOG.info("Database client loaded")
     return server
 
 

@@ -46,7 +46,9 @@ class RESTApiHandler:
             reason = f"Theres no schema {schema_type}"
             raise web.HTTPNotFound(reason=reason)
         format = req.query.get("format", "json").lower()
-        operator = XMLOperator() if format == "xml" else Operator()
+        db_client = req.app['db_client']
+        operator = (XMLOperator(db_client) if format == "xml"
+                    else Operator(db_client))
         data, content_type = await operator.read_metadata_object(schema_type,
                                                                  accession_id)
         return web.Response(body=data, status=200, content_type=content_type)
@@ -61,14 +63,15 @@ class RESTApiHandler:
         if schema_type not in schema_types.keys():
             reason = f"Theres no schema {schema_type}"
             raise web.HTTPNotFound(reason=reason)
+        db_client = req.app['db_client']
         operator: Union[Operator, XMLOperator]
         if req.content_type == "multipart/form-data":
             files = await _extract_xml_upload(req, extract_one=True)
             content, _ = files[0]
-            operator = XMLOperator()
+            operator = XMLOperator(db_client)
         else:
             content = await req.json()
-            operator = Operator()
+            operator = Operator(db_client)
         accession_id = await operator.create_metadata_object(schema_type,
                                                              content)
         body = json.dumps({"accessionId": accession_id})
@@ -89,8 +92,9 @@ class RESTApiHandler:
         if format == "xml":
             reason = "xml-formatted query results are not supported"
             raise web.HTTPBadRequest(reason=reason)
-        result = Operator().query_metadata_database(schema_type,
-                                                    req.query)
+        db_client = req.app['db_client']
+        result = await Operator(db_client).query_metadata_database(schema_type,
+                                                                   req.query)
         return web.Response(body=result, status=200,
                             content_type="application/json")
 
@@ -105,7 +109,9 @@ class RESTApiHandler:
             reason = f"Theres no schema {schema_type}"
             raise web.HTTPBadRequest(reason=reason)
         accession_id = req.match_info['accessionId']
-        Operator().delete_metadata_object(schema_type, accession_id)
+        db_client = req.app['db_client']
+        await Operator(db_client).delete_metadata_object(schema_type,
+                                                         accession_id)
         return web.Response(status=204)
 
 
@@ -150,6 +156,7 @@ class SubmissionAPIHandler:
         # Go through parsed files and do the actual action
         # Only "add" action is supported for now.
         results: List[Dict] = []
+        db_client = req.app['db_client']
         for file in files:
             content_xml = file[0]
             schema_type = file[1]
@@ -159,8 +166,8 @@ class SubmissionAPIHandler:
             if action == "add":
                 results.append({
                     "accessionId":
-                    XMLOperator().create_metadata_object(schema_type,
-                                                         content_xml),
+                    await XMLOperator(db_client).
+                        create_metadata_object(schema_type, content_xml),
                     "schema": schema_type
                 })
             else:
