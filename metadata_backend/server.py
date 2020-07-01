@@ -7,7 +7,7 @@ from aiohttp import web
 
 from .api.handlers import RESTApiHandler, StaticHandler, SubmissionAPIHandler
 from .api.middlewares import error_middleware
-from .conf.conf import frontend_static_files
+from .conf.conf import frontend_static_files, create_db_client
 from .helpers.logger import LOG
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
