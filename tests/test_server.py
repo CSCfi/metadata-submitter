@@ -2,6 +2,8 @@
 
 import unittest
 from unittest.mock import patch
+from pathlib import Path
+import tempfile
 
 from aiohttp import web
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
@@ -36,3 +38,22 @@ class AppTestCase(AioHTTPTestCase):
         """Test everything works in init()."""
         server = await self.get_application()
         self.assertIs(type(server), web.Application)
+
+    @unittest_run_loop
+    async def test_api_routes_are_set(self):
+        """Test correct amount of api (no frontend) routes is set."""
+        server = await self.get_application()
+        self.assertIs(len(server.router.resources()), 5)
+
+    @unittest_run_loop
+    async def test_frontend_routes_are_set(self):
+        """Test correct routes are set when frontend folder is exists."""
+        frontend_static = "metadata_backend.server.frontend_static_files"
+        with tempfile.TemporaryDirectory() as tempdir:
+            temppath = Path(tempdir)
+            Path(temppath / "static").mkdir()
+            with patch(frontend_static, temppath):
+                server = await self.get_application()
+                routes = str([x for x in server.router.resources()])
+                self.assertIn(f"{tempdir}/static", routes)
+                self.assertIn("DynamicResource  /{path}", routes)
