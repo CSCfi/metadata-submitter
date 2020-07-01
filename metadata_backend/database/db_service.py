@@ -4,8 +4,7 @@ from typing import Dict
 
 from motor.motor_asyncio import AsyncIOMotorCursor
 from pymongo.errors import ConnectionFailure, OperationFailure
-
-from ..conf.conf import db_client
+from ..helpers.logger import LOG
 
 
 class DBService:
@@ -19,24 +18,27 @@ class DBService:
     automatically.
     """
 
-    def __init__(self, database_name: str) -> None:
+    def __init__(self, database_name: str, db_client) -> None:
         """Create service for given database.
 
         Service will have read-write access to given database. Database will be
         created during first read-write operation if not already present.
         :param database_name: Name of database to be used
         """
+        self.db_client = db_client
         self.database = db_client[database_name]
 
-    async def create(self, collection: str, document: Dict) -> None:
+    async def create(self, collection: str, document: Dict) -> bool:
         """Insert document to collection in database.
 
         :param collection: Collection where document should be inserted
         :param document: Document to be inserted
         :raises: Error when write fails for any Mongodb related reason
+        :returns: True if operation was successful
         """
         try:
-            await self.database[collection].insert_one(document)
+            result = await self.database[collection].insert_one(document)
+            return result.acknowledged
         except (ConnectionFailure, OperationFailure):
             raise
 
@@ -102,8 +104,11 @@ class DBService:
         except (ConnectionFailure, OperationFailure):
             raise
 
-    async def query(self, collection: str, query: Dict) -> AsyncIOMotorCursor:
+    def query(self, collection: str, query: Dict) -> AsyncIOMotorCursor:
         """Query database with given query.
+
+        Find() does no I/O and does not require an await expression, hence
+        function is not async.
 
         :param collection: Collection where document should be searched from
         :param query: query to be used
@@ -111,6 +116,6 @@ class DBService:
         :raises: Error when read fails for any Mongodb related reason
         """
         try:
-            return await self.database[collection].find(query)
+            return self.database[collection].find(query)
         except (ConnectionFailure, OperationFailure):
             raise
