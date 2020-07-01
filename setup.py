@@ -39,10 +39,12 @@ setup(
 
     extras_require={
         'test': ['coverage', 'pytest', 'pytest-cov', 'coveralls', 'tox',
-                 'mongomock']
+                 'mongomock'],
+        'docs': ['sphinx >= 1.4', 'sphinx_rtd_theme'],
     },
 
-    package_data={'': ['schemas/*.xsd']},
+    package_data={'': ['schemas/*.xsd', 'frontend/*', 'frontend/static/js/*',
+                       'conf/schemas.json']},
     include_package_data=True,
 
     entry_points={

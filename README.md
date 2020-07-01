@@ -1,27 +1,35 @@
-## Submission interface backend
+## Metadata submission service for SDA
 
-[![Build Status](https://travis-ci.org/CSCfi/metadata-submitter.svg?branch=master)](https://travis-ci.org/CSCfi/metadata-ubmitter)
-[![Coverage Status](https://coveralls.io/repos/github/CSCfi/metadata-submitter/badge.svg?branch=master)](https://coveralls.io/github/CSCfi/metadata-submitter?branch=master)
+![Python Unit Tests](https://github.com/CSCfi/metadata-submitter/workflows/Python%20Unit%20Tests/badge.svg)
+![Integration Tests](https://github.com/CSCfi/metadata-submitter/workflows/Integration%20Tests/badge.svg)
+![Documentation Checks](https://github.com/CSCfi/metadata-submitter/workflows/Documentation%20Checks/badge.svg)
+![Python style check](https://github.com/CSCfi/metadata-submitter/workflows/Python%20style%20check/badge.svg)
+[![Coverage Status](https://coveralls.io/repos/github/CSCfi/metadata-submitter/badge.svg?branch=HEAD)](https://coveralls.io/github/CSCfi/metadata-submitter?branch=HEAD)
 
-Currently minimum viable product that:
-- accepts HTTP POST submissions of EGA metadata XML files 
-- validates XML files against EGA XSD metadata models 
-- saves XML files to Mondogb database
+Metadata submission service to handle submissions of EGA metadata, either as XML files or via form submissions. Submissions through graphical frontend and POST are supported.
+Service also validates submitted metadata objects against EGA XSD metadata models and saves objects to database.
 
-## Install and Run
+## Install and run
 
-Clone project and install it by running: `pip install .`
+Requirements:
+- Python 3.6+
+- Mongodb
+- Docker + docker-compose
 
-Server expects to find mongodb instance running, spesified by following environmental variables:
-- `MONGO_INITDB_ROOT_USERNAME`, username for admin user to mondogb instance
-- `MONGO_INITDB_ROOT_PASSWORD`, password for admin user to mondogb instance
-- `MONGODB_HOST`, host and port for mongodb instance (e.g. `localhost:27017`)
+For quick testing, launch both server and database with Docker by running `docker-compose up --build` (add `-d` flag to run containers in background). Server can then be found from `http://localhost:5430`.
 
-Server looks for current environmental variables first and if needed variables aren't found, checks .env file. This allows running server without writing variables with .env file.
+For more detailed setup, do following:
+- Install project by running: `pip install .` in project root
+- Setup mongodb and env variables via desired way, details:
+  - Server expects to find mongodb instance running, spesified with following environmental variables:
+    - `MONGO_INITDB_ROOT_USERNAME`, username for admin user to mondogb instance
+    - `MONGO_INITDB_ROOT_PASSWORD`, password for admin user to mondogb instance
+    - `MONGODB_HOST`, host and port for mongodb instance (e.g. `localhost:27017`)
+  - Out of the box, metadata submitter is configured with default values from MongoDB Docker image
+  - Suitable mongodb instance can be launched with Docker by running `docker-compose up database`
+- After installing and setting up database, server can be launched with `metadata_submitter`
 
-If wanted (e.g. when running locally), suitable mongodb instance can be launched with help of docker-compose file present in folder `deploy/mongodb`. Correct environmental variables for both docker-compose and server are set in .env -file present in project root.
-
-After installing and setting up database, server can be launched with `metadata_submitter`.
+If you also need frontend for development, check out [frontend repository](https://github.com/CSCfi/metadata-submitter-frontend/).
 
 ## Tests
 
@@ -29,11 +37,13 @@ Tests and flake8 style checks can be run with tox automation: just run `tox` on 
 
 ## Build and deploy
 
-Install docker and [S2I (Source-To-Image)](https://github.com/openshift/source-to-image), and run
+Production version can be built and run with following docker commands:
 ```
-s2i build . centos/python-36-centos7 metadata_backend
-docker run -p 5430:5430 -e APP_FILE=metadata_backend/server.py metadata_backend
+docker build --no-cache . -t metadata-submitter
+docker run -p 5430:5430 metadata-submitter
 ```
+
+Frontend is built and added as static files to backend while building. 
 
 ## License
 

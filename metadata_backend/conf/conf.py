@@ -14,16 +14,22 @@ Admin access is needed in order to create new databases during runtime.
 Default values are the same that are used in docker-compose file
 found from deploy/mongodb.
 
-2) Metadata object types
-Object types (such as "submission", "study", "sample") are needed in
+2) Metadata schema types
+Schema types (such as "submission", "study", "sample") are needed in
 different parts of the application.
 
 3) Mongodb query mappings
 Mappings are needed to turn incoming REST api queries into mongodb queries.
 Change these if database structure changes.
+
+4) Frontend static files folder
+Production version gets frontend SPA from this folder, after it has been built
+and inserted here in projects Dockerfile.
 """
 
+import json
 import os
+from pathlib import Path
 
 from pymongo import MongoClient
 
@@ -34,45 +40,41 @@ mongo_host = os.getenv("MONGODB_HOST", "localhost:27017")
 url = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}"
 db_client = MongoClient(url)
 
-# 2) Define object types and their priorities
-object_types = {"submission": 1,
-                "study": 2,
-                "project": 3,
-                "sample": 4,
-                "experiment": 5,
-                "run": 6,
-                "analysis": 7,
-                "dac": 8,
-                "policy": 9,
-                "dataset": 10}
+# 2) Load schema types and descriptions from json
+path_to_schema_file = Path(__file__).parent / "schemas.json"
+with open(path_to_schema_file) as schema_file:
+    schema_types = json.load(schema_file)
 
 # 3) Define mapping between url query parameters and mongodb queries
 query_map = {
     "title": "title",
     "description": "description",
-    "centerName": "attributes.centerName",
+    "centerName": "centerName",
     "name": "name",
     "studyTitle": "descriptor.studyTitle",
     "studyType": "descriptor.studyType.attributes.existingStudyType",
     "studyAbstract": "descriptor.studyAbstract",
-    "studyAttributes": {"base": "studyAttributes.studyAttribute",
+    "studyAttributes": {"base": "studyAttributes",
                         "keys": ["tag", "value"]},
     "sampleName": {"base": "sampleName",
                    "keys": ["taxonId", "scientificName",
                             "commonName"]},
     "scientificName": "submissionProject.organism.scientificName",
     "fileType": "dataBlock.files.file.attributes.filetype",
-    "studyReference": {"base": "studyRef.attributes",
-                       "keys": ["accession", "refname", "refcenter"]},
-    "sampleReference": {"base": "sampleRef.attributes",
-                        "keys": ["accession", "label", "refname",
+    "studyReference": {"base": "studyRef",
+                       "keys": ["accessionId", "refname", "refcenter"]},
+    "sampleReference": {"base": "sampleRef",
+                        "keys": ["accessionId", "label", "refname",
                                  "refcenter"]},
-    "experimentReference": {"base": "experimentRef.attributes",
-                            "keys": ["accession", "refname",
+    "experimentReference": {"base": "experimentRef",
+                            "keys": ["accessionId", "refname",
                                      "refcenter"]},
-    "runReference": {"base": "runRef.attributes",
-                     "keys": ["accession", "refname", "refcenter"]},
-    "analysisReference": {"base": "analysisRef.attributes",
-                          "keys": ["accession", "refname",
+    "runReference": {"base": "runRef",
+                     "keys": ["accessionId", "refname", "refcenter"]},
+    "analysisReference": {"base": "analysisRef",
+                          "keys": ["accessionId", "refname",
                                    "refcenter"]},
 }
+
+# 4) Set frontend folder to be inside metadata_backend modules root
+frontend_static_files = Path(__file__).parent.parent / "frontend"

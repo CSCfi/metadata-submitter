@@ -1,0 +1,31 @@
+version: "3"
+services:
+  backend:
+    build:
+      dockerfile: Dockerfile-dev
+      context: .
+    image: cscfi/metadata-submitter-dev
+    container_name: "metadata_submitter_backend_dev"
+    ports:
+      - 5430:5430
+    depends_on:
+      - database
+    restart: on-failure
+    environment:
+      - "MONGODB_HOST=database:27017"
+  database:
+    image: "mongo"
+    container_name: "metadata_submitter_database_dev"
+    restart: on-failure
+    environment:
+      - "MONGO_INITDB_ROOT_USERNAME=admin"
+      - "MONGO_INITDB_ROOT_PASSWORD=admin"
+    volumes:
+      - data:/data/db
+    expose:
+      - 27017
+    ports:
+      - 27017:27017
+
+volumes:
+  data: 
