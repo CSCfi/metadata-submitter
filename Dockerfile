@@ -32,7 +32,7 @@ RUN apk add --no-cache --update bash
 
 LABEL maintainer="CSC Developers"
 LABEL org.label-schema.schema-version="1.0"
-LABEL org.label-schema.vcs-url="https://github.com/CSCfi/metadata_submitter"
+LABEL org.label-schema.vcs-url="https://github.com/CSCfi/metadata-submitter"
 
 COPY --from=BUILD-BACKEND /usr/local/lib/python3.7/ /usr/local/lib/python3.7/
 
