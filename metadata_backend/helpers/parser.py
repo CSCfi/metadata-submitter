@@ -73,7 +73,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
             return _under_regex.sub(lambda x: x.group(1).upper(), name)
 
         xsd_type = xsd_type or xsd_element.type
-        if xsd_type.is_simple() or xsd_type.has_simple_content():
+        if xsd_type.simple_type is not None:
             children = (data.text if data.text is not None
                         and data.text != '' else None)
             if isinstance(children, str):

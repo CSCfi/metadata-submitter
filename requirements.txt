@@ -3,4 +3,4 @@ gunicorn
 pymongo
 python-dateutil
 uvloop
-xmlschema
+xmlschema>=1.2.2
