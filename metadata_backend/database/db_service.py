@@ -21,7 +21,7 @@ def auto_reconnect(db_func: Callable):
         :returns Async mongodb function passed to decorator
         :raises ConnectionFailure after 5 retries
         """
-        interval = serverTimeout
+        interval = serverTimeout // 1000
         for wait_time in range(interval, 5 * interval, interval):
             try:
                 return await db_func(*args, **kwargs)
