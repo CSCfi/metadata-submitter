@@ -4,7 +4,6 @@ from typing import Dict
 
 from motor.motor_asyncio import AsyncIOMotorCursor
 from pymongo.errors import ConnectionFailure, OperationFailure
-from ..helpers.logger import LOG
 
 
 class DBService:
@@ -100,7 +99,9 @@ class DBService:
         """
         try:
             find_by_id_query = {"accessionId": accession_id}
-            await self.database[collection].delete_one(find_by_id_query)
+            result = (await self.database[collection].
+                      delete_one(find_by_id_query))
+            return result.acknowledged
         except (ConnectionFailure, OperationFailure):
             raise
 
