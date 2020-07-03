@@ -67,6 +67,9 @@ class DBService:
         :param document: Document to be inserted
         :returns: True if operation was successful
         """
+        LOG.info(self.database)
+        collection = self.database[collection]
+        LOG.info(collection)
         result = await self.database[collection].insert_one(document)
         return result.acknowledged
 
