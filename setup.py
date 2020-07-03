@@ -38,8 +38,7 @@ setup(
     install_requires=requirements,
 
     extras_require={
-        'test': ['coverage', 'pytest', 'pytest-cov', 'coveralls', 'tox',
-                 'mongomock'],
+        'test': ['coverage', 'pytest', 'pytest-cov', 'coveralls', 'tox'],
         'docs': ['sphinx >= 1.4', 'sphinx_rtd_theme'],
     },
 
