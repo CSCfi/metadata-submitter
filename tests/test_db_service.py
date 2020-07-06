@@ -1,9 +1,8 @@
 """Test db_services."""
-import copy
-from mongomock import MongoClient
 from aiounittest import AsyncTestCase, futurized
-from mock import MagicMock, Mock
+from mock import MagicMock, patch
 from pymongo.results import InsertOneResult, UpdateResult, DeleteResult
+from pymongo.errors import AutoReconnect, ConnectionFailure
 from bson import ObjectId
 
 from metadata_backend.database.db_service import DBService
@@ -99,3 +98,11 @@ class DatabaseTestCase(AsyncTestCase):
         self.collection.delete_one.assert_called_once_with({"accessionId":
                                                            self.id_stub})
         assert success
+
+    @patch("metadata_backend.database.db_service.serverTimeout", 0)
+    async def test_db_operation_is_retried_with_increasing_interval(self):
+        """Patch timeout to be 0 sec instead of default, test autoreconnect."""
+        self.collection.insert_one.side_effect = AutoReconnect
+        with self.assertRaises(ConnectionFailure):
+            await self.test_service.create("test", self.data_stub)
+        assert self.collection.insert_one.call_count == 5
