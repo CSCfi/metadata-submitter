@@ -9,8 +9,8 @@ from typing import Any, Dict, List, Tuple, Union
 from aiohttp import web
 from bson import json_util
 from dateutil.relativedelta import relativedelta
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
 from multidict import MultiDictProxy
-from pymongo.cursor import Cursor
 from pymongo.errors import ConnectionFailure, OperationFailure
 
 from ..conf.conf import query_map
@@ -25,87 +25,123 @@ class BaseOperator(ABC):
     :param ABC: The abstract base class
     """
 
-    def __init__(self, db_type: str, content_type: str) -> None:
-        """Init needed variables, must be given by subclass."""
-        self.db_service = DBService(db_type)
+    def __init__(self, db_name: str, content_type: str,
+                 db_client: AsyncIOMotorClient) -> None:
+        """Init needed variables, must be given by subclass.
+
+        :param db_name: Name for database to save files to
+        :param content_type: Content type this operator handles (XML or JSON)
+        :param db_client: Motor client used for database connections. Should be
+        running on same loop with aiohttp, so needs to be passed from aiohttp
+        Application.
+        """
+        self.db_service = DBService(db_name, db_client)
         self.content_type = content_type
 
-    def read_metadata_object(self, schema_type: str, accession_id:
-                             str) -> Tuple[Union[Dict, str], str]:
+    async def create_metadata_object(self, schema_type: str,
+                                     data: Union[Dict, str]) -> str:
+        """Create new metadata object to database.
+
+        Data formatting and addition step for JSON or XML must be implemented
+        by corresponding subclass.
+
+        :param schema_type: Schema type of the object to read.
+        :param data: Data to be saved to database.
+        :returns: Accession id for the object inserted to database
+        """
+        accession_id = (await self.
+                        _format_data_to_create_and_add_to_db(schema_type,
+                                                             data))
+        LOG.info(f"Inserting file with schema {schema_type} to database "
+                 f"succeeded with accession id: {accession_id}")
+        return accession_id
+
+    async def read_metadata_object(self, schema_type: str, accession_id:
+                                   str) -> Tuple[Union[Dict, str], str]:
         """Read metadata object from database.
+
+        Data formatting to JSON or XML must be implemented by corresponding
+        subclass.
 
         :param schema_type: Schema type of the object to read.
         :param accession_id: Accession Id of the object to read.
         :raises: 400 if reading was not succesful, 404 if no data found
         """
         try:
-            data_raw = self.db_service.read(schema_type, accession_id)
+            data_raw = await self.db_service.read(schema_type, accession_id)
             if not data_raw:
                 raise web.HTTPNotFound
-            data = self._format_read_data(schema_type, data_raw)
+            data = await self._format_read_data(schema_type, data_raw)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting file: {error}"
             raise web.HTTPBadRequest(reason=reason)
         return data, self.content_type
 
-    def create_metadata_object(self, schema_type: str,
-                               data: Union[Dict, str]) -> str:
-        """Create new object and add it to database.
-
-        :param schema_type: Schema type of the object to read.
-        :param data: Data to be saved to database.
-        :returns: Accession id for the object added.
-        """
-        accession_id = self._generate_accession_id()
-        self._handle_data_and_add_to_db(schema_type, data, accession_id)
-        LOG.info(f"""Inserting file to database succeeded: {schema_type}
-                 {self.content_type}""")
-        return accession_id
-
-    def delete_metadata_object(self, schema_type: str,
-                               accession_id: str) -> None:
-        """Delete object from database.
+    async def delete_metadata_object(self, schema_type: str,
+                                     accession_id: str) -> None:
+        """Delete metadata object from database.
 
         Tries to remove both JSON and original XML from database, passes
-        silently if XML doesn't exist.
+        silently if files don't exist in database.
 
         :param schema_type: Schema type of the object to read.
-        :param data: Data to be saved to database.
         :param accession_id: Accession Id of the object to read.
         :raises: 400 if deleting was not succesful
         """
-        try:
-            Operator().db_service.delete(schema_type, accession_id)
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting file: {error}"
-            raise web.HTTPBadRequest(reason=reason)
-        LOG.info(f"{accession_id} successfully deleted from JSON colletion")
-        try:
-            XMLOperator().db_service.delete(schema_type, accession_id)
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting file: {error}"
-            raise web.HTTPBadRequest(reason=reason)
-        LOG.info(f"{accession_id} successfully deleted from XML colletion")
+        db_client = self.db_service.db_client
+        await self._remove_object_from_db(Operator(db_client),
+                                          schema_type,
+                                          accession_id)
+        await self._remove_object_from_db(XMLOperator(db_client),
+                                          schema_type,
+                                          accession_id)
 
-    def _generate_accession_id(self) -> str:
-        """Generate random accession id.
+    async def _insert_formatted_object_to_db(self, schema_type: str,
+                                             data: Dict) -> str:
+        """Insert formatted metadata object to database.
 
-        Will be replaced later with external id generator.
+        :param schema_type: Schema type of the object to read.
+        :param data: Single document formatted as JSON
+        :returns: Accession Id for object inserted to database
         """
-        sequence = ''.join(secrets.choice(string.digits) for i in range(16))
-        return f"EDAG{sequence}"
+        try:
+            insert_success = (await self.db_service.create(schema_type, data))
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting file: {error}"
+            raise web.HTTPBadRequest(reason=reason)
+        if insert_success:
+            return data["accessionId"]
+        else:
+            reason = "Inserting file to database failed for some reason."
+            raise web.HTTPBadRequest(reason=reason)
+
+    async def _remove_object_from_db(self,
+                                     operator: Any,
+                                     schema_type: str,
+                                     accession_id: str) -> None:
+        try:
+            delete_success = (await operator.db_service.delete(schema_type,
+                                                               accession_id))
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while deleting file: {error}"
+            raise web.HTTPBadRequest(reason=reason)
+        if delete_success:
+            LOG.info(f"{accession_id} successfully deleted from collection")
+        else:
+            reason = "Deleting for {accession_id} from database failed."
+            raise web.HTTPBadRequest(reason=reason)
 
     @abstractmethod
-    def _format_read_data(self, schema_type: str, data_raw: Any) -> Any:
-        """Format data read from db to specific format.
+    async def _format_data_to_create_and_add_to_db(self, schema_type: str,
+                                                   data: Any) -> str:
+        """Format and add data to database.
 
         Must be implemented by subclass.
         """
 
     @abstractmethod
-    def _handle_data_and_add_to_db(self, schema_type: str, data: Any,
-                                   accession_id: str) -> None:
-        """Handle needed conversions and parsing, then add data to database.
+    async def _format_read_data(self, schema_type: str, data_raw: Any) -> Any:
+        """Format data for API response.
 
         Must be implemented by subclass.
         """
@@ -114,22 +150,26 @@ class BaseOperator(ABC):
 class Operator(BaseOperator):
     """Default operator class for handling database operations.
 
-    Operations are implemented with json format.
+    Operations are implemented with JSON format.
     """
 
-    def __init__(self) -> None:
-        """Initialize database and content-type."""
-        super().__init__("objects", "application/json")
+    def __init__(self, db_client: AsyncIOMotorClient) -> None:
+        """Initialize database and content-type.
 
-    def query_metadata_database(self, schema_type: str,
-                                que: MultiDictProxy) -> Dict:
-        """Create database query based on url query parameters.
+        :param db_client: Motor client used for database connections. Should be
+        running on same loop with aiohttp, so needs to be passed from aiohttp
+        Application.
+        """
+        super().__init__("objects", "application/json", db_client)
+
+    async def query_metadata_database(self, schema_type: str,
+                                      que: MultiDictProxy) -> Dict:
+        """Query database based on url query parameters.
 
         Url queries are mapped to mongodb queries based on query_map in
         apps config.
 
         :param schema_type: Schema type of the object to read.
-        :param data: Data to be saved to database.
         :param que: Dict containing query information
         :raises: HTTPBadRequest if error happened when connection to database
         and HTTPNotFound error if file with given accession id is not found.
@@ -155,14 +195,44 @@ class Operator(BaseOperator):
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting file: {error}"
             raise web.HTTPBadRequest(reason=reason)
-        data = self._format_read_data(schema_type, data_raw)
+        data = await self._format_read_data(schema_type, data_raw)
         if data == "[]":
             raise web.HTTPNotFound
         return data
 
-    def _format_read_data(self, schema_type: str,
-                          data_raw: Union[Dict, Cursor]) -> Dict:
-        """Get json content from given mongodb data.
+    async def _format_data_to_create_and_add_to_db(self, schema_type: str,
+                                                   data: Dict) -> str:
+        """Format JSON metadata object and add it to db.
+
+        Adds necessary additional information to object before adding to db.
+
+        If schema type is study, publishDate and status is added.
+        By default date is two months from submission date (based on ENA
+        submission model).
+
+        :param schema_type: Schema type of the object to read.
+        :param data: Metadata object
+        :returns: Accession Id for object inserted to database
+        """
+        accession_id = self._generate_accession_id()
+        data["accessionId"] = accession_id
+        data["dateCreated"] = datetime.utcnow()
+        data["dateModified"] = datetime.utcnow()
+        if schema_type == "study":
+            data["publishDate"] = datetime.utcnow() + relativedelta(months=2)
+        return await self._insert_formatted_object_to_db(schema_type, data)
+
+    def _generate_accession_id(self) -> str:
+        """Generate random accession id.
+
+        Will be replaced later with external id generator.
+        """
+        sequence = ''.join(secrets.choice(string.digits) for i in range(16))
+        return f"EDAG{sequence}"
+
+    async def _format_read_data(self, schema_type: str, data_raw: Union[
+                                Dict, AsyncIOMotorCursor]) -> Dict:
+        """Get JSON content from given mongodb data.
 
         Data can be either one result or cursor containing multiple
         results.
@@ -175,9 +245,8 @@ class Operator(BaseOperator):
         if isinstance(data_raw, dict):
             formatted = self._format_single_dict(schema_type, data_raw)
         else:
-            formatted = []
-            for doc in data_raw:
-                formatted.append(self._format_single_dict(schema_type, doc))
+            formatted = ([self._format_single_dict(schema_type, doc) async for
+                          doc in data_raw])
         return json_util.dumps(formatted)
 
     def _format_single_dict(self, schema_type: str, doc: Dict) -> Dict:
@@ -201,31 +270,6 @@ class Operator(BaseOperator):
             doc = format_date("publishDate", doc)
         return doc
 
-    def _handle_data_and_add_to_db(self, schema_type: str, data: Dict,
-                                   accession_id: str) -> None:
-        """Format added json metadata object and add it to db.
-
-        Adds necessary additional information to object before adding to db.
-
-        If schema type is study, publishDate and status is added.
-        By default date is two months from submission date (based on ENA
-        submission model).
-
-        :param schema_type: Schema type of the object to read.
-        :param data: Metadata object
-        :param accession_id: objects accession id
-        """
-        data["accessionId"] = accession_id
-        data["dateCreated"] = datetime.utcnow()
-        data["dateModified"] = datetime.utcnow()
-        if schema_type == "study":
-            data["publishDate"] = datetime.utcnow() + relativedelta(months=2)
-        try:
-            self.db_service.create(schema_type, data)
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting file: {error}"
-            raise web.HTTPBadRequest(reason=reason)
-
 
 class XMLOperator(BaseOperator):
     """Alternative operator class for handling database operations.
@@ -233,37 +277,41 @@ class XMLOperator(BaseOperator):
     Operations are implemented with XML format.
     """
 
-    def __init__(self) -> None:
-        """Initialize database and content-type."""
-        super().__init__("backups", "text/xml")
+    def __init__(self, db_client: AsyncIOMotorClient) -> None:
+        """Initialize database and content-type.
 
-    def _format_read_data(self, schema_type: str, data_raw: Dict) -> str:
-        """Get xml content from given mongodb data.
+        :param db_client: Motor client used for database connections. Should be
+        running on same loop with aiohttp, so needs to be passed from aiohttp
+        Application.
+        """
+        super().__init__("backups", "text/xml", db_client)
+
+    async def _format_data_to_create_and_add_to_db(self, schema_type: str,
+                                                   data: str) -> str:
+        """Format XML metadata object and add it to db.
+
+        XML is validated, then parsed to json and json is added to database.
+        After successful json insertion, xml itself is backed up to database.
+
+        :param schema_type: Schema type of the object to read.
+        :param data: Original xml content
+        :returns: Accession Id for object inserted to database
+        """
+        db_client = self.db_service.db_client
+        data_as_json = XMLToJSONParser().parse(schema_type, data)
+        accession_id = (await Operator(db_client).
+                        _format_data_to_create_and_add_to_db(schema_type,
+                                                             data_as_json))
+        return (await self.
+                _insert_formatted_object_to_db(schema_type,
+                                               {"accessionId": accession_id,
+                                                "content": data}))
+
+    async def _format_read_data(self, schema_type: str, data_raw: Dict) -> str:
+        """Get XML content from given mongodb data.
 
         :param schema_type: Schema type of the object to read.
         :param data_raw: Data from mongodb query with single result.
         :returns: XML content
         """
         return data_raw["content"]
-
-    def _handle_data_and_add_to_db(self, schema_type: str, data: str,
-                                   accession_id: str) -> None:
-        """Format added xml metadata object and add it to db.
-
-        XML is validated, then parsed to json and json is added to database.
-        After success, xml itself is backed up to database.
-
-        :param schema_type: Schema type of the object to read.
-        :param data: Original xml content
-        :param accession_id: objects accession id
-        """
-        data_as_json = XMLToJSONParser().parse(schema_type, data)
-        Operator()._handle_data_and_add_to_db(schema_type, data_as_json,
-                                              accession_id)
-
-        try:
-            self.db_service.create(schema_type, {"accessionId": accession_id,
-                                   "content": data})
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting file: {error}"
-            raise web.HTTPBadRequest(reason=reason)
