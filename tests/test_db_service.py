@@ -20,7 +20,6 @@ class DatabaseTestCase(AsyncTestCase):
         async def async_patch():
             pass
         MagicMock.__await__ = lambda x: async_patch().__await__()
-
         self.client = MagicMock()
         self.database = MagicMock()
         self.collection = MagicMock()

@@ -52,8 +52,8 @@ class BaseOperator(ABC):
         accession_id = (await self.
                         _format_data_to_create_and_add_to_db(schema_type,
                                                              data))
-        LOG.info(f"""Inserting file to database succeeded: {schema_type}
-                 {accession_id}""")
+        LOG.info(f"Inserting file with schema {schema_type} to database "
+                 f"succeeded with accession id: {accession_id}")
         return accession_id
 
     async def read_metadata_object(self, schema_type: str, accession_id:
