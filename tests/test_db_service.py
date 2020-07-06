@@ -12,10 +12,13 @@ class DatabaseTestCase(AsyncTestCase):
     """Test different database operations."""
 
     def setUp(self):
-        """Setup test service with mock client.
+        """Initialize test service with mock client.
 
         Monkey patches MagicMock to work with async / await, then sets up
         client->database->collection -structure pymongo uses.
+
+        Monkey patching can probably be removed when upgrading requirements to
+        python 3.8+ since Mock 4.0+ library has async version of MagicMock.
         """
         async def async_patch():
             pass

@@ -1,16 +1,17 @@
 """Services that handle database connections. Implemented with MongoDB."""
 
-from typing import Dict, Callable, Any
-
-from motor.motor_asyncio import AsyncIOMotorCursor
-from pymongo.errors import ConnectionFailure, OperationFailure, AutoReconnect
-from ..helpers.logger import LOG
 import asyncio
 from functools import wraps
+from typing import Any, Callable, Dict
+
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
+from pymongo.errors import AutoReconnect, ConnectionFailure, OperationFailure
+
 from ..conf.conf import serverTimeout
+from ..helpers.logger import LOG
 
 
-def auto_reconnect(db_func: Callable):
+def auto_reconnect(db_func: Callable) -> Callable:
     """Auto reconnection decorator."""
     @wraps(db_func)
     async def retry(*args: Any, **kwargs: Any) -> Any:
@@ -53,7 +54,8 @@ class DBService:
     automatically.
     """
 
-    def __init__(self, database_name: str, db_client) -> None:
+    def __init__(self, database_name: str,
+                 db_client: AsyncIOMotorClient) -> None:
         """Create service for given database.
 
         Service will have read-write access to given database. Database will be
