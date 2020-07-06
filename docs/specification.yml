@@ -321,9 +321,9 @@ paths:
         description: filter objects in schema using accession ID
         schema:
           type: string
+        required: true
       - name: format
         in: query
-        name: page
         schema:
           type: string
         description: Set response content-type. Will be JSON by default, use XML if you want originally submitted XML file.
