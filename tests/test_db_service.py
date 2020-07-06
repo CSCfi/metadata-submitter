@@ -1,6 +1,6 @@
 """Test db_services."""
 from aiounittest import AsyncTestCase, futurized
-from mock import MagicMock, patch
+from unittest.mock import MagicMock, patch
 from pymongo.results import InsertOneResult, UpdateResult, DeleteResult
 from pymongo.errors import AutoReconnect, ConnectionFailure
 from bson import ObjectId
