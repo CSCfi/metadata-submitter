@@ -18,22 +18,26 @@ def auto_reconnect(db_func: Callable):
 
         By default increases interval by clients default timeout for five
         times and then stops.
+
         :returns Async mongodb function passed to decorator
-        :raises ConnectionFailure after 5 retries
+        :raises ConnectionFailure after preset amount of attempts
         """
-        interval = serverTimeout // 1000
-        for wait_time in range(interval, 5 * interval, interval):
+        default_timeout = int(serverTimeout // 1000)
+        wait_time = default_timeout
+        max_attempts = 5
+        for attempt in range(1, max_attempts + 1):
             try:
                 return await db_func(*args, **kwargs)
             except AutoReconnect:
-                i = int(wait_time / 10)
-                if i == 5:
-                    message = f"Connection to database failed after {i} tries"
+                if attempt == 5:
+                    message = (f"Connection to database failed after {attempt}"
+                               "tries")
                     raise ConnectionFailure(message=message)
                 LOG.info("Connection not successful, trying to reconnect."
-                         f"Reconnection attempt number {i}, waiting for "
-                         f"{serverTimeout/1000 + wait_time} seconds")
+                         f"Reconnection attempt number {attempt}, waiting for "
+                         f"{default_timeout + wait_time} seconds")
                 await asyncio.sleep(wait_time)
+                wait_time += default_timeout
                 continue
     return retry
 
