@@ -36,17 +36,23 @@ from pathlib import Path
 
 from motor.motor_asyncio import AsyncIOMotorClient
 
+# 1) Set up database client and custom timeouts for spesific parameters.
+# Set custom timeouts and other parameters here so they can be imported to
+# other modules if needed.
 
-# 1) Set up database client and custom timeouts for spesific parameters
+mongo_user = os.getenv("MONGO_INITDB_ROOT_USERNAME", "admin")
+mongo_password = os.getenv("MONGO_INITDB_ROOT_PASSWORD", "admin")
+mongo_host = os.getenv("MONGODB_HOST", "localhost:27017")
+url = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}"
 serverTimeout = 10000
 connectTimeout = 10000
 
 
-def create_db_client():
-    mongo_user = os.getenv("MONGO_INITDB_ROOT_USERNAME", "admin")
-    mongo_password = os.getenv("MONGO_INITDB_ROOT_PASSWORD", "admin")
-    mongo_host = os.getenv("MONGODB_HOST", "localhost:27017")
-    url = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}"
+def create_db_client() -> AsyncIOMotorClient:
+    """Initialize database client for AioHTTP App.
+
+    :returns: Coroutine-based Motor client for Mongo operations
+    """
     return AsyncIOMotorClient(url,
                               connectTimeoutMS=connectTimeout,
                               serverSelectionTimeoutMS=serverTimeout)

@@ -9,8 +9,8 @@ from typing import Any, Dict, List, Tuple, Union
 from aiohttp import web
 from bson import json_util
 from dateutil.relativedelta import relativedelta
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
 from multidict import MultiDictProxy
-from motor.motor_asyncio import AsyncIOMotorCursor, AsyncIOMotorClient
 from pymongo.errors import ConnectionFailure, OperationFailure
 
 from ..conf.conf import query_map
@@ -153,7 +153,7 @@ class Operator(BaseOperator):
     Operations are implemented with JSON format.
     """
 
-    def __init__(self, db_client) -> None:
+    def __init__(self, db_client: AsyncIOMotorClient) -> None:
         """Initialize database and content-type.
 
         :param db_client: Motor client used for database connections. Should be
@@ -277,7 +277,7 @@ class XMLOperator(BaseOperator):
     Operations are implemented with XML format.
     """
 
-    def __init__(self, db_client) -> None:
+    def __init__(self, db_client: AsyncIOMotorClient) -> None:
         """Initialize database and content-type.
 
         :param db_client: Motor client used for database connections. Should be
