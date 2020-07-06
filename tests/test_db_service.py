@@ -101,10 +101,10 @@ class DatabaseTestCase(AsyncTestCase):
                                                            self.id_stub})
         assert success
 
-    @patch("metadata_backend.database.db_service.serverTimeout", 0)
     async def test_db_operation_is_retried_with_increasing_interval(self):
         """Patch timeout to be 0 sec instead of default, test autoreconnect."""
         self.collection.insert_one.side_effect = AutoReconnect
-        with self.assertRaises(ConnectionFailure):
-            await self.test_service.create("test", self.data_stub)
+        with patch("metadata_backend.database.db_service.serverTimeout", 0):
+            with self.assertRaises(ConnectionFailure):
+                await self.test_service.create("test", self.data_stub)
         assert self.collection.insert_one.call_count == 5
