@@ -7,7 +7,7 @@ from aiohttp import web
 
 from .api.handlers import RESTApiHandler, StaticHandler, SubmissionAPIHandler
 from .api.middlewares import error_middleware
-from .conf.conf import frontend_static_files
+from .conf.conf import create_db_client, frontend_static_files
 from .helpers.logger import LOG
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -46,6 +46,8 @@ async def init() -> web.Application:
         ]
         server.router.add_routes(frontend_routes)
         LOG.info("Frontend routes loaded")
+    server['db_client'] = create_db_client()
+    LOG.info("Database client loaded")
     return server
 
 

@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from aiohttp import FormData
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
-
+from aiounittest import futurized
 from bson import json_util
 
 from metadata_backend.server import init
@@ -58,7 +58,10 @@ class HandlersTestCase(AioHTTPTestCase):
                            'query_metadata_database.side_effect':
                            self.fake_operator_query_metadata_object,
                            'create_metadata_object.side_effect':
-                           self.fake_operator_create_metadata_object}
+                           self.fake_operator_create_metadata_object,
+                           'delete_metadata_object.side_effect':
+                           self.fake_operator_delete_metadata_object,
+                           }
         xmloperator_config = {'read_metadata_object.side_effect':
                               self.fake_xmloperator_read_metadata_object,
                               'create_metadata_object.side_effect':
@@ -90,25 +93,33 @@ class HandlersTestCase(AioHTTPTestCase):
                            content_type='text/xml')
         return data
 
-    def fake_operator_read_metadata_object(self, schema_type, accession_id):
+    async def fake_operator_read_metadata_object(self, schema_type,
+                                                 accession_id):
         """Fake read operation to return mocked json."""
-        return self.metadata_json, "application/json"
+        return await futurized((self.metadata_json, "application/json"))
 
-    def fake_operator_query_metadata_object(self, schema_type, query):
+    async def fake_operator_query_metadata_object(self, schema_type, query):
         """Fake query operation to return mocked json."""
-        return self.metadata_json
+        return await futurized(self.metadata_json)
 
-    def fake_xmloperator_read_metadata_object(self, schema_type, accession_id):
+    async def fake_xmloperator_read_metadata_object(self, schema_type,
+                                                    accession_id):
         """Fake read operation to return mocked xml."""
-        return self.metadata_xml, "text/xml"
+        return await futurized((self.metadata_xml, "text/xml"))
 
-    def fake_xmloperator_create_metadata_object(self, schema_type, content):
+    async def fake_xmloperator_create_metadata_object(self, schema_type,
+                                                      content):
         """Fake create operation to return mocked accessionId."""
-        return self.test_ega_string
+        return await futurized(self.test_ega_string)
 
-    def fake_operator_create_metadata_object(self, schema_type, content):
+    async def fake_operator_create_metadata_object(self, schema_type, content):
         """Fake create operation to return mocked accessionId."""
-        return self.test_ega_string
+        return await futurized(self.test_ega_string)
+
+    async def fake_operator_delete_metadata_object(self, schema_type,
+                                                   accession_id):
+        """Fake delete operation to await nothing."""
+        return await futurized(None)
 
     @unittest_run_loop
     async def test_submit_endpoint_submission_does_not_fail(self):
