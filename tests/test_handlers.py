@@ -2,7 +2,6 @@
 
 from pathlib import Path
 from unittest.mock import patch
-import json
 
 from aiohttp import FormData
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
@@ -29,6 +28,8 @@ class HandlersTestCase(AioHTTPTestCase):
         """
         self.test_ega_string = "EGA123456"
         self.query_accessionId = "EDAG3991701442770179",
+        self.page_num = 3
+        self.page_size = 50
         self.metadata_json = {"study": {
             "attributes": {
                 "centerName": "GEO",
@@ -91,7 +92,8 @@ class HandlersTestCase(AioHTTPTestCase):
 
     async def fake_operator_query_metadata_object(self, schema_type, query):
         """Fake query operation to return list containing mocked json."""
-        return await futurized((3, 50, list(self.metadata_json)))
+        return await futurized(([self.metadata_json], self.page_num,
+                               self.page_size))
 
     async def fake_xmloperator_read_metadata_object(self, schema_type,
                                                     accession_id):
@@ -171,9 +173,9 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_submit_object_works_with_json(self):
         """Test that json submission is handled , operator is called."""
-        json = {"centerName": "GEO",
-                "alias": "GSE10966"}
-        response = await self.client.post("/objects/study", json=json)
+        json_req = {"centerName": "GEO",
+                    "alias": "GSE10966"}
+        response = await self.client.post("/objects/study", json=json_req)
         assert response.status == 201
         self.assertIn(self.test_ega_string, await response.text())
         self.MockedOperator().create_metadata_object.assert_called_once()
@@ -196,7 +198,7 @@ class HandlersTestCase(AioHTTPTestCase):
         response = await self.client.get(url)
         assert response.status == 200
         assert response.content_type == "application/json"
-        self.assertEqual(json.dumps(self.metadata_json), await response.text())
+        self.assertEqual(self.metadata_json, await response.json())
 
     @unittest_run_loop
     async def test_get_object_as_xml(self):
@@ -208,12 +210,16 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(self.metadata_xml, await response.text())
 
     @unittest_run_loop
-    async def test_query_is_called(self):
-        """Test query method calls operator and returns status correctly."""
+    async def test_query_is_called_and_returns_json_in_correct_format(self):
+        """Test query method calls operator and returns mocked json object."""
         url = "/objects/study?studyType=foo&name=bar"
         response = await self.client.get(url)
         assert response.status == 200
         assert response.content_type == "application/json"
+        json_resp = await response.json()
+        assert json_resp["page"]["page"] == self.page_num
+        assert json_resp["page"]["size"] == self.page_size
+        assert json_resp["objects"][0] == self.metadata_json
         self.MockedOperator().query_metadata_database.assert_called_once()
         args = self.MockedOperator().query_metadata_database.call_args[0]
         assert "study" in args[0]
