@@ -5,7 +5,7 @@ from functools import wraps
 from typing import Any, Callable, Dict
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
-from pymongo.errors import AutoReconnect, ConnectionFailure, OperationFailure
+from pymongo.errors import AutoReconnect, ConnectionFailure
 
 from ..conf.conf import serverTimeout
 from ..helpers.logger import LOG
@@ -34,9 +34,9 @@ def auto_reconnect(db_func: Callable) -> Callable:
                     message = (f"Connection to database failed after {attempt}"
                                "tries")
                     raise ConnectionFailure(message=message)
-                LOG.info("Connection not successful, trying to reconnect."
-                         f"Reconnection attempt number {attempt}, waiting for "
-                         f"{default_timeout + wait_time} seconds")
+                LOG.error("Connection not successful, trying to reconnect."
+                          f"Reconnection attempt number {attempt}, waiting "
+                          f" for {default_timeout + wait_time} seconds.")
                 await asyncio.sleep(wait_time)
                 wait_time += default_timeout
                 continue
@@ -143,7 +143,4 @@ class DBService:
         :returns: Async cursor instance which should be awaited when iterating
         :raises: Error when read fails for any Mongodb related reason
         """
-        try:
-            return self.database[collection].find(query)
-        except (ConnectionFailure, OperationFailure):
-            raise
+        return self.database[collection].find(query)

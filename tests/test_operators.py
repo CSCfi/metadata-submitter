@@ -12,6 +12,32 @@ from multidict import MultiDictProxy, MultiDict
 from pymongo.errors import ConnectionFailure
 
 
+class MockCursor(AsyncMockIterator):
+    """Mock implementation of pymongo cursor.
+
+    Takes iterable async mock and adds some pymongo cursor methods.
+    """
+
+    def __init__(self, seq) -> None:
+        """Initialize cursor.
+
+        :param seq: Iterable sequence
+        """
+        super().__init__(seq)
+        self._skip = 0
+        self._limit = 0
+
+    def skip(self, count):
+        """Set skip."""
+        self._skip = count
+        return self
+
+    def limit(self, count):
+        """Set limit."""
+        self._limit = count if count != 0 else None
+        return self
+
+
 class TestOperators(AsyncTestCase):
     """Test db-operator classes."""
 
@@ -180,7 +206,7 @@ class TestOperators(AsyncTestCase):
     async def test_query_params_are_parsed_correctly(self):
         """Test that database is called with correct query."""
         operator = Operator(self.client)
-        study_test = {
+        study_test = [{
             "_id": {
                 "$oid": "5ecd28877f55c72e263f45c2"
             },
@@ -188,8 +214,8 @@ class TestOperators(AsyncTestCase):
             "accessionId": "EDAG3945644754983408",
             "dateCreated": datetime.datetime(2020, 6, 14, 0, 0),
             "dateModified": datetime.datetime(2020, 6, 14, 0, 0)
-        }
-        operator.db_service.query.return_value = study_test
+        }]
+        operator.db_service.query.return_value = MockCursor(study_test)
         query = MultiDictProxy(MultiDict([("studyAttributes", "foo")]))
         await operator.query_metadata_database("study", query)
         operator.db_service.query.assert_called_once_with(
@@ -204,7 +230,7 @@ class TestOperators(AsyncTestCase):
     async def test_non_working_query_params_are_not_passed_to_db_query(self):
         """Test that database with empty query, when url params are wrong."""
         operator = Operator(self.client)
-        study_test = {
+        study_test = [{
             "_id": {
                 "$oid": "5ecd28877f55c72e263f45c2"
             },
@@ -212,8 +238,8 @@ class TestOperators(AsyncTestCase):
             "accessionId": "EDAG3945644754983408",
             "dateCreated": datetime.datetime(2020, 6, 14, 0, 0),
             "dateModified": datetime.datetime(2020, 6, 14, 0, 0)
-        }
-        operator.db_service.query.return_value = futurized(study_test)
+        }]
+        operator.db_service.query.return_value = MockCursor(study_test)
         query = MultiDictProxy(MultiDict([("swag", "littinen")]))
         with patch("metadata_backend.api.operators.Operator._format_read_data",
                    return_value=futurized(study_test)):
@@ -242,8 +268,7 @@ class TestOperators(AsyncTestCase):
                 "foo": "bar"
             }
         ]
-        operator.db_service.query.return_value = AsyncMockIterator(
-            multiple_result)
+        operator.db_service.query.return_value = MockCursor(multiple_result)
         query = MultiDictProxy(MultiDict([]))
         parsed = await operator.query_metadata_database("sample", query)
         for doc in json.loads(parsed):
