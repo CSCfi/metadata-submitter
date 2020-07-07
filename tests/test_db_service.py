@@ -97,7 +97,7 @@ class DatabaseTestCase(AsyncTestCase):
         self.collection.delete_one.return_value = futurized(
             DeleteResult({}, True)
         )
-        success = await self.test_service.delete("yolo", self.id_stub)
+        success = await self.test_service.delete("test", self.id_stub)
         self.collection.delete_one.assert_called_once_with({"accessionId":
                                                            self.id_stub})
         assert success
@@ -108,6 +108,13 @@ class DatabaseTestCase(AsyncTestCase):
         cursor = self.test_service.query("test", {})
         assert type(cursor) == AsyncIOMotorCursor
         self.collection.find.assert_called_once_with({})
+
+    async def test_count_returns_amount(self):
+        """Test that get_count method works and returns amount."""
+        self.collection.count_documents.return_value = futurized(100)
+        count = await self.test_service.get_count("test", {})
+        self.collection.count_documents.assert_called_once_with({})
+        assert count == 100
 
     async def test_db_operation_is_retried_with_increasing_interval(self):
         """Patch timeout to be 0 sec instead of default, test autoreconnect."""
