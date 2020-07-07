@@ -51,6 +51,7 @@ class RESTApiHandler:
                     else Operator(db_client))
         data, content_type = await operator.read_metadata_object(schema_type,
                                                                  accession_id)
+        data = data if format == "xml" else json.dumps(data)
         return web.Response(body=data, status=200, content_type=content_type)
 
     async def post_object(self, req: Request) -> Response:
@@ -93,8 +94,16 @@ class RESTApiHandler:
             reason = "xml-formatted query results are not supported"
             raise web.HTTPBadRequest(reason=reason)
         db_client = req.app['db_client']
-        result = await Operator(db_client).query_metadata_database(schema_type,
-                                                                   req.query)
+        data, page_num, page_size = await (Operator(db_client)
+                                           .query_metadata_database(
+                                           schema_type, req.query))
+        result = json.dumps({
+            "page": {
+                "page": page_num,
+                "size": page_size,
+            },
+            "objects": data
+        })
         return web.Response(body=result, status=200,
                             content_type="application/json")
 
