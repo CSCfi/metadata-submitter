@@ -2,6 +2,7 @@
 import json
 import mimetypes
 from collections import Counter
+from math import ceil
 from pathlib import Path
 from typing import Dict, List, Tuple, Union, cast
 from xml.etree import ElementTree
@@ -93,26 +94,32 @@ class RESTApiHandler:
         if format == "xml":
             reason = "xml-formatted query results are not supported"
             raise web.HTTPBadRequest(reason=reason)
-        try:
-            page_num = int(req.query.get("page", 1))
-        except ValueError:
-            reason = f"page must a number, now it was {req.query.get('page')}"
-            raise web.HTTPBadRequest(reason=reason)
-        try:
-            page_size = int(req.query.get("per_page", 10))
-        except ValueError:
-            reason = ("per_page must a number, but it was "
-                      f"{req.query.get('per_page')}")
-            raise web.HTTPBadRequest(reason=reason)
+
+        def get_page_param(param_name: str, default: int) -> int:
+            """Handle page parameter value extracting."""
+            try:
+                param = int(req.query.get(param_name, default))
+            except ValueError:
+                reason = (f"{param_name} must a number, now it was "
+                          f"{req.query.get(param_name)}")
+                raise web.HTTPBadRequest(reason=reason)
+            if param < 1:
+                raise web.HTTPBadRequest(reason=f"{param_name} must over 1")
+            return param
+        page = get_page_param("page", 1)
+        per_page = get_page_param("per_page", 10)
         db_client = req.app['db_client']
-        data, page_num, page_size = await (Operator(db_client)
-                                           .query_metadata_database(
-                                           schema_type, req.query, page_num,
-                                           page_size))
+        data, page_num, page_size, total_objects = (
+            await Operator(db_client).query_metadata_database(schema_type,
+                                                              req.query,
+                                                              page,
+                                                              per_page))
         result = json.dumps({
             "page": {
                 "page": page_num,
                 "size": page_size,
+                "totalPages": ceil(total_objects / per_page),
+                "totalObjects": total_objects
             },
             "objects": data
         })

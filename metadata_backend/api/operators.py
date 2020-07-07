@@ -165,7 +165,7 @@ class Operator(BaseOperator):
     async def query_metadata_database(self, schema_type: str,
                                       que: MultiDictProxy,
                                       page_num: int, page_size: int
-                                      ) -> Tuple[Dict, int, int]:
+                                      ) -> Tuple[Dict, int, int, int]:
         """Query database based on url query parameters.
 
         Url queries are mapped to mongodb queries based on query_map in
@@ -177,6 +177,7 @@ class Operator(BaseOperator):
         :param page_num: Page number
         :raises: HTTPBadRequest if error happened when connection to database
         and HTTPNotFound error if file with given accession id is not found.
+        :returns: Query result with pagination numbers
         """
         # Generate mongodb query from query parameters
         mongo_query: Dict = {}
@@ -205,7 +206,9 @@ class Operator(BaseOperator):
         if not data:
             raise web.HTTPNotFound
         page_size = len(data) if len(data) != page_size else page_size
-        return data, page_num, page_size
+        total_objects = await self.db_service.get_count(schema_type,
+                                                        mongo_query)
+        return data, page_num, page_size, total_objects
 
     async def _format_data_to_create_and_add_to_db(self, schema_type: str,
                                                    data: Dict) -> str:

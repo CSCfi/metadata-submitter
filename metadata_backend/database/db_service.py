@@ -141,6 +141,15 @@ class DBService:
         :param collection: Collection where document should be searched from
         :param query: query to be used
         :returns: Async cursor instance which should be awaited when iterating
-        :raises: Error when read fails for any Mongodb related reason
         """
         return self.database[collection].find(query)
+
+    @auto_reconnect
+    async def get_count(self, collection: str, query: Dict) -> int:
+        """Get (estimated) count of documents matching given query.
+
+        :param collection: Collection where document should be searched from
+        :param query: query to be used
+        :returns: Estimate of the number of documents
+        """
+        return await self.database[collection].count_documents(query)
