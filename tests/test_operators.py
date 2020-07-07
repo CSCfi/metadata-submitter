@@ -202,7 +202,7 @@ class TestOperators(AsyncTestCase):
         assert operator.db_service.delete.call_count == 2
         operator.db_service.delete.assert_called_with("sample", "EGA123456")
 
-    async def test_query_params_are_parsed_correctly(self):
+    async def test_working_query_params_are_passed_to_db_query(self):
         """Test that database is called with correct query."""
         operator = Operator(self.client)
         study_test = [{
@@ -245,8 +245,8 @@ class TestOperators(AsyncTestCase):
             await operator.query_metadata_database("study", query, 1, 10)
         operator.db_service.query.assert_called_once_with('study', {})
 
-    async def test_multiple_document_result_is_parsed_correctly(self):
-        """Test json is read from db correctly."""
+    async def test_query_result_is_parsed_correctly(self):
+        """Test json is read and correct pagination values are returned."""
         operator = Operator(self.client)
         multiple_result = [
             {
@@ -268,13 +268,17 @@ class TestOperators(AsyncTestCase):
             }
         ]
         operator.db_service.query.return_value = MockCursor(multiple_result)
+        operator.db_service.get_count.return_value = futurized(100)
         query = MultiDictProxy(MultiDict([]))
-        parsed, _, _ = await operator.query_metadata_database("sample", query,
-                                                              1, 10)
+        parsed, page_num, page_size, total_objects = (
+            await operator.query_metadata_database("sample", query, 1, 10))
         for doc in parsed:
             assert doc["dateCreated"] == "2020-06-14T00:00:00"
             assert doc["dateModified"] == "2020-06-14T00:00:00"
             assert doc["accessionId"] == "EGA123456"
+        assert page_num == 1
+        assert page_size == 2
+        assert total_objects == 100
 
     async def test_non_empty_query_result_raises_notfound(self):
         """Test that 404 is raised with empty query result."""

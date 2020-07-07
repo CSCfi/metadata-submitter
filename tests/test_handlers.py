@@ -30,6 +30,7 @@ class HandlersTestCase(AioHTTPTestCase):
         self.query_accessionId = "EDAG3991701442770179",
         self.page_num = 3
         self.page_size = 50
+        self.total_objects = 150
         self.metadata_json = {"study": {
             "attributes": {
                 "centerName": "GEO",
@@ -94,7 +95,7 @@ class HandlersTestCase(AioHTTPTestCase):
                                                   page_num, page_size):
         """Fake query operation to return list containing mocked json."""
         return await futurized(([self.metadata_json], self.page_num,
-                               self.page_size))
+                               self.page_size, self.total_objects),)
 
     async def fake_xmloperator_read_metadata_object(self, schema_type,
                                                     accession_id):
@@ -213,18 +214,24 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_query_is_called_and_returns_json_in_correct_format(self):
         """Test query method calls operator and returns mocked json object."""
-        url = "/objects/study?studyType=foo&name=bar"
+        url = (f"/objects/study?studyType=foo&name=bar&page={self.page_num}"
+               f"&per_page={self.page_size}")
         response = await self.client.get(url)
         assert response.status == 200
         assert response.content_type == "application/json"
         json_resp = await response.json()
         assert json_resp["page"]["page"] == self.page_num
         assert json_resp["page"]["size"] == self.page_size
+        assert json_resp["page"]["totalPages"] == (self.total_objects
+                                                   / self.page_size)
+        assert json_resp["page"]["totalObjects"] == self.total_objects
         assert json_resp["objects"][0] == self.metadata_json
         self.MockedOperator().query_metadata_database.assert_called_once()
         args = self.MockedOperator().query_metadata_database.call_args[0]
-        assert "study" in args[0]
+        assert "study" == args[0]
         assert "studyType': 'foo', 'name': 'bar'" in str(args[1])
+        assert self.page_num == args[2]
+        assert self.page_size == args[3]
 
     @unittest_run_loop
     async def test_delete_is_called(self):
