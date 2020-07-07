@@ -93,10 +93,22 @@ class RESTApiHandler:
         if format == "xml":
             reason = "xml-formatted query results are not supported"
             raise web.HTTPBadRequest(reason=reason)
+        try:
+            page_num = int(req.query.get("page", 1))
+        except ValueError:
+            reason = f"page must a number, now it was {req.query.get('page')}"
+            raise web.HTTPBadRequest(reason=reason)
+        try:
+            page_size = int(req.query.get("per_page", 10))
+        except ValueError:
+            reason = ("per_page must a number, but it was "
+                      f"{req.query.get('per_page')}")
+            raise web.HTTPBadRequest(reason=reason)
         db_client = req.app['db_client']
         data, page_num, page_size = await (Operator(db_client)
                                            .query_metadata_database(
-                                           schema_type, req.query))
+                                           schema_type, req.query, page_num,
+                                           page_size))
         result = json.dumps({
             "page": {
                 "page": page_num,

@@ -164,9 +164,8 @@ class Operator(BaseOperator):
 
     async def query_metadata_database(self, schema_type: str,
                                       que: MultiDictProxy,
-                                      page_size: int = 10,
-                                      page_num: int = 1) -> Tuple[Dict, int,
-                                                                  int]:
+                                      page_num: int, page_size: int
+                                      ) -> Tuple[Dict, int, int]:
         """Query database based on url query parameters.
 
         Url queries are mapped to mongodb queries based on query_map in
@@ -205,6 +204,7 @@ class Operator(BaseOperator):
         data = await self._format_read_data(schema_type, cursor)
         if not data:
             raise web.HTTPNotFound
+        page_size = len(data) if len(data) != page_size else page_size
         return data, page_num, page_size
 
     async def _format_data_to_create_and_add_to_db(self, schema_type: str,

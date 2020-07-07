@@ -216,7 +216,7 @@ class TestOperators(AsyncTestCase):
         }]
         operator.db_service.query.return_value = MockCursor(study_test)
         query = MultiDictProxy(MultiDict([("studyAttributes", "foo")]))
-        await operator.query_metadata_database("study", query)
+        await operator.query_metadata_database("study", query, 1, 10)
         operator.db_service.query.assert_called_once_with(
             'study', {'$or': [
                 {'studyAttributes.tag':
@@ -242,7 +242,7 @@ class TestOperators(AsyncTestCase):
         query = MultiDictProxy(MultiDict([("swag", "littinen")]))
         with patch("metadata_backend.api.operators.Operator._format_read_data",
                    return_value=futurized(study_test)):
-            await operator.query_metadata_database("study", query)
+            await operator.query_metadata_database("study", query, 1, 10)
         operator.db_service.query.assert_called_once_with('study', {})
 
     async def test_multiple_document_result_is_parsed_correctly(self):
@@ -269,7 +269,8 @@ class TestOperators(AsyncTestCase):
         ]
         operator.db_service.query.return_value = MockCursor(multiple_result)
         query = MultiDictProxy(MultiDict([]))
-        parsed, _, _ = await operator.query_metadata_database("sample", query)
+        parsed, _, _ = await operator.query_metadata_database("sample", query,
+                                                              1, 10)
         for doc in parsed:
             assert doc["dateCreated"] == "2020-06-14T00:00:00"
             assert doc["dateModified"] == "2020-06-14T00:00:00"
@@ -283,7 +284,7 @@ class TestOperators(AsyncTestCase):
         with patch("metadata_backend.api.operators.Operator._format_read_data",
                    return_value=futurized([])):
             with self.assertRaises(HTTPNotFound):
-                await operator.query_metadata_database("study", query)
+                await operator.query_metadata_database("study", query, 1, 10)
 
     async def test_query_skip_and_limit_are_set_correctly(self):
         """Test custom skip and limits."""
@@ -293,7 +294,7 @@ class TestOperators(AsyncTestCase):
         operator.db_service.query.return_value = cursor
         with patch("metadata_backend.api.operators.Operator._format_read_data",
                    return_value=futurized(data)):
-            await operator.query_metadata_database("sample", {}, 50, 3)
+            await operator.query_metadata_database("sample", {}, 3, 50)
             assert cursor._skip == 100
             assert cursor._limit == 50
 
