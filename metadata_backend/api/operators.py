@@ -14,7 +14,7 @@ from multidict import MultiDictProxy
 from pymongo.errors import ConnectionFailure, OperationFailure
 
 from ..conf.conf import query_map
-from ..database.db_service import DBService
+from ..database.db_service import DBService, auto_reconnect
 from ..helpers.logger import LOG
 from ..helpers.parser import XMLToJSONParser
 
@@ -163,7 +163,9 @@ class Operator(BaseOperator):
         super().__init__("objects", "application/json", db_client)
 
     async def query_metadata_database(self, schema_type: str,
-                                      que: MultiDictProxy) -> Dict:
+                                      que: MultiDictProxy,
+                                      page_size: int = 10,
+                                      page_num: int = 1) -> Dict:
         """Query database based on url query parameters.
 
         Url queries are mapped to mongodb queries based on query_map in
@@ -171,6 +173,8 @@ class Operator(BaseOperator):
 
         :param schema_type: Schema type of the object to read.
         :param que: Dict containing query information
+        :param page_size: Results per page
+        :param page_num: Page number
         :raises: HTTPBadRequest if error happened when connection to database
         and HTTPNotFound error if file with given accession id is not found.
         """
@@ -191,11 +195,14 @@ class Operator(BaseOperator):
                     # Query with regex from just one field
                     mongo_query = {query_map[query]: regx}
         try:
-            data_raw = self.db_service.query(schema_type, mongo_query)
+            cursor = self.db_service.query(schema_type, mongo_query)
+            LOG.info(cursor)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting file: {error}"
             raise web.HTTPBadRequest(reason=reason)
-        data = await self._format_read_data(schema_type, data_raw)
+        skips = page_size * (page_num - 1)
+        cursor.skip(skips).limit(page_size)
+        data = await self._format_read_data(schema_type, cursor)
         if data == "[]":
             raise web.HTTPNotFound
         return data
@@ -230,12 +237,16 @@ class Operator(BaseOperator):
         sequence = ''.join(secrets.choice(string.digits) for i in range(16))
         return f"EDAG{sequence}"
 
+    @auto_reconnect
     async def _format_read_data(self, schema_type: str, data_raw: Union[
                                 Dict, AsyncIOMotorCursor]) -> Dict:
         """Get JSON content from given mongodb data.
 
         Data can be either one result or cursor containing multiple
         results.
+
+        If data is cursor, the query it contains is executed here and possible
+        database connection failures are try-catched with reconnect decorator.
 
         :param schema_type: Schema type of the object to read.
         :param data_raw: Data from mongodb query, can contain multiple results
