@@ -292,13 +292,34 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertIn(reason, await response.text())
 
     @unittest_run_loop
-    async def test_post_and_get_fail_for_wrong_schema_type(self):
+    async def test_operations_fail_for_wrong_schema_type(self):
         """Test 404 error is raised if incorrect schema name is given."""
         get_resp = await self.client.get("/objects/bad_scehma_name/some_id")
         self.assertEqual(get_resp.status, 404)
         json_get_resp = await get_resp.json()
         self.assertIn("Theres no schema", json_get_resp['detail'])
+
         post_rep = await self.client.post("/objects/bad_scehma_name")
         self.assertEqual(post_rep.status, 404)
         post_json_rep = await post_rep.json()
         self.assertIn("Theres no schema", post_json_rep['detail'])
+
+        get_resp = await self.client.get("/objects/bad_scehma_name")
+        self.assertEqual(get_resp.status, 404)
+        json_get_resp = await get_resp.json()
+        self.assertIn("Theres no schema", json_get_resp['detail'])
+
+        get_resp = await self.client.delete("/objects/bad_scehma_name/some_id")
+        self.assertEqual(get_resp.status, 404)
+        json_get_resp = await get_resp.json()
+        self.assertIn("Theres no schema", json_get_resp['detail'])
+
+    @unittest_run_loop
+    async def test_query_with_invalid_pagination_params(self):
+        """Test that 400s are raised correctly with pagination."""
+        get_resp = await self.client.get("/objects/study?page=2?title=joo")
+        self.assertEqual(get_resp.status, 400)
+        get_resp = await self.client.get("/objects/study?page=0")
+        self.assertEqual(get_resp.status, 400)
+        get_resp = await self.client.get("/objects/study?per_page=0")
+        self.assertEqual(get_resp.status, 400)
