@@ -2,11 +2,11 @@
 
 from pathlib import Path
 from unittest.mock import patch
+import json
 
 from aiohttp import FormData
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
 from aiounittest import futurized
-from bson import json_util
 
 from metadata_backend.server import init
 
@@ -29,23 +29,14 @@ class HandlersTestCase(AioHTTPTestCase):
         """
         self.test_ega_string = "EGA123456"
         self.query_accessionId = "EDAG3991701442770179",
-        self.metadata_json = json_util.dumps([
-            {
-                "_id": {
-                    "$oid": "5ecd28877f55c72e263f45c2"
-                },
-                "study": {
-                    "attributes": {
-                        "centerName": "GEO",
-                        "alias": "GSE10966",
-                        "accession": "SRP000539"
-                    },
-                    "accessionId": "EDAG3991701442770179",
-                    "publishDate": {
-                        "$date": 1595784759233
-                    }
-                }
-            }])
+        self.metadata_json = {"study": {
+            "attributes": {
+                "centerName": "GEO",
+                "alias": "GSE10966",
+                "accession": "SRP000539"
+            },
+            "accessionId": "EDAG3991701442770179", }
+        }
         path_to_xml_file = self.TESTFILES_ROOT / "study" / "SRP000539.xml"
         self.metadata_xml = path_to_xml_file.read_text()
         self.accession_id = "EGA123456"
@@ -99,8 +90,8 @@ class HandlersTestCase(AioHTTPTestCase):
         return await futurized((self.metadata_json, "application/json"))
 
     async def fake_operator_query_metadata_object(self, schema_type, query):
-        """Fake query operation to return mocked json."""
-        return await futurized(self.metadata_json)
+        """Fake query operation to return list containing mocked json."""
+        return await futurized((3, 50, list(self.metadata_json)))
 
     async def fake_xmloperator_read_metadata_object(self, schema_type,
                                                     accession_id):
@@ -205,7 +196,7 @@ class HandlersTestCase(AioHTTPTestCase):
         response = await self.client.get(url)
         assert response.status == 200
         assert response.content_type == "application/json"
-        self.assertEqual(self.metadata_json, await response.text())
+        self.assertEqual(json.dumps(self.metadata_json), await response.text())
 
     @unittest_run_loop
     async def test_get_object_as_xml(self):

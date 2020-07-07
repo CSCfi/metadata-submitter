@@ -1,7 +1,6 @@
 """Test api endpoints from views module."""
 import re
 import datetime
-import json
 import unittest
 from aiohttp.web import HTTPNotFound, HTTPBadRequest
 from aiounittest import AsyncTestCase, futurized
@@ -83,10 +82,10 @@ class TestOperators(AsyncTestCase):
                                                                 "EGA123456")
         operator.db_service.read.assert_called_once_with("sample", "EGA123456")
         assert c_type == "application/json"
-        assert json.loads(read_data) == {"dateCreated": "2020-06-14T00:00:00",
-                                         "dateModified": "2020-06-14T00:00:00",
-                                         "accessionId": "EGA123456",
-                                         "foo": "bar"}
+        assert read_data == {"dateCreated": "2020-06-14T00:00:00",
+                             "dateModified": "2020-06-14T00:00:00",
+                             "accessionId": "EGA123456",
+                             "foo": "bar"}
 
     async def test_reading_metadata_works_with_xml(self):
         """Test xml is read from db correctly."""
@@ -270,8 +269,8 @@ class TestOperators(AsyncTestCase):
         ]
         operator.db_service.query.return_value = MockCursor(multiple_result)
         query = MultiDictProxy(MultiDict([]))
-        parsed = await operator.query_metadata_database("sample", query)
-        for doc in json.loads(parsed):
+        parsed, _, _ = await operator.query_metadata_database("sample", query)
+        for doc in parsed:
             assert doc["dateCreated"] == "2020-06-14T00:00:00"
             assert doc["dateModified"] == "2020-06-14T00:00:00"
             assert doc["accessionId"] == "EGA123456"
@@ -282,17 +281,18 @@ class TestOperators(AsyncTestCase):
         operator.db_service.query = MagicMock()
         query = MultiDictProxy(MultiDict([]))
         with patch("metadata_backend.api.operators.Operator._format_read_data",
-                   return_value=futurized("[]")):
+                   return_value=futurized([])):
             with self.assertRaises(HTTPNotFound):
                 await operator.query_metadata_database("study", query)
 
     async def test_query_skip_and_limit_are_set_correctly(self):
         """Test custom skip and limits."""
         operator = Operator(self.client)
+        data = {"foo": "bar"}
         cursor = MockCursor([])
         operator.db_service.query.return_value = cursor
         with patch("metadata_backend.api.operators.Operator._format_read_data",
-                   return_value=MagicMock()):
+                   return_value=futurized(data)):
             await operator.query_metadata_database("sample", {}, 50, 3)
             assert cursor._skip == 100
             assert cursor._limit == 50
