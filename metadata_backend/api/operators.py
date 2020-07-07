@@ -196,7 +196,6 @@ class Operator(BaseOperator):
                     mongo_query = {query_map[query]: regx}
         try:
             cursor = self.db_service.query(schema_type, mongo_query)
-            LOG.info(cursor)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting file: {error}"
             raise web.HTTPBadRequest(reason=reason)

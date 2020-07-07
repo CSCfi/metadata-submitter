@@ -286,6 +286,17 @@ class TestOperators(AsyncTestCase):
             with self.assertRaises(HTTPNotFound):
                 await operator.query_metadata_database("study", query)
 
+    async def test_query_skip_and_limit_are_set_correctly(self):
+        """Test custom skip and limits."""
+        operator = Operator(self.client)
+        cursor = MockCursor([])
+        operator.db_service.query.return_value = cursor
+        with patch("metadata_backend.api.operators.Operator._format_read_data",
+                   return_value=MagicMock()):
+            await operator.query_metadata_database("sample", {}, 50, 3)
+            assert cursor._skip == 100
+            assert cursor._limit == 50
+
 
 if __name__ == '__main__':
     unittest.main()
