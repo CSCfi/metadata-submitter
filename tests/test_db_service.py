@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 from pymongo.results import InsertOneResult, UpdateResult, DeleteResult
 from pymongo.errors import AutoReconnect, ConnectionFailure
 from bson import ObjectId
+from motor.motor_asyncio import AsyncIOMotorCursor
 
 from metadata_backend.database.db_service import DBService
 
@@ -100,6 +101,13 @@ class DatabaseTestCase(AsyncTestCase):
         self.collection.delete_one.assert_called_once_with({"accessionId":
                                                            self.id_stub})
         assert success
+
+    def test_query_executes_find(self):
+        """Test that find is executed, so cursor is returned."""
+        self.collection.find.return_value = AsyncIOMotorCursor(None, None)
+        cursor = self.test_service.query("test", {})
+        assert type(cursor) == AsyncIOMotorCursor
+        self.collection.find.assert_called_once_with({})
 
     async def test_db_operation_is_retried_with_increasing_interval(self):
         """Patch timeout to be 0 sec instead of default, test autoreconnect."""
