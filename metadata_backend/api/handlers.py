@@ -135,7 +135,7 @@ class RESTApiHandler:
         schema_type = req.match_info['schema']
         if schema_type not in schema_types.keys():
             reason = f"Theres no schema {schema_type}"
-            raise web.HTTPBadRequest(reason=reason)
+            raise web.HTTPNotFound(reason=reason)
         accession_id = req.match_info['accessionId']
         db_client = req.app['db_client']
         await Operator(db_client).delete_metadata_object(schema_type,
