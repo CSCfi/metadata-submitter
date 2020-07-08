@@ -147,7 +147,7 @@ class DBService:
         :param query: query to be used
         :returns: Async cursor instance which should be awaited when iterating
         """
-        LOG.debug(f"DB doc query performed.")
+        LOG.debug("DB doc query performed.")
         return self.database[collection].find(query)
 
     @auto_reconnect
@@ -158,5 +158,5 @@ class DBService:
         :param query: query to be used
         :returns: Estimate of the number of documents
         """
-        LOG.debug(f"DB doc count performed.")
+        LOG.debug("DB doc count performed.")
         return await self.database[collection].count_documents(query)
