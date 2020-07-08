@@ -116,7 +116,7 @@ class BaseOperator(ABC):
         if insert_success:
             return data["accessionId"]
         else:
-            reason = "Inserting file to database failed for some (un)known reason."
+            reason = "Inserting file to database failed for some reason."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
