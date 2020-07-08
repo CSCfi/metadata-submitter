@@ -243,7 +243,7 @@ class Operator(BaseOperator):
         data["dateModified"] = datetime.utcnow()
         if schema_type == "study":
             data["publishDate"] = datetime.utcnow() + relativedelta(months=2)
-        LOG.debug(f"Operator format data for {schema_type} to add to DB")
+        LOG.debug(f"Operator formatted data for {schema_type} to add to DB")
         return await self._insert_formatted_object_to_db(schema_type, data)
 
     def _generate_accession_id(self) -> str:
@@ -330,7 +330,7 @@ class XMLOperator(BaseOperator):
         accession_id = (await Operator(db_client).
                         _format_data_to_create_and_add_to_db(schema_type,
                                                              data_as_json))
-        LOG.debug(f"XMLOperator format data for {schema_type} to add to DB")
+        LOG.debug(f"XMLOperator formatted data for {schema_type} to add to DB")
         return (await self.
                 _insert_formatted_object_to_db(schema_type,
                                                {"accessionId": accession_id,
