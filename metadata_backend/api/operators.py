@@ -74,6 +74,7 @@ class BaseOperator(ABC):
             data = await self._format_read_data(schema_type, data_raw)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting file: {error}"
+            LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         return data, self.content_type
 
@@ -108,11 +109,13 @@ class BaseOperator(ABC):
             insert_success = (await self.db_service.create(schema_type, data))
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting file: {error}"
+            LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         if insert_success:
             return data["accessionId"]
         else:
-            reason = "Inserting file to database failed for some reason."
+            reason = "Inserting file to database failed for some (un)known reason."
+            LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
     async def _remove_object_from_db(self,
@@ -124,11 +127,13 @@ class BaseOperator(ABC):
                                                                accession_id))
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while deleting file: {error}"
+            LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         if delete_success:
             LOG.info(f"{accession_id} successfully deleted from collection")
         else:
             reason = "Deleting for {accession_id} from database failed."
+            LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
     @abstractmethod
@@ -199,11 +204,13 @@ class Operator(BaseOperator):
             cursor = self.db_service.query(schema_type, mongo_query)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting file: {error}"
+            LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         skips = page_size * (page_num - 1)
         cursor.skip(skips).limit(page_size)
         data = await self._format_read_data(schema_type, cursor)
         if not data:
+            LOG.error("could not find any data.")
             raise web.HTTPNotFound
         page_size = len(data) if len(data) != page_size else page_size
         total_objects = await self.db_service.get_count(schema_type,
