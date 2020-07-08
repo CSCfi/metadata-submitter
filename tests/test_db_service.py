@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 from pymongo.results import InsertOneResult, UpdateResult, DeleteResult
 from pymongo.errors import AutoReconnect, ConnectionFailure
 from bson import ObjectId
+from motor.motor_asyncio import AsyncIOMotorCursor
 
 from metadata_backend.database.db_service import DBService
 
@@ -38,7 +39,7 @@ class DatabaseTestCase(AsyncTestCase):
         """Test client is shared across different db_service_objects."""
         foo = DBService("foo", self.client)
         bar = DBService("bar", self.client)
-        assert foo.db_client is bar.db_client
+        self.assertIs(foo.db_client, bar.db_client)
 
     async def test_create_inserts_data(self):
         """Test that create method works and returns success."""
@@ -47,7 +48,7 @@ class DatabaseTestCase(AsyncTestCase):
         )
         success = await self.test_service.create("test", self.data_stub)
         self.collection.insert_one.assert_called_once_with(self.data_stub)
-        assert success
+        self.assertTrue(success)
 
     async def test_create_reports_fail_correctly(self):
         """Test that failure is reported, when write not acknowledged."""
@@ -56,13 +57,13 @@ class DatabaseTestCase(AsyncTestCase):
         )
         success = await self.test_service.create("test", self.data_stub)
         self.collection.insert_one.assert_called_once_with(self.data_stub)
-        assert not success
+        self.assertFalse(success)
 
     async def test_read_returns_data(self):
         """Test that read method works and returns data."""
         self.collection.find_one.return_value = futurized(self.data_stub)
         found_doc = await self.test_service.read("test", self.id_stub)
-        assert found_doc == self.data_stub
+        self.assertEqual(found_doc, self.data_stub)
         self.collection.find_one.assert_called_once_with({"accessionId":
                                                           self.id_stub})
 
@@ -77,7 +78,7 @@ class DatabaseTestCase(AsyncTestCase):
                                                             self.id_stub},
                                                            {"$set":
                                                             self.data_stub})
-        assert success
+        self.assertTrue(success)
 
     async def test_replace_replaces_data(self):
         """Test that replace method works and returns success."""
@@ -89,17 +90,31 @@ class DatabaseTestCase(AsyncTestCase):
         self.collection.replace_one.assert_called_once_with({"accessionId":
                                                             self.id_stub},
                                                             self.data_stub)
-        assert success
+        self.assertTrue(success)
 
     async def test_delete_deletes_data(self):
         """Test that delete method works and returns success."""
         self.collection.delete_one.return_value = futurized(
             DeleteResult({}, True)
         )
-        success = await self.test_service.delete("yolo", self.id_stub)
+        success = await self.test_service.delete("test", self.id_stub)
         self.collection.delete_one.assert_called_once_with({"accessionId":
                                                            self.id_stub})
-        assert success
+        self.assertTrue(success)
+
+    def test_query_executes_find(self):
+        """Test that find is executed, so cursor is returned."""
+        self.collection.find.return_value = AsyncIOMotorCursor(None, None)
+        cursor = self.test_service.query("test", {})
+        self.assertEqual(type(cursor), AsyncIOMotorCursor)
+        self.collection.find.assert_called_once_with({})
+
+    async def test_count_returns_amount(self):
+        """Test that get_count method works and returns amount."""
+        self.collection.count_documents.return_value = futurized(100)
+        count = await self.test_service.get_count("test", {})
+        self.collection.count_documents.assert_called_once_with({})
+        self.assertEqual(count, 100)
 
     async def test_db_operation_is_retried_with_increasing_interval(self):
         """Patch timeout to be 0 sec instead of default, test autoreconnect."""
@@ -107,4 +122,4 @@ class DatabaseTestCase(AsyncTestCase):
         with patch("metadata_backend.database.db_service.serverTimeout", 0):
             with self.assertRaises(ConnectionFailure):
                 await self.test_service.create("test", self.data_stub)
-        assert self.collection.insert_one.call_count == 5
+        self.assertEqual(self.collection.insert_one.call_count, 5)
