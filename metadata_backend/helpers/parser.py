@@ -2,7 +2,7 @@
 
 import re
 from typing import Any, Dict, List, Union
-from xml.etree.ElementTree import ParseError
+from xmlschema.etree import ParseError
 
 from aiohttp import web
 from xmlschema import (XMLSchema, XMLSchemaConverter, XMLSchemaException,
