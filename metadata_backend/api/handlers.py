@@ -5,12 +5,11 @@ from collections import Counter
 from math import ceil
 from pathlib import Path
 from typing import Dict, List, Tuple, Union, cast
-from xml.etree import ElementTree
-from xml.etree.ElementTree import ParseError
 
 from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
 from xmlschema import XMLSchemaValidationError
+from xmlschema.etree import ElementTree, ParseError
 
 from ..conf.conf import schema_types
 from ..helpers.parser import XMLToJSONParser
