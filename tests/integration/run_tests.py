@@ -79,16 +79,20 @@ async def test_crud_works(schema, filename):
     async with aiohttp.ClientSession() as sess:
         accession_id = await post_object(sess, schema, filename)
         async with sess.get(f"{base_url}/{schema}/{accession_id}") as resp:
-            LOG.debug(f"Checking that {accession_id} is in {schema}")
+            LOG.debug(f"Checking that {accession_id} JSON is in {schema}")
             assert resp.status == 200, 'HTTP Status code error'
-        # TODO: add XML check here
+        async with sess.get(f"{base_url}/{schema}/{accession_id}"
+                            "?format=xml") as resp:
+            LOG.debug(f"Checking that {accession_id} XML is in {schema}")
+            assert resp.status == 200, 'HTTP Status code error'
+
         await delete_object(sess, schema, accession_id)
         async with sess.get(f"{base_url}/{schema}/{accession_id}") as resp:
-            LOG.debug(f"Checking that json object {accession_id} was deleted")
+            LOG.debug(f"Checking that JSON object {accession_id} was deleted")
             assert resp.status == 404, 'HTTP Status code error'
         async with sess.get(f"{base_url}/{schema}/{accession_id}"
                             "?format=xml") as resp:
-            LOG.debug(f"Checking that xml object {accession_id} was deleted")
+            LOG.debug(f"Checking that XML object {accession_id} was deleted")
             assert resp.status == 404, 'HTTP Status code error'
 
 
