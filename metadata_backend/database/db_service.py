@@ -74,6 +74,7 @@ class DBService:
         :returns: True if operation was successful
         """
         result = await self.database[collection].insert_one(document)
+        LOG.debug("DB doc inserted.")
         return result.acknowledged
 
     @auto_reconnect
@@ -85,6 +86,7 @@ class DBService:
         :returns: First document matching the accession_id
         """
         find_by_id_query = {"accessionId": accession_id}
+        LOG.debug(f"DB doc read for {accession_id}.")
         return await self.database[collection].find_one(find_by_id_query)
 
     @auto_reconnect
@@ -102,6 +104,7 @@ class DBService:
         update_operation = {"$set": data_to_be_updated}
         result = await self.database[collection].update_one(find_by_id_query,
                                                             update_operation)
+        LOG.debug(f"DB doc updated for {accession_id}.")
         return result.acknowledged
 
     @auto_reconnect
@@ -118,6 +121,7 @@ class DBService:
         find_by_id_query = {"accessionId": accession_id}
         result = await self.database[collection].replace_one(find_by_id_query,
                                                              new_data)
+        LOG.debug(f"DB doc replaced for {accession_id}.")
         return result.acknowledged
 
     @auto_reconnect
@@ -130,6 +134,7 @@ class DBService:
         """
         find_by_id_query = {"accessionId": accession_id}
         result = await self.database[collection].delete_one(find_by_id_query)
+        LOG.debug(f"DB doc deleted for {accession_id}.")
         return result.acknowledged
 
     def query(self, collection: str, query: Dict) -> AsyncIOMotorCursor:
@@ -142,6 +147,7 @@ class DBService:
         :param query: query to be used
         :returns: Async cursor instance which should be awaited when iterating
         """
+        LOG.debug(f"DB doc query performed.")
         return self.database[collection].find(query)
 
     @auto_reconnect
@@ -152,4 +158,5 @@ class DBService:
         :param query: query to be used
         :returns: Estimate of the number of documents
         """
+        LOG.debug(f"DB doc count performed.")
         return await self.database[collection].count_documents(query)
