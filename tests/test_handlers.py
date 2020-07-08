@@ -122,8 +122,8 @@ class HandlersTestCase(AioHTTPTestCase):
         files = [("submission", "ERA521986_valid.xml")]
         data = self.create_submission_data(files)
         response = await self.client.post("/submit", data=data)
-        assert response.status == 201
-        assert response.content_type == "application/json"
+        self.assertEqual(response.status, 201)
+        self.assertEqual(response.content_type, "application/json")
 
     @unittest_run_loop
     async def test_submit_endpoint_fails_without_submission_xml(self):
@@ -135,7 +135,7 @@ class HandlersTestCase(AioHTTPTestCase):
         data = self.create_submission_data(files)
         response = await self.client.post("/submit", data=data)
         failure_text = "There must be a submission.xml file in submission."
-        assert response.status == 400
+        self.assertEqual(response.status, 400)
         self.assertIn(failure_text, await response.text())
 
     @unittest_run_loop
@@ -149,7 +149,7 @@ class HandlersTestCase(AioHTTPTestCase):
         data = self.create_submission_data(files)
         response = await self.client.post("/submit", data=data)
         failure_text = "You should submit only one submission.xml file."
-        assert response.status == 400
+        self.assertEqual(response.status, 400)
         self.assertIn(failure_text, await response.text())
 
     @unittest_run_loop
@@ -168,7 +168,7 @@ class HandlersTestCase(AioHTTPTestCase):
         files = [("study", "SRP000539.xml")]
         data = self.create_submission_data(files)
         response = await self.client.post("/objects/study", data=data)
-        assert response.status == 201
+        self.assertEqual(response.status, 201)
         self.assertIn(self.test_ega_string, await response.text())
         self.MockedXMLOperator().create_metadata_object.assert_called_once()
 
@@ -178,7 +178,7 @@ class HandlersTestCase(AioHTTPTestCase):
         json_req = {"centerName": "GEO",
                     "alias": "GSE10966"}
         response = await self.client.post("/objects/study", json=json_req)
-        assert response.status == 201
+        self.assertEqual(response.status, 201)
         self.assertIn(self.test_ega_string, await response.text())
         self.MockedOperator().create_metadata_object.assert_called_once()
 
@@ -198,8 +198,8 @@ class HandlersTestCase(AioHTTPTestCase):
         """Test that accessionId returns correct json object."""
         url = f"/objects/study/{self.query_accessionId}"
         response = await self.client.get(url)
-        assert response.status == 200
-        assert response.content_type == "application/json"
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.content_type, "application/json")
         self.assertEqual(self.metadata_json, await response.json())
 
     @unittest_run_loop
@@ -207,8 +207,8 @@ class HandlersTestCase(AioHTTPTestCase):
         """Test that accessionId  with xml query returns xml object."""
         url = f"/objects/study/{self.query_accessionId}"
         response = await self.client.get(f"{url}?format=xml")
-        assert response.status == 200
-        assert response.content_type == "text/xml"
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.content_type, "text/xml")
         self.assertEqual(self.metadata_xml, await response.text())
 
     @unittest_run_loop
@@ -217,28 +217,28 @@ class HandlersTestCase(AioHTTPTestCase):
         url = (f"/objects/study?studyType=foo&name=bar&page={self.page_num}"
                f"&per_page={self.page_size}")
         response = await self.client.get(url)
-        assert response.status == 200
-        assert response.content_type == "application/json"
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.content_type, "application/json")
         json_resp = await response.json()
-        assert json_resp["page"]["page"] == self.page_num
-        assert json_resp["page"]["size"] == self.page_size
-        assert json_resp["page"]["totalPages"] == (self.total_objects
-                                                   / self.page_size)
-        assert json_resp["page"]["totalObjects"] == self.total_objects
-        assert json_resp["objects"][0] == self.metadata_json
+        self.assertEqual(json_resp["page"]["page"], self.page_num)
+        self.assertEqual(json_resp["page"]["size"], self.page_size)
+        self.assertEqual(json_resp["page"]["totalPages"], (self.total_objects
+                                                           / self.page_size))
+        self.assertEqual(json_resp["page"]["totalObjects"], self.total_objects)
+        self.assertEqual(json_resp["objects"][0], self.metadata_json)
         self.MockedOperator().query_metadata_database.assert_called_once()
         args = self.MockedOperator().query_metadata_database.call_args[0]
-        assert "study" == args[0]
-        assert "studyType': 'foo', 'name': 'bar'" in str(args[1])
-        assert self.page_num == args[2]
-        assert self.page_size == args[3]
+        self.assertEqual("study", args[0])
+        self.assertIn("studyType': 'foo', 'name': 'bar'", str(args[1]))
+        self.assertEqual(self.page_num, args[2])
+        self.assertEqual(self.page_size, args[3])
 
     @unittest_run_loop
     async def test_delete_is_called(self):
         """Test query method calls operator and returns status correctly."""
         url = "/objects/study/EGA123456"
         response = await self.client.delete(url)
-        assert response.status == 204
+        self.assertEqual(response.status, 204)
         self.MockedOperator().delete_metadata_object.assert_called_once()
 
     @unittest_run_loop
@@ -246,8 +246,8 @@ class HandlersTestCase(AioHTTPTestCase):
         """Test query method calls operator and returns status correctly."""
         url = "/objects/study?studyType=foo&name=bar&format=xml"
         response = await self.client.get(url)
-        assert response.status == 400
         json_resp = await response.json()
+        self.assertEqual(response.status, 400)
         self.assertIn("xml-formatted query results are not supported",
                       json_resp["detail"])
 
