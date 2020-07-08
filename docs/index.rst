@@ -10,6 +10,7 @@ CSC Metadata Submitter
    :maxdepth: 2
    :caption: Contents:
 
+   validator
 
 
 Indices and tables
