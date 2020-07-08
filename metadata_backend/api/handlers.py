@@ -2,6 +2,7 @@
 import json
 import mimetypes
 from collections import Counter
+from math import ceil
 from pathlib import Path
 from typing import Dict, List, Tuple, Union, cast
 from xml.etree import ElementTree
@@ -51,6 +52,7 @@ class RESTApiHandler:
                     else Operator(db_client))
         data, content_type = await operator.read_metadata_object(schema_type,
                                                                  accession_id)
+        data = data if format == "xml" else json.dumps(data)
         return web.Response(body=data, status=200, content_type=content_type)
 
     async def post_object(self, req: Request) -> Response:
@@ -92,9 +94,35 @@ class RESTApiHandler:
         if format == "xml":
             reason = "xml-formatted query results are not supported"
             raise web.HTTPBadRequest(reason=reason)
+
+        def get_page_param(param_name: str, default: int) -> int:
+            """Handle page parameter value extracting."""
+            try:
+                param = int(req.query.get(param_name, default))
+            except ValueError:
+                reason = (f"{param_name} must a number, now it was "
+                          f"{req.query.get(param_name)}")
+                raise web.HTTPBadRequest(reason=reason)
+            if param < 1:
+                raise web.HTTPBadRequest(reason=f"{param_name} must over 1")
+            return param
+        page = get_page_param("page", 1)
+        per_page = get_page_param("per_page", 10)
         db_client = req.app['db_client']
-        result = await Operator(db_client).query_metadata_database(schema_type,
-                                                                   req.query)
+        data, page_num, page_size, total_objects = (
+            await Operator(db_client).query_metadata_database(schema_type,
+                                                              req.query,
+                                                              page,
+                                                              per_page))
+        result = json.dumps({
+            "page": {
+                "page": page_num,
+                "size": page_size,
+                "totalPages": ceil(total_objects / per_page),
+                "totalObjects": total_objects
+            },
+            "objects": data
+        })
         return web.Response(body=result, status=200,
                             content_type="application/json")
 
@@ -107,7 +135,7 @@ class RESTApiHandler:
         schema_type = req.match_info['schema']
         if schema_type not in schema_types.keys():
             reason = f"Theres no schema {schema_type}"
-            raise web.HTTPBadRequest(reason=reason)
+            raise web.HTTPNotFound(reason=reason)
         accession_id = req.match_info['accessionId']
         db_client = req.app['db_client']
         await Operator(db_client).delete_metadata_object(schema_type,

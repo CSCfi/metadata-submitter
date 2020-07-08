@@ -95,7 +95,7 @@ async def test_querying_works():
 
 
 async def test_getting_all_objects_from_schema_works():
-    """Check that /objects/study returns objects that were added."""
+    """Check that /objects/study returns objects with correct pagination."""
     async with aiohttp.ClientSession() as sess:
         accession_ids = []
         base_url = "http://localhost:5430/objects/study"
@@ -108,12 +108,33 @@ async def test_getting_all_objects_from_schema_works():
                 accession_ids.append(ans["accessionId"])
 
         LOG.debug("Adding new objects to study")
-        await asyncio.gather(*[post_one() for _ in range(5)])
+        await asyncio.gather(*[post_one() for _ in range(13)])
 
+        # Test default values
         async with sess.get(f"{base_url}") as resp:
             assert resp.status == 200
             ans = await resp.json()
-            assert len(ans) == 5
+            assert ans["page"]["page"] == 1
+            assert ans["page"]["size"] == 10
+            assert ans["page"]["totalPages"] == 2
+            assert ans["page"]["totalObjects"] == 13
+            assert len(ans["objects"]) == 10
+
+        # Test with custom pagination values
+        async with sess.get(f"{base_url}?page=2&per_page=3") as resp:
+            assert resp.status == 200
+            ans = await resp.json()
+            assert ans["page"]["page"] == 2
+            assert ans["page"]["size"] == 3
+            assert ans["page"]["totalPages"] == 5
+            assert ans["page"]["totalObjects"] == 13
+            assert len(ans["objects"]) == 3
+
+        # Test with wrong pagination values
+        async with sess.get(f"{base_url}?page=-1") as resp:
+            assert resp.status == 400
+        async with sess.get(f"{base_url}?per_page=0") as resp:
+            assert resp.status == 400
 
         async def delete_one(accession_id):
             async with sess.delete(f"{base_url}/{accession_id}") as resp:

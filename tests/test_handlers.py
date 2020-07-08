@@ -6,7 +6,6 @@ from unittest.mock import patch
 from aiohttp import FormData
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
 from aiounittest import futurized
-from bson import json_util
 
 from metadata_backend.server import init
 
@@ -29,23 +28,17 @@ class HandlersTestCase(AioHTTPTestCase):
         """
         self.test_ega_string = "EGA123456"
         self.query_accessionId = "EDAG3991701442770179",
-        self.metadata_json = json_util.dumps([
-            {
-                "_id": {
-                    "$oid": "5ecd28877f55c72e263f45c2"
-                },
-                "study": {
-                    "attributes": {
-                        "centerName": "GEO",
-                        "alias": "GSE10966",
-                        "accession": "SRP000539"
-                    },
-                    "accessionId": "EDAG3991701442770179",
-                    "publishDate": {
-                        "$date": 1595784759233
-                    }
-                }
-            }])
+        self.page_num = 3
+        self.page_size = 50
+        self.total_objects = 150
+        self.metadata_json = {"study": {
+            "attributes": {
+                "centerName": "GEO",
+                "alias": "GSE10966",
+                "accession": "SRP000539"
+            },
+            "accessionId": "EDAG3991701442770179", }
+        }
         path_to_xml_file = self.TESTFILES_ROOT / "study" / "SRP000539.xml"
         self.metadata_xml = path_to_xml_file.read_text()
         self.accession_id = "EGA123456"
@@ -98,9 +91,11 @@ class HandlersTestCase(AioHTTPTestCase):
         """Fake read operation to return mocked json."""
         return await futurized((self.metadata_json, "application/json"))
 
-    async def fake_operator_query_metadata_object(self, schema_type, query):
-        """Fake query operation to return mocked json."""
-        return await futurized(self.metadata_json)
+    async def fake_operator_query_metadata_object(self, schema_type, query,
+                                                  page_num, page_size):
+        """Fake query operation to return list containing mocked json."""
+        return await futurized(([self.metadata_json], self.page_num,
+                               self.page_size, self.total_objects),)
 
     async def fake_xmloperator_read_metadata_object(self, schema_type,
                                                     accession_id):
@@ -127,8 +122,8 @@ class HandlersTestCase(AioHTTPTestCase):
         files = [("submission", "ERA521986_valid.xml")]
         data = self.create_submission_data(files)
         response = await self.client.post("/submit", data=data)
-        assert response.status == 201
-        assert response.content_type == "application/json"
+        self.assertEqual(response.status, 201)
+        self.assertEqual(response.content_type, "application/json")
 
     @unittest_run_loop
     async def test_submit_endpoint_fails_without_submission_xml(self):
@@ -140,7 +135,7 @@ class HandlersTestCase(AioHTTPTestCase):
         data = self.create_submission_data(files)
         response = await self.client.post("/submit", data=data)
         failure_text = "There must be a submission.xml file in submission."
-        assert response.status == 400
+        self.assertEqual(response.status, 400)
         self.assertIn(failure_text, await response.text())
 
     @unittest_run_loop
@@ -154,7 +149,7 @@ class HandlersTestCase(AioHTTPTestCase):
         data = self.create_submission_data(files)
         response = await self.client.post("/submit", data=data)
         failure_text = "You should submit only one submission.xml file."
-        assert response.status == 400
+        self.assertEqual(response.status, 400)
         self.assertIn(failure_text, await response.text())
 
     @unittest_run_loop
@@ -173,17 +168,17 @@ class HandlersTestCase(AioHTTPTestCase):
         files = [("study", "SRP000539.xml")]
         data = self.create_submission_data(files)
         response = await self.client.post("/objects/study", data=data)
-        assert response.status == 201
+        self.assertEqual(response.status, 201)
         self.assertIn(self.test_ega_string, await response.text())
         self.MockedXMLOperator().create_metadata_object.assert_called_once()
 
     @unittest_run_loop
     async def test_submit_object_works_with_json(self):
         """Test that json submission is handled , operator is called."""
-        json = {"centerName": "GEO",
-                "alias": "GSE10966"}
-        response = await self.client.post("/objects/study", json=json)
-        assert response.status == 201
+        json_req = {"centerName": "GEO",
+                    "alias": "GSE10966"}
+        response = await self.client.post("/objects/study", json=json_req)
+        self.assertEqual(response.status, 201)
         self.assertIn(self.test_ega_string, await response.text())
         self.MockedOperator().create_metadata_object.assert_called_once()
 
@@ -203,37 +198,47 @@ class HandlersTestCase(AioHTTPTestCase):
         """Test that accessionId returns correct json object."""
         url = f"/objects/study/{self.query_accessionId}"
         response = await self.client.get(url)
-        assert response.status == 200
-        assert response.content_type == "application/json"
-        self.assertEqual(self.metadata_json, await response.text())
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.content_type, "application/json")
+        self.assertEqual(self.metadata_json, await response.json())
 
     @unittest_run_loop
     async def test_get_object_as_xml(self):
         """Test that accessionId  with xml query returns xml object."""
         url = f"/objects/study/{self.query_accessionId}"
         response = await self.client.get(f"{url}?format=xml")
-        assert response.status == 200
-        assert response.content_type == "text/xml"
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.content_type, "text/xml")
         self.assertEqual(self.metadata_xml, await response.text())
 
     @unittest_run_loop
-    async def test_query_is_called(self):
-        """Test query method calls operator and returns status correctly."""
-        url = "/objects/study?studyType=foo&name=bar"
+    async def test_query_is_called_and_returns_json_in_correct_format(self):
+        """Test query method calls operator and returns mocked json object."""
+        url = (f"/objects/study?studyType=foo&name=bar&page={self.page_num}"
+               f"&per_page={self.page_size}")
         response = await self.client.get(url)
-        assert response.status == 200
-        assert response.content_type == "application/json"
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.content_type, "application/json")
+        json_resp = await response.json()
+        self.assertEqual(json_resp["page"]["page"], self.page_num)
+        self.assertEqual(json_resp["page"]["size"], self.page_size)
+        self.assertEqual(json_resp["page"]["totalPages"], (self.total_objects
+                                                           / self.page_size))
+        self.assertEqual(json_resp["page"]["totalObjects"], self.total_objects)
+        self.assertEqual(json_resp["objects"][0], self.metadata_json)
         self.MockedOperator().query_metadata_database.assert_called_once()
         args = self.MockedOperator().query_metadata_database.call_args[0]
-        assert "study" in args[0]
-        assert "studyType': 'foo', 'name': 'bar'" in str(args[1])
+        self.assertEqual("study", args[0])
+        self.assertIn("studyType': 'foo', 'name': 'bar'", str(args[1]))
+        self.assertEqual(self.page_num, args[2])
+        self.assertEqual(self.page_size, args[3])
 
     @unittest_run_loop
     async def test_delete_is_called(self):
         """Test query method calls operator and returns status correctly."""
         url = "/objects/study/EGA123456"
         response = await self.client.delete(url)
-        assert response.status == 204
+        self.assertEqual(response.status, 204)
         self.MockedOperator().delete_metadata_object.assert_called_once()
 
     @unittest_run_loop
@@ -241,8 +246,8 @@ class HandlersTestCase(AioHTTPTestCase):
         """Test query method calls operator and returns status correctly."""
         url = "/objects/study?studyType=foo&name=bar&format=xml"
         response = await self.client.get(url)
-        assert response.status == 400
         json_resp = await response.json()
+        self.assertEqual(response.status, 400)
         self.assertIn("xml-formatted query results are not supported",
                       json_resp["detail"])
 
@@ -287,13 +292,34 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertIn(reason, await response.text())
 
     @unittest_run_loop
-    async def test_post_and_get_fail_for_wrong_schema_type(self):
+    async def test_operations_fail_for_wrong_schema_type(self):
         """Test 404 error is raised if incorrect schema name is given."""
         get_resp = await self.client.get("/objects/bad_scehma_name/some_id")
         self.assertEqual(get_resp.status, 404)
         json_get_resp = await get_resp.json()
         self.assertIn("Theres no schema", json_get_resp['detail'])
+
         post_rep = await self.client.post("/objects/bad_scehma_name")
         self.assertEqual(post_rep.status, 404)
         post_json_rep = await post_rep.json()
         self.assertIn("Theres no schema", post_json_rep['detail'])
+
+        get_resp = await self.client.get("/objects/bad_scehma_name")
+        self.assertEqual(get_resp.status, 404)
+        json_get_resp = await get_resp.json()
+        self.assertIn("Theres no schema", json_get_resp['detail'])
+
+        get_resp = await self.client.delete("/objects/bad_scehma_name/some_id")
+        self.assertEqual(get_resp.status, 404)
+        json_get_resp = await get_resp.json()
+        self.assertIn("Theres no schema", json_get_resp['detail'])
+
+    @unittest_run_loop
+    async def test_query_with_invalid_pagination_params(self):
+        """Test that 400s are raised correctly with pagination."""
+        get_resp = await self.client.get("/objects/study?page=2?title=joo")
+        self.assertEqual(get_resp.status, 400)
+        get_resp = await self.client.get("/objects/study?page=0")
+        self.assertEqual(get_resp.status, 400)
+        get_resp = await self.client.get("/objects/study?per_page=0")
+        self.assertEqual(get_resp.status, 400)

@@ -7,14 +7,13 @@ from datetime import datetime
 from typing import Any, Dict, List, Tuple, Union
 
 from aiohttp import web
-from bson import json_util
 from dateutil.relativedelta import relativedelta
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
 from multidict import MultiDictProxy
 from pymongo.errors import ConnectionFailure, OperationFailure
 
 from ..conf.conf import query_map
-from ..database.db_service import DBService
+from ..database.db_service import DBService, auto_reconnect
 from ..helpers.logger import LOG
 from ..helpers.parser import XMLToJSONParser
 
@@ -66,6 +65,7 @@ class BaseOperator(ABC):
         :param schema_type: Schema type of the object to read.
         :param accession_id: Accession Id of the object to read.
         :raises: 400 if reading was not succesful, 404 if no data found
+        :returns: Metadata object formatted to JSON or XML, content type
         """
         try:
             data_raw = await self.db_service.read(schema_type, accession_id)
@@ -163,7 +163,9 @@ class Operator(BaseOperator):
         super().__init__("objects", "application/json", db_client)
 
     async def query_metadata_database(self, schema_type: str,
-                                      que: MultiDictProxy) -> Dict:
+                                      que: MultiDictProxy,
+                                      page_num: int, page_size: int
+                                      ) -> Tuple[Dict, int, int, int]:
         """Query database based on url query parameters.
 
         Url queries are mapped to mongodb queries based on query_map in
@@ -171,8 +173,11 @@ class Operator(BaseOperator):
 
         :param schema_type: Schema type of the object to read.
         :param que: Dict containing query information
+        :param page_size: Results per page
+        :param page_num: Page number
         :raises: HTTPBadRequest if error happened when connection to database
         and HTTPNotFound error if file with given accession id is not found.
+        :returns: Query result with pagination numbers
         """
         # Generate mongodb query from query parameters
         mongo_query: Dict = {}
@@ -191,14 +196,19 @@ class Operator(BaseOperator):
                     # Query with regex from just one field
                     mongo_query = {query_map[query]: regx}
         try:
-            data_raw = self.db_service.query(schema_type, mongo_query)
+            cursor = self.db_service.query(schema_type, mongo_query)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting file: {error}"
             raise web.HTTPBadRequest(reason=reason)
-        data = await self._format_read_data(schema_type, data_raw)
-        if data == "[]":
+        skips = page_size * (page_num - 1)
+        cursor.skip(skips).limit(page_size)
+        data = await self._format_read_data(schema_type, cursor)
+        if not data:
             raise web.HTTPNotFound
-        return data
+        page_size = len(data) if len(data) != page_size else page_size
+        total_objects = await self.db_service.get_count(schema_type,
+                                                        mongo_query)
+        return data, page_num, page_size, total_objects
 
     async def _format_data_to_create_and_add_to_db(self, schema_type: str,
                                                    data: Dict) -> str:
@@ -230,24 +240,27 @@ class Operator(BaseOperator):
         sequence = ''.join(secrets.choice(string.digits) for i in range(16))
         return f"EDAG{sequence}"
 
-    async def _format_read_data(self, schema_type: str, data_raw: Union[
-                                Dict, AsyncIOMotorCursor]) -> Dict:
+    @auto_reconnect
+    async def _format_read_data(self, schema_type: str, data_raw: Union[Dict,
+                                AsyncIOMotorCursor]) -> Union[Dict,
+                                                              List[Dict]]:
         """Get JSON content from given mongodb data.
 
         Data can be either one result or cursor containing multiple
         results.
 
+        If data is cursor, the query it contains is executed here and possible
+        database connection failures are try-catched with reconnect decorator.
+
         :param schema_type: Schema type of the object to read.
         :param data_raw: Data from mongodb query, can contain multiple results
-        :returns: Mongodb query result dumped as json
+        :returns: Mongodb query result, formatted to readable dicts
         """
-        formatted: Union[Dict, List]
         if isinstance(data_raw, dict):
-            formatted = self._format_single_dict(schema_type, data_raw)
+            return self._format_single_dict(schema_type, data_raw)
         else:
-            formatted = ([self._format_single_dict(schema_type, doc) async for
-                          doc in data_raw])
-        return json_util.dumps(formatted)
+            return ([self._format_single_dict(schema_type, doc) async for
+                     doc in data_raw])
 
     def _format_single_dict(self, schema_type: str, doc: Dict) -> Dict:
         """Format single result dictionary.
