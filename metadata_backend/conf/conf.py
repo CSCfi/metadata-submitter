@@ -35,6 +35,7 @@ import os
 from pathlib import Path
 
 from motor.motor_asyncio import AsyncIOMotorClient
+from ..helpers.logger import LOG
 
 # 1) Set up database client and custom timeouts for spesific parameters.
 # Set custom timeouts and other parameters here so they can be imported to
@@ -53,6 +54,7 @@ def create_db_client() -> AsyncIOMotorClient:
 
     :returns: Coroutine-based Motor client for Mongo operations
     """
+    LOG.debug("initialised DB client")
     return AsyncIOMotorClient(url,
                               connectTimeoutMS=connectTimeout,
                               serverSelectionTimeoutMS=serverTimeout)
