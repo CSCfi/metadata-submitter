@@ -39,7 +39,7 @@ class DatabaseTestCase(AsyncTestCase):
         """Test client is shared across different db_service_objects."""
         foo = DBService("foo", self.client)
         bar = DBService("bar", self.client)
-        self.assertEqual(foo.db_client, bar.db_client)
+        self.assertIs(foo.db_client, bar.db_client)
 
     async def test_create_inserts_data(self):
         """Test that create method works and returns success."""
