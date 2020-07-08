@@ -74,6 +74,7 @@ class BaseOperator(ABC):
             data = await self._format_read_data(schema_type, data_raw)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting file: {error}"
+            LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         return data, self.content_type
 
@@ -95,6 +96,8 @@ class BaseOperator(ABC):
         await self._remove_object_from_db(XMLOperator(db_client),
                                           schema_type,
                                           accession_id)
+        LOG.info(f"removing object with schema {schema_type} from database "
+                 f"and accession id: {accession_id}")
 
     async def _insert_formatted_object_to_db(self, schema_type: str,
                                              data: Dict) -> str:
@@ -108,11 +111,13 @@ class BaseOperator(ABC):
             insert_success = (await self.db_service.create(schema_type, data))
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting file: {error}"
+            LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         if insert_success:
             return data["accessionId"]
         else:
             reason = "Inserting file to database failed for some reason."
+            LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
     async def _remove_object_from_db(self,
@@ -124,11 +129,13 @@ class BaseOperator(ABC):
                                                                accession_id))
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while deleting file: {error}"
+            LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         if delete_success:
             LOG.info(f"{accession_id} successfully deleted from collection")
         else:
             reason = "Deleting for {accession_id} from database failed."
+            LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
     @abstractmethod
@@ -199,15 +206,21 @@ class Operator(BaseOperator):
             cursor = self.db_service.query(schema_type, mongo_query)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting file: {error}"
+            LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         skips = page_size * (page_num - 1)
         cursor.skip(skips).limit(page_size)
         data = await self._format_read_data(schema_type, cursor)
         if not data:
+            LOG.error("could not find any data.")
             raise web.HTTPNotFound
         page_size = len(data) if len(data) != page_size else page_size
         total_objects = await self.db_service.get_count(schema_type,
                                                         mongo_query)
+        LOG.debug(f"DB query: {que}")
+        LOG.info(f"DB query successful for query on {schema_type}"
+                 f"resulted in {total_objects}."
+                 f"Requested was page {page_num} and page size {page_size}.")
         return data, page_num, page_size, total_objects
 
     async def _format_data_to_create_and_add_to_db(self, schema_type: str,
@@ -230,6 +243,7 @@ class Operator(BaseOperator):
         data["dateModified"] = datetime.utcnow()
         if schema_type == "study":
             data["publishDate"] = datetime.utcnow() + relativedelta(months=2)
+        LOG.debug(f"Operator formatted data for {schema_type} to add to DB")
         return await self._insert_formatted_object_to_db(schema_type, data)
 
     def _generate_accession_id(self) -> str:
@@ -238,6 +252,7 @@ class Operator(BaseOperator):
         Will be replaced later with external id generator.
         """
         sequence = ''.join(secrets.choice(string.digits) for i in range(16))
+        LOG.debug("Generated accession ID.")
         return f"EDAG{sequence}"
 
     @auto_reconnect
@@ -315,6 +330,7 @@ class XMLOperator(BaseOperator):
         accession_id = (await Operator(db_client).
                         _format_data_to_create_and_add_to_db(schema_type,
                                                              data_as_json))
+        LOG.debug(f"XMLOperator formatted data for {schema_type} to add to DB")
         return (await self.
                 _insert_formatted_object_to_db(schema_type,
                                                {"accessionId": accession_id,

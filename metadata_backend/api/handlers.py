@@ -15,6 +15,7 @@ from ..conf.conf import schema_types
 from ..helpers.parser import XMLToJSONParser
 from ..helpers.schema_loader import SchemaLoader, SchemaNotFoundException
 from .operators import Operator, XMLOperator
+from ..helpers.logger import LOG
 
 
 class RESTApiHandler:
@@ -29,6 +30,7 @@ class RESTApiHandler:
         """
         types_json = json.dumps([x["description"] for x in
                                  schema_types.values()])
+        LOG.info(f"GET schema types. Retrieved {len(schema_types)} schemas.")
         return web.Response(body=types_json, status=200)
 
     async def get_object(self, req: Request) -> Response:
@@ -44,6 +46,7 @@ class RESTApiHandler:
         schema_type = req.match_info['schema']
         if schema_type not in schema_types.keys():
             reason = f"Theres no schema {schema_type}"
+            LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
         format = req.query.get("format", "json").lower()
         db_client = req.app['db_client']
@@ -52,6 +55,8 @@ class RESTApiHandler:
         data, content_type = await operator.read_metadata_object(schema_type,
                                                                  accession_id)
         data = data if format == "xml" else json.dumps(data)
+        LOG.info(f"GET object with accesssion ID {accession_id}"
+                 f"from schema {schema_type}.")
         return web.Response(body=data, status=200, content_type=content_type)
 
     async def post_object(self, req: Request) -> Response:
@@ -63,6 +68,7 @@ class RESTApiHandler:
         schema_type = req.match_info['schema']
         if schema_type not in schema_types.keys():
             reason = f"Theres no schema {schema_type}"
+            LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
         db_client = req.app['db_client']
         operator: Union[Operator, XMLOperator]
@@ -76,6 +82,8 @@ class RESTApiHandler:
         accession_id = await operator.create_metadata_object(schema_type,
                                                              content)
         body = json.dumps({"accessionId": accession_id})
+        LOG.info(f"POST object with accesssion ID {accession_id}"
+                 f"in schema {schema_type} was successful.")
         return web.Response(body=body, status=201,
                             content_type="application/json")
 
@@ -88,6 +96,7 @@ class RESTApiHandler:
         schema_type = req.match_info['schema']
         if schema_type not in schema_types.keys():
             reason = f"Theres no schema {schema_type}"
+            LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
         format = req.query.get("format", "json").lower()
         if format == "xml":
@@ -101,9 +110,12 @@ class RESTApiHandler:
             except ValueError:
                 reason = (f"{param_name} must a number, now it was "
                           f"{req.query.get(param_name)}")
+                LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
             if param < 1:
-                raise web.HTTPBadRequest(reason=f"{param_name} must over 1")
+                reason = f"{param_name} must over 1"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
             return param
         page = get_page_param("page", 1)
         per_page = get_page_param("per_page", 10)
@@ -122,6 +134,8 @@ class RESTApiHandler:
             },
             "objects": data
         })
+        LOG.info(f"Querying for objects in {schema_type}"
+                 f"resulted in {total_objects} objects")
         return web.Response(body=result, status=200,
                             content_type="application/json")
 
@@ -134,11 +148,14 @@ class RESTApiHandler:
         schema_type = req.match_info['schema']
         if schema_type not in schema_types.keys():
             reason = f"Theres no schema {schema_type}"
+            LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
         accession_id = req.match_info['accessionId']
         db_client = req.app['db_client']
         await Operator(db_client).delete_metadata_object(schema_type,
                                                          accession_id)
+        LOG.info(f"DELETE object with accesssion ID {accession_id}"
+                 f"in schema {schema_type} was successful.")
         return web.Response(status=204)
 
 
@@ -161,10 +178,12 @@ class SubmissionAPIHandler:
 
         if "submission" not in schema_types:
             reason = "There must be a submission.xml file in submission."
+            LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
         if schema_types["submission"] > 1:
             reason = "You should submit only one submission.xml file."
+            LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
         submission_xml = files[0][0]
@@ -178,7 +197,9 @@ class SubmissionAPIHandler:
                                   information for submission action.
                                   Now {action} was provided without any
                                   extra information.""")
+                    LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
+                LOG.debug(f"submission has action {action}")
                 actions[attr["schema"]] = action
         # Go through parsed files and do the actual action
         # Only "add" action is supported for now.
@@ -188,6 +209,7 @@ class SubmissionAPIHandler:
             content_xml = file[0]
             schema_type = file[1]
             if schema_type == "submission":
+                LOG.debug("file has schema of submission type, continuing ...")
                 continue  # No need to use submission xml
             action = actions[schema_type]
             if action == "add":
@@ -197,10 +219,13 @@ class SubmissionAPIHandler:
                         create_metadata_object(schema_type, content_xml),
                     "schema": schema_type
                 })
+                LOG.debug(f"added some content in {schema_type} ...")
             else:
                 reason = f"action {action} is not supported yet"
+                LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
         body = json.dumps(results)
+        LOG.info(f"Processed a submission of {len(results)} actions.")
         return web.Response(body=body, status=201,
                             content_type="application/json")
 
@@ -219,6 +244,7 @@ class SubmissionAPIHandler:
 
         except SchemaNotFoundException as error:
             reason = f"{error} ({schema_type})"
+            LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
         except ParseError as error:
@@ -233,9 +259,12 @@ class SubmissionAPIHandler:
             instance = ElementTree.tostring(error.elem, encoding="unicode")
             body = json.dumps({"isValid": False, "detail":
                               {"reason": reason, "instance": instance}})
+            LOG.info("The submitted file is not valid for"
+                     f"{schema_type} schema.")
             return web.Response(body=body,
                                 content_type="application/json")
         body = json.dumps({"isValid": True})
+        LOG.info(f"The submitted file is valid for {schema_type} schema.")
         return web.Response(body=body, content_type="application/json")
 
 
@@ -254,6 +283,7 @@ class StaticHandler:
         :returns: Response containing frontpage static file
         """
         index_path = self.path / "index.html"
+        LOG.debug("Serve Frontend SPA.")
         return Response(body=index_path.read_bytes(),
                         content_type="text/html")
 
@@ -265,6 +295,7 @@ class StaticHandler:
         mimetypes.init()
         mimetypes.types_map[".js"] = "application/javascript"
         mimetypes.types_map[".js.map"] = "application/json"
+        LOG.debug("static paths for SPA set.")
         return self.path / "static"
 
 
@@ -285,6 +316,7 @@ async def _extract_xml_upload(req: Request, extract_one: bool = False
         reader = await req.multipart()
     except AssertionError:
         reason = "Request does not have valid multipart/form content"
+        LOG.error(reason)
         raise web.HTTPBadRequest(reason=reason)
     while True:
         part = await reader.next()
@@ -295,10 +327,12 @@ async def _extract_xml_upload(req: Request, extract_one: bool = False
             break
         if extract_one and files:
             reason = "Only one file can be sent to this endpoint at a time."
+            LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         schema_type = part.name.lower()
         if schema_type not in schema_types:
             reason = f"Theres no schema {schema_type}"
+            LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
         data = []
         while True:
@@ -308,4 +342,5 @@ async def _extract_xml_upload(req: Request, extract_one: bool = False
             data.append(chunk)
         xml_content = ''.join(x.decode('UTF-8') for x in data)
         files.append((xml_content, schema_type))
+        LOG.debug(f"processed file in {schema_type}")
     return sorted(files, key=lambda x: schema_types[x[1]]["priority"])
