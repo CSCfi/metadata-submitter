@@ -81,11 +81,11 @@ class TestOperators(AsyncTestCase):
         read_data, c_type = await operator.read_metadata_object("sample",
                                                                 "EGA123456")
         operator.db_service.read.assert_called_once_with("sample", "EGA123456")
-        assert c_type == "application/json"
-        assert read_data == {"dateCreated": "2020-06-14T00:00:00",
-                             "dateModified": "2020-06-14T00:00:00",
-                             "accessionId": "EGA123456",
-                             "foo": "bar"}
+        self.assertEqual(c_type, "application/json")
+        self.assertEqual(read_data, {"dateCreated": "2020-06-14T00:00:00",
+                                     "dateModified": "2020-06-14T00:00:00",
+                                     "accessionId": "EGA123456",
+                                     "foo": "bar"})
 
     async def test_reading_metadata_works_with_xml(self):
         """Test xml is read from db correctly."""
@@ -98,8 +98,8 @@ class TestOperators(AsyncTestCase):
         r_data, c_type = await operator.read_metadata_object("sample",
                                                              "EGA123456")
         operator.db_service.read.assert_called_once_with("sample", "EGA123456")
-        assert c_type == "text/xml"
-        assert r_data == data["content"]
+        self.assertEqual(c_type, "text/xml")
+        self.assertEqual(r_data, data["content"])
 
     async def test_reading_with_non_valid_id_raises_error(self):
         """Test HTTPNotFound is raised."""
@@ -127,9 +127,9 @@ class TestOperators(AsyncTestCase):
             "dateModified": datetime.datetime(2020, 6, 14, 0, 0)
         }
         result = Operator(self.client)._format_single_dict("study", study_test)
-        assert result["publishDate"] == "2020-06-14T00:00:00"
-        assert result["dateCreated"] == "2020-06-14T00:00:00"
-        assert result["dateModified"] == "2020-06-14T00:00:00"
+        self.assertEqual(result["publishDate"], "2020-06-14T00:00:00")
+        self.assertEqual(result["dateCreated"], "2020-06-14T00:00:00")
+        self.assertEqual(result["dateModified"], "2020-06-14T00:00:00")
         with self.assertRaises(KeyError):
             result["_Id"]
 
@@ -139,7 +139,7 @@ class TestOperators(AsyncTestCase):
         operator.db_service.create.return_value = futurized(True)
         accession = await operator.create_metadata_object("study", {})
         operator.db_service.create.assert_called_once()
-        assert accession == self.accession_id
+        self.assertEqual(accession, self.accession_id)
 
     async def test_xml_create_passes_and_returns_accessionId(self):
         """Test create method for xml works. Patch json related calls."""
@@ -153,7 +153,7 @@ class TestOperators(AsyncTestCase):
                 accession = await operator.create_metadata_object(
                     "study", "<TEST></TEST>")
         operator.db_service.create.assert_called_once()
-        assert accession == self.accession_id
+        self.assertEqual(accession, self.accession_id)
 
     async def test_correct_data_is_set_to_json_when_creating(self):
         """Test operator creates object and adds necessary info."""
@@ -170,7 +170,7 @@ class TestOperators(AsyncTestCase):
                               "dateCreated": datetime.datetime(2020, 4, 14),
                               "dateModified": datetime.datetime(2020, 4, 14),
                               "publishDate": datetime.datetime(2020, 6, 14)})
-            assert acc == self.accession_id
+            self.assertEqual(acc, self.accession_id)
 
     async def test_correct_data_is_set_to_xml_when_creating(self):
         """Test XMLoperator creates object and adds necessary info."""
@@ -191,7 +191,7 @@ class TestOperators(AsyncTestCase):
                     m_insert.assert_called_once_with("study", {
                         "accessionId": self.accession_id,
                         "content": xml_data})
-                    assert acc == self.accession_id
+                    self.assertEqual(acc, self.accession_id)
 
     async def test_deleting_metadata_deletes_json_and_xml(self):
         """Test xml is read from db correctly."""
@@ -199,7 +199,7 @@ class TestOperators(AsyncTestCase):
         operator.db_service.db_client = self.client
         operator.db_service.delete.return_value = futurized(True)
         await operator.delete_metadata_object("sample", "EGA123456")
-        assert operator.db_service.delete.call_count == 2
+        self.assertEqual(operator.db_service.delete.call_count, 2)
         operator.db_service.delete.assert_called_with("sample", "EGA123456")
 
     async def test_working_query_params_are_passed_to_db_query(self):
@@ -273,12 +273,12 @@ class TestOperators(AsyncTestCase):
         parsed, page_num, page_size, total_objects = (
             await operator.query_metadata_database("sample", query, 1, 10))
         for doc in parsed:
-            assert doc["dateCreated"] == "2020-06-14T00:00:00"
-            assert doc["dateModified"] == "2020-06-14T00:00:00"
-            assert doc["accessionId"] == "EGA123456"
-        assert page_num == 1
-        assert page_size == 2
-        assert total_objects == 100
+            self.assertEqual(doc["dateCreated"], "2020-06-14T00:00:00")
+            self.assertEqual(doc["dateModified"], "2020-06-14T00:00:00")
+            self.assertEqual(doc["accessionId"], "EGA123456")
+        self.assertEqual(page_num, 1)
+        self.assertEqual(page_size, 2)
+        self.assertEqual(total_objects, 100)
 
     async def test_non_empty_query_result_raises_notfound(self):
         """Test that 404 is raised with empty query result."""
@@ -299,8 +299,8 @@ class TestOperators(AsyncTestCase):
         with patch("metadata_backend.api.operators.Operator._format_read_data",
                    return_value=futurized(data)):
             await operator.query_metadata_database("sample", {}, 3, 50)
-            assert cursor._skip == 100
-            assert cursor._limit == 50
+            self.assertEqual(cursor._skip, 100)
+            self.assertEqual(cursor._limit, 50)
 
 
 if __name__ == '__main__':
