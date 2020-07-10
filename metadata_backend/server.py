@@ -6,7 +6,7 @@ import uvloop
 from aiohttp import web
 
 from .api.handlers import RESTApiHandler, StaticHandler, SubmissionAPIHandler
-from .api.middlewares import error_middleware
+from .api.middlewares import error_middleware, jwt_middleware
 from .conf.conf import create_db_client, frontend_static_files
 from .helpers.logger import LOG
 
@@ -23,7 +23,8 @@ async def init() -> web.Application:
     Note:: if using variable resources (such as {schema}), add
     specific ones on top of more generic ones.
     """
-    server = web.Application(middlewares=[error_middleware()])
+    server = web.Application(middlewares=[error_middleware(),
+                                          jwt_middleware()])
     rest_handler = RESTApiHandler()
     submission_handler = SubmissionAPIHandler()
     api_routes = [
