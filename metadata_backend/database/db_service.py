@@ -1,6 +1,4 @@
 """Services that handle database connections. Implemented with MongoDB."""
-
-import asyncio
 from functools import wraps
 from typing import Any, Callable, Dict
 
@@ -24,21 +22,18 @@ def auto_reconnect(db_func: Callable) -> Callable:
         :raises ConnectionFailure after preset amount of attempts
         """
         default_timeout = int(serverTimeout // 1000)
-        wait_time = default_timeout
-        max_attempts = 5
+        max_attempts = 6
         for attempt in range(1, max_attempts + 1):
             try:
                 return await db_func(*args, **kwargs)
             except AutoReconnect:
-                if attempt == 5:
+                if attempt == max_attempts:
                     message = (f"Connection to database failed after {attempt}"
                                "tries")
                     raise ConnectionFailure(message=message)
                 LOG.error("Connection not successful, trying to reconnect."
                           f"Reconnection attempt number {attempt}, waiting "
-                          f" for {default_timeout + wait_time} seconds.")
-                await asyncio.sleep(wait_time)
-                wait_time += default_timeout
+                          f" for {default_timeout} seconds.")
                 continue
     return retry
 

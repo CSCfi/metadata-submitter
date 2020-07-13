@@ -122,4 +122,4 @@ class DatabaseTestCase(AsyncTestCase):
         with patch("metadata_backend.database.db_service.serverTimeout", 0):
             with self.assertRaises(ConnectionFailure):
                 await self.test_service.create("test", self.data_stub)
-        self.assertEqual(self.collection.insert_one.call_count, 5)
+        self.assertEqual(self.collection.insert_one.call_count, 6)
