@@ -45,8 +45,8 @@ mongo_user = os.getenv("MONGO_INITDB_ROOT_USERNAME", "admin")
 mongo_password = os.getenv("MONGO_INITDB_ROOT_PASSWORD", "admin")
 mongo_host = os.getenv("MONGODB_HOST", "localhost:27017")
 url = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}"
-serverTimeout = 10000
-connectTimeout = 10000
+serverTimeout = 15000
+connectTimeout = 15000
 
 
 def create_db_client() -> AsyncIOMotorClient:
