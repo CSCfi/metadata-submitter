@@ -41,6 +41,58 @@ class MetadataXMLConverter(XMLSchemaConverter):
             namespaces, dict_class, list_class, **kwargs
         )
 
+    def _to_camel(self, name: str) -> str:
+        """Convert underscore char notation to CamelCase."""
+        _under_regex = re.compile(r'_([a-z])')
+        return _under_regex.sub(lambda x: x.group(1).upper(), name)
+
+    def _flatten(self, data: Any) -> Union[Dict, List, str, None]:
+        links = ['studyLinks', 'sampleLinks', 'runlinks',
+                 'experimentLinks', 'analysisLinks', 'projectLinks',
+                 'policyLinks', 'dacLinks', 'datasetLinks',
+                 'assemblyLinks', 'submissionLinks']
+
+        children = self.dict()
+        for key, value, _ in self.map_content(data.content):
+            key = self._to_camel(key.lower())
+
+            # we flatten the attributes structure into an list of dict
+            if "Attributes" in key and len(value) == 1:
+                attrs = list(value.values())
+                children[key] = (attrs[0] if isinstance(attrs[0], list)
+                                 else attrs)
+                continue
+
+            # we flatten links and group them together in a list
+            if key in links and len(value) == 1:
+                grp = defaultdict(list)
+                if isinstance(value[key[:-1]], dict):
+                    k = list(value[key[:-1]].keys())[0]
+                    grp[k] = [it for it in value[key[:-1]].values()]
+                else:
+                    for item in value[key[:-1]]:
+                        for k, v in item.items():
+                            grp[k].append(v)
+
+                children[key] = grp
+                continue
+
+            value = self.list() if value is None else value
+            try:
+                children[key].append(value)
+            except KeyError:
+                if isinstance(value, (self.list, list)) and value:
+                    children[key] = self.list([value])
+                elif (isinstance(value, (self.dict, dict))
+                        and len(value) == 1 and {} in value.values()):
+                    children[key] = list(value.keys())[0]
+                else:
+                    children[key] = value
+            except AttributeError:
+                children[key] = self.list([children[key], value])
+
+        return children
+
     @property
     def lossy(self) -> bool:
         """Define that converter is lossy, xml structure can't be restored."""
@@ -69,17 +121,6 @@ class MetadataXMLConverter(XMLSchemaConverter):
           studyAttributes, experimentAttributes), dictionary is replaced with
           its children, which is a list of those attributes.
         """
-
-        def _to_camel(name: str) -> str:
-            """Convert underscore char notation to CamelCase."""
-            _under_regex = re.compile(r'_([a-z])')
-            return _under_regex.sub(lambda x: x.group(1).upper(), name)
-
-        links = ['studyLinks', 'sampleLinks', 'runlinks',
-                 'experimentLinks', 'analysisLinks', 'projectLinks',
-                 'policyLinks', 'dacLinks', 'datasetLinks',
-                 'assemblyLinks', 'submissionLinks']
-
         xsd_type = xsd_type or xsd_element.type
         if xsd_type.simple_type is not None:
             children = (data.text if data.text is not None
@@ -87,54 +128,21 @@ class MetadataXMLConverter(XMLSchemaConverter):
             if isinstance(children, str):
                 children = " ".join(children.split())
         else:
-            children = self.dict()
-            for key, value, _ in self.map_content(data.content):
-                key = _to_camel(key.lower())
-                if "Attributes" in key and len(value) == 1:
-                    attrs = list(value.values())
-                    children[key] = (attrs[0] if isinstance(attrs[0], list)
-                                     else attrs)
-                    continue
-                if key in links and len(value) == 1:
-                    grp = defaultdict(list)
-                    if isinstance(value[key[:-1]], dict):
-                        k = list(value[key[:-1]].keys())[0]
-                        grp[k] = [it for it in value[key[:-1]].values()]
-                    else:
-                        for item in value[key[:-1]]:
-                            for k, v in item.items():
-                                grp[k].append(v)
-
-                    children[key] = grp
-                    continue
-
-                value = self.list() if value is None else value
-                try:
-                    children[key].append(value)
-                except KeyError:
-                    if isinstance(value, (self.list, list)) and value:
-                        children[key] = self.list([value])
-                    elif (isinstance(value, (self.dict, dict))
-                          and len(value) == 1 and {} in value.values()):
-                        children[key] = list(value.keys())[0]
-                    else:
-                        children[key] = value
-                except AttributeError:
-                    children[key] = self.list([children[key], value])
+            children = self._flatten(data)
 
         if data.attributes:
-            tmp_dict = self.dict((_to_camel(key.lower()), value) for key, value
-                                 in self.map_attributes(data.attributes))
-            if "accession" in tmp_dict:
-                tmp_dict["accessionId"] = tmp_dict.pop("accession")
+            tmp = self.dict((self._to_camel(key.lower()), value) for key, value
+                            in self.map_attributes(data.attributes))
+            if "accession" in tmp:
+                tmp["accessionId"] = tmp.pop("accession")
             if children is not None:
                 if isinstance(children, dict):
                     for key, value in children.items():
                         value = value if value != {} else "true"
-                        tmp_dict[key] = value
+                        tmp[key] = value
                 else:
-                    tmp_dict["value"] = children
-            return self.dict(tmp_dict)
+                    tmp["value"] = children
+            return self.dict(tmp)
         else:
             return children
 
