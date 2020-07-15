@@ -253,8 +253,8 @@ class SubmissionAPIHandler:
 
         except ParseError as error:
             reason = str(error).split(':')[0]
-            location = (str(error).split(':')[1])[1:]
-            full_reason = f"Faulty XML file was given, {reason} at {location}"
+            position = (str(error).split(':')[1])[1:]
+            full_reason = f"Faulty XML file was given, {reason} at {position}"
             # Manually find instance element
             lines = StringIO(xml_content).readlines()
             line = lines[error.position[0] - 1]  # line of instance
@@ -267,13 +267,14 @@ class SubmissionAPIHandler:
                                 content_type="application/json")
 
         except XMLSchemaValidationError as error:
-            # Parsing reason and instance from the validation error message
+            # Parse reason and instance from the validation error message
             reason = error.reason
+            # TODO: Find position (line no.) of error and add to end of reason
             instance = ElementTree.tostring(error.elem, encoding="unicode")
             # Replace element address in reason with instance element
             if '<' and '>' in reason:
-                instance = ''.join((instance.split('>')[0], '>'))
-                reason = re.sub("<[^>]*>", instance + ' ', reason)
+                instance_parent = ''.join((instance.split('>')[0], '>'))
+                reason = re.sub("<[^>]*>", instance_parent + ' ', reason)
 
             body = json.dumps({"isValid": False, "detail":
                               {"reason": reason, "instance": instance}})
