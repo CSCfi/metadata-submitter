@@ -68,11 +68,11 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 grp = defaultdict(list)
                 if isinstance(value[key[:-1]], dict):
                     k = list(value[key[:-1]].keys())[0]
-                    grp[k] = [it for it in value[key[:-1]].values()]
+                    grp[f"{k}s"] = [it for it in value[key[:-1]].values()]
                 else:
                     for item in value[key[:-1]]:
                         for k, v in item.items():
-                            grp[k].append(v)
+                            grp[f"{k}s"].append(v)
 
                 children[key] = grp
                 continue
