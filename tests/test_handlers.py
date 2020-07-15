@@ -268,7 +268,8 @@ class HandlersTestCase(AioHTTPTestCase):
         response = await self.client.post("/validate", data=data)
         resp_dict = await response.json()
         self.assertEqual(response.status, 200)
-        self.assertIn("Faulty XML file was given", resp_dict['detail'])
+        self.assertIn("Faulty XML file was given.",
+                      resp_dict['detail']['reason'])
 
     @unittest_run_loop
     async def test_validation_fails_for_invalid_xml(self):

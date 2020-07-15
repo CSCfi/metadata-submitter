@@ -2,6 +2,7 @@
 import json
 import mimetypes
 from urllib.error import URLError
+import re
 from collections import Counter
 from math import ceil
 from pathlib import Path
@@ -250,8 +251,12 @@ class SubmissionAPIHandler:
             raise web.HTTPBadRequest(reason=reason)
 
         except ParseError as error:
-            detail = f"Faulty XML file was given.\nERROR: {error}"
-            body = json.dumps({"isValid": False, "detail": detail})
+            e = str(error)
+            reason = f"Faulty XML file was given, {e.split(':')[0]}"
+            instance = e.split(':')[1]
+            body = json.dumps({"isValid": False, "detail":
+                              {"reason": reason, "instance": instance}})
+            LOG.info("Submitted file does not not contain valid XML syntax.")
             return web.Response(body=body,
                                 content_type="application/json")
 
@@ -259,10 +264,13 @@ class SubmissionAPIHandler:
             # Parsing reason and instance from the validation error message
             reason = error.reason
             instance = ElementTree.tostring(error.elem, encoding="unicode")
+            if '<' and '>' in reason:
+                instance = ''.join((instance.split('>')[0], '>'))
+                reason = re.sub("<[^>]*>", instance + ' ', reason)
             body = json.dumps({"isValid": False, "detail":
                               {"reason": reason, "instance": instance}})
-            LOG.info("The submitted file is not valid for"
-                     f"{schema_type} schema.")
+            LOG.info(f"Submitted file is not valid against {schema_type} "
+                     "schema.")
             return web.Response(body=body,
                                 content_type="application/json")
         except URLError as error:
@@ -271,7 +279,7 @@ class SubmissionAPIHandler:
             raise web.HTTPBadRequest(reason=reason)
 
         body = json.dumps({"isValid": True})
-        LOG.info(f"The submitted file is valid for {schema_type} schema.")
+        LOG.info(f"Submitted file is valid against {schema_type} schema.")
         return web.Response(body=body, content_type="application/json")
 
 
