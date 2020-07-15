@@ -46,7 +46,7 @@ class RESTApiHandler:
         accession_id = req.match_info['accessionId']
         schema_type = req.match_info['schema']
         if schema_type not in schema_types.keys():
-            reason = f"Theres no schema {schema_type}"
+            reason = f"Specified schema {schema_type} was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
         format = req.query.get("format", "json").lower()
@@ -68,7 +68,7 @@ class RESTApiHandler:
         """
         schema_type = req.match_info['schema']
         if schema_type not in schema_types.keys():
-            reason = f"Theres no schema {schema_type}"
+            reason = f"Specified schema {schema_type} was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
         db_client = req.app['db_client']
@@ -96,7 +96,7 @@ class RESTApiHandler:
         """
         schema_type = req.match_info['schema']
         if schema_type not in schema_types.keys():
-            reason = f"Theres no schema {schema_type}"
+            reason = f"Specified schema {schema_type} was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
         format = req.query.get("format", "json").lower()
@@ -148,7 +148,7 @@ class RESTApiHandler:
         """
         schema_type = req.match_info['schema']
         if schema_type not in schema_types.keys():
-            reason = f"Theres no schema {schema_type}"
+            reason = f"Specified schema {schema_type} was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
         accession_id = req.match_info['accessionId']
@@ -338,7 +338,7 @@ async def _extract_xml_upload(req: Request, extract_one: bool = False
             raise web.HTTPBadRequest(reason=reason)
         schema_type = part.name.lower()
         if schema_type not in schema_types:
-            reason = f"Theres no schema {schema_type}"
+            reason = f"Specified schema {schema_type} was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
         data = []

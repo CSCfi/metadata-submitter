@@ -297,22 +297,22 @@ class HandlersTestCase(AioHTTPTestCase):
         get_resp = await self.client.get("/objects/bad_scehma_name/some_id")
         self.assertEqual(get_resp.status, 404)
         json_get_resp = await get_resp.json()
-        self.assertIn("Theres no schema", json_get_resp['detail'])
+        self.assertIn("Specified schema", json_get_resp['detail'])
 
         post_rep = await self.client.post("/objects/bad_scehma_name")
         self.assertEqual(post_rep.status, 404)
         post_json_rep = await post_rep.json()
-        self.assertIn("Theres no schema", post_json_rep['detail'])
+        self.assertIn("Specified schema", post_json_rep['detail'])
 
         get_resp = await self.client.get("/objects/bad_scehma_name")
         self.assertEqual(get_resp.status, 404)
         json_get_resp = await get_resp.json()
-        self.assertIn("Theres no schema", json_get_resp['detail'])
+        self.assertIn("Specified schema", json_get_resp['detail'])
 
         get_resp = await self.client.delete("/objects/bad_scehma_name/some_id")
         self.assertEqual(get_resp.status, 404)
         json_get_resp = await get_resp.json()
-        self.assertIn("Theres no schema", json_get_resp['detail'])
+        self.assertIn("Specified schema", json_get_resp['detail'])
 
     @unittest_run_loop
     async def test_query_with_invalid_pagination_params(self):
