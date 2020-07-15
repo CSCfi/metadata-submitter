@@ -75,7 +75,6 @@ def jwt_middleware() -> Callable:
             if not re.match('Bearer', scheme):
                 raise web.HTTPUnauthorized(reason="Invalid token scheme, "
                                                   "Bearer required.")
-
             if token is None:
                 raise web.HTTPUnauthorized(reason='Token cannot be empty.')
 

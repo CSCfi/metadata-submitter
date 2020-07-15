@@ -43,8 +43,8 @@ class MiddlewaresTestCase(AioHTTPTestCase):
         self.assertIn("Not Found", resp_dict['title'])
 
     @unittest_run_loop
-    async def test_bad_jwt(self):
-        """Test bad jwt (expired)."""
+    async def test_authentication_fails_with_expired_jwt(self):
+        """Test that JWT does not authenticate if token has expired."""
         # Mock token
         header = {'alg': "HS256", 'type': "JWT"}
         payload = {'sub': "test", 'name': "tester", 'exp': 0}
@@ -54,7 +54,7 @@ class MiddlewaresTestCase(AioHTTPTestCase):
             "k": "GawgguFyGrWKav7AX4VKUg"
         }
         token = jwt.encode(header, payload, pem).decode('utf-8')
-        # Set pem as environment variable for the sake of the test
+        # Set pem as environment variable for the duration of the test
         os.environ['PUBLIC_KEY'] = json.dumps(pem)
         data = FormData()
         # This data would otherwise cause 400 error if authentication passed
