@@ -62,7 +62,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 children[key] = (attrs[0] if isinstance(attrs[0], list)
                                  else attrs)
                 continue
-            
+
             # no need to have that attribute
             if "studyType" in key:
                 children[key] = value['existingStudyType']
