@@ -62,6 +62,11 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 children[key] = (attrs[0] if isinstance(attrs[0], list)
                                  else attrs)
                 continue
+            
+            # no need to have that attribute
+            if "studyType" in key:
+                children[key] = value['existingStudyType']
+                continue
 
             # we flatten links and group them together in a list
             if key in links and len(value) == 1:
