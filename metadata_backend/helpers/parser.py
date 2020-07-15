@@ -10,6 +10,7 @@ from xmlschema import (XMLSchema, XMLSchemaConverter, XMLSchemaException,
                        XsdElement, XsdType)
 
 from .schema_loader import SchemaLoader, SchemaNotFoundException
+from .logger import LOG
 
 
 class MetadataXMLConverter(XMLSchemaConverter):
@@ -148,6 +149,7 @@ class XMLToJSONParser:
             schema = loader.get_schema(schema_type)
         except (SchemaNotFoundException, XMLSchemaException) as error:
             reason = f"{error} {schema_type}"
+            LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         return schema
 
@@ -165,6 +167,7 @@ class XMLToJSONParser:
         except (ParseError, XMLSchemaException):
             reason = ("Current request could not be processed"
                       " as the submitted file was not valid")
+            LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         except URLError as error:
             reason = f"Faulty file was provided. {error.reason}."
