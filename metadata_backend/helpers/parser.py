@@ -11,6 +11,7 @@ from xmlschema import (XMLSchema, XMLSchemaConverter, XMLSchemaException,
 
 from .schema_loader import SchemaLoader, SchemaNotFoundException
 from .logger import LOG
+from collections import defaultdict
 
 
 class MetadataXMLConverter(XMLSchemaConverter):
@@ -49,7 +50,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
                        data: Any,
                        xsd_element: XsdElement,
                        xsd_type: XsdType = None,
-                       level: int = 0) -> Union[Dict, List, str]:
+                       level: int = 0) -> Union[Dict, List, str, None]:
         """Decode XML to JSON.
 
         Decoding strategy:
@@ -59,7 +60,6 @@ class MetadataXMLConverter(XMLSchemaConverter):
           when there are multiple children with same name - then to list.
         - All "accession" keys are converted to "accesionId", key used by
           this program
-
         Corner cases:
         - If possible, self-closing xml tag is elevated as an attribute to its
           parent, otherwise "true" is added as its value.
@@ -69,10 +69,16 @@ class MetadataXMLConverter(XMLSchemaConverter):
           studyAttributes, experimentAttributes), dictionary is replaced with
           its children, which is a list of those attributes.
         """
+
         def _to_camel(name: str) -> str:
             """Convert underscore char notation to CamelCase."""
             _under_regex = re.compile(r'_([a-z])')
             return _under_regex.sub(lambda x: x.group(1).upper(), name)
+
+        links = ['studyLinks', 'sampleLinks', 'runlinks',
+                 'experimentLinks', 'analysisLinks', 'projectLinks',
+                 'policyLinks', 'dacLinks', 'datasetLinks',
+                 'assemblyLinks', 'submissionLinks']
 
         xsd_type = xsd_type or xsd_element.type
         if xsd_type.simple_type is not None:
@@ -89,6 +95,19 @@ class MetadataXMLConverter(XMLSchemaConverter):
                     children[key] = (attrs[0] if isinstance(attrs[0], list)
                                      else attrs)
                     continue
+                if key in links and len(value) == 1:
+                    grp = defaultdict(list)
+                    if isinstance(value[key[:-1]], dict):
+                        k = list(value[key[:-1]].keys())[0]
+                        grp[k] = [it for it in value[key[:-1]].values()]
+                    else:
+                        for item in value[key[:-1]]:
+                            for k, v in item.items():
+                                grp[k].append(v)
+
+                    children[key] = grp
+                    continue
+
                 value = self.list() if value is None else value
                 try:
                     children[key].append(value)
@@ -102,6 +121,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
                         children[key] = value
                 except AttributeError:
                     children[key] = self.list([children[key], value])
+
         if data.attributes:
             tmp_dict = self.dict((_to_camel(key.lower()), value) for key, value
                                  in self.map_attributes(data.attributes))
