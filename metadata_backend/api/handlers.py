@@ -1,6 +1,7 @@
 """Handle HTTP methods for server."""
 import json
 import mimetypes
+from urllib.error import URLError
 from collections import Counter
 from math import ceil
 from pathlib import Path
@@ -238,6 +239,7 @@ class SubmissionAPIHandler:
         """
         files = await _extract_xml_upload(req, extract_one=True)
         xml_content, schema_type = files[0]
+
         try:
             schema = SchemaLoader().get_schema(schema_type)
             schema.validate(xml_content)
@@ -263,6 +265,11 @@ class SubmissionAPIHandler:
                      f"{schema_type} schema.")
             return web.Response(body=body,
                                 content_type="application/json")
+        except URLError as error:
+            reason = f"Faulty file was provided. {error.reason}."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
         body = json.dumps({"isValid": True})
         LOG.info(f"The submitted file is valid for {schema_type} schema.")
         return web.Response(body=body, content_type="application/json")
