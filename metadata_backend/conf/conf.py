@@ -73,7 +73,7 @@ query_map = {
     "centerName": "centerName",
     "name": "name",
     "studyTitle": "descriptor.studyTitle",
-    "studyType": "descriptor.studyType.existingStudyType",
+    "studyType": "descriptor.studyType",
     "studyAbstract": "descriptor.studyAbstract",
     "studyAttributes": {"base": "studyAttributes",
                         "keys": ["tag", "value"]},
