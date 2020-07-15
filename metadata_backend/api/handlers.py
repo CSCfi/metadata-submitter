@@ -4,6 +4,7 @@ import mimetypes
 from urllib.error import URLError
 import re
 from collections import Counter
+from io import StringIO
 from math import ceil
 from pathlib import Path
 from typing import Dict, List, Tuple, Union, cast
@@ -251,11 +252,16 @@ class SubmissionAPIHandler:
             raise web.HTTPBadRequest(reason=reason)
 
         except ParseError as error:
-            e = str(error)
-            reason = f"Faulty XML file was given, {e.split(':')[0]}"
-            instance = e.split(':')[1]
+            reason = str(error).split(':')[0]
+            location = (str(error).split(':')[1])[1:]
+            full_reason = f"Faulty XML file was given, {reason} at {location}"
+            # Manually find instance element
+            lines = StringIO(xml_content).readlines()
+            line = lines[error.position[0] - 1]  # line of instance
+            instance = re.sub(r'^.*?<', '<', line)  # strip whitespaces
+
             body = json.dumps({"isValid": False, "detail":
-                              {"reason": reason, "instance": instance}})
+                              {"reason": full_reason, "instance": instance}})
             LOG.info("Submitted file does not not contain valid XML syntax.")
             return web.Response(body=body,
                                 content_type="application/json")
@@ -264,15 +270,18 @@ class SubmissionAPIHandler:
             # Parsing reason and instance from the validation error message
             reason = error.reason
             instance = ElementTree.tostring(error.elem, encoding="unicode")
+            # Replace element address in reason with instance element
             if '<' and '>' in reason:
                 instance = ''.join((instance.split('>')[0], '>'))
                 reason = re.sub("<[^>]*>", instance + ' ', reason)
+
             body = json.dumps({"isValid": False, "detail":
                               {"reason": reason, "instance": instance}})
             LOG.info(f"Submitted file is not valid against {schema_type} "
                      "schema.")
             return web.Response(body=body,
                                 content_type="application/json")
+
         except URLError as error:
             reason = f"Faulty file was provided. {error.reason}."
             LOG.error(reason)
