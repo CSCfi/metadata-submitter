@@ -1,6 +1,7 @@
 """Tool to parse XML files to JSON."""
 
 import re
+from urllib.error import URLError
 from typing import Any, Dict, List, Union
 from xmlschema.etree import ParseError
 
@@ -164,4 +165,8 @@ class XMLToJSONParser:
         except (ParseError, XMLSchemaException):
             reason = ("Current request could not be processed"
                       " as the submitted file was not valid")
+            raise web.HTTPBadRequest(reason=reason)
+        except URLError as error:
+            reason = f"Faulty file was provided. {error.reason}."
+            LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
