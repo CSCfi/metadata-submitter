@@ -30,8 +30,8 @@ class ParserTestCase(unittest.TestCase):
         study_json = self.parser.parse("study", study_xml)
         self.assertIn("Highly integrated epigenome maps in Arabidopsis",
                       study_json['descriptor']['studyTitle'])
-        self.assertIn("18423832", study_json['studyLinks']['studyLink'][
-            'xrefLink']['id'])
+        self.assertIn("18423832", study_json['studyLinks']['xrefLinks']
+                      [0]['id'])
 
     def test_sample_is_parsed(self):
         """Test that sample is parsed correctly and accessionId is set.
