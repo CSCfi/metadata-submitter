@@ -26,7 +26,7 @@ class RESTApiHandler:
 
         Basically returns which objects user can submit and query for.
         :param req: GET Request
-        :returns JSON list of schema types
+        :returns: JSON list of schema types
         """
         types_json = json.dumps([x["description"] for x in
                                  schema_types.values()])

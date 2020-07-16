@@ -79,3 +79,9 @@ class ParserTestCase(unittest.TestCase):
         """Test 400 is returned when schema."""
         with self.assertRaises(web.HTTPBadRequest):
             self.parser._load_schema("None")
+
+    def test_error_raised_when_input_xml_not_valid_xml(self):
+        """Give parser xml with broken syntax, should fail."""
+        study_xml = self.load_xml_from_file("study", "SRP000539_invalid.xml")
+        with self.assertRaises(web.HTTPBadRequest):
+            self.parser.parse("study", study_xml)
