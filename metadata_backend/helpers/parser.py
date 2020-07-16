@@ -7,7 +7,7 @@ from aiohttp import web
 from xmlschema import (XMLSchema, XMLSchemaConverter, XMLSchemaException,
                        XsdElement, XsdType)
 
-from .schema_loader import SchemaLoader, SchemaNotFoundException
+from .schema_loader import XMLSchemaLoader, SchemaNotFoundException
 from .logger import LOG
 from .validator import XMLValidator
 from collections import defaultdict
@@ -190,7 +190,7 @@ class XMLToJSONParser:
         :returns: Schema instance matching the given schema type
         :raises: HTTPBadRequest if schema wasn't found
         """
-        loader = SchemaLoader()
+        loader = XMLSchemaLoader()
         try:
             schema = loader.get_schema(schema_type)
         except (SchemaNotFoundException, XMLSchemaException) as error:

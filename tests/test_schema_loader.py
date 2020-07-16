@@ -3,24 +3,24 @@ import unittest
 
 import xmlschema
 
-from metadata_backend.helpers.schema_loader import (SchemaLoader,
+from metadata_backend.helpers.schema_loader import (XMLSchemaLoader,
                                                     SchemaNotFoundException)
 
 
-class TestSchemaLoader(unittest.TestCase):
+class TestXMLSchemaLoader(unittest.TestCase):
     """Test schema loader."""
 
-    def test_schemaLoader_returns_xmlschema_object(self):
-        """Test Schemaloader return type is correct."""
+    def test_XMLSchemaLoader_returns_xmlschema_object(self):
+        """Test XMLSchemaLoader return type is correct."""
         schema_name = "submission"
-        schemaloader = SchemaLoader()
+        schemaloader = XMLSchemaLoader()
         schema = schemaloader.get_schema(schema_name)
         self.assertIs(type(schema), xmlschema.XMLSchema)
 
-    def test_schemaLoader_raises_error_with_nonexistent_schema(self):
+    def test_XMLSchemaLoader_raises_error_with_nonexistent_schema(self):
         """Test non-existent schemas is reported as error."""
         schema_name = "NULL"
-        schemaloader = SchemaLoader()
+        schemaloader = XMLSchemaLoader()
         self.assertRaises(SchemaNotFoundException, schemaloader.get_schema,
                           schema_name)
 

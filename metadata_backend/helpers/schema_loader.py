@@ -19,7 +19,7 @@ class SchemaNotFoundException(Exception):
         Exception.__init__(self, "There is no xsd file for given schema.")
 
 
-class SchemaLoader:
+class XMLSchemaLoader:
     """Loader implementation."""
 
     def __init__(self) -> None:
@@ -39,7 +39,7 @@ class SchemaLoader:
         schema_type = schema_type.lower()
         schema_file = None
         for file in [x for x in self.path.iterdir()]:
-            if schema_type in file.name:
+            if schema_type in file.name and file.name.endswith("xsd"):
                 with file.open() as f:
                     schema_file = f.read()
         if not schema_file:
