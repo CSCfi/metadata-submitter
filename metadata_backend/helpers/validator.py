@@ -16,13 +16,22 @@ class XMLValidator:
     """Validator implementation."""
 
     def __init__(self, schema: XMLSchema, xml: str) -> None:
-        """Variables."""
+        """Set Variables and initiate validation.
+
+        :param schema: Schema to be used
+        :param content: Content of XML file to be validated
+        """
         self.schema = schema
         self.xml_content = xml
         self.resp_body = self.get_validation()
+        self.xmlIsValid = self.isValid()
 
     def get_validation(self) -> str:
-        """Where validation happens."""
+        """Check validation and organize.
+
+        :returns: JSON formatted string that provides details of validation
+        :raises: HTTPBadRequest if URLError was raised during validation
+        """
         try:
             self.schema.validate(self.xml_content)
             # LOG.info(f"Submitted file is valid against {schema_type} schema."
@@ -59,3 +68,8 @@ class XMLValidator:
             reason = f"Faulty file was provided. {error.reason}."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
+
+    def isValid(self) -> bool:
+        """Quick method for checking validation result."""
+        resp = json.loads(self.resp_body)
+        return resp['isValid']
