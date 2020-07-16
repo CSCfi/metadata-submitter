@@ -69,6 +69,9 @@ class XMLValidator:
             raise web.HTTPBadRequest(reason=reason)
 
     def isValid(self) -> bool:
-        """Quick method for checking validation result."""
+        """Quick method for checking validation result.
+
+        :returns: the value of isValid key in the validation detail JSON object
+        """
         resp = json.loads(self.resp_body)
         return resp['isValid']
