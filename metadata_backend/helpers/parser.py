@@ -52,12 +52,18 @@ class MetadataXMLConverter(XMLSchemaConverter):
                  'policyLinks', 'dacLinks', 'datasetLinks',
                  'assemblyLinks', 'submissionLinks']
 
+        attrs = ['studyAttributes', 'sampleAttributes', 'runAttributes',
+                 'experimentAttributes', 'analysisAttributes',
+                 'projectAttributes', 'policyAttributes', 'dacAttributes',
+                 'datasetAttributes', 'assemblyAttributes',
+                 'submissionAttributes']
+
         children = self.dict()
         for key, value, _ in self.map_content(data.content):
             key = self._to_camel(key.lower())
 
             # we flatten the attributes structure into an list of dict
-            if "Attributes" in key and len(value) == 1:
+            if key in attrs and len(value) == 1:
                 attrs = list(value.values())
                 children[key] = (attrs[0] if isinstance(attrs[0], list)
                                  else attrs)
