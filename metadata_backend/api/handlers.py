@@ -1,6 +1,7 @@
 """Handle HTTP methods for server."""
 import json
 import mimetypes
+from urllib.error import URLError
 from collections import Counter
 from math import ceil
 from pathlib import Path
@@ -45,7 +46,7 @@ class RESTApiHandler:
         accession_id = req.match_info['accessionId']
         schema_type = req.match_info['schema']
         if schema_type not in schema_types.keys():
-            reason = f"Theres no schema {schema_type}"
+            reason = f"Specified schema {schema_type} was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
         format = req.query.get("format", "json").lower()
@@ -67,7 +68,7 @@ class RESTApiHandler:
         """
         schema_type = req.match_info['schema']
         if schema_type not in schema_types.keys():
-            reason = f"Theres no schema {schema_type}"
+            reason = f"Specified schema {schema_type} was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
         db_client = req.app['db_client']
@@ -95,7 +96,7 @@ class RESTApiHandler:
         """
         schema_type = req.match_info['schema']
         if schema_type not in schema_types.keys():
-            reason = f"Theres no schema {schema_type}"
+            reason = f"Specified schema {schema_type} was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
         format = req.query.get("format", "json").lower()
@@ -147,7 +148,7 @@ class RESTApiHandler:
         """
         schema_type = req.match_info['schema']
         if schema_type not in schema_types.keys():
-            reason = f"Theres no schema {schema_type}"
+            reason = f"Specified schema {schema_type} was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
         accession_id = req.match_info['accessionId']
@@ -238,6 +239,7 @@ class SubmissionAPIHandler:
         """
         files = await _extract_xml_upload(req, extract_one=True)
         xml_content, schema_type = files[0]
+
         try:
             schema = SchemaLoader().get_schema(schema_type)
             schema.validate(xml_content)
@@ -263,6 +265,11 @@ class SubmissionAPIHandler:
                      f"{schema_type} schema.")
             return web.Response(body=body,
                                 content_type="application/json")
+        except URLError as error:
+            reason = f"Faulty file was provided. {error.reason}."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
         body = json.dumps({"isValid": True})
         LOG.info(f"The submitted file is valid for {schema_type} schema.")
         return web.Response(body=body, content_type="application/json")
@@ -331,7 +338,7 @@ async def _extract_xml_upload(req: Request, extract_one: bool = False
             raise web.HTTPBadRequest(reason=reason)
         schema_type = part.name.lower()
         if schema_type not in schema_types:
-            reason = f"Theres no schema {schema_type}"
+            reason = f"Specified schema {schema_type} was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
         data = []
