@@ -62,19 +62,16 @@ class MetadataXMLConverter(XMLSchemaConverter):
         for key, value, _ in self.map_content(data.content):
             key = self._to_camel(key.lower())
 
-            # we flatten the attributes structure into an list of dict
             if key in attrs and len(value) == 1:
                 attrs = list(value.values())
                 children[key] = (attrs[0] if isinstance(attrs[0], list)
                                  else attrs)
                 continue
 
-            # no need to have that attribute
             if "studyType" in key:
                 children[key] = value['existingStudyType']
                 continue
 
-            # we flatten links and group them together in a list
             if key in links and len(value) == 1:
                 grp = defaultdict(list)
                 if isinstance(value[key[:-1]], dict):
@@ -129,8 +126,12 @@ class MetadataXMLConverter(XMLSchemaConverter):
         - If there is just one children and it is string, it is appended to
           same dictionary with its parents attributes with "value" as its key.
         - If there is dictionary of object type attributes (e.g.
-          studyAttributes, experimentAttributes), dictionary is replaced with
-          its children, which is a list of those attributes.
+          studyAttributes, experimentAttributes etc.), dictionary is replaced
+          with its children, which is a list of those attributes.
+        - If there is a dictionary type links (e.g studyLinks, sampleLinks
+          etc. ) we group the types of links under an array, thus flattening
+          the structure.
+        - Study type takes the value of its attribute existingStudyType.
         """
         xsd_type = xsd_type or xsd_element.type
         if xsd_type.simple_type is not None:
