@@ -8,6 +8,7 @@ from typing import Dict, List, Tuple, Union, cast
 
 from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
+from xmlschema import XMLSchemaException
 
 from ..conf.conf import schema_types
 from ..helpers.parser import XMLToJSONParser
@@ -240,9 +241,10 @@ class SubmissionAPIHandler:
 
         try:
             schema = SchemaLoader().get_schema(schema_type)
+            LOG.info(f"{schema_type} schema loaded.")
             validator = XMLValidator(schema, xml_content)
 
-        except SchemaNotFoundException as error:
+        except (SchemaNotFoundException, XMLSchemaException) as error:
             reason = f"{error} ({schema_type})"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
