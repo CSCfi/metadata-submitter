@@ -34,7 +34,7 @@ class XMLValidator:
         """
         try:
             self.schema.validate(self.xml_content)
-            # LOG.info(f"Submitted file is valid against {schema_type} schema."
+            LOG.info("Submitted file is totally valid.")
             return json.dumps({"isValid": True})
 
         except ParseError as error:
@@ -59,8 +59,7 @@ class XMLValidator:
                 instance_parent = ''.join((instance.split('>')[0], '>'))
                 reason = re.sub("<[^>]*>", instance_parent + ' ', reason)
 
-            # LOG.info(f"Submitted file is not valid against {schema_type} "
-            #          "schema.")
+            LOG.info("Submitted file is not valid against schema.")
             return json.dumps({"isValid": False, "detail":
                               {"reason": reason, "instance": instance}})
 

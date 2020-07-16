@@ -170,6 +170,7 @@ class XMLToJSONParser:
         :raises: HTTPBadRequest if error was raised during validation
         """
         schema = self._load_schema(schema_type)
+        LOG.info(f"{schema_type} schema loaded.")
         validator = XMLValidator(schema, content)
         if not validator.xmlIsValid:
             reason = ("Current request could not be processed"
