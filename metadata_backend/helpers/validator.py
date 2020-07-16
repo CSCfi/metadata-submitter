@@ -24,7 +24,7 @@ class XMLValidator:
         self.schema = schema
         self.xml_content = xml
         self.resp_body = self.get_validation()
-        self.xmlIsValid = self.isValid()
+        self.xmlIsValid = self.is_valid()
 
     def get_validation(self) -> str:
         """Check validation and organize.
@@ -38,9 +38,7 @@ class XMLValidator:
             return json.dumps({"isValid": True})
 
         except ParseError as error:
-            reason = str(error).split(':')[0]
-            position = (str(error).split(':')[1])[1:]
-            full_reason = f"Faulty XML file was given, {reason} at {position}"
+            reason = parse_error_reason(error)
             # Manually find instance element
             lines = StringIO(self.xml_content).readlines()
             line = lines[error.position[0] - 1]  # line of instance
@@ -48,7 +46,7 @@ class XMLValidator:
 
             LOG.info("Submitted file does not not contain valid XML syntax.")
             return json.dumps({"isValid": False, "detail":
-                              {"reason": full_reason, "instance": instance}})
+                              {"reason": reason, "instance": instance}})
 
         except XMLSchemaValidationError as error:
             # Parse reason and instance from the validation error message
@@ -68,7 +66,17 @@ class XMLValidator:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-    def isValid(self) -> bool:
+    def parse_error_reason(self, error: ParseError) -> str:
+        """Generate better error reason.
+
+        :param error: The ParseError exception that was raised
+        :returns: String with better error reason
+        """
+        reason = str(error).split(':')[0]
+        position = (str(error).split(':')[1])[1:]
+        return f"Faulty XML file was given, {reason} at {position}"
+
+    def is_valid(self) -> bool:
         """Quick method for checking validation result.
 
         :returns: the value of isValid key in the validation detail JSON object
