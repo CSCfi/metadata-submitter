@@ -269,7 +269,6 @@ class SubmissionAPIHandler:
         except XMLSchemaValidationError as error:
             # Parse reason and instance from the validation error message
             reason = error.reason
-            # TODO: Find position (line no.) of error and add to end of reason
             instance = ElementTree.tostring(error.elem, encoding="unicode")
             # Replace element address in reason with instance element
             if '<' and '>' in reason:
