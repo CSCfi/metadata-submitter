@@ -1,9 +1,7 @@
 """Tool to parse XML files to JSON."""
 
 import re
-from urllib.error import URLError
 from typing import Any, Dict, List, Union
-from xmlschema.etree import ParseError
 
 from aiohttp import web
 from xmlschema import (XMLSchema, XMLSchemaConverter, XMLSchemaException,
@@ -11,6 +9,7 @@ from xmlschema import (XMLSchema, XMLSchemaConverter, XMLSchemaException,
 
 from .schema_loader import SchemaLoader, SchemaNotFoundException
 from .logger import LOG
+from .validator import XMLValidator
 from collections import defaultdict
 
 
@@ -168,9 +167,15 @@ class XMLToJSONParser:
         :param schema_type: Schema type to be used
         :param content: XML content to be parsed
         :returns: XML parsed to JSON
+        :raises: HTTPBadRequest if error was raised during validation
         """
         schema = self._load_schema(schema_type)
-        self._validate(content, schema)
+        validator = XMLValidator(schema, content)
+        if not validator.xmlIsValid:
+            reason = ("Current request could not be processed"
+                      " as the submitted file was not valid")
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
         return schema.to_dict(content,
                               converter=MetadataXMLConverter,
                               decimal_type=float,
@@ -192,24 +197,3 @@ class XMLToJSONParser:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         return schema
-
-    @staticmethod
-    def _validate(content: str, schema: XMLSchema) -> None:
-        """Validate XML with XMLSchema instance.
-
-        :param content: XML to be validated
-        :param schema: XMLSchema instance that validates XML.
-
-        :raises: HTTPBadRequest if error was raised during validation
-        """
-        try:
-            schema.validate(content)
-        except (ParseError, XMLSchemaException):
-            reason = ("Current request could not be processed"
-                      " as the submitted file was not valid")
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-        except URLError as error:
-            reason = f"Faulty file was provided. {error.reason}."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)

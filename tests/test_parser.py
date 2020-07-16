@@ -3,7 +3,6 @@ from pathlib import Path
 
 from metadata_backend.helpers.parser import XMLToJSONParser
 from aiohttp import web
-from metadata_backend.helpers.schema_loader import SchemaLoader
 import unittest
 
 
@@ -80,18 +79,3 @@ class ParserTestCase(unittest.TestCase):
         """Test 400 is returned when schema."""
         with self.assertRaises(web.HTTPBadRequest):
             self.parser._load_schema("None")
-
-    def test_error_raised_when_validate_fails_against_schema(self):
-        """Create sample validator, which should fail to validate study."""
-        loader = SchemaLoader()
-        schema = loader.get_schema("sample")
-        with self.assertRaises(web.HTTPBadRequest):
-            self.parser._validate("<STUDY_SET></STUDY_SET>", schema)
-
-    def test_error_raised_when_input_xml_not_valid_xml(self):
-        """Give validator xml with broken syntax, should fail."""
-        loader = SchemaLoader()
-        schema = loader.get_schema("study")
-        study_xml = self.load_xml_from_file("study", "SRP000539_invalid.xml")
-        with self.assertRaises(web.HTTPBadRequest):
-            self.parser._validate(study_xml, schema)
