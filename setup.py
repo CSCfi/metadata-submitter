@@ -43,8 +43,8 @@ setup(
         'docs': ['sphinx >= 1.4', 'sphinx_rtd_theme'],
     },
 
-    package_data={'': ['schemas/*.xsd', 'schemas/*.json', 'frontend/*', 'frontend/static/js/*',
-                       'conf/ena_schemas.json']},
+    package_data={'': ['schemas/*.xsd', 'schemas/*.json', 'frontend/*',
+                       'frontend/static/js/*', 'conf/ena_schemas.json']},
     include_package_data=True,
 
     entry_points={
