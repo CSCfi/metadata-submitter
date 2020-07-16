@@ -12,7 +12,7 @@ from xmlschema import XMLSchemaException
 
 from ..conf.conf import schema_types
 from ..helpers.parser import XMLToJSONParser
-from ..helpers.schema_loader import SchemaLoader, SchemaNotFoundException
+from ..helpers.schema_loader import XMLSchemaLoader, SchemaNotFoundException
 from ..helpers.validator import XMLValidator
 from .operators import Operator, XMLOperator
 from ..helpers.logger import LOG
@@ -240,7 +240,7 @@ class SubmissionAPIHandler:
         xml_content, schema_type = files[0]
 
         try:
-            schema = SchemaLoader().get_schema(schema_type)
+            schema = XMLSchemaLoader().get_schema(schema_type)
             LOG.info(f"{schema_type} schema loaded.")
             validator = XMLValidator(schema, xml_content)
 
