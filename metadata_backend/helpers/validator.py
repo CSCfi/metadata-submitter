@@ -38,7 +38,7 @@ class XMLValidator:
             return json.dumps({"isValid": True})
 
         except ParseError as error:
-            reason = parse_error_reason(error)
+            reason = self.parse_error_reason(error)
             # Manually find instance element
             lines = StringIO(self.xml_content).readlines()
             line = lines[error.position[0] - 1]  # line of instance
