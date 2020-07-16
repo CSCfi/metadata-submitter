@@ -1,22 +1,18 @@
 """Handle HTTP methods for server."""
 import json
 import mimetypes
-from urllib.error import URLError
-import re
 from collections import Counter
-from io import StringIO
 from math import ceil
 from pathlib import Path
 from typing import Dict, List, Tuple, Union, cast
 
 from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
-from xmlschema import XMLSchemaValidationError
-from xmlschema.etree import ElementTree, ParseError
 
 from ..conf.conf import schema_types
 from ..helpers.parser import XMLToJSONParser
 from ..helpers.schema_loader import SchemaLoader, SchemaNotFoundException
+from ..helpers.validator import XMLValidator
 from .operators import Operator, XMLOperator
 from ..helpers.logger import LOG
 
@@ -244,52 +240,15 @@ class SubmissionAPIHandler:
 
         try:
             schema = SchemaLoader().get_schema(schema_type)
-            schema.validate(xml_content)
+            validator = XMLValidator(schema, xml_content)
 
         except SchemaNotFoundException as error:
             reason = f"{error} ({schema_type})"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        except ParseError as error:
-            reason = str(error).split(':')[0]
-            position = (str(error).split(':')[1])[1:]
-            full_reason = f"Faulty XML file was given, {reason} at {position}"
-            # Manually find instance element
-            lines = StringIO(xml_content).readlines()
-            line = lines[error.position[0] - 1]  # line of instance
-            instance = re.sub(r'^.*?<', '<', line)  # strip whitespaces
-
-            body = json.dumps({"isValid": False, "detail":
-                              {"reason": full_reason, "instance": instance}})
-            LOG.info("Submitted file does not not contain valid XML syntax.")
-            return web.Response(body=body,
-                                content_type="application/json")
-
-        except XMLSchemaValidationError as error:
-            # Parse reason and instance from the validation error message
-            reason = error.reason
-            instance = ElementTree.tostring(error.elem, encoding="unicode")
-            # Replace element address in reason with instance element
-            if '<' and '>' in reason:
-                instance_parent = ''.join((instance.split('>')[0], '>'))
-                reason = re.sub("<[^>]*>", instance_parent + ' ', reason)
-
-            body = json.dumps({"isValid": False, "detail":
-                              {"reason": reason, "instance": instance}})
-            LOG.info(f"Submitted file is not valid against {schema_type} "
-                     "schema.")
-            return web.Response(body=body,
-                                content_type="application/json")
-
-        except URLError as error:
-            reason = f"Faulty file was provided. {error.reason}."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        body = json.dumps({"isValid": True})
-        LOG.info(f"Submitted file is valid against {schema_type} schema.")
-        return web.Response(body=body, content_type="application/json")
+        return web.Response(body=validator.resp_body,
+                            content_type="application/json")
 
 
 class StaticHandler:
