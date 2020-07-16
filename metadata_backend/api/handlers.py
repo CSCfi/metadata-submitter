@@ -2,7 +2,9 @@
 import json
 import mimetypes
 from urllib.error import URLError
+import re
 from collections import Counter
+from io import StringIO
 from math import ceil
 from pathlib import Path
 from typing import Dict, List, Tuple, Union, cast
@@ -250,28 +252,43 @@ class SubmissionAPIHandler:
             raise web.HTTPBadRequest(reason=reason)
 
         except ParseError as error:
-            detail = f"Faulty XML file was given.\nERROR: {error}"
-            body = json.dumps({"isValid": False, "detail": detail})
+            reason = str(error).split(':')[0]
+            position = (str(error).split(':')[1])[1:]
+            full_reason = f"Faulty XML file was given, {reason} at {position}"
+            # Manually find instance element
+            lines = StringIO(xml_content).readlines()
+            line = lines[error.position[0] - 1]  # line of instance
+            instance = re.sub(r'^.*?<', '<', line)  # strip whitespaces
+
+            body = json.dumps({"isValid": False, "detail":
+                              {"reason": full_reason, "instance": instance}})
+            LOG.info("Submitted file does not not contain valid XML syntax.")
             return web.Response(body=body,
                                 content_type="application/json")
 
         except XMLSchemaValidationError as error:
-            # Parsing reason and instance from the validation error message
+            # Parse reason and instance from the validation error message
             reason = error.reason
             instance = ElementTree.tostring(error.elem, encoding="unicode")
+            # Replace element address in reason with instance element
+            if '<' and '>' in reason:
+                instance_parent = ''.join((instance.split('>')[0], '>'))
+                reason = re.sub("<[^>]*>", instance_parent + ' ', reason)
+
             body = json.dumps({"isValid": False, "detail":
                               {"reason": reason, "instance": instance}})
-            LOG.info("The submitted file is not valid for"
-                     f"{schema_type} schema.")
+            LOG.info(f"Submitted file is not valid against {schema_type} "
+                     "schema.")
             return web.Response(body=body,
                                 content_type="application/json")
+
         except URLError as error:
             reason = f"Faulty file was provided. {error.reason}."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
         body = json.dumps({"isValid": True})
-        LOG.info(f"The submitted file is valid for {schema_type} schema.")
+        LOG.info(f"Submitted file is valid against {schema_type} schema.")
         return web.Response(body=body, content_type="application/json")
 
 
