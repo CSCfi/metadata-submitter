@@ -1,4 +1,4 @@
-FROM node:12-alpine as BUILD-FRONTEND
+FROM node:14-alpine as BUILD-FRONTEND
 
 RUN apk add --update \
     && apk add --no-cache git\
@@ -9,7 +9,7 @@ RUN git clone https://github.com/CSCfi/metadata-submitter-frontend.git
 WORKDIR metadata-submitter-frontend
 RUN npm install && npm run build
 
-FROM python:3.7-alpine3.9 as BUILD-BACKEND
+FROM python:3.7-alpine3.12 as BUILD-BACKEND
 
 RUN apk add --update \
     && apk add --no-cache build-base curl-dev linux-headers bash git musl-dev\
@@ -26,7 +26,7 @@ RUN pip install --upgrade pip && \
     pip install -r /root/submitter/requirements.txt && \
     pip install /root/submitter
 
-FROM python:3.7-alpine3.9
+FROM python:3.7-alpine3.12
 
 RUN apk add --no-cache --update bash
 
