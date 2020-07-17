@@ -16,18 +16,17 @@ class XMLValidator:
     """Validator implementation."""
 
     def __init__(self, schema: XMLSchema, xml: str) -> None:
-        """Set Variables and initiate validation.
+        """Set variables.
 
         :param schema: Schema to be used
         :param content: Content of XML file to be validated
         """
         self.schema = schema
         self.xml_content = xml
-        self.resp_body = self.get_validation()
-        self.xmlIsValid = self.is_valid()
 
-    def get_validation(self) -> str:
-        """Check validation and organize.
+    @property
+    def resp_body(self) -> str:
+        """Check validation and organize validation error details.
 
         :returns: JSON formatted string that provides details of validation
         :raises: HTTPBadRequest if URLError was raised during validation
@@ -38,7 +37,7 @@ class XMLValidator:
             return json.dumps({"isValid": True})
 
         except ParseError as error:
-            reason = self.parse_error_reason(error)
+            reason = self._parse_error_reason(error)
             # Manually find instance element
             lines = StringIO(self.xml_content).readlines()
             line = lines[error.position[0] - 1]  # line of instance
@@ -66,20 +65,14 @@ class XMLValidator:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-    def parse_error_reason(self, error: ParseError) -> str:
-        """Generate better error reason.
-
-        :param error: The ParseError exception that was raised
-        :returns: String with better error reason
-        """
+    def _parse_error_reason(self, error: ParseError) -> str:
+        """Generate better error reason."""
         reason = str(error).split(':')[0]
         position = (str(error).split(':')[1])[1:]
         return f"Faulty XML file was given, {reason} at {position}"
 
+    @property
     def is_valid(self) -> bool:
-        """Quick method for checking validation result.
-
-        :returns: the value of isValid key in the validation detail JSON object
-        """
+        """Quick method for checking validation result."""
         resp = json.loads(self.resp_body)
         return resp['isValid']
