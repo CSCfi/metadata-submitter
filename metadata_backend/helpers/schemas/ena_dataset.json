@@ -1,0 +1,172 @@
+{
+    "title": "Policy",
+    "definitions": {
+        "xrefLink": {
+            "$id": "#/definitions/xrefLink",
+            "type": "array",
+            "title": "XRef Link",
+            "items": {
+                "type": "object",
+                "required": [
+                    "db",
+                    "id"
+                ],
+                "properties": {
+                    "db": {
+                        "type": "string",
+                        "title": "DataBase"
+                    },
+                    "id": {
+                        "type": "string",
+                        "title": "Associated accession ID"
+                    }
+                }
+            }
+        },
+        "urlLink": {
+            "$id": "#/definitions/urlLink",
+            "type": "array",
+            "title": "URL Links",
+            "items": {
+                "type": "object",
+                "required": [
+                    "label",
+                    "url"
+                ],
+                "properties": {
+                    "label": {
+                        "description": "Text label to display for the link.",
+                        "title": "Label",
+                        "type": "string"
+                    },
+                    "url": {
+                        "description": "The internet service link (http(s), ftp) etc.",
+                        "type": "string",
+                        "title": "URL",
+                        "pattern": "^(https?|ftp)://"
+                    }
+                }
+            }
+        },
+        "entrezLink": {
+            "$id": "#/definitions/entrezLink",
+            "type": "array",
+            "title": "Entrez Link",
+            "items": {
+                "type": "object",
+                "required": [
+                    "db"
+                ],
+                "properties": {
+                    "db": {
+                        "description": "NCBI controlled vocabulary of permitted cross references. Please see http://www.ncbi.nlm.nih.gov/entrez/eutils/einfo.fcgi? .",
+                        "title": "DataBase",
+                        "type": "string"
+                    },
+                    "label": {
+                        "description": "How to label the link.",
+                        "title": "Label",
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "datasetAttribute": {
+            "$id": "#/definitions/datasetAttribute",
+            "type": "object",
+            "title": "Dataset Attribute",
+            "description": "Properties and attributes of the data set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
+            "required": [
+                "tag",
+                "value"
+            ],
+            "properties": {
+                "tag": {
+                    "type": "string",
+                    "title": "Tag title"
+                },
+                "value": {
+                    "type": "string",
+                    "title": "Description"
+                }
+            }
+        }
+    },
+    "type": "object",
+    "description": "Describes an object that contains data access policy information.",
+    "required": [
+        "title"
+    ],
+    "properties": {
+        "title": {
+            "title": "Dataset Title",
+            "description": "Short text that can be used to call out data sets in searches or in displays.",
+            "type": "string"
+        },
+        "description": {
+            "title": "Dataset Description",
+            "description": "Free-form text describing the data sets.",
+            "type": "string"
+        },
+        "datasetType": {
+            "title": "Dataset Type",
+            "type": "array",
+            "items": {
+                "enum": [
+                    "Whole genome sequencing",
+                    "Exome sequencing",
+                    "Genotyping by array",
+                    "Transcriptome profiling by high-throughput sequencing",
+                    "Transcriptome profiling by array",
+                    "Amplicon sequencing",
+                    "Methylation binding domain sequencing",
+                    "Methylation profiling by high-throughput sequencing",
+                    "Phenotype information",
+                    "Study summary information",
+                    "Genomic variant calling",
+                    "Chromatin accessibility profiling by high-throughput sequencing",
+                    "Histone modification profiling by high-throughput sequencing",
+                    "Chip-Seq"
+                ]
+            },
+            "uniqueItems": true
+        },
+        "policyRef": {
+            "title": "Policy Identifier (Accession ID or title)",
+            "description": "Identifies the data access committee to which this policy pertains.",
+            "type": "string"
+        },
+        "runRef": {
+            "title": "Run Identifier (Accession ID or title)",
+            "description": "Identifies the runs which are part of this dataset.",
+            "type": "string"
+        },
+        "anlysisRef": {
+            "title": "Analysis Identifier (Accession ID or title)",
+            "description": "Identifies the data access committee to which this policy pertains.",
+            "type": "string"
+        },
+        "datasetLinks": {
+            "type": "object",
+            "title": "Dataset Links",
+            "properties": {
+                "xrefLinks": {
+                    "$ref": "#/definitions/xrefLink"
+                },
+                "entrezLinks": {
+                    "$ref": "#/definitions/entrezLink"
+                },
+                "urlLinks": {
+                    "$ref": "#/definitions/urlLink"
+                }
+            }
+        },
+        "datasetAtrributes": {
+            "type": "array",
+            "title": "Dataset Attributes",
+            "items": {
+                "$ref": "#/definitions/datasetAttribute"
+            }
+        }
+    }
+}
