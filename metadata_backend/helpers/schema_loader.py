@@ -32,6 +32,9 @@ class XMLSchemaLoader:
         Documentation of XMLSchema project:
         https://xmlschema.readthedocs.io/en/latest/
 
+        We look for files ending in xsd to avoid any mismatch on
+        what schema is loaded.
+
         :param schema_type: Schema type to be searched for
         :returns: XMLSchema able to validate XML against defined schema type
         :raises SchemaNotFoundException: If searched schema doesn't exist
