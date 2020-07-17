@@ -153,7 +153,7 @@
             "type": "string"
         },
         "dacRef": {
-            "title": "Data Access Committe Identified",
+            "title": "Data Access Committe Identifier (Accession ID or title)",
             "description": "Identifies the data access committee to which this policy pertains.",
             "type": "string"
         },
@@ -211,7 +211,7 @@
         },
         "policyAtrributes": {
             "type": "array",
-            "title": "policy Attributes",
+            "title": "Policy Attributes",
             "items": {
                 "$ref": "#/definitions/policyAttribute"
             }
