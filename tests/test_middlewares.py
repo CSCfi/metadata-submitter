@@ -16,15 +16,35 @@ class MiddlewaresTestCase(AioHTTPTestCase):
         """Retrieve web Application for test."""
         return await init()
 
-    @unittest_run_loop
-    async def test_bad_HTTP_request_converts_into_json_response(self):
-        """Test that middleware reformats 400 error with problem details."""
+    async def setUpAsync(self):
+        """Set key as environment variable for the duration of the test."""
+        key = {
+            "kty": "oct",
+            "alg": "HS256",
+            "k": "GawgguFyGrWKav7AX4VKUg"
+        }
+        os.environ['PUBLIC_KEY'] = json.dumps(key)
+
+    async def tearDownAsync(self):
+        """Unset the public key."""
+        os.unsetenv('PUBLIC_KEY')
+
+    def create_improper_data(self):
+        """Create request data that produces a 404 error.
+
+        Submission method in API handlers raises Bad Request (400) error
+        if 'submission' is not included on the first field of request
+        """
         data = FormData()
         data.add_field("study", "content of a file",
                        filename='file', content_type='text/xml')
+        return data
+
+    @unittest_run_loop
+    async def test_bad_HTTP_request_converts_into_json_response(self):
+        """Test that middleware reformats 400 error with problem details."""
+        data = self.create_improper_data()
         response = await self.client.post("/submit", data=data)
-        # Submission method in API handlers raises Bad Request error
-        # if submission type is not included on the first field of request
         self.assertEqual(response.status, 400)
         self.assertEqual(response.content_type, "application/problem+json")
         resp_dict = await response.json()
@@ -46,7 +66,7 @@ class MiddlewaresTestCase(AioHTTPTestCase):
     async def test_authentication_passes(self):
         """Test that JWT authenticates."""
         # Mock token
-        header = {'alg': "HS256", 'type': "JWT"}
+        header = {'alg': "HS256", 'typ': "JWT"}
         payload = {'sub': "test", 'name': "tester", 'exp': 9999999999}
         pem = {
             "kty": "oct",
@@ -54,16 +74,12 @@ class MiddlewaresTestCase(AioHTTPTestCase):
             "k": "GawgguFyGrWKav7AX4VKUg"
         }
         token = jwt.encode(header, payload, pem).decode('utf-8')
-        # Set pem as environment variable for the duration of the test
-        os.environ['PUBLIC_KEY'] = json.dumps(pem)
-        data = FormData()
-        # This data would otherwise cause 400 error if authentication passed
-        data.add_field("study", "content of a file",
-                       filename='file', content_type='text/xml')
+        data = self.create_improper_data()
         response = await self.client.post("/submit", data=data,
                                           headers={'Authorization':
-                                                   f"Bearer {token}"})
+                                                   f'Bearer {token}'})
 
+        # Auth passes, hence response should be 400
         self.assertEqual(response.status, 400)
         self.assertEqual(response.content_type, "application/problem+json")
         resp_dict = await response.json()
@@ -74,7 +90,7 @@ class MiddlewaresTestCase(AioHTTPTestCase):
     async def test_authentication_fails_with_expired_jwt(self):
         """Test that JWT does not authenticate if token has expired."""
         # Mock token
-        header = {'alg': "HS256", 'type': "JWT"}
+        header = {'alg': "HS256", 'typ': "JWT"}
         payload = {'sub': "test", 'name': "tester", 'exp': 0}
         pem = {
             "kty": "oct",
@@ -82,19 +98,14 @@ class MiddlewaresTestCase(AioHTTPTestCase):
             "k": "GawgguFyGrWKav7AX4VKUg"
         }
         token = jwt.encode(header, payload, pem).decode('utf-8')
-        # Set pem as environment variable for the duration of the test
-        os.environ['PUBLIC_KEY'] = json.dumps(pem)
-        data = FormData()
-        # This data would otherwise cause 400 error if authentication passed
-        data.add_field("study", "content of a file",
-                       filename='file', content_type='text/xml')
+        data = self.create_improper_data()
         response = await self.client.post("/submit", data=data,
                                           headers={'Authorization':
-                                                   f"Bearer {token}"})
+                                                   f'Bearer {token}'})
 
+        # Auth does not pass so response should be 401
         self.assertEqual(response.status, 401)
         self.assertEqual(response.content_type, "application/problem+json")
         resp_dict = await response.json()
         self.assertEqual("expired_token: The token is expired",
                          resp_dict['detail'])
-        os.unsetenv('PUBLIC_KEY')
