@@ -67,7 +67,7 @@ def jwt_middleware() -> Callable:
             # Check token exists
             try:
                 scheme, token = req.headers.get('Authorization').split(' ')
-                LOG.info('Auth Token Received.')
+                LOG.info('Auth token received.')
             except Exception as err:
                 raise web.HTTPUnauthorized(reason=str(err))
 
@@ -96,7 +96,9 @@ def jwt_middleware() -> Callable:
                 claims = jwt.decode(token, key, claims_options=claims_options)
                 claims.validate()
                 LOG.info('Auth token decoded and validated.')
+
                 # TODO: Retrieve GA4GH passports and process into permissions
+
                 req["token"] = {"authenticated": True}
                 return await handler(req)
             except errors.MissingClaimError as err:
