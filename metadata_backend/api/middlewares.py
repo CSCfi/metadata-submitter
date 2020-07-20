@@ -80,7 +80,8 @@ def jwt_middleware() -> Callable:
 
             # JWK and JWTClaims parameters for decoding
             key = environ.get('PUBLIC_KEY', None)
-            # TODO more elaborate key get method
+            # TODO: get Oauth2 public key
+            # TODO: verify audience claim.
 
             # Include claims that are required to be present
             # in the payload of the token
@@ -94,7 +95,8 @@ def jwt_middleware() -> Callable:
             try:
                 claims = jwt.decode(token, key, claims_options=claims_options)
                 claims.validate()
-                LOG.info('Auth Token Decoded and Validated.')
+                LOG.info('Auth token decoded and validated.')
+                # TODO: Retrieve GA4GH passports and process into permissions
                 req["token"] = {"authenticated": True}
                 return await handler(req)
             except errors.MissingClaimError as err:
