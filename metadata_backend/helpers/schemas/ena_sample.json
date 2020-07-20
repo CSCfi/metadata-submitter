@@ -74,7 +74,7 @@
         "sampleAttribute": {
             "$id": "#/definitions/sampleAttribute",
             "type": "object",
-            "title": "Sample Attribute",
+            "title": "sample Attribute",
             "description": "tag title and its associated value (description)",
             "required": [
                 "tag",
