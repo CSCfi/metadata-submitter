@@ -46,6 +46,7 @@ async def http_error_handler(req: Request, handler: Callable) -> Response:
 
     return http_error_handler
 
+
 @middleware
 async def jwt_authentication(req: Request, handler: Callable) -> Response:
     """Middleware for validating and authenticating JSON web token.
@@ -60,8 +61,8 @@ async def jwt_authentication(req: Request, handler: Callable) -> Response:
         try:
             scheme, token = req.headers.get('Authorization').split(' ')
             LOG.info('Auth token received.')
-        except Exception as err:
-            raise web.HTTPUnauthorized(reason=str(err))
+        except ValueError as err:
+            raise web.HTTPUnauthorized(reason=f"Failure to read token: {err}")
 
         # Check token has proper scheme and was provided.
         if not re.match('Bearer', scheme):
@@ -113,7 +114,6 @@ async def jwt_authentication(req: Request, handler: Callable) -> Response:
     else:
         req["token"] = {"authenticated": False}
         return await handler(req)
-
 
 
 def _json_exception(status: int, exception: web.HTTPException,
