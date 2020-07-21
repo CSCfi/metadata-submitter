@@ -3,9 +3,9 @@ import unittest
 
 import xmlschema
 
-from metadata_backend.helpers.schema_loader import (JSONSchemaLoader, XMLSchemaLoader,
-                                                    SchemaNotFoundException,
-                                                    JSONSchemaLoader)
+from metadata_backend.helpers.schema_loader import (JSONSchemaLoader,
+                                                    XMLSchemaLoader,
+                                                    SchemaNotFoundException)
 
 
 class TestXMLSchemaLoader(unittest.TestCase):
