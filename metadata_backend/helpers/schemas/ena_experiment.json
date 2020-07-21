@@ -102,7 +102,7 @@
                     "description": "Goal and setup of the individual library including library was constructed."
                 },
                 "sampleRef": {
-                    "title": "Study Identifier (Accession ID or title)",
+                    "title": "Sample Identifier (Accession ID or title)",
                     "description": "Pick a sample to associate this experiment with. The sample may be an individual or a pool, depending on how it is specified.",
                     "type": "string"
                 },
@@ -390,6 +390,61 @@
                     }
                 }
             }
+        },
+        "processingType": {
+            "$id": "#/definitions/processingType",
+            "type": "object",
+            "title": "Processing Type",
+            "properties": {
+                "pipeline": {
+                    "title": "Pipeline",
+                    "type": "object",
+                    "required": [
+                        "pipeSection"
+                    ],
+                    "properties": {
+                        "pipeSection": {
+                            "type": "array",
+                            "title": "Pipe Section",
+                            "items": {
+                                "type": "object",
+                                "required": [
+                                    "prevStepIndex"
+                                ],
+                                "properties": {
+                                    "stepIndex": {
+                                        "type": "string",
+                                        "title": "Step Index"
+                                    },
+                                    "prevStepIndex": {
+                                        "type": {
+                                            "type": "string, null"
+                                        },
+                                        "title": "Prev Step Index"
+                                    },
+                                    "program": {
+                                        "type": "string",
+                                        "title": "Program"
+                                    },
+                                    "version": {
+                                        "type": "string",
+                                        "title": "Version"
+                                    },
+                                    "notes": {
+                                        "type": "string",
+                                        "title": "Notes"
+                                    },
+                                    "sectionName": {
+                                        "type": "string",
+                                        "title": "Section Name"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "directives": {}
+            }
         }
     },
     "type": "object",
@@ -482,9 +537,11 @@
             ]
         },
         "processing": {
-            "title": "Platform",
-            "description": " The PLATFORM record selects which sequencing platform and platform-specific runtime parameters. This will be determined by the Center.",
-            "type": "string"
+            "title": "Processing",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/processingType"
+            }
         },
         "experimentLinks": {
             "type": "object",
