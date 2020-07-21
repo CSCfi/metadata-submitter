@@ -1,0 +1,479 @@
+{
+    "title": "Analysis",
+    "definitions": {
+        "xrefLink": {
+            "$id": "#/definitions/xrefLink",
+            "type": "array",
+            "title": "XRef Link",
+            "items": {
+                "type": "object",
+                "required": [
+                    "db",
+                    "id"
+                ],
+                "properties": {
+                    "db": {
+                        "type": "string",
+                        "title": "DataBase"
+                    },
+                    "id": {
+                        "type": "string",
+                        "title": "Associated accession ID"
+                    }
+                }
+            }
+        },
+        "urlLink": {
+            "$id": "#/definitions/urlLink",
+            "type": "array",
+            "title": "URL Links",
+            "items": {
+                "type": "object",
+                "required": [
+                    "label",
+                    "url"
+                ],
+                "properties": {
+                    "label": {
+                        "description": "Text label to display for the link.",
+                        "title": "Label",
+                        "type": "string"
+                    },
+                    "url": {
+                        "description": "The internet service link (http(s), ftp) etc.",
+                        "type": "string",
+                        "title": "URL",
+                        "pattern": "^(https?|ftp)://"
+                    }
+                }
+            }
+        },
+        "entrezLink": {
+            "$id": "#/definitions/entrezLink",
+            "type": "array",
+            "title": "Entrez Link",
+            "items": {
+                "type": "object",
+                "required": [
+                    "db"
+                ],
+                "properties": {
+                    "db": {
+                        "description": "NCBI controlled vocabulary of permitted cross references. Please see http://www.ncbi.nlm.nih.gov/entrez/eutils/einfo.fcgi? .",
+                        "title": "DataBase",
+                        "type": "string"
+                    },
+                    "label": {
+                        "description": "How to label the link.",
+                        "title": "Label",
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "analysisAttribute": {
+            "$id": "#/definitions/analysisAttribute",
+            "type": "object",
+            "title": "Analysis Attribute",
+            "description": "Properties and attributes of the data set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
+            "required": [
+                "tag",
+                "value"
+            ],
+            "properties": {
+                "tag": {
+                    "type": "string",
+                    "title": "Tag title"
+                },
+                "value": {
+                    "type": "string",
+                    "title": "Description"
+                }
+            }
+        },
+        "sequenceType": {
+            "$id": "#/definitions/sequenceType",
+            "type": "object",
+            "title": "sequenceVariation",
+            "required": [
+                "assembly",
+                "sequence"
+            ],
+            "properties": {
+                "assembly": {
+                    "type": "object",
+                    "title": "assembly",
+                    "properties": {
+                        "standard": {
+                            "type": "object",
+                            "title": "standard",
+                            "required": [
+                                "accessionId"
+                            ],
+                            "properties": {
+                                "refname": {
+                                    "type": "string",
+                                    "title": "refname"
+                                },
+                                "accessionId": {
+                                    "type": "string",
+                                    "title": "accessionId"
+                                }
+                            }
+                        }
+                    }
+                },
+                "sequence": {
+                    "type": "array",
+                    "title": "sequence",
+                    "items": {
+                        "anyOf": [
+                            {
+                                "type": "object",
+                                "title": "first anyOf",
+                                "required": [
+                                    "accessionId"
+                                ],
+                                "additionalProperties": true,
+                                "properties": {
+                                    "label": {
+                                        "type": "string",
+                                        "title": "label"
+                                    },
+                                    "accessionId": {
+                                        "type": "string",
+                                        "title": "accessionId"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        "processingType": {
+            "$id": "#/definitions/processingType",
+            "type": "object",
+            "title": "Processing Type",
+            "properties": {
+                "pipeline": {
+                    "title": "Pipeline",
+                    "type": "object",
+                    "required": [
+                        "pipeSection"
+                    ],
+                    "properties": {
+                        "pipeSection": {
+                            "type": "array",
+                            "title": "Pipe Section",
+                            "items": {
+                                "type": "object",
+                                "required": [
+                                    "prevStepIndex"
+                                ],
+                                "properties": {
+                                    "stepIndex": {
+                                        "type": "string",
+                                        "title": "Step Index"
+                                    },
+                                    "prevStepIndex": {
+                                        "type": {
+                                            "type": "string, null"
+                                        },
+                                        "title": "Prev Step Index"
+                                    },
+                                    "program": {
+                                        "type": "string",
+                                        "title": "Program"
+                                    },
+                                    "version": {
+                                        "type": "string",
+                                        "title": "Version"
+                                    },
+                                    "notes": {
+                                        "type": "string",
+                                        "title": "Notes"
+                                    },
+                                    "sectionName": {
+                                        "type": "string",
+                                        "title": "Section Name"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "directives": {}
+            }
+        },
+        "reference": {
+            "$id": "#/definitions/reference",
+            "type": "object",
+            "required": [
+                "accessionId"
+            ],
+            "properties": {
+                "label": {
+                    "type": "string",
+                    "title": "label"
+                },
+                "refname": {
+                    "type": "string",
+                    "title": "refname"
+                },
+                "refcenter": {
+                    "type": "string",
+                    "title": "refcenter"
+                },
+                "accessionId": {
+                    "type": "string",
+                    "title": "accessionId"
+                },
+                "identifiers": {
+                    "type": "object",
+                    "title": "identifiers",
+                    "properties": {
+                        "primaryId": {
+                            "type": "string",
+                            "title": "primaryId"
+                        },
+                        "submitterId": {
+                            "type": "object",
+                            "title": "submitterId",
+                            "required": [
+                                "namespace",
+                                "value"
+                            ],
+                            "additionalProperties": true,
+                            "properties": {
+                                "namespace": {
+                                    "type": "string",
+                                    "title": "namespace"
+                                },
+                                "value": {
+                                    "type": "string",
+                                    "title": "value"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "type": "object",
+    "description": "A SRA analysis object captures sequence analysis results including sequence alignments, sequence variations and sequence annotations.",
+    "required": [
+        "analysisType"
+    ],
+    "properties": {
+        "title": {
+            "title": "Analysis Title",
+            "description": "Short text that can be used to define submissions in searches or in displays.",
+            "type": "string"
+        },
+        "description": {
+            "title": "Analysis Description",
+            "description": "Free-form text describing the data sets.",
+            "type": "string"
+        },
+        "experimentRef": {
+            "title": "Experiment Identifier (Accession ID or title)",
+            "description": "Identifies the associated experiment.",
+            "$ref": "#/definitions/reference"
+        },
+        "studyRef": {
+            "title": "Study Identifier (Accession ID or title)",
+            "description": "Identifies the associated study.",
+            "$ref": "#/definitions/reference"
+        },
+        "sampleRef": {
+            "title": "Sample Identifier (Accession ID or title)",
+            "description": "Identifies the associated sample.",
+            "$ref": "#/definitions/reference"
+        },
+        "runRef": {
+            "title": "Run Identifier (Accession ID or title)",
+            "description": "Identifies the associated run.",
+            "$ref": "#/definitions/reference"
+        },
+        "analysisRef": {
+            "title": "Analysis Identifier (Accession ID or title)",
+            "description": "Identifies the associated analysis.",
+            "$ref": "#/definitions/reference"
+        },
+        "analysisType": {
+            "type": "object",
+            "title": "Analysis type",
+            "additionalProperties": true,
+            "properties": {
+                "referenceAlignment": {
+                    "type": "object",
+                    "title": "referenceAlignment",
+                    "additionalProperties": true,
+                    "properties": {
+                        "sequence": {
+                            "type": "array",
+                            "title": "sequence",
+                            "additionalItems": true,
+                            "items": {
+                                "anyOf": [
+                                    {
+                                        "type": "object",
+                                        "title": "first anyOf",
+                                        "required": [
+                                            "accessionId"
+                                        ],
+                                        "properties": {
+                                            "label": {
+                                                "type": "string",
+                                                "title": "label"
+                                            },
+                                            "refname": {
+                                                "type": "string",
+                                                "title": "refname"
+                                            },
+                                            "accessionId": {
+                                                "type": "string",
+                                                "title": "accessionId"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+                "sequenceAssembly": {
+                    "type": "object",
+                    "title": "sequenceAssembly",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "title": "name"
+                        },
+                        "partial": {
+                            "type": "boolean",
+                            "title": "partial"
+                        },
+                        "coverage": {
+                            "type": "string",
+                            "title": "coverage"
+                        },
+                        "program": {
+                            "type": "string",
+                            "title": "program"
+                        },
+                        "platform": {
+                            "type": "string",
+                            "title": "platform"
+                        },
+                        "minGapLength": {
+                            "type": "number",
+                            "title": "minGapLength"
+                        }
+                    }
+                },
+                "sequenceVariation": {
+                    "$ref": "#/definitions/sequenceType"
+                },
+                "processedReads": {
+                    "$ref": "#/definitions/sequenceType"
+                }
+            }
+        },
+        "files": {
+            "type": "object",
+            "title": "files",
+            "required": [
+                "file"
+            ],
+            "additionalProperties": true,
+            "properties": {
+                "file": {
+                    "type": "object",
+                    "title": "file",
+                    "required": [
+                        "filename",
+                        "filetype",
+                        "checksumMethod",
+                        "checksum"
+                    ],
+                    "additionalProperties": true,
+                    "properties": {
+                        "filename": {
+                            "type": "string",
+                            "title": "filename"
+                        },
+                        "filetype": {
+                            "type": "string",
+                            "title": "filetype",
+                            "enum": [
+                                "tab",
+                                "bam",
+                                "bai",
+                                "cram",
+                                "crai",
+                                "vcf",
+                                "vcf_aggregate",
+                                "bcf",
+                                "tabix",
+                                "wig",
+                                "bed",
+                                "gff",
+                                "fasta",
+                                "fastq",
+                                "flatfile",
+                                "chromosome_list",
+                                "sample_list",
+                                "readme_file",
+                                "phenotype_file",
+                                "BioNano_native",
+                                "Kallisto_native",
+                                "agp",
+                                "unlocalised_list",
+                                "info",
+                                "manifest",
+                                "other"
+                            ]
+                        },
+                        "checksumMethod": {
+                            "type": "string",
+                            "title": "checksumMethod",
+                            "enum": [
+                                "MD5",
+                                "SHA256"
+                            ]
+                        },
+                        "checksum": {
+                            "type": "string",
+                            "title": "checksum"
+                        }
+                    }
+                }
+            }
+        },
+        "analysisLinks": {
+            "type": "object",
+            "title": "Analysis Links",
+            "properties": {
+                "xrefLinks": {
+                    "$ref": "#/definitions/xrefLink"
+                },
+                "entrezLinks": {
+                    "$ref": "#/definitions/entrezLink"
+                },
+                "urlLinks": {
+                    "$ref": "#/definitions/urlLink"
+                }
+            }
+        },
+        "analysisAtrributes": {
+            "type": "array",
+            "title": "Analysis Attributes",
+            "items": {
+                "$ref": "#/definitions/analysisAttribute"
+            }
+        }
+    }
+}
