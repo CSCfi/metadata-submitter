@@ -236,27 +236,47 @@
         },
         "runType": {
             "title": "Run Type",
-            "type": "array",
+            "type": "object",
             "description": "Type of Run.",
-            "items": {
-                "enum": [
-                    "Whole genome sequencing",
-                    "Exome sequencing",
-                    "Genotyping by array",
-                    "Transcriptome profiling by high-throughput sequencing",
-                    "Transcriptome profiling by array",
-                    "Amplicon sequencing",
-                    "Methylation binding domain sequencing",
-                    "Methylation profiling by high-throughput sequencing",
-                    "Phenotype information",
-                    "Study summary information",
-                    "Genomic variant calling",
-                    "Chromatin accessibility profiling by high-throughput sequencing",
-                    "Histone modification profiling by high-throughput sequencing",
-                    "Chip-Seq"
-                ]
-            },
-            "uniqueItems": true
+            "properties": {
+                "referenceAlignment": {
+                    "type": "object",
+                    "title": "referenceAlignment",
+                    "additionalProperties": true,
+                    "properties": {
+                        "sequence": {
+                            "type": "array",
+                            "title": "sequence",
+                            "additionalItems": true,
+                            "items": {
+                                "anyOf": [
+                                    {
+                                        "type": "object",
+                                        "title": "first anyOf",
+                                        "required": [
+                                            "accessionId"
+                                        ],
+                                        "properties": {
+                                            "label": {
+                                                "type": "string",
+                                                "title": "label"
+                                            },
+                                            "refname": {
+                                                "type": "string",
+                                                "title": "refname"
+                                            },
+                                            "accessionId": {
+                                                "type": "string",
+                                                "title": "accessionId"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
         },
         "experimentRef": {
             "title": "Experiment Identifier (Accession ID or title)",
@@ -416,6 +436,89 @@
             "type": "array",
             "items": {
                 "$ref": "#/definitions/processingType"
+            }
+        },
+        "datablock": {
+            "type": "array",
+            "title": "Data Block, files",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "files": {
+                        "type": "object",
+                        "title": "files",
+                        "required": [
+                            "file"
+                        ],
+                        "additionalProperties": true,
+                        "properties": {
+                            "file": {
+                                "type": "object",
+                                "title": "file",
+                                "required": [
+                                    "filename",
+                                    "filetype",
+                                    "checksumMethod",
+                                    "checksum"
+                                ],
+                                "additionalProperties": true,
+                                "properties": {
+                                    "filename": {
+                                        "type": "string",
+                                        "title": "filename"
+                                    },
+                                    "filetype": {
+                                        "type": "string",
+                                        "title": "filetype",
+                                        "enum": [
+                                            "tab",
+                                            "bam",
+                                            "bai",
+                                            "cram",
+                                            "crai",
+                                            "vcf",
+                                            "vcf_aggregate",
+                                            "bcf",
+                                            "tabix",
+                                            "wig",
+                                            "sra",
+                                            "sff",
+                                            "srf",
+                                            "bed",
+                                            "gff",
+                                            "fasta",
+                                            "fastq",
+                                            "flatfile",
+                                            "chromosome_list",
+                                            "sample_list",
+                                            "readme_file",
+                                            "phenotype_file",
+                                            "BioNano_native",
+                                            "Kallisto_native",
+                                            "agp",
+                                            "unlocalised_list",
+                                            "info",
+                                            "manifest",
+                                            "other"
+                                        ]
+                                    },
+                                    "checksumMethod": {
+                                        "type": "string",
+                                        "title": "checksumMethod",
+                                        "enum": [
+                                            "MD5",
+                                            "SHA256"
+                                        ]
+                                    },
+                                    "checksum": {
+                                        "type": "string",
+                                        "title": "checksum"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "runLinks": {
