@@ -626,9 +626,11 @@
             "title": "Processing",
             "oneOf": [
                 {
+                    "title": "Single processing",
                     "type": "string"
                 },
                 {
+                    "title": "Complex Processing",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/processingType"
