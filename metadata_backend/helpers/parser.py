@@ -135,7 +135,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
           etc. ) we group the types of links under an array, thus flattening
           the structure.
         - Study type takes the value of its attribute existingStudyType.
-        - Platform we get the string of the instrument Model.
+        - Platform data we assign the string value of the instrument Model.
         """
         xsd_type = xsd_type or xsd_element.type
         if xsd_type.simple_type is not None:
