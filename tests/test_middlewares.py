@@ -17,13 +17,23 @@ class MiddlewaresTestCase(AioHTTPTestCase):
         return await init()
 
     async def setUpAsync(self):
-        """Set key as environment variable for the duration of the test."""
-        key = {
-            "kty": "oct",
-            "alg": "HS256",
-            "k": "GawgguFyGrWKav7AX4VKUg"
+        """Configure default values for testing JWTs.
+
+        Also set pem as an environment variable for the duration of the tests.
+        """
+        self.header = {'alg': "HS256", 'typ': "JWT"}
+        self.payload = {
+            'sub': "test",
+            'name': "tester",
+            'iss': "haka_iss",
+            'exp': 9999999999
         }
-        os.environ['PUBLIC_KEY'] = json.dumps(key)
+        self.pem = {
+            'kty': "oct",
+            'alg': "RS256",
+            'k': "GawgguFyGrWKav7AX4VKUg"
+        }
+        os.environ['PUBLIC_KEY'] = json.dumps(self.pem)
 
     async def tearDownAsync(self):
         """Unset the public key."""
@@ -65,19 +75,12 @@ class MiddlewaresTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_authentication_passes(self):
         """Test that JWT authenticates."""
-        # Mock token
-        header = {'alg': "HS256", 'typ': "JWT"}
-        payload = {'sub': "test", 'name': "tester", 'exp': 9999999999}
-        pem = {
-            "kty": "oct",
-            "alg": "HS256",
-            "k": "GawgguFyGrWKav7AX4VKUg"
-        }
-        token = jwt.encode(header, payload, pem).decode('utf-8')
+        # Add claims to mocked token
+        token = jwt.encode(self.header, self.payload, self.pem).decode('utf-8')
         data = self.create_improper_data()
         response = await self.client.post("/submit", data=data,
                                           headers={'Authorization':
-                                                   f'Bearer {token}'})
+                                                   f"Bearer {token}"})
 
         # Auth passes, hence response should be 400
         self.assertEqual(response.status, 400)
@@ -89,19 +92,14 @@ class MiddlewaresTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_authentication_fails_with_expired_jwt(self):
         """Test that JWT does not authenticate if token has expired."""
-        # Mock token
-        header = {'alg': "HS256", 'typ': "JWT"}
-        payload = {'sub': "test", 'name': "tester", 'exp': 0}
-        pem = {
-            "kty": "oct",
-            "alg": "HS256",
-            "k": "GawgguFyGrWKav7AX4VKUg"
-        }
-        token = jwt.encode(header, payload, pem).decode('utf-8')
+        # Add claims to mocked token
+        payload = self.payload
+        payload['exp'] = 0
+        token = jwt.encode(self.header, payload, self.pem).decode('utf-8')
         data = self.create_improper_data()
         response = await self.client.post("/submit", data=data,
                                           headers={'Authorization':
-                                                   f'Bearer {token}'})
+                                                   f"Bearer {token}"})
 
         # Auth does not pass so response should be 401
         self.assertEqual(response.status, 401)
@@ -109,3 +107,61 @@ class MiddlewaresTestCase(AioHTTPTestCase):
         resp_dict = await response.json()
         self.assertEqual("expired_token: The token is expired",
                          resp_dict['detail'])
+
+    @unittest_run_loop
+    async def test_authentication_fails_with_missing_claim(self):
+        """Test JWT does not authenticate if 'iss' key is not in claims."""
+        payload = self.payload
+        del payload['iss']
+        token = jwt.encode(self.header, self.payload, self.pem).decode('utf-8')
+        data = self.create_improper_data()
+        response = await self.client.post("/submit", data=data,
+                                          headers={'Authorization':
+                                                   f"Bearer {token}"})
+
+        # Auth does not pass so response should be 401
+        self.assertEqual(response.status, 401)
+        self.assertEqual(response.content_type, "application/problem+json")
+        resp_dict = await response.json()
+        self.assertEqual('missing_claim: Missing "iss" claim',
+                         resp_dict['detail'])
+
+    @unittest_run_loop
+    async def test_authentication_fails_with_invalid_claim(self):
+        """Test JWT does not authenticate with wrong 'iss' value."""
+        # Add claims to mocked token
+        payload = self.payload
+        payload['iss'] = "wrong_iss"
+        token = jwt.encode(self.header, payload, self.pem).decode('utf-8')
+        data = self.create_improper_data()
+        response = await self.client.post("/submit", data=data,
+                                          headers={'Authorization':
+                                                   f"Bearer {token}"})
+
+        # Token contains incorrect info for authenticating so response is 403
+        self.assertEqual(response.status, 403)
+        self.assertEqual(response.content_type, "application/problem+json")
+        resp_dict = await response.json()
+        self.assertIn('Token contains invalid_claim: Invalid claim "iss"',
+                      resp_dict['detail'])
+
+    @unittest_run_loop
+    async def test_bad_signature_error(self):
+        """Test that altering the key raises bad signature error."""
+        otherkey = {
+            'kty': "oct",
+            'alg': "RS256",
+            'k': "hJtXIZ2uSN5kbQfbtTNWbpdmhkV8FJG"
+        }
+        token = jwt.encode(self.header, self.payload, otherkey).decode('utf-8')
+        data = self.create_improper_data()
+        response = await self.client.post("/submit", data=data,
+                                          headers={'Authorization':
+                                                   f"Bearer {token}"})
+
+        # Auth does not pass so response should be 401
+        self.assertEqual(response.status, 401)
+        self.assertEqual(response.content_type, "application/problem+json")
+        resp_dict = await response.json()
+        self.assertIn('Token signature is invalid, bad_signature:',
+                      resp_dict['detail'])
