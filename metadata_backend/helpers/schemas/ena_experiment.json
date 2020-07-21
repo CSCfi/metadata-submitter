@@ -104,7 +104,16 @@
                 "sampleRef": {
                     "title": "Sample Identifier (Accession ID or title)",
                     "description": "Pick a sample to associate this experiment with. The sample may be an individual or a pool, depending on how it is specified.",
-                    "type": "string"
+                    "type": "object",
+                    "required": [
+                        "accessionId"
+                    ],
+                    "properties": {
+                        "accessionId": {
+                            "type": "string",
+                            "title": "Accession ID"
+                        }
+                    }
                 },
                 "libraryDescriptor": {
                     "description": "The LIBRARY_DESCRIPTOR specifies the origin of the material being sequenced and any treatments that the material might have undergone that affect the sequencing result. This specification is needed even if the platform does not require a library construction step per se.",
@@ -445,6 +454,60 @@
                 },
                 "directives": {}
             }
+        },
+        "reference": {
+            "$id": "#/definitions/reference",
+            "type": "object",
+            "required": [
+                "accessionId"
+            ],
+            "properties": {
+                "label": {
+                    "type": "string",
+                    "title": "label"
+                },
+                "refname": {
+                    "type": "string",
+                    "title": "refname"
+                },
+                "refcenter": {
+                    "type": "string",
+                    "title": "refcenter"
+                },
+                "accessionId": {
+                    "type": "string",
+                    "title": "accessionId"
+                },
+                "identifiers": {
+                    "type": "object",
+                    "title": "identifiers",
+                    "properties": {
+                        "primaryId": {
+                            "type": "string",
+                            "title": "primaryId"
+                        },
+                        "submitterId": {
+                            "type": "object",
+                            "title": "submitterId",
+                            "required": [
+                                "namespace",
+                                "value"
+                            ],
+                            "additionalProperties": true,
+                            "properties": {
+                                "namespace": {
+                                    "type": "string",
+                                    "title": "namespace"
+                                },
+                                "value": {
+                                    "type": "string",
+                                    "title": "value"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "type": "object",
@@ -468,8 +531,8 @@
         },
         "studyRef": {
             "title": "Study Identifier (Accession ID or title)",
-            "description": "Identifies the parent study.",
-            "type": "string"
+            "description": "Identifies the associated study.",
+            "$ref": "#/definitions/reference"
         },
         "desgin": {
             "title": "Design",
