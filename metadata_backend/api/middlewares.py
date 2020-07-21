@@ -81,11 +81,16 @@ def jwt_middleware() -> Callable:
             # JWK and JWTClaims parameters for decoding
             key = environ.get('PUBLIC_KEY', None)
             # TODO: get Oauth2 public key
-            # TODO: verify audience claim.
+            # TODO: verify audience claim
 
             # Include claims that are required to be present
             # in the payload of the token
             claims_options = {
+                "iss": {
+                    "essential": True,
+                    # TODO: add the proper issuer URLs here
+                    "values": ["haka_iss", "elixir_iss"]
+                },
                 "exp": {
                     "essential": True
                 }
@@ -102,12 +107,14 @@ def jwt_middleware() -> Callable:
                 req["token"] = {"authenticated": True}
                 return await handler(req)
             except errors.MissingClaimError as err:
-                raise web.HTTPUnauthorized(reason=f"Missing claim(s): {err}")
+                raise web.HTTPUnauthorized(reason=f"{err}")
             except errors.ExpiredTokenError as err:
                 raise web.HTTPUnauthorized(reason=f"{err}")
             except errors.InvalidClaimError as err:
-                raise web.HTTPForbidden(reason="Token info not corresponding "
-                                               f"with claim: {err}")
+                raise web.HTTPForbidden(reason=f"Token contains {err}")
+            except errors.BadSignatureError as err:
+                raise web.HTTPUnauthorized(reason="Token signature is invalid"
+                                                  f", {err}")
             except errors.InvalidTokenError as err:
                 raise web.HTTPUnauthorized(reason="Invalid authorization token"
                                                   f": {err}")
