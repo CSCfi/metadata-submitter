@@ -203,7 +203,24 @@
                         }
                     }
                 },
-                "directives": {}
+                "directives": {
+                    "type": "object",
+                    "title": "Directives",
+                    "description": "Processing directives tell the Sequence Read Archive how to treat the input data, if any treatment is requested.",
+                    "properties": {
+                        "sampleDemuxDirective": {
+                            "type": "object",
+                            "properties": {
+                                "leaveAsPool": {
+                                    "type": "string"
+                                },
+                                "submitterDemultiplexed": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "reference": {
