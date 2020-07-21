@@ -117,9 +117,16 @@
                                         "title": "Step Index"
                                     },
                                     "prevStepIndex": {
-                                        "type": {
-                                            "type": "string, null"
-                                        },
+                                        "oneOf": [
+                                            {
+                                                "title": "string",
+                                                "type": "string"
+                                            },
+                                            {
+                                                "title": "Null value",
+                                                "type": "null"
+                                            }
+                                        ],
                                         "title": "Prev Step Index"
                                     },
                                     "program": {

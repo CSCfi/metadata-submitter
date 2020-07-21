@@ -426,9 +426,16 @@
                                         "title": "Step Index"
                                     },
                                     "prevStepIndex": {
-                                        "type": {
-                                            "type": "string, null"
-                                        },
+                                        "oneOf": [
+                                            {
+                                                "title": "string",
+                                                "type": "string"
+                                            },
+                                            {
+                                                "title": "Null value",
+                                                "type": "null"
+                                            }
+                                        ],
                                         "title": "Prev Step Index"
                                     },
                                     "program": {
@@ -532,8 +539,7 @@
     "required": [
         "design",
         "studyRef",
-        "platform",
-        "experimentLink"
+        "platform"
     ],
     "properties": {
         "title": {
@@ -618,10 +624,17 @@
         },
         "processing": {
             "title": "Processing",
-            "type": "array",
-            "items": {
-                "$ref": "#/definitions/processingType"
-            }
+            "oneOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/processingType"
+                    }
+                }
+            ]
         },
         "experimentLinks": {
             "type": "object",
