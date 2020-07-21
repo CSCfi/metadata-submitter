@@ -3,9 +3,10 @@
 from pathlib import Path
 from unittest.mock import patch
 
-from aiohttp import FormData
+from aiohttp import FormData, web
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
 from aiounittest import futurized
+from metadata_backend.helpers.schema_loader import SchemaNotFoundException
 
 from metadata_backend.server import init
 
@@ -161,6 +162,26 @@ class HandlersTestCase(AioHTTPTestCase):
                         "analysis", "dac", "policy", "dataset", "project"]
         for schema_type in schema_types:
             self.assertIn(schema_type, response_text)
+
+    @unittest_run_loop
+    async def test_correct_study_schema_are_returned(self):
+        """Test api endpoint for study schema types."""
+        response = await self.client.get("/schemas/study")
+        response_text = await response.text()
+        self.assertIn("study", response_text)
+        self.assertNotIn("submission", response_text)
+
+    @unittest_run_loop
+    async def test_raises_invalid_schema(self):
+        """Test api endpoint for study schema types."""
+        await self.client.get("/schemas/something")
+        self.assertRaises(web.HTTPNotFound)
+
+    @unittest_run_loop
+    async def test_raises_not_found_schema(self):
+        """Test api endpoint for study schema types."""
+        await self.client.get("/schemas/project")
+        self.assertRaises(SchemaNotFoundException)
 
     @unittest_run_loop
     async def test_submit_object_works(self):
