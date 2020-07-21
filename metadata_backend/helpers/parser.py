@@ -71,6 +71,10 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 children[key] = value['existingStudyType']
                 continue
 
+            if "platform" in key:
+                children[key] = list(value.values())[0]['instrumentModel']
+                continue
+
             if key in links and len(value) == 1:
                 grp = defaultdict(list)
                 if isinstance(value[key[:-1]], dict):
@@ -131,6 +135,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
           etc. ) we group the types of links under an array, thus flattening
           the structure.
         - Study type takes the value of its attribute existingStudyType.
+        - Platform we get the string of the instrument Model.
         """
         xsd_type = xsd_type or xsd_element.type
         if xsd_type.simple_type is not None:
