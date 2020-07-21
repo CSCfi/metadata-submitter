@@ -12,7 +12,7 @@ from xmlschema import XMLSchemaException
 
 from ..conf.conf import schema_types
 from ..helpers.parser import XMLToJSONParser
-from ..helpers.schema_loader import XMLSchemaLoader, SchemaNotFoundException
+from ..helpers.schema_loader import XMLSchemaLoader, SchemaNotFoundException, JSONSchemaLoader
 from ..helpers.validator import XMLValidator
 from .operators import Operator, XMLOperator
 from ..helpers.logger import LOG
@@ -31,7 +31,32 @@ class RESTApiHandler:
         types_json = json.dumps([x["description"] for x in
                                  schema_types.values()])
         LOG.info(f"GET schema types. Retrieved {len(schema_types)} schemas.")
-        return web.Response(body=types_json, status=200)
+        return web.Response(body=types_json, status=200,
+                            content_type="application/json")
+
+    async def get_json_schema(self, req: Request) -> Response:
+        """Get all JSON Schema for a specific schema type.
+
+        Basically returns which objects user can submit and query for.
+        :param req: GET Request
+        :returns: JSON list of schema types
+        """
+        schema_type = req.match_info['schema']
+        if schema_type not in schema_types.keys():
+            reason = f"Specified schema {schema_type} was not found."
+            LOG.error(reason)
+            raise web.HTTPNotFound(reason=reason)
+        try:
+            schema = JSONSchemaLoader().get_schema(schema_type)
+            LOG.info(f"{schema_type} schema loaded.")
+            LOG.info(f"GET schema types. Retrieved {len(schema_types)} schemas.")
+            return web.Response(body=json.dumps(schema), status=200,
+                                content_type="application/json")
+
+        except SchemaNotFoundException as error:
+            reason = f"{error} ({schema_type})"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
 
     async def get_object(self, req: Request) -> Response:
         """Get one metadata object by its accession id.
