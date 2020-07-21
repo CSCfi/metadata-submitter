@@ -12,7 +12,8 @@ from xmlschema import XMLSchemaException
 
 from ..conf.conf import schema_types
 from ..helpers.parser import XMLToJSONParser
-from ..helpers.schema_loader import XMLSchemaLoader, SchemaNotFoundException, JSONSchemaLoader
+from ..helpers.schema_loader import (XMLSchemaLoader, SchemaNotFoundException,
+                                     JSONSchemaLoader)
 from ..helpers.validator import XMLValidator
 from .operators import Operator, XMLOperator
 from ..helpers.logger import LOG
@@ -49,7 +50,6 @@ class RESTApiHandler:
         try:
             schema = JSONSchemaLoader().get_schema(schema_type)
             LOG.info(f"{schema_type} schema loaded.")
-            LOG.info(f"GET schema types. Retrieved {len(schema_types)} schemas.")
             return web.Response(body=json.dumps(schema), status=200,
                                 content_type="application/json")
 
