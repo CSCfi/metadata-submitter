@@ -90,6 +90,60 @@
                     "title": "Description"
                 }
             }
+        },
+        "reference": {
+            "$id": "#/definitions/reference",
+            "type": "object",
+            "required": [
+                "accessionId"
+            ],
+            "properties": {
+                "label": {
+                    "type": "string",
+                    "title": "label"
+                },
+                "refname": {
+                    "type": "string",
+                    "title": "refname"
+                },
+                "refcenter": {
+                    "type": "string",
+                    "title": "refcenter"
+                },
+                "accessionId": {
+                    "type": "string",
+                    "title": "accessionId"
+                },
+                "identifiers": {
+                    "type": "object",
+                    "title": "identifiers",
+                    "properties": {
+                        "primaryId": {
+                            "type": "string",
+                            "title": "primaryId"
+                        },
+                        "submitterId": {
+                            "type": "object",
+                            "title": "submitterId",
+                            "required": [
+                                "namespace",
+                                "value"
+                            ],
+                            "additionalProperties": true,
+                            "properties": {
+                                "namespace": {
+                                    "type": "string",
+                                    "title": "namespace"
+                                },
+                                "value": {
+                                    "type": "string",
+                                    "title": "value"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "type": "object",
@@ -134,17 +188,17 @@
         "policyRef": {
             "title": "Policy Identifier (Accession ID or title)",
             "description": "Identifies the data access committee to which this policy pertains.",
-            "type": "string"
+            "$ref": "#/definitions/reference"
         },
         "runRef": {
             "title": "Run Identifier (Accession ID or title)",
             "description": "Identifies the runs which are part of this dataset.",
-            "type": "string"
+            "$ref": "#/definitions/reference"
         },
         "anlysisRef": {
             "title": "Analysis Identifier (Accession ID or title)",
             "description": "Identifies the data access committee to which this policy pertains.",
-            "type": "string"
+            "$ref": "#/definitions/reference"
         },
         "datasetLinks": {
             "type": "object",
