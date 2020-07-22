@@ -482,6 +482,7 @@
         "reference": {
             "$id": "#/definitions/reference",
             "type": "object",
+            "additionaProperties": true,
             "required": [
                 "accessionId"
             ],
