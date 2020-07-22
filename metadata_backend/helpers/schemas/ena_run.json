@@ -538,6 +538,7 @@
         "dataBlock": {
             "oneOf": [
                 {
+                    "title": "Single File",
                     "$ref": "#/definitions/fileType"
                 },
                 {
