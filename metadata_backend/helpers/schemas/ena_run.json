@@ -337,29 +337,26 @@
                             "title": "sequence",
                             "additionalItems": true,
                             "items": {
-                                "anyOf": [
-                                    {
-                                        "type": "object",
-                                        "title": "first anyOf",
-                                        "required": [
-                                            "accessionId"
-                                        ],
-                                        "properties": {
-                                            "label": {
-                                                "type": "string",
-                                                "title": "label"
-                                            },
-                                            "refname": {
-                                                "type": "string",
-                                                "title": "refname"
-                                            },
-                                            "accessionId": {
-                                                "type": "string",
-                                                "title": "accessionId"
-                                            }
-                                        }
+                                "type": "object",
+                                "title": "Run Type reference",
+                                "additionalProperties": true,
+                                "required": [
+                                    "accessionId"
+                                ],
+                                "properties": {
+                                    "label": {
+                                        "type": "string",
+                                        "title": "label"
+                                    },
+                                    "refname": {
+                                        "type": "string",
+                                        "title": "refname"
+                                    },
+                                    "accessionId": {
+                                        "type": "string",
+                                        "title": "accessionId"
                                     }
-                                ]
+                                }
                             }
                         }
                     }
