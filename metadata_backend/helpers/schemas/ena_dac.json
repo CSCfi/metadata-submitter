@@ -47,7 +47,6 @@
                     }
                 }
             }
-            
         },
         "entrezLink": {
             "$id": "#/definitions/entrezLink",
@@ -75,10 +74,10 @@
         "contact": {
             "$id": "#/definitions/contact",
             "type": "object",
-                "required": [
-                    "name",
-                    "email"
-                ],
+            "required": [
+                "name",
+                "email"
+            ],
             "properties": {
                 "name": {
                     "name": "Contact Name",
@@ -116,16 +115,18 @@
     "properties": {
         "contacts": {
             "type": "array",
-            "title": "Contacts", 
+            "title": "Contacts",
             "items": {
                 "$ref": "#/definitions/contact"
             },
             "contains": {
                 "properties": {
-                  "mainContact": {"const": true}
+                    "mainContact": {
+                        "const": true
+                    }
                 }
-              },
-              "maxContains": 1
+            },
+            "maxContains": 1
         },
         "title": {
             "title": "DAC Description",
