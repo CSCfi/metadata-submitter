@@ -124,6 +124,10 @@
         "descriptor": {
             "type": "object",
             "title": "Study Description", 
+            "required": [
+                "studyTitle",
+                "studyType"
+            ],
             "properties": {
                 "studyTitle": {
                     "title": "Study Title",
