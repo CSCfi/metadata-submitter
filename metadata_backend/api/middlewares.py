@@ -73,15 +73,15 @@ async def jwt_authentication(req: Request, handler: Callable) -> Response:
 
         # JWK and JWTClaims parameters for decoding
         key = environ.get('PUBLIC_KEY', None)
-        # TODO: get Oauth2 public key
-        # TODO: verify audience claim
+
+        # Get Oauth2 public key and verify audience claim here
 
         # Include claims that are required to be present
         # in the payload of the token
         claims_options = {
             "iss": {
                 "essential": True,
-                # TODO: add the proper issuer URLs here
+                # Proper issuer URLs need to be added as the values
                 "values": ["haka_iss", "elixir_iss"]
             },
             "exp": {
@@ -95,7 +95,7 @@ async def jwt_authentication(req: Request, handler: Callable) -> Response:
             claims.validate()
             LOG.info('Auth token decoded and validated.')
 
-            # TODO: Retrieve GA4GH passports and process into permissions
+            # Retrieve GA4GH passports and process into permissions here
 
             req["token"] = {"authenticated": True}
             return await handler(req)
