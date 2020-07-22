@@ -232,6 +232,7 @@
         },
         "reference": {
             "$id": "#/definitions/reference",
+            "additionaProperties": true,
             "type": "object",
             "required": [
                 "accessionId"
