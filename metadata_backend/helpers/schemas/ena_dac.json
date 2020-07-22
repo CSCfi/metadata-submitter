@@ -119,7 +119,13 @@
             "title": "Contacts", 
             "items": {
                 "$ref": "#/definitions/contact"
-            }
+            },
+            "contains": {
+                "properties": {
+                  "mainContact": {"const": true}
+                }
+              },
+              "maxContains": 1
         },
         "title": {
             "title": "DAC Description",
