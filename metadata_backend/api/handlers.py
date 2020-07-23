@@ -182,7 +182,7 @@ class RESTApiHandler:
     async def delete_object(self, req: Request) -> Response:
         """Delete metadata object from database.
 
-        :param req: POST request
+        :param req: DELETE request
         :returns: JSON response containing accessionId for submitted object
         """
         schema_type = req.match_info['schema']
@@ -227,6 +227,53 @@ class RESTApiHandler:
                  f"in schema {collection} was successful.")
         return web.Response(body=body, status=201,
                             content_type="application/json")
+    async def get_folders(self, req: Request) -> Response:
+        """Get all possible object folders from database.
+
+        :param req: GET Request
+        :returns: JSON list of folders
+        """
+        raise NotImplementedError
+
+    async def post_folder(self, req: Request) -> Response:
+        """Save object folder to database.
+
+        :param req: POST request
+        :returns: JSON response containing folderId for submitted object
+        """
+        raise NotImplementedError
+
+    async def get_folder(self, req: Request) -> Response:
+        """Get one object folder by its folder id.
+
+        :param req: GET request
+        :returns: JSON response containing object folder
+        """
+        raise NotImplementedError
+
+    async def replace_folder(self, req: Request) -> Response:
+        """Replace object folder with a specific folder id.
+
+        :param req: PUT request
+        :returns: TBD
+        """
+        raise NotImplementedError
+
+    async def update_folder(self, req: Request) -> Response:
+        """Update object folder with a specific folder id.
+
+        :param req: PATCH request
+        :returns: TBD
+        """
+        raise NotImplementedError
+
+    async def delete_folder(self, req: Request) -> Response:
+        """Delete object folder from database.
+
+        :param req: DELETE request
+        :returns: TBD
+        """
+        raise NotImplementedError
 
     async def patch_object(self, req: Request) -> Response:
         """Update metadata object in database.
