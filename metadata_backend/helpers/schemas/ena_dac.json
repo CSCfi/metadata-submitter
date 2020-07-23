@@ -119,12 +119,21 @@
             "items": {
                 "$ref": "#/definitions/contact"
             },
+            "minItems": 1,
             "contains": {
-                "properties": {
-                    "mainContact": {
-                        "const": true
+                "allOf": [
+                    {
+                        "$ref": "#/definitions/contact"
+                    },
+                    {
+                        "required": "mainContact",
+                        "properties": {
+                            "mainContact": {
+                                "const": true
+                            }
+                        }
                     }
-                }
+                ]
             },
             "maxContains": 1
         },
