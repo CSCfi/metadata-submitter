@@ -74,14 +74,11 @@ async def jwt_authentication(req: Request, handler: Callable) -> Response:
         # JWK and JWTClaims parameters for decoding
         key = environ.get('PUBLIC_KEY', None)
 
-        # Get Oauth2 public key and verify audience claim here
-
         # Include claims that are required to be present
         # in the payload of the token
         claims_options = {
             "iss": {
                 "essential": True,
-                # Proper issuer URLs need to be added as the values
                 "values": ["haka_iss", "elixir_iss"]
             },
             "exp": {
@@ -94,9 +91,6 @@ async def jwt_authentication(req: Request, handler: Callable) -> Response:
             claims = jwt.decode(token, key, claims_options=claims_options)
             claims.validate()
             LOG.info('Auth token decoded and validated.')
-
-            # Retrieve GA4GH passports and process into permissions here
-
             req["token"] = {"authenticated": True}
             return await handler(req)
         except errors.MissingClaimError as err:
