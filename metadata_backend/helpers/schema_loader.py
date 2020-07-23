@@ -5,9 +5,11 @@ probably be replaced with database searching in the future.
 """
 
 from pathlib import Path
+from typing import Any
 
 from xmlschema import XMLSchema
 import json
+from abc import ABC, abstractmethod
 
 SCHEMAS_ROOT = Path(__file__).parent / 'schemas'
 
@@ -20,12 +22,46 @@ class SchemaNotFoundException(Exception):
         Exception.__init__(self, "There is no file for given schema.")
 
 
-class XMLSchemaLoader:
+class SchemaLoader(ABC):
+    """XML Schema Loader implementation."""
+
+    def __init__(self, loader_type: str) -> None:
+        """Load schemas folder on initialization and set loader."""
+        self.path = SCHEMAS_ROOT
+        self.loader_type = loader_type.lower()
+
+    def _identify_file(self, schema_type: str) -> Path:
+        """Identify file in schemas folder.
+
+        :param schema_type: Schema type to be searched for
+        :returns: file
+        :raises SchemaNotFoundException: If searched schema doesn't exist
+        """
+        schema_type = schema_type.lower()
+        schema_file = None
+        for file in [x for x in self.path.iterdir()]:
+            if (schema_type in file.name
+               and file.name.endswith(self.loader_type)):
+                schema_file = file
+        if not schema_file:
+            raise SchemaNotFoundException
+
+        return schema_file
+
+    @abstractmethod
+    def get_schema(self, schema_type: str) -> Any:
+        """Find schema which is used to match files against.
+
+        Must be implemented by subclass.
+        """
+
+
+class XMLSchemaLoader(SchemaLoader):
     """XML Schema Loader implementation."""
 
     def __init__(self) -> None:
-        """Load schemas folder on initialization."""
-        self.path = SCHEMAS_ROOT
+        """Select loader type on initialization."""
+        super().__init__("xsd")
 
     def get_schema(self, schema_type: str) -> XMLSchema:
         """Find schema which is used to match XML files against.
@@ -40,23 +76,18 @@ class XMLSchemaLoader:
         :returns: XMLSchema able to validate XML against defined schema type
         :raises SchemaNotFoundException: If searched schema doesn't exist
         """
-        schema_type = schema_type.lower()
-        schema_file = None
-        for file in [x for x in self.path.iterdir()]:
-            if schema_type in file.name and file.name.endswith("xsd"):
-                with file.open() as f:
-                    schema_file = f.read()
-        if not schema_file:
-            raise SchemaNotFoundException
-        return XMLSchema(schema_file, base_url=self.path.as_posix())
+        file = self._identify_file(schema_type)
+        with file.open() as f:
+            schema_content = f.read()
+        return XMLSchema(schema_content, base_url=self.path.as_posix())
 
 
-class JSONSchemaLoader:
+class JSONSchemaLoader(SchemaLoader):
     """JSON Loader implementation."""
 
     def __init__(self) -> None:
-        """Load schemas folder on initialization."""
-        self.path = SCHEMAS_ROOT
+        """Select loader type on initialization."""
+        super().__init__("json")
 
     def get_schema(self, schema_type: str) -> dict:
         """Find schema which is used to match JSON files against.
@@ -65,12 +96,7 @@ class JSONSchemaLoader:
         :returns: JSONSchema able to validate XML against defined schema type
         :raises SchemaNotFoundException: If searched schema doesn't exist
         """
-        schema_type = schema_type.lower()
-        schema_file = None
-        for file in [x for x in self.path.iterdir()]:
-            if schema_type in file.name and file.name.endswith("json"):
-                with file.open() as f:
-                    schema_file = json.load(f)
-        if not schema_file:
-            raise SchemaNotFoundException
-        return schema_file
+        file = self._identify_file(schema_type)
+        with file.open() as f:
+            schema_contet = json.load(f)
+        return schema_contet
