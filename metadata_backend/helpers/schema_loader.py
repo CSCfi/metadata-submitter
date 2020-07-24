@@ -98,5 +98,5 @@ class JSONSchemaLoader(SchemaLoader):
         """
         file = self._identify_file(schema_type)
         with file.open() as f:
-            schema_contet = json.load(f)
-        return schema_contet
+            schema_content = json.load(f)
+        return schema_content
