@@ -28,6 +28,7 @@ async def init() -> web.Application:
     submission_handler = SubmissionAPIHandler()
     api_routes = [
         web.get('/schemas', rest_handler.get_schema_types),
+        web.get('/schemas/{schema}', rest_handler.get_json_schema),
         web.get('/objects/{schema}/{accessionId}', rest_handler.get_object),
         web.delete('/objects/{schema}/{accessionId}',
                    rest_handler.delete_object),
