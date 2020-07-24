@@ -7,7 +7,7 @@ from aiohttp import web
 from xmlschema import (XMLSchema, XMLSchemaConverter, XMLSchemaException,
                        XsdElement, XsdType)
 
-from .schema_loader import SchemaLoader, SchemaNotFoundException
+from .schema_loader import XMLSchemaLoader, SchemaNotFoundException
 from .logger import LOG
 from .validator import XMLValidator
 from collections import defaultdict
@@ -71,6 +71,10 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 children[key] = value['existingStudyType']
                 continue
 
+            if "platform" in key:
+                children[key] = list(value.values())[0]['instrumentModel']
+                continue
+
             if key in links and len(value) == 1:
                 grp = defaultdict(list)
                 if isinstance(value[key[:-1]], dict):
@@ -131,6 +135,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
           etc. ) we group the types of links under an array, thus flattening
           the structure.
         - Study type takes the value of its attribute existingStudyType.
+        - Platform data we assign the string value of the instrument Model.
         """
         xsd_type = xsd_type or xsd_element.type
         if xsd_type.simple_type is not None:
@@ -190,7 +195,7 @@ class XMLToJSONParser:
         :returns: Schema instance matching the given schema type
         :raises: HTTPBadRequest if schema wasn't found
         """
-        loader = SchemaLoader()
+        loader = XMLSchemaLoader()
         try:
             schema = loader.get_schema(schema_type)
         except (SchemaNotFoundException, XMLSchemaException) as error:
