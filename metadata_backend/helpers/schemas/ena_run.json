@@ -416,7 +416,7 @@
                         },
                         "relativeOrder": {},
                         "baseCoord": {
-                            "title": "Base Coordonate",
+                            "title": "Base Coordinate",
                             "type": "number"
                         },
                         "expectedBaseCallTable": {

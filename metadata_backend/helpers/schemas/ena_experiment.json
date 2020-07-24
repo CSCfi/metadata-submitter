@@ -349,7 +349,7 @@
                                 },
                                 "relativeOrder": {},
                                 "baseCoord": {
-                                    "title": "Base Coordonate",
+                                    "title": "Base Coordinate",
                                     "type": "number"
                                 },
                                 "expectedBaseCallTable": {
@@ -549,7 +549,7 @@
             "description": "Identifies the associated study.",
             "$ref": "#/definitions/reference"
         },
-        "desgin": {
+        "design": {
             "title": "Design",
             "description": "The library design including library properties, layout, protocol, targeting information, and spot and gap descriptors. ",
             "$ref": "#/definitions/libraryType"
