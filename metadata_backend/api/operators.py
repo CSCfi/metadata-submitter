@@ -140,6 +140,18 @@ class BaseOperator(ABC):
         LOG.info(f"removing object with schema {schema_type} from database "
                  f"and accession id: {accession_id}")
 
+    async def create_object_folder(self, data: Dict) -> str:
+        """Create new object folder to database.
+
+        :param data: Data to be saved to database.
+        :returns: Folder id for the object inserted to database
+        """
+        folder_id = await self._insert_new_folder_to_db(data)
+
+        LOG.info(f"Inserting folder to database with {data} objects "
+                 f"succeeded with folder id: {folder_id}")
+        return folder_id
+
     async def _insert_formatted_object_to_db(self, schema_type: str,
                                              data: Dict) -> str:
         """Insert formatted metadata object to database.
@@ -263,6 +275,25 @@ class BaseOperator(ABC):
             LOG.info(f"{accession_id} successfully deleted from collection")
         else:
             reason = "Deleting for {accession_id} from database failed."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+    async def _insert_new_folder_to_db(self, data: Dict) -> str:
+        """Insert new object folder to database.
+
+        :param data: List of objects to be inserted in folder in JSON format
+        :returns: Folder ID for folder inserted to database
+        """
+        try:
+            insert = await self.db_service.create_folder(data)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting file: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        if insert[0]:
+            return insert[1]
+        else:
+            reason = "Inserting file to database failed for some reason."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
