@@ -97,10 +97,16 @@ class DBService:
         """
         find_by_id_query = {"accessionId": accession_id}
         update_operation = {"$set": data_to_be_updated}
-        result = await self.database[collection].update_one(find_by_id_query,
-                                                            update_operation)
-        LOG.debug(f"DB doc updated for {accession_id}.")
-        return result.acknowledged
+        old_data = await self.database[collection].find_one(find_by_id_query)
+        if not old_data:
+            reason = f"Object with accession id {accession_id} was not found."
+            LOG.error(reason)
+            raise web.HTTPNotFound(reason=reason)
+        else:
+            result = await self.database[collection].update_one(find_by_id_query,
+                                                                update_operation)
+            LOG.debug(f"DB doc updated for {accession_id}.")
+            return result.acknowledged
 
     @auto_reconnect
     async def replace(self, collection: str, accession_id: str,
