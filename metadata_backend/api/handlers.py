@@ -22,6 +22,17 @@ from ..helpers.logger import LOG
 class RESTApiHandler:
     """Handler for REST API methods."""
 
+    def _check_schema_exists(self, schema_type: str) -> None:
+        """Check is schema type exists.
+
+        :param schema_type: schema type.
+        :returns: None or HTTPNotFound if schema does not exist.
+        """
+        if schema_type not in schema_types.keys():
+            reason = f"Specified schema {schema_type} was not found."
+            LOG.error(reason)
+            raise web.HTTPNotFound(reason=reason)
+
     async def get_schema_types(self, req: Request) -> Response:
         """Get all possible metadata schema types from database.
 
@@ -43,10 +54,8 @@ class RESTApiHandler:
         :returns: JSON list of schema types
         """
         schema_type = req.match_info['schema']
-        if schema_type not in schema_types.keys():
-            reason = f"Specified schema {schema_type} was not found."
-            LOG.error(reason)
-            raise web.HTTPNotFound(reason=reason)
+        self._check_schema_exists(schema_type)
+
         try:
             schema = JSONSchemaLoader().get_schema(schema_type)
             LOG.info(f"{schema_type} schema loaded.")
@@ -69,10 +78,8 @@ class RESTApiHandler:
         """
         accession_id = req.match_info['accessionId']
         schema_type = req.match_info['schema']
-        if schema_type not in schema_types.keys():
-            reason = f"Specified schema {schema_type} was not found."
-            LOG.error(reason)
-            raise web.HTTPNotFound(reason=reason)
+        self._check_schema_exists(schema_type)
+
         format = req.query.get("format", "json").lower()
         db_client = req.app['db_client']
         operator = (XMLOperator(db_client) if format == "xml"
@@ -91,10 +98,8 @@ class RESTApiHandler:
         :returns: JSON response containing accessionId for submitted object
         """
         schema_type = req.match_info['schema']
-        if schema_type not in schema_types.keys():
-            reason = f"Specified schema {schema_type} was not found."
-            LOG.error(reason)
-            raise web.HTTPNotFound(reason=reason)
+        self._check_schema_exists(schema_type)
+
         db_client = req.app['db_client']
         operator: Union[Operator, XMLOperator]
         if req.content_type == "multipart/form-data":
@@ -119,10 +124,8 @@ class RESTApiHandler:
         :returns: Query results as JSON
         """
         schema_type = req.match_info['schema']
-        if schema_type not in schema_types.keys():
-            reason = f"Specified schema {schema_type} was not found."
-            LOG.error(reason)
-            raise web.HTTPNotFound(reason=reason)
+        self._check_schema_exists(schema_type)
+
         format = req.query.get("format", "json").lower()
         if format == "xml":
             reason = "xml-formatted query results are not supported"
@@ -171,10 +174,8 @@ class RESTApiHandler:
         :returns: JSON response containing accessionId for submitted object
         """
         schema_type = req.match_info['schema']
-        if schema_type not in schema_types.keys():
-            reason = f"Specified schema {schema_type} was not found."
-            LOG.error(reason)
-            raise web.HTTPNotFound(reason=reason)
+        self._check_schema_exists(schema_type)
+
         accession_id = req.match_info['accessionId']
         db_client = req.app['db_client']
         await Operator(db_client).delete_metadata_object(schema_type,
