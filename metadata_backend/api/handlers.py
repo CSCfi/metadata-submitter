@@ -79,16 +79,19 @@ class RESTApiHandler:
         accession_id = req.match_info['accessionId']
         schema_type = req.match_info['schema']
         self._check_schema_exists(schema_type)
+        collection = (f"draft-{schema_type}" if req.path.startswith("/drafts")
+                      else schema_type)
 
         format = req.query.get("format", "json").lower()
         db_client = req.app['db_client']
-        operator = (XMLOperator(db_client) if format == "xml"
+        operator = (XMLOperator(db_client) if (format == "xml" and
+                    not req.path.startswith("/drafts"))
                     else Operator(db_client))
-        data, content_type = await operator.read_metadata_object(schema_type,
+        data, content_type = await operator.read_metadata_object(collection,
                                                                  accession_id)
         data = data if format == "xml" else json.dumps(data)
-        LOG.info(f"GET object with accesssion ID {accession_id}"
-                 f"from schema {schema_type}.")
+        LOG.info(f"GET object with accesssion ID {accession_id} "
+                 f"from schema {collection}.")
         return web.Response(body=data, status=200, content_type=content_type)
 
     async def post_object(self, req: Request) -> Response:
@@ -99,21 +102,24 @@ class RESTApiHandler:
         """
         schema_type = req.match_info['schema']
         self._check_schema_exists(schema_type)
+        collection = (f"draft-{schema_type}" if req.path.startswith("/drafts")
+                      else schema_type)
 
         db_client = req.app['db_client']
         operator: Union[Operator, XMLOperator]
-        if req.content_type == "multipart/form-data":
+        if (req.content_type == "multipart/form-data" and
+           not req.path.startswith("/drafts")):
             files = await _extract_xml_upload(req, extract_one=True)
             content, _ = files[0]
             operator = XMLOperator(db_client)
         else:
             content = await req.json()
             operator = Operator(db_client)
-        accession_id = await operator.create_metadata_object(schema_type,
+        accession_id = await operator.create_metadata_object(collection,
                                                              content)
         body = json.dumps({"accessionId": accession_id})
-        LOG.info(f"POST object with accesssion ID {accession_id}"
-                 f"in schema {schema_type} was successful.")
+        LOG.info(f"POST object with accesssion ID {accession_id} "
+                 f"in schema {collection} was successful.")
         return web.Response(body=body, status=201,
                             content_type="application/json")
 
@@ -125,11 +131,7 @@ class RESTApiHandler:
         """
         schema_type = req.match_info['schema']
         self._check_schema_exists(schema_type)
-
-        format = req.query.get("format", "json").lower()
-        if format == "xml":
-            reason = "xml-formatted query results are not supported"
-            raise web.HTTPBadRequest(reason=reason)
+        return await self._handle_query(req)
 
         def get_page_param(param_name: str, default: int) -> int:
             """Handle page parameter value extracting."""
@@ -175,13 +177,15 @@ class RESTApiHandler:
         """
         schema_type = req.match_info['schema']
         self._check_schema_exists(schema_type)
+        collection = (f"draft-{schema_type}" if req.path.startswith("/drafts")
+                      else schema_type)
 
         accession_id = req.match_info['accessionId']
         db_client = req.app['db_client']
-        await Operator(db_client).delete_metadata_object(schema_type,
+        await Operator(db_client).delete_metadata_object(collection,
                                                          accession_id)
-        LOG.info(f"DELETE object with accesssion ID {accession_id}"
-                 f"in schema {schema_type} was successful.")
+        LOG.info(f"DELETE object with accesssion ID {accession_id} "
+                 f"in schema {collection} was successful.")
         return web.Response(status=204)
 
 
