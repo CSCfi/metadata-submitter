@@ -146,8 +146,13 @@ class DBService:
         """
         find_by_id_query = {"accessionId": accession_id}
         result = await self.database[collection].delete_one(find_by_id_query)
-        LOG.debug(f"DB doc deleted for {accession_id}.")
-        return result.acknowledged
+        if result.deleted_count < 1:
+            reason = f"Object with accession id {accession_id} was not found."
+            LOG.error(reason)
+            raise web.HTTPNotFound(reason=reason)
+        else:
+            LOG.debug(f"DB doc deleted for {accession_id}.")
+            return result.acknowledged
 
     def query(self, collection: str, query: Dict) -> AsyncIOMotorCursor:
         """Query database with given query.
