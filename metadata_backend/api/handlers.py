@@ -131,8 +131,8 @@ class RESTApiHandler:
 
         format = req.query.get("format", "json").lower()
         db_client = req.app['db_client']
-        operator = (XMLOperator(db_client) if (format == "xml" and
-                    not req.path.startswith("/drafts"))
+        operator = (XMLOperator(db_client) if (format == "xml"
+                    and not req.path.startswith("/drafts"))
                     else Operator(db_client))
         data, content_type = await operator.read_metadata_object(collection,
                                                                  accession_id)
@@ -154,8 +154,8 @@ class RESTApiHandler:
 
         db_client = req.app['db_client']
         operator: Union[Operator, XMLOperator]
-        if (req.content_type == "multipart/form-data" and
-           not req.path.startswith("/drafts")):
+        if (req.content_type == "multipart/form-data"
+           and not req.path.startswith("/drafts")):
             files = await _extract_xml_upload(req, extract_one=True)
             content, _ = files[0]
             operator = XMLOperator(db_client)
