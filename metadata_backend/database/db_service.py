@@ -1,6 +1,7 @@
 """Services that handle database connections. Implemented with MongoDB."""
 from functools import wraps
 from typing import Any, Callable, Dict
+from aiohttp import web
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
 from pymongo.errors import AutoReconnect, ConnectionFailure
