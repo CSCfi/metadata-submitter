@@ -136,7 +136,8 @@ class RESTApiHandler:
                     else Operator(db_client))
         data, content_type = await operator.read_metadata_object(collection,
                                                                  accession_id)
-        data = data if format == "xml" else json.dumps(data)
+        data = (data if (format == "xml"
+                and not req.path.startswith("/drafts")) else json.dumps(data))
         LOG.info(f"GET object with accesssion ID {accession_id} "
                  f"from schema {collection}.")
         return web.Response(body=data, status=200, content_type=content_type)
