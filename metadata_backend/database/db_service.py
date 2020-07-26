@@ -123,13 +123,18 @@ class DBService:
         """
         find_by_id_query = {"accessionId": accession_id}
         old_data = await self.database[collection].find_one(find_by_id_query)
-        new_data['dateCreated'] = old_data['dateCreated']
-        if 'publishDate' in old_data:
-            new_data['publishDate'] = old_data['publishDate']
-        result = await self.database[collection].replace_one(find_by_id_query,
-                                                             new_data)
-        LOG.debug(f"DB doc replaced for {accession_id}.")
-        return result.acknowledged
+        if not old_data:
+            reason = f"Object with accession id {accession_id} was not found."
+            LOG.error(reason)
+            raise web.HTTPNotFound(reason=reason)
+        else:
+            new_data['dateCreated'] = old_data['dateCreated']
+            if 'publishDate' in old_data:
+                new_data['publishDate'] = old_data['publishDate']
+            result = await self.database[collection].replace_one(find_by_id_query,
+                                                                 new_data)
+            LOG.debug(f"DB doc replaced for {accession_id}.")
+            return result.acknowledged
 
     @auto_reconnect
     async def delete(self, collection: str, accession_id: str) -> None:
