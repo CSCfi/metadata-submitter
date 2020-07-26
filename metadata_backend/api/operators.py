@@ -320,7 +320,8 @@ class Operator(BaseOperator):
         """
         forbidden_keys = ['accessionId', 'publishDate', 'dateCreated']
         if any([i in data for i in forbidden_keys]):
-            reason = f"Some items (e.g: {forbidden_keys}) cannot be changed."
+            reason = (f"Some items (e.g: {', '.join(forbidden_keys)})"
+                      "cannot be changed.")
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         data["accessionId"] = accession_id
