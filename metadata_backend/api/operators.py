@@ -28,7 +28,7 @@ class BaseOperator(ABC):
                  db_client: AsyncIOMotorClient) -> None:
         """Init needed variables, must be given by subclass.
 
-        :param db_name: Name for database to save files to
+        :param db_name: Name for database to save objects to.
         :param content_type: Content type this operator handles (XML or JSON)
         :param db_client: Motor client used for database connections. Should be
         running on same loop with aiohttp, so needs to be passed from aiohttp
@@ -44,7 +44,7 @@ class BaseOperator(ABC):
         Data formatting and addition step for JSON or XML must be implemented
         by corresponding subclass.
 
-        :param schema_type: Schema type of the object to read.
+        :param schema_type: Schema type of the object to create.
         :param data: Data to be saved to database.
         :returns: Accession id for the object inserted to database
         """
@@ -73,7 +73,7 @@ class BaseOperator(ABC):
                 raise web.HTTPNotFound
             data = await self._format_read_data(schema_type, data_raw)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting file: {error}"
+            reason = f"Error happened while getting object: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         return data, self.content_type
@@ -83,10 +83,10 @@ class BaseOperator(ABC):
         """Delete metadata object from database.
 
         Tries to remove both JSON and original XML from database, passes
-        silently if files don't exist in database.
+        silently if objects don't exist in database.
 
-        :param schema_type: Schema type of the object to read.
-        :param accession_id: Accession Id of the object to read.
+        :param schema_type: Schema type of the object to delete.
+        :param accession_id: Accession Id of the object to delete.
         :raises: 400 if deleting was not succesful
         """
         db_client = self.db_service.db_client
@@ -103,14 +103,14 @@ class BaseOperator(ABC):
                                              data: Dict) -> str:
         """Insert formatted metadata object to database.
 
-        :param schema_type: Schema type of the object to read.
+        :param schema_type: Schema type of the object to insert.
         :param data: Single document formatted as JSON
         :returns: Accession Id for object inserted to database
         """
         try:
             insert_success = (await self.db_service.create(schema_type, data))
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting file: {error}"
+            reason = f"Error happened while getting object: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         if insert_success:
@@ -128,7 +128,7 @@ class BaseOperator(ABC):
             delete_success = (await operator.db_service.delete(schema_type,
                                                                accession_id))
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while deleting file: {error}"
+            reason = f"Error happened while deleting object: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         if delete_success:
@@ -183,7 +183,7 @@ class Operator(BaseOperator):
         :param page_size: Results per page
         :param page_num: Page number
         :raises: HTTPBadRequest if error happened when connection to database
-        and HTTPNotFound error if file with given accession id is not found.
+        and HTTPNotFound error if object with given accession id is not found.
         :returns: Query result with pagination numbers
         """
         # Generate mongodb query from query parameters
@@ -205,21 +205,21 @@ class Operator(BaseOperator):
         try:
             cursor = self.db_service.query(schema_type, mongo_query)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting file: {error}"
+            reason = f"Error happened while getting object: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         skips = page_size * (page_num - 1)
         cursor.skip(skips).limit(page_size)
         data = await self._format_read_data(schema_type, cursor)
         if not data:
-            LOG.error("could not find any data.")
+            LOG.error(f"could not find any data in {schema_type}.")
             raise web.HTTPNotFound
         page_size = len(data) if len(data) != page_size else page_size
         total_objects = await self.db_service.get_count(schema_type,
                                                         mongo_query)
         LOG.debug(f"DB query: {que}")
-        LOG.info(f"DB query successful for query on {schema_type}"
-                 f"resulted in {total_objects}."
+        LOG.info(f"DB query successful for query on {schema_type} "
+                 f"resulted in {total_objects}. "
                  f"Requested was page {page_num} and page size {page_size}.")
         return data, page_num, page_size, total_objects
 
@@ -233,7 +233,7 @@ class Operator(BaseOperator):
         By default date is two months from submission date (based on ENA
         submission model).
 
-        :param schema_type: Schema type of the object to read.
+        :param schema_type: Schema type of the object to create.
         :param data: Metadata object
         :returns: Accession Id for object inserted to database
         """
