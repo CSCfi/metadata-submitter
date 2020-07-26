@@ -33,6 +33,53 @@ class RESTApiHandler:
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
 
+    async def _handle_query(self, req: Request) -> Response:
+        """."""
+        schema_type = req.match_info['schema']
+        collection = (f"draft-{schema_type}" if req.path.startswith("/drafts")
+                      else schema_type)
+
+        format = req.query.get("format", "json").lower()
+        if format == "xml":
+            reason = "xml-formatted query results are not supported"
+            raise web.HTTPBadRequest(reason=reason)
+
+        def get_page_param(param_name: str, default: int) -> int:
+            """Handle page parameter value extracting."""
+            try:
+                param = int(req.query.get(param_name, default))
+            except ValueError:
+                reason = (f"{param_name} must a number, now it was "
+                          f"{req.query.get(param_name)}")
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+            if param < 1:
+                reason = f"{param_name} must over 1"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+            return param
+        page = get_page_param("page", 1)
+        per_page = get_page_param("per_page", 10)
+        db_client = req.app['db_client']
+        data, page_num, page_size, total_objects = (
+            await Operator(db_client).query_metadata_database(collection,
+                                                              req.query,
+                                                              page,
+                                                              per_page))
+        result = json.dumps({
+            "page": {
+                "page": page_num,
+                "size": page_size,
+                "totalPages": ceil(total_objects / per_page),
+                "totalObjects": total_objects
+            },
+            "objects": data
+        })
+        LOG.info(f"Querying for objects in {collection} "
+                 f"resulted in {total_objects} objects ")
+        return web.Response(body=result, status=200,
+                            content_type="application/json")
+
     async def get_schema_types(self, req: Request) -> Response:
         """Get all possible metadata schema types from database.
 
@@ -132,42 +179,6 @@ class RESTApiHandler:
         schema_type = req.match_info['schema']
         self._check_schema_exists(schema_type)
         return await self._handle_query(req)
-
-        def get_page_param(param_name: str, default: int) -> int:
-            """Handle page parameter value extracting."""
-            try:
-                param = int(req.query.get(param_name, default))
-            except ValueError:
-                reason = (f"{param_name} must a number, now it was "
-                          f"{req.query.get(param_name)}")
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
-            if param < 1:
-                reason = f"{param_name} must over 1"
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
-            return param
-        page = get_page_param("page", 1)
-        per_page = get_page_param("per_page", 10)
-        db_client = req.app['db_client']
-        data, page_num, page_size, total_objects = (
-            await Operator(db_client).query_metadata_database(schema_type,
-                                                              req.query,
-                                                              page,
-                                                              per_page))
-        result = json.dumps({
-            "page": {
-                "page": page_num,
-                "size": page_size,
-                "totalPages": ceil(total_objects / per_page),
-                "totalObjects": total_objects
-            },
-            "objects": data
-        })
-        LOG.info(f"Querying for objects in {schema_type}"
-                 f"resulted in {total_objects} objects")
-        return web.Response(body=result, status=200,
-                            content_type="application/json")
 
     async def delete_object(self, req: Request) -> Response:
         """Delete metadata object from database.
