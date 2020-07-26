@@ -81,9 +81,9 @@ class DBService:
         :param accession_id: Accession id of the document to be searched
         :returns: First document matching the accession_id
         """
-        find_by_id_query = {"accessionId": accession_id}
+        find_by_id = {"accessionId": accession_id}
         LOG.debug(f"DB doc read for {accession_id}.")
-        return await self.database[collection].find_one(find_by_id_query)
+        return await self.database[collection].find_one(find_by_id)
 
     @auto_reconnect
     async def update(self, collection: str, accession_id: str,
@@ -96,16 +96,16 @@ class DBService:
         updated to object, can replace previous fields and add new ones.
         :returns: True if operation was successful
         """
-        find_by_id_query = {"accessionId": accession_id}
-        update_operation = {"$set": data_to_be_updated}
-        old_data = await self.database[collection].find_one(find_by_id_query)
+        find_by_id = {"accessionId": accession_id}
+        update_op = {"$set": data_to_be_updated}
+        old_data = await self.database[collection].find_one(find_by_id)
         if not old_data:
             reason = f"Object with accession id {accession_id} was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
         else:
-            result = await self.database[collection].update_one(find_by_id_query,
-                                                                update_operation)
+            result = await self.database[collection].update_one(find_by_id,
+                                                                update_op)
             LOG.debug(f"DB doc updated for {accession_id}.")
             return result.acknowledged
 
@@ -122,8 +122,8 @@ class DBService:
         old data
         :returns: True if operation was successful
         """
-        find_by_id_query = {"accessionId": accession_id}
-        old_data = await self.database[collection].find_one(find_by_id_query)
+        find_by_id = {"accessionId": accession_id}
+        old_data = await self.database[collection].find_one(find_by_id)
         if not old_data:
             reason = f"Object with accession id {accession_id} was not found."
             LOG.error(reason)
@@ -132,7 +132,7 @@ class DBService:
             new_data['dateCreated'] = old_data['dateCreated']
             if 'publishDate' in old_data:
                 new_data['publishDate'] = old_data['publishDate']
-            result = await self.database[collection].replace_one(find_by_id_query,
+            result = await self.database[collection].replace_one(find_by_id,
                                                                  new_data)
             LOG.debug(f"DB doc replaced for {accession_id}.")
             return result.acknowledged
@@ -145,8 +145,8 @@ class DBService:
         :param accession_id: Accession id for object to be updated
         :returns: True if operation was successful
         """
-        find_by_id_query = {"accessionId": accession_id}
-        result = await self.database[collection].delete_one(find_by_id_query)
+        find_by_id = {"accessionId": accession_id}
+        result = await self.database[collection].delete_one(find_by_id)
         if result.deleted_count < 1:
             reason = f"Object with accession id {accession_id} was not found."
             LOG.error(reason)
