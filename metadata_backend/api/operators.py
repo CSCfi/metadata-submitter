@@ -128,6 +128,7 @@ class BaseOperator(ABC):
         :param schema_type: Schema type of the object to insert.
         :param data: Single document formatted as JSON
         :returns: Accession Id for object inserted to database
+        :raises: 400 if reading was not succesful
         """
         try:
             insert_success = (await self.db_service.create(schema_type, data))
@@ -145,11 +146,12 @@ class BaseOperator(ABC):
     async def _replace_object_from_db(self, schema_type: str,
                                       accession_id: str,
                                       data: Dict) -> str:
-        """Replace formatted metadata object to database.
+        """Replace formatted metadata object in database.
 
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
         :param data: Single document formatted as JSON
+        :raises: 400 if reading was not succesful, 404 if no data found
         :returns: Accession Id for object inserted to database
         """
         try:
@@ -178,6 +180,14 @@ class BaseOperator(ABC):
                                      operator: Any,
                                      schema_type: str,
                                      accession_id: str) -> None:
+        """Delete object from database.
+
+        :param schema_type: Schema type of the object to delete.
+        :param accession_id: Identifier of object to delete.
+        :param data: Single document formatted as JSON
+        :raises: 400 if reading was not succesful, 404 if no data found
+        :returns: None
+        """
         try:
             check_exists = await self.db_service.exists(schema_type,
                                                         accession_id)
