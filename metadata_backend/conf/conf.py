@@ -82,7 +82,7 @@ query_map = {
                    "keys": ["taxonId", "scientificName",
                             "commonName"]},
     "scientificName": "sampleName.scientificName",
-    "fileType": "dataBlock.files.file.filetype",
+    "fileType": "files.file.filetype",
     "studyReference": {"base": "studyRef",
                        "keys": ["accessionId", "refname", "refcenter"]},
     "sampleReference": {"base": "sampleRef",
