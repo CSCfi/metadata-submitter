@@ -35,6 +35,9 @@ class DatabaseTestCase(AsyncTestCase):
                           "identifiers": ["foo", "bar"],
                           "dateCreated": "2020-07-26T20:59:35.177Z"
                           }
+        self.folder_stub = {"name": "test",
+                            "description": "test folder",
+                            "metadata_objects": []}
 
     def test_db_services_share_mongodb_client(self):
         """Test client is shared across different db_service_objects."""
@@ -141,3 +144,13 @@ class DatabaseTestCase(AsyncTestCase):
             with self.assertRaises(ConnectionFailure):
                 await self.test_service.create("test", self.data_stub)
         self.assertEqual(self.collection.insert_one.call_count, 6)
+
+    async def test_create_folder_inserts_folder(self):
+        """Test that create folder method works and returns success and id."""
+        self.collection.insert_one.return_value = futurized(
+            InsertOneResult(ObjectId('0000000000aa1111111111bb'), True)
+        )
+        folder = await self.test_service.create_folder(self.folder_stub)
+        self.collection.insert_one.assert_called_once_with(self.folder_stub)
+        self.assertTrue(folder[0])
+        self.assertEqual(ObjectId('0000000000aa1111111111bb'), folder[1])

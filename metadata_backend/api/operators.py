@@ -281,10 +281,11 @@ class BaseOperator(ABC):
     async def _insert_new_folder_to_db(self, data: Dict) -> str:
         """Insert new object folder to database.
 
-        :param data: List of objects to be inserted in folder in JSON format
+        :param data: JSON object containing initial folder info
         :returns: Folder ID for folder inserted to database
         """
         try:
+            data['metadata_objects'] = []
             insert = await self.db_service.create_folder(data)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting file: {error}"

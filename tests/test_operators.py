@@ -462,6 +462,16 @@ class TestOperators(AsyncTestCase):
             self.assertEqual(cursor._skip, 100)
             self.assertEqual(cursor._limit, 50)
 
+    async def test_create_folder_passes_and_returns_folderId(self):
+        """Test create folder method works."""
+        operator = Operator(self.client)
+        operator.db_service.create_folder.return_value = futurized((True,
+                                                                   'eg_id_01'))
+        folder = await operator.create_object_folder({'name': "test",
+                                                      'description': "testie"})
+        operator.db_service.create_folder.assert_called_once()
+        self.assertEqual(folder, 'eg_id_01')
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -411,3 +411,13 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(get_resp.status, 400)
         get_resp = await self.client.get("/objects/study?per_page=0")
         self.assertEqual(get_resp.status, 400)
+
+    @unittest_run_loop
+    async def test_folder_creation_works(self):
+        """Test that folder is created and operator is called."""
+        json_req = {"name": "test",
+                    "description": "test folder"}
+        response = await self.client.post("/folders", json=json_req)
+        self.assertEqual(response.status, 201)
+        self.MockedOperator().create_object_folder.assert_called_once()
+        self.assertIn("folderId", await response.json())
