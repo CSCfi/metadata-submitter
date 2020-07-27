@@ -5,7 +5,6 @@ from pymongo.results import InsertOneResult, UpdateResult, DeleteResult
 from pymongo.errors import AutoReconnect, ConnectionFailure
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorCursor
-from aiohttp import web
 
 from metadata_backend.database.db_service import DBService
 
@@ -69,6 +68,21 @@ class DatabaseTestCase(AsyncTestCase):
         self.collection.find_one.assert_called_once_with({"accessionId":
                                                           self.id_stub})
 
+    async def test_exists_returns_false(self):
+        """Test that exists method works and returns false."""
+        found_doc = await self.test_service.exists("test", self.id_stub)
+        self.assertEqual(found_doc, False)
+        self.collection.find_one.assert_called_once_with({"accessionId":
+                                                          self.id_stub})
+
+    async def test_exists_returns_true(self):
+        """Test that exists method works and returns True."""
+        self.collection.find_one.return_value = futurized(self.data_stub)
+        found_doc = await self.test_service.exists("test", self.id_stub)
+        self.assertEqual(found_doc, True)
+        self.collection.find_one.assert_called_once_with({"accessionId":
+                                                          self.id_stub})
+
     async def test_update_updates_data(self):
         """Test that update method works and returns success."""
         self.collection.find_one.return_value = futurized(self.data_stub)
@@ -105,38 +119,6 @@ class DatabaseTestCase(AsyncTestCase):
         self.collection.delete_one.assert_called_once_with({"accessionId":
                                                            self.id_stub})
         self.assertTrue(success)
-
-    async def test_update_raises(self):
-        """Test that update method raises error if id not found."""
-        self.collection.update_one.return_value = futurized(
-            UpdateResult({}, True)
-        )
-        stub = {"accessionId": self.id_stub}, {"$set": self.data_stub}
-        with self.assertRaises(web.HTTPNotFound):
-            await self.test_service.update("test", self.id_stub,
-                                           self.data_stub)
-            self.collection.update_one.assert_called_once_with(stub)
-
-    async def test_replace_raises(self):
-        """Test that replace method raises error if id not found."""
-        self.collection.replace_one.return_value = futurized(
-            UpdateResult({}, True)
-        )
-        stub = {"accessionId": self.id_stub}, self.data_stub
-        with self.assertRaises(web.HTTPNotFound):
-            await self.test_service.replace("test", self.id_stub,
-                                            self.data_stub)
-            self.collection.replace_one.assert_called_once_with(stub)
-
-    async def test_delete_raises(self):
-        """Test that delete method raises error if id not found."""
-        self.collection.delete_one.return_value = futurized(
-            DeleteResult({}, True)
-        )
-        with self.assertRaises(web.HTTPNotFound):
-            await self.test_service.delete("test", self.id_stub)
-            self.collection.delete_one.assert_called_once_with({"accessionId":
-                                                               self.id_stub})
 
     def test_query_executes_find(self):
         """Test that find is executed, so cursor is returned."""
