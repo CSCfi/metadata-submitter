@@ -225,6 +225,17 @@ class HandlersTestCase(AioHTTPTestCase):
         self.MockedOperator().replace_metadata_object.assert_called_once()
 
     @unittest_run_loop
+    async def test_put_draft_works_with_xml(self):
+        """Test that put XML submisssion is handled, XMLOperator is called."""
+        files = [("study", "SRP000539.xml")]
+        data = self.create_submission_data(files)
+        call = "/drafts/study/EGA123456"
+        response = await self.client.put(call, data=data)
+        self.assertEqual(response.status, 201)
+        self.assertIn(self.test_ega_string, await response.text())
+        self.MockedXMLOperator().replace_metadata_object.assert_called_once()
+
+    @unittest_run_loop
     async def test_patch_draft_works_with_json(self):
         """Test that draft json patch method is handled, operator is called."""
         json_req = {"centerName": "GEO",
@@ -234,6 +245,15 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 201)
         self.assertIn(self.test_ega_string, await response.text())
         self.MockedOperator().update_metadata_object.assert_called_once()
+
+    @unittest_run_loop
+    async def test_patch_draft_raises_with_xml(self):
+        """Test that patch XML submisssion raises error."""
+        files = [("study", "SRP000539.xml")]
+        data = self.create_submission_data(files)
+        call = "/drafts/study/EGA123456"
+        response = await self.client.patch(call, data=data)
+        self.assertEqual(response.status, 415)
 
     @unittest_run_loop
     async def test_submit_object_fails_with_too_many_files(self):
