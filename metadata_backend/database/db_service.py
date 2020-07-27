@@ -1,6 +1,6 @@
 """Services that handle database connections. Implemented with MongoDB."""
 from functools import wraps
-from typing import Any, Callable, Dict, Union
+from typing import Any, Callable, Dict
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
 from pymongo.errors import AutoReconnect, ConnectionFailure
@@ -117,7 +117,7 @@ class DBService:
 
     @auto_reconnect
     async def replace(self, collection: str, accession_id: str,
-                      new_data: Dict) -> Union[bool, str]:
+                      new_data: Dict) -> bool:
         """Replace whole object by its accessionId.
 
         We keep the dateCreated and publishDate dates as these
