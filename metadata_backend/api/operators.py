@@ -114,10 +114,9 @@ class BaseOperator(ABC):
         await self._remove_object_from_db(Operator(db_client),
                                           schema_type,
                                           accession_id)
-        if not schema_type.startswith("draft"):
-            await self._remove_object_from_db(XMLOperator(db_client),
-                                              schema_type,
-                                              accession_id)
+        await self._remove_object_from_db(XMLOperator(db_client),
+                                          schema_type,
+                                          accession_id)
         LOG.info(f"removing object with schema {schema_type} from database "
                  f"and accession id: {accession_id}")
 
@@ -351,7 +350,7 @@ class Operator(BaseOperator):
         """
         forbidden_keys = ['accessionId', 'publishDate', 'dateCreated']
         if any([i in data for i in forbidden_keys]):
-            reason = (f"Some items (e.g: {', '.join(forbidden_keys)})"
+            reason = (f"Some items (e.g: {', '.join(forbidden_keys)}) "
                       "cannot be changed.")
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
@@ -441,7 +440,10 @@ class XMLOperator(BaseOperator):
         :returns: Accession Id for object inserted to database
         """
         db_client = self.db_service.db_client
-        data_as_json = XMLToJSONParser().parse(schema_type, data)
+        # remove `drafs-` from schema type
+        schema = (schema_type[6:] if schema_type.startswith("draft")
+                  else schema_type)
+        data_as_json = XMLToJSONParser().parse(schema, data)
         accession_id = (await Operator(db_client).
                         _format_data_to_create_and_add_to_db(schema_type,
                                                              data_as_json))
@@ -457,14 +459,27 @@ class XMLOperator(BaseOperator):
         """Format XML metadata object and add it to db.
 
         XML is validated, then parsed to json and json is added to database.
-        After successful json insertion, xml itself is backed up to database.
+        XML .
 
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
         :param data: Original xml content
         :returns: Accession Id for object inserted to database
         """
-        raise web.HTTPNotImplemented
+        db_client = self.db_service.db_client
+        # remove `drafs-` from schema type
+        schema = (schema_type[6:] if schema_type.startswith("draft")
+                  else schema_type)
+        data_as_json = XMLToJSONParser().parse(schema, data)
+        accession_id = (await Operator(db_client).
+                        _format_data_to_replace_and_add_to_db(schema_type,
+                                                              accession_id,
+                                                              data_as_json))
+        LOG.debug(f"XMLOperator formatted data for {schema_type} to add to DB")
+        await self._replace_object_from_db(schema_type, accession_id,
+                                           {"accessionId": accession_id,
+                                            "content": data})
+        return accession_id
 
     async def _format_read_data(self, schema_type: str, data_raw: Dict) -> str:
         """Get XML content from given mongodb data.
