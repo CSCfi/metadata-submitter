@@ -145,10 +145,22 @@ class TestOperators(AsyncTestCase):
         """Test replace method for json works."""
         accession = "EGA123456"
         operator = Operator(self.client)
+        operator.db_service.exists.return_value = futurized(True)
         operator.db_service.replace.return_value = futurized(True)
         await operator.replace_metadata_object("study", accession, {})
         operator.db_service.replace.assert_called_once()
         self.assertEqual(accession, self.accession_id)
+
+    async def test_json_replace_raises_if_not_exists(self):
+        """Test replace method for json works."""
+        accession = "EGA123456"
+        operator = Operator(self.client)
+        operator.db_service.exists.return_value = futurized(False)
+        operator.db_service.replace.return_value = futurized(True)
+        with self.assertRaises(HTTPNotFound):
+            await operator.replace_metadata_object("study", accession, {})
+            operator.db_service.replace.assert_called_once()
+            self.assertEqual(accession, self.accession_id)
 
     async def test_xml_create_passes_and_returns_accessionId(self):
         """Test create method for xml works. Patch json related calls."""
@@ -240,10 +252,23 @@ class TestOperators(AsyncTestCase):
         """Test xml is read from db correctly."""
         operator = Operator(self.client)
         operator.db_service.db_client = self.client
+        operator.db_service.exists.return_value = futurized(True)
         operator.db_service.delete.return_value = futurized(True)
         await operator.delete_metadata_object("sample", "EGA123456")
         self.assertEqual(operator.db_service.delete.call_count, 2)
         operator.db_service.delete.assert_called_with("sample", "EGA123456")
+
+    async def test_deleting_metadata_delete_raises(self):
+        """Test xml is read from db correctly."""
+        operator = Operator(self.client)
+        operator.db_service.db_client = self.client
+        operator.db_service.exists.return_value = futurized(False)
+        operator.db_service.delete.return_value = futurized(True)
+        with self.assertRaises(HTTPNotFound):
+            await operator.delete_metadata_object("sample", "EGA123456")
+            self.assertEqual(operator.db_service.delete.call_count, 2)
+            operator.db_service.delete.assert_called_with("sample",
+                                                          "EGA123456")
 
     async def test_working_query_params_are_passed_to_db_query(self):
         """Test that database is called with correct query."""
