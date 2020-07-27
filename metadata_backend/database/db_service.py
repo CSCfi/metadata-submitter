@@ -181,13 +181,13 @@ class DBService:
         return await self.database[collection].count_documents(query)
 
     @auto_reconnect
-    async def create_folder(self, object_list: Dict) -> Tuple[bool, str]:
+    async def create_folder(self, folder_data: Dict) -> Tuple[bool, str]:
         """Insert folder as a new collection to database.
 
-        :param object_list: Objects to be inserted
+        :param folder_data: Objects to be inserted
         :returns: True if operation was successful
         """
-        folder = await self.database["folder"].insert_one(objects)
-        _id = folder.inserted_id if result.acknowledged else None
+        folder = await self.database["folder"].insert_one(folder_data)
+        id = folder.inserted_id if folder.acknowledged else None
         LOG.debug("DB folder inserted.")
-        return (result.acknowledged, _id)
+        return (folder.acknowledged, id)

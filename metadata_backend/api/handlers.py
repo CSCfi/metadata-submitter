@@ -243,7 +243,8 @@ class RESTApiHandler:
         """
         db_client = req.app['db_client']
         operator = Operator(db_client)
-        folder_id = await operator.create_object_folder()
+        data = await req.json()
+        folder_id = await operator.create_object_folder(data)
         body = json.dumps({"folderId": folder_id})
         LOG.info(f"POST new folder with folder ID {folder_id} was successful.")
         return web.Response(body=body, status=201,
@@ -255,7 +256,7 @@ class RESTApiHandler:
         :param req: GET request
         :returns: JSON response containing object folder
         """
-        folder_id = req.match_info['folderId']
+        # folder_id = req.match_info['folderId']
         raise NotImplementedError
 
     async def replace_folder(self, req: Request) -> Response:
@@ -264,7 +265,7 @@ class RESTApiHandler:
         :param req: PUT request
         :returns: TBD
         """
-        folder_id = req.match_info['folderId']
+        # folder_id = req.match_info['folderId']
         raise NotImplementedError
 
     async def update_folder(self, req: Request) -> Response:
@@ -273,7 +274,7 @@ class RESTApiHandler:
         :param req: PATCH request
         :returns: TBD
         """
-        folder_id = req.match_info['folderId']
+        # folder_id = req.match_info['folderId']
         raise NotImplementedError
 
     async def delete_folder(self, req: Request) -> Response:
@@ -282,7 +283,7 @@ class RESTApiHandler:
         :param req: DELETE request
         :returns: TBD
         """
-        folder_id = req.match_info['folderId']
+        # folder_id = req.match_info['folderId']
         raise NotImplementedError
 
     async def patch_object(self, req: Request) -> Response:
