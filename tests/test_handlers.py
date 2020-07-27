@@ -195,7 +195,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_submit_object_works_with_json(self):
-        """Test that json submission is handled , operator is called."""
+        """Test that json submission is handled, operator is called."""
         json_req = {"centerName": "GEO",
                     "alias": "GSE10966"}
         response = await self.client.post("/objects/study", json=json_req)
@@ -205,7 +205,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_submit_draft_works_with_json(self):
-        """Test that draft json submission is handled , operator is called."""
+        """Test that draft json submission is handled, operator is called."""
         json_req = {"centerName": "GEO",
                     "alias": "GSE10966"}
         response = await self.client.post("/drafts/study", json=json_req)
@@ -215,7 +215,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_put_draft_works_with_json(self):
-        """Test that draft json put method is handled , operator is called."""
+        """Test that draft json put method is handled, operator is called."""
         json_req = {"centerName": "GEO",
                     "alias": "GSE10966"}
         call = "/drafts/study/EGA123456"
@@ -223,6 +223,17 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 201)
         self.assertIn(self.test_ega_string, await response.text())
         self.MockedOperator().replace_metadata_object.assert_called_once()
+
+    @unittest_run_loop
+    async def test_patch_draft_works_with_json(self):
+        """Test that draft json patch method is handled, operator is called."""
+        json_req = {"centerName": "GEO",
+                    "alias": "GSE10966"}
+        call = "/drafts/study/EGA123456"
+        response = await self.client.patch(call, json=json_req)
+        self.assertEqual(response.status, 201)
+        self.assertIn(self.test_ega_string, await response.text())
+        self.MockedOperator().update_metadata_object.assert_called_once()
 
     @unittest_run_loop
     async def test_submit_object_fails_with_too_many_files(self):

@@ -152,7 +152,7 @@ class TestOperators(AsyncTestCase):
         self.assertEqual(accession, self.accession_id)
 
     async def test_json_replace_raises_if_not_exists(self):
-        """Test replace method for json works."""
+        """Test replace method raises error."""
         accession = "EGA123456"
         operator = Operator(self.client)
         operator.db_service.exists.return_value = futurized(False)
@@ -160,7 +160,26 @@ class TestOperators(AsyncTestCase):
         with self.assertRaises(HTTPNotFound):
             await operator.replace_metadata_object("study", accession, {})
             operator.db_service.replace.assert_called_once()
-            self.assertEqual(accession, self.accession_id)
+
+    async def test_json_update_passes_and_returns_accessionId(self):
+        """Test replace method for json works."""
+        accession = "EGA123456"
+        operator = Operator(self.client)
+        operator.db_service.exists.return_value = futurized(True)
+        operator.db_service.update.return_value = futurized(True)
+        await operator.update_metadata_object("study", accession, {})
+        operator.db_service.update.assert_called_once()
+        self.assertEqual(accession, self.accession_id)
+
+    async def test_json_update_raises_if_not_exists(self):
+        """Test update method raises error."""
+        accession = "EGA123456"
+        operator = Operator(self.client)
+        operator.db_service.exists.return_value = futurized(False)
+        operator.db_service.replace.return_value = futurized(True)
+        with self.assertRaises(HTTPNotFound):
+            await operator.update_metadata_object("study", accession, {})
+            operator.db_service.update.assert_called_once()
 
     async def test_xml_create_passes_and_returns_accessionId(self):
         """Test create method for xml works. Patch json related calls."""
