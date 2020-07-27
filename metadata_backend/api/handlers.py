@@ -23,10 +23,10 @@ class RESTApiHandler:
     """Handler for REST API methods."""
 
     def _check_schema_exists(self, schema_type: str) -> None:
-        """Check is schema type exists.
+        """Check if schema type exists.
 
         :param schema_type: schema type.
-        :returns: None or HTTPNotFound if schema does not exist.
+        :raises: HTTPNotFound if schema does not exist.
         """
         if schema_type not in schema_types.keys():
             reason = f"Specified schema {schema_type} was not found."
@@ -34,7 +34,11 @@ class RESTApiHandler:
             raise web.HTTPNotFound(reason=reason)
 
     async def _handle_query(self, req: Request) -> Response:
-        """."""
+        """Handle query results.
+
+        :param req: GET request with query parameters
+        :returns: JSON with query results
+        """
         schema_type = req.match_info['schema']
         collection = (f"draft-{schema_type}" if req.path.startswith("/drafts")
                       else schema_type)
