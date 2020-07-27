@@ -22,107 +22,24 @@ from ..helpers.logger import LOG
 class RESTApiHandler:
     """Handler for REST API methods."""
 
-    async def get_schema_types(self, req: Request) -> Response:
-        """Get all possible metadata schema types from database.
+    def _check_schema_exists(self, schema_type: str) -> None:
+        """Check if schema type exists.
 
-        Basically returns which objects user can submit and query for.
-        :param req: GET Request
-        :returns: JSON list of schema types
+        :param schema_type: schema type.
+        :raises: HTTPNotFound if schema does not exist.
         """
-        types_json = json.dumps([x["description"] for x in
-                                 schema_types.values()])
-        LOG.info(f"GET schema types. Retrieved {len(schema_types)} schemas.")
-        return web.Response(body=types_json, status=200,
-                            content_type="application/json")
-
-    async def get_json_schema(self, req: Request) -> Response:
-        """Get all JSON Schema for a specific schema type.
-
-        Basically returns which objects user can submit and query for.
-        :param req: GET Request
-        :returns: JSON list of schema types
-        """
-        schema_type = req.match_info['schema']
         if schema_type not in schema_types.keys():
             reason = f"Specified schema {schema_type} was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
-        try:
-            schema = JSONSchemaLoader().get_schema(schema_type)
-            LOG.info(f"{schema_type} schema loaded.")
-            return web.Response(body=json.dumps(schema), status=200,
-                                content_type="application/json")
 
-        except SchemaNotFoundException as error:
-            reason = f"{error} ({schema_type})"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
+    async def _handle_query(self, req: Request) -> Response:
+        """Handle query results.
 
-    async def get_object(self, req: Request) -> Response:
-        """Get one metadata object by its accession id.
-
-        Returns original xml object from backup if format query parameter is
-        set, otherwise json.
-
-        :param req: GET request
-        :returns: JSON or XML response containing metadata object
+        :param req: GET request with query parameters
+        :returns: JSON with query results
         """
-        accession_id = req.match_info['accessionId']
-        schema_type = req.match_info['schema']
-        if schema_type not in schema_types.keys():
-            reason = f"Specified schema {schema_type} was not found."
-            LOG.error(reason)
-            raise web.HTTPNotFound(reason=reason)
-        format = req.query.get("format", "json").lower()
-        db_client = req.app['db_client']
-        operator = (XMLOperator(db_client) if format == "xml"
-                    else Operator(db_client))
-        data, content_type = await operator.read_metadata_object(schema_type,
-                                                                 accession_id)
-        data = data if format == "xml" else json.dumps(data)
-        LOG.info(f"GET object with accesssion ID {accession_id}"
-                 f"from schema {schema_type}.")
-        return web.Response(body=data, status=200, content_type=content_type)
-
-    async def post_object(self, req: Request) -> Response:
-        """Save metadata object to database.
-
-        :param req: POST request
-        :returns: JSON response containing accessionId for submitted object
-        """
-        schema_type = req.match_info['schema']
-        if schema_type not in schema_types.keys():
-            reason = f"Specified schema {schema_type} was not found."
-            LOG.error(reason)
-            raise web.HTTPNotFound(reason=reason)
-        db_client = req.app['db_client']
-        operator: Union[Operator, XMLOperator]
-        if req.content_type == "multipart/form-data":
-            files = await _extract_xml_upload(req, extract_one=True)
-            content, _ = files[0]
-            operator = XMLOperator(db_client)
-        else:
-            content = await req.json()
-            operator = Operator(db_client)
-        accession_id = await operator.create_metadata_object(schema_type,
-                                                             content)
-        body = json.dumps({"accessionId": accession_id})
-        LOG.info(f"POST object with accesssion ID {accession_id}"
-                 f"in schema {schema_type} was successful.")
-        return web.Response(body=body, status=201,
-                            content_type="application/json")
-
-    async def query_objects(self, req: Request) -> Response:
-        """Query metadata objects from database.
-
-        :param req: GET request with query parameters (can be empty).
-        :returns: Query results as JSON
-        """
-        schema_type = req.match_info['schema']
-        if schema_type not in schema_types.keys():
-            reason = f"Specified schema {schema_type} was not found."
-            LOG.error(reason)
-            raise web.HTTPNotFound(reason=reason)
+        collection = req.match_info['schema']
         format = req.query.get("format", "json").lower()
         if format == "xml":
             reason = "xml-formatted query results are not supported"
@@ -146,7 +63,7 @@ class RESTApiHandler:
         per_page = get_page_param("per_page", 10)
         db_client = req.app['db_client']
         data, page_num, page_size, total_objects = (
-            await Operator(db_client).query_metadata_database(schema_type,
+            await Operator(db_client).query_metadata_database(collection,
                                                               req.query,
                                                               page,
                                                               per_page))
@@ -159,10 +76,111 @@ class RESTApiHandler:
             },
             "objects": data
         })
-        LOG.info(f"Querying for objects in {schema_type}"
-                 f"resulted in {total_objects} objects")
+        LOG.info(f"Querying for objects in {collection} "
+                 f"resulted in {total_objects} objects ")
         return web.Response(body=result, status=200,
                             content_type="application/json")
+
+    async def get_schema_types(self, req: Request) -> Response:
+        """Get all possible metadata schema types from database.
+
+        Basically returns which objects user can submit and query for.
+        :param req: GET Request
+        :returns: JSON list of schema types
+        """
+        types_json = json.dumps([x["description"] for x in
+                                 schema_types.values()])
+        LOG.info(f"GET schema types. Retrieved {len(schema_types)} schemas.")
+        return web.Response(body=types_json, status=200,
+                            content_type="application/json")
+
+    async def get_json_schema(self, req: Request) -> Response:
+        """Get all JSON Schema for a specific schema type.
+
+        Basically returns which objects user can submit and query for.
+        :param req: GET Request
+        :returns: JSON list of schema types
+        """
+        schema_type = req.match_info['schema']
+        self._check_schema_exists(schema_type)
+
+        try:
+            schema = JSONSchemaLoader().get_schema(schema_type)
+            LOG.info(f"{schema_type} schema loaded.")
+            return web.Response(body=json.dumps(schema), status=200,
+                                content_type="application/json")
+
+        except SchemaNotFoundException as error:
+            reason = f"{error} ({schema_type})"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+    async def get_object(self, req: Request) -> Response:
+        """Get one metadata object by its accession id.
+
+        Returns original xml object from backup if format query parameter is
+        set, otherwise json.
+
+        :param req: GET request
+        :returns: JSON or XML response containing metadata object
+        """
+        accession_id = req.match_info['accessionId']
+        schema_type = req.match_info['schema']
+        self._check_schema_exists(schema_type)
+        collection = (f"draft-{schema_type}" if req.path.startswith("/drafts")
+                      else schema_type)
+
+        format = req.query.get("format", "json").lower()
+        db_client = req.app['db_client']
+        operator = (XMLOperator(db_client) if (format == "xml"
+                    and not req.path.startswith("/drafts"))
+                    else Operator(db_client))
+        data, content_type = await operator.read_metadata_object(collection,
+                                                                 accession_id)
+        data = (data if (format == "xml"
+                and not req.path.startswith("/drafts")) else json.dumps(data))
+        LOG.info(f"GET object with accesssion ID {accession_id} "
+                 f"from schema {collection}.")
+        return web.Response(body=data, status=200, content_type=content_type)
+
+    async def post_object(self, req: Request) -> Response:
+        """Save metadata object to database.
+
+        :param req: POST request
+        :returns: JSON response containing accessionId for submitted object
+        """
+        schema_type = req.match_info['schema']
+        self._check_schema_exists(schema_type)
+        collection = (f"draft-{schema_type}" if req.path.startswith("/drafts")
+                      else schema_type)
+
+        db_client = req.app['db_client']
+        operator: Union[Operator, XMLOperator]
+        if (req.content_type == "multipart/form-data"
+           and not req.path.startswith("/drafts")):
+            files = await _extract_xml_upload(req, extract_one=True)
+            content, _ = files[0]
+            operator = XMLOperator(db_client)
+        else:
+            content = await req.json()
+            operator = Operator(db_client)
+        accession_id = await operator.create_metadata_object(collection,
+                                                             content)
+        body = json.dumps({"accessionId": accession_id})
+        LOG.info(f"POST object with accesssion ID {accession_id} "
+                 f"in schema {collection} was successful.")
+        return web.Response(body=body, status=201,
+                            content_type="application/json")
+
+    async def query_objects(self, req: Request) -> Response:
+        """Query metadata objects from database.
+
+        :param req: GET request with query parameters (can be empty).
+        :returns: Query results as JSON
+        """
+        schema_type = req.match_info['schema']
+        self._check_schema_exists(schema_type)
+        return await self._handle_query(req)
 
     async def delete_object(self, req: Request) -> Response:
         """Delete metadata object from database.
@@ -171,17 +189,41 @@ class RESTApiHandler:
         :returns: JSON response containing accessionId for submitted object
         """
         schema_type = req.match_info['schema']
-        if schema_type not in schema_types.keys():
-            reason = f"Specified schema {schema_type} was not found."
-            LOG.error(reason)
-            raise web.HTTPNotFound(reason=reason)
+        self._check_schema_exists(schema_type)
+        collection = (f"draft-{schema_type}" if req.path.startswith("/drafts")
+                      else schema_type)
+
         accession_id = req.match_info['accessionId']
         db_client = req.app['db_client']
-        await Operator(db_client).delete_metadata_object(schema_type,
+        await Operator(db_client).delete_metadata_object(collection,
                                                          accession_id)
-        LOG.info(f"DELETE object with accesssion ID {accession_id}"
-                 f"in schema {schema_type} was successful.")
+        LOG.info(f"DELETE object with accesssion ID {accession_id} "
+                 f"in schema {collection} was successful.")
         return web.Response(status=204)
+
+    async def put_object(self, req: Request) -> Response:
+        """Save metadata object to database.
+
+        :param req: PUT request
+        :returns: JSON response containing accessionId for submitted object
+        """
+        schema_type = req.match_info['schema']
+        accession_id = req.match_info['accessionId']
+        self._check_schema_exists(schema_type)
+        collection = (f"draft-{schema_type}" if req.path.startswith("/drafts")
+                      else schema_type)
+
+        db_client = req.app['db_client']
+        content = await req.json()
+        operator = Operator(db_client)
+        await operator.replace_metadata_object(collection,
+                                               accession_id,
+                                               content)
+        body = json.dumps({"accessionId": accession_id})
+        LOG.info(f"PUT object with accesssion ID {accession_id} "
+                 f"in schema {collection} was successful.")
+        return web.Response(body=body, status=201,
+                            content_type="application/json")
 
 
 class SubmissionAPIHandler:
