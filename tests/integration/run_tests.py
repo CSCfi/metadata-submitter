@@ -117,7 +117,8 @@ async def test_querying_works():
                 ("description", "human hapmap individual"),
                 ("centerName", "hapmap"),
                 ("sampleName", "homo sapiens"),
-                ("scientificName", "homo sapiens")
+                ("scientificName", "homo sapiens"),
+                ("sampleName", 9606)
             ],
             "run": [
                 ("fileType", "srf"),
