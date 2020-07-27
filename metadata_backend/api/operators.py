@@ -66,12 +66,32 @@ class BaseOperator(ABC):
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
         :param data: Data to be saved to database.
-        :returns: Accession id for the object inserted to database
+        :returns: Accession id for the object replaced to database
         """
         await self._format_data_to_replace_and_add_to_db(schema_type,
                                                          accession_id,
                                                          data)
         LOG.info(f"Replacing object with schema {schema_type} to database "
+                 f"succeeded with accession id: {accession_id}")
+        return accession_id
+
+    async def update_metadata_object(self, schema_type: str,
+                                     accession_id: str,
+                                     data: Union[Dict, str]) -> str:
+        """Update metadata object from database.
+
+        Data formatting and addition step for JSON or XML must be implemented
+        by corresponding subclass.
+
+        :param schema_type: Schema type of the object to update.
+        :param accession_id: Identifier of object to update.
+        :param data: Data to be saved to database.
+        :returns: Accession id for the object updated to database
+        """
+        await self._format_data_to_update_and_add_to_db(schema_type,
+                                                        accession_id,
+                                                        data)
+        LOG.info(f"Updated object with schema {schema_type} to database "
                  f"succeeded with accession id: {accession_id}")
         return accession_id
 
@@ -175,6 +195,39 @@ class BaseOperator(ABC):
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
+    async def _update_object_from_db(self, schema_type: str,
+                                     accession_id: str,
+                                     data: Dict) -> str:
+        """Replace formatted metadata object in database.
+
+        :param schema_type: Schema type of the object to replace.
+        :param accession_id: Identifier of object to replace.
+        :param data: Single document formatted as JSON
+        :raises: 400 if reading was not succesful, 404 if no data found
+        :returns: Accession Id for object inserted to database
+        """
+        try:
+            check_exists = await self.db_service.exists(schema_type,
+                                                        accession_id)
+            if not check_exists:
+                reason = (f"Object with accession id {accession_id} "
+                          "was not found.")
+                LOG.error(reason)
+                raise web.HTTPNotFound(reason=reason)
+            replace_success = (await self.db_service.update(schema_type,
+                                                            accession_id,
+                                                            data))
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting object: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        if replace_success:
+            return accession_id
+        else:
+            reason = "Replacing object to database failed for some reason."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
     async def _remove_object_from_db(self,
                                      operator: Any,
                                      schema_type: str,
@@ -226,6 +279,15 @@ class BaseOperator(ABC):
                                                     accession_id: str,
                                                     data: Any) -> str:
         """Format and replace data in database.
+
+        Must be implemented by subclass.
+        """
+
+    @abstractmethod
+    async def _format_data_to_update_and_add_to_db(self, schema_type: str,
+                                                   accession_id: str,
+                                                   data: Any) -> str:
+        """Format and update data in database.
 
         Must be implemented by subclass.
         """
@@ -365,6 +427,25 @@ class Operator(BaseOperator):
         return await self._replace_object_from_db(schema_type, accession_id,
                                                   data)
 
+    async def _format_data_to_update_and_add_to_db(self, schema_type: str,
+                                                   accession_id: str,
+                                                   data: Any) -> str:
+        """Format and update data in database.
+
+        Must be implemented by subclass.
+        """
+        forbidden_keys = ['accessionId', 'publishDate', 'dateCreated']
+        if any([i in data for i in forbidden_keys]):
+            reason = (f"Some items (e.g: {', '.join(forbidden_keys)}) "
+                      "cannot be changed.")
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        data["accessionId"] = accession_id
+        data["dateModified"] = datetime.utcnow()
+        LOG.debug(f"Operator formatted data for {schema_type} to add to DB")
+        return await self._update_object_from_db(schema_type, accession_id,
+                                                 data)
+
     def _generate_accession_id(self) -> str:
         """Generate random accession id.
 
@@ -485,6 +566,20 @@ class XMLOperator(BaseOperator):
                                            {"accessionId": accession_id,
                                             "content": data})
         return accession_id
+
+    async def _format_data_to_update_and_add_to_db(self, schema_type: str,
+                                                   accession_id: str,
+                                                   data: str) -> str:
+        """Raise not implemented.
+
+        Patch update for XML not supported
+
+        :param schema_type: Schema type of the object to replace.
+        :param accession_id: Identifier of object to replace.
+        :param data: Original xml content
+        :raises: NotImplemeted
+        """
+        raise web.HTTPNotImplemented
 
     async def _format_read_data(self, schema_type: str, data_raw: Dict) -> str:
         """Get XML content from given mongodb data.
