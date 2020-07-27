@@ -228,6 +228,36 @@ class RESTApiHandler:
         return web.Response(body=body, status=201,
                             content_type="application/json")
 
+    async def patch_object(self, req: Request) -> Response:
+        """Update metadata object in database.
+
+        We do not support patch for XML.
+
+        :param req: PATCH request
+        :returns: JSON response containing accessionId for submitted object
+        """
+        schema_type = req.match_info['schema']
+        accession_id = req.match_info['accessionId']
+        self._check_schema_exists(schema_type)
+        collection = (f"draft-{schema_type}" if req.path.startswith("/drafts")
+                      else schema_type)
+
+        db_client = req.app['db_client']
+        operator: Union[Operator, XMLOperator]
+        if req.content_type == "multipart/form-data":
+            raise web.HTTPUnsupportedMediaType
+        else:
+            content = await req.json()
+            operator = Operator(db_client)
+        await operator.update_metadata_object(collection,
+                                              accession_id,
+                                              content)
+        body = json.dumps({"accessionId": accession_id})
+        LOG.info(f"PUT object with accesssion ID {accession_id} "
+                 f"in schema {collection} was successful.")
+        return web.Response(body=body, status=201,
+                            content_type="application/json")
+
 
 class SubmissionAPIHandler:
     """Handler for non-rest API methods."""
