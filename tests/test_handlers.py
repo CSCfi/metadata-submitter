@@ -361,11 +361,6 @@ class HandlersTestCase(AioHTTPTestCase):
         json_get_resp = await get_resp.json()
         self.assertIn("Specified schema", json_get_resp['detail'])
 
-        get_resp = await self.client.get("/drafts/bad_scehma_name")
-        self.assertEqual(get_resp.status, 404)
-        json_get_resp = await get_resp.json()
-        self.assertIn("Specified schema", json_get_resp['detail'])
-
         get_resp = await self.client.delete("/objects/bad_scehma_name/some_id")
         self.assertEqual(get_resp.status, 404)
         json_get_resp = await get_resp.json()
@@ -384,6 +379,4 @@ class HandlersTestCase(AioHTTPTestCase):
         get_resp = await self.client.get("/objects/study?page=0")
         self.assertEqual(get_resp.status, 400)
         get_resp = await self.client.get("/objects/study?per_page=0")
-        self.assertEqual(get_resp.status, 400)
-        get_resp = await self.client.get("/drafts/study?per_page=0")
         self.assertEqual(get_resp.status, 400)

@@ -39,10 +39,7 @@ class RESTApiHandler:
         :param req: GET request with query parameters
         :returns: JSON with query results
         """
-        schema_type = req.match_info['schema']
-        collection = (f"draft-{schema_type}" if req.path.startswith("/drafts")
-                      else schema_type)
-
+        collection = req.match_info['schema']
         format = req.query.get("format", "json").lower()
         if format == "xml":
             reason = "xml-formatted query results are not supported"
