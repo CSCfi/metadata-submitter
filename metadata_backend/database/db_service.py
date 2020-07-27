@@ -1,7 +1,6 @@
 """Services that handle database connections. Implemented with MongoDB."""
 from functools import wraps
-from typing import Any, Callable, Dict
-from aiohttp import web
+from typing import Any, Callable, Dict, Union
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
 from pymongo.errors import AutoReconnect, ConnectionFailure
@@ -111,20 +110,14 @@ class DBService:
         """
         find_by_id = {"accessionId": accession_id}
         update_op = {"$set": data_to_be_updated}
-        old_data = await self.database[collection].find_one(find_by_id)
-        if not old_data:
-            reason = f"Object with accession id {accession_id} was not found."
-            LOG.error(reason)
-            raise web.HTTPNotFound(reason=reason)
-        else:
-            result = await self.database[collection].update_one(find_by_id,
-                                                                update_op)
-            LOG.debug(f"DB doc updated for {accession_id}.")
-            return result.acknowledged
+        result = await self.database[collection].update_one(find_by_id,
+                                                            update_op)
+        LOG.debug(f"DB doc updated for {accession_id}.")
+        return result.acknowledged
 
     @auto_reconnect
     async def replace(self, collection: str, accession_id: str,
-                      new_data: Dict) -> None:
+                      new_data: Dict) -> Union[bool, str]:
         """Replace whole object by its accessionId.
 
         We keep the dateCreated and publishDate dates as these
@@ -137,21 +130,17 @@ class DBService:
         """
         find_by_id = {"accessionId": accession_id}
         old_data = await self.database[collection].find_one(find_by_id)
-        if not old_data:
-            reason = f"Object with accession id {accession_id} was not found."
-            LOG.error(reason)
-            raise web.HTTPNotFound(reason=reason)
-        else:
-            new_data['dateCreated'] = old_data['dateCreated']
-            if 'publishDate' in old_data:
-                new_data['publishDate'] = old_data['publishDate']
-            result = await self.database[collection].replace_one(find_by_id,
-                                                                 new_data)
-            LOG.debug(f"DB doc replaced for {accession_id}.")
-            return result.acknowledged
+        new_data['dateCreated'] = old_data['dateCreated']
+        if 'publishDate' in old_data:
+            new_data['publishDate'] = old_data['publishDate']
+        result = await self.database[collection].replace_one(find_by_id,
+                                                             new_data)
+        LOG.debug(f"DB doc replaced for {accession_id}.")
+        return result.acknowledged
 
     @auto_reconnect
-    async def delete(self, collection: str, accession_id: str) -> None:
+    async def delete(self, collection: str,
+                     accession_id: str) -> bool:
         """Delete object by its accessionId.
 
         :param collection: Collection where document should be searched from
@@ -160,13 +149,8 @@ class DBService:
         """
         find_by_id = {"accessionId": accession_id}
         result = await self.database[collection].delete_one(find_by_id)
-        if result.deleted_count < 1:
-            reason = f"Object with accession id {accession_id} was not found."
-            LOG.error(reason)
-            raise web.HTTPNotFound(reason=reason)
-        else:
-            LOG.debug(f"DB doc deleted for {accession_id}.")
-            return result.acknowledged
+        LOG.debug(f"DB doc deleted for {accession_id}.")
+        return result.acknowledged
 
     def query(self, collection: str, query: Dict) -> AsyncIOMotorCursor:
         """Query database with given query.
