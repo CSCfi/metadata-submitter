@@ -32,7 +32,8 @@ class DatabaseTestCase(AsyncTestCase):
         self.test_service = DBService("test", self.client)
         self.id_stub = "EGA123456"
         self.data_stub = {"accessionId": self.id_stub,
-                          "identifiers": ["foo", "bar"]
+                          "identifiers": ["foo", "bar"],
+                          "dateCreated": "2020-07-26T20:59:35.177Z"
                           }
 
     def test_db_services_share_mongodb_client(self):
@@ -67,8 +68,24 @@ class DatabaseTestCase(AsyncTestCase):
         self.collection.find_one.assert_called_once_with({"accessionId":
                                                           self.id_stub})
 
+    async def test_exists_returns_false(self):
+        """Test that exists method works and returns false."""
+        found_doc = await self.test_service.exists("test", self.id_stub)
+        self.assertEqual(found_doc, False)
+        self.collection.find_one.assert_called_once_with({"accessionId":
+                                                          self.id_stub})
+
+    async def test_exists_returns_true(self):
+        """Test that exists method works and returns True."""
+        self.collection.find_one.return_value = futurized(self.data_stub)
+        found_doc = await self.test_service.exists("test", self.id_stub)
+        self.assertEqual(found_doc, True)
+        self.collection.find_one.assert_called_once_with({"accessionId":
+                                                          self.id_stub})
+
     async def test_update_updates_data(self):
         """Test that update method works and returns success."""
+        self.collection.find_one.return_value = futurized(self.data_stub)
         self.collection.update_one.return_value = futurized(
             UpdateResult({}, True)
         )
@@ -82,6 +99,7 @@ class DatabaseTestCase(AsyncTestCase):
 
     async def test_replace_replaces_data(self):
         """Test that replace method works and returns success."""
+        self.collection.find_one.return_value = futurized(self.data_stub)
         self.collection.replace_one.return_value = futurized(
             UpdateResult({}, True)
         )
@@ -95,7 +113,7 @@ class DatabaseTestCase(AsyncTestCase):
     async def test_delete_deletes_data(self):
         """Test that delete method works and returns success."""
         self.collection.delete_one.return_value = futurized(
-            DeleteResult({}, True)
+            DeleteResult({'n': 1}, True)
         )
         success = await self.test_service.delete("test", self.id_stub)
         self.collection.delete_one.assert_called_once_with({"accessionId":
