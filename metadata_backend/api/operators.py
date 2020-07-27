@@ -196,12 +196,18 @@ class Operator(BaseOperator):
                     base = query_map[query]["base"]  # type: ignore
                     if "$or" not in mongo_query:
                         mongo_query["$or"] = []
-                    ors = [{f"{base}.{key}": regx} for key
-                           in query_map[query]["keys"]]  # type: ignore
-                    mongo_query["$or"].extend(ors)
+                    for key in query_map[query]["keys"]:  # type: ignore
+                        if value.isdigit():
+                            regi = {"$expr": {"$regexMatch": {
+                                    "input": {"$toString": f"${base}.{key}"},
+                                    "regex": f".*{int(value)}.*"}}}
+                            mongo_query["$or"].append(regi)
+                        else:
+                            mongo_query["$or"].append({f"{base}.{key}": regx})
                 else:
                     # Query with regex from just one field
                     mongo_query = {query_map[query]: regx}
+        LOG.debug(f"Query construct: {mongo_query}")
         try:
             cursor = self.db_service.query(schema_type, mongo_query)
         except (ConnectionFailure, OperationFailure) as error:
