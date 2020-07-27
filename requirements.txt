@@ -1,4 +1,5 @@
 aiohttp
+Authlib
 gunicorn
 motor
 python-dateutil
