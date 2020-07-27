@@ -189,8 +189,8 @@ class BaseOperator(ABC):
         :returns: None
         """
         try:
-            check_exists = await self.db_service.exists(schema_type,
-                                                        accession_id)
+            check_exists = await operator.db_service.exists(schema_type,
+                                                            accession_id)
             if not check_exists:
                 reason = (f"Object with accession id {accession_id} "
                           "was not found.")
