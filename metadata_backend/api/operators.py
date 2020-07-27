@@ -153,6 +153,13 @@ class BaseOperator(ABC):
         :returns: Accession Id for object inserted to database
         """
         try:
+            check_exists = await self.db_service.exists(schema_type,
+                                                        accession_id)
+            if not check_exists:
+                reason = (f"Object with accession id {accession_id} "
+                          "was not found.")
+                LOG.error(reason)
+                raise web.HTTPNotFound(reason=reason)
             replace_success = (await self.db_service.replace(schema_type,
                                                              accession_id,
                                                              data))
@@ -172,6 +179,13 @@ class BaseOperator(ABC):
                                      schema_type: str,
                                      accession_id: str) -> None:
         try:
+            check_exists = await self.db_service.exists(schema_type,
+                                                        accession_id)
+            if not check_exists:
+                reason = (f"Object with accession id {accession_id} "
+                          "was not found.")
+                LOG.error(reason)
+                raise web.HTTPNotFound(reason=reason)
             delete_success = (await operator.db_service.delete(schema_type,
                                                                accession_id))
         except (ConnectionFailure, OperationFailure) as error:
