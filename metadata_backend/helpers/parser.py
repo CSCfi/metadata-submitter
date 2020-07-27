@@ -75,6 +75,10 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 children[key] = list(value.values())[0]['instrumentModel']
                 continue
 
+            if "dataBlock" in key:
+                children['files'] = list(value.values())
+                continue
+
             if key in links and len(value) == 1:
                 grp = defaultdict(list)
                 if isinstance(value[key[:-1]], dict):
@@ -136,6 +140,8 @@ class MetadataXMLConverter(XMLSchemaConverter):
           the structure.
         - Study type takes the value of its attribute existingStudyType.
         - Platform data we assign the string value of the instrument Model.
+        - dataBlock has the content of files array to be the same in run
+          and analysis.
         """
         xsd_type = xsd_type or xsd_element.type
         if xsd_type.simple_type is not None:
