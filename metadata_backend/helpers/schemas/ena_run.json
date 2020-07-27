@@ -232,7 +232,6 @@
             "required": [
                 "file"
             ],
-            "additionalProperties": true,
             "properties": {
                 "file": {
                     "type": "object",
@@ -243,7 +242,6 @@
                         "checksumMethod",
                         "checksum"
                     ],
-                    "additionalProperties": true,
                     "properties": {
                         "filename": {
                             "type": "string",
