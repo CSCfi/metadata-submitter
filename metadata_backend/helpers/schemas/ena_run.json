@@ -228,78 +228,71 @@
         "fileType": {
             "$id": "#/definitions/fileType",
             "type": "object",
+            "title": "files",
+            "required": [
+                "file"
+            ],
             "properties": {
-                "files": {
+                "file": {
                     "type": "object",
-                    "title": "files",
+                    "title": "file",
                     "required": [
-                        "file"
+                        "filename",
+                        "filetype",
+                        "checksumMethod",
+                        "checksum"
                     ],
-                    "additionalProperties": true,
                     "properties": {
-                        "file": {
-                            "type": "object",
-                            "title": "file",
-                            "required": [
-                                "filename",
-                                "filetype",
-                                "checksumMethod",
-                                "checksum"
-                            ],
-                            "additionalProperties": true,
-                            "properties": {
-                                "filename": {
-                                    "type": "string",
-                                    "title": "filename"
-                                },
-                                "filetype": {
-                                    "type": "string",
-                                    "title": "filetype",
-                                    "enum": [
-                                        "tab",
-                                        "bam",
-                                        "bai",
-                                        "cram",
-                                        "crai",
-                                        "vcf",
-                                        "vcf_aggregate",
-                                        "bcf",
-                                        "tabix",
-                                        "wig",
-                                        "sra",
-                                        "sff",
-                                        "srf",
-                                        "bed",
-                                        "gff",
-                                        "fasta",
-                                        "fastq",
-                                        "flatfile",
-                                        "chromosome_list",
-                                        "sample_list",
-                                        "readme_file",
-                                        "phenotype_file",
-                                        "BioNano_native",
-                                        "Kallisto_native",
-                                        "agp",
-                                        "unlocalised_list",
-                                        "info",
-                                        "manifest",
-                                        "other"
-                                    ]
-                                },
-                                "checksumMethod": {
-                                    "type": "string",
-                                    "title": "checksumMethod",
-                                    "enum": [
-                                        "MD5",
-                                        "SHA256"
-                                    ]
-                                },
-                                "checksum": {
-                                    "type": "string",
-                                    "title": "checksum"
-                                }
-                            }
+                        "filename": {
+                            "type": "string",
+                            "title": "filename"
+                        },
+                        "filetype": {
+                            "type": "string",
+                            "title": "filetype",
+                            "enum": [
+                                "tab",
+                                "bam",
+                                "bai",
+                                "cram",
+                                "crai",
+                                "vcf",
+                                "vcf_aggregate",
+                                "bcf",
+                                "tabix",
+                                "wig",
+                                "sra",
+                                "sff",
+                                "srf",
+                                "bed",
+                                "gff",
+                                "fasta",
+                                "fastq",
+                                "flatfile",
+                                "chromosome_list",
+                                "sample_list",
+                                "readme_file",
+                                "phenotype_file",
+                                "BioNano_native",
+                                "Kallisto_native",
+                                "agp",
+                                "unlocalised_list",
+                                "info",
+                                "manifest",
+                                "other"
+                            ]
+                        },
+                        "checksumMethod": {
+                            "type": "string",
+                            "title": "checksumMethod",
+                            "enum": [
+                                "MD5",
+                                "SHA256"
+                            ]
+                        },
+                        "checksum": {
+                            "type": "string",
+                            "title": "checksum"
                         }
                     }
                 }
@@ -532,20 +525,12 @@
                 }
             ]
         },
-        "dataBlock": {
-            "oneOf": [
-                {
-                    "title": "Single File",
-                    "$ref": "#/definitions/fileType"
-                },
-                {
-                    "type": "array",
-                    "title": "Data Block, files",
-                    "items": {
-                        "$ref": "#/definitions/fileType"
-                    }
-                }
-            ]
+        "files": {
+            "type": "array",
+            "title": "files",
+            "items": {
+                "$ref": "#/definitions/fileType"
+            }
         },
         "runLinks": {
             "type": "object",
