@@ -11,7 +11,6 @@ import aiohttp
 import logging
 from aiohttp import FormData
 from pathlib import Path
-import json
 
 # === Global vars ===
 FORMAT = "[%(asctime)s][%(name)s][%(process)d %(processName)s]" \
@@ -65,8 +64,8 @@ async def create_request_json_data(schema, filename):
     """
     path_to_file = testfiles_root / schema / filename
     path = path_to_file.as_posix()
-    with open(path, mode='r') as f:
-        data = json.load(f)
+    async with aiofiles.open(path, mode='r') as f:
+        data = await f.read()
     return data
 
 
@@ -91,13 +90,13 @@ async def put_draft(sess, schema, filename):
     """Post & put one metadata object within session, returns accession id."""
     data = await create_request_json_data(schema, filename)
     async with sess.post(f"{drafts_url}/{schema}",
-                         data=json.dumps(data)) as resp:
+                         data=data) as resp:
         LOG.debug(f"Adding new object to {schema}")
         assert resp.status == 201, 'HTTP Status code error'
         ans = await resp.json()
         test_id = ans["accessionId"]
     async with sess.put(f"{drafts_url}/{schema}/{test_id}",
-                        data=json.dumps(data)) as resp:
+                        data=data) as resp:
         LOG.debug(f"Adding new object to {schema}")
         assert resp.status == 201, 'HTTP Status code error'
         ans_put = await resp.json()
