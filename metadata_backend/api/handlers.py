@@ -233,7 +233,7 @@ class RESTApiHandler:
         :param req: GET Request
         :returns: JSON list of folders
         """
-        raise NotImplementedError
+        raise web.HTTPNotImplemented
 
     async def post_folder(self, req: Request) -> Response:
         """Save object folder to database.
@@ -257,7 +257,7 @@ class RESTApiHandler:
         :returns: JSON response containing object folder
         """
         # folder_id = req.match_info['folderId']
-        raise NotImplementedError
+        raise web.HTTPNotImplemented
 
     async def replace_folder(self, req: Request) -> Response:
         """Replace object folder with a specific folder id.
@@ -266,7 +266,7 @@ class RESTApiHandler:
         :returns: TBD
         """
         # folder_id = req.match_info['folderId']
-        raise NotImplementedError
+        raise web.HTTPNotImplemented
 
     async def update_folder(self, req: Request) -> Response:
         """Update object folder with a specific folder id.
@@ -275,7 +275,7 @@ class RESTApiHandler:
         :returns: TBD
         """
         # folder_id = req.match_info['folderId']
-        raise NotImplementedError
+        raise web.HTTPNotImplemented
 
     async def delete_folder(self, req: Request) -> Response:
         """Delete object folder from database.
@@ -284,7 +284,7 @@ class RESTApiHandler:
         :returns: TBD
         """
         # folder_id = req.match_info['folderId']
-        raise NotImplementedError
+        raise web.HTTPNotImplemented
 
     async def patch_object(self, req: Request) -> Response:
         """Update metadata object in database.
