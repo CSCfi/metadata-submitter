@@ -114,9 +114,10 @@ class BaseOperator(ABC):
         await self._remove_object_from_db(Operator(db_client),
                                           schema_type,
                                           accession_id)
-        await self._remove_object_from_db(XMLOperator(db_client),
-                                          schema_type,
-                                          accession_id)
+        if not schema_type.startswith("draft"):
+            await self._remove_object_from_db(XMLOperator(db_client),
+                                              schema_type,
+                                              accession_id)
         LOG.info(f"removing object with schema {schema_type} from database "
                  f"and accession id: {accession_id}")
 
