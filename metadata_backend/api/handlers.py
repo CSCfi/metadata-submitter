@@ -40,8 +40,8 @@ class RESTApiHandler:
         :returns: JSON with query results
         """
         collection = req.match_info['schema']
-        format = req.query.get("format", "json").lower()
-        if format == "xml":
+        req_format = req.query.get("format", "json").lower()
+        if req_format == "xml":
             reason = "xml-formatted query results are not supported"
             raise web.HTTPBadRequest(reason=reason)
 
@@ -130,13 +130,13 @@ class RESTApiHandler:
         collection = (f"draft-{schema_type}" if req.path.startswith("/drafts")
                       else schema_type)
 
-        format = req.query.get("format", "json").lower()
+        req_format = req.query.get("format", "json").lower()
         db_client = req.app['db_client']
-        operator = (XMLOperator(db_client) if format == "xml"
+        operator = (XMLOperator(db_client) if req_format == "xml"
                     else Operator(db_client))
         data, content_type = await operator.read_metadata_object(collection,
                                                                  accession_id)
-        data = (data if format == "xml" else json.dumps(data))
+        data = (data if req_format == "xml" else json.dumps(data))
         LOG.info(f"GET object with accesssion ID {accession_id} "
                  f"from schema {collection}.")
         return web.Response(body=data, status=200, content_type=content_type)
