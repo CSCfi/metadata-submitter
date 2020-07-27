@@ -181,6 +181,9 @@ class BaseOperator(ABC):
                                      accession_id: str) -> None:
         """Delete object from database.
 
+        We can omit raising error for XMLOperator if id is not
+        in backup collection.
+
         :param schema_type: Schema type of the object to delete.
         :param accession_id: Identifier of object to delete.
         :param data: Single document formatted as JSON
@@ -190,11 +193,13 @@ class BaseOperator(ABC):
         try:
             check_exists = await operator.db_service.exists(schema_type,
                                                             accession_id)
-            if not check_exists:
+            if not check_exists and not isinstance(operator, XMLOperator):
                 reason = (f"Object with accession id {accession_id} "
                           "was not found.")
                 LOG.error(reason)
                 raise web.HTTPNotFound(reason=reason)
+            else:
+                LOG.debug("XML is not in backup collection")
             delete_success = (await operator.db_service.delete(schema_type,
                                                                accession_id))
         except (ConnectionFailure, OperationFailure) as error:
