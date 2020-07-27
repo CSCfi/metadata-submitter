@@ -62,7 +62,7 @@ class ParserTestCase(unittest.TestCase):
         run_xml = self.load_xml_from_file("run", "ERR000076.xml")
         run_json = self.parser.parse("run", run_xml)
         self.assertIn("ERA000/ERA000014/srf/BGI-FC304RWAAXX_5.srf",
-                      run_json['dataBlock']['files']['file']['filename'])
+                      run_json['files'][0]['file']['filename'])
         self.assertIn("ERX000037", run_json['experimentRef']['accessionId'])
 
     def test_analysis_is_parsed(self):
