@@ -129,6 +129,7 @@ async def test_querying_works():
                 ("studyReference", "1000Genomes project pilot")
             ],
             "analysis": [
+                ("fileType", "other"),
                 ("studyReference", "HipSci___RNAseq___"),
                 ("sampleReference", "HPSI0114i-eipl_3")
             ]
