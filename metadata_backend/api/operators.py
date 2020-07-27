@@ -579,7 +579,8 @@ class XMLOperator(BaseOperator):
         :param data: Original xml content
         :raises: NotImplemeted
         """
-        raise web.HTTPNotImplemented
+        reason = "XML patching is not possible."
+        raise web.HTTPUnsupportedMediaType(reason=reason)
 
     async def _format_read_data(self, schema_type: str, data_raw: Dict) -> str:
         """Get XML content from given mongodb data.

@@ -245,7 +245,8 @@ class RESTApiHandler:
         db_client = req.app['db_client']
         operator: Union[Operator, XMLOperator]
         if req.content_type == "multipart/form-data":
-            raise web.HTTPUnsupportedMediaType
+            reason = "XML patching is not possible."
+            raise web.HTTPUnsupportedMediaType(reason=reason)
         else:
             content = await req.json()
             operator = Operator(db_client)

@@ -41,6 +41,9 @@ async def http_error_handler(req: Request, handler: Callable) -> Response:
         elif error.status == 404:
             raise web.HTTPNotFound(text=details,
                                    content_type=c_type)
+        elif error.status == 415:
+            raise web.HTTPUnsupportedMediaType(text=details,
+                                               content_type=c_type)
         else:
             raise web.HTTPServerError()
 
