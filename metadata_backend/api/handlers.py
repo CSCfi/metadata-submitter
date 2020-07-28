@@ -229,6 +229,7 @@ class RESTApiHandler:
                  f"in schema {collection} was successful.")
         return web.Response(body=body, status=201,
                             content_type="application/json")
+
     async def get_folders(self, req: Request) -> Response:
         """Get all possible object folders from database.
 
