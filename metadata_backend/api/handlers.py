@@ -8,9 +8,11 @@ from typing import Dict, List, Tuple, Union, cast
 
 from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
+from pymongo.errors import ConnectionFailure, OperationFailure
 from xmlschema import XMLSchemaException
 
 from ..conf.conf import schema_types
+from ..database.db_service import DBService
 from ..helpers.parser import XMLToJSONParser
 from ..helpers.schema_loader import (XMLSchemaLoader, SchemaNotFoundException,
                                      JSONSchemaLoader)
@@ -242,9 +244,22 @@ class RESTApiHandler:
         :returns: JSON response containing folder ID for submitted object
         """
         db_client = req.app['db_client']
-        operator = Operator(db_client)
+        db_service = DBService("folders", db_client)
         data = await req.json()
-        folder_id = await operator.create_object_folder(data)
+        try:
+            # data['metadata_objects'] = []
+            folder_id = await db_service.create("folder", data, True)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while inserting file: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        if folder_id:
+            return folder_id
+        else:
+            reason = "Inserting file to database failed for some reason."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
         body = json.dumps({"folderId": folder_id})
         LOG.info(f"POST new folder with folder ID {folder_id} was successful.")
         return web.Response(body=body, status=201,

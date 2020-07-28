@@ -150,7 +150,7 @@ class DatabaseTestCase(AsyncTestCase):
         self.collection.insert_one.return_value = futurized(
             InsertOneResult(ObjectId('0000000000aa1111111111bb'), True)
         )
-        folder = await self.test_service.create_folder(self.folder_stub)
+        folder = await self.test_service.create("folder", self.folder_stub,
+                                                True)
         self.collection.insert_one.assert_called_once_with(self.folder_stub)
-        self.assertTrue(folder[0])
-        self.assertEqual(ObjectId('0000000000aa1111111111bb'), folder[1])
+        self.assertEqual(ObjectId('0000000000aa1111111111bb'), folder)
