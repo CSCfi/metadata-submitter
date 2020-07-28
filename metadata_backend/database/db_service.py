@@ -1,6 +1,6 @@
 """Services that handle database connections. Implemented with MongoDB."""
 from functools import wraps
-from typing import Any, Callable, Dict, Tuple
+from typing import Any, Callable, Dict, Union
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
 from pymongo.errors import AutoReconnect, ConnectionFailure
@@ -61,16 +61,20 @@ class DBService:
         self.database = db_client[database_name]
 
     @auto_reconnect
-    async def create(self, collection: str, document: Dict) -> bool:
-        """Insert document to collection in database.
+    async def create(self, collection: str, document: Dict,
+                     isFolder: bool = False) -> Union[bool, str]:
+        """Insert document or a folder to collection in database.
 
         :param collection: Collection where document should be inserted
         :param document: Document to be inserted
-        :returns: True if operation was successful
+        :returns: True if operation was successful or ID of the created folder
         """
         result = await self.database[collection].insert_one(document)
         LOG.debug("DB doc inserted.")
-        return result.acknowledged
+        if isFolder:
+            return result.inserted_id
+        else:
+            return result.acknowledged
 
     @auto_reconnect
     async def exists(self, collection: str, accession_id: str) -> bool:
@@ -179,15 +183,3 @@ class DBService:
         """
         LOG.debug("DB doc count performed.")
         return await self.database[collection].count_documents(query)
-
-    @auto_reconnect
-    async def create_folder(self, folder_data: Dict) -> Tuple[bool, str]:
-        """Insert folder as a new collection to database.
-
-        :param folder_data: Objects to be inserted
-        :returns: True if operation was successful
-        """
-        folder = await self.database["folder"].insert_one(folder_data)
-        id = folder.inserted_id if folder.acknowledged else None
-        LOG.debug("DB folder inserted.")
-        return (folder.acknowledged, id)

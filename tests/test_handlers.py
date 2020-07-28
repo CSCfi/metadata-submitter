@@ -47,6 +47,7 @@ class HandlersTestCase(AioHTTPTestCase):
         class_parser = "metadata_backend.api.handlers.XMLToJSONParser"
         class_operator = "metadata_backend.api.handlers.Operator"
         class_xmloperator = "metadata_backend.api.handlers.XMLOperator"
+        class_dbservice = "metadata_backend.api.handlers.DBService"
         operator_config = {'read_metadata_object.side_effect':
                            self.fake_operator_read_metadata_object,
                            'query_metadata_database.side_effect':
@@ -66,15 +67,18 @@ class HandlersTestCase(AioHTTPTestCase):
                                     spec=True)
         self.patch_xmloperator = patch(class_xmloperator, **xmloperator_config,
                                        spec=True)
+        self.patch_dbservice = patch(class_dbservice, spec=True)
         self.MockedParser = self.patch_parser.start()
         self.MockedOperator = self.patch_operator.start()
         self.MockedXMLOperator = self.patch_xmloperator.start()
+        self.MockedDbService = self.patch_dbservice.start()
 
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
         self.patch_parser.stop()
         self.patch_operator.stop()
         self.patch_xmloperator.stop()
+        self.patch_dbservice.stop()
 
     def create_submission_data(self, files):
         """Create request data from pairs of schemas and filenames."""
@@ -414,10 +418,8 @@ class HandlersTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_folder_creation_works(self):
-        """Test that folder is created and operator is called."""
+        """Test that folder is created and folder ID returned."""
         json_req = {"name": "test",
                     "description": "test folder"}
-        response = await self.client.post("/folders", json=json_req)
-        self.assertEqual(response.status, 201)
-        self.MockedOperator().create_object_folder.assert_called_once()
-        self.assertIn("folderId", await response.json())
+        await self.client.post("/folders", json=json_req)
+        self.MockedDbService().create.assert_called_once()
