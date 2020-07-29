@@ -1,6 +1,8 @@
 """Handle HTTP methods for server."""
 import json
 import mimetypes
+import secrets
+import string
 from collections import Counter
 from math import ceil
 from pathlib import Path
@@ -8,9 +10,11 @@ from typing import Dict, List, Tuple, Union, cast
 
 from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
+from pymongo.errors import ConnectionFailure, OperationFailure
 from xmlschema import XMLSchemaException
 
 from ..conf.conf import schema_types
+from ..database.db_service import DBService
 from ..helpers.parser import XMLToJSONParser
 from ..helpers.schema_loader import (XMLSchemaLoader, SchemaNotFoundException,
                                      JSONSchemaLoader)
@@ -182,7 +186,7 @@ class RESTApiHandler:
     async def delete_object(self, req: Request) -> Response:
         """Delete metadata object from database.
 
-        :param req: POST request
+        :param req: DELETE request
         :returns: JSON response containing accessionId for submitted object
         """
         schema_type = req.match_info['schema']
@@ -228,6 +232,77 @@ class RESTApiHandler:
         return web.Response(body=body, status=201,
                             content_type="application/json")
 
+    async def get_folders(self, req: Request) -> Response:
+        """Get all possible object folders from database.
+
+        :param req: GET Request
+        :returns: JSON list of folders
+        """
+        raise web.HTTPNotImplemented
+
+    async def post_folder(self, req: Request) -> Response:
+        """Save object folder to database.
+
+        :param req: POST request
+        :returns: JSON response containing folder ID for submitted object
+        """
+        db_client = req.app['db_client']
+        db_service = DBService("folders", db_client)
+        data = await req.json()
+        data['folderId'] = self._generate_folder_id()
+        try:
+            insert = await db_service.create("folder", data)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while inserting file: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        if not insert:
+            reason = "Inserting file to database failed for some reason."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        else:
+            body = json.dumps({"folderId": data['folderId']})
+            LOG.info(f"POST new folder with folder ID {data['folderId']} was "
+                     "successful.")
+            return web.Response(body=body, status=201,
+                                content_type="application/json")
+
+    async def get_folder(self, req: Request) -> Response:
+        """Get one object folder by its folder id.
+
+        :param req: GET request
+        :returns: JSON response containing object folder
+        """
+        # folder_id = req.match_info['folderId']
+        raise web.HTTPNotImplemented
+
+    async def replace_folder(self, req: Request) -> Response:
+        """Replace object folder with a specific folder id.
+
+        :param req: PUT request
+        :returns: TBD
+        """
+        # folder_id = req.match_info['folderId']
+        raise web.HTTPNotImplemented
+
+    async def update_folder(self, req: Request) -> Response:
+        """Update object folder with a specific folder id.
+
+        :param req: PATCH request
+        :returns: TBD
+        """
+        # folder_id = req.match_info['folderId']
+        raise web.HTTPNotImplemented
+
+    async def delete_folder(self, req: Request) -> Response:
+        """Delete object folder from database.
+
+        :param req: DELETE request
+        :returns: TBD
+        """
+        # folder_id = req.match_info['folderId']
+        raise web.HTTPNotImplemented
+
     async def patch_object(self, req: Request) -> Response:
         """Update metadata object in database.
 
@@ -258,6 +333,12 @@ class RESTApiHandler:
                  f"in schema {collection} was successful.")
         return web.Response(body=body, status=201,
                             content_type="application/json")
+
+    def _generate_folder_id(self) -> str:
+        """Generate random folder id."""
+        sequence = ''.join(secrets.choice(string.digits) for i in range(8))
+        LOG.debug("Generated folder ID.")
+        return f"FOL{sequence}"
 
 
 class SubmissionAPIHandler:
