@@ -426,11 +426,11 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_folder_creation_works(self):
         """Test that folder is created and folder ID returned."""
+        self.MockedDbService().create.return_value = futurized(True)
         json_req = {"name": "test",
                     "description": "test folder"}
-        await self.client.post("/folders", json=json_req)
+        response = await self.client.post("/folders", json=json_req)
+        json_resp = await response.json()
         self.MockedDbService().create.assert_called_once()
-        # Below should pass but does not pass atm
-        # response = await self.client.post("/folders", json=json_req)
-        # json_resp = await response.json()
-        # self.assertEqual(json_resp['folderId'], self.folder_id)
+        self.assertEqual(response.status, 201)
+        self.assertEqual(json_resp['folderId'], self.folder_id)
