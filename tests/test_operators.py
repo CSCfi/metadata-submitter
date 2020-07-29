@@ -102,14 +102,14 @@ class TestOperators(AsyncTestCase):
         self.assertEqual(r_data, data["content"])
 
     async def test_reading_with_non_valid_id_raises_error(self):
-        """Test HTTPNotFound is raised."""
+        """Test read metadata HTTPNotFound is raised."""
         operator = Operator(self.client)
-        operator.db_service.read.side_effect = HTTPNotFound
+        operator.db_service.read.return_value = futurized(False)
         with self.assertRaises(HTTPNotFound):
             await operator.read_metadata_object("study", "EGA123456")
 
     async def test_db_error_raises_400_error(self):
-        """Test HTTPBadRequest is raised."""
+        """Test read metadata HTTPBadRequest is raised."""
         operator = Operator(self.client)
         operator.db_service.read.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
@@ -152,7 +152,7 @@ class TestOperators(AsyncTestCase):
         self.assertEqual(accession, self.accession_id)
 
     async def test_json_replace_raises_if_not_exists(self):
-        """Test replace method for json works."""
+        """Test replace method raises error."""
         accession = "EGA123456"
         operator = Operator(self.client)
         operator.db_service.exists.return_value = futurized(False)
@@ -160,7 +160,44 @@ class TestOperators(AsyncTestCase):
         with self.assertRaises(HTTPNotFound):
             await operator.replace_metadata_object("study", accession, {})
             operator.db_service.replace.assert_called_once()
-            self.assertEqual(accession, self.accession_id)
+
+    async def test_db_error_replace_raises_400_error(self):
+        """Test replace metadata HTTPBadRequest is raised."""
+        accession = "EGA123456"
+        operator = Operator(self.client)
+        operator.db_service.exists.return_value = futurized(True)
+        operator.db_service.read.side_effect = ConnectionFailure
+        with self.assertRaises(HTTPBadRequest):
+            await operator.replace_metadata_object("study", accession, {})
+
+    async def test_json_update_passes_and_returns_accessionId(self):
+        """Test replace method for json works."""
+        accession = "EGA123456"
+        operator = Operator(self.client)
+        operator.db_service.exists.return_value = futurized(True)
+        operator.db_service.update.return_value = futurized(True)
+        await operator.update_metadata_object("study", accession, {})
+        operator.db_service.update.assert_called_once()
+        self.assertEqual(accession, self.accession_id)
+
+    async def test_json_update_raises_if_not_exists(self):
+        """Test update method raises error."""
+        accession = "EGA123456"
+        operator = Operator(self.client)
+        operator.db_service.exists.return_value = futurized(False)
+        operator.db_service.replace.return_value = futurized(True)
+        with self.assertRaises(HTTPNotFound):
+            await operator.update_metadata_object("study", accession, {})
+            operator.db_service.update.assert_called_once()
+
+    async def test_db_error_update_raises_400_error(self):
+        """Test update metadata HTTPBadRequest is raised."""
+        accession = "EGA123456"
+        operator = Operator(self.client)
+        operator.db_service.exists.return_value = futurized(True)
+        operator.db_service.read.side_effect = ConnectionFailure
+        with self.assertRaises(HTTPBadRequest):
+            await operator.update_metadata_object("study", accession, {})
 
     async def test_xml_create_passes_and_returns_accessionId(self):
         """Test create method for xml works. Patch json related calls."""
@@ -193,8 +230,8 @@ class TestOperators(AsyncTestCase):
                               "publishDate": datetime.datetime(2020, 6, 14)})
             self.assertEqual(acc, self.accession_id)
 
-    async def test_correct_data_is_set_to_json_when_replacing(self):
-        """Test operator creates object and adds necessary info."""
+    async def test_wront_data_is_set_to_json_when_replacing(self):
+        """Test operator replace catches error."""
         accession = "EGA123456"
         operator = Operator(self.client)
         with patch(("metadata_backend.api.operators.Operator."
@@ -210,8 +247,8 @@ class TestOperators(AsyncTestCase):
                          "dateModified": datetime.datetime(2020, 4, 14),
                          "publishDate": datetime.datetime(2020, 6, 14)}))
 
-    async def test_wrong_data_is_set_to_json_when_replacing(self):
-        """Test operator creates object and adds necessary info."""
+    async def test_correct_data_is_set_to_json_when_replacing(self):
+        """Test operator replaces object and adds necessary info."""
         accession = "EGA123456"
         operator = Operator(self.client)
         with patch(("metadata_backend.api.operators.Operator."
@@ -226,6 +263,40 @@ class TestOperators(AsyncTestCase):
                     {"accessionId": self.accession_id,
                      "dateModified": datetime.datetime(2020, 4, 14)})
             self.assertEqual(acc, self.accession_id)
+
+    async def test_correct_data_is_set_to_json_when_updating(self):
+        """Test operator updates object and adds necessary info."""
+        accession = "EGA123456"
+        operator = Operator(self.client)
+        with patch(("metadata_backend.api.operators.Operator."
+                    "_update_object_from_db"),
+                   return_value=futurized(self.accession_id)) as mocked_insert:
+            with patch("metadata_backend.api.operators.datetime") as m_date:
+                m_date.utcnow.return_value = datetime.datetime(2020, 4, 14)
+                acc = await (operator._format_data_to_update_and_add_to_db(
+                    "study", accession, {}))
+                mocked_insert.assert_called_once_with(
+                    "study", accession,
+                    {"accessionId": self.accession_id,
+                     "dateModified": datetime.datetime(2020, 4, 14)})
+            self.assertEqual(acc, self.accession_id)
+
+    async def test_wrong_data_is_set_to_json_when_updating(self):
+        """Test operator update catches error."""
+        accession = "EGA123456"
+        operator = Operator(self.client)
+        with patch(("metadata_backend.api.operators.Operator."
+                    "_update_object_from_db"),
+                   return_value=futurized(self.accession_id)):
+            with patch("metadata_backend.api.operators.datetime") as m_date:
+                m_date.utcnow.return_value = datetime.datetime(2020, 4, 14)
+                with self.assertRaises(HTTPBadRequest):
+                    await (operator._format_data_to_update_and_add_to_db(
+                        "study", accession,
+                        {"accessionId": self.accession_id,
+                         "dateCreated": datetime.datetime(2020, 4, 14),
+                         "dateModified": datetime.datetime(2020, 4, 14),
+                         "publishDate": datetime.datetime(2020, 6, 14)}))
 
     async def test_correct_data_is_set_to_xml_when_creating(self):
         """Test XMLoperator creates object and adds necessary info."""
@@ -244,6 +315,27 @@ class TestOperators(AsyncTestCase):
                                                                       xml_data)
                                  )
                     m_insert.assert_called_once_with("study", {
+                        "accessionId": self.accession_id,
+                        "content": xml_data})
+                    self.assertEqual(acc, self.accession_id)
+
+    async def test_correct_data_is_set_to_xml_when_replacing(self):
+        """Test XMLoperator replaces object and adds necessary info."""
+        accession = "EGA123456"
+        operator = XMLOperator(self.client)
+        operator.db_service.db_client = self.client
+        xml_data = "<TEST></TEST>"
+        with patch(("metadata_backend.api.operators.Operator."
+                    "_format_data_to_replace_and_add_to_db"),
+                   return_value=futurized(self.accession_id)):
+            with patch(("metadata_backend.api.operators.XMLOperator."
+                        "_replace_object_from_db"),
+                       return_value=futurized(self.accession_id)) as m_insert:
+                with patch("metadata_backend.api.operators.XMLToJSONParser"):
+                    acc = await (
+                        operator._format_data_to_replace_and_add_to_db(
+                            "study", accession, xml_data))
+                    m_insert.assert_called_once_with("study", accession, {
                         "accessionId": self.accession_id,
                         "content": xml_data})
                     self.assertEqual(acc, self.accession_id)

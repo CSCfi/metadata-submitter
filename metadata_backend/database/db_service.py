@@ -122,6 +122,9 @@ class DBService:
 
         We keep the dateCreated and publishDate dates as these
         are connected with accession ID.
+
+        XML data we replace as a whole and no need for dateCreated.
+
         :param collection: Collection where document should be searched from
         :param accession_id: Accession id for object to be updated
         :param new_data: JSON representing the data that replaces
@@ -130,9 +133,10 @@ class DBService:
         """
         find_by_id = {"accessionId": accession_id}
         old_data = await self.database[collection].find_one(find_by_id)
-        new_data['dateCreated'] = old_data['dateCreated']
-        if 'publishDate' in old_data:
-            new_data['publishDate'] = old_data['publishDate']
+        if not (len(new_data) == 2 and new_data['content'].startswith('<')):
+            new_data['dateCreated'] = old_data['dateCreated']
+            if 'publishDate' in old_data:
+                new_data['publishDate'] = old_data['publishDate']
         result = await self.database[collection].replace_one(find_by_id,
                                                              new_data)
         LOG.debug(f"DB doc replaced for {accession_id}.")

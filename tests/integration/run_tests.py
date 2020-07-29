@@ -28,11 +28,11 @@ test_xml_files = [
     ("analysis", "ERZ266973.xml")
 ]
 test_json_files = [
-    ("study", "SRP000539.json"),
-    ("sample", "SRS001433.json"),
-    ("run", "ERR000076.json"),
-    ("experiment", "ERX000119.json"),
-    ("analysis", "ERZ266973.json")
+    ("study", "SRP000539.json", "SRP000539.json"),
+    ("sample", "SRS001433.json", "SRS001433.json"),
+    ("run", "ERR000076.json", "ERR000076.json"),
+    ("experiment", "ERX000119.json", "ERX000119.json"),
+    ("analysis", "ERZ266973.json", "ERZ266973.json")
 ]
 base_url = "http://localhost:5430/objects"
 drafts_url = "http://localhost:5430/drafts"
@@ -70,7 +70,7 @@ async def create_request_json_data(schema, filename):
 
 
 async def post_object(sess, schema, filename):
-    """Post one metadata object within session, returns accession id."""
+    """Post one metadata object within session, returns accessionId."""
     data = await create_request_data(schema, filename)
     async with sess.post(f"{base_url}/{schema}", data=data) as resp:
         LOG.debug(f"Adding new object to {schema}")
@@ -86,8 +86,8 @@ async def delete_object(sess, schema, accession_id):
         assert resp.status == 204, 'HTTP Status code error'
 
 
-async def put_draft(sess, schema, filename):
-    """Post & put one metadata object within session, returns accession id."""
+async def put_draft(sess, schema, filename, filename2):
+    """Post & put one metadata object within session, returns accessionId."""
     data = await create_request_json_data(schema, filename)
     async with sess.post(f"{drafts_url}/{schema}",
                          data=data) as resp:
@@ -95,9 +95,29 @@ async def put_draft(sess, schema, filename):
         assert resp.status == 201, 'HTTP Status code error'
         ans = await resp.json()
         test_id = ans["accessionId"]
+    data2 = await create_request_json_data(schema, filename2)
     async with sess.put(f"{drafts_url}/{schema}/{test_id}",
-                        data=data) as resp:
+                        data=data2) as resp:
+        LOG.debug(f"Replace object in {schema}")
+        assert resp.status == 201, 'HTTP Status code error'
+        ans_put = await resp.json()
+        assert ans_put["accessionId"] == test_id, 'accession ID error'
+        return ans_put["accessionId"]
+
+
+async def patch_draft(sess, schema, filename, filename2):
+    """Post & patch one metadata object within session, return accessionId."""
+    data = await create_request_json_data(schema, filename)
+    async with sess.post(f"{drafts_url}/{schema}",
+                         data=data) as resp:
         LOG.debug(f"Adding new object to {schema}")
+        assert resp.status == 201, 'HTTP Status code error'
+        ans = await resp.json()
+        test_id = ans["accessionId"]
+    data = await create_request_json_data(schema, filename2)
+    async with sess.patch(f"{drafts_url}/{schema}/{test_id}",
+                          data=data) as resp:
+        LOG.debug(f"Update object in {schema}")
         assert resp.status == 201, 'HTTP Status code error'
         ans_put = await resp.json()
         assert ans_put["accessionId"] == test_id, 'accession ID error'
@@ -142,10 +162,10 @@ async def test_crud_works(schema, filename):
             assert resp.status == 404, 'HTTP Status code error'
 
 
-async def test_crud_drafts_works(schema, filename):
-    """Test REST api POST, PUT and DELETE reqs.
+async def test_crud_drafts_works(schema, filename, filename2):
+    """Test drafts REST api POST, PUT and DELETE reqs.
 
-    Tries to create new object, gets accession id and checks if correct
+    Tries to create new draft object, gets accession id and checks if correct
     resource is returned with that id. Finally deletes the object and checks it
     was deleted.
 
@@ -153,9 +173,56 @@ async def test_crud_drafts_works(schema, filename):
     :param filename: name of the file used for testing.
     """
     async with aiohttp.ClientSession() as sess:
-        accession_id = await put_draft(sess, schema, filename)
+        accession_id = await put_draft(sess, schema, filename, filename2)
         async with sess.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
             LOG.debug(f"Checking that {accession_id} JSON is in {schema}")
+            assert resp.status == 200, 'HTTP Status code error'
+
+        await delete_draft(sess, schema, accession_id)
+        async with sess.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
+            LOG.debug(f"Checking that JSON object {accession_id} was deleted")
+            assert resp.status == 404, 'HTTP Status code error'
+
+
+async def test_put_drafts_works(schema, filename, filename2):
+    """Test REST api POST, PUT and DELETE reqs.
+
+    Tries to create put and patch object, gets accession id and
+    checks if correct resource is returned with that id.
+    Finally deletes the object and checks it was deleted.
+
+    :param schema: name of the schema (folder) used for testing
+    :param filename: name of the file used for testing.
+    """
+    async with aiohttp.ClientSession() as sess:
+        accession_id = await put_draft(sess, schema, filename, filename2)
+        async with sess.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
+            LOG.debug(f"Checking that {accession_id} JSON is in {schema}")
+            assert resp.status == 200, 'HTTP Status code error'
+
+        await delete_draft(sess, schema, accession_id)
+        async with sess.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
+            LOG.debug(f"Checking that JSON object {accession_id} was deleted")
+            assert resp.status == 404, 'HTTP Status code error'
+
+
+async def test_patch_drafts_works(schema, filename, filename2):
+    """Test REST api POST, PATCH and DELETE reqs.
+
+    Tries to create put and patch object, gets accession id and
+    checks if correct resource is returned with that id.
+    Finally deletes the object and checks it was deleted.
+
+    :param schema: name of the schema (folder) used for testing
+    :param filename: name of the file used for testing.
+    """
+    async with aiohttp.ClientSession() as sess:
+        accession_id = await patch_draft(sess, schema, filename, filename2)
+        async with sess.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
+            LOG.debug(f"Checking that {accession_id} JSON is in {schema}")
+            res = await resp.json()
+            assert res['study']['centerName'] == 'GEOM', 'content mismatch'
+            assert res['study']['alias'] == 'GSE10968', 'content mismatch'
             assert resp.status == 200, 'HTTP Status code error'
 
         await delete_draft(sess, schema, accession_id)
@@ -264,17 +331,23 @@ async def test_getting_all_objects_from_schema_works():
 
 async def main():
     """Launch different test tasks and run them."""
-    # Test adding and getting files
+    # Test adding and getting objects
     LOG.debug("=== Testing basic CRUD operations ===")
     await asyncio.gather(
         *[test_crud_works(schema, file) for schema, file in test_xml_files]
     )
 
+    # Test adding and getting draft objects
     LOG.debug("=== Testing basic CRUD drafts operations ===")
     await asyncio.gather(
-        *[test_crud_drafts_works(schema, file)
-          for schema, file in test_json_files]
+        *[test_crud_drafts_works(schema, file, file2)
+          for schema, file, file2 in test_json_files]
     )
+
+    # Test patch and put
+    LOG.debug("=== Testing patch and put drafts operations ===")
+    await test_put_drafts_works("sample", "SRS001433.json", "put.json")
+    await test_patch_drafts_works("study", "SRP000539.json", "patch.json")
 
     # Test queries
     LOG.debug("=== Testing queries ===")
