@@ -50,7 +50,8 @@ class RESTApiHandler:
                      if page < total_pages else "")
         last_link = (f'<{url}?page={total_pages}&per_page={size}>; rel="last"'
                      if page < total_pages else "")
-        first_link = (f'<{url}?page=1&per_page={size}>; rel="first", '
+        comma = (", " if page > 1 and page < total_pages else "")
+        first_link = (f'<{url}?page=1&per_page={size}>; rel="first"{comma}'
                       if page > 1 else "")
         links = f"{prev_link}{next_link}{first_link}{last_link}"
         link_headers = {"Link": f"{links}"}
