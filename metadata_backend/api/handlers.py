@@ -1,6 +1,8 @@
 """Handle HTTP methods for server."""
 import json
 import mimetypes
+import secrets
+import string
 from collections import Counter
 from math import ceil
 from pathlib import Path
@@ -247,24 +249,23 @@ class RESTApiHandler:
         db_client = req.app['db_client']
         db_service = DBService("folders", db_client)
         data = await req.json()
+        data['folderId'] = self._generate_folder_id()
         try:
-            # data['metadata_objects'] = []
-            folder_id = await db_service.create("folder", data, True)
+            insert = await db_service.create("folder", data)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while inserting file: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        if folder_id:
-            return folder_id
-        else:
+        if not insert:
             reason = "Inserting file to database failed for some reason."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-
-        body = json.dumps({"folderId": folder_id})
-        LOG.info(f"POST new folder with folder ID {folder_id} was successful.")
-        return web.Response(body=body, status=201,
-                            content_type="application/json")
+        else:
+            body = json.dumps({"folderId": data['folderId']})
+            LOG.info(f"POST new folder with folder ID {data['folderId']} was "
+                     "successful.")
+            return web.Response(body=body, status=201,
+                                content_type="application/json")
 
     async def get_folder(self, req: Request) -> Response:
         """Get one object folder by its folder id.
@@ -332,6 +333,11 @@ class RESTApiHandler:
                  f"in schema {collection} was successful.")
         return web.Response(body=body, status=201,
                             content_type="application/json")
+    def _generate_folder_id(self) -> str:
+        """Generate random folder id."""
+        sequence = ''.join(secrets.choice(string.digits) for i in range(8))
+        LOG.debug("Generated folder ID.")
+        return f"FOL{sequence}"
 
 
 class SubmissionAPIHandler:
