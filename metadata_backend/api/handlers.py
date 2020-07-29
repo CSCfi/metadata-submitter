@@ -333,6 +333,7 @@ class RESTApiHandler:
                  f"in schema {collection} was successful.")
         return web.Response(body=body, status=201,
                             content_type="application/json")
+
     def _generate_folder_id(self) -> str:
         """Generate random folder id."""
         sequence = ''.join(secrets.choice(string.digits) for i in range(8))
