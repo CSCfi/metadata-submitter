@@ -103,7 +103,7 @@ class RESTApiHandler:
         url = f"{req.scheme}://{req.host}{req.path}"
         link_headers = self._header_links(url, page_num,
                                           per_page, total_objects)
-        LOG.info(link_headers)
+        LOG.debug(f"Pagination header links: {link_headers}")
         LOG.info(f"Querying for objects in {collection} "
                  f"resulted in {total_objects} objects ")
         return web.Response(body=result, status=200,
