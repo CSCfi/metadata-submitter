@@ -1,7 +1,7 @@
 """Test api endpoints from views module."""
 
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 from aiohttp import FormData, web
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
@@ -434,3 +434,13 @@ class HandlersTestCase(AioHTTPTestCase):
         self.MockedDbService().create.assert_called_once()
         self.assertEqual(response.status, 201)
         self.assertEqual(json_resp['folderId'], self.folder_id)
+
+    @unittest_run_loop
+    async def test_get_folders(self):
+        """Test get_folders() endpoint returns empty list."""
+        self.MockedDbService().db_client = MagicMock()
+        client = self.MockedDbService().db_client
+        self.MockedDbService().database = client.db_client['folders']
+        response = await self.client.get("/folders")
+        self.assertEqual(response.status, 200)
+        self.assertEqual(await response.json(), {'folders': []})
