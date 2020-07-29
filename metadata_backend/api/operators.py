@@ -432,7 +432,10 @@ class Operator(BaseOperator):
                                                    data: Any) -> str:
         """Format and update data in database.
 
-        Must be implemented by subclass.
+        :param schema_type: Schema type of the object to replace.
+        :param accession_id: Identifier of object to replace.
+        :param data: Metadata object
+        :returns: Accession Id for object inserted to database
         """
         forbidden_keys = ['accessionId', 'publishDate', 'dateCreated']
         if any([i in data for i in forbidden_keys]):
@@ -545,7 +548,7 @@ class XMLOperator(BaseOperator):
         """Format XML metadata object and add it to db.
 
         XML is validated, then parsed to json and json is added to database.
-        XML .
+         After successful json insertion, xml itself is backed up to database
 
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
@@ -577,7 +580,7 @@ class XMLOperator(BaseOperator):
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
         :param data: Original xml content
-        :raises: NotImplemeted
+        :raises: HTTPUnsupportedMediaType
         """
         reason = "XML patching is not possible."
         raise web.HTTPUnsupportedMediaType(reason=reason)
