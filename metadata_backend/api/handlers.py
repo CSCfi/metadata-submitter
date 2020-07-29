@@ -344,8 +344,15 @@ class RESTApiHandler:
         :param req: GET request
         :returns: JSON response containing object folder
         """
-        # folder_id = req.match_info['folderId']
-        raise web.HTTPNotImplemented
+        folder_id = req.match_info['folderId']
+        db_client = req.app['db_client']
+        db_service = DBService('folders', db_client)
+        # TODO: edit db_service.read() in DBService so that below works
+        data = await db_service.read("folder", folder_id)
+        LOG.info(f"GET folder with folder ID {folder_id}.")
+        return web.Response(body=data, status=200,
+                            content_type="application/json")
+
 
     async def replace_folder(self, req: Request) -> Response:
         """Replace object folder with a specific folder id.
