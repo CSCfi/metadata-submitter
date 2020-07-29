@@ -43,10 +43,12 @@ class HandlersTestCase(AioHTTPTestCase):
         path_to_xml_file = self.TESTFILES_ROOT / "study" / "SRP000539.xml"
         self.metadata_xml = path_to_xml_file.read_text()
         self.accession_id = "EGA123456"
+        self.folder_id = "FOL12345678"
 
         class_parser = "metadata_backend.api.handlers.XMLToJSONParser"
         class_operator = "metadata_backend.api.handlers.Operator"
         class_xmloperator = "metadata_backend.api.handlers.XMLOperator"
+        class_dbservice = "metadata_backend.api.handlers.DBService"
         operator_config = {'read_metadata_object.side_effect':
                            self.fake_operator_read_metadata_object,
                            'query_metadata_database.side_effect':
@@ -66,15 +68,24 @@ class HandlersTestCase(AioHTTPTestCase):
                                     spec=True)
         self.patch_xmloperator = patch(class_xmloperator, **xmloperator_config,
                                        spec=True)
+        self.patch_dbservice = patch(class_dbservice, spec=True)
+        self.patch_folder = patch(
+            "metadata_backend.api.handlers.RESTApiHandler._generate_folder_id",
+            return_value=self.folder_id,
+            autospec=True)
         self.MockedParser = self.patch_parser.start()
         self.MockedOperator = self.patch_operator.start()
         self.MockedXMLOperator = self.patch_xmloperator.start()
+        self.MockedDbService = self.patch_dbservice.start()
+        self.patch_folder.start()
 
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
         self.patch_parser.stop()
         self.patch_operator.stop()
         self.patch_xmloperator.stop()
+        self.patch_dbservice.stop()
+        self.patch_folder.stop()
 
     def create_submission_data(self, files):
         """Create request data from pairs of schemas and filenames."""
@@ -411,3 +422,15 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(get_resp.status, 400)
         get_resp = await self.client.get("/objects/study?per_page=0")
         self.assertEqual(get_resp.status, 400)
+
+    @unittest_run_loop
+    async def test_folder_creation_works(self):
+        """Test that folder is created and folder ID returned."""
+        self.MockedDbService().create.return_value = futurized(True)
+        json_req = {"name": "test",
+                    "description": "test folder"}
+        response = await self.client.post("/folders", json=json_req)
+        json_resp = await response.json()
+        self.MockedDbService().create.assert_called_once()
+        self.assertEqual(response.status, 201)
+        self.assertEqual(json_resp['folderId'], self.folder_id)

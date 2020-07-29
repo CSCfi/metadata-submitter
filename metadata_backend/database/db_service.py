@@ -62,7 +62,7 @@ class DBService:
 
     @auto_reconnect
     async def create(self, collection: str, document: Dict) -> bool:
-        """Insert document to collection in database.
+        """Insert document or a folder to collection in database.
 
         :param collection: Collection where document should be inserted
         :param document: Document to be inserted
