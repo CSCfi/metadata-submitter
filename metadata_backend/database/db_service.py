@@ -1,6 +1,6 @@
 """Services that handle database connections. Implemented with MongoDB."""
 from functools import wraps
-from typing import Any, Callable, Dict, Union
+from typing import Any, Callable, Dict
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
 from pymongo.errors import AutoReconnect, ConnectionFailure
@@ -61,20 +61,16 @@ class DBService:
         self.database = db_client[database_name]
 
     @auto_reconnect
-    async def create(self, collection: str, document: Dict,
-                     isFolder: bool = False) -> Union[bool, str]:
+    async def create(self, collection: str, document: Dict) -> bool:
         """Insert document or a folder to collection in database.
 
         :param collection: Collection where document should be inserted
         :param document: Document to be inserted
-        :returns: True if operation was successful or ID of the created folder
+        :returns: True if operation was successful
         """
         result = await self.database[collection].insert_one(document)
         LOG.debug("DB doc inserted.")
-        if isFolder:
-            return result.inserted_id
-        else:
-            return result.acknowledged
+        return result.acknowledged
 
     @auto_reconnect
     async def exists(self, collection: str, accession_id: str) -> bool:
