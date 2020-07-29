@@ -297,9 +297,19 @@ class RESTApiHandler:
         """Get all possible object folders from database.
 
         :param req: GET Request
-        :returns: JSON list of folders
+        :returns: JSON list of folders available for the user
         """
-        raise web.HTTPNotImplemented
+        db_client = req.app['db_client']
+        db_service = DBService('folders', db_client)
+        collection = db_service.database['folder']
+        cursor = collection.find({})
+        folders = []
+        for folder in cursor:
+            folders.append(folder)
+        body = json.dumps({"folders": folders})
+        LOG.info(f"GET folders. Retrieved {len(folders)} folders.")
+        return web.Response(body=body, status=200,
+                            content_type="application/json")
 
     async def post_folder(self, req: Request) -> Response:
         """Save object folder to database.
@@ -308,7 +318,7 @@ class RESTApiHandler:
         :returns: JSON response containing folder ID for submitted object
         """
         db_client = req.app['db_client']
-        db_service = DBService("folders", db_client)
+        db_service = DBService('folders', db_client)
         data = await req.json()
         data['folderId'] = self._generate_folder_id()
         try:
