@@ -348,17 +348,17 @@ class RESTApiHandler:
         db_client = req.app['db_client']
         db_service = DBService("folders", db_client)
         try:
-            raw_data = await db_service.read("folder", folder_id)
-            if not raw_data:
+            folder = await db_service.read("folder", folder_id)
+            if not folder:
                 reason = f"Folder with {folder_id} not found."
                 LOG.error(reason)
                 raise web.HTTPNotFound(reason=reason)
-            folder = await self._format_folder_data(raw_data)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting folder: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
+        del folder['_id']  # remove unneccessary mongodb id from result
         LOG.info(f"GET folder with folder ID {folder_id}.")
         return web.Response(body=folder, status=200,
                             content_type="application/json")
@@ -395,15 +395,6 @@ class RESTApiHandler:
         sequence = ''.join(secrets.choice(string.digits) for i in range(8))
         LOG.debug("Generated folder ID.")
         return f"FOL{sequence}"
-
-    def _format_folder_data(self, raw_data: Dict) -> Dict:
-        """Get JSON content of folder from given mongodb data.
-
-        :param schema_type: Schema type of the object to read.
-        :param raw_data: Data from mongodb query, can contain multiple results
-        :returns: Mongodb query result, formatted to readable dicts
-        """
-        raise web.HTTPNotImplemented
 
 
 class SubmissionAPIHandler:
