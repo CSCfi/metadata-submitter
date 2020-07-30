@@ -6,11 +6,12 @@ should be taken into account.
 """
 
 import asyncio
+import logging
+from pathlib import Path
+
 import aiofiles
 import aiohttp
-import logging
 from aiohttp import FormData
-from pathlib import Path
 
 # === Global vars ===
 FORMAT = "[%(asctime)s][%(name)s][%(process)d %(processName)s]" \
