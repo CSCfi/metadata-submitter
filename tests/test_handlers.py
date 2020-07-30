@@ -1,7 +1,7 @@
 """Test api endpoints from views module."""
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from aiohttp import FormData, web
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
@@ -9,6 +9,7 @@ from aiounittest import futurized
 
 from metadata_backend.helpers.schema_loader import SchemaNotFoundException
 from metadata_backend.server import init
+from tests.test_operators import MockCursor
 
 
 class HandlersTestCase(AioHTTPTestCase):
@@ -438,10 +439,9 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_get_folders(self):
         """Test get_folders() endpoint returns empty list."""
-        self.MockedDbService().db_client = MagicMock()
-        client = self.MockedDbService().db_client
-        self.MockedDbService().database = client.db_client['folders']
+        self.MockedDbService().query.return_value = MockCursor({})
         response = await self.client.get("/folders")
+        self.MockedDbService().query.assert_called_once()
         self.assertEqual(response.status, 200)
         self.assertEqual(await response.json(), {'folders': []})
 
