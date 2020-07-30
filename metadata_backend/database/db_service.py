@@ -93,10 +93,8 @@ class DBService:
         :param id: Accession id of the document or folder id of the folder
         :returns: First document matching the accession_id
         """
-        if collection == "folder":
-            find_by_id = {"folderId": id}
-        else:
-            find_by_id = {"accessionId": id}
+        id_key = "folderId" if collection == "folder" else "accessionId"
+        find_by_id = {id_key: id}
         LOG.debug(f"DB doc read for {id}.")
         return await self.database[collection].find_one(find_by_id)
 

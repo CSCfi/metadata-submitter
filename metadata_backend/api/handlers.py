@@ -14,7 +14,7 @@ from pymongo.errors import ConnectionFailure, OperationFailure
 from xmlschema import XMLSchemaException
 
 from ..conf.conf import schema_types
-from ..database.db_service import DBService
+from ..database.db_service import DBService, auto_reconnect
 from ..helpers.logger import LOG
 from ..helpers.parser import XMLToJSONParser
 from ..helpers.schema_loader import (JSONSchemaLoader, SchemaNotFoundException,
@@ -293,6 +293,7 @@ class RESTApiHandler:
         return web.Response(body=body, status=201,
                             content_type="application/json")
 
+    @auto_reconnect
     async def get_folders(self, req: Request) -> Response:
         """Get all possible object folders from database.
 
@@ -301,11 +302,8 @@ class RESTApiHandler:
         """
         db_client = req.app['db_client']
         db_service = DBService('folders', db_client)
-        collection = db_service.database['folder']
-        cursor = collection.find({})
-        folders = []
-        for folder in cursor:
-            folders.append(folder)
+        cursor = db_service.query("folder", {})
+        folders = [folder async for folder in cursor]
         body = json.dumps({"folders": folders})
         LOG.info(f"GET folders. Retrieved {len(folders)} folders.")
         return web.Response(body=body, status=200,
@@ -360,7 +358,7 @@ class RESTApiHandler:
 
         del folder['_id']  # remove unneccessary mongodb id from result
         LOG.info(f"GET folder with folder ID {folder_id}.")
-        return web.Response(body=folder, status=200,
+        return web.Response(body=json.dumps(folder), status=200,
                             content_type="application/json")
 
     async def replace_folder(self, req: Request) -> Response:
