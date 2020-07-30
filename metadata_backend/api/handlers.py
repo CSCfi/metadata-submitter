@@ -318,13 +318,13 @@ class RESTApiHandler:
         :returns: JSON response containing folder ID for submitted object
         """
         db_client = req.app['db_client']
-        db_service = DBService('folders', db_client)
+        db_service = DBService("folders", db_client)
         data = await req.json()
         data['folderId'] = self._generate_folder_id()
         try:
             insert = await db_service.create("folder", data)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while inserting file: {error}"
+            reason = f"Error happened while inserting folder: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         if not insert:
@@ -346,13 +346,22 @@ class RESTApiHandler:
         """
         folder_id = req.match_info['folderId']
         db_client = req.app['db_client']
-        db_service = DBService('folders', db_client)
-        # TODO: edit db_service.read() in DBService so that below works
-        data = await db_service.read("folder", folder_id)
-        LOG.info(f"GET folder with folder ID {folder_id}.")
-        return web.Response(body=data, status=200,
-                            content_type="application/json")
+        db_service = DBService("folders", db_client)
+        try:
+            raw_data = await db_service.read("folder", folder_id)
+            if not raw_data:
+                reason = f"Folder with {folder_id} not found."
+                LOG.error(reason)
+                raise web.HTTPNotFound(reason=reason)
+            folder = await self._format_folder_data(raw_data)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting folder: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
 
+        LOG.info(f"GET folder with folder ID {folder_id}.")
+        return web.Response(body=folder, status=200,
+                            content_type="application/json")
 
     async def replace_folder(self, req: Request) -> Response:
         """Replace object folder with a specific folder id.
@@ -386,6 +395,15 @@ class RESTApiHandler:
         sequence = ''.join(secrets.choice(string.digits) for i in range(8))
         LOG.debug("Generated folder ID.")
         return f"FOL{sequence}"
+
+    def _format_folder_data(self, raw_data: Dict) -> Dict:
+        """Get JSON content of folder from given mongodb data.
+
+        :param schema_type: Schema type of the object to read.
+        :param raw_data: Data from mongodb query, can contain multiple results
+        :returns: Mongodb query result, formatted to readable dicts
+        """
+        raise web.HTTPNotImplemented
 
 
 class SubmissionAPIHandler:

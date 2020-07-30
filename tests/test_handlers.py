@@ -444,3 +444,11 @@ class HandlersTestCase(AioHTTPTestCase):
         response = await self.client.get("/folders")
         self.assertEqual(response.status, 200)
         self.assertEqual(await response.json(), {'folders': []})
+
+    @unittest_run_loop
+    async def test_get_folder_fails(self):
+        """Test 404 error is raised if incorrect folder id is given."""
+        response = await self.client.get("/folders/some_id")
+        self.assertEqual(response.status, 404)
+        json_resp = await response.json()
+        self.assertEqual("Folder with some_id not found.", json_resp['detail'])
