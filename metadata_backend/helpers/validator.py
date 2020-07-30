@@ -1,4 +1,4 @@
-"""Utility class for validating XML files."""
+"""Utility classes for validating XML or JSON files."""
 
 import json
 import re
@@ -9,11 +9,20 @@ from aiohttp import web
 from xmlschema import XMLSchema, XMLSchemaValidationError
 from xmlschema.etree import ElementTree, ParseError
 
+from functools import wraps
+from .schema_loader import JSONSchemaLoader, SchemaNotFoundException
+
+from jsonschema import Draft7Validator, validators
+from jsonschema.exceptions import ValidationError
+
+from typing import Callable, Any, Dict
+
+
 from ..helpers.logger import LOG
 
 
 class XMLValidator:
-    """Validator implementation."""
+    """XML Validator implementation."""
 
     def __init__(self, schema: XMLSchema, xml: str) -> None:
         """Set variables.
@@ -76,3 +85,88 @@ class XMLValidator:
         """Quick method for checking validation result."""
         resp = json.loads(self.resp_body)
         return resp['isValid']
+
+
+def extend_with_default(validator_class: Draft7Validator) -> Draft7Validator:
+    """Include default values present in JSON Schema.
+
+    Source: https://python-jsonschema.readthedocs.io FAQ
+    """
+    validate_properties = validator_class.VALIDATORS["properties"]
+
+    def set_defaults(validator, properties, instance, schema):
+        for property, subschema in properties.items():
+            if "default" in subschema:
+                instance.setdefault(property, subschema["default"])
+
+        for error in validate_properties(
+            validator, properties, instance, schema,
+        ):
+            # Difficult to unit test
+            yield error  # pragma: no cover
+
+    return validators.extend(
+        validator_class, {"properties": set_defaults},
+    )
+
+
+DefaultValidatingDraft7Validator = extend_with_default(Draft7Validator)
+
+
+class JSONValidator:
+    """JSON Validator implementation."""
+
+    def __init__(self, json_data: Dict, schema_type: str) -> None:
+        """Set variables.
+
+        :param json: Schema to be used
+        :param schema_type: Content of JSON file to be validated
+        """
+        self.json_data = json
+        self.schema_type = schema_type
+
+    @property
+    def validate(self) -> None:
+        """Check validation agains JSON schema.
+
+        :returns: Nothing if it is valid
+        :raises: HTTPBadRequest if URLError was raised during validation
+        """
+        try:
+            schema = JSONSchemaLoader().get_schema(self.schema_type)
+            LOG.info('Validate against JSON schema.')
+            DefaultValidatingDraft7Validator(schema).validate(self.json_data)
+        except SchemaNotFoundException as error:
+            reason = f"{error} ({self.schema_type})"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        except ValidationError as e:
+            if len(e.path) > 0:
+                reason = (f"Provided input: '{e.instance}' "
+                          f"does not seem correct for field: '{e.path[0]}'")
+                LOG.error(reason)
+                raise web. HTTPBadRequest(reason=reason)
+            else:
+                reason = (f"Provided input: '{e.instance}' "
+                          f"does not seem correct because: '{e.message}'")
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+
+
+def validate(schema_type: str) -> Callable[[Any], Any]:
+    """
+    Validate against JSON schema and return errors, if any.
+
+    """
+    def wrapper(func):
+
+        @wraps(func)
+        async def wrapped(*args):
+            request = args[-1]
+
+            validator = JSONValidator(request, schema_type)
+            validator.validate
+
+            return await func(*args)
+        return wrapped
+    return wrapper
