@@ -35,7 +35,9 @@ class DatabaseTestCase(AsyncTestCase):
                           "identifiers": ["foo", "bar"],
                           "dateCreated": "2020-07-26T20:59:35.177Z"
                           }
-        self.folder_stub = {"name": "test",
+        self.f_id_stub = "FOL12345678"
+        self.folder_stub = {"folderId": self.f_id_stub,
+                            "name": "test",
                             "description": "test folder",
                             "metadata_objects": []}
 
@@ -146,10 +148,18 @@ class DatabaseTestCase(AsyncTestCase):
         self.assertEqual(self.collection.insert_one.call_count, 6)
 
     async def test_create_folder_inserts_folder(self):
-        """Test that create folder method works and returns success and id."""
+        """Test that create method works for folder and returns success."""
         self.collection.insert_one.return_value = futurized(
             InsertOneResult(ObjectId('0000000000aa1111111111bb'), True)
         )
         folder = await self.test_service.create("folder", self.folder_stub)
         self.collection.insert_one.assert_called_once_with(self.folder_stub)
         self.assertTrue(folder)
+
+    async def test_read_folder_returns_data(self):
+        """Test that read method works for folder and returns folder."""
+        self.collection.find_one.return_value = futurized(self.folder_stub)
+        found_folder = await self.test_service.read("folder", self.f_id_stub)
+        self.assertEqual(found_folder, self.folder_stub)
+        self.collection.find_one.assert_called_once_with({"folderId":
+                                                          self.f_id_stub})
