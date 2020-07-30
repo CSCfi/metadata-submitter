@@ -4,12 +4,12 @@ Current implementation relies on searching XSD files from folder, should
 probably be replaced with database searching in the future.
 """
 
+import json
+from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
 from xmlschema import XMLSchema
-import json
-from abc import ABC, abstractmethod
 
 SCHEMAS_ROOT = Path(__file__).parent / 'schemas'
 

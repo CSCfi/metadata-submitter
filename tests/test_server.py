@@ -1,9 +1,9 @@
 """Tests for server module."""
 
-import unittest
-from unittest.mock import patch
-from pathlib import Path
 import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 from aiohttp import web
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop

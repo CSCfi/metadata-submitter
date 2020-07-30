@@ -1,9 +1,10 @@
 """Test api endpoints from views module."""
+import unittest
 from pathlib import Path
 
-from metadata_backend.helpers.parser import XMLToJSONParser
 from aiohttp import web
-import unittest
+
+from metadata_backend.helpers.parser import XMLToJSONParser
 
 
 class ParserTestCase(unittest.TestCase):
