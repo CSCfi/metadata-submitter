@@ -1,10 +1,11 @@
 """Test db_services."""
-from aiounittest import AsyncTestCase, futurized
 from unittest.mock import MagicMock, patch
-from pymongo.results import InsertOneResult, UpdateResult, DeleteResult
-from pymongo.errors import AutoReconnect, ConnectionFailure
+
+from aiounittest import AsyncTestCase, futurized
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorCursor
+from pymongo.errors import AutoReconnect, ConnectionFailure
+from pymongo.results import DeleteResult, InsertOneResult, UpdateResult
 
 from metadata_backend.database.db_service import DBService
 

@@ -15,12 +15,12 @@ from xmlschema import XMLSchemaException
 
 from ..conf.conf import schema_types
 from ..database.db_service import DBService
+from ..helpers.logger import LOG
 from ..helpers.parser import XMLToJSONParser
-from ..helpers.schema_loader import (XMLSchemaLoader, SchemaNotFoundException,
-                                     JSONSchemaLoader)
+from ..helpers.schema_loader import (JSONSchemaLoader, SchemaNotFoundException,
+                                     XMLSchemaLoader)
 from ..helpers.validator import XMLValidator
 from .operators import Operator, XMLOperator
-from ..helpers.logger import LOG
 
 
 class RESTApiHandler:
