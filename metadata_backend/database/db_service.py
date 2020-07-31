@@ -82,7 +82,8 @@ class DBService:
         """
         find_by_id = {"accessionId": accession_id}
         LOG.debug(f"DB doc read for {accession_id}.")
-        exists = await self.database[collection].find_one(find_by_id)
+        exists = await self.database[collection].find_one(find_by_id,
+                                                          {'_id': False})
         return True if exists else False
 
     @auto_reconnect
@@ -96,7 +97,8 @@ class DBService:
         id_key = "folderId" if collection == "folder" else "accessionId"
         find_by_id = {id_key: id}
         LOG.debug(f"DB doc read for {id}.")
-        return await self.database[collection].find_one(find_by_id)
+        return await self.database[collection].find_one(find_by_id,
+                                                        {'_id': False})
 
     @auto_reconnect
     async def update(self, collection: str, accession_id: str,
