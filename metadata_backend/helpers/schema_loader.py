@@ -19,7 +19,8 @@ class SchemaNotFoundException(Exception):
 
     def __init__(self) -> None:
         """Set up exception message."""
-        Exception.__init__(self, "There is no file for given schema.")
+        Exception.__init__(self,
+                           "The provided schema type could not be found.")
 
 
 class SchemaLoader(ABC):
