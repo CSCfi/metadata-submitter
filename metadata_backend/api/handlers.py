@@ -196,7 +196,13 @@ class RESTApiHandler:
             content, _ = files[0]
             operator = XMLOperator(db_client)
         else:
-            content = await req.json()
+            try:
+                content = await req.json()
+            except json.decoder.JSONDecodeError as e:
+                reason = ("JSON is not correctly formatted."
+                          f" See: {e}")
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
             JSONValidator(content, schema_type).validate
             operator = Operator(db_client)
         accession_id = await operator.create_metadata_object(collection,
@@ -258,7 +264,13 @@ class RESTApiHandler:
             content, _ = files[0]
             operator = XMLOperator(db_client)
         else:
-            content = await req.json()
+            try:
+                content = await req.json()
+            except json.decoder.JSONDecodeError as e:
+                reason = ("JSON is not correctly formatted."
+                          f" See: {e}")
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
             JSONValidator(content, schema_type).validate
             operator = Operator(db_client)
         await operator.replace_metadata_object(collection,
@@ -290,7 +302,13 @@ class RESTApiHandler:
             reason = "XML patching is not possible."
             raise web.HTTPUnsupportedMediaType(reason=reason)
         else:
-            content = await req.json()
+            try:
+                content = await req.json()
+            except json.decoder.JSONDecodeError as e:
+                reason = ("JSON is not correctly formatted."
+                          f" See: {e}")
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
             operator = Operator(db_client)
         await operator.update_metadata_object(collection,
                                               accession_id,
