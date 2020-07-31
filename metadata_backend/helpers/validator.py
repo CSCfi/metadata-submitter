@@ -3,21 +3,17 @@
 import json
 import re
 from io import StringIO
+from typing import Any, Dict
 from urllib.error import URLError
 
 from aiohttp import web
+from jsonschema import Draft7Validator, validators
+from jsonschema.exceptions import ValidationError
 from xmlschema import XMLSchema, XMLSchemaValidationError
 from xmlschema.etree import ElementTree, ParseError
 
-from .schema_loader import JSONSchemaLoader, SchemaNotFoundException
-
-from jsonschema import Draft7Validator, validators
-from jsonschema.exceptions import ValidationError
-
-from typing import Any, Dict
-
-
 from ..helpers.logger import LOG
+from .schema_loader import JSONSchemaLoader, SchemaNotFoundException
 
 
 class XMLValidator:

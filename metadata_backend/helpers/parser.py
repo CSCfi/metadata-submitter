@@ -9,8 +9,8 @@ from xmlschema import (XMLSchema, XMLSchemaConverter, XMLSchemaException,
                        XsdElement, XsdType)
 
 from .logger import LOG
-from .validator import XMLValidator, JSONValidator
-from collections import defaultdict
+from .schema_loader import SchemaNotFoundException, XMLSchemaLoader
+from .validator import JSONValidator, XMLValidator
 
 
 class MetadataXMLConverter(XMLSchemaConverter):
