@@ -17,9 +17,9 @@ from ..conf.conf import schema_types
 from ..database.db_service import DBService, auto_reconnect
 from ..helpers.logger import LOG
 from ..helpers.parser import XMLToJSONParser
-from ..helpers.schema_loader import (XMLSchemaLoader, SchemaNotFoundException,
-                                     JSONSchemaLoader)
-from ..helpers.validator import XMLValidator, JSONValidator
+from ..helpers.schema_loader import (JSONSchemaLoader, SchemaNotFoundException,
+                                     XMLSchemaLoader)
+from ..helpers.validator import JSONValidator, XMLValidator
 from .operators import Operator, XMLOperator
 
 
