@@ -302,12 +302,6 @@ class RESTApiHandler:
         """
         db_client = req.app['db_client']
         db_service = DBService("folders", db_client)
-        """
-        if not db_service.database["folder"].count_documents({}):
-            reason = f"No folders found."
-            LOG.error(reason)
-            raise web.HTTPNotFound(reason=reason)
-        """
         cursor = db_service.query("folder", {})
         folders = [folder async for folder in cursor]
         body = json.dumps({"folders": folders})
