@@ -200,8 +200,6 @@ class XMLToJSONParser:
                                 converter=MetadataXMLConverter,
                                 decimal_type=float,
                                 dict_class=dict)[schema_type.lower()]
-        print(result)
-        print(schema_type.lower())
         JSONValidator(result, schema_type.lower()).validate
         return result
 
