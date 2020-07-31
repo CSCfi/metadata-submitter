@@ -37,8 +37,7 @@ class DatabaseTestCase(AsyncTestCase):
                           "dateCreated": "2020-07-26T20:59:35.177Z"
                           }
         self.f_id_stub = "FOL12345678"
-        self.folder_stub = {"_id": {"$oid": "5ecd28877f55c72e263f45c2"},
-                            "folderId": self.f_id_stub,
+        self.folder_stub = {"folderId": self.f_id_stub,
                             "name": "test",
                             "description": "test folder",
                             "metadata_objects": []}
@@ -169,4 +168,3 @@ class DatabaseTestCase(AsyncTestCase):
                                                           self.f_id_stub},
                                                          {'_id': False})
         self.assertEqual(found_folder, self.folder_stub)
-        self.assertIn('_id', found_folder)
