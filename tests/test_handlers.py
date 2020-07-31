@@ -516,8 +516,7 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_get_folders_with_1_folder(self):
         """Test get_folders() endpoint returns list with 1 folder."""
-        folder = [{"_id": {"$oid": "5ecd28877f55c72e263f45c2"},
-                   "folderId": self.folder_id,
+        folder = [{"folderId": self.folder_id,
                    "name": "test",
                    "description": "test folder",
                    "metadata_objects": []}]
@@ -548,8 +547,7 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_get_folder_works(self):
         """Test folder is returned when correct folder id is given."""
-        folder = {"_id": {"$oid": "5ecd28877f55c72e263f45c2"},
-                  "folderId": self.folder_id,
+        folder = {"folderId": self.folder_id,
                   "name": "test",
                   "description": "test folder",
                   "metadata_objects": []}

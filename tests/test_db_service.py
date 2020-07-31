@@ -37,8 +37,7 @@ class DatabaseTestCase(AsyncTestCase):
                           "dateCreated": "2020-07-26T20:59:35.177Z"
                           }
         self.f_id_stub = "FOL12345678"
-        self.folder_stub = {"_id": {"$oid": "5ecd28877f55c72e263f45c2"},
-                            "folderId": self.f_id_stub,
+        self.folder_stub = {"folderId": self.f_id_stub,
                             "name": "test",
                             "description": "test folder",
                             "metadata_objects": []}
@@ -73,14 +72,16 @@ class DatabaseTestCase(AsyncTestCase):
         found_doc = await self.test_service.read("test", self.id_stub)
         self.assertEqual(found_doc, self.data_stub)
         self.collection.find_one.assert_called_once_with({"accessionId":
-                                                          self.id_stub})
+                                                          self.id_stub},
+                                                         {'_id': False})
 
     async def test_exists_returns_false(self):
         """Test that exists method works and returns false."""
         found_doc = await self.test_service.exists("test", self.id_stub)
         self.assertEqual(found_doc, False)
         self.collection.find_one.assert_called_once_with({"accessionId":
-                                                          self.id_stub})
+                                                          self.id_stub},
+                                                         {'_id': False})
 
     async def test_exists_returns_true(self):
         """Test that exists method works and returns True."""
@@ -88,7 +89,8 @@ class DatabaseTestCase(AsyncTestCase):
         found_doc = await self.test_service.exists("test", self.id_stub)
         self.assertEqual(found_doc, True)
         self.collection.find_one.assert_called_once_with({"accessionId":
-                                                          self.id_stub})
+                                                          self.id_stub},
+                                                         {'_id': False})
 
     async def test_update_updates_data(self):
         """Test that update method works and returns success."""
@@ -132,7 +134,7 @@ class DatabaseTestCase(AsyncTestCase):
         self.collection.find.return_value = AsyncIOMotorCursor(None, None)
         cursor = self.test_service.query("test", {})
         self.assertEqual(type(cursor), AsyncIOMotorCursor)
-        self.collection.find.assert_called_once_with({})
+        self.collection.find.assert_called_once_with({}, {'_id': False})
 
     async def test_count_returns_amount(self):
         """Test that get_count method works and returns amount."""
@@ -163,6 +165,6 @@ class DatabaseTestCase(AsyncTestCase):
         self.collection.find_one.return_value = futurized(self.folder_stub)
         found_folder = await self.test_service.read("folder", self.f_id_stub)
         self.collection.find_one.assert_called_once_with({"folderId":
-                                                          self.f_id_stub})
+                                                          self.f_id_stub},
+                                                         {'_id': False})
         self.assertEqual(found_folder, self.folder_stub)
-        self.assertIn('_id', found_folder)

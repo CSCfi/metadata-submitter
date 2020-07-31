@@ -391,7 +391,6 @@ class RESTApiHandler:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        folder.pop('_id', None)  # remove unneccessary mongodb id from result
         LOG.info(f"GET folder with folder ID {folder_id}.")
         return web.Response(body=json.dumps(folder), status=200,
                             content_type="application/json")
