@@ -170,7 +170,7 @@ class DBService:
         :returns: Async cursor instance which should be awaited when iterating
         """
         LOG.debug("DB doc query performed.")
-        return self.database[collection].find(query)
+        return self.database[collection].find(query, {'_id': False})
 
     @auto_reconnect
     async def get_count(self, collection: str, query: Dict) -> int:
