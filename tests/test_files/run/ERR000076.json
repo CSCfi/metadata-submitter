@@ -1,53 +1,50 @@
 {
-    "run": {
-      "alias": "BGI-FC304RWAAXX",
-      "runDate": "2008-07-08T00:00:00.000+01:00",
-      "runCenter": "BGI",
-      "centerName": "BGI",
-      "accessionId": "ERR000076",
-      "identifiers": {
-        "primaryId": "ERR000076",
-        "submitterId": {
-          "namespace": "BGI",
-          "value": "BGI-FC304RWAAXX"
-        }
-      },
-      "experimentRef": {
-        "refname": "g1k-bgi-NA18542-HUMsgR2ACDECBPE",
-        "refcenter": "BGI",
-        "accessionId": "ERX000037",
-        "identifiers": {
-          "primaryId": "ERX000037",
-          "submitterId": {
-            "namespace": "BGI",
-            "value": "g1k-bgi-NA18542-HUMsgR2ACDECBPE"
-          }
-        }
-      },
-      "files": [
-        {
-          "file": {
-            "filename": "ERA000/ERA000014/srf/BGI-FC304RWAAXX_5.srf",
-            "filetype": "srf",
-            "checksum": "3dfebb4b30211523853805439fbd7cec",
-            "checksumMethod": "MD5"
-          }
-        }
-      ],
-      "runAttributes": [
-        {
-          "tag": "run",
-          "value": "FC304RWAAXX"
-        },
-        {
-          "tag": "actual_read_length",
-          "value": "102"
-        },
-        {
-          "tag": "total_bases",
-          "value": "798445800",
-          "units": "bp"
-        }
-      ]
+  "alias": "BGI-FC304RWAAXX",
+  "runDate": "2008-07-08T00:00:00.000+01:00",
+  "runCenter": "BGI",
+  "centerName": "BGI",
+  "identifiers": {
+    "primaryId": "ERR000076",
+    "submitterId": {
+      "namespace": "BGI",
+      "value": "BGI-FC304RWAAXX"
     }
-  }
+  },
+  "experimentRef": {
+    "refname": "g1k-bgi-NA18542-HUMsgR2ACDECBPE",
+    "refcenter": "BGI",
+    "accessionId": "ERX000037",
+    "identifiers": {
+      "primaryId": "ERX000037",
+      "submitterId": {
+        "namespace": "BGI",
+        "value": "g1k-bgi-NA18542-HUMsgR2ACDECBPE"
+      }
+    }
+  },
+  "files": [
+    {
+      "file": {
+        "filename": "ERA000/ERA000014/srf/BGI-FC304RWAAXX_5.srf",
+        "filetype": "srf",
+        "checksum": "3dfebb4b30211523853805439fbd7cec",
+        "checksumMethod": "MD5"
+      }
+    }
+  ],
+  "runAttributes": [
+    {
+      "tag": "run",
+      "value": "FC304RWAAXX"
+    },
+    {
+      "tag": "actual_read_length",
+      "value": "102"
+    },
+    {
+      "tag": "total_bases",
+      "value": "798445800",
+      "units": "bp"
+    }
+  ]
+}

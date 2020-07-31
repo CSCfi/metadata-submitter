@@ -284,6 +284,76 @@
                     }
                 }
             }
+        },
+        "fileType": {
+            "$id": "#/definitions/fileType",
+            "type": "object",
+            "title": "files",
+            "required": [
+                "file"
+            ],
+            "properties": {
+                "file": {
+                    "type": "object",
+                    "title": "file",
+                    "required": [
+                        "filename",
+                        "filetype",
+                        "checksumMethod",
+                        "checksum"
+                    ],
+                    "properties": {
+                        "filename": {
+                            "type": "string",
+                            "title": "filename"
+                        },
+                        "filetype": {
+                            "type": "string",
+                            "title": "filetype",
+                            "enum": [
+                                "tab",
+                                "bam",
+                                "bai",
+                                "cram",
+                                "crai",
+                                "vcf",
+                                "vcf_aggregate",
+                                "bcf",
+                                "tabix",
+                                "wig",
+                                "bed",
+                                "gff",
+                                "fasta",
+                                "fastq",
+                                "flatfile",
+                                "chromosome_list",
+                                "sample_list",
+                                "readme_file",
+                                "phenotype_file",
+                                "BioNano_native",
+                                "Kallisto_native",
+                                "agp",
+                                "unlocalised_list",
+                                "info",
+                                "manifest",
+                                "other"
+                            ]
+                        },
+                        "checksumMethod": {
+                            "type": "string",
+                            "title": "checksumMethod",
+                            "enum": [
+                                "MD5",
+                                "SHA256"
+                            ]
+                        },
+                        "checksum": {
+                            "type": "string",
+                            "title": "checksum"
+                        }
+                    }
+                }
+            }
         }
     },
     "type": "object",
@@ -408,75 +478,20 @@
             }
         },
         "files": {
-            "type": "array",
-            "title": "files",
-            "required": [
-                "file"
-            ],
-            "items": {
-                "properties": {
-                    "file": {
-                        "type": "object",
-                        "title": "file",
-                        "required": [
-                            "filename",
-                            "filetype",
-                            "checksumMethod",
-                            "checksum"
-                        ],
-                        "properties": {
-                            "filename": {
-                                "type": "string",
-                                "title": "filename"
-                            },
-                            "filetype": {
-                                "type": "string",
-                                "title": "filetype",
-                                "enum": [
-                                    "tab",
-                                    "bam",
-                                    "bai",
-                                    "cram",
-                                    "crai",
-                                    "vcf",
-                                    "vcf_aggregate",
-                                    "bcf",
-                                    "tabix",
-                                    "wig",
-                                    "bed",
-                                    "gff",
-                                    "fasta",
-                                    "fastq",
-                                    "flatfile",
-                                    "chromosome_list",
-                                    "sample_list",
-                                    "readme_file",
-                                    "phenotype_file",
-                                    "BioNano_native",
-                                    "Kallisto_native",
-                                    "agp",
-                                    "unlocalised_list",
-                                    "info",
-                                    "manifest",
-                                    "other"
-                                ]
-                            },
-                            "checksumMethod": {
-                                "type": "string",
-                                "title": "checksumMethod",
-                                "enum": [
-                                    "MD5",
-                                    "SHA256"
-                                ]
-                            },
-                            "checksum": {
-                                "type": "string",
-                                "title": "checksum"
-                            }
-                        }
+            "oneOf": [
+                {
+                    "type": "array",
+                    "title": "files",
+                    "items": {
+                        "$ref": "#/definitions/fileType"
                     }
+                },
+                {
+                    "type": "object",
+                    "title": "files",
+                    "$ref": "#/definitions/fileType"
                 }
-            }
+            ]
         },
         "analysisLinks": {
             "type": "object",

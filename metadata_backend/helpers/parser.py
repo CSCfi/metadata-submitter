@@ -10,7 +10,7 @@ from xmlschema import (XMLSchema, XMLSchemaConverter, XMLSchemaException,
 
 from .logger import LOG
 from .schema_loader import SchemaNotFoundException, XMLSchemaLoader
-from .validator import XMLValidator
+from .validator import JSONValidator, XMLValidator
 
 
 class MetadataXMLConverter(XMLSchemaConverter):
@@ -79,6 +79,10 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 children['files'] = list(value.values())
                 continue
 
+            if "spotDescriptor" in key:
+                children[key] = value['spotDecodeSpec']
+                continue
+
             if key in links and len(value) == 1:
                 grp = defaultdict(list)
                 if isinstance(value[key[:-1]], dict):
@@ -142,6 +146,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
         - Platform data we assign the string value of the instrument Model.
         - dataBlock has the content of files array to be the same in run
           and analysis.
+        - spotDescriptor takes the value of its child spotDecodeSpec
         """
         xsd_type = xsd_type or xsd_element.type
         if xsd_type.simple_type is not None:
@@ -175,6 +180,9 @@ class XMLToJSONParser:
     def parse(self, schema_type: str, content: str) -> Dict:
         """Validate xml file and parse it to json.
 
+        We validate resulting JSON aginst a JSON schema
+        to be sure the resulting content is consistent.
+
         :param schema_type: Schema type to be used
         :param content: XML content to be parsed
         :returns: XML parsed to JSON
@@ -188,10 +196,12 @@ class XMLToJSONParser:
                       " as the submitted file was not valid")
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        return schema.to_dict(content,
-                              converter=MetadataXMLConverter,
-                              decimal_type=float,
-                              dict_class=dict)[schema_type.lower()]
+        result = schema.to_dict(content,
+                                converter=MetadataXMLConverter,
+                                decimal_type=float,
+                                dict_class=dict)[schema_type.lower()]
+        JSONValidator(result, schema_type.lower()).validate
+        return result
 
     @staticmethod
     def _load_schema(schema_type: str) -> XMLSchema:
