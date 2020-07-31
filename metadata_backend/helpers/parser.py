@@ -9,8 +9,8 @@ from xmlschema import (XMLSchema, XMLSchemaConverter, XMLSchemaException,
                        XsdElement, XsdType)
 
 from .logger import LOG
-from .schema_loader import SchemaNotFoundException, XMLSchemaLoader
-from .validator import XMLValidator
+from .validator import XMLValidator, JSONValidator
+from collections import defaultdict
 
 
 class MetadataXMLConverter(XMLSchemaConverter):
@@ -175,6 +175,9 @@ class XMLToJSONParser:
     def parse(self, schema_type: str, content: str) -> Dict:
         """Validate xml file and parse it to json.
 
+        We validate resulting JSON aginst a JSON schema
+        to be sure the resulting content is consistent.
+
         :param schema_type: Schema type to be used
         :param content: XML content to be parsed
         :returns: XML parsed to JSON
@@ -188,10 +191,13 @@ class XMLToJSONParser:
                       " as the submitted file was not valid")
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        return schema.to_dict(content,
-                              converter=MetadataXMLConverter,
-                              decimal_type=float,
-                              dict_class=dict)[schema_type.lower()]
+        result = schema.to_dict(content,
+                                converter=MetadataXMLConverter,
+                                decimal_type=float,
+                                dict_class=dict)[schema_type.lower()]
+
+        JSONValidator(result, schema_type.lower()).validate
+        return result
 
     @staticmethod
     def _load_schema(schema_type: str) -> XMLSchema:
