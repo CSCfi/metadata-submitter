@@ -3,7 +3,6 @@
 import datetime
 from typing import Callable
 
-
 # -- Project information -----------------------------------------------------
 
 current_year = str(datetime.date.today().year)
