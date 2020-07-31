@@ -1,14 +1,16 @@
 """Test api endpoints from views module."""
-import re
 import datetime
+import re
 import unittest
-from aiohttp.web import HTTPNotFound, HTTPBadRequest
+from unittest.mock import MagicMock, patch
+
+from aiohttp.web import HTTPBadRequest, HTTPNotFound
 from aiounittest import AsyncTestCase, futurized
 from aiounittest.mock import AsyncMockIterator
-from unittest.mock import patch, MagicMock
-from metadata_backend.api.operators import Operator, XMLOperator
-from multidict import MultiDictProxy, MultiDict
+from multidict import MultiDict, MultiDictProxy
 from pymongo.errors import ConnectionFailure
+
+from metadata_backend.api.operators import Operator, XMLOperator
 
 
 class MockCursor(AsyncMockIterator):

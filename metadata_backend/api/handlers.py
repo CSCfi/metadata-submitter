@@ -14,13 +14,13 @@ from pymongo.errors import ConnectionFailure, OperationFailure
 from xmlschema import XMLSchemaException
 
 from ..conf.conf import schema_types
-from ..database.db_service import DBService
+from ..database.db_service import DBService, auto_reconnect
+from ..helpers.logger import LOG
 from ..helpers.parser import XMLToJSONParser
-from ..helpers.schema_loader import (XMLSchemaLoader, SchemaNotFoundException,
-                                     JSONSchemaLoader)
+from ..helpers.schema_loader import (JSONSchemaLoader, SchemaNotFoundException,
+                                     XMLSchemaLoader)
 from ..helpers.validator import XMLValidator
 from .operators import Operator, XMLOperator
-from ..helpers.logger import LOG
 
 
 class RESTApiHandler:
@@ -262,77 +262,6 @@ class RESTApiHandler:
         return web.Response(body=body, status=201,
                             content_type="application/json")
 
-    async def get_folders(self, req: Request) -> Response:
-        """Get all possible object folders from database.
-
-        :param req: GET Request
-        :returns: JSON list of folders
-        """
-        raise web.HTTPNotImplemented
-
-    async def post_folder(self, req: Request) -> Response:
-        """Save object folder to database.
-
-        :param req: POST request
-        :returns: JSON response containing folder ID for submitted object
-        """
-        db_client = req.app['db_client']
-        db_service = DBService("folders", db_client)
-        data = await req.json()
-        data['folderId'] = self._generate_folder_id()
-        try:
-            insert = await db_service.create("folder", data)
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while inserting file: {error}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-        if not insert:
-            reason = "Inserting file to database failed for some reason."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-        else:
-            body = json.dumps({"folderId": data['folderId']})
-            LOG.info(f"POST new folder with folder ID {data['folderId']} was "
-                     "successful.")
-            return web.Response(body=body, status=201,
-                                content_type="application/json")
-
-    async def get_folder(self, req: Request) -> Response:
-        """Get one object folder by its folder id.
-
-        :param req: GET request
-        :returns: JSON response containing object folder
-        """
-        # folder_id = req.match_info['folderId']
-        raise web.HTTPNotImplemented
-
-    async def replace_folder(self, req: Request) -> Response:
-        """Replace object folder with a specific folder id.
-
-        :param req: PUT request
-        :returns: TBD
-        """
-        # folder_id = req.match_info['folderId']
-        raise web.HTTPNotImplemented
-
-    async def update_folder(self, req: Request) -> Response:
-        """Update object folder with a specific folder id.
-
-        :param req: PATCH request
-        :returns: TBD
-        """
-        # folder_id = req.match_info['folderId']
-        raise web.HTTPNotImplemented
-
-    async def delete_folder(self, req: Request) -> Response:
-        """Delete object folder from database.
-
-        :param req: DELETE request
-        :returns: TBD
-        """
-        # folder_id = req.match_info['folderId']
-        raise web.HTTPNotImplemented
-
     async def patch_object(self, req: Request) -> Response:
         """Update metadata object in database.
 
@@ -363,6 +292,110 @@ class RESTApiHandler:
                  f"in schema {collection} was successful.")
         return web.Response(body=body, status=201,
                             content_type="application/json")
+
+    @auto_reconnect
+    async def get_folders(self, req: Request) -> Response:
+        """Get all possible object folders from database.
+
+        :param req: GET Request
+        :returns: JSON list of folders available for the user
+        """
+        db_client = req.app['db_client']
+        db_service = DBService("folders", db_client)
+        cursor = db_service.query("folder", {})
+        folders = [folder async for folder in cursor]
+        body = json.dumps({"folders": folders})
+        LOG.info(f"GET folders. Retrieved {len(folders)} folders.")
+        return web.Response(body=body, status=200,
+                            content_type="application/json")
+
+    async def post_folder(self, req: Request) -> Response:
+        """Save object folder to database.
+
+        :param req: POST request
+        :raises: HTTP 400 if something fails during processing the request
+        :returns: JSON response containing folder ID for submitted object
+        """
+        db_client = req.app['db_client']
+        db_service = DBService("folders", db_client)
+        try:
+            content = await req.json()
+        except json.decoder.JSONDecodeError as e:
+            reason = ("JSON is not correctly formatted."
+                      f" See: {e}")
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        try:
+            content['folderId'] = self._generate_folder_id()
+            insert = await db_service.create("folder", content)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while inserting folder: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        if not insert:
+            reason = "Inserting file to database failed for some reason."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        else:
+            body = json.dumps({"folderId": content['folderId']})
+            LOG.info(f"POST new folder with folder ID {content['folderId']} "
+                     "was successful.")
+            return web.Response(body=body, status=201,
+                                content_type="application/json")
+
+    async def get_folder(self, req: Request) -> Response:
+        """Get one object folder by its folder id.
+
+        :param req: GET request
+        :returns: JSON response containing object folder
+        """
+        folder_id = req.match_info['folderId']
+        db_client = req.app['db_client']
+        db_service = DBService("folders", db_client)
+        try:
+            folder = await db_service.read("folder", folder_id)
+            if not folder:
+                reason = f"Folder with id {folder_id} not found."
+                LOG.error(reason)
+                raise web.HTTPNotFound(reason=reason)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting folder: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        folder.pop('_id', None)  # remove unneccessary mongodb id from result
+        LOG.info(f"GET folder with folder ID {folder_id}.")
+        return web.Response(body=json.dumps(folder), status=200,
+                            content_type="application/json")
+
+    async def replace_folder(self, req: Request) -> Response:
+        """Replace object folder with a specific folder id.
+
+        :param req: PUT request
+        :returns: TBD
+        """
+        # folder_id = req.match_info['folderId']
+        raise web.HTTPNotImplemented
+
+    async def update_folder(self, req: Request) -> Response:
+        """Update object folder with a specific folder id.
+
+        :param req: PATCH request
+        :returns: TBD
+        """
+        # folder_id = req.match_info['folderId']
+        raise web.HTTPNotImplemented
+
+    async def delete_folder(self, req: Request) -> Response:
+        """Delete object folder from database.
+
+        :param req: DELETE request
+        :returns: TBD
+        """
+        # folder_id = req.match_info['folderId']
+        raise web.HTTPNotImplemented
 
     def _generate_folder_id(self) -> str:
         """Generate random folder id."""

@@ -7,7 +7,7 @@ from typing import Callable
 
 from aiohttp import web
 from aiohttp.web import Request, Response, middleware
-from authlib.jose import jwt, errors
+from authlib.jose import errors, jwt
 from yarl import URL
 
 from ..helpers.logger import LOG

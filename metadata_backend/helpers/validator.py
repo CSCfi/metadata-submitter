@@ -1,7 +1,7 @@
 """Utility class for validating XML files."""
 
-import re
 import json
+import re
 from io import StringIO
 from urllib.error import URLError
 
