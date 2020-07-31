@@ -407,7 +407,22 @@
                                 "Other"
                             ]
                         },
-                        "relativeOrder": {},
+                        "relativeOrder": {
+                            "type": "object",
+                            "title": "Relative Order",
+                            "properties": {
+                                "followsReadIndex": {
+                                    "title": "Read Index",
+                                    "type": "number",
+                                    "minimum": 0
+                                },
+                                "precedesReadIndex": {
+                                    "title": "Read Index",
+                                    "type": "number",
+                                    "minimum": 0
+                                }
+                            }
+                        },
                         "baseCoord": {
                             "title": "Base Coordinate",
                             "type": "number"
@@ -526,11 +541,20 @@
             ]
         },
         "files": {
-            "type": "array",
-            "title": "files",
-            "items": {
-                "$ref": "#/definitions/fileType"
-            }
+            "oneOf": [
+                {
+                    "type": "array",
+                    "title": "files",
+                    "items": {
+                        "$ref": "#/definitions/fileType"
+                    }
+                },
+                {
+                    "type": "object",
+                    "title": "files",
+                    "$ref": "#/definitions/fileType"
+                }
+            ]
         },
         "runLinks": {
             "type": "object",
