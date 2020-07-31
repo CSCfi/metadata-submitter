@@ -224,7 +224,10 @@ class BaseOperator(ABC):
                                                            data))
             sanity_check = await self.db_service.read(schema_type,
                                                       accession_id)
-            JSONValidator(sanity_check, schema_type.lower()).validate
+            # remove `draft-` from schema type
+            schema = (schema_type[6:] if schema_type.startswith("draft")
+                      else schema_type)
+            JSONValidator(sanity_check, schema).validate
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting object: {error}"
             LOG.error(reason)
@@ -564,7 +567,7 @@ class XMLOperator(BaseOperator):
         :returns: Accession Id for object inserted to database
         """
         db_client = self.db_service.db_client
-        # remove `drafs-` from schema type
+        # remove `draft-` from schema type
         schema = (schema_type[6:] if schema_type.startswith("draft")
                   else schema_type)
         data_as_json = XMLToJSONParser().parse(schema, data)
