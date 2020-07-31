@@ -1,16 +1,16 @@
 """Tool to parse XML files to JSON."""
 
 import re
+from collections import defaultdict
 from typing import Any, Dict, List, Union
 
 from aiohttp import web
 from xmlschema import (XMLSchema, XMLSchemaConverter, XMLSchemaException,
                        XsdElement, XsdType)
 
-from .schema_loader import XMLSchemaLoader, SchemaNotFoundException
 from .logger import LOG
+from .schema_loader import SchemaNotFoundException, XMLSchemaLoader
 from .validator import XMLValidator
-from collections import defaultdict
 
 
 class MetadataXMLConverter(XMLSchemaConverter):

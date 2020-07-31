@@ -6,9 +6,10 @@ from unittest.mock import patch
 from aiohttp import FormData, web
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
 from aiounittest import futurized
-from metadata_backend.helpers.schema_loader import SchemaNotFoundException
 
+from metadata_backend.helpers.schema_loader import SchemaNotFoundException
 from metadata_backend.server import init
+from tests.test_operators import MockCursor
 
 
 class HandlersTestCase(AioHTTPTestCase):
@@ -434,3 +435,58 @@ class HandlersTestCase(AioHTTPTestCase):
         self.MockedDbService().create.assert_called_once()
         self.assertEqual(response.status, 201)
         self.assertEqual(json_resp['folderId'], self.folder_id)
+
+    @unittest_run_loop
+    async def test_folder_creation_with_empty_body(self):
+        """Test that folder creation fails when no data in request."""
+        response = await self.client.post("/folders")
+        json_resp = await response.json()
+        self.assertEqual(response.status, 400)
+        self.assertIn("JSON is not correctly formatted.", json_resp['detail'])
+
+    @unittest_run_loop
+    async def test_get_folders_with_1_folder(self):
+        """Test get_folders() endpoint returns list with 1 folder."""
+        folder = [{"_id": {"$oid": "5ecd28877f55c72e263f45c2"},
+                   "folderId": self.folder_id,
+                   "name": "test",
+                   "description": "test folder",
+                   "metadata_objects": []}]
+        self.MockedDbService().query.return_value = MockCursor(folder)
+        response = await self.client.get("/folders")
+        self.MockedDbService().query.assert_called_once()
+        self.assertEqual(response.status, 200)
+        self.assertEqual(await response.json(), {'folders': folder})
+
+    @unittest_run_loop
+    async def test_get_folders_with_no_folders(self):
+        """Test get_folders() endpoint returns empty list."""
+        self.MockedDbService().query.return_value = MockCursor({})
+        response = await self.client.get("/folders")
+        self.MockedDbService().query.assert_called_once()
+        self.assertEqual(response.status, 200)
+        self.assertEqual(await response.json(), {'folders': []})
+
+    @unittest_run_loop
+    async def test_get_folder_fails(self):
+        """Test 404 error is raised if incorrect folder id is given."""
+        response = await self.client.get("/folders/some_id")
+        self.assertEqual(response.status, 404)
+        json_resp = await response.json()
+        self.assertEqual("Folder with id some_id not found.",
+                         json_resp['detail'])
+
+    @unittest_run_loop
+    async def test_get_folder_works(self):
+        """Test folder is returned when correct folder id is given."""
+        folder = {"_id": {"$oid": "5ecd28877f55c72e263f45c2"},
+                  "folderId": self.folder_id,
+                  "name": "test",
+                  "description": "test folder",
+                  "metadata_objects": []}
+        self.MockedDbService().read.return_value = futurized(folder)
+        response = await self.client.get("/folders/FOL12345678")
+        self.MockedDbService().read.assert_called_once()
+        self.assertEqual(response.status, 200)
+        json_resp = await response.json()
+        self.assertEqual(folder, json_resp)

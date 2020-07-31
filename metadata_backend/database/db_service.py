@@ -86,15 +86,16 @@ class DBService:
         return True if exists else False
 
     @auto_reconnect
-    async def read(self, collection: str, accession_id: str) -> Dict:
+    async def read(self, collection: str, id: str) -> Dict:
         """Find object by its accessionId.
 
         :param collection: Collection where document should be searched from
-        :param accession_id: Accession id of the document to be searched
+        :param id: Accession id of the document or folder id of the folder
         :returns: First document matching the accession_id
         """
-        find_by_id = {"accessionId": accession_id}
-        LOG.debug(f"DB doc read for {accession_id}.")
+        id_key = "folderId" if collection == "folder" else "accessionId"
+        find_by_id = {id_key: id}
+        LOG.debug(f"DB doc read for {id}.")
         return await self.database[collection].find_one(find_by_id)
 
     @auto_reconnect
