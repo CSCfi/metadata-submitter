@@ -505,7 +505,6 @@ class Operator(BaseOperator):
             doc[key] = doc[key].isoformat()
             return doc
 
-        del doc["_id"]
         doc = format_date("dateCreated", doc)
         doc = format_date("dateModified", doc)
         if schema_type == "study":

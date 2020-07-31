@@ -73,14 +73,16 @@ class DatabaseTestCase(AsyncTestCase):
         found_doc = await self.test_service.read("test", self.id_stub)
         self.assertEqual(found_doc, self.data_stub)
         self.collection.find_one.assert_called_once_with({"accessionId":
-                                                          self.id_stub})
+                                                          self.id_stub},
+                                                         {'_id': False})
 
     async def test_exists_returns_false(self):
         """Test that exists method works and returns false."""
         found_doc = await self.test_service.exists("test", self.id_stub)
         self.assertEqual(found_doc, False)
         self.collection.find_one.assert_called_once_with({"accessionId":
-                                                          self.id_stub})
+                                                          self.id_stub},
+                                                         {'_id': False})
 
     async def test_exists_returns_true(self):
         """Test that exists method works and returns True."""
@@ -88,7 +90,8 @@ class DatabaseTestCase(AsyncTestCase):
         found_doc = await self.test_service.exists("test", self.id_stub)
         self.assertEqual(found_doc, True)
         self.collection.find_one.assert_called_once_with({"accessionId":
-                                                          self.id_stub})
+                                                          self.id_stub},
+                                                         {'_id': False})
 
     async def test_update_updates_data(self):
         """Test that update method works and returns success."""
@@ -163,6 +166,7 @@ class DatabaseTestCase(AsyncTestCase):
         self.collection.find_one.return_value = futurized(self.folder_stub)
         found_folder = await self.test_service.read("folder", self.f_id_stub)
         self.collection.find_one.assert_called_once_with({"folderId":
-                                                          self.f_id_stub})
+                                                          self.f_id_stub},
+                                                         {'_id': False})
         self.assertEqual(found_folder, self.folder_stub)
         self.assertIn('_id', found_folder)
