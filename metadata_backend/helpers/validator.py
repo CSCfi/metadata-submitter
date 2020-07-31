@@ -9,13 +9,12 @@ from aiohttp import web
 from xmlschema import XMLSchema, XMLSchemaValidationError
 from xmlschema.etree import ElementTree, ParseError
 
-from functools import wraps
 from .schema_loader import JSONSchemaLoader, SchemaNotFoundException
 
 from jsonschema import Draft7Validator, validators
 from jsonschema.exceptions import ValidationError
 
-from typing import Callable, Any, Dict
+from typing import Any, Dict
 
 
 from ..helpers.logger import LOG
@@ -94,10 +93,12 @@ def extend_with_default(validator_class: Draft7Validator) -> Draft7Validator:
     """
     validate_properties = validator_class.VALIDATORS["properties"]
 
-    def set_defaults(validator, properties, instance, schema):
-        for property, subschema in properties.items():
+    def set_defaults(validator: Draft7Validator,
+                     properties: Dict, instance: Draft7Validator,
+                     schema: str) -> Any:
+        for prop, subschema in properties.items():
             if "default" in subschema:
-                instance.setdefault(property, subschema["default"])
+                instance.setdefault(prop, subschema["default"])
 
         for error in validate_properties(
             validator, properties, instance, schema,
@@ -116,25 +117,25 @@ DefaultValidatingDraft7Validator = extend_with_default(Draft7Validator)
 class JSONValidator:
     """JSON Validator implementation."""
 
-    def __init__(self, json_data: Dict, schema_type: str) -> None:
+    def __init__(self, json_data: str, schema_type: str) -> None:
         """Set variables.
 
         :param json: Schema to be used
         :param schema_type: Content of JSON file to be validated
         """
-        self.json_data = json
+        self.json_data = json_data
         self.schema_type = schema_type
 
     @property
     def validate(self) -> None:
-        """Check validation agains JSON schema.
+        """Check validation against JSON schema.
 
         :returns: Nothing if it is valid
         :raises: HTTPBadRequest if URLError was raised during validation
         """
         try:
             schema = JSONSchemaLoader().get_schema(self.schema_type)
-            LOG.info('Validate against JSON schema.')
+            LOG.info('Validated against JSON schema.')
             DefaultValidatingDraft7Validator(schema).validate(self.json_data)
         except SchemaNotFoundException as error:
             reason = f"{error} ({self.schema_type})"
@@ -142,31 +143,14 @@ class JSONValidator:
             raise web.HTTPBadRequest(reason=reason)
         except ValidationError as e:
             if len(e.path) > 0:
-                reason = (f"Provided input: '{e.instance}' "
+                reason = (f"Provided input "
                           f"does not seem correct for field: '{e.path[0]}'")
+                LOG.debug(f"Provided json input: '{e.instance}'")
                 LOG.error(reason)
                 raise web. HTTPBadRequest(reason=reason)
             else:
-                reason = (f"Provided input: '{e.instance}' "
+                reason = (f"Provided input "
                           f"does not seem correct because: '{e.message}'")
+                LOG.debug(f"Provided json input: '{e.instance}'")
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
-
-
-def validate(schema_type: str) -> Callable[[Any], Any]:
-    """
-    Validate against JSON schema and return errors, if any.
-
-    """
-    def wrapper(func):
-
-        @wraps(func)
-        async def wrapped(*args):
-            request = args[-1]
-
-            validator = JSONValidator(request, schema_type)
-            validator.validate
-
-            return await func(*args)
-        return wrapped
-    return wrapper
