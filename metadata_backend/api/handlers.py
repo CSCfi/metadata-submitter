@@ -17,9 +17,9 @@ from ..conf.conf import schema_types
 from ..database.db_service import DBService, auto_reconnect
 from ..helpers.logger import LOG
 from ..helpers.parser import XMLToJSONParser
-from ..helpers.schema_loader import (JSONSchemaLoader, SchemaNotFoundException,
-                                     XMLSchemaLoader)
-from ..helpers.validator import XMLValidator
+from ..helpers.schema_loader import (XMLSchemaLoader, SchemaNotFoundException,
+                                     JSONSchemaLoader)
+from ..helpers.validator import XMLValidator, JSONValidator
 from .operators import Operator, XMLOperator
 
 
@@ -178,6 +178,9 @@ class RESTApiHandler:
     async def post_object(self, req: Request) -> Response:
         """Save metadata object to database.
 
+        For JSON request body we validate it is consistent with the
+        assosicated JSON schema.
+
         :param req: POST request
         :returns: JSON response containing accessionId for submitted object
         """
@@ -194,6 +197,7 @@ class RESTApiHandler:
             operator = XMLOperator(db_client)
         else:
             content = await req.json()
+            JSONValidator(content, schema_type).validate
             operator = Operator(db_client)
         accession_id = await operator.create_metadata_object(collection,
                                                              content)
@@ -235,6 +239,9 @@ class RESTApiHandler:
     async def put_object(self, req: Request) -> Response:
         """Replace metadata object in database.
 
+        For JSON request body we validate that it consists of all the
+        required fields before replacing in the DB.
+
         :param req: PUT request
         :returns: JSON response containing accessionId for submitted object
         """
@@ -252,6 +259,7 @@ class RESTApiHandler:
             operator = XMLOperator(db_client)
         else:
             content = await req.json()
+            JSONValidator(content, schema_type).validate
             operator = Operator(db_client)
         await operator.replace_metadata_object(collection,
                                                accession_id,
