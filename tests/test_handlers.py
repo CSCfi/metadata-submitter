@@ -209,17 +209,84 @@ class HandlersTestCase(AioHTTPTestCase):
     async def test_submit_object_works_with_json(self):
         """Test that json submission is handled, operator is called."""
         json_req = {"centerName": "GEO",
-                    "alias": "GSE10966"}
+                    "alias": "GSE10966",
+                    "descriptor": {"studyTitle": "Highly",
+                                   "studyType": "Other"}}
         response = await self.client.post("/objects/study", json=json_req)
         self.assertEqual(response.status, 201)
         self.assertIn(self.test_ega_string, await response.text())
         self.MockedOperator().create_metadata_object.assert_called_once()
 
     @unittest_run_loop
+    async def test_submit_object_missing_field_json(self):
+        """Test that json has missing property."""
+        json_req = {"centerName": "GEO",
+                    "alias": "GSE10966"}
+        response = await self.client.post("/objects/study", json=json_req)
+        reason = ("Provided input does not seem correct because: "
+                  "''descriptor' is a required property'")
+        self.assertEqual(response.status, 400)
+        self.assertIn(reason, await response.text())
+
+    @unittest_run_loop
+    async def test_submit_object_bad_field_json(self):
+        """Test that json has bad studyType."""
+        json_req = {"centerName": "GEO",
+                    "alias": "GSE10966",
+                    "descriptor": {"studyTitle": "Highly",
+                                   "studyType": "ceva"}}
+        response = await self.client.post("/objects/study", json=json_req)
+        reason = ("Provided input does not seem correct for field: "
+                  "'descriptor'")
+        self.assertEqual(response.status, 400)
+        self.assertIn(reason, await response.text())
+
+    @unittest_run_loop
+    async def test_post_object_bad_json(self):
+        """Test that post json is badly formated."""
+        json_req = {"centerName": "GEO",
+                    "alias": "GSE10966",
+                    "descriptor": {"studyTitle": "Highly",
+                                   "studyType": "Other"}, }
+        response = await self.client.post("/objects/study", data=json_req)
+        reason = ("JSON is not correctly formatted. "
+                  "See: Expecting value: line 1 column 1")
+        self.assertEqual(response.status, 400)
+        self.assertIn(reason, await response.text())
+
+    @unittest_run_loop
+    async def test_put_object_bad_json(self):
+        """Test that put json is badly formated."""
+        json_req = {"centerName": "GEO",
+                    "alias": "GSE10966",
+                    "descriptor": {"studyTitle": "Highly",
+                                   "studyType": "Other"}, }
+        call = "/drafts/study/EGA123456"
+        response = await self.client.put(call, data=json_req)
+        reason = ("JSON is not correctly formatted. "
+                  "See: Expecting value: line 1 column 1")
+        self.assertEqual(response.status, 400)
+        self.assertIn(reason, await response.text())
+
+    @unittest_run_loop
+    async def test_patch_object_bad_json(self):
+        """Test that patch json is badly formated."""
+        json_req = {"centerName": "GEO",
+                    "alias": "GSE10966", }
+        call = "/drafts/study/EGA123456"
+        response = await self.client.patch(call, data=json_req)
+        reason = ("JSON is not correctly formatted. "
+                  "See: Expecting value: line 1 column 1")
+        self.assertEqual(response.status, 400)
+        self.assertIn(reason, await response.text())
+
+    @unittest_run_loop
     async def test_submit_draft_works_with_json(self):
         """Test that draft json submission is handled, operator is called."""
         json_req = {"centerName": "GEO",
-                    "alias": "GSE10966"}
+                    "alias": "GSE10966",
+                    "descriptor": {"studyTitle": "Highly",
+                                   "studyType": "Other"}}
         response = await self.client.post("/drafts/study", json=json_req)
         self.assertEqual(response.status, 201)
         self.assertIn(self.test_ega_string, await response.text())
@@ -229,7 +296,9 @@ class HandlersTestCase(AioHTTPTestCase):
     async def test_put_draft_works_with_json(self):
         """Test that draft json put method is handled, operator is called."""
         json_req = {"centerName": "GEO",
-                    "alias": "GSE10966"}
+                    "alias": "GSE10966",
+                    "descriptor": {"studyTitle": "Highly",
+                                   "studyType": "Other"}}
         call = "/drafts/study/EGA123456"
         response = await self.client.put(call, json=json_req)
         self.assertEqual(response.status, 201)

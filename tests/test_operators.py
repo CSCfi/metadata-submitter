@@ -138,18 +138,26 @@ class TestOperators(AsyncTestCase):
     async def test_json_create_passes_and_returns_accessionId(self):
         """Test create method for json works."""
         operator = Operator(self.client)
+        data = {"centerName": "GEO",
+                "alias": "GSE10966",
+                "descriptor": {"studyTitle": "Highly",
+                               "studyType": "Other"}}
         operator.db_service.create.return_value = futurized(True)
-        accession = await operator.create_metadata_object("study", {})
+        accession = await operator.create_metadata_object("study", data)
         operator.db_service.create.assert_called_once()
         self.assertEqual(accession, self.accession_id)
 
     async def test_json_replace_passes_and_returns_accessionId(self):
         """Test replace method for json works."""
         accession = "EGA123456"
+        data = {"centerName": "GEO",
+                "alias": "GSE10966",
+                "descriptor": {"studyTitle": "Highly",
+                               "studyType": "Other"}}
         operator = Operator(self.client)
         operator.db_service.exists.return_value = futurized(True)
         operator.db_service.replace.return_value = futurized(True)
-        await operator.replace_metadata_object("study", accession, {})
+        await operator.replace_metadata_object("study", accession, data)
         operator.db_service.replace.assert_called_once()
         self.assertEqual(accession, self.accession_id)
 
@@ -175,10 +183,17 @@ class TestOperators(AsyncTestCase):
     async def test_json_update_passes_and_returns_accessionId(self):
         """Test replace method for json works."""
         accession = "EGA123456"
+        data = {"centerName": "GEOM",
+                "alias": "GSE10967"}
+        db_data = {"centerName": "GEO",
+                   "alias": "GSE10966",
+                   "descriptor": {"studyTitle": "Highly",
+                                  "studyType": "Other"}}
         operator = Operator(self.client)
+        operator.db_service.read.return_value = futurized(db_data)
         operator.db_service.exists.return_value = futurized(True)
         operator.db_service.update.return_value = futurized(True)
-        await operator.update_metadata_object("study", accession, {})
+        await operator.update_metadata_object("study", accession, data)
         operator.db_service.update.assert_called_once()
         self.assertEqual(accession, self.accession_id)
 

@@ -16,6 +16,7 @@ from ..conf.conf import query_map
 from ..database.db_service import DBService, auto_reconnect
 from ..helpers.logger import LOG
 from ..helpers.parser import XMLToJSONParser
+from ..helpers.validator import JSONValidator
 
 
 class BaseOperator(ABC):
@@ -198,10 +199,14 @@ class BaseOperator(ABC):
     async def _update_object_from_db(self, schema_type: str,
                                      accession_id: str,
                                      data: Dict) -> str:
-        """Replace formatted metadata object in database.
+        """Update formatted metadata object in database.
 
-        :param schema_type: Schema type of the object to replace.
-        :param accession_id: Identifier of object to replace.
+        After the data has been update we need to do a sanity check
+        to see if the patched data still adheres to the corresponding
+        JSON schema.
+
+        :param schema_type: Schema type of the object to update.
+        :param accession_id: Identifier of object to update.
         :param data: Single document formatted as JSON
         :raises: 400 if reading was not succesful, 404 if no data found
         :returns: Accession Id for object inserted to database
@@ -214,14 +219,20 @@ class BaseOperator(ABC):
                           "was not found.")
                 LOG.error(reason)
                 raise web.HTTPNotFound(reason=reason)
-            replace_success = (await self.db_service.update(schema_type,
-                                                            accession_id,
-                                                            data))
+            update_success = (await self.db_service.update(schema_type,
+                                                           accession_id,
+                                                           data))
+            sanity_check = await self.db_service.read(schema_type,
+                                                      accession_id)
+            # remove `draft-` from schema type
+            schema = (schema_type[6:] if schema_type.startswith("draft")
+                      else schema_type)
+            JSONValidator(sanity_check, schema).validate
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting object: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        if replace_success:
+        if update_success:
             return accession_id
         else:
             reason = "Replacing object to database failed for some reason."
@@ -556,7 +567,7 @@ class XMLOperator(BaseOperator):
         :returns: Accession Id for object inserted to database
         """
         db_client = self.db_service.db_client
-        # remove `drafs-` from schema type
+        # remove `draft-` from schema type
         schema = (schema_type[6:] if schema_type.startswith("draft")
                   else schema_type)
         data_as_json = XMLToJSONParser().parse(schema, data)
