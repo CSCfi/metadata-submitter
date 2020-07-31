@@ -209,7 +209,9 @@ class HandlersTestCase(AioHTTPTestCase):
     async def test_submit_object_works_with_json(self):
         """Test that json submission is handled, operator is called."""
         json_req = {"centerName": "GEO",
-                    "alias": "GSE10966"}
+                    "alias": "GSE10966",
+                    "descriptor": {"studyTitle": "Highly",
+                                   "studyType": "Other"}}
         response = await self.client.post("/objects/study", json=json_req)
         self.assertEqual(response.status, 201)
         self.assertIn(self.test_ega_string, await response.text())
@@ -219,7 +221,9 @@ class HandlersTestCase(AioHTTPTestCase):
     async def test_submit_draft_works_with_json(self):
         """Test that draft json submission is handled, operator is called."""
         json_req = {"centerName": "GEO",
-                    "alias": "GSE10966"}
+                    "alias": "GSE10966",
+                    "descriptor": {"studyTitle": "Highly",
+                                   "studyType": "Other"}}
         response = await self.client.post("/drafts/study", json=json_req)
         self.assertEqual(response.status, 201)
         self.assertIn(self.test_ega_string, await response.text())
@@ -229,7 +233,9 @@ class HandlersTestCase(AioHTTPTestCase):
     async def test_put_draft_works_with_json(self):
         """Test that draft json put method is handled, operator is called."""
         json_req = {"centerName": "GEO",
-                    "alias": "GSE10966"}
+                    "alias": "GSE10966",
+                    "descriptor": {"studyTitle": "Highly",
+                                   "studyType": "Other"}}
         call = "/drafts/study/EGA123456"
         response = await self.client.put(call, json=json_req)
         self.assertEqual(response.status, 201)
