@@ -218,8 +218,8 @@
                             "title": "Library Layout",
                             "type": "string",
                             "enum": [
-                                "PAIRED",
-                                "SINGLE"
+                                "paired",
+                                "single"
                             ]
                         },
                         "targetLoci": {
@@ -271,7 +271,7 @@
                                     "properties": {
                                         "libraryLayout": {
                                             "enum": [
-                                                "SINGLE"
+                                                "single"
                                             ]
                                         }
                                     }
@@ -280,7 +280,7 @@
                                     "properties": {
                                         "libraryLayout": {
                                             "enum": [
-                                                "PAIRED"
+                                                "paired"
                                             ]
                                         },
                                         "nominalLength": {
@@ -347,7 +347,22 @@
                                         "Other"
                                     ]
                                 },
-                                "relativeOrder": {},
+                                "relativeOrder": {
+                                    "type": "object",
+                                    "title": "Relative Order",
+                                    "properties": {
+                                        "followsReadIndex": {
+                                            "title": "Read Index",
+                                            "type": "number",
+                                            "minimum": 0
+                                        },
+                                        "precedesReadIndex": {
+                                            "title": "Read Index",
+                                            "type": "number",
+                                            "minimum": 0
+                                        }
+                                    }
+                                },
                                 "baseCoord": {
                                     "title": "Base Coordinate",
                                     "type": "number"

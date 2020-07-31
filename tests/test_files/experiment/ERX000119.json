@@ -45,7 +45,6 @@
           "libraryConstructionProtocol": "Standard SOLiD protocol"
         },
         "spotDescriptor": {
-          "spotDecodeSpec": {
             "spotLength": 35,
             "readSpec": {
               "readIndex": 0,
@@ -53,7 +52,6 @@
               "readType": "Forward",
               "baseCoord": 1
             }
-          }
         }
       },
       "platform": "AB SOLiD System",
