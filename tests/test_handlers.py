@@ -473,9 +473,9 @@ class HandlersTestCase(AioHTTPTestCase):
         response = await self.client.get("/folders/some_id")
         self.assertEqual(response.status, 404)
         json_resp = await response.json()
-        self.assertEqual("Folder with some_id not found.", json_resp['detail'])
+        self.assertEqual("Folder with id some_id not found.",
+                         json_resp['detail'])
 
-    '''
     @unittest_run_loop
     async def test_get_folder_works(self):
         """Test folder is returned when correct folder id is given."""
@@ -484,11 +484,9 @@ class HandlersTestCase(AioHTTPTestCase):
                   "name": "test",
                   "description": "test folder",
                   "metadata_objects": []}
-        self.MockedDbService().read.return_value = folder
+        self.MockedDbService().read.return_value = futurized(folder)
         response = await self.client.get("/folders/FOL12345678")
         self.MockedDbService().read.assert_called_once()
         self.assertEqual(response.status, 200)
-        del folder['_id']
         json_resp = await response.json()
         self.assertEqual(folder, json_resp)
-    '''

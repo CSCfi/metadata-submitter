@@ -357,7 +357,7 @@ class RESTApiHandler:
         try:
             folder = await db_service.read("folder", folder_id)
             if not folder:
-                reason = f"Folder with {folder_id} not found."
+                reason = f"Folder with id {folder_id} not found."
                 LOG.error(reason)
                 raise web.HTTPNotFound(reason=reason)
         except (ConnectionFailure, OperationFailure) as error:
@@ -365,7 +365,7 @@ class RESTApiHandler:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        del folder['_id']  # remove unneccessary mongodb id from result
+        folder.pop('_id', None)  # remove unneccessary mongodb id from result
         LOG.info(f"GET folder with folder ID {folder_id}.")
         return web.Response(body=json.dumps(folder), status=200,
                             content_type="application/json")
