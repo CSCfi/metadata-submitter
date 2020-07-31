@@ -301,7 +301,13 @@ class RESTApiHandler:
         :returns: JSON list of folders available for the user
         """
         db_client = req.app['db_client']
-        db_service = DBService('folders', db_client)
+        db_service = DBService("folders", db_client)
+        """
+        if not db_service.database["folder"].count_documents({}):
+            reason = f"No folders found."
+            LOG.error(reason)
+            raise web.HTTPNotFound(reason=reason)
+        """
         cursor = db_service.query("folder", {})
         folders = [folder async for folder in cursor]
         body = json.dumps({"folders": folders})
@@ -313,26 +319,35 @@ class RESTApiHandler:
         """Save object folder to database.
 
         :param req: POST request
+        :raises: HTTP 400 if something fails during processing the request
         :returns: JSON response containing folder ID for submitted object
         """
         db_client = req.app['db_client']
         db_service = DBService("folders", db_client)
-        data = await req.json()
-        data['folderId'] = self._generate_folder_id()
         try:
-            insert = await db_service.create("folder", data)
+            content = await req.json()
+        except json.decoder.JSONDecodeError as e:
+            reason = ("JSON is not correctly formatted."
+                      f" See: {e}")
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        try:
+            content['folderId'] = self._generate_folder_id()
+            insert = await db_service.create("folder", content)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while inserting folder: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
+
         if not insert:
             reason = "Inserting file to database failed for some reason."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         else:
-            body = json.dumps({"folderId": data['folderId']})
-            LOG.info(f"POST new folder with folder ID {data['folderId']} was "
-                     "successful.")
+            body = json.dumps({"folderId": content['folderId']})
+            LOG.info(f"POST new folder with folder ID {content['folderId']} "
+                     "was successful.")
             return web.Response(body=body, status=201,
                                 content_type="application/json")
 
