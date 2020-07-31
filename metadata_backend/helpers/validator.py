@@ -116,8 +116,8 @@ class JSONValidator:
     def __init__(self, json_data: str, schema_type: str) -> None:
         """Set variables.
 
-        :param json: Schema to be used
-        :param schema_type: Content of JSON file to be validated
+        :param json_data: JSON content to be validated
+        :param schema_type: Schema type to be used for validation
         """
         self.json_data = json_data
         self.schema_type = schema_type
@@ -128,7 +128,7 @@ class JSONValidator:
 
         :returns: Nothing if it is valid
         :raises: 404 if schema not found, most likely will never be
-        raised if it this is called in handlers which check schema
+        raised if it this is called in handlers which checks schema
         exists first. Raise 400 if validation fails.
         """
         try:
