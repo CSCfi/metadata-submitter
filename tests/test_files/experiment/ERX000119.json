@@ -1,71 +1,68 @@
 {
-    "experiment": {
-      "alias": "NA18504.3",
-      "centerName": "MPIMG",
-      "accessionId": "ERX000119",
-      "identifiers": {
-        "primaryId": "ERX000119",
-        "submitterId": {
-          "namespace": "MPIMG",
-          "value": "NA18504.3"
-        }
-      },
-      "studyRef": {
-        "refname": "1000Genomes Project Pilot 1",
-        "refcenter": "NCBI",
-        "accessionId": "SRP000031",
-        "identifiers": {
-          "primaryId": "SRP000031",
-          "submitterId": {
-            "namespace": "NCBI",
-            "value": "1000Genomes Project Pilot 1"
-          }
-        }
-      },
-      "design": {
-        "designDescription": "SOLiD sequencing of Human HapMap individual NA18504",
-        "sampleDescriptor": {
-          "refname": "NA18504",
-          "refcenter": "NCBI",
-          "accessionId": "SRS000099",
-          "identifiers": {
-            "primaryId": "SRS000099",
-            "submitterId": {
-              "namespace": "NCBI",
-              "value": "NA18504"
-            }
-          }
-        },
-        "libraryDescriptor": {
-          "libraryName": "NA18504.3",
-          "libraryStrategy": "WGS",
-          "librarySource": "GENOMIC",
-          "librarySelection": "RANDOM",
-          "libraryLayout": "single",
-          "libraryConstructionProtocol": "Standard SOLiD protocol"
-        },
-        "spotDescriptor": {
-            "spotLength": 35,
-            "readSpec": {
-              "readIndex": 0,
-              "readClass": "Application Read",
-              "readType": "Forward",
-              "baseCoord": 1
-            }
-        }
-      },
-      "platform": "AB SOLiD System",
-      "processing": "true",
-      "experimentAttributes": [
-        {
-          "tag": "center_name",
-          "value": "mpimg"
-        },
-        {
-          "tag": "expected_number_bases",
-          "value": "4300",
-          "units": "MB"
-        }
-      ]
+  "alias": "NA18504.3",
+  "centerName": "MPIMG",
+  "identifiers": {
+    "primaryId": "ERX000119",
+    "submitterId": {
+      "namespace": "MPIMG",
+      "value": "NA18504.3"
     }
-  }
+  },
+  "studyRef": {
+    "refname": "1000Genomes Project Pilot 1",
+    "refcenter": "NCBI",
+    "accessionId": "SRP000031",
+    "identifiers": {
+      "primaryId": "SRP000031",
+      "submitterId": {
+        "namespace": "NCBI",
+        "value": "1000Genomes Project Pilot 1"
+      }
+    }
+  },
+  "design": {
+    "designDescription": "SOLiD sequencing of Human HapMap individual NA18504",
+    "sampleDescriptor": {
+      "refname": "NA18504",
+      "refcenter": "NCBI",
+      "accessionId": "SRS000099",
+      "identifiers": {
+        "primaryId": "SRS000099",
+        "submitterId": {
+          "namespace": "NCBI",
+          "value": "NA18504"
+        }
+      }
+    },
+    "libraryDescriptor": {
+      "libraryName": "NA18504.3",
+      "libraryStrategy": "WGS",
+      "librarySource": "GENOMIC",
+      "librarySelection": "RANDOM",
+      "libraryLayout": "single",
+      "libraryConstructionProtocol": "Standard SOLiD protocol"
+    },
+    "spotDescriptor": {
+      "spotLength": 35,
+      "readSpec": {
+        "readIndex": 0,
+        "readClass": "Application Read",
+        "readType": "Forward",
+        "baseCoord": 1
+      }
+    }
+  },
+  "platform": "AB SOLiD System",
+  "processing": "true",
+  "experimentAttributes": [
+    {
+      "tag": "center_name",
+      "value": "mpimg"
+    },
+    {
+      "tag": "expected_number_bases",
+      "value": "4300",
+      "units": "MB"
+    }
+  ]
+}
