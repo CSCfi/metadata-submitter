@@ -222,8 +222,8 @@ async def test_patch_drafts_works(schema, filename, filename2):
         async with sess.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
             LOG.debug(f"Checking that {accession_id} JSON is in {schema}")
             res = await resp.json()
-            assert res['study']['centerName'] == 'GEOM', 'content mismatch'
-            assert res['study']['alias'] == 'GSE10968', 'content mismatch'
+            assert res['centerName'] == 'GEOM', 'content mismatch'
+            assert res['alias'] == 'GSE10968', 'content mismatch'
             assert resp.status == 200, 'HTTP Status code error'
 
         await delete_draft(sess, schema, accession_id)
