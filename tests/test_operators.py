@@ -71,9 +71,6 @@ class TestOperators(AsyncTestCase):
         """Test json is read from db correctly."""
         operator = Operator(self.client)
         data = {
-            "_id": {
-                "$oid": "5ecd28877f55c72e263f45c2"
-            },
             "dateCreated": datetime.datetime(2020, 6, 14, 0, 0),
             "dateModified": datetime.datetime(2020, 6, 14, 0, 0),
             "accessionId": "EGA123456",
