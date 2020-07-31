@@ -71,9 +71,6 @@ class TestOperators(AsyncTestCase):
         """Test json is read from db correctly."""
         operator = Operator(self.client)
         data = {
-            "_id": {
-                "$oid": "5ecd28877f55c72e263f45c2"
-            },
             "dateCreated": datetime.datetime(2020, 6, 14, 0, 0),
             "dateModified": datetime.datetime(2020, 6, 14, 0, 0),
             "accessionId": "EGA123456",
@@ -120,9 +117,6 @@ class TestOperators(AsyncTestCase):
     def test_operator_fixes_single_document_presentation(self):
         """Test datetime is fixed and id removed."""
         study_test = {
-            "_id": {
-                "$oid": "5ecd28877f55c72e263f45c2"
-            },
             "publishDate": datetime.datetime(2020, 6, 14, 0, 0),
             "accessionId": "EDAG3945644754983408",
             "dateCreated": datetime.datetime(2020, 6, 14, 0, 0),
@@ -383,9 +377,6 @@ class TestOperators(AsyncTestCase):
         """Test that database is called with correct query."""
         operator = Operator(self.client)
         study_test = [{
-            "_id": {
-                "$oid": "5ecd28877f55c72e263f45c2"
-            },
             "publishDate": datetime.datetime(2020, 6, 14, 0, 0),
             "accessionId": "EDAG3945644754983408",
             "dateCreated": datetime.datetime(2020, 6, 14, 0, 0),
@@ -407,9 +398,6 @@ class TestOperators(AsyncTestCase):
         """Test that database with empty query, when url params are wrong."""
         operator = Operator(self.client)
         study_test = [{
-            "_id": {
-                "$oid": "5ecd28877f55c72e263f45c2"
-            },
             "publishDate": datetime.datetime(2020, 6, 14, 0, 0),
             "accessionId": "EDAG3945644754983408",
             "dateCreated": datetime.datetime(2020, 6, 14, 0, 0),
@@ -427,17 +415,11 @@ class TestOperators(AsyncTestCase):
         operator = Operator(self.client)
         multiple_result = [
             {
-                "_id": {
-                    "$oid": "5ecd28877f55c72e263f45c2"
-                },
                 "dateCreated": datetime.datetime(2020, 6, 14, 0, 0),
                 "dateModified": datetime.datetime(2020, 6, 14, 0, 0),
                 "accessionId": "EGA123456",
                 "foo": "bar"
             }, {
-                "_id": {
-                    "$oid": "5ecd28877f55c72e263f45c2"
-                },
                 "dateCreated": datetime.datetime(2020, 6, 14, 0, 0),
                 "dateModified": datetime.datetime(2020, 6, 14, 0, 0),
                 "accessionId": "EGA123456",
