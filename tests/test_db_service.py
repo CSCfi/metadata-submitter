@@ -135,7 +135,7 @@ class DatabaseTestCase(AsyncTestCase):
         self.collection.find.return_value = AsyncIOMotorCursor(None, None)
         cursor = self.test_service.query("test", {})
         self.assertEqual(type(cursor), AsyncIOMotorCursor)
-        self.collection.find.assert_called_once_with({})
+        self.collection.find.assert_called_once_with({}, {'_id': False})
 
     async def test_count_returns_amount(self):
         """Test that get_count method works and returns amount."""
