@@ -138,7 +138,7 @@ class BaseOperator(ABC):
         await self._remove_object_from_db(XMLOperator(db_client),
                                           schema_type,
                                           accession_id)
-        LOG.info(f"removing object with schema {schema_type} from database "
+        LOG.info(f"Removing object with schema {schema_type} from database "
                  f"and accession id: {accession_id}")
 
     async def _insert_formatted_object_to_db(self, schema_type: str,
