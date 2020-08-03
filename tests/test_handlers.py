@@ -135,7 +135,7 @@ class HandlersTestCase(AioHTTPTestCase):
         files = [("submission", "ERA521986_valid.xml")]
         data = self.create_submission_data(files)
         response = await self.client.post("/submit", data=data)
-        self.assertEqual(response.status, 201)
+        self.assertEqual(response.status, 200)
         self.assertEqual(response.content_type, "application/json")
 
     @unittest_run_loop
@@ -301,7 +301,7 @@ class HandlersTestCase(AioHTTPTestCase):
                                    "studyType": "Other"}}
         call = "/drafts/study/EGA123456"
         response = await self.client.put(call, json=json_req)
-        self.assertEqual(response.status, 201)
+        self.assertEqual(response.status, 200)
         self.assertIn(self.test_ega_string, await response.text())
         self.MockedOperator().replace_metadata_object.assert_called_once()
 
@@ -312,7 +312,7 @@ class HandlersTestCase(AioHTTPTestCase):
         data = self.create_submission_data(files)
         call = "/drafts/study/EGA123456"
         response = await self.client.put(call, data=data)
-        self.assertEqual(response.status, 201)
+        self.assertEqual(response.status, 200)
         self.assertIn(self.test_ega_string, await response.text())
         self.MockedXMLOperator().replace_metadata_object.assert_called_once()
 
@@ -323,7 +323,7 @@ class HandlersTestCase(AioHTTPTestCase):
                     "alias": "GSE10966"}
         call = "/drafts/study/EGA123456"
         response = await self.client.patch(call, json=json_req)
-        self.assertEqual(response.status, 201)
+        self.assertEqual(response.status, 200)
         self.assertIn(self.test_ega_string, await response.text())
         self.MockedOperator().update_metadata_object.assert_called_once()
 
