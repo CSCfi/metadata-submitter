@@ -317,7 +317,7 @@ class RESTApiHandler:
                                               accession_id,
                                               content)
         body = json.dumps({"accessionId": accession_id})
-        LOG.info(f"PUT object with accesssion ID {accession_id} "
+        LOG.info(f"PATCH object with accesssion ID {accession_id} "
                  f"in schema {collection} was successful.")
         return web.Response(body=body, status=200,
                             content_type="application/json")
@@ -410,21 +410,37 @@ class RESTApiHandler:
         folder_id = req.match_info['folderId']
         db_client = req.app['db_client']
         db_service = DBService("folders", db_client)
-        content = await req.json()
-        check_exists = await self.db_service.exists("folder", folder_id)
-        if not check_exists:
-            reason = (f"Folder with id {folder_id} "
-                      "was not found.")
+        try:
+            content = await req.json()
+        except json.decoder.JSONDecodeError as e:
+            reason = ("JSON is not correctly formatted."
+                      f" See: {e}")
             LOG.error(reason)
-            raise web.HTTPNotFound(reason=reason)
+            raise web.HTTPBadRequest(reason=reason)
 
-        replace_success = (await self.db_service.replace("folder",
-                                                         folder_id,
-                                                         content))
-        body = json.dumps({"folderId": folder_id})
-        LOG.info(f"PUT folder with folder ID {folder_id} was successful.")
-        return web.Response(body=body, status=200,
-                            content_type="application/json")
+        # TODO: Possible formatting of content
+        try:
+            check_exists = await db_service.exists("folder",
+                                                   folder_id)
+            if not check_exists:
+                reason = (f"Folder with id {folder_id} was not found.")
+                LOG.error(reason)
+                raise web.HTTPNotFound(reason=reason)
+            replace_success = await db_service.replace("folder", folder_id,
+                                                       content)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting folder: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        if not replace_success:
+            reason = "Replacing folder to database failed for some reason."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        else:
+            body = json.dumps({"folderId": folder_id})
+            LOG.info(f"PUT folder with ID {folder_id} was successful.")
+            return web.Response(body=body, status=200,
+                                content_type="application/json")
 
     async def update_folder(self, req: Request) -> Response:
         """Update object folder with a specific folder id.
@@ -432,10 +448,42 @@ class RESTApiHandler:
         :param req: PATCH request
         :returns: TBD
         """
-        # folder_id = req.match_info['folderId']
-        # db_client = req.app['db_client']
-        # db_service = DBService("folders", db_client)
-        raise web.HTTPNotImplemented
+        folder_id = req.match_info['folderId']
+        db_client = req.app['db_client']
+        db_service = DBService("folders", db_client)
+        try:
+            content = await req.json()
+        except json.decoder.JSONDecodeError as e:
+            reason = ("JSON is not correctly formatted."
+                      f" See: {e}")
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        # TODO: Possible formatting of content
+        try:
+            check_exists = await db_service.exists("folder",
+                                                   folder_id)
+            if not check_exists:
+                reason = (f"Folder with id {folder_id} was not found.")
+                LOG.error(reason)
+                raise web.HTTPNotFound(reason=reason)
+            update_success = await db_service.update("folder", folder_id,
+                                                     content)
+        # sanity_check = await self.db_service.read("folder",
+        #                                           folder_id)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting object: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        if not update_success:
+            reason = "Replacing object to database failed for some reason."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        else:
+            body = json.dumps({"folderId": folder_id})
+            LOG.info(f"PATCH folder with ID {folder_id} was successful.")
+            return web.Response(body=body, status=200,
+                                content_type="application/json")
 
     async def delete_folder(self, req: Request) -> Response:
         """Delete object folder from database.
