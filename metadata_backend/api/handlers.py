@@ -179,7 +179,7 @@ class RESTApiHandler:
         """Save metadata object to database.
 
         For JSON request body we validate it is consistent with the
-        assosicated JSON schema.
+        associated JSON schema.
 
         :param req: POST request
         :returns: JSON response containing accessionId for submitted object
@@ -208,9 +208,12 @@ class RESTApiHandler:
         accession_id = await operator.create_metadata_object(collection,
                                                              content)
         body = json.dumps({"accessionId": accession_id})
+        url = f"{req.scheme}://{req.host}{req.path}"
+        location_headers = {"Location": f"{url}{accession_id}"}
         LOG.info(f"POST object with accesssion ID {accession_id} "
                  f"in schema {collection} was successful.")
         return web.Response(body=body, status=201,
+                            headers=location_headers,
                             content_type="application/json")
 
     async def query_objects(self, req: Request) -> Response:
@@ -279,7 +282,7 @@ class RESTApiHandler:
         body = json.dumps({"accessionId": accession_id})
         LOG.info(f"PUT object with accesssion ID {accession_id} "
                  f"in schema {collection} was successful.")
-        return web.Response(body=body, status=201,
+        return web.Response(body=body, status=200,
                             content_type="application/json")
 
     async def patch_object(self, req: Request) -> Response:
@@ -316,7 +319,7 @@ class RESTApiHandler:
         body = json.dumps({"accessionId": accession_id})
         LOG.info(f"PUT object with accesssion ID {accession_id} "
                  f"in schema {collection} was successful.")
-        return web.Response(body=body, status=201,
+        return web.Response(body=body, status=200,
                             content_type="application/json")
 
     @auto_reconnect
@@ -366,9 +369,12 @@ class RESTApiHandler:
             raise web.HTTPBadRequest(reason=reason)
         else:
             body = json.dumps({"folderId": content['folderId']})
+            url = f"{req.scheme}://{req.host}{req.path}"
+            location_headers = {"Location": f"{url}/{content['folderId']}"}
             LOG.info(f"POST new folder with folder ID {content['folderId']} "
                      "was successful.")
             return web.Response(body=body, status=201,
+                                headers=location_headers,
                                 content_type="application/json")
 
     async def get_folder(self, req: Request) -> Response:
@@ -496,7 +502,7 @@ class SubmissionAPIHandler:
                 raise web.HTTPBadRequest(reason=reason)
         body = json.dumps(results)
         LOG.info(f"Processed a submission of {len(results)} actions.")
-        return web.Response(body=body, status=201,
+        return web.Response(body=body, status=200,
                             content_type="application/json")
 
     async def validate(self, req: Request) -> Response:
