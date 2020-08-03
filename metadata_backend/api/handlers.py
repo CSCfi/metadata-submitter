@@ -491,10 +491,30 @@ class RESTApiHandler:
         :param req: DELETE request
         :returns: TBD
         """
-        # folder_id = req.match_info['folderId']
-        # db_client = req.app['db_client']
-        # db_service = DBService("folders", db_client)
-        raise web.HTTPNotImplemented
+        folder_id = req.match_info['folderId']
+        db_client = req.app['db_client']
+        db_service = DBService("folders", db_client)
+        try:
+            check_exists = await db_service.exists("folder",
+                                                   folder_id)
+            if not check_exists:
+                reason = (f"Folder with id {folder_id} was not found.")
+                LOG.error(reason)
+                raise web.HTTPNotFound(reason=reason)
+
+            delete_success = await db_service.delete("folder", folder_id)
+
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while deleting folder: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        if not delete_success:
+            reason = "Deleting for {folder_id} from database failed."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        else:
+            LOG.info(f"DELETE folder with ID {folder_id} was successful.")
+            return web.Response(status=204)
 
     def _generate_folder_id(self) -> str:
         """Generate random folder id."""
