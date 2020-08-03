@@ -407,8 +407,24 @@ class RESTApiHandler:
         :param req: PUT request
         :returns: TBD
         """
-        # folder_id = req.match_info['folderId']
-        raise web.HTTPNotImplemented
+        folder_id = req.match_info['folderId']
+        db_client = req.app['db_client']
+        db_service = DBService("folders", db_client)
+        content = await req.json()
+        check_exists = await self.db_service.exists("folder", folder_id)
+        if not check_exists:
+            reason = (f"Folder with id {folder_id} "
+                      "was not found.")
+            LOG.error(reason)
+            raise web.HTTPNotFound(reason=reason)
+
+        replace_success = (await self.db_service.replace("folder",
+                                                         folder_id,
+                                                         content))
+        body = json.dumps({"folderId": folder_id})
+        LOG.info(f"PUT folder with folder ID {folder_id} was successful.")
+        return web.Response(body=body, status=200,
+                            content_type="application/json")
 
     async def update_folder(self, req: Request) -> Response:
         """Update object folder with a specific folder id.
@@ -417,6 +433,8 @@ class RESTApiHandler:
         :returns: TBD
         """
         # folder_id = req.match_info['folderId']
+        # db_client = req.app['db_client']
+        # db_service = DBService("folders", db_client)
         raise web.HTTPNotImplemented
 
     async def delete_folder(self, req: Request) -> Response:
@@ -426,6 +444,8 @@ class RESTApiHandler:
         :returns: TBD
         """
         # folder_id = req.match_info['folderId']
+        # db_client = req.app['db_client']
+        # db_service = DBService("folders", db_client)
         raise web.HTTPNotImplemented
 
     def _generate_folder_id(self) -> str:
