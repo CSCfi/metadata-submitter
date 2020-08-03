@@ -167,6 +167,7 @@
             "title": "Dataset Type",
             "type": "array",
             "items": {
+                "type": "string",
                 "enum": [
                     "Whole genome sequencing",
                     "Exome sequencing",
