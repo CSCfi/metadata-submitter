@@ -15,7 +15,7 @@ from ..helpers.logger import LOG
 
 @middleware
 async def http_error_handler(req: Request, handler: Callable) -> Response:
-    """Middleware for handling exceptions recieved from the API methods.
+    """Middleware for handling exceptions received from the API methods.
 
     :param req: A request instance
     :param handler: A request handler

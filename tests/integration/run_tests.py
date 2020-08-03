@@ -100,7 +100,7 @@ async def put_draft(sess, schema, filename, filename2):
     async with sess.put(f"{drafts_url}/{schema}/{test_id}",
                         data=data2) as resp:
         LOG.debug(f"Replace object in {schema}")
-        assert resp.status == 201, 'HTTP Status code error'
+        assert resp.status == 200, 'HTTP Status code error'
         ans_put = await resp.json()
         assert ans_put["accessionId"] == test_id, 'accession ID error'
         return ans_put["accessionId"]
@@ -119,7 +119,7 @@ async def patch_draft(sess, schema, filename, filename2):
     async with sess.patch(f"{drafts_url}/{schema}/{test_id}",
                           data=data) as resp:
         LOG.debug(f"Update object in {schema}")
-        assert resp.status == 201, 'HTTP Status code error'
+        assert resp.status == 200, 'HTTP Status code error'
         ans_put = await resp.json()
         assert ans_put["accessionId"] == test_id, 'accession ID error'
         return ans_put["accessionId"]

@@ -180,7 +180,7 @@ class XMLToJSONParser:
     def parse(self, schema_type: str, content: str) -> Dict:
         """Validate xml file and parse it to json.
 
-        We validate resulting JSON aginst a JSON schema
+        We validate resulting JSON against a JSON schema
         to be sure the resulting content is consistent.
 
         :param schema_type: Schema type to be used
