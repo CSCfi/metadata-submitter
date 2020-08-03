@@ -282,7 +282,7 @@ class RESTApiHandler:
         body = json.dumps({"accessionId": accession_id})
         LOG.info(f"PUT object with accesssion ID {accession_id} "
                  f"in schema {collection} was successful.")
-        return web.Response(body=body, status=201,
+        return web.Response(body=body, status=200,
                             content_type="application/json")
 
     async def patch_object(self, req: Request) -> Response:
@@ -319,7 +319,7 @@ class RESTApiHandler:
         body = json.dumps({"accessionId": accession_id})
         LOG.info(f"PUT object with accesssion ID {accession_id} "
                  f"in schema {collection} was successful.")
-        return web.Response(body=body, status=201,
+        return web.Response(body=body, status=200,
                             content_type="application/json")
 
     @auto_reconnect
@@ -499,7 +499,7 @@ class SubmissionAPIHandler:
                 raise web.HTTPBadRequest(reason=reason)
         body = json.dumps(results)
         LOG.info(f"Processed a submission of {len(results)} actions.")
-        return web.Response(body=body, status=201,
+        return web.Response(body=body, status=200,
                             content_type="application/json")
 
     async def validate(self, req: Request) -> Response:
