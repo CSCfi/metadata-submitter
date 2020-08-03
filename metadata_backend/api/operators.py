@@ -105,7 +105,7 @@ class BaseOperator(ABC):
 
         :param schema_type: Schema type of the object to read.
         :param accession_id: Accession Id of the object to read.
-        :raises: 400 if reading was not succesful, 404 if no data found
+        :raises: 400 if reading was not successful, 404 if no data found
         :returns: Metadata object formatted to JSON or XML, content type
         """
         try:
@@ -129,7 +129,7 @@ class BaseOperator(ABC):
 
         :param schema_type: Schema type of the object to delete.
         :param accession_id: Accession Id of the object to delete.
-        :raises: 400 if deleting was not succesful
+        :raises: 400 if deleting was not successful
         """
         db_client = self.db_service.db_client
         await self._remove_object_from_db(Operator(db_client),
@@ -148,7 +148,7 @@ class BaseOperator(ABC):
         :param schema_type: Schema type of the object to insert.
         :param data: Single document formatted as JSON
         :returns: Accession Id for object inserted to database
-        :raises: 400 if reading was not succesful
+        :raises: 400 if reading was not successful
         """
         try:
             insert_success = (await self.db_service.create(schema_type, data))
@@ -171,7 +171,7 @@ class BaseOperator(ABC):
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
         :param data: Single document formatted as JSON
-        :raises: 400 if reading was not succesful, 404 if no data found
+        :raises: 400 if reading was not successful, 404 if no data found
         :returns: Accession Id for object inserted to database
         """
         try:
@@ -208,7 +208,7 @@ class BaseOperator(ABC):
         :param schema_type: Schema type of the object to update.
         :param accession_id: Identifier of object to update.
         :param data: Single document formatted as JSON
-        :raises: 400 if reading was not succesful, 404 if no data found
+        :raises: 400 if reading was not successful, 404 if no data found
         :returns: Accession Id for object inserted to database
         """
         try:
@@ -251,7 +251,7 @@ class BaseOperator(ABC):
         :param schema_type: Schema type of the object to delete.
         :param accession_id: Identifier of object to delete.
         :param data: Single document formatted as JSON
-        :raises: 400 if reading was not succesful, 404 if no data found
+        :raises: 400 if reading was not successful, 404 if no data found
         :returns: None
         """
         try:
