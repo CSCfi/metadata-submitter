@@ -369,9 +369,12 @@ class RESTApiHandler:
             raise web.HTTPBadRequest(reason=reason)
         else:
             body = json.dumps({"folderId": content['folderId']})
+            url = f"{req.scheme}://{req.host}{req.path}"
+            location_headers = {"Location": f"{url}/{content['folderId']}"}
             LOG.info(f"POST new folder with folder ID {content['folderId']} "
                      "was successful.")
             return web.Response(body=body, status=201,
+                                headers=location_headers,
                                 content_type="application/json")
 
     async def get_folder(self, req: Request) -> Response:
