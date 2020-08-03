@@ -179,7 +179,7 @@ class RESTApiHandler:
         """Save metadata object to database.
 
         For JSON request body we validate it is consistent with the
-        assosicated JSON schema.
+        associated JSON schema.
 
         :param req: POST request
         :returns: JSON response containing accessionId for submitted object
@@ -208,9 +208,12 @@ class RESTApiHandler:
         accession_id = await operator.create_metadata_object(collection,
                                                              content)
         body = json.dumps({"accessionId": accession_id})
+        url = f"{req.scheme}://{req.host}{req.path}"
+        location_headers = {"Location": f"{url}{accession_id}"}
         LOG.info(f"POST object with accesssion ID {accession_id} "
                  f"in schema {collection} was successful.")
         return web.Response(body=body, status=201,
+                            headers=location_headers,
                             content_type="application/json")
 
     async def query_objects(self, req: Request) -> Response:
