@@ -406,15 +406,10 @@ class RESTApiHandler:
         db_client = req.app['db_client']
         db_service = DBService("folders", db_client)
         content = await self._get_data(req)
+        await self._check_folder_exists(db_service, folder_id)
 
         # TODO: Possible formatting of content
         try:
-            check_exists = await db_service.exists("folder",
-                                                   folder_id)
-            if not check_exists:
-                reason = (f"Folder with id {folder_id} was not found.")
-                LOG.error(reason)
-                raise web.HTTPNotFound(reason=reason)
             replace_success = await db_service.replace("folder", folder_id,
                                                        content)
         except (ConnectionFailure, OperationFailure) as error:
@@ -441,19 +436,14 @@ class RESTApiHandler:
         db_client = req.app['db_client']
         db_service = DBService("folders", db_client)
         content = await self._get_data(req)
+        await self._check_folder_exists(db_service, folder_id)
 
         # TODO: Possible formatting of content
         try:
-            check_exists = await db_service.exists("folder",
-                                                   folder_id)
-            if not check_exists:
-                reason = (f"Folder with id {folder_id} was not found.")
-                LOG.error(reason)
-                raise web.HTTPNotFound(reason=reason)
             update_success = await db_service.update("folder", folder_id,
                                                      content)
-        # sanity_check = await self.db_service.read("folder",
-        #                                           folder_id)
+            # sanity_check = await self.db_service.read("folder",
+            #                                           folder_id)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting object: {error}"
             LOG.error(reason)
@@ -477,16 +467,9 @@ class RESTApiHandler:
         folder_id = req.match_info['folderId']
         db_client = req.app['db_client']
         db_service = DBService("folders", db_client)
+        await self._check_folder_exists(db_service, folder_id)
         try:
-            check_exists = await db_service.exists("folder",
-                                                   folder_id)
-            if not check_exists:
-                reason = (f"Folder with id {folder_id} was not found.")
-                LOG.error(reason)
-                raise web.HTTPNotFound(reason=reason)
-
             delete_success = await db_service.delete("folder", folder_id)
-
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while deleting folder: {error}"
             LOG.error(reason)
@@ -504,6 +487,14 @@ class RESTApiHandler:
         sequence = ''.join(secrets.choice(string.digits) for i in range(8))
         LOG.debug("Generated folder ID.")
         return f"FOL{sequence}"
+
+    async def _check_folder_exists(self, db: DBService, id: str) -> None:
+        """Check the existance of a folder by its id in the database."""
+        exists = await db.exists("folder", id)
+        if not exists:
+            reason = (f"Folder with id {id} was not found.")
+            LOG.error(reason)
+            raise web.HTTPNotFound(reason=reason)
 
 
 class SubmissionAPIHandler:
