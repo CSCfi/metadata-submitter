@@ -113,7 +113,7 @@ DefaultValidatingDraft7Validator = extend_with_default(Draft7Validator)
 class JSONValidator:
     """JSON Validator implementation."""
 
-    def __init__(self, json_data: str, schema_type: str) -> None:
+    def __init__(self, json_data: Dict, schema_type: str) -> None:
         """Set variables.
 
         :param json_data: JSON content to be validated

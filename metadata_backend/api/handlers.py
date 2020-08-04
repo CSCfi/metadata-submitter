@@ -10,6 +10,7 @@ from typing import Dict, List, Tuple, Union, cast
 
 from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
+# from jsonpatch import JsonPatch
 from pymongo.errors import ConnectionFailure, OperationFailure
 from xmlschema import XMLSchemaException
 
@@ -115,6 +116,23 @@ class RESTApiHandler:
                             headers=link_headers,
                             content_type="application/json")
 
+    async def _get_data(self, req: Request) -> Dict:
+        """Get the data content from a request.
+
+        :param req: POST/PUT/PATCH request
+        :raises: HTTPBadRequest if request does not have proper JSON data
+        :returns: JSON content of the request
+        """
+        try:
+            content = await req.json()
+            # if content['type']
+            return content
+        except json.decoder.JSONDecodeError as e:
+            reason = ("JSON is not correctly formatted."
+                      f" See: {e}")
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
     async def get_schema_types(self, req: Request) -> Response:
         """Get all possible metadata schema types from database.
 
@@ -190,19 +208,14 @@ class RESTApiHandler:
                       else schema_type)
 
         db_client = req.app['db_client']
+        content: Union[Dict, str]
         operator: Union[Operator, XMLOperator]
         if req.content_type == "multipart/form-data":
             files = await _extract_xml_upload(req, extract_one=True)
             content, _ = files[0]
             operator = XMLOperator(db_client)
         else:
-            try:
-                content = await req.json()
-            except json.decoder.JSONDecodeError as e:
-                reason = ("JSON is not correctly formatted."
-                          f" See: {e}")
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
+            content = await self._get_data(req)
             JSONValidator(content, schema_type).validate
             operator = Operator(db_client)
         accession_id = await operator.create_metadata_object(collection,
@@ -261,19 +274,14 @@ class RESTApiHandler:
                       else schema_type)
 
         db_client = req.app['db_client']
+        content: Union[Dict, str]
         operator: Union[Operator, XMLOperator]
         if req.content_type == "multipart/form-data":
             files = await _extract_xml_upload(req, extract_one=True)
             content, _ = files[0]
             operator = XMLOperator(db_client)
         else:
-            try:
-                content = await req.json()
-            except json.decoder.JSONDecodeError as e:
-                reason = ("JSON is not correctly formatted."
-                          f" See: {e}")
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
+            content = await self._get_data(req)
             JSONValidator(content, schema_type).validate
             operator = Operator(db_client)
         await operator.replace_metadata_object(collection,
@@ -305,13 +313,7 @@ class RESTApiHandler:
             reason = "XML patching is not possible."
             raise web.HTTPUnsupportedMediaType(reason=reason)
         else:
-            try:
-                content = await req.json()
-            except json.decoder.JSONDecodeError as e:
-                reason = ("JSON is not correctly formatted."
-                          f" See: {e}")
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
+            content = await self._get_data(req)
             operator = Operator(db_client)
         await operator.update_metadata_object(collection,
                                               accession_id,
@@ -347,14 +349,7 @@ class RESTApiHandler:
         """
         db_client = req.app['db_client']
         db_service = DBService("folders", db_client)
-        try:
-            content = await req.json()
-        except json.decoder.JSONDecodeError as e:
-            reason = ("JSON is not correctly formatted."
-                      f" See: {e}")
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
+        content = await self._get_data(req)
         try:
             content['folderId'] = self._generate_folder_id()
             insert = await db_service.create("folder", content)
@@ -364,7 +359,7 @@ class RESTApiHandler:
             raise web.HTTPBadRequest(reason=reason)
 
         if not insert:
-            reason = "Inserting file to database failed for some reason."
+            reason = "Inserting folder to database failed for some reason."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         else:
@@ -410,13 +405,7 @@ class RESTApiHandler:
         folder_id = req.match_info['folderId']
         db_client = req.app['db_client']
         db_service = DBService("folders", db_client)
-        try:
-            content = await req.json()
-        except json.decoder.JSONDecodeError as e:
-            reason = ("JSON is not correctly formatted."
-                      f" See: {e}")
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
+        content = await self._get_data(req)
 
         # TODO: Possible formatting of content
         try:
@@ -451,13 +440,7 @@ class RESTApiHandler:
         folder_id = req.match_info['folderId']
         db_client = req.app['db_client']
         db_service = DBService("folders", db_client)
-        try:
-            content = await req.json()
-        except json.decoder.JSONDecodeError as e:
-            reason = ("JSON is not correctly formatted."
-                      f" See: {e}")
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
+        content = await self._get_data(req)
 
         # TODO: Possible formatting of content
         try:
