@@ -431,6 +431,8 @@ class RESTApiHandler:
     async def update_folder(self, req: Request) -> Response:
         """Update object folder with a specific folder id.
 
+        Utilizes JSON Patch operations specified at: http://jsonpatch.com/
+
         :param req: PATCH request
         :raises: HTTP 400 if something fails during processing the request
         :returns: JSON response containing folder ID for updated folder
@@ -440,22 +442,26 @@ class RESTApiHandler:
         db_service = DBService("folders", db_client)
         await self._check_folder_exists(db_service, folder_id)
 
+        # Generate JSON Patch operations from the request data
         content = await self._get_data(req)
         allowed_keys = ['name', 'description', 'metadata_objects']
-        if any([i not in allowed_keys for i in content]):
-            reason = "Request contains data that cannot be updated to folder."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
+        patch_ops = [{'op': 'test', 'path': '/folderId', 'value': folder_id}]
+        for i in content:
+            if i not in allowed_keys:
+                reason = (f"Request contains '{i}' key that cannot be "
+                          "updated to folders.")
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+            else:
+                op = {'op': 'replace', 'path': '/' + i, 'value': content[i]}
+                patch_ops.append(op)
+        patch = JsonPatch(patch_ops)
 
-        patch = JsonPatch([
-            {'op': 'test', 'path': '/folderId', 'value': folder_id},
-            # TBC
-        ])
         try:
+            folder = await db_service.read("folder", folder_id)
+            upd_content = patch.apply(folder)
             update_success = await db_service.update("folder", folder_id,
-                                                     content)
-            # sanity_check = await self.db_service.read("folder",
-            #                                           folder_id)
+                                                     upd_content)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting folder: {error}"
             LOG.error(reason)

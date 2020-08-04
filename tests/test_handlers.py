@@ -565,9 +565,34 @@ class HandlersTestCase(AioHTTPTestCase):
         data = {"bad_data": []}
         response = await self.client.patch("/folders/FOL12345678", json=data)
         self.assertEqual(response.status, 400)
+        self.MockedDbService().exists.assert_called_once()
         json_resp = await response.json()
-        reason = "Request contains data that cannot be updated to folder."
+        reason = ("Request contains 'bad_data' key that cannot be "
+                  "updated to folders.")
         self.assertEqual(reason, json_resp['detail'])
+
+    @unittest_run_loop
+    async def test_update_folder_passes(self):
+        """Test that folder would update with correct keys."""
+        self.MockedDbService().exists.return_value = futurized(True)
+        folder = {"folderId": self.folder_id,
+                  "name": "test",
+                  "description": "test folder",
+                  "metadata_objects": []}
+        data = {"name": "test2",
+                "description": "still a test folder",
+                "metadata_objects": ["now with an object"]}
+        self.MockedDbService().read.return_value = futurized(folder)
+        self.MockedDbService().update.return_value = futurized(True)
+
+        response = await self.client.patch("/folders/FOL12345678", json=data)
+        self.MockedDbService().exists.assert_called_once()
+        self.MockedDbService().read.assert_called_once()
+        self.MockedDbService().update.assert_called_once()
+        self.assertEqual(response.status, 200)
+        json_resp = await response.json()
+        # self.assertEqual(json_resp['detail'], self.folder_id)
+        self.assertEqual(json_resp['folderId'], self.folder_id)
 
     @unittest_run_loop
     async def test_folder_deletion_is_called(self):
@@ -575,5 +600,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.MockedDbService().exists.return_value = futurized(True)
         self.MockedDbService().delete.return_value = futurized(True)
         response = await self.client.delete("/folders/FOL12345678")
+        self.MockedDbService().exists.assert_called_once()
         self.MockedDbService().delete.assert_called_once()
         self.assertEqual(response.status, 204)
