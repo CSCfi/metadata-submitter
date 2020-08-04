@@ -431,6 +431,7 @@
                             "title": "Expected Base Call Table",
                             "type": "array",
                             "items": {
+                                "type": "object",
                                 "properties": {
                                     "baseCall": {
                                         "type": "string"

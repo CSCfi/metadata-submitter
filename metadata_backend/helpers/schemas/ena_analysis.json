@@ -127,26 +127,21 @@
                     "type": "array",
                     "title": "sequence",
                     "items": {
-                        "anyOf": [
-                            {
-                                "type": "object",
-                                "title": "first anyOf",
-                                "required": [
-                                    "accessionId"
-                                ],
-                                "additionalProperties": true,
-                                "properties": {
-                                    "label": {
-                                        "type": "string",
-                                        "title": "label"
-                                    },
-                                    "accessionId": {
-                                        "type": "string",
-                                        "title": "accessionId"
-                                    }
-                                }
+                        "type": "object",
+                        "required": [
+                            "accessionId"
+                        ],
+                        "additionalProperties": true,
+                        "properties": {
+                            "label": {
+                                "type": "string",
+                                "title": "label"
+                            },
+                            "accessionId": {
+                                "type": "string",
+                                "title": "accessionId"
                             }
-                        ]
+                        }
                     }
                 }
             }
@@ -412,29 +407,24 @@
                             "title": "sequence",
                             "additionalItems": true,
                             "items": {
-                                "anyOf": [
-                                    {
-                                        "type": "object",
-                                        "title": "first anyOf",
-                                        "required": [
-                                            "accessionId"
-                                        ],
-                                        "properties": {
-                                            "label": {
-                                                "type": "string",
-                                                "title": "label"
-                                            },
-                                            "refname": {
-                                                "type": "string",
-                                                "title": "refname"
-                                            },
-                                            "accessionId": {
-                                                "type": "string",
-                                                "title": "accessionId"
-                                            }
-                                        }
+                                "type": "object",
+                                "required": [
+                                    "accessionId"
+                                ],
+                                "properties": {
+                                    "label": {
+                                        "type": "string",
+                                        "title": "label"
+                                    },
+                                    "refname": {
+                                        "type": "string",
+                                        "title": "refname"
+                                    },
+                                    "accessionId": {
+                                        "type": "string",
+                                        "title": "accessionId"
                                     }
-                                ]
+                                }
                             }
                         }
                     }
