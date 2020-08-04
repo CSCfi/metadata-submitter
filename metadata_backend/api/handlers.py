@@ -407,13 +407,14 @@ class RESTApiHandler:
         folder_id = req.match_info['folderId']
         db_client = req.app['db_client']
         db_service = DBService("folders", db_client)
-        content = await self._get_data(req)
         await self._check_folder_exists(db_service, folder_id)
+        content = await self._get_data(req)
 
-        # TODO: Possible formatting of content
         try:
-            replace_success = await db_service.replace("folder", folder_id,
-                                                       content)
+            find_by_id = {"folderId": folder_id}
+            replace_success = (
+                await db_service.database["folder"].replace_one(find_by_id,
+                                                                content))
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting folder: {error}"
             LOG.error(reason)
