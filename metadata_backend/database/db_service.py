@@ -74,10 +74,10 @@ class DBService:
 
     @auto_reconnect
     async def exists(self, collection: str, id: str) -> bool:
-        """Check object or folder exists by its generated id.
+        """Check object or folder exists by its generated ID.
 
         :param collection: Collection where document should be searched from
-        :param accession_id: Accession id of the document to be searched
+        :param accession_id: ID of the document or folder to be searched
         :returns: True if exists and False if it does not
         """
         id_key = "folderId" if collection == "folder" else "accessionId"
@@ -89,10 +89,10 @@ class DBService:
 
     @auto_reconnect
     async def read(self, collection: str, id: str) -> Dict:
-        """Find object or folder by its generated id.
+        """Find object or folder by its generated ID.
 
         :param collection: Collection where document should be searched from
-        :param id: Accession id of the document or folder id of the folder
+        :param id: ID of the document or folder to be searched
         :returns: First document matching the accession_id
         """
         id_key = "folderId" if collection == "folder" else "accessionId"
@@ -147,17 +147,17 @@ class DBService:
         return result.acknowledged
 
     @auto_reconnect
-    async def delete(self, collection: str,
-                     accession_id: str) -> bool:
-        """Delete object by its accessionId.
+    async def delete(self, collection: str, id: str) -> bool:
+        """Delete object or folder by its generated ID.
 
         :param collection: Collection where document should be searched from
-        :param accession_id: Accession id for object to be updated
+        :param id: ID for object or folder to be deleted
         :returns: True if operation was successful
         """
-        find_by_id = {"accessionId": accession_id}
+        id_key = "folderId" if collection == "folder" else "accessionId"
+        find_by_id = {id_key: id}
         result = await self.database[collection].delete_one(find_by_id)
-        LOG.debug(f"DB doc deleted for {accession_id}.")
+        LOG.debug(f"DB doc deleted for {id}.")
         return result.acknowledged
 
     def query(self, collection: str, query: Dict) -> AsyncIOMotorCursor:

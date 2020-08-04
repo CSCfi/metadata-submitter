@@ -557,3 +557,12 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 200)
         json_resp = await response.json()
         self.assertEqual(folder, json_resp)
+
+    @unittest_run_loop
+    async def test_folder_deletion_is_called(self):
+        """Test that folder would be deleted."""
+        self.MockedDbService().exists.return_value = futurized(True)
+        self.MockedDbService().delete.return_value = futurized(True)
+        response = await self.client.delete("/folders/FOL12345678")
+        self.MockedDbService().delete.assert_called_once()
+        self.assertEqual(response.status, 204)
