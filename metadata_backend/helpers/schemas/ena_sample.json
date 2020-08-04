@@ -139,7 +139,7 @@
                 }
             }
         },
-        "sampleAtrributes": {
+        "sampleAttributes": {
             "type": "array",
             "title": "Sample Attributes",
             "items": {
