@@ -10,7 +10,7 @@ from typing import Dict, List, Tuple, Union, cast
 
 from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
-# from jsonpatch import JsonPatch
+from jsonpatch import JsonPatch
 from pymongo.errors import ConnectionFailure, OperationFailure
 from xmlschema import XMLSchemaException
 
@@ -243,7 +243,7 @@ class RESTApiHandler:
         """Delete metadata object from database.
 
         :param req: DELETE request
-        :returns: JSON response containing accessionId for submitted object
+        :returns: HTTP No Content response
         """
         schema_type = req.match_info['schema']
         self._check_schema_exists(schema_type)
@@ -345,7 +345,7 @@ class RESTApiHandler:
 
         :param req: POST request
         :raises: HTTP 400 if something fails during processing the request
-        :returns: JSON response containing folder ID for submitted object
+        :returns: JSON response containing folder ID for submitted folder
         """
         db_client = req.app['db_client']
         db_service = DBService("folders", db_client)
@@ -376,6 +376,7 @@ class RESTApiHandler:
         """Get one object folder by its folder id.
 
         :param req: GET request
+        :raises: HTTP 404 if folder not found and 400 if something else fails
         :returns: JSON response containing object folder
         """
         folder_id = req.match_info['folderId']
@@ -400,7 +401,8 @@ class RESTApiHandler:
         """Replace object folder with a specific folder id.
 
         :param req: PUT request
-        :returns: TBD
+        :raises: HTTP 400 if something fails during processing the request
+        :returns: JSON response containing folder ID for replaced folder
         """
         folder_id = req.match_info['folderId']
         db_client = req.app['db_client']
@@ -430,26 +432,36 @@ class RESTApiHandler:
         """Update object folder with a specific folder id.
 
         :param req: PATCH request
-        :returns: TBD
+        :raises: HTTP 400 if something fails during processing the request
+        :returns: JSON response containing folder ID for updated folder
         """
         folder_id = req.match_info['folderId']
         db_client = req.app['db_client']
         db_service = DBService("folders", db_client)
-        content = await self._get_data(req)
         await self._check_folder_exists(db_service, folder_id)
 
-        # TODO: Possible formatting of content
+        content = await self._get_data(req)
+        allowed_keys = ['name', 'description', 'metadata_objects']
+        if any([i not in allowed_keys for i in content]):
+            reason = "Request contains data that cannot be updated to folder."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        patch = JsonPatch([
+            {'op': 'test', 'path': '/folderId', 'value': folder_id},
+            # TBC
+        ])
         try:
             update_success = await db_service.update("folder", folder_id,
                                                      content)
             # sanity_check = await self.db_service.read("folder",
             #                                           folder_id)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting object: {error}"
+            reason = f"Error happened while getting folder: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         if not update_success:
-            reason = "Replacing object to database failed for some reason."
+            reason = "Updating folder to database failed for some reason."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         else:
@@ -462,7 +474,7 @@ class RESTApiHandler:
         """Delete object folder from database.
 
         :param req: DELETE request
-        :returns: TBD
+        :returns: HTTP No Content response
         """
         folder_id = req.match_info['folderId']
         db_client = req.app['db_client']

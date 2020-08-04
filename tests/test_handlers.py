@@ -559,6 +559,17 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(folder, json_resp)
 
     @unittest_run_loop
+    async def test_update_folder_fails_with_bad_data(self):
+        """Test that folder does not update when wrong keys are provided."""
+        self.MockedDbService().exists.return_value = futurized(True)
+        data = {"bad_data": []}
+        response = await self.client.patch("/folders/FOL12345678", json=data)
+        self.assertEqual(response.status, 400)
+        json_resp = await response.json()
+        reason = "Request contains data that cannot be updated to folder."
+        self.assertEqual(reason, json_resp['detail'])
+
+    @unittest_run_loop
     async def test_folder_deletion_is_called(self):
         """Test that folder would be deleted."""
         self.MockedDbService().exists.return_value = futurized(True)
