@@ -102,21 +102,22 @@ class DBService:
                                                         {'_id': False})
 
     @auto_reconnect
-    async def update(self, collection: str, accession_id: str,
+    async def update(self, collection: str, id: str,
                      data_to_be_updated: Dict) -> bool:
         """Update some elements of object by its accessionId.
 
         :param collection: Collection where document should be searched from
-        :param accession_id: Accession id for object to be updated
+        :param id: ID for object or folder to be updated
         :param data_to_be_updated: JSON representing the data that should be
         updated to object, can replace previous fields and add new ones.
         :returns: True if operation was successful
         """
-        find_by_id = {"accessionId": accession_id}
+        id_key = "folderId" if collection == "folder" else "accessionId"
+        find_by_id = {id_key: id}
         update_op = {"$set": data_to_be_updated}
         result = await self.database[collection].update_one(find_by_id,
                                                             update_op)
-        LOG.debug(f"DB doc updated for {accession_id}.")
+        LOG.debug(f"DB doc updated for {id}.")
         return result.acknowledged
 
     @auto_reconnect
