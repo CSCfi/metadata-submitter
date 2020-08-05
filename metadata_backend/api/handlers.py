@@ -397,38 +397,6 @@ class RESTApiHandler:
         return web.Response(body=json.dumps(folder), status=200,
                             content_type="application/json")
 
-    async def replace_folder(self, req: Request) -> Response:
-        """Replace object folder with a specific folder id.
-
-        :param req: PUT request
-        :raises: HTTP 400 if something fails during processing the request
-        :returns: JSON response containing folder ID for replaced folder
-        """
-        folder_id = req.match_info['folderId']
-        db_client = req.app['db_client']
-        db_service = DBService("folders", db_client)
-        await self._check_folder_exists(db_service, folder_id)
-        content = await self._get_data(req)
-
-        try:
-            find_by_id = {"folderId": folder_id}
-            replace_success = (
-                await db_service.database["folder"].replace_one(find_by_id,
-                                                                content))
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting folder: {error}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-        if not replace_success:
-            reason = "Replacing folder to database failed for some reason."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-        else:
-            body = json.dumps({"folderId": folder_id})
-            LOG.info(f"PUT folder with ID {folder_id} was successful.")
-            return web.Response(body=body, status=200,
-                                content_type="application/json")
-
     async def update_folder(self, req: Request) -> Response:
         """Update object folder with a specific folder id.
 
