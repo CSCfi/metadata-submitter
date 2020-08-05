@@ -23,7 +23,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install tox tox-gh-actions
     - name: Black formatting check
-      uses: psf/black@stable
       run: tox -e black
     - name: Flake8 syntax check
       run: tox -e flake8
