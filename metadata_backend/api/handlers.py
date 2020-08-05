@@ -410,19 +410,15 @@ class RESTApiHandler:
         db_service = DBService("folders", db_client)
         await self._check_folder_exists(db_service, folder_id)
 
-        # Generate JSON Patch operations from the request data
-        content = await self._get_data(req)
-        allowed_keys = ['name', 'description', 'metadata_objects']
-        patch_ops = [{'op': 'test', 'path': '/folderId', 'value': folder_id}]
-        for i in content:
-            if i not in allowed_keys:
-                reason = (f"Request contains '{i}' key that cannot be "
-                          "updated to folders.")
+        # Check patch operations in request are valid
+        patch_ops = await self._get_data(req)
+        allowed_paths = ['/name', '/description', '/metadataObjects']
+        for op in patch_ops:
+            if not any([i in op['path'] for i in allowed_paths]):
+                reason = (f"Request contains '{op['path']}' key that cannot be"
+                          " updated to folders.")
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
-            else:
-                op = {'op': 'replace', 'path': '/' + i, 'value': content[i]}
-                patch_ops.append(op)
         patch = JsonPatch(patch_ops)
 
         try:
