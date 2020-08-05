@@ -7,10 +7,10 @@ from unittest.mock import MagicMock, patch
 from aiohttp.web import HTTPBadRequest, HTTPNotFound
 from aiounittest import AsyncTestCase, futurized
 from aiounittest.mock import AsyncMockIterator
+from metadata_backend.api.operators import (FolderOperator, Operator,
+                                            XMLOperator)
 from multidict import MultiDict, MultiDictProxy
 from pymongo.errors import ConnectionFailure
-
-from metadata_backend.api.operators import Operator, XMLOperator
 
 
 class MockCursor(AsyncMockIterator):
@@ -53,6 +53,7 @@ class TestOperators(AsyncTestCase):
         MagicMock.__await__ = lambda x: async_patch().__await__()
         self.client = MagicMock()
         self.accession_id = "EGA123456"
+        self.folder_id = "FOL12345678"
         class_dbservice = "metadata_backend.api.operators.DBService"
         self.patch_dbservice = patch(class_dbservice, spec=True)
         self.MockedDbService = self.patch_dbservice.start()
@@ -61,11 +62,17 @@ class TestOperators(AsyncTestCase):
             return_value=self.accession_id,
             autospec=True)
         self.patch_accession.start()
+        self.patch_folder = patch(
+            "metadata_backend.api.operators.FolderOperator._generate_folder_id",
+            return_value=self.folder_id,
+            autospec=True)
+        self.patch_folder.start()
 
     def tearDown(self):
         """Stop patchers."""
         self.patch_dbservice.stop()
         self.patch_accession.stop()
+        self.patch_folder.stop()
 
     async def test_reading_metadata_works(self):
         """Test json is read from db correctly."""
@@ -460,6 +467,24 @@ class TestOperators(AsyncTestCase):
             await operator.query_metadata_database("sample", {}, 3, 50)
             self.assertEqual(cursor._skip, 100)
             self.assertEqual(cursor._limit, 50)
+
+    async def test_create_folder_works_and_returns_folderId(self):
+        """Test create method for folders work."""
+        operator = FolderOperator(self.client)
+        data = {"name": "test", "description": "test folder"}
+        operator.db_service.create.return_value = futurized(True)
+        folder = await operator.create_folder(data)
+        operator.db_service.create.assert_called_once()
+        self.assertEqual(folder, self.folder_id)
+
+    async def test_query_folders(self):
+        """Test custom skip and limits."""
+        operator = FolderOperator(self.client)
+        cursor = MockCursor([])
+        operator.db_service.query.return_value = cursor
+        folders = await operator.query_folders({})
+        operator.db_service.query.assert_called_once()
+        self.assertEqual(folders, [])
 
 
 if __name__ == '__main__':

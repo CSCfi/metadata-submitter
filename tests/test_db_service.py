@@ -3,11 +3,10 @@ from unittest.mock import MagicMock, patch
 
 from aiounittest import AsyncTestCase, futurized
 from bson import ObjectId
+from metadata_backend.database.db_service import DBService
 from motor.motor_asyncio import AsyncIOMotorCursor
 from pymongo.errors import AutoReconnect, ConnectionFailure
 from pymongo.results import DeleteResult, InsertOneResult, UpdateResult
-
-from metadata_backend.database.db_service import DBService
 
 
 class DatabaseTestCase(AsyncTestCase):
