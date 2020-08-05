@@ -6,7 +6,6 @@ from unittest.mock import patch
 from aiohttp import FormData, web
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
 from aiounittest import futurized
-
 from metadata_backend.helpers.schema_loader import SchemaNotFoundException
 from metadata_backend.server import init
 
