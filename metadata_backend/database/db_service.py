@@ -77,7 +77,7 @@ class DBService:
         """Check object or folder exists by its generated ID.
 
         :param collection: Collection where document should be searched from
-        :param accession_id: ID of the document or folder to be searched
+        :param id: ID of the object or folder to be searched
         :returns: True if exists and False if it does not
         """
         id_key = "folderId" if collection == "folder" else "accessionId"
@@ -92,7 +92,7 @@ class DBService:
         """Find object or folder by its generated ID.
 
         :param collection: Collection where document should be searched from
-        :param id: ID of the document or folder to be searched
+        :param id: ID of the object or folder to be searched
         :returns: First document matching the accession_id
         """
         id_key = "folderId" if collection == "folder" else "accessionId"
