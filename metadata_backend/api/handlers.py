@@ -125,7 +125,6 @@ class RESTApiHandler:
         """
         try:
             content = await req.json()
-            # if content['type']
             return content
         except json.decoder.JSONDecodeError as e:
             reason = ("JSON is not correctly formatted."
