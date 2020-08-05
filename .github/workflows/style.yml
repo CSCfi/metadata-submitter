@@ -26,5 +26,3 @@ jobs:
       run: tox -e flake8
     - name: Type hints check
       run: tox -e mypy
-    - name: Do Isort check
-      run: tox -e isort
