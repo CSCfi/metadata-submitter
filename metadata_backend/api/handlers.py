@@ -1,8 +1,6 @@
 """Handle HTTP methods for server."""
 import json
 import mimetypes
-import secrets
-import string
 from collections import Counter
 from math import ceil
 from pathlib import Path
@@ -11,17 +9,15 @@ from typing import Dict, List, Tuple, Union, cast
 from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
 from jsonpatch import JsonPatch
-from pymongo.errors import ConnectionFailure, OperationFailure
 from xmlschema import XMLSchemaException
 
 from ..conf.conf import schema_types
-from ..database.db_service import DBService, auto_reconnect
 from ..helpers.logger import LOG
 from ..helpers.parser import XMLToJSONParser
 from ..helpers.schema_loader import (JSONSchemaLoader, SchemaNotFoundException,
                                      XMLSchemaLoader)
 from ..helpers.validator import JSONValidator, XMLValidator
-from .operators import Operator, XMLOperator
+from .operators import FolderOperator, Operator, XMLOperator
 
 
 class RESTApiHandler:
@@ -323,7 +319,6 @@ class RESTApiHandler:
         return web.Response(body=body, status=200,
                             content_type="application/json")
 
-    @auto_reconnect
     async def get_folders(self, req: Request) -> Response:
         """Get all possible object folders from database.
 
@@ -331,9 +326,8 @@ class RESTApiHandler:
         :returns: JSON list of folders available for the user
         """
         db_client = req.app['db_client']
-        db_service = DBService("folders", db_client)
-        cursor = db_service.query("folder", {})
-        folders = [folder async for folder in cursor]
+        operator = FolderOperator(db_client)
+        folders = await operator.query_folders({})
         body = json.dumps({"folders": folders})
         LOG.info(f"GET folders. Retrieved {len(folders)} folders.")
         return web.Response(body=body, status=200,
@@ -343,33 +337,19 @@ class RESTApiHandler:
         """Save object folder to database.
 
         :param req: POST request
-        :raises: HTTP 400 if something fails during processing the request
         :returns: JSON response containing folder ID for submitted folder
         """
         db_client = req.app['db_client']
-        db_service = DBService("folders", db_client)
         content = await self._get_data(req)
-        try:
-            content['folderId'] = self._generate_folder_id()
-            insert = await db_service.create("folder", content)
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while inserting folder: {error}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        if not insert:
-            reason = "Inserting folder to database failed for some reason."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-        else:
-            body = json.dumps({"folderId": content['folderId']})
-            url = f"{req.scheme}://{req.host}{req.path}"
-            location_headers = {"Location": f"{url}/{content['folderId']}"}
-            LOG.info(f"POST new folder with folder ID {content['folderId']} "
-                     "was successful.")
-            return web.Response(body=body, status=201,
-                                headers=location_headers,
-                                content_type="application/json")
+        operator = FolderOperator(db_client)
+        folder = await operator.create_folder(content)
+        body = json.dumps({"folderId": folder})
+        url = f"{req.scheme}://{req.host}{req.path}"
+        location_headers = {"Location": f"{url}/{folder}"}
+        LOG.info(f"POST new folder with ID {folder} was successful.")
+        return web.Response(body=body, status=201,
+                            headers=location_headers,
+                            content_type="application/json")
 
     async def get_folder(self, req: Request) -> Response:
         """Get one object folder by its folder id.
@@ -380,26 +360,14 @@ class RESTApiHandler:
         """
         folder_id = req.match_info['folderId']
         db_client = req.app['db_client']
-        db_service = DBService("folders", db_client)
-        try:
-            folder = await db_service.read("folder", folder_id)
-            if not folder:
-                reason = f"Folder with id {folder_id} not found."
-                LOG.error(reason)
-                raise web.HTTPNotFound(reason=reason)
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting folder: {error}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        LOG.info(f"GET folder with folder ID {folder_id}.")
+        operator = FolderOperator(db_client)
+        folder = await operator.read_folder(folder_id)
+        LOG.info(f"GET folder with folder ID {folder_id} was successful.")
         return web.Response(body=json.dumps(folder), status=200,
                             content_type="application/json")
 
-    async def update_folder(self, req: Request) -> Response:
+    async def patch_folder(self, req: Request) -> Response:
         """Update object folder with a specific folder id.
-
-        Utilizes JSON Patch operations specified at: http://jsonpatch.com/
 
         :param req: PATCH request
         :raises: HTTP 400 if something fails during processing the request
@@ -407,8 +375,6 @@ class RESTApiHandler:
         """
         folder_id = req.match_info['folderId']
         db_client = req.app['db_client']
-        db_service = DBService("folders", db_client)
-        await self._check_folder_exists(db_service, folder_id)
 
         # Check patch operations in request are valid
         patch_ops = await self._get_data(req)
@@ -419,26 +385,14 @@ class RESTApiHandler:
                           " updated to folders.")
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
-        patch = JsonPatch(patch_ops)
 
-        try:
-            folder = await db_service.read("folder", folder_id)
-            upd_content = patch.apply(folder)
-            update_success = await db_service.update("folder", folder_id,
-                                                     upd_content)
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting folder: {error}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-        if not update_success:
-            reason = "Updating folder to database failed for some reason."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-        else:
-            body = json.dumps({"folderId": folder_id})
-            LOG.info(f"PATCH folder with ID {folder_id} was successful.")
-            return web.Response(body=body, status=200,
-                                content_type="application/json")
+        patch = JsonPatch(patch_ops)
+        operator = FolderOperator(db_client)
+        folder = await operator.update_folder(folder_id, patch)
+        body = json.dumps({"folderId": folder})
+        LOG.info(f"PATCH folder with ID {folder} was successful.")
+        return web.Response(body=body, status=200,
+                            content_type="application/json")
 
     async def delete_folder(self, req: Request) -> Response:
         """Delete object folder from database.
@@ -448,35 +402,10 @@ class RESTApiHandler:
         """
         folder_id = req.match_info['folderId']
         db_client = req.app['db_client']
-        db_service = DBService("folders", db_client)
-        await self._check_folder_exists(db_service, folder_id)
-        try:
-            delete_success = await db_service.delete("folder", folder_id)
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while deleting folder: {error}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-        if not delete_success:
-            reason = "Deleting for {folder_id} from database failed."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-        else:
-            LOG.info(f"DELETE folder with ID {folder_id} was successful.")
-            return web.Response(status=204)
-
-    def _generate_folder_id(self) -> str:
-        """Generate random folder id."""
-        sequence = ''.join(secrets.choice(string.digits) for i in range(8))
-        LOG.debug("Generated folder ID.")
-        return f"FOL{sequence}"
-
-    async def _check_folder_exists(self, db: DBService, id: str) -> None:
-        """Check the existance of a folder by its id in the database."""
-        exists = await db.exists("folder", id)
-        if not exists:
-            reason = (f"Folder with id {id} was not found.")
-            LOG.error(reason)
-            raise web.HTTPNotFound(reason=reason)
+        operator = FolderOperator(db_client)
+        folder = await operator.delete_folder(folder_id)
+        LOG.info(f"DELETE folder with ID {folder} was successful.")
+        return web.Response(status=204)
 
 
 class SubmissionAPIHandler:
