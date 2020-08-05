@@ -44,7 +44,6 @@ async def init() -> web.Application:
         web.get('/folders', rest_handler.get_folders),
         web.post('/folders', rest_handler.post_folder),
         web.get('/folders/{folderId}', rest_handler.get_folder),
-        web.put('/folders/{folderId}', rest_handler.replace_folder),
         web.patch('/folders/{folderId}', rest_handler.update_folder),
         web.delete('/folders/{folderId}', rest_handler.delete_folder),
         web.post('/submit', submission_handler.submit),
