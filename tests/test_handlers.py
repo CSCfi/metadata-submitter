@@ -562,12 +562,12 @@ class HandlersTestCase(AioHTTPTestCase):
     async def test_update_folder_fails_with_bad_data(self):
         """Test that folder does not update when wrong keys are provided."""
         self.MockedDbService().exists.return_value = futurized(True)
-        data = {"bad_data": []}
+        data = [{"op": "add", "path": "/objects"}]
         response = await self.client.patch("/folders/FOL12345678", json=data)
         self.assertEqual(response.status, 400)
         self.MockedDbService().exists.assert_called_once()
         json_resp = await response.json()
-        reason = ("Request contains 'bad_data' key that cannot be "
+        reason = ("Request contains '/objects' key that cannot be "
                   "updated to folders.")
         self.assertEqual(reason, json_resp['detail'])
 
@@ -579,9 +579,7 @@ class HandlersTestCase(AioHTTPTestCase):
                   "name": "test",
                   "description": "test folder",
                   "metadata_objects": []}
-        data = {"name": "test2",
-                "description": "still a test folder",
-                "metadata_objects": ["now with an object"]}
+        data = [{"op": "replace", "path": "/name", "value": "test2"}]
         self.MockedDbService().read.return_value = futurized(folder)
         self.MockedDbService().update.return_value = futurized(True)
 
