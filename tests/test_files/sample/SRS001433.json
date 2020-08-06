@@ -1,0 +1,51 @@
+{
+  "centerName": "HapMap",
+  "alias": "NA18758",
+  "identifiers": {
+    "primaryId": "SRS001433",
+    "externalId": {
+      "namespace": "BioSample",
+      "value": "SAMN00000985"
+    },
+    "submitterId": {
+      "namespace": "HapMap",
+      "value": "NA18758"
+    }
+  },
+  "title": "HapMap sample from Homo sapiens",
+  "sampleName": {
+    "taxonId": 9606,
+    "scientificName": "Homo sapiens"
+  },
+  "description": "Human HapMap individual NA18758",
+  "sampleLinks": {
+    "urlLinks": [
+      {
+        "label": "DNA source",
+        "url": "http://ccr.coriell.org/Sections/Collections/NHGRI/hapmap.aspx?PgId=266"
+      }
+    ]
+  },
+  "sampleAttributes": [
+    {
+      "tag": "population",
+      "value": "CHB"
+    },
+    {
+      "tag": "Coriell plate",
+      "value": "1"
+    },
+    {
+      "tag": "Coriell cell culture ID",
+      "value": "N/A"
+    },
+    {
+      "tag": "HapMap sample ID",
+      "value": "NA18758"
+    },
+    {
+      "tag": "BioSampleModel",
+      "value": "HapMap"
+    }
+  ]
+}

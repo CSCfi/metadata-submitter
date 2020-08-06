@@ -1,0 +1,150 @@
+{
+    "title": "Sample",
+    "definitions": {
+        "xrefLink": {
+            "$id": "#/definitions/xrefLink",
+            "type": "array",
+            "title": "XRef Link",
+            "items": {
+                "type": "object",
+                "required": [
+                    "db",
+                    "id"
+                ],
+                "properties": {
+                    "db": {
+                        "type": "string",
+                        "title": "DataBase"
+                    },
+                    "id": {
+                        "type": "string",
+                        "title": "Associated accession ID"
+                    }
+                }
+            }
+        },
+        "urlLink": {
+            "$id": "#/definitions/urlLink",
+            "type": "array",
+            "title": "URL Links",
+            "items": {
+                "type": "object",
+                "required": [
+                    "label",
+                    "url"
+                ],
+                "properties": {
+                    "label": {
+                        "description": "Text label to display for the link.",
+                        "title": "Label",
+                        "type": "string"
+                    },
+                    "url": {
+                        "description": "The internet service link (http(s), ftp) etc.",
+                        "type": "string",
+                        "title": "URL",
+                        "pattern": "^(https?|ftp)://"
+                    }
+                }
+            }
+        },
+        "entrezLink": {
+            "$id": "#/definitions/entrezLink",
+            "type": "array",
+            "title": "Entrez Link",
+            "items": {
+                "type": "object",
+                "required": [
+                    "db"
+                ],
+                "properties": {
+                    "db": {
+                        "description": "NCBI controlled vocabulary of permitted cross references. Please see http://www.ncbi.nlm.nih.gov/entrez/eutils/einfo.fcgi? .",
+                        "title": "DataBase",
+                        "type": "string"
+                    },
+                    "label": {
+                        "description": "How to label the link.",
+                        "title": "Label",
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "sampleAttribute": {
+            "$id": "#/definitions/sampleAttribute",
+            "type": "object",
+            "title": "sample Attribute",
+            "description": "tag title and its associated value (description)",
+            "required": [
+                "tag",
+                "value"
+            ],
+            "properties": {
+                "tag": {
+                    "type": "string",
+                    "title": "Tag title"
+                },
+                "value": {
+                    "type": "string",
+                    "title": "Description"
+                }
+            }
+        }
+    },
+    "type": "object",
+    "required": [
+        "sampleName"
+    ],
+    "properties": {
+        "sampleName": {
+            "title": "Sample Title",
+            "description": "Short text that can be used to call out sample records in search results or in displays.",
+            "type": "object",
+            "properties": {
+                "taxonId": {
+                    "type": "integer",
+                    "description": "NCBI Taxonomy Identifier. This is appropriate for individual organisms and some environmental samples.",
+                    "title": "Taxon ID"
+                },
+                "scientificName": {
+                    "title": "Scientific Name",
+                    "description": "Scientific name of sample that distinguishes its taxonomy.  Please use a name or synonym that is tracked in the INSDC Taxonomy database. Also, this field can be used to confirm the TAXON_ID setting.",
+                    "type": "string"
+                },
+                "commonName": {
+                    "title": "Common Name",
+                    "description": "GenBank common name of the organism.  Examples: human, mouse.",
+                    "type": "string"
+                }
+            }
+        },
+        "description": {
+            "title": "Sample Description",
+            "description": "More extensive free-form description of the sample.",
+            "type": "string"
+        },
+        "sampleLinks": {
+            "type": "object",
+            "title": "Sample Links",
+            "properties": {
+                "xrefLinks": {
+                    "$ref": "#/definitions/xrefLink"
+                },
+                "entrezLinks": {
+                    "$ref": "#/definitions/entrezLink"
+                },
+                "urlLinks": {
+                    "$ref": "#/definitions/urlLink"
+                }
+            }
+        },
+        "sampleAttributes": {
+            "type": "array",
+            "title": "Sample Attributes",
+            "items": {
+                "$ref": "#/definitions/sampleAttribute"
+            }
+        }
+    }
+}
