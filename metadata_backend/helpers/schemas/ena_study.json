@@ -14,11 +14,11 @@
                 "properties": {
                     "db": {
                         "type": "string",
-                        "title": "DataBase"
+                        "title": "Database"
                     },
                     "id": {
                         "type": "string",
-                        "title": "Associated accession ID"
+                        "title": "Associated accession Id"
                     }
                 }
             }
@@ -26,7 +26,7 @@
         "urlLink": {
             "$id": "#/definitions/urlLink",
             "type": "array",
-            "title": "URL Links",
+            "title": "URL Link",
             "items": {
                 "type": "object",
                 "required": [
@@ -35,19 +35,15 @@
                 ],
                 "properties": {
                     "label": {
-                        "description": "Text label to display for the link.",
-                        "title": "Label",
-                        "type": "string"
                     },
                     "url": {
-                        "description": "The internet service link (http(s), ftp) etc.",
                         "type": "string",
                         "title": "URL",
+                        "description": "The internet service link (http(s), ftp) etc.",
                         "pattern": "^(https?|ftp)://"
                     }
                 }
             }
-            
         },
         "entrezLink": {
             "$id": "#/definitions/entrezLink",
@@ -61,7 +57,7 @@
                 "properties": {
                     "db": {
                         "description": "NCBI controlled vocabulary of permitted cross references. Please see http://www.ncbi.nlm.nih.gov/entrez/eutils/einfo.fcgi? .",
-                        "title": "DataBase",
+                        "title": "Database",
                         "type": "string"
                     },
                     "label": {
@@ -75,8 +71,8 @@
         "studyAttribute": {
             "$id": "#/definitions/studyAttribute",
             "type": "object",
-            "title": "Add study attribute",
-            "description": "tag title and its associated value (description)",
+            "title": "Study Attribute",
+            "description": "Tag title and its associated value",
             "required": [
                 "tag",
                 "value"
