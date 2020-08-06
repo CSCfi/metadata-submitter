@@ -7,10 +7,12 @@ from unittest.mock import MagicMock, patch
 from aiohttp.web import HTTPBadRequest, HTTPNotFound
 from aiounittest import AsyncTestCase, futurized
 from aiounittest.mock import AsyncMockIterator
+from jsonpatch import JsonPatch
 from multidict import MultiDict, MultiDictProxy
 from pymongo.errors import ConnectionFailure
 
-from metadata_backend.api.operators import Operator, XMLOperator
+from metadata_backend.api.operators import (FolderOperator, Operator,
+                                            XMLOperator)
 
 
 class MockCursor(AsyncMockIterator):
@@ -53,6 +55,11 @@ class TestOperators(AsyncTestCase):
         MagicMock.__await__ = lambda x: async_patch().__await__()
         self.client = MagicMock()
         self.accession_id = "EGA123456"
+        self.folder_id = "FOL12345678"
+        self.test_folder = {"folderId": self.folder_id,
+                            "name": "test",
+                            "description": "test folder",
+                            "metadata_objects": []}
         class_dbservice = "metadata_backend.api.operators.DBService"
         self.patch_dbservice = patch(class_dbservice, spec=True)
         self.MockedDbService = self.patch_dbservice.start()
@@ -61,11 +68,18 @@ class TestOperators(AsyncTestCase):
             return_value=self.accession_id,
             autospec=True)
         self.patch_accession.start()
+        self.patch_folder = patch(
+            ("metadata_backend.api.operators.FolderOperator."
+             "_generate_folder_id"),
+            return_value=self.folder_id,
+            autospec=True)
+        self.patch_folder.start()
 
     def tearDown(self):
         """Stop patchers."""
         self.patch_dbservice.stop()
         self.patch_accession.stop()
+        self.patch_folder.stop()
 
     async def test_reading_metadata_works(self):
         """Test json is read from db correctly."""
@@ -175,7 +189,7 @@ class TestOperators(AsyncTestCase):
             await operator.replace_metadata_object("study", accession, {})
 
     async def test_json_update_passes_and_returns_accessionId(self):
-        """Test replace method for json works."""
+        """Test update method for json works."""
         accession = "EGA123456"
         data = {"centerName": "GEOM",
                 "alias": "GSE10967"}
@@ -352,7 +366,7 @@ class TestOperators(AsyncTestCase):
                     self.assertEqual(acc, self.accession_id)
 
     async def test_deleting_metadata_deletes_json_and_xml(self):
-        """Test xml is read from db correctly."""
+        """Test metadata is deleted."""
         operator = Operator(self.client)
         operator.db_service.db_client = self.client
         operator.db_service.exists.return_value = futurized(True)
@@ -362,7 +376,7 @@ class TestOperators(AsyncTestCase):
         operator.db_service.delete.assert_called_with("sample", "EGA123456")
 
     async def test_deleting_metadata_delete_raises(self):
-        """Test xml is read from db correctly."""
+        """Test error raised with delete."""
         operator = Operator(self.client)
         operator.db_service.db_client = self.client
         operator.db_service.exists.return_value = futurized(False)
@@ -460,6 +474,77 @@ class TestOperators(AsyncTestCase):
             await operator.query_metadata_database("sample", {}, 3, 50)
             self.assertEqual(cursor._skip, 100)
             self.assertEqual(cursor._limit, 50)
+
+    async def test_create_folder_works_and_returns_folderId(self):
+        """Test create method for folders work."""
+        operator = FolderOperator(self.client)
+        data = {"name": "test", "description": "test folder"}
+        operator.db_service.create.return_value = futurized(True)
+        folder = await operator.create_folder(data)
+        operator.db_service.create.assert_called_once()
+        self.assertEqual(folder, self.folder_id)
+
+    async def test_query_folders_empty_list(self):
+        """Test query returns empty list."""
+        operator = FolderOperator(self.client)
+        cursor = MockCursor([])
+        operator.db_service.query.return_value = cursor
+        folders = await operator.query_folders({})
+        operator.db_service.query.assert_called_once()
+        self.assertEqual(folders, [])
+
+    async def test_query_folders_1_item(self):
+        """Test query returns a list with item."""
+        operator = FolderOperator(self.client)
+        cursor = MockCursor([{"name": "folder"}])
+        operator.db_service.query.return_value = cursor
+        folders = await operator.query_folders({})
+        operator.db_service.query.assert_called_once()
+        self.assertEqual(folders, [{"name": "folder"}])
+
+    async def test_reading_foldre_works(self):
+        """Test folder is read from db correctly."""
+        operator = FolderOperator(self.client)
+        operator.db_service.exists.return_value = futurized(True)
+        operator.db_service.read.return_value = futurized(self.test_folder)
+        read_data = await operator.read_folder(self.folder_id)
+        operator.db_service.exists.assert_called_once()
+        operator.db_service.read.assert_called_once_with("folder",
+                                                         self.folder_id)
+        self.assertEqual(read_data, self.test_folder)
+
+    async def test_folder_update_passes_and_returns_id(self):
+        """Test update method for folders works."""
+        patch = JsonPatch([{'op': "add", 'path': "/name", 'value': "test2"}])
+        operator = FolderOperator(self.client)
+        operator.db_service.exists.return_value = futurized(True)
+        operator.db_service.read.return_value = futurized(self.test_folder)
+        operator.db_service.update.return_value = futurized(True)
+        folder = await operator.update_folder(self.test_folder, patch)
+        operator.db_service.exists.assert_called_once()
+        operator.db_service.read.assert_called_once()
+        operator.db_service.update.assert_called_once()
+        self.assertEqual(folder['folderId'], self.folder_id)
+
+    async def test_folder_update_fails_with_bad_patch(self):
+        """Test folder update raises error with improper JSON Patch."""
+        patch = JsonPatch([{'op': "replace", 'path': "nothing"}])
+        operator = FolderOperator(self.client)
+        operator.db_service.exists.return_value = futurized(True)
+        operator.db_service.read.return_value = futurized(self.test_folder)
+        # operator.db_service.update.return_value = futurized(True)
+        with self.assertRaises(HTTPBadRequest):
+            await operator.update_folder(self.test_folder, patch)
+            operator.db_service.exists.assert_called_once()
+            operator.db_service.read.assert_called_once()
+
+    async def test_deleting_folder_passes(self):
+        """Test folder is deleted correctly."""
+        operator = FolderOperator(self.client)
+        operator.db_service.exists.return_value = futurized(True)
+        operator.db_service.delete.return_value = futurized(True)
+        await operator.delete_folder(self.folder_id)
+        operator.db_service.delete.assert_called_with("folder", "FOL12345678")
 
 
 if __name__ == '__main__':
