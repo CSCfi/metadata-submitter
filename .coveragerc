@@ -6,6 +6,7 @@ omit =
     # omit everything in /usr
     /usr/*
     metadata_backend/helpers/logger.py
+    */__init__.py
 
 [report]
 # Regexes for lines to exclude from consideration
@@ -18,6 +19,7 @@ exclude_lines =
     if 0:
     if __name__ == .__main__.:
     if not args:
+    LOG.*
 
 
 ignore_errors = True

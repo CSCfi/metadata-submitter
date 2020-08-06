@@ -1,0 +1,161 @@
+{
+  "alias": "hipsci.rel-2016-01.rnaseq.transcripts.sc-20160209.sample_HPSI0114i-eipl_3",
+  "centerName": "SC",
+  "brokerName": "ENA",
+  "analysisCenter": "SC",
+  "analysisDate": "2016-02-09T10:10:10.0Z",
+  "identifiers": {
+    "primaryId": "ERZ266973",
+    "submitterId": {
+      "namespace": "SC",
+      "value": "hipsci.rel-2016-01.rnaseq.transcripts.sc-20160209.sample_HPSI0114i-eipl_3"
+    }
+  },
+  "title": "HipSci RNA-seq transcripts counts (sample HPSI0114i-eipl_3)",
+  "description": "HipSci RNA-seq abundances of transcripts estimated by kallisto",
+  "studyRef": {
+    "refcenter": "SC",
+    "refname": "HipSci___RNAseq___healthy_volunteers-sc-3302",
+    "accessionId": "ERP007111",
+    "identifiers": {
+      "primaryId": "ERP007111",
+      "submitterId": {
+        "namespace": "SC",
+        "value": "HipSci___RNAseq___healthy_volunteers-sc-3302"
+      }
+    }
+  },
+  "sampleRef": {
+    "label": "HPSI0114i-eipl_3",
+    "refname": "SAMEA2536405",
+    "refcenter": "BioSD",
+    "accessionId": "ERS1148779",
+    "identifiers": {
+      "primaryId": "ERS1148779",
+      "submitterId": {
+        "namespace": "BioSD",
+        "value": "SAMEA2536405"
+      }
+    }
+  },
+  "analysisType": {
+    "processedReads": {
+      "assembly": {
+        "standard": {
+          "refname": "GRCh37",
+          "accessionId": "GCA_000001405.1"
+        }
+      },
+      "sequence": [
+        {
+          "label": "1",
+          "accessionId": "CM000663.1"
+        },
+        {
+          "label": "10",
+          "accessionId": "CM000672.1"
+        },
+        {
+          "label": "11",
+          "accessionId": "CM000673.1"
+        },
+        {
+          "label": "12",
+          "accessionId": "CM000674.1"
+        },
+        {
+          "label": "13",
+          "accessionId": "CM000675.1"
+        },
+        {
+          "label": "14",
+          "accessionId": "CM000676.1"
+        },
+        {
+          "label": "15",
+          "accessionId": "CM000677.1"
+        },
+        {
+          "label": "16",
+          "accessionId": "CM000678.1"
+        },
+        {
+          "label": "17",
+          "accessionId": "CM000679.1"
+        },
+        {
+          "label": "18",
+          "accessionId": "CM000680.1"
+        },
+        {
+          "label": "19",
+          "accessionId": "CM000681.1"
+        },
+        {
+          "label": "2",
+          "accessionId": "CM000664.1"
+        },
+        {
+          "label": "20",
+          "accessionId": "CM000682.1"
+        },
+        {
+          "label": "21",
+          "accessionId": "CM000683.1"
+        },
+        {
+          "label": "22",
+          "accessionId": "CM000684.1"
+        },
+        {
+          "label": "3",
+          "accessionId": "CM000665.1"
+        },
+        {
+          "label": "4",
+          "accessionId": "CM000666.1"
+        },
+        {
+          "label": "5",
+          "accessionId": "CM000667.1"
+        },
+        {
+          "label": "6",
+          "accessionId": "CM000668.1"
+        },
+        {
+          "label": "7",
+          "accessionId": "CM000669.1"
+        },
+        {
+          "label": "8",
+          "accessionId": "CM000670.1"
+        },
+        {
+          "label": "9",
+          "accessionId": "CM000671.1"
+        },
+        {
+          "label": "MT",
+          "accessionId": "J01415.2"
+        },
+        {
+          "label": "X",
+          "accessionId": "CM000685.1"
+        },
+        {
+          "label": "Y",
+          "accessionId": "CM000686.1"
+        }
+      ]
+    }
+  },
+  "files": {
+    "file": {
+      "filename": "ERZ266/ERZ266973/HPSI0114i-eipl_3.GRCh37.75.cdna.kallisto.transcripts.abundance.rnaseq.20160125.tsv",
+      "filetype": "other",
+      "checksumMethod": "MD5",
+      "checksum": "3185384933bd6dd54a5b869336c751df"
+    }
+  }
+}

@@ -1,0 +1,161 @@
+{
+    "title": "DAC - Data Access Committee",
+    "definitions": {
+        "xrefLink": {
+            "$id": "#/definitions/xrefLink",
+            "type": "array",
+            "title": "XRef Link",
+            "items": {
+                "type": "object",
+                "required": [
+                    "db",
+                    "id"
+                ],
+                "properties": {
+                    "db": {
+                        "type": "string",
+                        "title": "DataBase"
+                    },
+                    "id": {
+                        "type": "string",
+                        "title": "Associated accession ID"
+                    }
+                }
+            }
+        },
+        "urlLink": {
+            "$id": "#/definitions/urlLink",
+            "type": "array",
+            "title": "URL Links",
+            "items": {
+                "type": "object",
+                "required": [
+                    "label",
+                    "url"
+                ],
+                "properties": {
+                    "label": {
+                        "description": "Text label to display for the link.",
+                        "title": "Label",
+                        "type": "string"
+                    },
+                    "url": {
+                        "description": "The internet service link (http(s), ftp) etc.",
+                        "type": "string",
+                        "title": "URL",
+                        "pattern": "^(https?|ftp)://"
+                    }
+                }
+            }
+        },
+        "entrezLink": {
+            "$id": "#/definitions/entrezLink",
+            "type": "array",
+            "title": "Entrez Link",
+            "items": {
+                "type": "object",
+                "required": [
+                    "db"
+                ],
+                "properties": {
+                    "db": {
+                        "description": "NCBI controlled vocabulary of permitted cross references. Please see http://www.ncbi.nlm.nih.gov/entrez/eutils/einfo.fcgi? .",
+                        "title": "DataBase",
+                        "type": "string"
+                    },
+                    "label": {
+                        "description": "How to label the link.",
+                        "title": "Label",
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "contact": {
+            "$id": "#/definitions/contact",
+            "type": "object",
+            "required": [
+                "name",
+                "email"
+            ],
+            "properties": {
+                "name": {
+                    "name": "Contact Name",
+                    "description": "Name of contact person for this DAC.",
+                    "type": "string"
+                },
+                "email": {
+                    "title": "Contact Email",
+                    "description": "email of the person to contact.",
+                    "type": "string",
+                    "format": "email"
+                },
+                "telephoneNumber": {
+                    "title": "Contact Telephone Number",
+                    "description": "telephone number of the person to contact.",
+                    "type": "string"
+                },
+                "organisation": {
+                    "title": "Organisation",
+                    "description": "Center or institution name.",
+                    "type": "string"
+                },
+                "mainContact": {
+                    "title": "Main Contact",
+                    "description": "If true then this is the main contact.",
+                    "type": "boolean"
+                }
+            }
+        }
+    },
+    "type": "object",
+    "required": [
+        "contacts"
+    ],
+    "properties": {
+        "contacts": {
+            "type": "array",
+            "title": "Contacts",
+            "items": {
+                "$ref": "#/definitions/contact"
+            },
+            "minItems": 1,
+            "contains": {
+                "allOf": [
+                    {
+                        "$ref": "#/definitions/contact"
+                    },
+                    {
+                        "required": "mainContact",
+                        "properties": {
+                            "mainContact": {
+                                "const": true
+                            }
+                        }
+                    }
+                ]
+            },
+            "maxContains": 1
+        },
+        "title": {
+            "title": "DAC Description",
+            "description": "Short text that can be used to call out DAC records in searches or in displays.",
+            "type": "string"
+        },
+        "dacLinks": {
+            "type": "object",
+            "title": "DAC Links",
+            "properties": {
+                "xrefLinks": {
+                    "$ref": "#/definitions/xrefLink"
+                },
+                "entrezLinks": {
+                    "$ref": "#/definitions/entrezLink"
+                },
+                "urlLinks": {
+                    "$ref": "#/definitions/urlLink"
+                }
+            }
+        }
+    }
+}

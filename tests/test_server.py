@@ -1,9 +1,9 @@
 """Tests for server module."""
 
-import unittest
-from unittest.mock import patch
-from pathlib import Path
 import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 from aiohttp import web
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
@@ -14,15 +14,15 @@ from metadata_backend.server import init, main
 class TestBasicFunctionsApp(unittest.TestCase):
     """Test basic functions from web app."""
 
-    @patch('metadata_backend.server.web')
-    @patch('metadata_backend.server.init')
+    @patch("metadata_backend.server.web")
+    @patch("metadata_backend.server.init")
     def test_main(self, mock_init, mock_webapp):
         """Should start the webapp."""
         main()
         mock_webapp.run_app.assert_called()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
 
 
@@ -43,7 +43,7 @@ class AppTestCase(AioHTTPTestCase):
     async def test_api_routes_are_set(self):
         """Test correct amount of api (no frontend) routes is set."""
         server = await self.get_application()
-        self.assertIs(len(server.router.resources()), 5)
+        self.assertIs(len(server.router.resources()), 10)
 
     @unittest_run_loop
     async def test_frontend_routes_are_set(self):

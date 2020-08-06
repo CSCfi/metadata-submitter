@@ -1,0 +1,275 @@
+{
+    "title": "Policy",
+    "definitions": {
+        "xrefLink": {
+            "$id": "#/definitions/xrefLink",
+            "type": "array",
+            "title": "XRef Link",
+            "items": {
+                "type": "object",
+                "required": [
+                    "db",
+                    "id"
+                ],
+                "properties": {
+                    "db": {
+                        "type": "string",
+                        "title": "DataBase"
+                    },
+                    "id": {
+                        "type": "string",
+                        "title": "Associated accession ID"
+                    }
+                }
+            }
+        },
+        "urlLink": {
+            "$id": "#/definitions/urlLink",
+            "type": "array",
+            "title": "URL Links",
+            "items": {
+                "type": "object",
+                "required": [
+                    "label",
+                    "url"
+                ],
+                "properties": {
+                    "label": {
+                        "description": "Text label to display for the link.",
+                        "title": "Label",
+                        "type": "string"
+                    },
+                    "url": {
+                        "description": "The internet service link (http(s), ftp) etc.",
+                        "type": "string",
+                        "title": "URL",
+                        "pattern": "^(https?|ftp)://"
+                    }
+                }
+            }
+        },
+        "entrezLink": {
+            "$id": "#/definitions/entrezLink",
+            "type": "array",
+            "title": "Entrez Link",
+            "items": {
+                "type": "object",
+                "required": [
+                    "db"
+                ],
+                "properties": {
+                    "db": {
+                        "description": "NCBI controlled vocabulary of permitted cross references. Please see http://www.ncbi.nlm.nih.gov/entrez/eutils/einfo.fcgi? .",
+                        "title": "DataBase",
+                        "type": "string"
+                    },
+                    "label": {
+                        "description": "How to label the link.",
+                        "title": "Label",
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "dataUseType": {
+            "$id": "#/definitions/dataUseType",
+            "type": "object",
+            "title": "Data Use Type",
+            "description": "tag title and its associated value (description)",
+            "required": [
+                "ontology",
+                "code",
+                "version"
+            ],
+            "properties": {
+                "modifier": {
+                    "title": "List of Use Modifiers",
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "modifier": {
+                                "description": "Describes modifiers to the Data Use Restriction",
+                                "title": "Modifier",
+                                "$ref": "#/definitions/xrefLink"
+                            },
+                            "url": {
+                                "type": "string",
+                                "description": "Link to URL describing the Data Use"
+                            }
+                        }
+                    }
+                },
+                "url": {
+                    "type": "string",
+                    "title": "Link to URL describing the Data Use",
+                    "format": "uri"
+                },
+                "ontology": {
+                    "type": "string",
+                    "title": "Ontology abbreviation, e.g. DUO for Data Use Ontology"
+                },
+                "code": {
+                    "type": "string",
+                    "title": "Code for the ontology"
+                },
+                "version": {
+                    "type": "string",
+                    "title": "Data Use Ontology code version"
+                }
+            }
+        },
+        "policyAttribute": {
+            "$id": "#/definitions/policyAttribute",
+            "type": "object",
+            "title": "Policy Attribute",
+            "description": "tag title and its associated value (description)",
+            "required": [
+                "tag",
+                "value"
+            ],
+            "properties": {
+                "tag": {
+                    "type": "string",
+                    "title": "Tag title"
+                },
+                "value": {
+                    "type": "string",
+                    "title": "Description"
+                }
+            }
+        },
+        "reference": {
+            "$id": "#/definitions/reference",
+            "type": "object",
+            "additionaProperties": true,
+            "required": [
+                "accessionId"
+            ],
+            "properties": {
+                "label": {
+                    "type": "string",
+                    "title": "label"
+                },
+                "refname": {
+                    "type": "string",
+                    "title": "refname"
+                },
+                "refcenter": {
+                    "type": "string",
+                    "title": "refcenter"
+                },
+                "accessionId": {
+                    "type": "string",
+                    "title": "accessionId"
+                },
+                "identifiers": {
+                    "type": "object",
+                    "title": "identifiers",
+                    "properties": {
+                        "primaryId": {
+                            "type": "string",
+                            "title": "primaryId"
+                        },
+                        "submitterId": {
+                            "type": "object",
+                            "title": "submitterId",
+                            "required": [
+                                "namespace",
+                                "value"
+                            ],
+                            "additionalProperties": true,
+                            "properties": {
+                                "namespace": {
+                                    "type": "string",
+                                    "title": "namespace"
+                                },
+                                "value": {
+                                    "type": "string",
+                                    "title": "value"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "type": "object",
+    "description": "Describes an object that contains data access policy information.",
+    "required": [
+        "dacRef",
+        "policy"
+    ],
+    "properties": {
+        "title": {
+            "title": "Policy Title",
+            "description": "Short text that can be used to call out data access policies in searches or in displays.",
+            "type": "string"
+        },
+        "dacRef": {
+            "title": "Data Access Committee Identifier (Accession ID or title)",
+            "description": "Identifies the data access committee to which this policy pertains.",
+            "$ref": "#/definitions/reference"
+        },
+        "policy": {
+            "title": "Policy",
+            "description": "Identifies the data access committee to which this policy pertains.",
+            "type": "object",
+            "oneOf": [
+                {
+                    "title": "Policy Text",
+                    "properties": {
+                        "policyText": {
+                            "type": "string",
+                            "title": "Policy Text"
+                        }
+                    },
+                    "required": [
+                        "policyText"
+                    ]
+                },
+                {
+                    "title": "Policy URL",
+                    "properties": {
+                        "policyUrl": {
+                            "type": "string",
+                            "title": "Policy URL",
+                            "format": "uri"
+                        }
+                    },
+                    "required": [
+                        "policyUrl"
+                    ]
+                }
+            ]
+        },
+        "policyLinks": {
+            "type": "object",
+            "title": "Policy Links",
+            "properties": {
+                "xrefLinks": {
+                    "$ref": "#/definitions/xrefLink"
+                },
+                "entrezLinks": {
+                    "$ref": "#/definitions/entrezLink"
+                },
+                "urlLinks": {
+                    "$ref": "#/definitions/urlLink"
+                }
+            }
+        },
+        "dataUses": {
+            "description": "Data use ontologies (DUO) related to the policy",
+            "$ref": "#/definitions/dataUseType",
+            "title": "Data Use"
+        },
+        "policyAtrributes": {
+            "type": "array",
+            "title": "Policy Attributes",
+            "items": {
+                "$ref": "#/definitions/policyAttribute"
+            }
+        }
+    }
+}

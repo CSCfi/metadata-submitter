@@ -1,14 +1,15 @@
 """Tool to parse XML files to JSON."""
 
 import re
+from collections import defaultdict
 from typing import Any, Dict, List, Union
-from xml.etree.ElementTree import ParseError
 
 from aiohttp import web
-from xmlschema import (XMLSchema, XMLSchemaConverter, XMLSchemaException,
-                       XsdElement, XsdType)
+from xmlschema import XMLSchema, XMLSchemaConverter, XMLSchemaException, XsdElement, XsdType
 
-from .schema_loader import SchemaLoader, SchemaNotFoundException
+from .logger import LOG
+from .schema_loader import SchemaNotFoundException, XMLSchemaLoader
+from .validator import JSONValidator, XMLValidator
 
 
 class MetadataXMLConverter(XMLSchemaConverter):
@@ -20,11 +21,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
     https://github.com/enasequence/schema/tree/master/src/main/resources/uk/ac/ebi/ena/sra/schema
     """
 
-    def __init__(self,
-                 namespaces: Any = None,
-                 dict_class: dict = None,
-                 list_class: list = None,
-                 **kwargs: Any) -> None:
+    def __init__(self, namespaces: Any = None, dict_class: dict = None, list_class: list = None, **kwargs: Any) -> None:
         """Initialize converter and settings.
 
         :param namespaces: Map from namespace prefixes to URI.
@@ -33,21 +30,104 @@ class MetadataXMLConverter(XMLSchemaConverter):
         :param list_class: List class to use for decoded data. Default is
         `list`.
         """
-        kwargs.update(attr_prefix='', text_key='', cdata_prefix=None)
-        super(MetadataXMLConverter, self).__init__(
-            namespaces, dict_class, list_class, **kwargs
-        )
+        kwargs.update(attr_prefix="", text_key="", cdata_prefix=None)
+        super(MetadataXMLConverter, self).__init__(namespaces, dict_class, list_class, **kwargs)
+
+    def _to_camel(self, name: str) -> str:
+        """Convert underscore char notation to CamelCase."""
+        _under_regex = re.compile(r"_([a-z])")
+        return _under_regex.sub(lambda x: x.group(1).upper(), name)
+
+    def _flatten(self, data: Any) -> Union[Dict, List, str, None]:
+        links = [
+            "studyLinks",
+            "sampleLinks",
+            "runlinks",
+            "experimentLinks",
+            "analysisLinks",
+            "projectLinks",
+            "policyLinks",
+            "dacLinks",
+            "datasetLinks",
+            "assemblyLinks",
+            "submissionLinks",
+        ]
+
+        attrs = [
+            "studyAttributes",
+            "sampleAttributes",
+            "runAttributes",
+            "experimentAttributes",
+            "analysisAttributes",
+            "projectAttributes",
+            "policyAttributes",
+            "dacAttributes",
+            "datasetAttributes",
+            "assemblyAttributes",
+            "submissionAttributes",
+        ]
+
+        children = self.dict()
+        for key, value, _ in self.map_content(data.content):
+            key = self._to_camel(key.lower())
+
+            if key in attrs and len(value) == 1:
+                attrs = list(value.values())
+                children[key] = attrs[0] if isinstance(attrs[0], list) else attrs
+                continue
+
+            if "studyType" in key:
+                children[key] = value["existingStudyType"]
+                continue
+
+            if "platform" in key:
+                children[key] = list(value.values())[0]["instrumentModel"]
+                continue
+
+            if "dataBlock" in key:
+                children["files"] = list(value.values())
+                continue
+
+            if "spotDescriptor" in key:
+                children[key] = value["spotDecodeSpec"]
+                continue
+
+            if key in links and len(value) == 1:
+                grp = defaultdict(list)
+                if isinstance(value[key[:-1]], dict):
+                    k = list(value[key[:-1]].keys())[0]
+                    grp[f"{k}s"] = [it for it in value[key[:-1]].values()]
+                else:
+                    for item in value[key[:-1]]:
+                        for k, v in item.items():
+                            grp[f"{k}s"].append(v)
+
+                children[key] = grp
+                continue
+
+            value = self.list() if value is None else value
+            try:
+                children[key].append(value)
+            except KeyError:
+                if isinstance(value, (self.list, list)) and value:
+                    children[key] = self.list([value])
+                elif isinstance(value, (self.dict, dict)) and len(value) == 1 and {} in value.values():
+                    children[key] = list(value.keys())[0]
+                else:
+                    children[key] = value
+            except AttributeError:
+                children[key] = self.list([children[key], value])
+
+        return children
 
     @property
     def lossy(self) -> bool:
         """Define that converter is lossy, xml structure can't be restored."""
         return True
 
-    def element_decode(self,
-                       data: Any,
-                       xsd_element: XsdElement,
-                       xsd_type: XsdType = None,
-                       level: int = 0) -> Union[Dict, List, str]:
+    def element_decode(
+        self, data: Any, xsd_element: XsdElement, xsd_type: XsdType = None, level: int = 0
+    ) -> Union[Dict, List, str, None]:
         """Decode XML to JSON.
 
         Decoding strategy:
@@ -57,62 +137,43 @@ class MetadataXMLConverter(XMLSchemaConverter):
           when there are multiple children with same name - then to list.
         - All "accession" keys are converted to "accesionId", key used by
           this program
-
         Corner cases:
         - If possible, self-closing xml tag is elevated as an attribute to its
           parent, otherwise "true" is added as its value.
         - If there is just one children and it is string, it is appended to
           same dictionary with its parents attributes with "value" as its key.
         - If there is dictionary of object type attributes (e.g.
-          studyAttributes, experimentAttributes), dictionary is replaced with
-          its children, which is a list of those attributes.
+          studyAttributes, experimentAttributes etc.), dictionary is replaced
+          with its children, which is a list of those attributes.
+        - If there is a dictionary type links (e.g studyLinks, sampleLinks
+          etc. ) we group the types of links under an array, thus flattening
+          the structure.
+        - Study type takes the value of its attribute existingStudyType.
+        - Platform data we assign the string value of the instrument Model.
+        - dataBlock has the content of files array to be the same in run
+          and analysis.
+        - spotDescriptor takes the value of its child spotDecodeSpec
         """
-        def _to_camel(name: str) -> str:
-            """Convert underscore char notation to CamelCase."""
-            _under_regex = re.compile(r'_([a-z])')
-            return _under_regex.sub(lambda x: x.group(1).upper(), name)
-
         xsd_type = xsd_type or xsd_element.type
         if xsd_type.simple_type is not None:
-            children = (data.text if data.text is not None
-                        and data.text != '' else None)
+            children = data.text if data.text is not None and data.text != "" else None
             if isinstance(children, str):
                 children = " ".join(children.split())
         else:
-            children = self.dict()
-            for key, value, _ in self.map_content(data.content):
-                key = _to_camel(key.lower())
-                if "Attributes" in key and len(value) == 1:
-                    attrs = list(value.values())
-                    children[key] = (attrs[0] if isinstance(attrs[0], list)
-                                     else attrs)
-                    continue
-                value = self.list() if value is None else value
-                try:
-                    children[key].append(value)
-                except KeyError:
-                    if isinstance(value, (self.list, list)) and value:
-                        children[key] = self.list([value])
-                    elif (isinstance(value, (self.dict, dict))
-                          and len(value) == 1 and {} in value.values()):
-                        children[key] = list(value.keys())[0]
-                    else:
-                        children[key] = value
-                except AttributeError:
-                    children[key] = self.list([children[key], value])
+            children = self._flatten(data)
+
         if data.attributes:
-            tmp_dict = self.dict((_to_camel(key.lower()), value) for key, value
-                                 in self.map_attributes(data.attributes))
-            if "accession" in tmp_dict:
-                tmp_dict["accessionId"] = tmp_dict.pop("accession")
+            tmp = self.dict((self._to_camel(key.lower()), value) for key, value in self.map_attributes(data.attributes))
+            if "accession" in tmp:
+                tmp["accessionId"] = tmp.pop("accession")
             if children is not None:
                 if isinstance(children, dict):
                     for key, value in children.items():
                         value = value if value != {} else "true"
-                        tmp_dict[key] = value
+                        tmp[key] = value
                 else:
-                    tmp_dict["value"] = children
-            return self.dict(tmp_dict)
+                    tmp["value"] = children
+            return self.dict(tmp)
         else:
             return children
 
@@ -123,16 +184,26 @@ class XMLToJSONParser:
     def parse(self, schema_type: str, content: str) -> Dict:
         """Validate xml file and parse it to json.
 
+        We validate resulting JSON against a JSON schema
+        to be sure the resulting content is consistent.
+
         :param schema_type: Schema type to be used
         :param content: XML content to be parsed
         :returns: XML parsed to JSON
+        :raises: HTTPBadRequest if error was raised during validation
         """
         schema = self._load_schema(schema_type)
-        self._validate(content, schema)
-        return schema.to_dict(content,
-                              converter=MetadataXMLConverter,
-                              decimal_type=float,
-                              dict_class=dict)[schema_type.lower()]
+        LOG.info(f"{schema_type} schema loaded.")
+        validator = XMLValidator(schema, content)
+        if not validator.is_valid:
+            reason = "Current request could not be processed" " as the submitted file was not valid"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        result = schema.to_dict(content, converter=MetadataXMLConverter, decimal_type=float, dict_class=dict)[
+            schema_type.lower()
+        ]
+        JSONValidator(result, schema_type.lower()).validate
+        return result
 
     @staticmethod
     def _load_schema(schema_type: str) -> XMLSchema:
@@ -142,26 +213,11 @@ class XMLToJSONParser:
         :returns: Schema instance matching the given schema type
         :raises: HTTPBadRequest if schema wasn't found
         """
-        loader = SchemaLoader()
+        loader = XMLSchemaLoader()
         try:
             schema = loader.get_schema(schema_type)
         except (SchemaNotFoundException, XMLSchemaException) as error:
             reason = f"{error} {schema_type}"
+            LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         return schema
-
-    @staticmethod
-    def _validate(content: str, schema: XMLSchema) -> None:
-        """Validate XML with XMLSchema instance.
-
-        :param content: XML to be validated
-        :param schema: XMLSchema instance that validates XML.
-
-        :raises: HTTPBadRequest if error was raised during validation
-        """
-        try:
-            schema.validate(content)
-        except (ParseError, XMLSchemaException):
-            reason = ("Current request could not be processed"
-                      " as the submitted file was not valid")
-            raise web.HTTPBadRequest(reason=reason)

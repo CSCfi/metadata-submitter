@@ -1,0 +1,38 @@
+{
+  "centerName": "GEO",
+  "alias": "GSE10966",
+  "identifiers": {
+    "primaryId": "SRP000539",
+    "externalId": [
+      {
+        "namespace": "BioProject",
+        "label": "primary",
+        "value": "PRJNA108793"
+      },
+      {
+        "namespace": "GEO",
+        "value": "GSE10966"
+      }
+    ]
+  },
+  "descriptor": {
+    "studyTitle": "Highly integrated epigenome maps in Arabidopsis - whole genome shotgun bisulfite sequencing",
+    "studyType": "Other",
+    "studyAbstract": "Part of a set of highly integrated epigenome maps for Arabidopsis thaliana. Keywords: Illumina high-throughput bisulfite sequencing Overall design: Whole genome shotgun bisulfite sequencing of wildtype Arabidopsis plants (Columbia-0), and met1, drm1 drm2 cmt3, and ros1 dml2 dml3 null mutants using the Illumina Genetic Analyzer.",
+    "centerProjectName": "GSE10966"
+  },
+  "studyLinks": {
+    "xrefLinks": [
+      {
+        "db": "pubmed",
+        "id": "18423832"
+      }
+    ]
+  },
+  "studyAttributes": [
+    {
+      "tag": "parent_bioproject",
+      "value": "PRJNA107265"
+    }
+  ]
+}
