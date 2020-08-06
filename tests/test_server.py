@@ -14,15 +14,15 @@ from metadata_backend.server import init, main
 class TestBasicFunctionsApp(unittest.TestCase):
     """Test basic functions from web app."""
 
-    @patch('metadata_backend.server.web')
-    @patch('metadata_backend.server.init')
+    @patch("metadata_backend.server.web")
+    @patch("metadata_backend.server.init")
     def test_main(self, mock_init, mock_webapp):
         """Should start the webapp."""
         main()
         mock_webapp.run_app.assert_called()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
 
 
