@@ -9,7 +9,6 @@ from aiounittest import futurized
 
 from metadata_backend.helpers.schema_loader import SchemaNotFoundException
 from metadata_backend.server import init
-from tests.test_operators import MockCursor
 
 
 class HandlersTestCase(AioHTTPTestCase):
@@ -45,11 +44,15 @@ class HandlersTestCase(AioHTTPTestCase):
         self.metadata_xml = path_to_xml_file.read_text()
         self.accession_id = "EGA123456"
         self.folder_id = "FOL12345678"
+        self.test_folder = {"folderId": self.folder_id,
+                            "name": "test",
+                            "description": "test folder",
+                            "metadata_objects": []}
 
         class_parser = "metadata_backend.api.handlers.XMLToJSONParser"
         class_operator = "metadata_backend.api.handlers.Operator"
         class_xmloperator = "metadata_backend.api.handlers.XMLOperator"
-        class_dbservice = "metadata_backend.api.handlers.DBService"
+        class_folderoperator = "metadata_backend.api.handlers.FolderOperator"
         operator_config = {'read_metadata_object.side_effect':
                            self.fake_operator_read_metadata_object,
                            'query_metadata_database.side_effect':
@@ -64,29 +67,32 @@ class HandlersTestCase(AioHTTPTestCase):
                               'create_metadata_object.side_effect':
                               self.fake_xmloperator_create_metadata_object,
                               }
+        folderoperator_config = {'create_folder.side_effect':
+                                 self.fake_folderoperator_create_folder,
+                                 'read_folder.side_effect':
+                                 self.fake_folderoperator_read_folder,
+                                 'delete_folder.side_effect':
+                                 self.fake_folderoperator_delete_folder,
+                                 }
         self.patch_parser = patch(class_parser, spec=True)
         self.patch_operator = patch(class_operator, **operator_config,
                                     spec=True)
         self.patch_xmloperator = patch(class_xmloperator, **xmloperator_config,
                                        spec=True)
-        self.patch_dbservice = patch(class_dbservice, spec=True)
-        self.patch_folder = patch(
-            "metadata_backend.api.handlers.RESTApiHandler._generate_folder_id",
-            return_value=self.folder_id,
-            autospec=True)
+        self.patch_folderoperator = patch(class_folderoperator,
+                                          **folderoperator_config,
+                                          spec=True)
         self.MockedParser = self.patch_parser.start()
         self.MockedOperator = self.patch_operator.start()
         self.MockedXMLOperator = self.patch_xmloperator.start()
-        self.MockedDbService = self.patch_dbservice.start()
-        self.patch_folder.start()
+        self.MockedFolderOperator = self.patch_folderoperator.start()
 
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
         self.patch_parser.stop()
         self.patch_operator.stop()
         self.patch_xmloperator.stop()
-        self.patch_dbservice.stop()
-        self.patch_folder.stop()
+        self.patch_folderoperator.stop()
 
     def create_submission_data(self, files):
         """Create request data from pairs of schemas and filenames."""
@@ -127,6 +133,18 @@ class HandlersTestCase(AioHTTPTestCase):
     async def fake_operator_delete_metadata_object(self, schema_type,
                                                    accession_id):
         """Fake delete operation to await nothing."""
+        return await futurized(None)
+
+    async def fake_folderoperator_create_folder(self, content):
+        """Fake create operation to return mocked folderId."""
+        return await futurized(self.folder_id)
+
+    async def fake_folderoperator_read_folder(self, folder_id):
+        """Fake read operation to return mocked folder."""
+        return await futurized(self.test_folder)
+
+    async def fake_folderoperator_delete_folder(self, folder_id):
+        """Fake delete folder to await nothing."""
         return await futurized(None)
 
     @unittest_run_loop
@@ -496,12 +514,11 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_folder_creation_works(self):
         """Test that folder is created and folder ID returned."""
-        self.MockedDbService().create.return_value = futurized(True)
         json_req = {"name": "test",
                     "description": "test folder"}
         response = await self.client.post("/folders", json=json_req)
         json_resp = await response.json()
-        self.MockedDbService().create.assert_called_once()
+        self.MockedFolderOperator().create_folder.assert_called_once()
         self.assertEqual(response.status, 201)
         self.assertEqual(json_resp['folderId'], self.folder_id)
 
@@ -516,33 +533,22 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_get_folders_with_1_folder(self):
         """Test get_folders() endpoint returns list with 1 folder."""
-        folder = [{"folderId": self.folder_id,
-                   "name": "test",
-                   "description": "test folder",
-                   "metadata_objects": []}]
-        self.MockedDbService().query.return_value = MockCursor(folder)
+        self.MockedFolderOperator().query_folders.return_value = (
+            futurized(self.test_folder))
         response = await self.client.get("/folders")
-        self.MockedDbService().query.assert_called_once()
+        self.MockedFolderOperator().query_folders.assert_called_once()
         self.assertEqual(response.status, 200)
-        self.assertEqual(await response.json(), {'folders': folder})
+        self.assertEqual(await response.json(), {'folders': self.test_folder})
 
     @unittest_run_loop
     async def test_get_folders_with_no_folders(self):
         """Test get_folders() endpoint returns empty list."""
-        self.MockedDbService().query.return_value = MockCursor({})
+        self.MockedFolderOperator().query_folders.return_value = (
+            futurized([]))
         response = await self.client.get("/folders")
-        self.MockedDbService().query.assert_called_once()
+        self.MockedFolderOperator().query_folders.assert_called_once()
         self.assertEqual(response.status, 200)
         self.assertEqual(await response.json(), {'folders': []})
-
-    @unittest_run_loop
-    async def test_get_folder_fails(self):
-        """Test 404 error is raised if incorrect folder id is given."""
-        response = await self.client.get("/folders/some_id")
-        self.assertEqual(response.status, 404)
-        json_resp = await response.json()
-        self.assertEqual("Folder with id some_id not found.",
-                         json_resp['detail'])
 
     @unittest_run_loop
     async def test_get_folder_works(self):
@@ -551,9 +557,38 @@ class HandlersTestCase(AioHTTPTestCase):
                   "name": "test",
                   "description": "test folder",
                   "metadata_objects": []}
-        self.MockedDbService().read.return_value = futurized(folder)
         response = await self.client.get("/folders/FOL12345678")
-        self.MockedDbService().read.assert_called_once()
         self.assertEqual(response.status, 200)
+        self.MockedFolderOperator().read_folder.assert_called_once()
         json_resp = await response.json()
         self.assertEqual(folder, json_resp)
+
+    @unittest_run_loop
+    async def test_update_folder_fails_with_wrong_key(self):
+        """Test that folder does not update when wrong keys are provided."""
+        data = [{"op": "add", "path": "/objects"}]
+        response = await self.client.patch("/folders/FOL12345678", json=data)
+        self.assertEqual(response.status, 400)
+        json_resp = await response.json()
+        reason = ("Request contains '/objects' key that cannot be "
+                  "updated to folders.")
+        self.assertEqual(reason, json_resp['detail'])
+
+    @unittest_run_loop
+    async def test_update_folder_passes(self):
+        """Test that folder would update with correct keys."""
+        self.MockedFolderOperator().update_folder.return_value = (
+            futurized(self.folder_id))
+        data = [{"op": "replace", "path": "/name", "value": "test2"}]
+        response = await self.client.patch("/folders/FOL12345678", json=data)
+        self.MockedFolderOperator().update_folder.assert_called_once()
+        self.assertEqual(response.status, 200)
+        json_resp = await response.json()
+        self.assertEqual(json_resp['folderId'], self.folder_id)
+
+    @unittest_run_loop
+    async def test_folder_deletion_is_called(self):
+        """Test that folder would be deleted."""
+        response = await self.client.delete("/folders/FOL12345678")
+        self.MockedFolderOperator().delete_folder.assert_called_once()
+        self.assertEqual(response.status, 204)

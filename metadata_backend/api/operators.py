@@ -8,6 +8,8 @@ from typing import Any, Dict, List, Tuple, Union
 
 from aiohttp import web
 from dateutil.relativedelta import relativedelta
+from jsonpatch import InvalidJsonPatch, JsonPatch, JsonPatchConflict
+from jsonpointer import JsonPointerException
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
 from multidict import MultiDictProxy
 from pymongo.errors import ConnectionFailure, OperationFailure
@@ -138,7 +140,7 @@ class BaseOperator(ABC):
         await self._remove_object_from_db(XMLOperator(db_client),
                                           schema_type,
                                           accession_id)
-        LOG.info(f"removing object with schema {schema_type} from database "
+        LOG.info(f"Removing object with schema {schema_type} from database "
                  f"and accession id: {accession_id}")
 
     async def _insert_formatted_object_to_db(self, schema_type: str,
@@ -603,3 +605,138 @@ class XMLOperator(BaseOperator):
         :returns: XML content
         """
         return data_raw["content"]
+
+
+class FolderOperator:
+    """Operator class for handling database operations of folders.
+
+    Operations are implemented with JSON format.
+    """
+
+    def __init__(self, db_client: AsyncIOMotorClient) -> None:
+        """Init db_service.
+
+        :param db_client: Motor client used for database connections. Should be
+        running on same loop with aiohttp, so needs to be passed from aiohttp
+        Application.
+        """
+        self.db_service = DBService("folders", db_client)
+
+    async def create_folder(self, data: Dict) -> str:
+        """Create new object folder to database.
+
+        :param data: Data to be saved to database
+        :raises: 400 if error occurs during the process
+        :returns: Folder id for the folder inserted to database
+        """
+        folder_id = self._generate_folder_id()
+        data['folderId'] = folder_id
+        try:
+            insert_success = await self.db_service.create("folder", data)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while inserting folder: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        if not insert_success:
+            reason = "Inserting folder to database failed for some reason."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        else:
+            LOG.info(f"Inserting folder with id {folder_id} to database "
+                     "succeeded.")
+            return folder_id
+
+    @auto_reconnect
+    async def query_folders(self, que: Dict) -> List:
+        """Query database based on url query parameters.
+
+        :param que: Dict containing query information
+        :returns: Query result as list
+        """
+        cursor = self.db_service.query("folder", que)
+        folders = [folder async for folder in cursor]
+        return folders
+
+    async def read_folder(self, folder_id: str) -> Dict:
+        """Read object folder from database.
+
+        :param folder_id: Folder ID of the object to read
+        :raises: 400 if reading was not successful
+        :returns: Object folder formatted to JSON
+        """
+        await self._check_folder_exists(self.db_service, folder_id)
+        try:
+            folder = await self.db_service.read("folder", folder_id)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting folder: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        return folder
+
+    async def update_folder(self, folder_id: str, patch: JsonPatch) -> str:
+        """Update object folder from database.
+
+        Utilizes JSON Patch operations specified at: http://jsonpatch.com/
+
+        :param folder_id: ID of folder to update
+        :param patch: JSON Patch operations determined in the request
+        :returns: ID of the folder updated to database
+        """
+        await self._check_folder_exists(self.db_service, folder_id)
+        try:
+            folder = await self.db_service.read("folder", folder_id)
+            upd_content = patch.apply(folder)
+            update_success = await self.db_service.update("folder", folder_id,
+                                                          upd_content)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting folder: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        except (InvalidJsonPatch, JsonPatchConflict,
+                JsonPointerException) as error:
+            reason = f"Error happened while applying JSON Patch: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        if not update_success:
+            reason = "Updating folder to database failed for some reason."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        else:
+            LOG.info(f"Updating folder with id {folder_id} to database "
+                     "succeeded.")
+            return folder_id
+
+    async def delete_folder(self, folder_id: str) -> None:
+        """Delete object folder from database.
+
+        :param folder_id: ID of the folder to delete.
+        :raises: 400 if deleting was not successful
+        """
+        await self._check_folder_exists(self.db_service, folder_id)
+        try:
+            delete_success = await self.db_service.delete("folder", folder_id)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while deleting folder: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        if not delete_success:
+            reason = "Deleting for {folder_id} from database failed."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+    async def _check_folder_exists(self, db: DBService, id: str) -> None:
+        """Check the existance of a folder by its id in the database."""
+        exists = await db.exists("folder", id)
+        if not exists:
+            reason = (f"Folder with id {id} was not found.")
+            LOG.error(reason)
+            raise web.HTTPNotFound(reason=reason)
+
+    def _generate_folder_id(self) -> str:
+        """Generate random folder id."""
+        sequence = ''.join(secrets.choice(string.digits) for i in range(8))
+        LOG.debug("Generated folder ID.")
+        return f"FOL{sequence}"

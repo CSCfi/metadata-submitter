@@ -1,8 +1,6 @@
 """Handle HTTP methods for server."""
 import json
 import mimetypes
-import secrets
-import string
 from collections import Counter
 from math import ceil
 from pathlib import Path
@@ -10,17 +8,16 @@ from typing import Dict, List, Tuple, Union, cast
 
 from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
-from pymongo.errors import ConnectionFailure, OperationFailure
+from jsonpatch import JsonPatch
 from xmlschema import XMLSchemaException
 
 from ..conf.conf import schema_types
-from ..database.db_service import DBService, auto_reconnect
 from ..helpers.logger import LOG
 from ..helpers.parser import XMLToJSONParser
 from ..helpers.schema_loader import (JSONSchemaLoader, SchemaNotFoundException,
                                      XMLSchemaLoader)
 from ..helpers.validator import JSONValidator, XMLValidator
-from .operators import Operator, XMLOperator
+from .operators import FolderOperator, Operator, XMLOperator
 
 
 class RESTApiHandler:
@@ -115,6 +112,22 @@ class RESTApiHandler:
                             headers=link_headers,
                             content_type="application/json")
 
+    async def _get_data(self, req: Request) -> Dict:
+        """Get the data content from a request.
+
+        :param req: POST/PUT/PATCH request
+        :raises: HTTPBadRequest if request does not have proper JSON data
+        :returns: JSON content of the request
+        """
+        try:
+            content = await req.json()
+            return content
+        except json.decoder.JSONDecodeError as e:
+            reason = ("JSON is not correctly formatted."
+                      f" See: {e}")
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
     async def get_schema_types(self, req: Request) -> Response:
         """Get all possible metadata schema types from database.
 
@@ -190,19 +203,14 @@ class RESTApiHandler:
                       else schema_type)
 
         db_client = req.app['db_client']
+        content: Union[Dict, str]
         operator: Union[Operator, XMLOperator]
         if req.content_type == "multipart/form-data":
             files = await _extract_xml_upload(req, extract_one=True)
             content, _ = files[0]
             operator = XMLOperator(db_client)
         else:
-            try:
-                content = await req.json()
-            except json.decoder.JSONDecodeError as e:
-                reason = ("JSON is not correctly formatted."
-                          f" See: {e}")
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
+            content = await self._get_data(req)
             JSONValidator(content, schema_type).validate
             operator = Operator(db_client)
         accession_id = await operator.create_metadata_object(collection,
@@ -230,7 +238,7 @@ class RESTApiHandler:
         """Delete metadata object from database.
 
         :param req: DELETE request
-        :returns: JSON response containing accessionId for submitted object
+        :returns: HTTP No Content response
         """
         schema_type = req.match_info['schema']
         self._check_schema_exists(schema_type)
@@ -261,19 +269,14 @@ class RESTApiHandler:
                       else schema_type)
 
         db_client = req.app['db_client']
+        content: Union[Dict, str]
         operator: Union[Operator, XMLOperator]
         if req.content_type == "multipart/form-data":
             files = await _extract_xml_upload(req, extract_one=True)
             content, _ = files[0]
             operator = XMLOperator(db_client)
         else:
-            try:
-                content = await req.json()
-            except json.decoder.JSONDecodeError as e:
-                reason = ("JSON is not correctly formatted."
-                          f" See: {e}")
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
+            content = await self._get_data(req)
             JSONValidator(content, schema_type).validate
             operator = Operator(db_client)
         await operator.replace_metadata_object(collection,
@@ -305,24 +308,17 @@ class RESTApiHandler:
             reason = "XML patching is not possible."
             raise web.HTTPUnsupportedMediaType(reason=reason)
         else:
-            try:
-                content = await req.json()
-            except json.decoder.JSONDecodeError as e:
-                reason = ("JSON is not correctly formatted."
-                          f" See: {e}")
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
+            content = await self._get_data(req)
             operator = Operator(db_client)
         await operator.update_metadata_object(collection,
                                               accession_id,
                                               content)
         body = json.dumps({"accessionId": accession_id})
-        LOG.info(f"PUT object with accesssion ID {accession_id} "
+        LOG.info(f"PATCH object with accesssion ID {accession_id} "
                  f"in schema {collection} was successful.")
         return web.Response(body=body, status=200,
                             content_type="application/json")
 
-    @auto_reconnect
     async def get_folders(self, req: Request) -> Response:
         """Get all possible object folders from database.
 
@@ -330,9 +326,8 @@ class RESTApiHandler:
         :returns: JSON list of folders available for the user
         """
         db_client = req.app['db_client']
-        db_service = DBService("folders", db_client)
-        cursor = db_service.query("folder", {})
-        folders = [folder async for folder in cursor]
+        operator = FolderOperator(db_client)
+        folders = await operator.query_folders({})
         body = json.dumps({"folders": folders})
         LOG.info(f"GET folders. Retrieved {len(folders)} folders.")
         return web.Response(body=body, status=200,
@@ -342,97 +337,75 @@ class RESTApiHandler:
         """Save object folder to database.
 
         :param req: POST request
-        :raises: HTTP 400 if something fails during processing the request
-        :returns: JSON response containing folder ID for submitted object
+        :returns: JSON response containing folder ID for submitted folder
         """
         db_client = req.app['db_client']
-        db_service = DBService("folders", db_client)
-        try:
-            content = await req.json()
-        except json.decoder.JSONDecodeError as e:
-            reason = ("JSON is not correctly formatted."
-                      f" See: {e}")
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        try:
-            content['folderId'] = self._generate_folder_id()
-            insert = await db_service.create("folder", content)
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while inserting folder: {error}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        if not insert:
-            reason = "Inserting file to database failed for some reason."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-        else:
-            body = json.dumps({"folderId": content['folderId']})
-            url = f"{req.scheme}://{req.host}{req.path}"
-            location_headers = {"Location": f"{url}/{content['folderId']}"}
-            LOG.info(f"POST new folder with folder ID {content['folderId']} "
-                     "was successful.")
-            return web.Response(body=body, status=201,
-                                headers=location_headers,
-                                content_type="application/json")
+        content = await self._get_data(req)
+        operator = FolderOperator(db_client)
+        folder = await operator.create_folder(content)
+        body = json.dumps({"folderId": folder})
+        url = f"{req.scheme}://{req.host}{req.path}"
+        location_headers = {"Location": f"{url}/{folder}"}
+        LOG.info(f"POST new folder with ID {folder} was successful.")
+        return web.Response(body=body, status=201,
+                            headers=location_headers,
+                            content_type="application/json")
 
     async def get_folder(self, req: Request) -> Response:
         """Get one object folder by its folder id.
 
         :param req: GET request
+        :raises: HTTP 404 if folder not found and 400 if something else fails
         :returns: JSON response containing object folder
         """
         folder_id = req.match_info['folderId']
         db_client = req.app['db_client']
-        db_service = DBService("folders", db_client)
-        try:
-            folder = await db_service.read("folder", folder_id)
-            if not folder:
-                reason = f"Folder with id {folder_id} not found."
-                LOG.error(reason)
-                raise web.HTTPNotFound(reason=reason)
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting folder: {error}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        LOG.info(f"GET folder with folder ID {folder_id}.")
+        operator = FolderOperator(db_client)
+        folder = await operator.read_folder(folder_id)
+        LOG.info(f"GET folder with folder ID {folder_id} was successful.")
         return web.Response(body=json.dumps(folder), status=200,
                             content_type="application/json")
 
-    async def replace_folder(self, req: Request) -> Response:
-        """Replace object folder with a specific folder id.
-
-        :param req: PUT request
-        :returns: TBD
-        """
-        # folder_id = req.match_info['folderId']
-        raise web.HTTPNotImplemented
-
-    async def update_folder(self, req: Request) -> Response:
+    async def patch_folder(self, req: Request) -> Response:
         """Update object folder with a specific folder id.
 
         :param req: PATCH request
-        :returns: TBD
+        :raises: HTTP 400 if something fails during processing the request
+        :returns: JSON response containing folder ID for updated folder
         """
-        # folder_id = req.match_info['folderId']
-        raise web.HTTPNotImplemented
+        folder_id = req.match_info['folderId']
+        db_client = req.app['db_client']
+
+        # Check patch operations in request are valid
+        patch_ops = await self._get_data(req)
+        allowed_paths = ['/name', '/description', '/metadataObjects']
+        for op in patch_ops:
+            if not any([i in op['path'] for i in allowed_paths]):
+                reason = (f"Request contains '{op['path']}' key that cannot be"
+                          " updated to folders.")
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+        patch = JsonPatch(patch_ops)
+
+        operator = FolderOperator(db_client)
+        folder = await operator.update_folder(folder_id, patch)
+        body = json.dumps({"folderId": folder})
+        LOG.info(f"PATCH folder with ID {folder} was successful.")
+        return web.Response(body=body, status=200,
+                            content_type="application/json")
 
     async def delete_folder(self, req: Request) -> Response:
         """Delete object folder from database.
 
         :param req: DELETE request
-        :returns: TBD
+        :returns: HTTP No Content response
         """
-        # folder_id = req.match_info['folderId']
-        raise web.HTTPNotImplemented
-
-    def _generate_folder_id(self) -> str:
-        """Generate random folder id."""
-        sequence = ''.join(secrets.choice(string.digits) for i in range(8))
-        LOG.debug("Generated folder ID.")
-        return f"FOL{sequence}"
+        folder_id = req.match_info['folderId']
+        db_client = req.app['db_client']
+        operator = FolderOperator(db_client)
+        folder = await operator.delete_folder(folder_id)
+        LOG.info(f"DELETE folder with ID {folder} was successful.")
+        return web.Response(status=204)
 
 
 class SubmissionAPIHandler:
