@@ -6,13 +6,13 @@ RUN apk add --update \
 
 RUN git clone https://github.com/CSCfi/metadata-submitter-frontend.git
 
-WORKDIR metadata-submitter-frontend
+WORKDIR /metadata-submitter-frontend
 RUN npm install && npm run build
 
 FROM python:3.7-alpine3.12 as BUILD-BACKEND
 
 RUN apk add --update \
-    && apk add --no-cache build-base curl-dev linux-headers bash git musl-dev\
+    && apk add --no-cache build-base curl-dev linux-headers bash git musl-dev libffi-dev \
     && rm -rf /var/cache/apk/*
 
 COPY requirements.txt /root/submitter/requirements.txt
@@ -20,7 +20,7 @@ COPY README.md /root/submitter/README.md
 COPY setup.py /root/submitter/setup.py
 COPY metadata_backend /root/submitter/metadata_backend
 COPY --from=BUILD-FRONTEND /metadata-submitter-frontend/build \
-/root/submitter/metadata_backend/frontend
+    /root/submitter/metadata_backend/frontend
 
 RUN pip install --upgrade pip && \
     pip install -r /root/submitter/requirements.txt && \
