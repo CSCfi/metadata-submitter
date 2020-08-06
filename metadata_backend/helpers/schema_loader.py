@@ -11,7 +11,7 @@ from typing import Any
 
 from xmlschema import XMLSchema
 
-SCHEMAS_ROOT = Path(__file__).parent / 'schemas'
+SCHEMAS_ROOT = Path(__file__).parent / "schemas"
 
 
 class SchemaNotFoundException(Exception):
@@ -19,8 +19,7 @@ class SchemaNotFoundException(Exception):
 
     def __init__(self) -> None:
         """Set up exception message."""
-        Exception.__init__(self,
-                           "The provided schema type could not be found.")
+        Exception.__init__(self, "The provided schema type could not be found.")
 
 
 class SchemaLoader(ABC):
@@ -41,8 +40,7 @@ class SchemaLoader(ABC):
         schema_type = schema_type.lower()
         schema_file = None
         for file in [x for x in self.path.iterdir()]:
-            if (schema_type in file.name
-               and file.name.endswith(self.loader_type)):
+            if schema_type in file.name and file.name.endswith(self.loader_type):
                 schema_file = file
         if not schema_file:
             raise SchemaNotFoundException

@@ -11,6 +11,7 @@ from ..helpers.logger import LOG
 
 def auto_reconnect(db_func: Callable) -> Callable:
     """Auto reconnection decorator."""
+
     @wraps(db_func)
     async def retry(*args: Any, **kwargs: Any) -> Any:
         """Retry given function for many times with increasing interval.
@@ -28,13 +29,15 @@ def auto_reconnect(db_func: Callable) -> Callable:
                 return await db_func(*args, **kwargs)
             except AutoReconnect:
                 if attempt == max_attempts:
-                    message = (f"Connection to database failed after {attempt}"
-                               "tries")
+                    message = f"Connection to database failed after {attempt}" "tries"
                     raise ConnectionFailure(message=message)
-                LOG.error("Connection not successful, trying to reconnect."
-                          f"Reconnection attempt number {attempt}, waiting "
-                          f" for {default_timeout} seconds.")
+                LOG.error(
+                    "Connection not successful, trying to reconnect."
+                    f"Reconnection attempt number {attempt}, waiting "
+                    f" for {default_timeout} seconds."
+                )
                 continue
+
     return retry
 
 
@@ -49,8 +52,7 @@ class DBService:
     automatically.
     """
 
-    def __init__(self, database_name: str,
-                 db_client: AsyncIOMotorClient) -> None:
+    def __init__(self, database_name: str, db_client: AsyncIOMotorClient) -> None:
         """Create service for given database.
 
         Service will have read-write access to given database. Database will be
@@ -83,8 +85,7 @@ class DBService:
         id_key = "folderId" if collection == "folder" else "accessionId"
         find_by_id = {id_key: id}
         LOG.debug(f"DB doc read for {id}.")
-        exists = await self.database[collection].find_one(find_by_id,
-                                                          {'_id': False})
+        exists = await self.database[collection].find_one(find_by_id, {"_id": False})
         return True if exists else False
 
     @auto_reconnect
@@ -98,12 +99,10 @@ class DBService:
         id_key = "folderId" if collection == "folder" else "accessionId"
         find_by_id = {id_key: id}
         LOG.debug(f"DB doc read for {id}.")
-        return await self.database[collection].find_one(find_by_id,
-                                                        {'_id': False})
+        return await self.database[collection].find_one(find_by_id, {"_id": False})
 
     @auto_reconnect
-    async def update(self, collection: str, id: str,
-                     data_to_be_updated: Dict) -> bool:
+    async def update(self, collection: str, id: str, data_to_be_updated: Dict) -> bool:
         """Update some elements of object by its accessionId.
 
         :param collection: Collection where document should be searched from
@@ -115,14 +114,12 @@ class DBService:
         id_key = "folderId" if collection == "folder" else "accessionId"
         find_by_id = {id_key: id}
         update_op = {"$set": data_to_be_updated}
-        result = await self.database[collection].update_one(find_by_id,
-                                                            update_op)
+        result = await self.database[collection].update_one(find_by_id, update_op)
         LOG.debug(f"DB doc updated for {id}.")
         return result.acknowledged
 
     @auto_reconnect
-    async def replace(self, collection: str, accession_id: str,
-                      new_data: Dict) -> bool:
+    async def replace(self, collection: str, accession_id: str, new_data: Dict) -> bool:
         """Replace whole object by its accessionId.
 
         We keep the dateCreated and publishDate dates as these
@@ -138,12 +135,11 @@ class DBService:
         """
         find_by_id = {"accessionId": accession_id}
         old_data = await self.database[collection].find_one(find_by_id)
-        if not (len(new_data) == 2 and new_data['content'].startswith('<')):
-            new_data['dateCreated'] = old_data['dateCreated']
-            if 'publishDate' in old_data:
-                new_data['publishDate'] = old_data['publishDate']
-        result = await self.database[collection].replace_one(find_by_id,
-                                                             new_data)
+        if not (len(new_data) == 2 and new_data["content"].startswith("<")):
+            new_data["dateCreated"] = old_data["dateCreated"]
+            if "publishDate" in old_data:
+                new_data["publishDate"] = old_data["publishDate"]
+        result = await self.database[collection].replace_one(find_by_id, new_data)
         LOG.debug(f"DB doc replaced for {accession_id}.")
         return result.acknowledged
 
@@ -172,7 +168,7 @@ class DBService:
         :returns: Async cursor instance which should be awaited when iterating
         """
         LOG.debug("DB doc query performed.")
-        return self.database[collection].find(query, {'_id': False})
+        return self.database[collection].find(query, {"_id": False})
 
     @auto_reconnect
     async def get_count(self, collection: str, query: Dict) -> int:
