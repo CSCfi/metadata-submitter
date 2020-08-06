@@ -8,7 +8,8 @@ from typing import Any, Dict, List, Tuple, Union
 
 from aiohttp import web
 from dateutil.relativedelta import relativedelta
-from jsonpatch import JsonPatch
+from jsonpatch import JsonPatch, InvalidJsonPatch, JsonPatchConflict
+from jsonpointer import JsonPointerException
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
 from multidict import MultiDictProxy
 from pymongo.errors import ConnectionFailure, OperationFailure
@@ -690,6 +691,12 @@ class FolderOperator:
                                                           upd_content)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting folder: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        except (InvalidJsonPatch, JsonPatchConflict,
+                JsonPointerException) as error:
+            reason = f"Error happened while applying JSON Patch: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
