@@ -5,8 +5,7 @@ from collections import defaultdict
 from typing import Any, Dict, List, Union
 
 from aiohttp import web
-from xmlschema import (XMLSchema, XMLSchemaConverter, XMLSchemaException,
-                       XsdElement, XsdType)
+from xmlschema import XMLSchema, XMLSchemaConverter, XMLSchemaException, XsdElement, XsdType
 
 from .logger import LOG
 from .schema_loader import SchemaNotFoundException, XMLSchemaLoader
@@ -22,11 +21,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
     https://github.com/enasequence/schema/tree/master/src/main/resources/uk/ac/ebi/ena/sra/schema
     """
 
-    def __init__(self,
-                 namespaces: Any = None,
-                 dict_class: dict = None,
-                 list_class: list = None,
-                 **kwargs: Any) -> None:
+    def __init__(self, namespaces: Any = None, dict_class: dict = None, list_class: list = None, **kwargs: Any) -> None:
         """Initialize converter and settings.
 
         :param namespaces: Map from namespace prefixes to URI.
@@ -35,27 +30,42 @@ class MetadataXMLConverter(XMLSchemaConverter):
         :param list_class: List class to use for decoded data. Default is
         `list`.
         """
-        kwargs.update(attr_prefix='', text_key='', cdata_prefix=None)
-        super(MetadataXMLConverter, self).__init__(
-            namespaces, dict_class, list_class, **kwargs
-        )
+        kwargs.update(attr_prefix="", text_key="", cdata_prefix=None)
+        super(MetadataXMLConverter, self).__init__(namespaces, dict_class, list_class, **kwargs)
 
     def _to_camel(self, name: str) -> str:
         """Convert underscore char notation to CamelCase."""
-        _under_regex = re.compile(r'_([a-z])')
+        _under_regex = re.compile(r"_([a-z])")
         return _under_regex.sub(lambda x: x.group(1).upper(), name)
 
     def _flatten(self, data: Any) -> Union[Dict, List, str, None]:
-        links = ['studyLinks', 'sampleLinks', 'runlinks',
-                 'experimentLinks', 'analysisLinks', 'projectLinks',
-                 'policyLinks', 'dacLinks', 'datasetLinks',
-                 'assemblyLinks', 'submissionLinks']
+        links = [
+            "studyLinks",
+            "sampleLinks",
+            "runlinks",
+            "experimentLinks",
+            "analysisLinks",
+            "projectLinks",
+            "policyLinks",
+            "dacLinks",
+            "datasetLinks",
+            "assemblyLinks",
+            "submissionLinks",
+        ]
 
-        attrs = ['studyAttributes', 'sampleAttributes', 'runAttributes',
-                 'experimentAttributes', 'analysisAttributes',
-                 'projectAttributes', 'policyAttributes', 'dacAttributes',
-                 'datasetAttributes', 'assemblyAttributes',
-                 'submissionAttributes']
+        attrs = [
+            "studyAttributes",
+            "sampleAttributes",
+            "runAttributes",
+            "experimentAttributes",
+            "analysisAttributes",
+            "projectAttributes",
+            "policyAttributes",
+            "dacAttributes",
+            "datasetAttributes",
+            "assemblyAttributes",
+            "submissionAttributes",
+        ]
 
         children = self.dict()
         for key, value, _ in self.map_content(data.content):
@@ -63,24 +73,23 @@ class MetadataXMLConverter(XMLSchemaConverter):
 
             if key in attrs and len(value) == 1:
                 attrs = list(value.values())
-                children[key] = (attrs[0] if isinstance(attrs[0], list)
-                                 else attrs)
+                children[key] = attrs[0] if isinstance(attrs[0], list) else attrs
                 continue
 
             if "studyType" in key:
-                children[key] = value['existingStudyType']
+                children[key] = value["existingStudyType"]
                 continue
 
             if "platform" in key:
-                children[key] = list(value.values())[0]['instrumentModel']
+                children[key] = list(value.values())[0]["instrumentModel"]
                 continue
 
             if "dataBlock" in key:
-                children['files'] = list(value.values())
+                children["files"] = list(value.values())
                 continue
 
             if "spotDescriptor" in key:
-                children[key] = value['spotDecodeSpec']
+                children[key] = value["spotDecodeSpec"]
                 continue
 
             if key in links and len(value) == 1:
@@ -102,8 +111,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
             except KeyError:
                 if isinstance(value, (self.list, list)) and value:
                     children[key] = self.list([value])
-                elif (isinstance(value, (self.dict, dict))
-                        and len(value) == 1 and {} in value.values()):
+                elif isinstance(value, (self.dict, dict)) and len(value) == 1 and {} in value.values():
                     children[key] = list(value.keys())[0]
                 else:
                     children[key] = value
@@ -117,11 +125,9 @@ class MetadataXMLConverter(XMLSchemaConverter):
         """Define that converter is lossy, xml structure can't be restored."""
         return True
 
-    def element_decode(self,
-                       data: Any,
-                       xsd_element: XsdElement,
-                       xsd_type: XsdType = None,
-                       level: int = 0) -> Union[Dict, List, str, None]:
+    def element_decode(
+        self, data: Any, xsd_element: XsdElement, xsd_type: XsdType = None, level: int = 0
+    ) -> Union[Dict, List, str, None]:
         """Decode XML to JSON.
 
         Decoding strategy:
@@ -150,16 +156,14 @@ class MetadataXMLConverter(XMLSchemaConverter):
         """
         xsd_type = xsd_type or xsd_element.type
         if xsd_type.simple_type is not None:
-            children = (data.text if data.text is not None
-                        and data.text != '' else None)
+            children = data.text if data.text is not None and data.text != "" else None
             if isinstance(children, str):
                 children = " ".join(children.split())
         else:
             children = self._flatten(data)
 
         if data.attributes:
-            tmp = self.dict((self._to_camel(key.lower()), value) for key, value
-                            in self.map_attributes(data.attributes))
+            tmp = self.dict((self._to_camel(key.lower()), value) for key, value in self.map_attributes(data.attributes))
             if "accession" in tmp:
                 tmp["accessionId"] = tmp.pop("accession")
             if children is not None:
@@ -192,14 +196,12 @@ class XMLToJSONParser:
         LOG.info(f"{schema_type} schema loaded.")
         validator = XMLValidator(schema, content)
         if not validator.is_valid:
-            reason = ("Current request could not be processed"
-                      " as the submitted file was not valid")
+            reason = "Current request could not be processed" " as the submitted file was not valid"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        result = schema.to_dict(content,
-                                converter=MetadataXMLConverter,
-                                decimal_type=float,
-                                dict_class=dict)[schema_type.lower()]
+        result = schema.to_dict(content, converter=MetadataXMLConverter, decimal_type=float, dict_class=dict)[
+            schema_type.lower()
+        ]
         JSONValidator(result, schema_type.lower()).validate
         return result
 

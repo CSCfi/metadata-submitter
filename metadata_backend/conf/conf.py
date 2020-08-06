@@ -56,9 +56,7 @@ def create_db_client() -> AsyncIOMotorClient:
     :returns: Coroutine-based Motor client for Mongo operations
     """
     LOG.debug("initialised DB client")
-    return AsyncIOMotorClient(url,
-                              connectTimeoutMS=connectTimeout,
-                              serverSelectionTimeoutMS=serverTimeout)
+    return AsyncIOMotorClient(url, connectTimeoutMS=connectTimeout, serverSelectionTimeoutMS=serverTimeout)
 
 
 # 2) Load schema types and descriptions from json
@@ -77,26 +75,15 @@ query_map = {
     "studyTitle": "descriptor.studyTitle",
     "studyType": "descriptor.studyType",
     "studyAbstract": "descriptor.studyAbstract",
-    "studyAttributes": {"base": "studyAttributes",
-                        "keys": ["tag", "value"]},
-    "sampleName": {"base": "sampleName",
-                   "keys": ["taxonId", "scientificName",
-                            "commonName"]},
+    "studyAttributes": {"base": "studyAttributes", "keys": ["tag", "value"]},
+    "sampleName": {"base": "sampleName", "keys": ["taxonId", "scientificName", "commonName"]},
     "scientificName": "sampleName.scientificName",
     "fileType": "files.file.filetype",
-    "studyReference": {"base": "studyRef",
-                       "keys": ["accessionId", "refname", "refcenter"]},
-    "sampleReference": {"base": "sampleRef",
-                        "keys": ["accessionId", "label", "refname",
-                                 "refcenter"]},
-    "experimentReference": {"base": "experimentRef",
-                            "keys": ["accessionId", "refname",
-                                     "refcenter"]},
-    "runReference": {"base": "runRef",
-                     "keys": ["accessionId", "refname", "refcenter"]},
-    "analysisReference": {"base": "analysisRef",
-                          "keys": ["accessionId", "refname",
-                                   "refcenter"]},
+    "studyReference": {"base": "studyRef", "keys": ["accessionId", "refname", "refcenter"]},
+    "sampleReference": {"base": "sampleRef", "keys": ["accessionId", "label", "refname", "refcenter"]},
+    "experimentReference": {"base": "experimentRef", "keys": ["accessionId", "refname", "refcenter"]},
+    "runReference": {"base": "runRef", "keys": ["accessionId", "refname", "refcenter"]},
+    "analysisReference": {"base": "analysisRef", "keys": ["accessionId", "refname", "refcenter"]},
 }
 
 
