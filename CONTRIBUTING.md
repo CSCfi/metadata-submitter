@@ -40,14 +40,14 @@ Give your branch a short descriptive name (like the names between the `<>` below
 
 We do optimize for readability, and it would be awesome if you go through the code and see what conventions we've used so far, some are also explained here:
 - Indentation should be 4 *spaces*
-- 80 character limit is almost strict, but can be broken in documentation when hyperlinks go over the limits
-- We follow [pep8](https://www.python.org/dev/peps/pep-0008/) and [pep257](https://www.python.org/dev/peps/pep-0257/) with some small exceptions. You can see the stated exceptions in `tox.ini` configuration file
-- Imports should be sorted according to `isort` guidelines.
+- 120 character limit is almost strict, but can be broken in documentation when
+ hyperlinks go over the limits
+- We use [black](https://github.com/psf/black) code formatter and also check for [pep8](https://www.python.org/dev/peps/pep-0008/) and [pep257](https://www.python.org/dev/peps/pep-0257/) with some small exceptions. You can see the stated exceptions in `tox.ini` configuration file
 - We like to keep things simple, so when possible avoid importing any big libraries.
 - Tools to help you:
-  - Tox is configured to run bunch of tests: flake8, docstrings, isort, missing type hints, mypy.
-  - Tox is also ran in our CI, so you probably want to run tox before each push to this repo
-  - If you like things to happen automagically, you can add pre-commit hook to your git workflow! Hook can be found from [scripts-folder](scripts) and it includes settings for tox and [misspell](https://github.com/client9/misspell)(which is there just for, well, spelling errors).
+  - Tox is configured to run bunch of tests: black, flake8, docstrings, missing type hints, mypy.
+  - Tox is also ran in our CI, so please run tox before each push to this repo
+  - If you like things to happen automagically, you can add pre-commit hook to your git workflow! Hook can be found from [scripts-folder](scripts) and it includes settings for tox and [misspell](https://github.com/client9/misspell) (which is there just for, well, spelling errors).
 
 Thanks,
 CSC developers

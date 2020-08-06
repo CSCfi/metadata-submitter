@@ -3,9 +3,7 @@ import unittest
 
 import xmlschema
 
-from metadata_backend.helpers.schema_loader import (JSONSchemaLoader,
-                                                    SchemaNotFoundException,
-                                                    XMLSchemaLoader)
+from metadata_backend.helpers.schema_loader import JSONSchemaLoader, SchemaNotFoundException, XMLSchemaLoader
 
 
 class TestXMLSchemaLoader(unittest.TestCase):
@@ -22,8 +20,7 @@ class TestXMLSchemaLoader(unittest.TestCase):
         """Test non-existent schemas is reported as error."""
         schema_name = "NULL"
         schemaloader = XMLSchemaLoader()
-        self.assertRaises(SchemaNotFoundException, schemaloader.get_schema,
-                          schema_name)
+        self.assertRaises(SchemaNotFoundException, schemaloader.get_schema, schema_name)
 
 
 class TestJSONSchemaLoader(unittest.TestCase):
@@ -40,9 +37,8 @@ class TestJSONSchemaLoader(unittest.TestCase):
         """Test non-existent schemas is reported as error."""
         schema_name = "NULL"
         schemaloader = JSONSchemaLoader()
-        self.assertRaises(SchemaNotFoundException, schemaloader.get_schema,
-                          schema_name)
+        self.assertRaises(SchemaNotFoundException, schemaloader.get_schema, schema_name)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

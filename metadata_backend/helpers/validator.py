@@ -45,24 +45,22 @@ class XMLValidator:
             # Manually find instance element
             lines = StringIO(self.xml_content).readlines()
             line = lines[error.position[0] - 1]  # line of instance
-            instance = re.sub(r'^.*?<', '<', line)  # strip whitespaces
+            instance = re.sub(r"^.*?<", "<", line)  # strip whitespaces
 
             LOG.info("Submitted file does not not contain valid XML syntax.")
-            return json.dumps({"isValid": False, "detail":
-                              {"reason": reason, "instance": instance}})
+            return json.dumps({"isValid": False, "detail": {"reason": reason, "instance": instance}})
 
         except XMLSchemaValidationError as error:
             # Parse reason and instance from the validation error message
             reason = error.reason
             instance = ElementTree.tostring(error.elem, encoding="unicode")
             # Replace element address in reason with instance element
-            if '<' and '>' in reason:
-                instance_parent = ''.join((instance.split('>')[0], '>'))
-                reason = re.sub("<[^>]*>", instance_parent + ' ', reason)
+            if "<" and ">" in reason:
+                instance_parent = "".join((instance.split(">")[0], ">"))
+                reason = re.sub("<[^>]*>", instance_parent + " ", reason)
 
             LOG.info("Submitted file is not valid against schema.")
-            return json.dumps({"isValid": False, "detail":
-                              {"reason": reason, "instance": instance}})
+            return json.dumps({"isValid": False, "detail": {"reason": reason, "instance": instance}})
 
         except URLError as error:
             reason = f"Faulty file was provided. {error.reason}."
@@ -71,15 +69,15 @@ class XMLValidator:
 
     def _parse_error_reason(self, error: ParseError) -> str:
         """Generate better error reason."""
-        reason = str(error).split(':')[0]
-        position = (str(error).split(':')[1])[1:]
+        reason = str(error).split(":")[0]
+        position = (str(error).split(":")[1])[1:]
         return f"Faulty XML file was given, {reason} at {position}"
 
     @property
     def is_valid(self) -> bool:
         """Quick method for checking validation result."""
         resp = json.loads(self.resp_body)
-        return resp['isValid']
+        return resp["isValid"]
 
 
 def extend_with_default(validator_class: Draft7Validator) -> Draft7Validator:
@@ -89,22 +87,16 @@ def extend_with_default(validator_class: Draft7Validator) -> Draft7Validator:
     """
     validate_properties = validator_class.VALIDATORS["properties"]
 
-    def set_defaults(validator: Draft7Validator,
-                     properties: Dict, instance: Draft7Validator,
-                     schema: str) -> Any:
+    def set_defaults(validator: Draft7Validator, properties: Dict, instance: Draft7Validator, schema: str) -> Any:
         for prop, subschema in properties.items():
             if "default" in subschema:
                 instance.setdefault(prop, subschema["default"])
 
-        for error in validate_properties(
-            validator, properties, instance, schema,
-        ):
+        for error in validate_properties(validator, properties, instance, schema,):
             # Difficult to unit test
             yield error  # pragma: no cover
 
-    return validators.extend(
-        validator_class, {"properties": set_defaults},
-    )
+    return validators.extend(validator_class, {"properties": set_defaults},)
 
 
 DefaultValidatingDraft7Validator = extend_with_default(Draft7Validator)
@@ -133,7 +125,7 @@ class JSONValidator:
         """
         try:
             schema = JSONSchemaLoader().get_schema(self.schema_type)
-            LOG.info('Validated against JSON schema.')
+            LOG.info("Validated against JSON schema.")
             DefaultValidatingDraft7Validator(schema).validate(self.json_data)
         except SchemaNotFoundException as error:
             reason = f"{error} ({self.schema_type})"
@@ -141,14 +133,12 @@ class JSONValidator:
             raise web.HTTPBadRequest(reason=reason)
         except ValidationError as e:
             if len(e.path) > 0:
-                reason = (f"Provided input "
-                          f"does not seem correct for field: '{e.path[0]}'")
+                reason = f"Provided input " f"does not seem correct for field: '{e.path[0]}'"
                 LOG.debug(f"Provided json input: '{e.instance}'")
                 LOG.error(reason)
-                raise web. HTTPBadRequest(reason=reason)
+                raise web.HTTPBadRequest(reason=reason)
             else:
-                reason = (f"Provided input "
-                          f"does not seem correct because: '{e.message}'")
+                reason = f"Provided input " f"does not seem correct because: '{e.message}'"
                 LOG.debug(f"Provided json input: '{e.instance}'")
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
