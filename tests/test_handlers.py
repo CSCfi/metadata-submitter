@@ -563,7 +563,7 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(folder, json_resp)
 
     @unittest_run_loop
-    async def test_update_folder_fails_with_bad_data(self):
+    async def test_update_folder_fails_with_wrong_key(self):
         """Test that folder does not update when wrong keys are provided."""
         data = [{"op": "add", "path": "/objects"}]
         response = await self.client.patch("/folders/FOL12345678", json=data)

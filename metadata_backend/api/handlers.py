@@ -385,8 +385,8 @@ class RESTApiHandler:
                           " updated to folders.")
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
-
         patch = JsonPatch(patch_ops)
+
         operator = FolderOperator(db_client)
         folder = await operator.update_folder(folder_id, patch)
         body = json.dumps({"folderId": folder})
