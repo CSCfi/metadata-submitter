@@ -36,6 +36,6 @@ setup(
         "": ["schemas/*.xsd", "schemas/*.json", "frontend/*", "frontend/static/js/*", "conf/ena_schemas.json"]
     },
     include_package_data=True,
-    entry_points={"console_scripts": ["metadata_submitter=metadata_backend.server:main",],},
-    project_urls={"Source": "https://github.com/CSCfi/metadata_submitter",},
+    entry_points={"console_scripts": ["metadata_submitter=metadata_backend.server:main"]},
+    project_urls={"Source": "https://github.com/CSCfi/metadata_submitter"},
 )
