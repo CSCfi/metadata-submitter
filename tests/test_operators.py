@@ -8,10 +8,11 @@ from aiohttp.web import HTTPBadRequest, HTTPNotFound
 from aiounittest import AsyncTestCase, futurized
 from aiounittest.mock import AsyncMockIterator
 from jsonpatch import JsonPatch
-from metadata_backend.api.operators import (FolderOperator, Operator,
-                                            XMLOperator)
 from multidict import MultiDict, MultiDictProxy
 from pymongo.errors import ConnectionFailure
+
+from metadata_backend.api.operators import (FolderOperator, Operator,
+                                            XMLOperator)
 
 
 class MockCursor(AsyncMockIterator):

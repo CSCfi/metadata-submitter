@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Tuple, Union
 
 from aiohttp import web
 from dateutil.relativedelta import relativedelta
-from jsonpatch import JsonPatch, InvalidJsonPatch, JsonPatchConflict
+from jsonpatch import InvalidJsonPatch, JsonPatch, JsonPatchConflict
 from jsonpointer import JsonPointerException
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
 from multidict import MultiDictProxy
