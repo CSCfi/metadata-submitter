@@ -304,6 +304,7 @@ class RESTApiHandler:
         """
         db_client = req.app["db_client"]
         content = await self._get_data(req)
+        JSONValidator(content, "folders").validate
         operator = FolderOperator(db_client)
         folder = await operator.create_folder(content)
         body = json.dumps({"folderId": folder})

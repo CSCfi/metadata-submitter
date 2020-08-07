@@ -1,0 +1,38 @@
+{
+  "type": "object",
+  "properties": {
+    "folderId": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "metadataObjects": {
+      "type": "array",
+      "items": [
+        {
+          "type": "object",
+          "properties": {
+            "accessionID": {
+              "type": "string"
+            },
+            "schema": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "accessionID",
+            "schema"
+          ]
+        }
+      ]
+    }
+  },
+  "required": [
+    "name",
+    "description",
+  ]
+}
