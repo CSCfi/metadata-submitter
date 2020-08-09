@@ -127,7 +127,7 @@
                         "$ref": "#/definitions/contact"
                     },
                     {
-                        "required": "mainContact",
+                        "required": ["mainContact"],
                         "properties": {
                             "mainContact": {
                                 "const": true

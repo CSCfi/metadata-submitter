@@ -35,6 +35,9 @@
                 ],
                 "properties": {
                     "label": {
+                        "type": "string",
+                        "title": "Label",
+                        "description": "Text label to display for the link."
                     },
                     "url": {
                         "type": "string",
