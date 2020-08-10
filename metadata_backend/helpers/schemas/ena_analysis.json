@@ -282,70 +282,61 @@
         "file": {
             "$id": "#/definitions/file",
             "type": "object",
-            "title": "File details",
+            "title": "File",
             "required": [
-                "file"
+                "filename",
+                "filetype",
+                "checksumMethod",
+                "checksum"
             ],
             "properties": {
-                "file": {
-                    "type": "object",
-                    "title": "file",
-                    "required": [
-                        "filename",
-                        "filetype",
-                        "checksumMethod",
-                        "checksum"
-                    ],
-                    "properties": {
-                        "filename": {
-                            "type": "string",
-                            "title": "Filename"
-                        },
-                        "filetype": {
-                            "type": "string",
-                            "title": "Filetype",
-                            "enum": [
-                                "tab",
-                                "bam",
-                                "bai",
-                                "cram",
-                                "crai",
-                                "vcf",
-                                "vcf_aggregate",
-                                "bcf",
-                                "tabix",
-                                "wig",
-                                "bed",
-                                "gff",
-                                "fasta",
-                                "fastq",
-                                "flatfile",
-                                "chromosome_list",
-                                "sample_list",
-                                "readme_file",
-                                "phenotype_file",
-                                "BioNano_native",
-                                "Kallisto_native",
-                                "agp",
-                                "unlocalised_list",
-                                "info",
-                                "manifest",
-                                "other"
-                            ]
-                        },
-                        "checksumMethod": {
-                            "type": "string",
-                            "title": "Checksum Method",
-                            "enum": [
-                                "MD5",
-                                "SHA256"
-                            ]
-                        },
-                        "checksum": {
-                            "type": "string",
-                            "title": "Checksum"
-                        }
-                    }
+                "filename": {
+                    "type": "string",
+                    "title": "Filename"
+                },
+                "filetype": {
+                    "type": "string",
+                    "title": "Filetype",
+                    "enum": [
+                        "tab",
+                        "bam",
+                        "bai",
+                        "cram",
+                        "crai",
+                        "vcf",
+                        "vcf_aggregate",
+                        "bcf",
+                        "tabix",
+                        "wig",
+                        "bed",
+                        "gff",
+                        "fasta",
+                        "fastq",
+                        "flatfile",
+                        "chromosome_list",
+                        "sample_list",
+                        "readme_file",
+                        "phenotype_file",
+                        "BioNano_native",
+                        "Kallisto_native",
+                        "agp",
+                        "unlocalised_list",
+                        "info",
+                        "manifest",
+                        "other"
+                    ]
+                },
+                "checksumMethod": {
+                    "type": "string",
+                    "title": "Checksum Method",
+                    "enum": [
+                        "MD5",
+                        "SHA256"
+                    ]
+                },
+                "checksum": {
+                    "type": "string",
+                    "title": "Checksum"
                 }
             }
         }
