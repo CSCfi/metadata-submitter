@@ -110,25 +110,6 @@
                     "description": "The LIBRARY_DESCRIPTOR specifies the origin of the material being sequenced and any treatments that the material might have undergone that affect the sequencing result. This specification is needed even if the platform does not require a library construction step per se.",
                     "title": "Library Descriptor",
                     "type": "object",
-                    "if": {
-                        "properties": { "libraryLayout": { "const": "paired" } }
-                    },
-                    "then": {
-                        "required": [
-                            "libraryStrategy",
-                            "librarySelection",
-                            "librarySource",
-                            "nominalLength",
-                            "nominalSdev"
-                        ]
-                    },
-                    "else": {
-                        "required": [
-                            "libraryStrategy",
-                            "librarySelection",
-                            "librarySource"
-                        ]
-                    },
                     "properties": {
                         "libraryName": {
                             "type": "string",
@@ -231,7 +212,10 @@
                         "libraryLayout": {
                             "title": "Library Layout",
                             "type": "string",
-                            "enum": ["single", "paired"]
+                            "enum": [
+                                "single",
+                                "paired"
+                            ]
                         },
                         "nominalLength": {
                             "title": "Nominal Length",
@@ -285,6 +269,29 @@
                             "description": "Free form text describing the protocol by which the sequencing library was constructed.",
                             "type": "string"
                         }
+                    },
+                    "if": {
+                        "properties": {
+                            "libraryLayout": {
+                                "const": "paired"
+                            }
+                        }
+                    },
+                    "then": {
+                        "required": [
+                            "libraryStrategy",
+                            "librarySelection",
+                            "librarySource",
+                            "nominalLength",
+                            "nominalSdev"
+                        ]
+                    },
+                    "else": {
+                        "required": [
+                            "libraryStrategy",
+                            "librarySelection",
+                            "librarySource"
+                        ]
                     }
                 },
                 "spotDescriptor": {
