@@ -215,9 +215,9 @@
         "policy": {
             "title": "Policy",
             "description": "Identifies the data access committee to which this policy pertains.",
-            "type": "object",
             "oneOf": [
                 {
+                    "type": "object",
                     "title": "Policy Text",
                     "properties": {
                         "policyText": {
@@ -230,6 +230,7 @@
                     ]
                 },
                 {
+                    "type": "object",
                     "title": "Policy URL",
                     "properties": {
                         "policyUrl": {
