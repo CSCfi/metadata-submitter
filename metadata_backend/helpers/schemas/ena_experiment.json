@@ -217,10 +217,29 @@
                         "libraryLayout": {
                             "title": "Library Layout",
                             "type": "string",
-                            "enum": [
-                                "paired",
-                                "single"
+                            "oneOf": [
+                                {
+                                    "enum": [
+                                        "single"
+                                    ]
+                                },
+                                {
+                                    "enum": [
+                                        "paired"
+                                    ]
+                                }
                             ]
+                        },
+                        "nominalLength": {
+                            "title": "Nominal Length",
+                            "description": "Nominal Length required if library layout is set to paired",
+                            "type": "number",
+                            "minimum": 0
+                        },
+                        "nominalSdev": {
+                            "title": "Nominal SDEV",
+                            "description": "Nominal SDEV required if library layout is set to paired",
+                            "type": "number"
                         },
                         "targetLoci": {
                             "type": "object",
@@ -262,42 +281,6 @@
                             "title": "Library Construction Protocol",
                             "description": "Free form text describing the protocol by which the sequencing library was constructed.",
                             "type": "string"
-                        }
-                    },
-                    "dependencies": {
-                        "libraryLayout": {
-                            "oneOf": [
-                                {
-                                    "properties": {
-                                        "libraryLayout": {
-                                            "enum": [
-                                                "single"
-                                            ]
-                                        }
-                                    }
-                                },
-                                {
-                                    "properties": {
-                                        "libraryLayout": {
-                                            "enum": [
-                                                "paired"
-                                            ]
-                                        },
-                                        "nominalLength": {
-                                            "title": "Nominal Length",
-                                            "type": "number",
-                                            "minimum": 0
-                                        },
-                                        "nominalSdev": {
-                                            "title": "Nominal SDEV",
-                                            "type": "number"
-                                        }
-                                    },
-                                    "required": [
-                                        "libraryLayout"
-                                    ]
-                                }
-                            ]
                         }
                     }
                 },
