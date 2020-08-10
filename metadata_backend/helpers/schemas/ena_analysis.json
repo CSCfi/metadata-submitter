@@ -145,85 +145,6 @@
                 }
             }
         },
-        "processingType": {
-            "$id": "#/definitions/processingType",
-            "type": "object",
-            "title": "Processing Type",
-            "properties": {
-                "pipeline": {
-                    "title": "Pipeline",
-                    "type": "object",
-                    "required": [
-                        "pipeSection"
-                    ],
-                    "properties": {
-                        "pipeSection": {
-                            "type": "array",
-                            "title": "Pipe Section",
-                            "items": {
-                                "type": "object",
-                                "required": [
-                                    "prevStepIndex"
-                                ],
-                                "properties": {
-                                    "stepIndex": {
-                                        "type": "string",
-                                        "title": "Step Index"
-                                    },
-                                    "prevStepIndex": {
-                                        "oneOf": [
-                                            {
-                                                "type": "string",
-                                                "title": "String"
-                                            },
-                                            {
-                                                "title": "Null value",
-                                                "type": "null"
-                                            }
-                                        ],
-                                        "title": "Prev Step Index"
-                                    },
-                                    "program": {
-                                        "type": "string",
-                                        "title": "Program"
-                                    },
-                                    "version": {
-                                        "type": "string",
-                                        "title": "Version"
-                                    },
-                                    "notes": {
-                                        "type": "string",
-                                        "title": "Notes"
-                                    },
-                                    "sectionName": {
-                                        "type": "string",
-                                        "title": "Section Name"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "directives": {
-                    "type": "object",
-                    "title": "Directives",
-                    "description": "Processing directives tell the Sequence Read Archive how to treat the input data, if any treatment is requested.",
-                    "properties": {
-                        "sampleDemuxDirective": {
-                            "type": "object",
-                            "properties": {
-                                "leaveAsPool": {
-                                    "type": "string"
-                                },
-                                "submitterDemultiplexed": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "reference": {
             "$id": "#/definitions/reference",
             "additionalProperties": true,
@@ -460,11 +381,11 @@
             }
         },
         "files": {
-              "type": "array",
-              "title": "Files",
-              "items": {
-                  "$ref": "#/definitions/file"
-              }
+            "type": "array",
+            "title": "Files",
+            "items": {
+                "$ref": "#/definitions/file"
+            }
         },
         "analysisLinks": {
             "type": "object",
