@@ -173,7 +173,7 @@
         "reference": {
             "$id": "#/definitions/reference",
             "type": "object",
-            "additionaProperties": true,
+            "additionalProperties": true,
             "required": [
                 "accessionId"
             ],
@@ -554,7 +554,7 @@
                 }
             }
         },
-        "runAtrributes": {
+        "runAttributes": {
             "type": "array",
             "title": "Run Attributes",
             "items": {
