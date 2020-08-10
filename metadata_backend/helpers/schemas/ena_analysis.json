@@ -14,11 +14,11 @@
                 "properties": {
                     "db": {
                         "type": "string",
-                        "title": "DataBase"
+                        "title": "Database"
                     },
                     "id": {
                         "type": "string",
-                        "title": "Associated accession ID"
+                        "title": "Associated accession Id"
                     }
                 }
             }
@@ -26,7 +26,7 @@
         "urlLink": {
             "$id": "#/definitions/urlLink",
             "type": "array",
-            "title": "URL Links",
+            "title": "URL Link",
             "items": {
                 "type": "object",
                 "required": [
@@ -35,14 +35,14 @@
                 ],
                 "properties": {
                     "label": {
-                        "description": "Text label to display for the link.",
+                        "type": "string",
                         "title": "Label",
-                        "type": "string"
+                        "description": "Text label to display for the link."
                     },
                     "url": {
-                        "description": "The internet service link (http(s), ftp) etc.",
                         "type": "string",
                         "title": "URL",
+                        "description": "The internet service link (http(s), ftp) etc.",
                         "pattern": "^(https?|ftp)://"
                     }
                 }
@@ -60,7 +60,7 @@
                 "properties": {
                     "db": {
                         "description": "NCBI controlled vocabulary of permitted cross references. Please see http://www.ncbi.nlm.nih.gov/entrez/eutils/einfo.fcgi? .",
-                        "title": "DataBase",
+                        "title": "Database",
                         "type": "string"
                     },
                     "label": {
@@ -94,7 +94,6 @@
         "sequenceType": {
             "$id": "#/definitions/sequenceType",
             "type": "object",
-            "title": "sequenceVariation",
             "required": [
                 "assembly",
                 "sequence"
@@ -102,22 +101,22 @@
             "properties": {
                 "assembly": {
                     "type": "object",
-                    "title": "assembly",
+                    "title": "Assembly",
                     "properties": {
                         "standard": {
                             "type": "object",
-                            "title": "standard",
+                            "title": "Standard",
                             "required": [
                                 "accessionId"
                             ],
                             "properties": {
                                 "refname": {
                                     "type": "string",
-                                    "title": "refname"
+                                    "title": "Reference name"
                                 },
                                 "accessionId": {
                                     "type": "string",
-                                    "title": "accessionId"
+                                    "title": "Accession Id"
                                 }
                             }
                         }
@@ -125,7 +124,7 @@
                 },
                 "sequence": {
                     "type": "array",
-                    "title": "sequence",
+                    "title": "Sequence",
                     "items": {
                         "type": "object",
                         "required": [
@@ -135,90 +134,11 @@
                         "properties": {
                             "label": {
                                 "type": "string",
-                                "title": "label"
+                                "title": "Label"
                             },
                             "accessionId": {
                                 "type": "string",
-                                "title": "accessionId"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "processingType": {
-            "$id": "#/definitions/processingType",
-            "type": "object",
-            "title": "Processing Type",
-            "properties": {
-                "pipeline": {
-                    "title": "Pipeline",
-                    "type": "object",
-                    "required": [
-                        "pipeSection"
-                    ],
-                    "properties": {
-                        "pipeSection": {
-                            "type": "array",
-                            "title": "Pipe Section",
-                            "items": {
-                                "type": "object",
-                                "required": [
-                                    "prevStepIndex"
-                                ],
-                                "properties": {
-                                    "stepIndex": {
-                                        "type": "string",
-                                        "title": "Step Index"
-                                    },
-                                    "prevStepIndex": {
-                                        "oneOf": [
-                                            {
-                                                "title": "string",
-                                                "type": "string"
-                                            },
-                                            {
-                                                "title": "Null value",
-                                                "type": "null"
-                                            }
-                                        ],
-                                        "title": "Prev Step Index"
-                                    },
-                                    "program": {
-                                        "type": "string",
-                                        "title": "Program"
-                                    },
-                                    "version": {
-                                        "type": "string",
-                                        "title": "Version"
-                                    },
-                                    "notes": {
-                                        "type": "string",
-                                        "title": "Notes"
-                                    },
-                                    "sectionName": {
-                                        "type": "string",
-                                        "title": "Section Name"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "directives": {
-                    "type": "object",
-                    "title": "Directives",
-                    "description": "Processing directives tell the Sequence Read Archive how to treat the input data, if any treatment is requested.",
-                    "properties": {
-                        "sampleDemuxDirective": {
-                            "type": "object",
-                            "properties": {
-                                "leaveAsPool": {
-                                    "type": "string"
-                                },
-                                "submitterDemultiplexed": {
-                                    "type": "string"
-                                }
+                                "title": "Accession Id"
                             }
                         }
                     }
@@ -227,7 +147,7 @@
         },
         "reference": {
             "$id": "#/definitions/reference",
-            "additionaProperties": true,
+            "additionalProperties": true,
             "type": "object",
             "required": [
                 "accessionId"
@@ -235,19 +155,19 @@
             "properties": {
                 "label": {
                     "type": "string",
-                    "title": "label"
+                    "title": "Label"
                 },
                 "refname": {
                     "type": "string",
-                    "title": "refname"
+                    "title": "Reference name"
                 },
                 "refcenter": {
                     "type": "string",
-                    "title": "refcenter"
+                    "title": "Reference Center"
                 },
                 "accessionId": {
                     "type": "string",
-                    "title": "accessionId"
+                    "title": "Accession Id"
                 },
                 "identifiers": {
                     "type": "object",
@@ -255,11 +175,11 @@
                     "properties": {
                         "primaryId": {
                             "type": "string",
-                            "title": "primaryId"
+                            "title": "Primary Id"
                         },
                         "submitterId": {
                             "type": "object",
-                            "title": "submitterId",
+                            "title": "Submitter Id",
                             "required": [
                                 "namespace",
                                 "value"
@@ -268,11 +188,11 @@
                             "properties": {
                                 "namespace": {
                                     "type": "string",
-                                    "title": "namespace"
+                                    "title": "Namespace"
                                 },
                                 "value": {
                                     "type": "string",
-                                    "title": "value"
+                                    "title": "Value"
                                 }
                             }
                         }
@@ -280,73 +200,64 @@
                 }
             }
         },
-        "fileType": {
-            "$id": "#/definitions/fileType",
+        "file": {
+            "$id": "#/definitions/file",
             "type": "object",
-            "title": "files",
+            "title": "File",
             "required": [
-                "file"
+                "filename",
+                "filetype",
+                "checksumMethod",
+                "checksum"
             ],
             "properties": {
-                "file": {
-                    "type": "object",
-                    "title": "file",
-                    "required": [
-                        "filename",
-                        "filetype",
-                        "checksumMethod",
-                        "checksum"
-                    ],
-                    "properties": {
-                        "filename": {
-                            "type": "string",
-                            "title": "filename"
-                        },
-                        "filetype": {
-                            "type": "string",
-                            "title": "filetype",
-                            "enum": [
-                                "tab",
-                                "bam",
-                                "bai",
-                                "cram",
-                                "crai",
-                                "vcf",
-                                "vcf_aggregate",
-                                "bcf",
-                                "tabix",
-                                "wig",
-                                "bed",
-                                "gff",
-                                "fasta",
-                                "fastq",
-                                "flatfile",
-                                "chromosome_list",
-                                "sample_list",
-                                "readme_file",
-                                "phenotype_file",
-                                "BioNano_native",
-                                "Kallisto_native",
-                                "agp",
-                                "unlocalised_list",
-                                "info",
-                                "manifest",
-                                "other"
-                            ]
-                        },
-                        "checksumMethod": {
-                            "type": "string",
-                            "title": "checksumMethod",
-                            "enum": [
-                                "MD5",
-                                "SHA256"
-                            ]
-                        },
-                        "checksum": {
-                            "type": "string",
-                            "title": "checksum"
-                        }
-                    }
+                "filename": {
+                    "type": "string",
+                    "title": "Filename"
+                },
+                "filetype": {
+                    "type": "string",
+                    "title": "Filetype",
+                    "enum": [
+                        "tab",
+                        "bam",
+                        "bai",
+                        "cram",
+                        "crai",
+                        "vcf",
+                        "vcf_aggregate",
+                        "bcf",
+                        "tabix",
+                        "wig",
+                        "bed",
+                        "gff",
+                        "fasta",
+                        "fastq",
+                        "flatfile",
+                        "chromosome_list",
+                        "sample_list",
+                        "readme_file",
+                        "phenotype_file",
+                        "BioNano_native",
+                        "Kallisto_native",
+                        "agp",
+                        "unlocalised_list",
+                        "info",
+                        "manifest",
+                        "other"
+                    ]
+                },
+                "checksumMethod": {
+                    "type": "string",
+                    "title": "Checksum Method",
+                    "enum": [
+                        "MD5",
+                        "SHA256"
+                    ]
+                },
+                "checksum": {
+                    "type": "string",
+                    "title": "Checksum"
                 }
             }
         }
@@ -394,17 +305,17 @@
         },
         "analysisType": {
             "type": "object",
-            "title": "Analysis type",
+            "title": "Analysis Type",
             "additionalProperties": true,
             "properties": {
                 "referenceAlignment": {
                     "type": "object",
-                    "title": "referenceAlignment",
+                    "title": "Reference Alignment",
                     "additionalProperties": true,
                     "properties": {
                         "sequence": {
                             "type": "array",
-                            "title": "sequence",
+                            "title": "Sequence",
                             "additionalItems": true,
                             "items": {
                                 "type": "object",
@@ -414,15 +325,15 @@
                                 "properties": {
                                     "label": {
                                         "type": "string",
-                                        "title": "label"
+                                        "title": "Label"
                                     },
                                     "refname": {
                                         "type": "string",
-                                        "title": "refname"
+                                        "title": "Reference Name"
                                     },
                                     "accessionId": {
                                         "type": "string",
-                                        "title": "accessionId"
+                                        "title": "Accession Id"
                                     }
                                 }
                             }
@@ -431,57 +342,50 @@
                 },
                 "sequenceAssembly": {
                     "type": "object",
-                    "title": "sequenceAssembly",
+                    "title": "SequenceAssembly",
                     "properties": {
                         "name": {
                             "type": "string",
-                            "title": "name"
+                            "title": "Name"
                         },
                         "partial": {
                             "type": "boolean",
-                            "title": "partial"
+                            "title": "Partial"
                         },
                         "coverage": {
                             "type": "string",
-                            "title": "coverage"
+                            "title": "Coverage"
                         },
                         "program": {
                             "type": "string",
-                            "title": "program"
+                            "title": "Program"
                         },
                         "platform": {
                             "type": "string",
-                            "title": "platform"
+                            "title": "Platform"
                         },
                         "minGapLength": {
                             "type": "number",
-                            "title": "minGapLength"
+                            "title": "MinGapLength"
                         }
                     }
                 },
                 "sequenceVariation": {
+                    "title": "Sequence Variation",
                     "$ref": "#/definitions/sequenceType"
                 },
                 "processedReads": {
+                    "title": "Processed Reads",
                     "$ref": "#/definitions/sequenceType"
                 }
             }
         },
         "files": {
-            "oneOf": [
-                {
-                    "type": "array",
-                    "title": "files",
-                    "items": {
-                        "$ref": "#/definitions/fileType"
-                    }
-                },
-                {
-                    "type": "object",
-                    "title": "files",
-                    "$ref": "#/definitions/fileType"
-                }
-            ]
+            "type": "array",
+            "title": "Files",
+            "items": {
+                "$ref": "#/definitions/file"
+            }
         },
         "analysisLinks": {
             "type": "object",
@@ -498,7 +402,7 @@
                 }
             }
         },
-        "analysisAtrributes": {
+        "analysisAttributes": {
             "type": "array",
             "title": "Analysis Attributes",
             "items": {

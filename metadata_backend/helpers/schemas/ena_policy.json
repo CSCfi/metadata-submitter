@@ -14,11 +14,11 @@
                 "properties": {
                     "db": {
                         "type": "string",
-                        "title": "DataBase"
+                        "title": "Database"
                     },
                     "id": {
                         "type": "string",
-                        "title": "Associated accession ID"
+                        "title": "Associated accession Id"
                     }
                 }
             }
@@ -26,7 +26,7 @@
         "urlLink": {
             "$id": "#/definitions/urlLink",
             "type": "array",
-            "title": "URL Links",
+            "title": "URL Link",
             "items": {
                 "type": "object",
                 "required": [
@@ -35,14 +35,14 @@
                 ],
                 "properties": {
                     "label": {
-                        "description": "Text label to display for the link.",
+                        "type": "string",
                         "title": "Label",
-                        "type": "string"
+                        "description": "Text label to display for the link."
                     },
                     "url": {
-                        "description": "The internet service link (http(s), ftp) etc.",
                         "type": "string",
                         "title": "URL",
+                        "description": "The internet service link (http(s), ftp) etc.",
                         "pattern": "^(https?|ftp)://"
                     }
                 }
@@ -60,7 +60,7 @@
                 "properties": {
                     "db": {
                         "description": "NCBI controlled vocabulary of permitted cross references. Please see http://www.ncbi.nlm.nih.gov/entrez/eutils/einfo.fcgi? .",
-                        "title": "DataBase",
+                        "title": "Database",
                         "type": "string"
                     },
                     "label": {
@@ -142,7 +142,7 @@
         "reference": {
             "$id": "#/definitions/reference",
             "type": "object",
-            "additionaProperties": true,
+            "additionalProperties": true,
             "required": [
                 "accessionId"
             ],
@@ -215,9 +215,9 @@
         "policy": {
             "title": "Policy",
             "description": "Identifies the data access committee to which this policy pertains.",
-            "type": "object",
             "oneOf": [
                 {
+                    "type": "object",
                     "title": "Policy Text",
                     "properties": {
                         "policyText": {
@@ -230,6 +230,7 @@
                     ]
                 },
                 {
+                    "type": "object",
                     "title": "Policy URL",
                     "properties": {
                         "policyUrl": {
@@ -264,7 +265,7 @@
             "$ref": "#/definitions/dataUseType",
             "title": "Data Use"
         },
-        "policyAtrributes": {
+        "policyAttributes": {
             "type": "array",
             "title": "Policy Attributes",
             "items": {
