@@ -226,7 +226,7 @@
         },
         "reference": {
             "$id": "#/definitions/reference",
-            "additionaProperties": true,
+            "additionalProperties": true,
             "type": "object",
             "required": [
                 "accessionId"
@@ -481,7 +481,7 @@
                 }
             }
         },
-        "analysisAtrributes": {
+        "analysisAttributes": {
             "type": "array",
             "title": "Analysis Attributes",
             "items": {

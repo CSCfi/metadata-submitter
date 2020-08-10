@@ -142,7 +142,7 @@
         "reference": {
             "$id": "#/definitions/reference",
             "type": "object",
-            "additionaProperties": true,
+            "additionalProperties": true,
             "required": [
                 "accessionId"
             ],
@@ -264,7 +264,7 @@
             "$ref": "#/definitions/dataUseType",
             "title": "Data Use"
         },
-        "policyAtrributes": {
+        "policyAttributes": {
             "type": "array",
             "title": "Policy Attributes",
             "items": {

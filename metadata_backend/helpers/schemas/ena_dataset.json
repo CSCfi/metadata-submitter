@@ -94,7 +94,7 @@
         "reference": {
             "$id": "#/definitions/reference",
             "type": "object",
-            "additionaProperties": true,
+            "additionalProperties": true,
             "required": [
                 "accessionId"
             ],
@@ -197,7 +197,7 @@
             "description": "Identifies the runs which are part of this dataset.",
             "$ref": "#/definitions/reference"
         },
-        "anlysisRef": {
+        "analysisRef": {
             "title": "Analysis Identifier (Accession ID or title)",
             "description": "Identifies the data access committee to which this policy pertains.",
             "$ref": "#/definitions/reference"
@@ -217,7 +217,7 @@
                 }
             }
         },
-        "datasetAtrributes": {
+        "datasetAttributes": {
             "type": "array",
             "title": "Dataset Attributes",
             "items": {
