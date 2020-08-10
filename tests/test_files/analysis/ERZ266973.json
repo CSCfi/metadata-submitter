@@ -150,12 +150,12 @@
       ]
     }
   },
-  "files": {
-    "file": {
+  "files": [
+    {
       "filename": "ERZ266/ERZ266973/HPSI0114i-eipl_3.GRCh37.75.cdna.kallisto.transcripts.abundance.rnaseq.20160125.tsv",
       "filetype": "other",
       "checksumMethod": "MD5",
       "checksum": "3185384933bd6dd54a5b869336c751df"
     }
-  }
+  ]
 }
