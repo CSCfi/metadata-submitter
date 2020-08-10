@@ -196,15 +196,15 @@
                 },
                 "identifiers": {
                     "type": "object",
-                    "title": "identifiers",
+                    "title": "Identifiers",
                     "properties": {
                         "primaryId": {
                             "type": "string",
-                            "title": "primaryId"
+                            "title": "Primary Id"
                         },
                         "submitterId": {
                             "type": "object",
-                            "title": "submitterId",
+                            "title": "Submitter Id",
                             "required": [
                                 "namespace",
                                 "value"

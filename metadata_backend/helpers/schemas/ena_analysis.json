@@ -171,7 +171,7 @@
                 },
                 "identifiers": {
                     "type": "object",
-                    "title": "identifiers",
+                    "title": "Identifiers",
                     "properties": {
                         "primaryId": {
                             "type": "string",
