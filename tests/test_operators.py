@@ -57,12 +57,11 @@ class TestOperators(AsyncTestCase):
         self.client = MagicMock()
         self.accession_id = "EGA123456"
         self.folder_id = "FOL12345678"
-        self.test_folder = {
-            "folderId": self.folder_id,
-            "name": "test",
-            "description": "test folder",
-            "metadata_objects": [],
-        }
+        self.test_folder = {"folderId": self.folder_id,
+                            "name": "test",
+                            "description": "test folder",
+                            "published": False,
+                            "metadataObjects": []}
         class_dbservice = "metadata_backend.api.operators.DBService"
         self.patch_dbservice = patch(class_dbservice, spec=True)
         self.MockedDbService = self.patch_dbservice.start()
