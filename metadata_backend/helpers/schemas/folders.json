@@ -8,7 +8,7 @@
   "properties": {
     "folderId": {
       "type": "string",
-      "title": "The id schema"
+      "title": "Folder Id"
     },
     "name": {
       "type": "string",
