@@ -310,6 +310,7 @@
                         },
                         "readSpec": {
                             "type": "object",
+                            "title": "Read Specification",
                             "properties": {
                                 "readIndex": {
                                     "title": "Read Index",
@@ -368,27 +369,34 @@
                                         "type": "object",
                                         "properties": {
                                             "baseCall": {
+                                                "title": "Base Call",
                                                 "type": "string"
                                             },
                                             "readGroupTag": {
+                                                "title": "Read group tag",
                                                 "type": "string"
                                             },
                                             "minMatch": {
+                                                "title": "Min match",
                                                 "type": "number",
                                                 "minimum": 0
                                             },
                                             "maxMisMatch": {
+                                                "title": "Max mismatch",
                                                 "type": "number",
                                                 "minimum": 0
                                             },
                                             "matchEdge": {
+                                                "title": "Match edge",
                                                 "type": "string"
                                             },
                                             "defaultLength": {
+                                                "title": "Default length",
                                                 "type": "number",
                                                 "minimum": 0
                                             },
                                             "baseCoord": {
+                                                "title": "Base coordinate",
                                                 "type": "number",
                                                 "minimum": 0
                                             }
@@ -429,7 +437,7 @@
                                     "prevStepIndex": {
                                         "oneOf": [
                                             {
-                                                "title": "string",
+                                                "title": "String value",
                                                 "type": "string"
                                             },
                                             {
