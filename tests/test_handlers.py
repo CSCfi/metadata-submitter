@@ -42,12 +42,11 @@ class HandlersTestCase(AioHTTPTestCase):
         self.metadata_xml = path_to_xml_file.read_text()
         self.accession_id = "EGA123456"
         self.folder_id = "FOL12345678"
-        self.test_folder = {
-            "folderId": self.folder_id,
-            "name": "test",
-            "description": "test folder",
-            "metadata_objects": [],
-        }
+        self.test_folder = {"folderId": self.folder_id,
+                            "name": "test",
+                            "description": "test folder",
+                            "published": False,
+                            "metadataObjects": []}
 
         class_parser = "metadata_backend.api.handlers.XMLToJSONParser"
         class_operator = "metadata_backend.api.handlers.Operator"
@@ -501,7 +500,8 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_folder_creation_works(self):
         """Test that folder is created and folder ID returned."""
-        json_req = {"name": "test", "description": "test folder"}
+        json_req = {"name": "test",
+                    "description": "test folder"}
         response = await self.client.post("/folders", json=json_req)
         json_resp = await response.json()
         self.MockedFolderOperator().create_folder.assert_called_once()
@@ -509,7 +509,16 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(json_resp["folderId"], self.folder_id)
 
     @unittest_run_loop
-    async def test_folder_creation_with_empty_body(self):
+    async def test_folder_creation_with_missing_data_fails(self):
+        """Test that folder creation fails when missing data in request."""
+        json_req = {"description": "test folder"}
+        response = await self.client.post("/folders", json=json_req)
+        json_resp = await response.json()
+        self.assertEqual(response.status, 400)
+        self.assertIn("'name' is a required property", json_resp['detail'])
+
+    @unittest_run_loop
+    async def test_folder_creation_with_empty_body_fails(self):
         """Test that folder creation fails when no data in request."""
         response = await self.client.post("/folders")
         json_resp = await response.json()
@@ -537,12 +546,11 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_get_folder_works(self):
         """Test folder is returned when correct folder id is given."""
-        folder = {"folderId": self.folder_id, "name": "test", "description": "test folder", "metadata_objects": []}
         response = await self.client.get("/folders/FOL12345678")
         self.assertEqual(response.status, 200)
         self.MockedFolderOperator().read_folder.assert_called_once()
         json_resp = await response.json()
-        self.assertEqual(folder, json_resp)
+        self.assertEqual(self.test_folder, json_resp)
 
     @unittest_run_loop
     async def test_update_folder_fails_with_wrong_key(self):
