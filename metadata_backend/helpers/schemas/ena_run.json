@@ -119,7 +119,7 @@
                                     "prevStepIndex": {
                                         "oneOf": [
                                             {
-                                                "title": "string",
+                                                "title": "String value",
                                                 "type": "string"
                                             },
                                             {
@@ -313,12 +313,12 @@
             "properties": {
                 "referenceAlignment": {
                     "type": "object",
-                    "title": "referenceAlignment",
+                    "title": "Reference Alignment",
                     "additionalProperties": true,
                     "properties": {
                         "sequence": {
                             "type": "array",
-                            "title": "sequence",
+                            "title": "Sequence",
                             "additionalItems": true,
                             "items": {
                                 "type": "object",
@@ -371,6 +371,7 @@
                 },
                 "readSpec": {
                     "type": "object",
+                    "title": "Read Specification",
                     "properties": {
                         "readIndex": {
                             "title": "Read Index",
