@@ -159,11 +159,11 @@
                 },
                 "refname": {
                     "type": "string",
-                    "title": "Reference name"
+                    "title": "Record name"
                 },
                 "refcenter": {
                     "type": "string",
-                    "title": "Reference Center"
+                    "title": "Center Namespace"
                 },
                 "accessionId": {
                     "type": "string",
@@ -171,7 +171,7 @@
                 },
                 "identifiers": {
                     "type": "object",
-                    "title": "identifiers",
+                    "title": "Identifiers",
                     "properties": {
                         "primaryId": {
                             "type": "string",
