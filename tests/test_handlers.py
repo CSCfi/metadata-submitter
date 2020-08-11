@@ -501,7 +501,9 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_folder_creation_works(self):
         """Test that folder is created and folder ID returned."""
-        json_req = {"name": "test", "description": "test folder"}
+        json_req = {"name": "test",
+                    "description": "test folder",
+                    "metadataObjects": []}
         response = await self.client.post("/folders", json=json_req)
         json_resp = await response.json()
         self.MockedFolderOperator().create_folder.assert_called_once()
@@ -509,7 +511,16 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(json_resp["folderId"], self.folder_id)
 
     @unittest_run_loop
-    async def test_folder_creation_with_empty_body(self):
+    async def test_folder_creation_with_missing_data_fails(self):
+        """Test that folder creation fails when missing data in request."""
+        json_req = {"description": "test folder"}
+        response = await self.client.post("/folders", json=json_req)
+        json_resp = await response.json()
+        self.assertEqual(response.status, 400)
+        self.assertIn("'name' is a required property", json_resp['detail'])
+
+    @unittest_run_loop
+    async def test_folder_creation_with_empty_body_fails(self):
         """Test that folder creation fails when no data in request."""
         response = await self.client.post("/folders")
         json_resp = await response.json()
