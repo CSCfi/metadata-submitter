@@ -1,6 +1,6 @@
 {
   "type": "object",
-  "title": "The root schema",
+  "title": "Folder schema containing submitted metadata objects",
   "required": [
     "name",
     "description"
