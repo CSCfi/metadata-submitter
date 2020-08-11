@@ -12,7 +12,7 @@
     },
     "name": {
       "type": "string",
-      "title": "The name schema"
+      "title": "Folder Name"
     },
     "description": {
       "type": "string",
