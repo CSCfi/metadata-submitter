@@ -39,7 +39,7 @@
           },
           "schema": {
             "type": "string",
-            "title": "The schema schema"
+            "title": "Object's schema"
           }
         }
       }
