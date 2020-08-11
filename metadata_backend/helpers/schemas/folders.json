@@ -35,7 +35,7 @@
         "properties": {
           "accessionId": {
             "type": "string",
-            "title": "The accessionId schema"
+            "title": "Accession Id"
           },
           "schema": {
             "type": "string",
