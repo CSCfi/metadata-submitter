@@ -27,7 +27,7 @@
       "title": "The metadataObjects schema",
       "items": {
         "type": "object",
-        "title": "The items schema",
+        "title": "Folder objects",
         "required": [
             "accessionId",
             "schema"
