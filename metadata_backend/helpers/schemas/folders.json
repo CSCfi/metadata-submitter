@@ -20,7 +20,7 @@
     },
     "published": {
       "type": "boolean",
-      "title": "The published schema"
+      "title": "Published Folder"
     },
     "metadataObjects": {
       "type": "array",
