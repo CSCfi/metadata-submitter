@@ -1,38 +1,40 @@
 {
   "type": "object",
+  "title": "The root schema",
+  "required": [
+    "name",
+    "description"
+  ],
   "properties": {
-    "folderId": {
-      "type": "string"
-    },
     "name": {
-      "type": "string"
+      "type": "string",
+      "title": "The name schema"
     },
     "description": {
-      "type": "string"
+      "type": "string",
+      "title": "The description schema"
     },
     "metadataObjects": {
       "type": "array",
-      "items": [
-        {
-          "type": "object",
-          "properties": {
-            "accessionID": {
-              "type": "string"
-            },
-            "schema": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "accessionID",
+      "title": "The metadataObjects schema",
+      "items": {
+        "type": "object",
+        "title": "The items schema",
+        "required": [
+            "accessionId",
             "schema"
-          ]
+        ],
+        "properties": {
+          "accessionId": {
+            "type": "string",
+            "title": "The accessionId schema"
+          },
+          "schema": {
+            "type": "string",
+            "title": "The schema schema"
+          }
         }
-      ]
+      }
     }
-  },
-  "required": [
-    "name",
-    "description",
-  ]
+  }
 }
