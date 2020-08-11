@@ -569,7 +569,8 @@ class FolderOperator:
         :returns: Folder id for the folder inserted to database
         """
         folder_id = self._generate_folder_id()
-        data["folderId"] = folder_id
+        data['folderId'] = folder_id
+        data['published'] = False
         try:
             insert_success = await self.db_service.create("folder", data)
         except (ConnectionFailure, OperationFailure) as error:
