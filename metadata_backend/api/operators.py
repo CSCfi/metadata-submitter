@@ -683,3 +683,124 @@ class FolderOperator:
         sequence = "".join(secrets.choice(string.digits) for i in range(8))
         LOG.debug("Generated folder ID.")
         return f"FOL{sequence}"
+
+
+class UserOperator:
+    """Operator class for handling database operations of users.
+
+    Operations are implemented with JSON format.
+    """
+
+    def __init__(self, db_client: AsyncIOMotorClient) -> None:
+        """Init db_service.
+
+        :param db_client: Motor client used for database connections. Should be
+        running on same loop with aiohttp, so needs to be passed from aiohttp
+        Application.
+        """
+        self.db_service = DBService("users", db_client)
+
+    async def create_user(self, data: Dict) -> str:
+        """Create new user object to database.
+
+        :param data: Data to be saved to database
+        :raises: 400 if error occurs during the process
+        :returns: User id for the user object inserted to database
+        """
+        user_id = self._generate_user_id()
+        data["userId"] = user_id
+        try:
+            insert_success = await self.db_service.create("user", data)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while inserting user: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        if not insert_success:
+            reason = "Inserting user to database failed for some reason."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        else:
+            LOG.info(f"Inserting user with id {user_id} to database succeeded.")
+            return user_id
+
+    async def read_user(self, user_id: str) -> Dict:
+        """Read user object from database.
+
+        :param user_id: User ID of the object to read
+        :raises: 400 if reading was not successful
+        :returns: User object formatted to JSON
+        """
+        await self._check_user_exists(self.db_service, user_id)
+        try:
+            user = await self.db_service.read("user", user_id)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting user: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        return user
+
+    async def update_user(self, user_id: str, patch: JsonPatch) -> str:
+        """Update user object from database.
+
+        Utilizes JSON Patch operations specified at: http://jsonpatch.com/
+
+        :param user_id: ID of user to update
+        :param patch: JSON Patch operations determined in the request
+        :returns: ID of the user updated to database
+        """
+        await self._check_user_exists(self.db_service, user_id)
+        try:
+            user = await self.db_service.read("user", user_id)
+            # JSONValidator(user, "users").validate
+            upd_content = patch.apply(user)
+            update_success = await self.db_service.update("user", user_id, upd_content)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting user: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        except (InvalidJsonPatch, JsonPatchConflict, JsonPointerException) as error:
+            reason = f"Error happened while applying JSON Patch: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        if not update_success:
+            reason = "Updating user to database failed for some reason."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        else:
+            LOG.info(f"Updating user with id {user_id} to database " "succeeded.")
+            return user_id
+
+    async def delete_user(self, user_id: str) -> None:
+        """Delete user object from database.
+
+        :param user_id: ID of the user to delete.
+        :raises: 400 if deleting was not successful
+        """
+        await self._check_user_exists(self.db_service, user_id)
+        try:
+            delete_success = await self.db_service.delete("user", user_id)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while deleting user: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        if not delete_success:
+            reason = "Deleting for {user_id} from database failed."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+    async def _check_user_exists(self, db: DBService, id: str) -> None:
+        """Check the existance of a user by its id in the database."""
+        exists = await db.exists("user", id)
+        if not exists:
+            reason = f"User with id {id} was not found."
+            LOG.error(reason)
+            raise web.HTTPNotFound(reason=reason)
+
+    def _generate_user_id(self) -> str:
+        """Generate random user id."""
+        sequence = "".join(secrets.choice(string.digits) for i in range(8))
+        LOG.debug("Generated user ID.")
+        return f"USR{sequence}"

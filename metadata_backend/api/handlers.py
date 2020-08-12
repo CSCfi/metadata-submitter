@@ -315,7 +315,7 @@ class RESTApiHandler:
         url = f"{req.scheme}://{req.host}{req.path}"
         location_headers = {"Location": f"{url}/{folder}"}
         LOG.info(f"POST new folder with ID {folder} was successful.")
-        return web.Response(body=body, status=201, headers=location_headers, content_type="application/json",)
+        return web.Response(body=body, status=201, headers=location_headers, content_type="application/json")
 
     async def get_folder(self, req: Request) -> Response:
         """Get one object folder by its folder id.
