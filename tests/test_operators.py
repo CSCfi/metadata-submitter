@@ -65,6 +65,11 @@ class TestOperators(AsyncTestCase):
             "metadataObjects": [],
         }
         self.user_id = "USR12345678"
+        self.test_user = {
+            "userId": self.user_id,
+            "drafts": [],
+            "folders": [],
+        }
         class_dbservice = "metadata_backend.api.operators.DBService"
         self.patch_dbservice = patch(class_dbservice, spec=True)
         self.MockedDbService = self.patch_dbservice.start()
@@ -591,6 +596,16 @@ class TestOperators(AsyncTestCase):
         folder = await operator.create_user(data)
         operator.db_service.create.assert_called_once()
         self.assertEqual(folder, self.user_id)
+
+    async def test_reading_user_works(self):
+        """Test user object is read from db correctly."""
+        operator = UserOperator(self.client)
+        operator.db_service.exists.return_value = futurized(True)
+        operator.db_service.read.return_value = futurized(self.test_user)
+        read_data = await operator.read_user(self.user_id)
+        operator.db_service.exists.assert_called_once()
+        operator.db_service.read.assert_called_once_with("user", self.user_id)
+        self.assertEqual(read_data, self.test_user)
 
 
 if __name__ == "__main__":

@@ -50,6 +50,11 @@ class HandlersTestCase(AioHTTPTestCase):
             "metadataObjects": [],
         }
         self.user_id = "USR12345678"
+        self.test_user = {
+            "userId": self.user_id,
+            "drafts": [],
+            "folders": [],
+        }
 
         class_parser = "metadata_backend.api.handlers.XMLToJSONParser"
         class_operator = "metadata_backend.api.handlers.Operator"
@@ -76,6 +81,7 @@ class HandlersTestCase(AioHTTPTestCase):
         }
         useroperator_config = {
             "create_user.side_effect": self.fake_useroperator_create_user,
+            "read_user.side_effect": self.fake_useroperator_read_user,
         }
         self.patch_parser = patch(class_parser, spec=True)
         self.patch_operator = patch(class_operator, **operator_config, spec=True)
@@ -157,6 +163,10 @@ class HandlersTestCase(AioHTTPTestCase):
     async def fake_useroperator_create_user(self, content):
         """Fake user operation to return mocked userId."""
         return await futurized(self.user_id)
+
+    async def fake_useroperator_read_user(self, user_id):
+        """Fake read operation to return mocked user."""
+        return await futurized(self.test_user)
 
     @unittest_run_loop
     async def test_submit_endpoint_submission_does_not_fail(self):
@@ -631,3 +641,12 @@ class HandlersTestCase(AioHTTPTestCase):
         json_resp = await response.json()
         self.assertEqual(response.status, 400)
         self.assertIn("JSON is not correctly formatted.", json_resp["detail"])
+
+    @unittest_run_loop
+    async def test_get_user_works(self):
+        """Test user object is returned when correct user id is given."""
+        response = await self.client.get("/users/USR12345678")
+        self.assertEqual(response.status, 200)
+        self.MockedUserOperator().read_user.assert_called_once()
+        json_resp = await response.json()
+        self.assertEqual(self.test_user, json_resp)
