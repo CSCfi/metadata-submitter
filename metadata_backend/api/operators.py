@@ -646,7 +646,7 @@ class FolderOperator:
             LOG.info(f"Updating folder with id {folder_id} to database " "succeeded.")
             return folder_id
 
-    async def delete_folder(self, folder_id: str) -> None:
+    async def delete_folder(self, folder_id: str) -> str:
         """Delete object folder from database.
 
         :param folder_id: ID of the folder to delete.
@@ -666,7 +666,6 @@ class FolderOperator:
         else:
             LOG.info(f"Deleting folder with id {folder_id} to database succeeded.")
             return folder_id
-
 
     async def _check_folder_exists(self, db: DBService, id: str) -> None:
         """Check the existance of a folder by its id in the database."""
