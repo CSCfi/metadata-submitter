@@ -5,7 +5,13 @@ from collections import defaultdict
 from typing import Any, Dict, List, Union
 
 from aiohttp import web
-from xmlschema import XMLSchema, XMLSchemaConverter, XMLSchemaException, XsdElement, XsdType
+from xmlschema import (
+    XMLSchema,
+    XMLSchemaConverter,
+    XMLSchemaException,
+    XsdElement,
+    XsdType,
+)
 
 from .logger import LOG
 from .schema_loader import SchemaNotFoundException, XMLSchemaLoader
@@ -21,7 +27,9 @@ class MetadataXMLConverter(XMLSchemaConverter):
     https://github.com/enasequence/schema/tree/master/src/main/resources/uk/ac/ebi/ena/sra/schema
     """
 
-    def __init__(self, namespaces: Any = None, dict_class: dict = None, list_class: list = None, **kwargs: Any) -> None:
+    def __init__(
+        self, namespaces: Any = None, dict_class: dict = None, list_class: list = None, **kwargs: Any,
+    ) -> None:
         """Initialize converter and settings.
 
         :param namespaces: Map from namespace prefixes to URI.
@@ -130,7 +138,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
         return True
 
     def element_decode(
-        self, data: Any, xsd_element: XsdElement, xsd_type: XsdType = None, level: int = 0
+        self, data: Any, xsd_element: XsdElement, xsd_type: XsdType = None, level: int = 0,
     ) -> Union[Dict, List, str, None]:
         """Decode XML to JSON.
 

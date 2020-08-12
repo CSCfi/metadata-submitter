@@ -94,7 +94,7 @@ class HandlersTestCase(AioHTTPTestCase):
         for schema, filename in files:
             path_to_file = self.TESTFILES_ROOT / schema / filename
             data.add_field(
-                schema.upper(), open(path_to_file.as_posix(), "r"), filename=path_to_file.name, content_type="text/xml"
+                schema.upper(), open(path_to_file.as_posix(), "r"), filename=path_to_file.name, content_type="text/xml",
             )
         return data
 
@@ -174,7 +174,10 @@ class HandlersTestCase(AioHTTPTestCase):
 
         User should be notified for submitting too many files.
         """
-        files = [("submission", "ERA521986_valid.xml"), ("submission", "ERA521986_valid2.xml")]
+        files = [
+            ("submission", "ERA521986_valid.xml"),
+            ("submission", "ERA521986_valid2.xml"),
+        ]
         data = self.create_submission_data(files)
         response = await self.client.post("/submit", data=data)
         failure_text = "You should submit only one submission.xml file."
@@ -469,7 +472,10 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_validation_fails_with_too_many_files(self):
         """Test validation endpoint for too many files."""
-        files = [("submission", "ERA521986_valid.xml"), ("submission", "ERA521986_valid2.xml")]
+        files = [
+            ("submission", "ERA521986_valid.xml"),
+            ("submission", "ERA521986_valid2.xml"),
+        ]
         data = self.create_submission_data(files)
         response = await self.client.post("/validate", data=data)
         reason = "Only one file can be sent to this endpoint at a time."

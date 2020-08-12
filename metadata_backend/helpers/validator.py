@@ -87,7 +87,7 @@ def extend_with_default(validator_class: Draft7Validator) -> Draft7Validator:
     """
     validate_properties = validator_class.VALIDATORS["properties"]
 
-    def set_defaults(validator: Draft7Validator, properties: Dict, instance: Draft7Validator, schema: str) -> Any:
+    def set_defaults(validator: Draft7Validator, properties: Dict, instance: Draft7Validator, schema: str,) -> Any:
         for prop, subschema in properties.items():
             if "default" in subschema:
                 instance.setdefault(prop, subschema["default"])

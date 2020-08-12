@@ -14,7 +14,11 @@ from xmlschema import XMLSchemaException
 from ..conf.conf import schema_types
 from ..helpers.logger import LOG
 from ..helpers.parser import XMLToJSONParser
-from ..helpers.schema_loader import JSONSchemaLoader, SchemaNotFoundException, XMLSchemaLoader
+from ..helpers.schema_loader import (
+    JSONSchemaLoader,
+    SchemaNotFoundException,
+    XMLSchemaLoader,
+)
 from ..helpers.validator import JSONValidator, XMLValidator
 from .operators import FolderOperator, Operator, XMLOperator
 
@@ -100,7 +104,7 @@ class RESTApiHandler:
         link_headers = self._header_links(url, page_num, per_page, total_objects)
         LOG.debug(f"Pagination header links: {link_headers}")
         LOG.info(f"Querying for objects in {collection} " f"resulted in {total_objects} objects ")
-        return web.Response(body=result, status=200, headers=link_headers, content_type="application/json")
+        return web.Response(body=result, status=200, headers=link_headers, content_type="application/json",)
 
     async def _get_data(self, req: Request) -> Dict:
         """Get the data content from a request.
@@ -199,7 +203,7 @@ class RESTApiHandler:
         url = f"{req.scheme}://{req.host}{req.path}"
         location_headers = {"Location": f"{url}{accession_id}"}
         LOG.info(f"POST object with accesssion ID {accession_id} " f"in schema {collection} was successful.")
-        return web.Response(body=body, status=201, headers=location_headers, content_type="application/json")
+        return web.Response(body=body, status=201, headers=location_headers, content_type="application/json",)
 
     async def query_objects(self, req: Request) -> Response:
         """Query metadata objects from database.
@@ -311,7 +315,7 @@ class RESTApiHandler:
         url = f"{req.scheme}://{req.host}{req.path}"
         location_headers = {"Location": f"{url}/{folder}"}
         LOG.info(f"POST new folder with ID {folder} was successful.")
-        return web.Response(body=body, status=201, headers=location_headers, content_type="application/json")
+        return web.Response(body=body, status=201, headers=location_headers, content_type="application/json",)
 
     async def get_folder(self, req: Request) -> Response:
         """Get one object folder by its folder id.
@@ -365,6 +369,38 @@ class RESTApiHandler:
         folder = await operator.delete_folder(folder_id)
         LOG.info(f"DELETE folder with ID {folder} was successful.")
         return web.Response(status=204)
+
+    async def post_user(self, req: Request) -> Response:
+        """Save new user object to database.
+
+        :param req: POST request
+        :returns: JSON response containing user ID for new user
+        """
+        raise web.HTTPNotImplemented
+
+    async def get_user(self, req: Request) -> Response:
+        """Get one user by its user ID.
+
+        :param req: GET request
+        :returns: JSON response containing user object
+        """
+        raise web.HTTPNotImplemented
+
+    async def patch_user(self, req: Request) -> Response:
+        """Update user object with a specific user ID.
+
+        :param req: PATCH request
+        :returns: JSON response containing user ID for updated user object
+        """
+        raise web.HTTPNotImplemented
+
+    async def delete_user(self, req: Request) -> Response:
+        """Delete user from database.
+
+        :param req: DELETE request
+        :returns: HTTP No Content response
+        """
+        raise web.HTTPNotImplemented
 
 
 class SubmissionAPIHandler:
