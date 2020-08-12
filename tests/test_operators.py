@@ -11,7 +11,7 @@ from jsonpatch import JsonPatch
 from multidict import MultiDict, MultiDictProxy
 from pymongo.errors import ConnectionFailure
 
-from metadata_backend.api.operators import FolderOperator, Operator, XMLOperator
+from metadata_backend.api.operators import FolderOperator, Operator, XMLOperator, UserOperator
 
 
 class MockCursor(AsyncMockIterator):
@@ -64,6 +64,7 @@ class TestOperators(AsyncTestCase):
             "published": False,
             "metadataObjects": [],
         }
+        self.user_id = "USR12345678"
         class_dbservice = "metadata_backend.api.operators.DBService"
         self.patch_dbservice = patch(class_dbservice, spec=True)
         self.MockedDbService = self.patch_dbservice.start()
@@ -79,12 +80,19 @@ class TestOperators(AsyncTestCase):
             autospec=True,
         )
         self.patch_folder.start()
+        self.patch_user = patch(
+            ("metadata_backend.api.operators.UserOperator." "_generate_user_id"),
+            return_value=self.user_id,
+            autospec=True,
+        )
+        self.patch_user.start()
 
     def tearDown(self):
         """Stop patchers."""
         self.patch_dbservice.stop()
         self.patch_accession.stop()
         self.patch_folder.stop()
+        self.patch_user.stop()
 
     async def test_reading_metadata_works(self):
         """Test json is read from db correctly."""
@@ -574,6 +582,15 @@ class TestOperators(AsyncTestCase):
         operator.db_service.delete.return_value = futurized(True)
         await operator.delete_folder(self.folder_id)
         operator.db_service.delete.assert_called_with("folder", "FOL12345678")
+
+    async def test_create_user_works_and_returns_userId(self):
+        """Test create method for users work."""
+        operator = UserOperator(self.client)
+        data = {}
+        operator.db_service.create.return_value = futurized(True)
+        folder = await operator.create_user(data)
+        operator.db_service.create.assert_called_once()
+        self.assertEqual(folder, self.user_id)
 
 
 if __name__ == "__main__":
