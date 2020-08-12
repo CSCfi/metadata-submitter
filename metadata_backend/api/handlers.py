@@ -20,7 +20,7 @@ from ..helpers.schema_loader import (
     XMLSchemaLoader,
 )
 from ..helpers.validator import JSONValidator, XMLValidator
-from .operators import FolderOperator, Operator, XMLOperator
+from .operators import FolderOperator, Operator, XMLOperator, UserOperator
 
 
 class RESTApiHandler:
@@ -376,7 +376,16 @@ class RESTApiHandler:
         :param req: POST request
         :returns: JSON response containing user ID for new user
         """
-        raise web.HTTPNotImplemented
+        db_client = req.app["db_client"]
+        content = await self._get_data(req)
+        # JSONValidator(content, "users").validate
+        operator = UserOperator(db_client)
+        user = await operator.create_user(content)
+        body = json.dumps({"userId": user})
+        url = f"{req.scheme}://{req.host}{req.path}"
+        location_headers = {"Location": f"{url}/{user}"}
+        LOG.info(f"POST new user with ID {user} was successful.")
+        return web.Response(body=body, status=201, headers=location_headers, content_type="application/json")
 
     async def get_user(self, req: Request) -> Response:
         """Get one user by its user ID.

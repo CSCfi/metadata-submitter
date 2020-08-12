@@ -49,11 +49,13 @@ class HandlersTestCase(AioHTTPTestCase):
             "published": False,
             "metadataObjects": [],
         }
+        self.user_id = "USR12345678"
 
         class_parser = "metadata_backend.api.handlers.XMLToJSONParser"
         class_operator = "metadata_backend.api.handlers.Operator"
         class_xmloperator = "metadata_backend.api.handlers.XMLOperator"
         class_folderoperator = "metadata_backend.api.handlers.FolderOperator"
+        class_useroperator = "metadata_backend.api.handlers.UserOperator"
         operator_config = {
             "read_metadata_object.side_effect": self.fake_operator_read_metadata_object,
             "query_metadata_database.side_effect": self.fake_operator_query_metadata_object,
@@ -72,14 +74,19 @@ class HandlersTestCase(AioHTTPTestCase):
             "read_folder.side_effect": self.fake_folderoperator_read_folder,
             "delete_folder.side_effect": self.fake_folderoperator_delete_folder,
         }
+        useroperator_config = {
+            "create_user.side_effect": self.fake_useroperator_create_user,
+        }
         self.patch_parser = patch(class_parser, spec=True)
         self.patch_operator = patch(class_operator, **operator_config, spec=True)
         self.patch_xmloperator = patch(class_xmloperator, **xmloperator_config, spec=True)
         self.patch_folderoperator = patch(class_folderoperator, **folderoperator_config, spec=True)
+        self.patch_useroperator = patch(class_useroperator, **useroperator_config, spec=True)
         self.MockedParser = self.patch_parser.start()
         self.MockedOperator = self.patch_operator.start()
         self.MockedXMLOperator = self.patch_xmloperator.start()
         self.MockedFolderOperator = self.patch_folderoperator.start()
+        self.MockedUserOperator = self.patch_useroperator.start()
 
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
@@ -87,6 +94,7 @@ class HandlersTestCase(AioHTTPTestCase):
         self.patch_operator.stop()
         self.patch_xmloperator.stop()
         self.patch_folderoperator.stop()
+        self.patch_useroperator.stop()
 
     def create_submission_data(self, files):
         """Create request data from pairs of schemas and filenames."""
@@ -145,6 +153,10 @@ class HandlersTestCase(AioHTTPTestCase):
     async def fake_folderoperator_delete_folder(self, folder_id):
         """Fake delete folder to await nothing."""
         return await futurized(None)
+
+    async def fake_useroperator_create_user(self, content):
+        """Fake user operation to return mocked userId."""
+        return await futurized(self.user_id)
 
     @unittest_run_loop
     async def test_submit_endpoint_submission_does_not_fail(self):
@@ -601,3 +613,21 @@ class HandlersTestCase(AioHTTPTestCase):
         response = await self.client.delete("/folders/FOL12345678")
         self.MockedFolderOperator().delete_folder.assert_called_once()
         self.assertEqual(response.status, 204)
+
+    @unittest_run_loop
+    async def test_user_creation_works(self):
+        """Test that user object is created and user ID returned."""
+        json_req = {}
+        response = await self.client.post("/users", json=json_req)
+        json_resp = await response.json()
+        self.MockedUserOperator().create_user.assert_called_once()
+        self.assertEqual(response.status, 201)
+        self.assertEqual(json_resp["userId"], self.user_id)
+
+    @unittest_run_loop
+    async def test_user_creation_with_empty_body_fails(self):
+        """Test that user creation fails when no data is provided in request."""
+        response = await self.client.post("/users")
+        json_resp = await response.json()
+        self.assertEqual(response.status, 400)
+        self.assertIn("JSON is not correctly formatted.", json_resp["detail"])
