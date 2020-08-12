@@ -660,9 +660,13 @@ class FolderOperator:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         if not delete_success:
-            reason = "Deleting for {folder_id} from database failed."
+            reason = f"Deleting for {folder_id} from database failed."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
+        else:
+            LOG.info(f"Deleting folder with id {folder_id} to database succeeded.")
+            return folder_id
+
 
     async def _check_folder_exists(self, db: DBService, id: str) -> None:
         """Check the existance of a folder by its id in the database."""
