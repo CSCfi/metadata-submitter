@@ -28,7 +28,9 @@ class ParserTestCase(unittest.TestCase):
         """
         study_xml = self.load_xml_from_file("study", "SRP000539.xml")
         study_json = self.parser.parse("study", study_xml)
-        self.assertIn("Highly integrated epigenome maps in Arabidopsis", study_json["descriptor"]["studyTitle"])
+        self.assertIn(
+            "Highly integrated epigenome maps in Arabidopsis", study_json["descriptor"]["studyTitle"],
+        )
         self.assertIn("18423832", study_json["studyLinks"]["xrefLinks"][0]["id"])
 
     def test_sample_is_parsed(self):
@@ -49,7 +51,7 @@ class ParserTestCase(unittest.TestCase):
         experiment_xml = self.load_xml_from_file("experiment", "ERX000119.xml")
         experiment_json = self.parser.parse("experiment", experiment_xml)
         self.assertIn(
-            "SOLiD sequencing of Human HapMap individual NA18504", experiment_json["design"]["designDescription"]
+            "SOLiD sequencing of Human HapMap individual NA18504", experiment_json["design"]["designDescription"],
         )
 
     def test_run_is_parsed(self):
@@ -59,7 +61,9 @@ class ParserTestCase(unittest.TestCase):
         """
         run_xml = self.load_xml_from_file("run", "ERR000076.xml")
         run_json = self.parser.parse("run", run_xml)
-        self.assertIn("ERA000/ERA000014/srf/BGI-FC304RWAAXX_5.srf", run_json["files"][0]["filename"])
+        self.assertIn(
+            "ERA000/ERA000014/srf/BGI-FC304RWAAXX_5.srf", run_json["files"][0]["filename"],
+        )
         self.assertIn("ERX000037", run_json["experimentRef"]["accessionId"])
 
     def test_analysis_is_parsed(self):
@@ -70,7 +74,7 @@ class ParserTestCase(unittest.TestCase):
         analysis_xml = self.load_xml_from_file("analysis", "ERZ266973.xml")
         analysis_json = self.parser.parse("analysis", analysis_xml)
         self.assertIn(
-            "GCA_000001405.1", analysis_json["analysisType"]["processedReads"]["assembly"]["standard"]["accessionId"]
+            "GCA_000001405.1", analysis_json["analysisType"]["processedReads"]["assembly"]["standard"]["accessionId"],
         )
 
     def test_error_raised_when_schema_not_found(self):

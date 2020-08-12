@@ -151,7 +151,11 @@ class TestOperators(AsyncTestCase):
     async def test_json_create_passes_and_returns_accessionId(self):
         """Test create method for json works."""
         operator = Operator(self.client)
-        data = {"centerName": "GEO", "alias": "GSE10966", "descriptor": {"studyTitle": "Highly", "studyType": "Other"}}
+        data = {
+            "centerName": "GEO",
+            "alias": "GSE10966",
+            "descriptor": {"studyTitle": "Highly", "studyType": "Other"},
+        }
         operator.db_service.create.return_value = futurized(True)
         accession = await operator.create_metadata_object("study", data)
         operator.db_service.create.assert_called_once()
@@ -160,7 +164,11 @@ class TestOperators(AsyncTestCase):
     async def test_json_replace_passes_and_returns_accessionId(self):
         """Test replace method for json works."""
         accession = "EGA123456"
-        data = {"centerName": "GEO", "alias": "GSE10966", "descriptor": {"studyTitle": "Highly", "studyType": "Other"}}
+        data = {
+            "centerName": "GEO",
+            "alias": "GSE10966",
+            "descriptor": {"studyTitle": "Highly", "studyType": "Other"},
+        }
         operator = Operator(self.client)
         operator.db_service.exists.return_value = futurized(True)
         operator.db_service.replace.return_value = futurized(True)
@@ -377,7 +385,7 @@ class TestOperators(AsyncTestCase):
                 with patch("metadata_backend.api.operators.XMLToJSONParser"):
                     acc = await (operator._format_data_to_replace_and_add_to_db("study", accession, xml_data))
                     m_insert.assert_called_once_with(
-                        "study", accession, {"accessionId": self.accession_id, "content": xml_data}
+                        "study", accession, {"accessionId": self.accession_id, "content": xml_data},
                     )
                     self.assertEqual(acc, self.accession_id)
 
@@ -439,7 +447,9 @@ class TestOperators(AsyncTestCase):
         ]
         operator.db_service.query.return_value = MockCursor(study_test)
         query = MultiDictProxy(MultiDict([("swag", "littinen")]))
-        with patch("metadata_backend.api.operators.Operator._format_read_data", return_value=futurized(study_test)):
+        with patch(
+            "metadata_backend.api.operators.Operator._format_read_data", return_value=futurized(study_test),
+        ):
             await operator.query_metadata_database("study", query, 1, 10)
         operator.db_service.query.assert_called_once_with("study", {})
 
@@ -463,7 +473,7 @@ class TestOperators(AsyncTestCase):
         operator.db_service.query.return_value = MockCursor(multiple_result)
         operator.db_service.get_count.return_value = futurized(100)
         query = MultiDictProxy(MultiDict([]))
-        parsed, page_num, page_size, total_objects = await operator.query_metadata_database("sample", query, 1, 10)
+        (parsed, page_num, page_size, total_objects,) = await operator.query_metadata_database("sample", query, 1, 10)
         for doc in parsed:
             self.assertEqual(doc["dateCreated"], "2020-06-14T00:00:00")
             self.assertEqual(doc["dateModified"], "2020-06-14T00:00:00")
@@ -477,7 +487,9 @@ class TestOperators(AsyncTestCase):
         operator = Operator(self.client)
         operator.db_service.query = MagicMock()
         query = MultiDictProxy(MultiDict([]))
-        with patch("metadata_backend.api.operators.Operator._format_read_data", return_value=futurized([])):
+        with patch(
+            "metadata_backend.api.operators.Operator._format_read_data", return_value=futurized([]),
+        ):
             with self.assertRaises(HTTPNotFound):
                 await operator.query_metadata_database("study", query, 1, 10)
 
@@ -487,7 +499,9 @@ class TestOperators(AsyncTestCase):
         data = {"foo": "bar"}
         cursor = MockCursor([])
         operator.db_service.query.return_value = cursor
-        with patch("metadata_backend.api.operators.Operator._format_read_data", return_value=futurized(data)):
+        with patch(
+            "metadata_backend.api.operators.Operator._format_read_data", return_value=futurized(data),
+        ):
             await operator.query_metadata_database("sample", {}, 3, 50)
             self.assertEqual(cursor._skip, 100)
             self.assertEqual(cursor._limit, 50)
