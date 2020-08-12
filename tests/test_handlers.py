@@ -42,11 +42,13 @@ class HandlersTestCase(AioHTTPTestCase):
         self.metadata_xml = path_to_xml_file.read_text()
         self.accession_id = "EGA123456"
         self.folder_id = "FOL12345678"
-        self.test_folder = {"folderId": self.folder_id,
-                            "name": "test",
-                            "description": "test folder",
-                            "published": False,
-                            "metadataObjects": []}
+        self.test_folder = {
+            "folderId": self.folder_id,
+            "name": "test",
+            "description": "test folder",
+            "published": False,
+            "metadataObjects": [],
+        }
 
         class_parser = "metadata_backend.api.handlers.XMLToJSONParser"
         class_operator = "metadata_backend.api.handlers.Operator"
@@ -500,8 +502,7 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_folder_creation_works(self):
         """Test that folder is created and folder ID returned."""
-        json_req = {"name": "test",
-                    "description": "test folder"}
+        json_req = {"name": "test", "description": "test folder"}
         response = await self.client.post("/folders", json=json_req)
         json_resp = await response.json()
         self.MockedFolderOperator().create_folder.assert_called_once()
@@ -515,7 +516,7 @@ class HandlersTestCase(AioHTTPTestCase):
         response = await self.client.post("/folders", json=json_req)
         json_resp = await response.json()
         self.assertEqual(response.status, 400)
-        self.assertIn("'name' is a required property", json_resp['detail'])
+        self.assertIn("'name' is a required property", json_resp["detail"])
 
     @unittest_run_loop
     async def test_folder_creation_with_empty_body_fails(self):
