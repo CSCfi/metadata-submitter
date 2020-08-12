@@ -414,7 +414,12 @@ class RESTApiHandler:
         :param req: DELETE request
         :returns: HTTP No Content response
         """
-        raise web.HTTPNotImplemented
+        user_id = req.match_info["userId"]
+        db_client = req.app["db_client"]
+        operator = UserOperator(db_client)
+        user = await operator.delete_user(user_id)
+        LOG.info(f"DELETE user with ID {user} was successful.")
+        return web.Response(status=204)
 
 
 class SubmissionAPIHandler:

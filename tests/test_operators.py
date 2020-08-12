@@ -607,6 +607,14 @@ class TestOperators(AsyncTestCase):
         operator.db_service.read.assert_called_once_with("user", self.user_id)
         self.assertEqual(read_data, self.test_user)
 
+    async def test_deleting_user_passes(self):
+        """Test user is deleted correctly."""
+        operator = UserOperator(self.client)
+        operator.db_service.exists.return_value = futurized(True)
+        operator.db_service.delete.return_value = futurized(True)
+        await operator.delete_user(self.user_id)
+        operator.db_service.delete.assert_called_with("user", "USR12345678")
+
 
 if __name__ == "__main__":
     unittest.main()
