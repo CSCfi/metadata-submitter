@@ -328,7 +328,7 @@ class RESTApiHandler:
         db_client = req.app["db_client"]
         operator = FolderOperator(db_client)
         folder = await operator.read_folder(folder_id)
-        LOG.info(f"GET folder with folder ID {folder_id} was successful.")
+        LOG.info(f"GET folder with ID {folder_id} was successful.")
         return web.Response(body=json.dumps(folder), status=200, content_type="application/json")
 
     async def patch_folder(self, req: Request) -> Response:
@@ -393,7 +393,12 @@ class RESTApiHandler:
         :param req: GET request
         :returns: JSON response containing user object
         """
-        raise web.HTTPNotImplemented
+        user_id = req.match_info["userId"]
+        db_client = req.app["db_client"]
+        operator = UserOperator(db_client)
+        user = await operator.read_user(user_id)
+        LOG.info(f"GET user with ID {user_id} was successful.")
+        return web.Response(body=json.dumps(user), status=200, content_type="application/json")
 
     async def patch_user(self, req: Request) -> Response:
         """Update user object with a specific user ID.
