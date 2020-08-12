@@ -650,3 +650,11 @@ class HandlersTestCase(AioHTTPTestCase):
         self.MockedUserOperator().read_user.assert_called_once()
         json_resp = await response.json()
         self.assertEqual(self.test_user, json_resp)
+
+    @unittest_run_loop
+    async def test_user_deletion_is_called(self):
+        """Test that user object would be deleted."""
+        self.MockedUserOperator().delete_user.return_value = futurized(None)
+        response = await self.client.delete("/users/USR12345678")
+        self.MockedUserOperator().delete_user.assert_called_once()
+        self.assertEqual(response.status, 204)
