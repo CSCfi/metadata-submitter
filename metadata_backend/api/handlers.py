@@ -406,7 +406,14 @@ class RESTApiHandler:
         :param req: PATCH request
         :returns: JSON response containing user ID for updated user object
         """
-        raise web.HTTPNotImplemented
+        user_id = req.match_info["userId"]
+        db_client = req.app["db_client"]
+        content = await self._get_data(req)
+        operator = UserOperator(db_client)
+        user = await operator.update_user(user_id, content)
+        body = json.dumps({"userId": user})
+        LOG.info(f"PATCH user with ID {user} was successful.")
+        return web.Response(body=body, status=200, content_type="application/json")
 
     async def delete_user(self, req: Request) -> Response:
         """Delete user from database.
@@ -417,8 +424,8 @@ class RESTApiHandler:
         user_id = req.match_info["userId"]
         db_client = req.app["db_client"]
         operator = UserOperator(db_client)
-        user = await operator.delete_user(user_id)
-        LOG.info(f"DELETE user with ID {user} was successful.")
+        await operator.delete_user(user_id)
+        LOG.info(f"DELETE user with ID {user_id} was successful.")
         return web.Response(status=204)
 
 
