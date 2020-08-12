@@ -625,8 +625,8 @@ class FolderOperator:
         await self._check_folder_exists(self.db_service, folder_id)
         try:
             folder = await self.db_service.read("folder", folder_id)
-            JSONValidator(folder, "folders").validate
             upd_content = patch.apply(folder)
+            JSONValidator(upd_content, "folders").validate
             update_success = await self.db_service.update("folder", folder_id, upd_content)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting folder: {error}"
