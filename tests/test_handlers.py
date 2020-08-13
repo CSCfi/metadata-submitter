@@ -625,24 +625,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 204)
 
     @unittest_run_loop
-    async def test_user_creation_works(self):
-        """Test that user object is created and user ID returned."""
-        json_req = {}
-        response = await self.client.post("/users", json=json_req)
-        json_resp = await response.json()
-        self.MockedUserOperator().create_user.assert_called_once()
-        self.assertEqual(response.status, 201)
-        self.assertEqual(json_resp["userId"], self.user_id)
-
-    @unittest_run_loop
-    async def test_user_creation_with_empty_body_fails(self):
-        """Test that user creation fails when no data is provided in request."""
-        response = await self.client.post("/users")
-        json_resp = await response.json()
-        self.assertEqual(response.status, 400)
-        self.assertIn("JSON is not correctly formatted.", json_resp["detail"])
-
-    @unittest_run_loop
     async def test_get_user_works(self):
         """Test user object is returned when correct user id is given."""
         response = await self.client.get("/users/USR12345678")

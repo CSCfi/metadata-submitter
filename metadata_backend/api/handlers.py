@@ -370,23 +370,6 @@ class RESTApiHandler:
         LOG.info(f"DELETE folder with ID {folder} was successful.")
         return web.Response(status=204)
 
-    async def post_user(self, req: Request) -> Response:
-        """Save new user object to database.
-
-        :param req: POST request
-        :returns: JSON response containing user ID for new user
-        """
-        db_client = req.app["db_client"]
-        content = await self._get_data(req)
-        # JSONValidator(content, "users").validate
-        operator = UserOperator(db_client)
-        user = await operator.create_user(content)
-        body = json.dumps({"userId": user})
-        url = f"{req.scheme}://{req.host}{req.path}"
-        location_headers = {"Location": f"{url}/{user}"}
-        LOG.info(f"POST new user with ID {user} was successful.")
-        return web.Response(body=body, status=201, headers=location_headers, content_type="application/json")
-
     async def get_user(self, req: Request) -> Response:
         """Get one user by its user ID.
 
