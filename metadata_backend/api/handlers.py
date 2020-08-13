@@ -341,7 +341,7 @@ class RESTApiHandler:
         patch_ops = await self._get_data(req)
         allowed_paths = ["/name", "/description", "/metadataObjects"]
         for op in patch_ops:
-            if not any([i in op["path"] for i in allowed_paths]):
+            if all(i not in op["path"] for i in allowed_paths):
                 reason = f"Request contains '{op['path']}' key that cannot be" " updated to folders."
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
