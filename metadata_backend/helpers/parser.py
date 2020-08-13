@@ -44,7 +44,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
         links = [
             "studyLinks",
             "sampleLinks",
-            "runlinks",
+            "runLinks",
             "experimentLinks",
             "analysisLinks",
             "projectLinks",
