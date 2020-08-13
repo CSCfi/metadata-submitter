@@ -11,7 +11,12 @@ from jsonpatch import JsonPatch
 from multidict import MultiDict, MultiDictProxy
 from pymongo.errors import ConnectionFailure
 
-from metadata_backend.api.operators import FolderOperator, Operator, XMLOperator, UserOperator
+from metadata_backend.api.operators import (
+    FolderOperator,
+    Operator,
+    XMLOperator,
+    UserOperator,
+)
 
 
 class MockCursor(AsyncMockIterator):
@@ -285,8 +290,7 @@ class TestOperators(AsyncTestCase):
         accession = "EGA123456"
         operator = Operator(self.client)
         with patch(
-            ("metadata_backend.api.operators.Operator." "_replace_object_from_db"),
-            return_value=futurized(self.accession_id),
+            "metadata_backend.api.operators.Operator._replace_object_from_db", return_value=futurized(self.accession_id)
         ):
             with patch("metadata_backend.api.operators.datetime") as m_date:
                 m_date.utcnow.return_value = datetime.datetime(2020, 4, 14)
@@ -309,8 +313,7 @@ class TestOperators(AsyncTestCase):
         accession = "EGA123456"
         operator = Operator(self.client)
         with patch(
-            ("metadata_backend.api.operators.Operator." "_replace_object_from_db"),
-            return_value=futurized(self.accession_id),
+            "metadata_backend.api.operators.Operator._replace_object_from_db", return_value=futurized(self.accession_id)
         ) as mocked_insert:
             with patch("metadata_backend.api.operators.datetime") as m_date:
                 m_date.utcnow.return_value = datetime.datetime(2020, 4, 14)
@@ -389,11 +392,11 @@ class TestOperators(AsyncTestCase):
         operator.db_service.db_client = self.client
         xml_data = "<TEST></TEST>"
         with patch(
-            ("metadata_backend.api.operators.Operator." "_format_data_to_replace_and_add_to_db"),
+            "metadata_backend.api.operators.Operator._format_data_to_replace_and_add_to_db",
             return_value=futurized(self.accession_id),
         ):
             with patch(
-                ("metadata_backend.api.operators.XMLOperator." "_replace_object_from_db"),
+                "metadata_backend.api.operators.XMLOperator._replace_object_from_db",
                 return_value=futurized(self.accession_id),
             ) as m_insert:
                 with patch("metadata_backend.api.operators.XMLToJSONParser"):

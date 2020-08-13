@@ -151,7 +151,7 @@ class DBService:
         :param id: ID for object/folder/user to be deleted
         :returns: True if operation was successful
         """
-        id_key = collection + "Id" if (collection == "folder" or collection == "user") else "accessionId"
+        id_key = f"{collection}Id" if (collection in ["folder", "user"]) else "accessionId"
         find_by_id = {id_key: id}
         result = await self.database[collection].delete_one(find_by_id)
         LOG.debug(f"DB doc deleted for {id}.")

@@ -21,9 +21,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
     https://github.com/enasequence/schema/tree/master/src/main/resources/uk/ac/ebi/ena/sra/schema
     """
 
-    def __init__(
-        self, namespaces: Any = None, dict_class: dict = None, list_class: list = None, **kwargs: Any,
-    ) -> None:
+    def __init__(self, namespaces: Any = None, dict_class: dict = None, list_class: list = None, **kwargs: Any) -> None:
         """Initialize converter and settings.
 
         :param namespaces: Map from namespace prefixes to URI.
