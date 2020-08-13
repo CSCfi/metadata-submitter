@@ -740,16 +740,21 @@ class UserOperator:
             raise web.HTTPBadRequest(reason=reason)
         return user
 
-    async def update_user(self, user_id: str, data: JsonPatch) -> str:
+    async def update_user(self, user_id: str, patch: JsonPatch) -> str:
         """Update user object from database.
 
         :param user_id: ID of user to update
-        :param data: Data to be updated
+        :param patch: JSON Patch operations determined in the request
         :returns: ID of the user updated to database
         """
         await self._check_user_exists(self.db_service, user_id)
         try:
-            update_success = await self.db_service.update("user", user_id, data)
+            user = await self.db_service.read("user", user_id)
+            upd_content = patch.apply(user)
+            JSONValidator(upd_content, "users").validate
+            update_success = await self.db_service.update("user", user_id, upd_content)
+            sanity_check = await self.db_service.read("user", user_id)
+            JSONValidator(sanity_check, "users").validate
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting user: {error}"
             LOG.error(reason)

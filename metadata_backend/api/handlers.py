@@ -342,7 +342,7 @@ class RESTApiHandler:
         allowed_paths = ["/name", "/description", "/metadataObjects"]
         for op in patch_ops:
             if all(i not in op["path"] for i in allowed_paths):
-                reason = f"Request contains '{op['path']}' key that cannot be" " updated to folders."
+                reason = f"Request contains '{op['path']}' key that cannot be updated to folders."
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
         patch = JsonPatch(patch_ops)
@@ -387,9 +387,19 @@ class RESTApiHandler:
         """
         user_id = req.match_info["userId"]
         db_client = req.app["db_client"]
-        content = await self._get_data(req)
+
+        # Check patch operations in request are valid
+        patch_ops = await self._get_data(req)
+        allowed_paths = ["/drafts", "/folders"]
+        for op in patch_ops:
+            if all(i not in op["path"] for i in allowed_paths):
+                reason = f"Request contains '{op['path']}' key that cannot be updated to user object."
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+        patch = JsonPatch(patch_ops)
+
         operator = UserOperator(db_client)
-        user = await operator.update_user(user_id, content)
+        user = await operator.update_user(user_id, patch)
         body = json.dumps({"userId": user})
         LOG.info(f"PATCH user with ID {user} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
