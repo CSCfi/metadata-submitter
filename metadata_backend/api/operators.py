@@ -628,6 +628,8 @@ class FolderOperator:
             upd_content = patch.apply(folder)
             JSONValidator(upd_content, "folders").validate
             update_success = await self.db_service.update("folder", folder_id, upd_content)
+            sanity_check = await self.db_service.read("folder", folder_id)
+            JSONValidator(sanity_check, "folders").validate
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting folder: {error}"
             LOG.error(reason)
