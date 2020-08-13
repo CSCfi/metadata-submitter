@@ -59,10 +59,13 @@ class HandlersTestCase(AioHTTPTestCase):
             "query_metadata_database.side_effect": self.fake_operator_query_metadata_object,
             "create_metadata_object.side_effect": self.fake_operator_create_metadata_object,
             "delete_metadata_object.side_effect": self.fake_operator_delete_metadata_object,
+            "update_metadata_object.side_effect": self.fake_operator_update_metadata_object,
+            "replace_metadata_object.side_effect": self.fake_operator_replace_metadata_object,
         }
         xmloperator_config = {
             "read_metadata_object.side_effect": self.fake_xmloperator_read_metadata_object,
             "create_metadata_object.side_effect": self.fake_xmloperator_create_metadata_object,
+            "replace_metadata_object.side_effect": self.fake_xmloperator_replace_metadata_object,
         }
         folderoperator_config = {
             "create_folder.side_effect": self.fake_folderoperator_create_folder,
@@ -111,13 +114,25 @@ class HandlersTestCase(AioHTTPTestCase):
         """Fake create operation to return mocked accessionId."""
         return await futurized(self.test_ega_string)
 
+    async def fake_xmloperator_replace_metadata_object(self, schema_type, accession_id, content):
+        """Fake replace operation to return mocked accessionId."""
+        return await futurized(self.test_ega_string)
+
     async def fake_operator_create_metadata_object(self, schema_type, content):
         """Fake create operation to return mocked accessionId."""
         return await futurized(self.test_ega_string)
 
+    async def fake_operator_update_metadata_object(self, schema_type, accession_id, content):
+        """Fake update operation to return mocked accessionId."""
+        return await futurized(self.test_ega_string)
+
+    async def fake_operator_replace_metadata_object(self, schema_type, accession_id, content):
+        """Fake replace operation to return mocked accessionId."""
+        return await futurized(self.test_ega_string)
+
     async def fake_operator_delete_metadata_object(self, schema_type, accession_id):
-        """Fake delete operation to await nothing."""
-        return await futurized(None)
+        """Fake delete operation to await successful operation indicator."""
+        return await futurized(True)
 
     async def fake_folderoperator_create_folder(self, content):
         """Fake create operation to return mocked folderId."""

@@ -223,8 +223,8 @@ class RESTApiHandler:
 
         accession_id = req.match_info["accessionId"]
         db_client = req.app["db_client"]
-        await Operator(db_client).delete_metadata_object(collection, accession_id)
-        LOG.info(f"DELETE object with accesssion ID {accession_id} " f"in schema {collection} was successful.")
+        accession_id = await Operator(db_client).delete_metadata_object(collection, accession_id)
+        LOG.info(f"DELETE object with accession ID {accession_id} " f"in schema {collection} was successful.")
         return web.Response(status=204)
 
     async def put_object(self, req: Request) -> Response:
@@ -252,9 +252,9 @@ class RESTApiHandler:
             content = await self._get_data(req)
             JSONValidator(content, schema_type).validate
             operator = Operator(db_client)
-        await operator.replace_metadata_object(collection, accession_id, content)
+        accession_id = await operator.replace_metadata_object(collection, accession_id, content)
         body = json.dumps({"accessionId": accession_id})
-        LOG.info(f"PUT object with accesssion ID {accession_id} " f"in schema {collection} was successful.")
+        LOG.info(f"PUT object with accession ID {accession_id} " f"in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
     async def patch_object(self, req: Request) -> Response:
@@ -278,9 +278,9 @@ class RESTApiHandler:
         else:
             content = await self._get_data(req)
             operator = Operator(db_client)
-        await operator.update_metadata_object(collection, accession_id, content)
+        accession_id = await operator.update_metadata_object(collection, accession_id, content)
         body = json.dumps({"accessionId": accession_id})
-        LOG.info(f"PATCH object with accesssion ID {accession_id} " f"in schema {collection} was successful.")
+        LOG.info(f"PATCH object with accession ID {accession_id} " f"in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
     async def get_folders(self, req: Request) -> Response:
@@ -341,7 +341,7 @@ class RESTApiHandler:
         patch_ops = await self._get_data(req)
         allowed_paths = ["/name", "/description", "/metadataObjects"]
         for op in patch_ops:
-            if not any([i in op["path"] for i in allowed_paths]):
+            if all(i not in op["path"] for i in allowed_paths):
                 reason = f"Request contains '{op['path']}' key that cannot be" " updated to folders."
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
