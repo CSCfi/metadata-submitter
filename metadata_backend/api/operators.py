@@ -596,8 +596,7 @@ class FolderOperator:
         :returns: Query result as list
         """
         cursor = self.db_service.query("folder", que)
-        folders = [folder async for folder in cursor]
-        return folders
+        return [folder async for folder in cursor]
 
     async def read_folder(self, folder_id: str) -> Dict:
         """Read object folder from database.
