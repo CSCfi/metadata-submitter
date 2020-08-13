@@ -76,13 +76,13 @@ class DBService:
 
     @auto_reconnect
     async def exists(self, collection: str, id: str) -> bool:
-        """Check object or folder exists by its generated ID.
+        """Check object, folder or user exists by its generated ID.
 
         :param collection: Collection where document should be searched from
-        :param id: ID of the object or folder to be searched
+        :param id: ID of the object/folder/user to be searched
         :returns: True if exists and False if it does not
         """
-        id_key = "folderId" if collection == "folder" else "accessionId"
+        id_key = collection + "Id" if (collection == "folder" or collection == "user") else "accessionId"
         find_by_id = {id_key: id}
         LOG.debug(f"DB doc read for {id}.")
         exists = await self.database[collection].find_one(find_by_id, {"_id": False})
@@ -90,13 +90,13 @@ class DBService:
 
     @auto_reconnect
     async def read(self, collection: str, id: str) -> Dict:
-        """Find object or folder by its generated ID.
+        """Find object, folder or user by its generated ID.
 
         :param collection: Collection where document should be searched from
-        :param id: ID of the object or folder to be searched
+        :param id: ID of the object/folder/user to be searched
         :returns: First document matching the accession_id
         """
-        id_key = "folderId" if collection == "folder" else "accessionId"
+        id_key = collection + "Id" if (collection == "folder" or collection == "user") else "accessionId"
         find_by_id = {id_key: id}
         LOG.debug(f"DB doc read for {id}.")
         return await self.database[collection].find_one(find_by_id, {"_id": False})
@@ -106,12 +106,12 @@ class DBService:
         """Update some elements of object by its accessionId.
 
         :param collection: Collection where document should be searched from
-        :param id: ID for object or folder to be updated
+        :param id: ID of the object/folder/user to be updated
         :param data_to_be_updated: JSON representing the data that should be
         updated to object, can replace previous fields and add new ones.
         :returns: True if operation was successful
         """
-        id_key = "folderId" if collection == "folder" else "accessionId"
+        id_key = collection + "Id" if (collection == "folder" or collection == "user") else "accessionId"
         find_by_id = {id_key: id}
         update_op = {"$set": data_to_be_updated}
         result = await self.database[collection].update_one(find_by_id, update_op)
@@ -145,13 +145,13 @@ class DBService:
 
     @auto_reconnect
     async def delete(self, collection: str, id: str) -> bool:
-        """Delete object or folder by its generated ID.
+        """Delete object, folder or user by its generated ID.
 
         :param collection: Collection where document should be searched from
-        :param id: ID for object or folder to be deleted
+        :param id: ID for object/folder/user to be deleted
         :returns: True if operation was successful
         """
-        id_key = "folderId" if collection == "folder" else "accessionId"
+        id_key = collection + "Id" if (collection == "folder" or collection == "user") else "accessionId"
         find_by_id = {id_key: id}
         result = await self.database[collection].delete_one(find_by_id)
         LOG.debug(f"DB doc deleted for {id}.")
