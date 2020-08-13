@@ -43,7 +43,6 @@ async def init() -> web.Application:
         web.get("/folders/{folderId}", rest_handler.get_folder),
         web.patch("/folders/{folderId}", rest_handler.patch_folder),
         web.delete("/folders/{folderId}", rest_handler.delete_folder),
-        web.post("/users", rest_handler.post_user),
         web.get("/users/{userId}", rest_handler.get_user),
         web.patch("/users/{userId}", rest_handler.patch_user),
         web.delete("/users/{userId}", rest_handler.delete_user),
