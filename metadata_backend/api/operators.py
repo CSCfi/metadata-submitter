@@ -768,7 +768,7 @@ class UserOperator:
             LOG.info(f"Updating user with id {user_id} to database " "succeeded.")
             return user_id
 
-    async def delete_user(self, user_id: str) -> None:
+    async def delete_user(self, user_id: str) -> str:
         """Delete user object from database.
 
         :param user_id: ID of the user to delete.
@@ -785,6 +785,9 @@ class UserOperator:
             reason = "Deleting for {user_id} from database failed."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
+        else:
+            LOG.info(f"{user_id} successfully deleted from collection.")
+            return user_id
 
     async def _check_user_exists(self, db: DBService, id: str) -> None:
         """Check the existance of a user by its id in the database."""

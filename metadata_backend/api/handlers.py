@@ -403,8 +403,8 @@ class RESTApiHandler:
         user_id = req.match_info["userId"]
         db_client = req.app["db_client"]
         operator = UserOperator(db_client)
-        await operator.delete_user(user_id)
-        LOG.info(f"DELETE user with ID {user_id} was successful.")
+        user = await operator.delete_user(user_id)
+        LOG.info(f"DELETE user with ID {user} was successful.")
         return web.Response(status=204)
 
 
