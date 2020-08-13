@@ -112,7 +112,7 @@ class BaseOperator(ABC):
             raise web.HTTPBadRequest(reason=reason)
         return data, self.content_type
 
-    async def delete_metadata_object(self, schema_type: str, accession_id: str) -> None:
+    async def delete_metadata_object(self, schema_type: str, accession_id: str) -> str:
         """Delete metadata object from database.
 
         Tries to remove both JSON and original XML from database, passes
@@ -123,9 +123,15 @@ class BaseOperator(ABC):
         :raises: 400 if deleting was not successful
         """
         db_client = self.db_service.db_client
-        await self._remove_object_from_db(Operator(db_client), schema_type, accession_id)
-        await self._remove_object_from_db(XMLOperator(db_client), schema_type, accession_id)
-        LOG.info(f"Removing object with schema {schema_type} from database " f"and accession id: {accession_id}")
+        JSON_deletion_success = await self._remove_object_from_db(Operator(db_client), schema_type, accession_id)
+        XML_deletion_success = await self._remove_object_from_db(XMLOperator(db_client), schema_type, accession_id)
+        if JSON_deletion_success and XML_deletion_success:
+            LOG.info(f"{accession_id} successfully deleted from collection")
+            return accession_id
+        else:
+            reason = "Deleting for {accession_id} from database failed."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
 
     async def _insert_formatted_object_to_db(self, schema_type: str, data: Dict) -> str:
         """Insert formatted metadata object to database.
@@ -210,7 +216,7 @@ class BaseOperator(ABC):
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-    async def _remove_object_from_db(self, operator: Any, schema_type: str, accession_id: str) -> None:
+    async def _remove_object_from_db(self, operator: Any, schema_type: str, accession_id: str) -> bool:
         """Delete object from database.
 
         We can omit raising error for XMLOperator if id is not
@@ -235,12 +241,7 @@ class BaseOperator(ABC):
             reason = f"Error happened while deleting object: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        if delete_success:
-            LOG.info(f"{accession_id} successfully deleted from collection")
-        else:
-            reason = "Deleting for {accession_id} from database failed."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
+        return delete_success
 
     @abstractmethod
     async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: Any) -> str:
@@ -520,8 +521,9 @@ class XMLOperator(BaseOperator):
             schema_type, accession_id, data_as_json
         )
         LOG.debug(f"XMLOperator formatted data for {schema_type} to add to DB")
-        await self._replace_object_from_db(schema_type, accession_id, {"accessionId": accession_id, "content": data})
-        return accession_id
+        return await self._replace_object_from_db(
+            schema_type, accession_id, {"accessionId": accession_id, "content": data}
+        )
 
     async def _format_data_to_update_and_add_to_db(self, schema_type: str, accession_id: str, data: str) -> str:
         """Raise not implemented.
