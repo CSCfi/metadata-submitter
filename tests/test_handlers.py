@@ -52,6 +52,7 @@ class HandlersTestCase(AioHTTPTestCase):
         self.user_id = "USR12345678"
         self.test_user = {
             "userId": self.user_id,
+            "username": "tester",
             "drafts": [],
             "folders": [],
         }
@@ -640,3 +641,24 @@ class HandlersTestCase(AioHTTPTestCase):
         response = await self.client.delete("/users/USR12345678")
         self.MockedUserOperator().delete_user.assert_called_once()
         self.assertEqual(response.status, 204)
+
+    @unittest_run_loop
+    async def test_update_user_fails_with_wrong_key(self):
+        """Test that user object does not update when forbidden keys are provided."""
+        data = [{"op": "add", "path": "/userId"}]
+        response = await self.client.patch("/users/USR12345678", json=data)
+        self.assertEqual(response.status, 400)
+        json_resp = await response.json()
+        reason = "Request contains '/userId' key that cannot be updated to user object."
+        self.assertEqual(reason, json_resp["detail"])
+
+    @unittest_run_loop
+    async def test_update_user_passes(self):
+        """Test that user object would update with correct keys."""
+        self.MockedUserOperator().update_user.return_value = futurized(self.user_id)
+        data = [{"op": "add", "path": "/drafts/0", "value": "test_value"}]
+        response = await self.client.patch("/users/USR12345678", json=data)
+        self.MockedUserOperator().update_user.assert_called_once()
+        self.assertEqual(response.status, 200)
+        json_resp = await response.json()
+        self.assertEqual(json_resp["userId"], self.user_id)

@@ -67,6 +67,7 @@ class TestOperators(AsyncTestCase):
         self.user_id = "USR12345678"
         self.test_user = {
             "userId": self.user_id,
+            "username": "tester",
             "drafts": [],
             "folders": [],
         }
@@ -606,6 +607,30 @@ class TestOperators(AsyncTestCase):
         operator.db_service.exists.assert_called_once()
         operator.db_service.read.assert_called_once_with("user", self.user_id)
         self.assertEqual(read_data, self.test_user)
+
+    async def test_user_update_passes_and_returns_id(self):
+        """Test update method for users works."""
+        patch = JsonPatch([{"op": "add", "path": "/name", "value": "test2"}])
+        operator = UserOperator(self.client)
+        operator.db_service.exists.return_value = futurized(True)
+        operator.db_service.read.return_value = futurized(self.test_user)
+        operator.db_service.update.return_value = futurized(True)
+        user = await operator.update_user(self.test_user, patch)
+        operator.db_service.exists.assert_called_once()
+        operator.db_service.update.assert_called_once()
+        self.assertEqual(len(operator.db_service.read.mock_calls), 2)
+        self.assertEqual(user["userId"], self.user_id)
+
+    async def test_user_update_fails_with_bad_patch(self):
+        """Test user update raises error with improper JSON Patch."""
+        patch = JsonPatch([{"op": "replace", "path": "nothing"}])
+        operator = UserOperator(self.client)
+        operator.db_service.exists.return_value = futurized(True)
+        operator.db_service.read.return_value = futurized(self.test_user)
+        with self.assertRaises(HTTPBadRequest):
+            await operator.update_user(self.test_user, patch)
+            operator.db_service.exists.assert_called_once()
+            operator.db_service.read.assert_called_once()
 
     async def test_deleting_user_passes(self):
         """Test user is deleted correctly."""
