@@ -82,7 +82,7 @@ class DBService:
         :param id: ID of the object/folder/user to be searched
         :returns: True if exists and False if it does not
         """
-        id_key = collection + "Id" if (collection == "folder" or collection == "user") else "accessionId"
+        id_key = f"{collection}Id" if (collection in ["folder", "user"]) else "accessionId"
         find_by_id = {id_key: id}
         LOG.debug(f"DB doc read for {id}.")
         exists = await self.database[collection].find_one(find_by_id, {"_id": False})
@@ -96,7 +96,7 @@ class DBService:
         :param id: ID of the object/folder/user to be searched
         :returns: First document matching the accession_id
         """
-        id_key = collection + "Id" if (collection == "folder" or collection == "user") else "accessionId"
+        id_key = f"{collection}Id" if (collection in ["folder", "user"]) else "accessionId"
         find_by_id = {id_key: id}
         LOG.debug(f"DB doc read for {id}.")
         return await self.database[collection].find_one(find_by_id, {"_id": False})
@@ -111,7 +111,7 @@ class DBService:
         updated to object, can replace previous fields and add new ones.
         :returns: True if operation was successful
         """
-        id_key = collection + "Id" if (collection == "folder" or collection == "user") else "accessionId"
+        id_key = f"{collection}Id" if (collection in ["folder", "user"]) else "accessionId"
         find_by_id = {id_key: id}
         update_op = {"$set": data_to_be_updated}
         result = await self.database[collection].update_one(find_by_id, update_op)
