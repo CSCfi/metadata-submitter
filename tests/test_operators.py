@@ -519,7 +519,7 @@ class TestOperators(AsyncTestCase):
         operator.db_service.query.assert_called_once()
         self.assertEqual(folders, [{"name": "folder"}])
 
-    async def test_reading_foldre_works(self):
+    async def test_reading_folder_works(self):
         """Test folder is read from db correctly."""
         operator = FolderOperator(self.client)
         operator.db_service.exists.return_value = futurized(True)
@@ -538,8 +538,8 @@ class TestOperators(AsyncTestCase):
         operator.db_service.update.return_value = futurized(True)
         folder = await operator.update_folder(self.test_folder, patch)
         operator.db_service.exists.assert_called_once()
-        operator.db_service.read.assert_called_once()
         operator.db_service.update.assert_called_once()
+        self.assertEqual(len(operator.db_service.read.mock_calls), 2)
         self.assertEqual(folder["folderId"], self.folder_id)
 
     async def test_folder_update_fails_with_bad_patch(self):
@@ -548,7 +548,6 @@ class TestOperators(AsyncTestCase):
         operator = FolderOperator(self.client)
         operator.db_service.exists.return_value = futurized(True)
         operator.db_service.read.return_value = futurized(self.test_folder)
-        # operator.db_service.update.return_value = futurized(True)
         with self.assertRaises(HTTPBadRequest):
             await operator.update_folder(self.test_folder, patch)
             operator.db_service.exists.assert_called_once()

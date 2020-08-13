@@ -625,9 +625,11 @@ class FolderOperator:
         await self._check_folder_exists(self.db_service, folder_id)
         try:
             folder = await self.db_service.read("folder", folder_id)
-            JSONValidator(folder, "folders").validate
             upd_content = patch.apply(folder)
+            JSONValidator(upd_content, "folders").validate
             update_success = await self.db_service.update("folder", folder_id, upd_content)
+            sanity_check = await self.db_service.read("folder", folder_id)
+            JSONValidator(sanity_check, "folders").validate
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting folder: {error}"
             LOG.error(reason)
@@ -646,7 +648,7 @@ class FolderOperator:
             LOG.info(f"Updating folder with id {folder_id} to database " "succeeded.")
             return folder_id
 
-    async def delete_folder(self, folder_id: str) -> None:
+    async def delete_folder(self, folder_id: str) -> str:
         """Delete object folder from database.
 
         :param folder_id: ID of the folder to delete.
@@ -660,9 +662,12 @@ class FolderOperator:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         if not delete_success:
-            reason = "Deleting for {folder_id} from database failed."
+            reason = f"Deleting for {folder_id} from database failed."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
+        else:
+            LOG.info(f"Deleting folder with id {folder_id} to database succeeded.")
+            return folder_id
 
     async def _check_folder_exists(self, db: DBService, id: str) -> None:
         """Check the existance of a folder by its id in the database."""
