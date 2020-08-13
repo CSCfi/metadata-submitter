@@ -5,13 +5,7 @@ from collections import defaultdict
 from typing import Any, Dict, List, Union
 
 from aiohttp import web
-from xmlschema import (
-    XMLSchema,
-    XMLSchemaConverter,
-    XMLSchemaException,
-    XsdElement,
-    XsdType,
-)
+from xmlschema import XMLSchema, XMLSchemaConverter, XMLSchemaException, XsdElement, XsdType
 
 from .logger import LOG
 from .schema_loader import SchemaNotFoundException, XMLSchemaLoader

@@ -14,11 +14,7 @@ from xmlschema import XMLSchemaException
 from ..conf.conf import schema_types
 from ..helpers.logger import LOG
 from ..helpers.parser import XMLToJSONParser
-from ..helpers.schema_loader import (
-    JSONSchemaLoader,
-    SchemaNotFoundException,
-    XMLSchemaLoader,
-)
+from ..helpers.schema_loader import JSONSchemaLoader, SchemaNotFoundException, XMLSchemaLoader
 from ..helpers.validator import JSONValidator, XMLValidator
 from .operators import FolderOperator, Operator, XMLOperator, UserOperator
 
