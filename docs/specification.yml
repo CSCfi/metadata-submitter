@@ -472,12 +472,8 @@ paths:
           type: string
         required: true
       responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ObjectDeleted"
+        204:
+          description: No Content
         400:
           description: Bad Request
           content:
@@ -496,6 +492,90 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
+  /folders:
+    get:
+      tags:
+        - Query
+      summary: List of folders available for the user.
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: ""
+    post:
+      tags:
+        - Submission
+      summary: Create a new folder for the user.
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: ""
+  /folders/{folderId}:
+    get:
+      tags:
+        - Query
+      summary: Object folder by its folder ID.
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: ""
+    patch:
+      tags:
+        - Manage
+      summary: Update information of an object folder.
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: ""
+    delete:
+      tags:
+        - Manage
+      summary: Delete an object folder with a specified folder ID.
+      responses:
+        204:
+          description: No Content
+  /users/{userId}:
+    get:
+      tags:
+        - Query
+      summary: User object by its user ID.
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: ""
+    patch:
+      tags:
+        - Manage
+      summary: Update user's folder related information.
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: ""
+    delete:
+      tags:
+        - Manage
+      summary: Delete an user object with a specified user ID.
+      responses:
+        204:
+          description: No Content
+
 components:
   schemas:
     ErrorModel:
