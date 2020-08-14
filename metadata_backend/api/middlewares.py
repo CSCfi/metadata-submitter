@@ -73,7 +73,10 @@ async def jwt_authentication(req: Request, handler: Callable) -> Response:
 
         # Include claims that are required to be present
         # in the payload of the token
-        claims_options = {"iss": {"essential": True, "values": ["haka_iss", "elixir_iss"]}, "exp": {"essential": True}}
+        claims_options = {
+            "iss": {"essential": True, "values": ["haka_iss", "elixir_iss"]},
+            "exp": {"essential": True},
+        }
 
         # Decode and validate token
         try:

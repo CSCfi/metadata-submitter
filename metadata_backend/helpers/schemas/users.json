@@ -1,0 +1,38 @@
+{
+  "type": "object",
+  "title": "Folder schema for user objects",
+  "required": [
+    "userId",
+    "username"
+  ],
+  "properties": {
+    "userId": {
+      "type": "string",
+      "title": "User Id"
+    },
+    "username": {
+      "type": "string",
+      "title": "User Name"
+    },
+    "drafts": {
+      "type": "array",
+      "title": "The drafts schema",
+      "items": [
+        {
+          "type": "string",
+          "title": "Folder Id"
+        }
+      ]
+    },
+    "folders": {
+      "type": "array",
+      "title": "The folders schema",
+      "items": [
+        {
+          "type": "string",
+          "title": "Folder Id"
+        }
+      ]
+    }
+  }
+}
