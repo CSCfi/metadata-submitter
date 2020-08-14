@@ -49,11 +49,19 @@ class HandlersTestCase(AioHTTPTestCase):
             "published": False,
             "metadataObjects": [],
         }
+        self.user_id = "USR12345678"
+        self.test_user = {
+            "userId": self.user_id,
+            "username": "tester",
+            "drafts": [],
+            "folders": [],
+        }
 
         class_parser = "metadata_backend.api.handlers.XMLToJSONParser"
         class_operator = "metadata_backend.api.handlers.Operator"
         class_xmloperator = "metadata_backend.api.handlers.XMLOperator"
         class_folderoperator = "metadata_backend.api.handlers.FolderOperator"
+        class_useroperator = "metadata_backend.api.handlers.UserOperator"
         operator_config = {
             "read_metadata_object.side_effect": self.fake_operator_read_metadata_object,
             "query_metadata_database.side_effect": self.fake_operator_query_metadata_object,
@@ -72,14 +80,20 @@ class HandlersTestCase(AioHTTPTestCase):
             "read_folder.side_effect": self.fake_folderoperator_read_folder,
             "delete_folder.side_effect": self.fake_folderoperator_delete_folder,
         }
+        useroperator_config = {
+            "create_user.side_effect": self.fake_useroperator_create_user,
+            "read_user.side_effect": self.fake_useroperator_read_user,
+        }
         self.patch_parser = patch(class_parser, spec=True)
         self.patch_operator = patch(class_operator, **operator_config, spec=True)
         self.patch_xmloperator = patch(class_xmloperator, **xmloperator_config, spec=True)
         self.patch_folderoperator = patch(class_folderoperator, **folderoperator_config, spec=True)
+        self.patch_useroperator = patch(class_useroperator, **useroperator_config, spec=True)
         self.MockedParser = self.patch_parser.start()
         self.MockedOperator = self.patch_operator.start()
         self.MockedXMLOperator = self.patch_xmloperator.start()
         self.MockedFolderOperator = self.patch_folderoperator.start()
+        self.MockedUserOperator = self.patch_useroperator.start()
 
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
@@ -87,6 +101,7 @@ class HandlersTestCase(AioHTTPTestCase):
         self.patch_operator.stop()
         self.patch_xmloperator.stop()
         self.patch_folderoperator.stop()
+        self.patch_useroperator.stop()
 
     def create_submission_data(self, files):
         """Create request data from pairs of schemas and filenames."""
@@ -145,6 +160,14 @@ class HandlersTestCase(AioHTTPTestCase):
     async def fake_folderoperator_delete_folder(self, folder_id):
         """Fake delete folder to await nothing."""
         return await futurized(None)
+
+    async def fake_useroperator_create_user(self, content):
+        """Fake user operation to return mocked userId."""
+        return await futurized(self.user_id)
+
+    async def fake_useroperator_read_user(self, user_id):
+        """Fake read operation to return mocked user."""
+        return await futurized(self.test_user)
 
     @unittest_run_loop
     async def test_submit_endpoint_submission_does_not_fail(self):
@@ -296,10 +319,7 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_patch_object_bad_json(self):
         """Test that patch json is badly formated."""
-        json_req = {
-            "centerName": "GEO",
-            "alias": "GSE10966",
-        }
+        json_req = {"centerName": "GEO", "alias": "GSE10966"}
         call = "/drafts/study/EGA123456"
         response = await self.client.patch(call, data=json_req)
         reason = "JSON is not correctly formatted. " "See: Expecting value: line 1 column 1"
@@ -595,3 +615,41 @@ class HandlersTestCase(AioHTTPTestCase):
         response = await self.client.delete("/folders/FOL12345678")
         self.MockedFolderOperator().delete_folder.assert_called_once()
         self.assertEqual(response.status, 204)
+
+    @unittest_run_loop
+    async def test_get_user_works(self):
+        """Test user object is returned when correct user id is given."""
+        response = await self.client.get("/users/USR12345678")
+        self.assertEqual(response.status, 200)
+        self.MockedUserOperator().read_user.assert_called_once()
+        json_resp = await response.json()
+        self.assertEqual(self.test_user, json_resp)
+
+    @unittest_run_loop
+    async def test_user_deletion_is_called(self):
+        """Test that user object would be deleted."""
+        self.MockedUserOperator().delete_user.return_value = futurized(None)
+        response = await self.client.delete("/users/USR12345678")
+        self.MockedUserOperator().delete_user.assert_called_once()
+        self.assertEqual(response.status, 204)
+
+    @unittest_run_loop
+    async def test_update_user_fails_with_wrong_key(self):
+        """Test that user object does not update when forbidden keys are provided."""
+        data = [{"op": "add", "path": "/userId"}]
+        response = await self.client.patch("/users/USR12345678", json=data)
+        self.assertEqual(response.status, 400)
+        json_resp = await response.json()
+        reason = "Request contains '/userId' key that cannot be updated to user object."
+        self.assertEqual(reason, json_resp["detail"])
+
+    @unittest_run_loop
+    async def test_update_user_passes(self):
+        """Test that user object would update with correct keys."""
+        self.MockedUserOperator().update_user.return_value = futurized(self.user_id)
+        data = [{"op": "add", "path": "/drafts/0", "value": "test_value"}]
+        response = await self.client.patch("/users/USR12345678", json=data)
+        self.MockedUserOperator().update_user.assert_called_once()
+        self.assertEqual(response.status, 200)
+        json_resp = await response.json()
+        self.assertEqual(json_resp["userId"], self.user_id)

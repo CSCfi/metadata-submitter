@@ -16,7 +16,7 @@ from ..helpers.logger import LOG
 from ..helpers.parser import XMLToJSONParser
 from ..helpers.schema_loader import JSONSchemaLoader, SchemaNotFoundException, XMLSchemaLoader
 from ..helpers.validator import JSONValidator, XMLValidator
-from .operators import FolderOperator, Operator, XMLOperator
+from .operators import FolderOperator, Operator, XMLOperator, UserOperator
 
 
 class RESTApiHandler:
@@ -100,7 +100,7 @@ class RESTApiHandler:
         link_headers = self._header_links(url, page_num, per_page, total_objects)
         LOG.debug(f"Pagination header links: {link_headers}")
         LOG.info(f"Querying for objects in {collection} " f"resulted in {total_objects} objects ")
-        return web.Response(body=result, status=200, headers=link_headers, content_type="application/json")
+        return web.Response(body=result, status=200, headers=link_headers, content_type="application/json",)
 
     async def _get_data(self, req: Request) -> Dict:
         """Get the data content from a request.
@@ -199,7 +199,7 @@ class RESTApiHandler:
         url = f"{req.scheme}://{req.host}{req.path}"
         location_headers = {"Location": f"{url}{accession_id}"}
         LOG.info(f"POST object with accesssion ID {accession_id} " f"in schema {collection} was successful.")
-        return web.Response(body=body, status=201, headers=location_headers, content_type="application/json")
+        return web.Response(body=body, status=201, headers=location_headers, content_type="application/json",)
 
     async def query_objects(self, req: Request) -> Response:
         """Query metadata objects from database.
@@ -324,7 +324,7 @@ class RESTApiHandler:
         db_client = req.app["db_client"]
         operator = FolderOperator(db_client)
         folder = await operator.read_folder(folder_id)
-        LOG.info(f"GET folder with folder ID {folder_id} was successful.")
+        LOG.info(f"GET folder with ID {folder_id} was successful.")
         return web.Response(body=json.dumps(folder), status=200, content_type="application/json")
 
     async def patch_folder(self, req: Request) -> Response:
@@ -342,7 +342,7 @@ class RESTApiHandler:
         allowed_paths = ["/name", "/description", "/metadataObjects"]
         for op in patch_ops:
             if all(i not in op["path"] for i in allowed_paths):
-                reason = f"Request contains '{op['path']}' key that cannot be" " updated to folders."
+                reason = f"Request contains '{op['path']}' key that cannot be updated to folders."
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
         patch = JsonPatch(patch_ops)
@@ -364,6 +364,57 @@ class RESTApiHandler:
         operator = FolderOperator(db_client)
         folder = await operator.delete_folder(folder_id)
         LOG.info(f"DELETE folder with ID {folder} was successful.")
+        return web.Response(status=204)
+
+    async def get_user(self, req: Request) -> Response:
+        """Get one user by its user ID.
+
+        :param req: GET request
+        :returns: JSON response containing user object
+        """
+        user_id = req.match_info["userId"]
+        db_client = req.app["db_client"]
+        operator = UserOperator(db_client)
+        user = await operator.read_user(user_id)
+        LOG.info(f"GET user with ID {user_id} was successful.")
+        return web.Response(body=json.dumps(user), status=200, content_type="application/json")
+
+    async def patch_user(self, req: Request) -> Response:
+        """Update user object with a specific user ID.
+
+        :param req: PATCH request
+        :returns: JSON response containing user ID for updated user object
+        """
+        user_id = req.match_info["userId"]
+        db_client = req.app["db_client"]
+
+        # Check patch operations in request are valid
+        patch_ops = await self._get_data(req)
+        allowed_paths = ["/drafts", "/folders"]
+        for op in patch_ops:
+            if all(i not in op["path"] for i in allowed_paths):
+                reason = f"Request contains '{op['path']}' key that cannot be updated to user object."
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+        patch = JsonPatch(patch_ops)
+
+        operator = UserOperator(db_client)
+        user = await operator.update_user(user_id, patch)
+        body = json.dumps({"userId": user})
+        LOG.info(f"PATCH user with ID {user} was successful.")
+        return web.Response(body=body, status=200, content_type="application/json")
+
+    async def delete_user(self, req: Request) -> Response:
+        """Delete user from database.
+
+        :param req: DELETE request
+        :returns: HTTP No Content response
+        """
+        user_id = req.match_info["userId"]
+        db_client = req.app["db_client"]
+        operator = UserOperator(db_client)
+        user = await operator.delete_user(user_id)
+        LOG.info(f"DELETE user with ID {user} was successful.")
         return web.Response(status=204)
 
 
