@@ -11,7 +11,12 @@ from jsonpatch import JsonPatch
 from multidict import MultiDict, MultiDictProxy
 from pymongo.errors import ConnectionFailure
 
-from metadata_backend.api.operators import FolderOperator, Operator, XMLOperator
+from metadata_backend.api.operators import (
+    FolderOperator,
+    Operator,
+    XMLOperator,
+    UserOperator,
+)
 
 
 class MockCursor(AsyncMockIterator):
@@ -61,7 +66,15 @@ class TestOperators(AsyncTestCase):
             "folderId": self.folder_id,
             "name": "test",
             "description": "test folder",
-            "metadata_objects": [],
+            "published": False,
+            "metadataObjects": [],
+        }
+        self.user_id = "USR12345678"
+        self.test_user = {
+            "userId": self.user_id,
+            "username": "tester",
+            "drafts": [],
+            "folders": [],
         }
         class_dbservice = "metadata_backend.api.operators.DBService"
         self.patch_dbservice = patch(class_dbservice, spec=True)
@@ -78,12 +91,19 @@ class TestOperators(AsyncTestCase):
             autospec=True,
         )
         self.patch_folder.start()
+        self.patch_user = patch(
+            ("metadata_backend.api.operators.UserOperator." "_generate_user_id"),
+            return_value=self.user_id,
+            autospec=True,
+        )
+        self.patch_user.start()
 
     def tearDown(self):
         """Stop patchers."""
         self.patch_dbservice.stop()
         self.patch_accession.stop()
         self.patch_folder.stop()
+        self.patch_user.stop()
 
     async def test_reading_metadata_works(self):
         """Test json is read from db correctly."""
@@ -150,7 +170,11 @@ class TestOperators(AsyncTestCase):
     async def test_json_create_passes_and_returns_accessionId(self):
         """Test create method for json works."""
         operator = Operator(self.client)
-        data = {"centerName": "GEO", "alias": "GSE10966", "descriptor": {"studyTitle": "Highly", "studyType": "Other"}}
+        data = {
+            "centerName": "GEO",
+            "alias": "GSE10966",
+            "descriptor": {"studyTitle": "Highly", "studyType": "Other"},
+        }
         operator.db_service.create.return_value = futurized(True)
         accession = await operator.create_metadata_object("study", data)
         operator.db_service.create.assert_called_once()
@@ -159,7 +183,11 @@ class TestOperators(AsyncTestCase):
     async def test_json_replace_passes_and_returns_accessionId(self):
         """Test replace method for json works."""
         accession = "EGA123456"
-        data = {"centerName": "GEO", "alias": "GSE10966", "descriptor": {"studyTitle": "Highly", "studyType": "Other"}}
+        data = {
+            "centerName": "GEO",
+            "alias": "GSE10966",
+            "descriptor": {"studyTitle": "Highly", "studyType": "Other"},
+        }
         operator = Operator(self.client)
         operator.db_service.exists.return_value = futurized(True)
         operator.db_service.replace.return_value = futurized(True)
@@ -262,8 +290,7 @@ class TestOperators(AsyncTestCase):
         accession = "EGA123456"
         operator = Operator(self.client)
         with patch(
-            ("metadata_backend.api.operators.Operator." "_replace_object_from_db"),
-            return_value=futurized(self.accession_id),
+            "metadata_backend.api.operators.Operator._replace_object_from_db", return_value=futurized(self.accession_id)
         ):
             with patch("metadata_backend.api.operators.datetime") as m_date:
                 m_date.utcnow.return_value = datetime.datetime(2020, 4, 14)
@@ -286,8 +313,7 @@ class TestOperators(AsyncTestCase):
         accession = "EGA123456"
         operator = Operator(self.client)
         with patch(
-            ("metadata_backend.api.operators.Operator." "_replace_object_from_db"),
-            return_value=futurized(self.accession_id),
+            "metadata_backend.api.operators.Operator._replace_object_from_db", return_value=futurized(self.accession_id)
         ) as mocked_insert:
             with patch("metadata_backend.api.operators.datetime") as m_date:
                 m_date.utcnow.return_value = datetime.datetime(2020, 4, 14)
@@ -366,17 +392,17 @@ class TestOperators(AsyncTestCase):
         operator.db_service.db_client = self.client
         xml_data = "<TEST></TEST>"
         with patch(
-            ("metadata_backend.api.operators.Operator." "_format_data_to_replace_and_add_to_db"),
+            "metadata_backend.api.operators.Operator._format_data_to_replace_and_add_to_db",
             return_value=futurized(self.accession_id),
         ):
             with patch(
-                ("metadata_backend.api.operators.XMLOperator." "_replace_object_from_db"),
+                "metadata_backend.api.operators.XMLOperator._replace_object_from_db",
                 return_value=futurized(self.accession_id),
             ) as m_insert:
                 with patch("metadata_backend.api.operators.XMLToJSONParser"):
                     acc = await (operator._format_data_to_replace_and_add_to_db("study", accession, xml_data))
                     m_insert.assert_called_once_with(
-                        "study", accession, {"accessionId": self.accession_id, "content": xml_data}
+                        "study", accession, {"accessionId": self.accession_id, "content": xml_data},
                     )
                     self.assertEqual(acc, self.accession_id)
 
@@ -438,7 +464,9 @@ class TestOperators(AsyncTestCase):
         ]
         operator.db_service.query.return_value = MockCursor(study_test)
         query = MultiDictProxy(MultiDict([("swag", "littinen")]))
-        with patch("metadata_backend.api.operators.Operator._format_read_data", return_value=futurized(study_test)):
+        with patch(
+            "metadata_backend.api.operators.Operator._format_read_data", return_value=futurized(study_test),
+        ):
             await operator.query_metadata_database("study", query, 1, 10)
         operator.db_service.query.assert_called_once_with("study", {})
 
@@ -462,7 +490,7 @@ class TestOperators(AsyncTestCase):
         operator.db_service.query.return_value = MockCursor(multiple_result)
         operator.db_service.get_count.return_value = futurized(100)
         query = MultiDictProxy(MultiDict([]))
-        parsed, page_num, page_size, total_objects = await operator.query_metadata_database("sample", query, 1, 10)
+        (parsed, page_num, page_size, total_objects,) = await operator.query_metadata_database("sample", query, 1, 10)
         for doc in parsed:
             self.assertEqual(doc["dateCreated"], "2020-06-14T00:00:00")
             self.assertEqual(doc["dateModified"], "2020-06-14T00:00:00")
@@ -476,7 +504,9 @@ class TestOperators(AsyncTestCase):
         operator = Operator(self.client)
         operator.db_service.query = MagicMock()
         query = MultiDictProxy(MultiDict([]))
-        with patch("metadata_backend.api.operators.Operator._format_read_data", return_value=futurized([])):
+        with patch(
+            "metadata_backend.api.operators.Operator._format_read_data", return_value=futurized([]),
+        ):
             with self.assertRaises(HTTPNotFound):
                 await operator.query_metadata_database("study", query, 1, 10)
 
@@ -486,7 +516,9 @@ class TestOperators(AsyncTestCase):
         data = {"foo": "bar"}
         cursor = MockCursor([])
         operator.db_service.query.return_value = cursor
-        with patch("metadata_backend.api.operators.Operator._format_read_data", return_value=futurized(data)):
+        with patch(
+            "metadata_backend.api.operators.Operator._format_read_data", return_value=futurized(data),
+        ):
             await operator.query_metadata_database("sample", {}, 3, 50)
             self.assertEqual(cursor._skip, 100)
             self.assertEqual(cursor._limit, 50)
@@ -518,7 +550,7 @@ class TestOperators(AsyncTestCase):
         operator.db_service.query.assert_called_once()
         self.assertEqual(folders, [{"name": "folder"}])
 
-    async def test_reading_foldre_works(self):
+    async def test_reading_folder_works(self):
         """Test folder is read from db correctly."""
         operator = FolderOperator(self.client)
         operator.db_service.exists.return_value = futurized(True)
@@ -537,8 +569,8 @@ class TestOperators(AsyncTestCase):
         operator.db_service.update.return_value = futurized(True)
         folder = await operator.update_folder(self.test_folder, patch)
         operator.db_service.exists.assert_called_once()
-        operator.db_service.read.assert_called_once()
         operator.db_service.update.assert_called_once()
+        self.assertEqual(len(operator.db_service.read.mock_calls), 2)
         self.assertEqual(folder["folderId"], self.folder_id)
 
     async def test_folder_update_fails_with_bad_patch(self):
@@ -547,7 +579,6 @@ class TestOperators(AsyncTestCase):
         operator = FolderOperator(self.client)
         operator.db_service.exists.return_value = futurized(True)
         operator.db_service.read.return_value = futurized(self.test_folder)
-        # operator.db_service.update.return_value = futurized(True)
         with self.assertRaises(HTTPBadRequest):
             await operator.update_folder(self.test_folder, patch)
             operator.db_service.exists.assert_called_once()
@@ -560,6 +591,57 @@ class TestOperators(AsyncTestCase):
         operator.db_service.delete.return_value = futurized(True)
         await operator.delete_folder(self.folder_id)
         operator.db_service.delete.assert_called_with("folder", "FOL12345678")
+
+    async def test_create_user_works_and_returns_userId(self):
+        """Test create method for users work."""
+        operator = UserOperator(self.client)
+        data = {}
+        operator.db_service.create.return_value = futurized(True)
+        folder = await operator.create_user(data)
+        operator.db_service.create.assert_called_once()
+        self.assertEqual(folder, self.user_id)
+
+    async def test_reading_user_works(self):
+        """Test user object is read from db correctly."""
+        operator = UserOperator(self.client)
+        operator.db_service.exists.return_value = futurized(True)
+        operator.db_service.read.return_value = futurized(self.test_user)
+        read_data = await operator.read_user(self.user_id)
+        operator.db_service.exists.assert_called_once()
+        operator.db_service.read.assert_called_once_with("user", self.user_id)
+        self.assertEqual(read_data, self.test_user)
+
+    async def test_user_update_passes_and_returns_id(self):
+        """Test update method for users works."""
+        patch = JsonPatch([{"op": "add", "path": "/name", "value": "test2"}])
+        operator = UserOperator(self.client)
+        operator.db_service.exists.return_value = futurized(True)
+        operator.db_service.read.return_value = futurized(self.test_user)
+        operator.db_service.update.return_value = futurized(True)
+        user = await operator.update_user(self.test_user, patch)
+        operator.db_service.exists.assert_called_once()
+        operator.db_service.update.assert_called_once()
+        self.assertEqual(len(operator.db_service.read.mock_calls), 2)
+        self.assertEqual(user["userId"], self.user_id)
+
+    async def test_user_update_fails_with_bad_patch(self):
+        """Test user update raises error with improper JSON Patch."""
+        patch = JsonPatch([{"op": "replace", "path": "nothing"}])
+        operator = UserOperator(self.client)
+        operator.db_service.exists.return_value = futurized(True)
+        operator.db_service.read.return_value = futurized(self.test_user)
+        with self.assertRaises(HTTPBadRequest):
+            await operator.update_user(self.test_user, patch)
+            operator.db_service.exists.assert_called_once()
+            operator.db_service.read.assert_called_once()
+
+    async def test_deleting_user_passes(self):
+        """Test user is deleted correctly."""
+        operator = UserOperator(self.client)
+        operator.db_service.exists.return_value = futurized(True)
+        operator.db_service.delete.return_value = futurized(True)
+        await operator.delete_user(self.user_id)
+        operator.db_service.delete.assert_called_with("user", "USR12345678")
 
 
 if __name__ == "__main__":

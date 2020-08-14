@@ -52,7 +52,12 @@ class AuthMiddlewareTestCase(AioHTTPTestCase):
         Also set pem as an environment variable for the duration of the tests.
         """
         self.header = {"alg": "HS256", "typ": "JWT"}
-        self.payload = {"sub": "test", "name": "tester", "iss": "haka_iss", "exp": 9999999999}
+        self.payload = {
+            "sub": "test",
+            "name": "tester",
+            "iss": "haka_iss",
+            "exp": 9999999999,
+        }
         self.pem = {"kty": "oct", "alg": "RS256", "k": "GawgguFyGrWKav7AX4VKUg"}
         os.environ["PUBLIC_KEY"] = json.dumps(self.pem)
 
@@ -125,7 +130,11 @@ class AuthMiddlewareTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_bad_signature_error(self):
         """Test that altering the key raises bad signature error."""
-        otherkey = {"kty": "oct", "alg": "RS256", "k": "hJtXIZ2uSN5kbQfbtTNWbpdmhkV8FJG"}
+        otherkey = {
+            "kty": "oct",
+            "alg": "RS256",
+            "k": "hJtXIZ2uSN5kbQfbtTNWbpdmhkV8FJG",
+        }
         token = jwt.encode(self.header, self.payload, otherkey).decode("utf-8")
         data = _create_improper_data()
         response = await self.client.post("/submit", data=data, headers={"Authorization": f"Bearer {token}"})

@@ -42,7 +42,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
         links = [
             "studyLinks",
             "sampleLinks",
-            "runlinks",
+            "runLinks",
             "experimentLinks",
             "analysisLinks",
             "projectLinks",
@@ -84,8 +84,12 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 children[key] = list(value.values())[0]["instrumentModel"]
                 continue
 
-            if "dataBlock" in key:
+            if "files" in key:
                 children["files"] = list(value.values())
+                continue
+
+            if "dataBlock" in key:
+                children["files"] = value["files"]
                 continue
 
             if "spotDescriptor" in key:
@@ -126,7 +130,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
         return True
 
     def element_decode(
-        self, data: Any, xsd_element: XsdElement, xsd_type: XsdType = None, level: int = 0
+        self, data: Any, xsd_element: XsdElement, xsd_type: XsdType = None, level: int = 0,
     ) -> Union[Dict, List, str, None]:
         """Decode XML to JSON.
 
@@ -152,6 +156,8 @@ class MetadataXMLConverter(XMLSchemaConverter):
         - Platform data we assign the string value of the instrument Model.
         - dataBlock has the content of files array to be the same in run
           and analysis.
+        - files is flatten for analysis and run so that it contains
+          an array of files indiferent of the number.
         - spotDescriptor takes the value of its child spotDecodeSpec
         """
         xsd_type = xsd_type or xsd_element.type

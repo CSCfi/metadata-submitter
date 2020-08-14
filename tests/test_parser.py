@@ -59,7 +59,7 @@ class ParserTestCase(unittest.TestCase):
         """
         run_xml = self.load_xml_from_file("run", "ERR000076.xml")
         run_json = self.parser.parse("run", run_xml)
-        self.assertIn("ERA000/ERA000014/srf/BGI-FC304RWAAXX_5.srf", run_json["files"][0]["file"]["filename"])
+        self.assertIn("ERA000/ERA000014/srf/BGI-FC304RWAAXX_5.srf", run_json["files"][0]["filename"])
         self.assertIn("ERX000037", run_json["experimentRef"]["accessionId"])
 
     def test_analysis_is_parsed(self):
@@ -70,7 +70,7 @@ class ParserTestCase(unittest.TestCase):
         analysis_xml = self.load_xml_from_file("analysis", "ERZ266973.xml")
         analysis_json = self.parser.parse("analysis", analysis_xml)
         self.assertIn(
-            "GCA_000001405.1", analysis_json["analysisType"]["processedReads"]["assembly"]["standard"]["accessionId"]
+            "GCA_000001405.1", analysis_json["analysisType"]["processedReads"]["assembly"]["standard"]["accessionId"],
         )
 
     def test_error_raised_when_schema_not_found(self):
