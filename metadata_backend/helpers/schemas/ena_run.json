@@ -14,11 +14,11 @@
                 "properties": {
                     "db": {
                         "type": "string",
-                        "title": "DataBase"
+                        "title": "Database"
                     },
                     "id": {
                         "type": "string",
-                        "title": "Associated accession ID"
+                        "title": "Associated accession Id"
                     }
                 }
             }
@@ -26,7 +26,7 @@
         "urlLink": {
             "$id": "#/definitions/urlLink",
             "type": "array",
-            "title": "URL Links",
+            "title": "URL Link",
             "items": {
                 "type": "object",
                 "required": [
@@ -35,14 +35,14 @@
                 ],
                 "properties": {
                     "label": {
-                        "description": "Text label to display for the link.",
+                        "type": "string",
                         "title": "Label",
-                        "type": "string"
+                        "description": "Text label to display for the link."
                     },
                     "url": {
-                        "description": "The internet service link (http(s), ftp) etc.",
                         "type": "string",
                         "title": "URL",
+                        "description": "The internet service link (http(s), ftp) etc.",
                         "pattern": "^(https?|ftp)://"
                     }
                 }
@@ -60,7 +60,7 @@
                 "properties": {
                     "db": {
                         "description": "NCBI controlled vocabulary of permitted cross references. Please see http://www.ncbi.nlm.nih.gov/entrez/eutils/einfo.fcgi? .",
-                        "title": "DataBase",
+                        "title": "Database",
                         "type": "string"
                     },
                     "label": {
@@ -119,7 +119,7 @@
                                     "prevStepIndex": {
                                         "oneOf": [
                                             {
-                                                "title": "string",
+                                                "title": "String value",
                                                 "type": "string"
                                             },
                                             {
@@ -173,38 +173,38 @@
         "reference": {
             "$id": "#/definitions/reference",
             "type": "object",
-            "additionaProperties": true,
+            "additionalProperties": true,
             "required": [
                 "accessionId"
             ],
             "properties": {
                 "label": {
                     "type": "string",
-                    "title": "label"
+                    "title": "Label"
                 },
                 "refname": {
                     "type": "string",
-                    "title": "refname"
+                    "title": "Record name"
                 },
                 "refcenter": {
                     "type": "string",
-                    "title": "refcenter"
+                    "title": "Center Namespace"
                 },
                 "accessionId": {
                     "type": "string",
-                    "title": "accessionId"
+                    "title": "Accession Id"
                 },
                 "identifiers": {
                     "type": "object",
-                    "title": "identifiers",
+                    "title": "Identifiers",
                     "properties": {
                         "primaryId": {
                             "type": "string",
-                            "title": "primaryId"
+                            "title": "Primary Id"
                         },
                         "submitterId": {
                             "type": "object",
-                            "title": "submitterId",
+                            "title": "Submitter Id",
                             "required": [
                                 "namespace",
                                 "value"
@@ -213,11 +213,11 @@
                             "properties": {
                                 "namespace": {
                                     "type": "string",
-                                    "title": "namespace"
+                                    "title": "Namespace"
                                 },
                                 "value": {
                                     "type": "string",
-                                    "title": "value"
+                                    "title": "Value"
                                 }
                             }
                         }
@@ -225,76 +225,67 @@
                 }
             }
         },
-        "fileType": {
-            "$id": "#/definitions/fileType",
+        "file": {
+            "$id": "#/definitions/file",
             "type": "object",
-            "title": "files",
+            "title": "File",
             "required": [
-                "file"
+                "filename",
+                "filetype",
+                "checksumMethod",
+                "checksum"
             ],
             "properties": {
-                "file": {
-                    "type": "object",
-                    "title": "file",
-                    "required": [
-                        "filename",
-                        "filetype",
-                        "checksumMethod",
-                        "checksum"
-                    ],
-                    "properties": {
-                        "filename": {
-                            "type": "string",
-                            "title": "filename"
-                        },
-                        "filetype": {
-                            "type": "string",
-                            "title": "filetype",
-                            "enum": [
-                                "tab",
-                                "bam",
-                                "bai",
-                                "cram",
-                                "crai",
-                                "vcf",
-                                "vcf_aggregate",
-                                "bcf",
-                                "tabix",
-                                "wig",
-                                "sra",
-                                "sff",
-                                "srf",
-                                "bed",
-                                "gff",
-                                "fasta",
-                                "fastq",
-                                "flatfile",
-                                "chromosome_list",
-                                "sample_list",
-                                "readme_file",
-                                "phenotype_file",
-                                "BioNano_native",
-                                "Kallisto_native",
-                                "agp",
-                                "unlocalised_list",
-                                "info",
-                                "manifest",
-                                "other"
-                            ]
-                        },
-                        "checksumMethod": {
-                            "type": "string",
-                            "title": "checksumMethod",
-                            "enum": [
-                                "MD5",
-                                "SHA256"
-                            ]
-                        },
-                        "checksum": {
-                            "type": "string",
-                            "title": "checksum"
-                        }
-                    }
+                "filename": {
+                    "type": "string",
+                    "title": "filename"
+                },
+                "filetype": {
+                    "type": "string",
+                    "title": "filetype",
+                    "enum": [
+                        "tab",
+                        "bam",
+                        "bai",
+                        "cram",
+                        "crai",
+                        "vcf",
+                        "vcf_aggregate",
+                        "bcf",
+                        "tabix",
+                        "wig",
+                        "sra",
+                        "sff",
+                        "srf",
+                        "bed",
+                        "gff",
+                        "fasta",
+                        "fastq",
+                        "flatfile",
+                        "chromosome_list",
+                        "sample_list",
+                        "readme_file",
+                        "phenotype_file",
+                        "BioNano_native",
+                        "Kallisto_native",
+                        "agp",
+                        "unlocalised_list",
+                        "info",
+                        "manifest",
+                        "other"
+                    ]
+                },
+                "checksumMethod": {
+                    "type": "string",
+                    "title": "checksumMethod",
+                    "enum": [
+                        "MD5",
+                        "SHA256"
+                    ]
+                },
+                "checksum": {
+                    "type": "string",
+                    "title": "checksum"
                 }
             }
         }
@@ -322,12 +313,12 @@
             "properties": {
                 "referenceAlignment": {
                     "type": "object",
-                    "title": "referenceAlignment",
+                    "title": "Reference Alignment",
                     "additionalProperties": true,
                     "properties": {
                         "sequence": {
                             "type": "array",
-                            "title": "sequence",
+                            "title": "Sequence",
                             "additionalItems": true,
                             "items": {
                                 "type": "object",
@@ -339,15 +330,19 @@
                                 "properties": {
                                     "label": {
                                         "type": "string",
-                                        "title": "label"
+                                        "title": "Label"
                                     },
                                     "refname": {
                                         "type": "string",
-                                        "title": "refname"
+                                        "title": "Record name"
+                                    },
+                                    "refcenter": {
+                                        "type": "string",
+                                        "title": "Center Namespace"
                                     },
                                     "accessionId": {
                                         "type": "string",
-                                        "title": "accessionId"
+                                        "title": "Accession Id"
                                     }
                                 }
                             }
@@ -376,6 +371,7 @@
                 },
                 "readSpec": {
                     "type": "object",
+                    "title": "Read Specification",
                     "properties": {
                         "readIndex": {
                             "title": "Read Index",
@@ -542,20 +538,11 @@
             ]
         },
         "files": {
-            "oneOf": [
-                {
-                    "type": "array",
-                    "title": "files",
-                    "items": {
-                        "$ref": "#/definitions/fileType"
-                    }
-                },
-                {
-                    "type": "object",
-                    "title": "files",
-                    "$ref": "#/definitions/fileType"
-                }
-            ]
+            "type": "array",
+            "title": "Files",
+            "items": {
+                "$ref": "#/definitions/file"
+            }
         },
         "runLinks": {
             "type": "object",
@@ -572,7 +559,7 @@
                 }
             }
         },
-        "runAtrributes": {
+        "runAttributes": {
             "type": "array",
             "title": "Run Attributes",
             "items": {

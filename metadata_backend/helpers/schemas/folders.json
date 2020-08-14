@@ -1,0 +1,49 @@
+{
+  "type": "object",
+  "title": "Folder schema containing submitted metadata objects",
+  "required": [
+    "name",
+    "description"
+  ],
+  "properties": {
+    "folderId": {
+      "type": "string",
+      "title": "Folder Id"
+    },
+    "name": {
+      "type": "string",
+      "title": "Folder Name"
+    },
+    "description": {
+      "type": "string",
+      "title": "Folder Description"
+    },
+    "published": {
+      "type": "boolean",
+      "title": "Published Folder"
+    },
+    "metadataObjects": {
+      "type": "array",
+      "title": "The metadataObjects schema",
+      "items": {
+        "type": "object",
+        "title": "Folder objects",
+        "required": [
+            "accessionId",
+            "schema"
+        ],
+        "properties": {
+          "accessionId": {
+            "type": "string",
+            "title": "Accession Id"
+          },
+          "schema": {
+            "type": "string",
+            "title": "Object's schema"
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

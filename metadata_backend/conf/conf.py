@@ -78,7 +78,7 @@ query_map = {
     "studyAttributes": {"base": "studyAttributes", "keys": ["tag", "value"]},
     "sampleName": {"base": "sampleName", "keys": ["taxonId", "scientificName", "commonName"]},
     "scientificName": "sampleName.scientificName",
-    "fileType": "files.file.filetype",
+    "fileType": "files.filetype",
     "studyReference": {"base": "studyRef", "keys": ["accessionId", "refname", "refcenter"]},
     "sampleReference": {"base": "sampleRef", "keys": ["accessionId", "label", "refname", "refcenter"]},
     "experimentReference": {"base": "experimentRef", "keys": ["accessionId", "refname", "refcenter"]},

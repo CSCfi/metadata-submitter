@@ -14,11 +14,11 @@
                 "properties": {
                     "db": {
                         "type": "string",
-                        "title": "DataBase"
+                        "title": "Database"
                     },
                     "id": {
                         "type": "string",
-                        "title": "Associated accession ID"
+                        "title": "Associated accession Id"
                     }
                 }
             }
@@ -26,7 +26,7 @@
         "urlLink": {
             "$id": "#/definitions/urlLink",
             "type": "array",
-            "title": "URL Links",
+            "title": "URL Link",
             "items": {
                 "type": "object",
                 "required": [
@@ -35,14 +35,14 @@
                 ],
                 "properties": {
                     "label": {
-                        "description": "Text label to display for the link.",
+                        "type": "string",
                         "title": "Label",
-                        "type": "string"
+                        "description": "Text label to display for the link."
                     },
                     "url": {
-                        "description": "The internet service link (http(s), ftp) etc.",
                         "type": "string",
                         "title": "URL",
+                        "description": "The internet service link (http(s), ftp) etc.",
                         "pattern": "^(https?|ftp)://"
                     }
                 }
@@ -60,7 +60,7 @@
                 "properties": {
                     "db": {
                         "description": "NCBI controlled vocabulary of permitted cross references. Please see http://www.ncbi.nlm.nih.gov/entrez/eutils/einfo.fcgi? .",
-                        "title": "DataBase",
+                        "title": "Database",
                         "type": "string"
                     },
                     "label": {
@@ -110,11 +110,6 @@
                     "description": "The LIBRARY_DESCRIPTOR specifies the origin of the material being sequenced and any treatments that the material might have undergone that affect the sequencing result. This specification is needed even if the platform does not require a library construction step per se.",
                     "title": "Library Descriptor",
                     "type": "object",
-                    "required": [
-                        "libraryStrategy",
-                        "librarySelection",
-                        "librarySource"
-                    ],
                     "properties": {
                         "libraryName": {
                             "type": "string",
@@ -218,9 +213,20 @@
                             "title": "Library Layout",
                             "type": "string",
                             "enum": [
-                                "paired",
-                                "single"
+                                "single",
+                                "paired"
                             ]
+                        },
+                        "nominalLength": {
+                            "title": "Nominal Length",
+                            "description": "Nominal Length required if library layout is set to paired",
+                            "type": "number",
+                            "minimum": 0
+                        },
+                        "nominalSdev": {
+                            "title": "Nominal SDEV",
+                            "description": "Nominal SDEV required if library layout is set to paired",
+                            "type": "number"
                         },
                         "targetLoci": {
                             "type": "object",
@@ -229,6 +235,7 @@
                             "properties": {
                                 "probeSet": {
                                     "type": "string",
+                                    "title": "Probe Set",
                                     "description": "Reference to an archived primer or probe set. Example: dbProbe"
                                 },
                                 "locusName": {
@@ -264,41 +271,28 @@
                             "type": "string"
                         }
                     },
-                    "dependencies": {
-                        "libraryLayout": {
-                            "oneOf": [
-                                {
-                                    "properties": {
-                                        "libraryLayout": {
-                                            "enum": [
-                                                "single"
-                                            ]
-                                        }
-                                    }
-                                },
-                                {
-                                    "properties": {
-                                        "libraryLayout": {
-                                            "enum": [
-                                                "paired"
-                                            ]
-                                        },
-                                        "nominalLength": {
-                                            "title": "Nominal Length",
-                                            "type": "number",
-                                            "minimum": 0
-                                        },
-                                        "nominalSdev": {
-                                            "title": "Nominal SDEV",
-                                            "type": "number"
-                                        }
-                                    },
-                                    "required": [
-                                        "libraryLayout"
-                                    ]
-                                }
-                            ]
+                    "if": {
+                        "properties": {
+                            "libraryLayout": {
+                                "const": "paired"
+                            }
                         }
+                    },
+                    "then": {
+                        "required": [
+                            "libraryStrategy",
+                            "librarySelection",
+                            "librarySource",
+                            "nominalLength",
+                            "nominalSdev"
+                        ]
+                    },
+                    "else": {
+                        "required": [
+                            "libraryStrategy",
+                            "librarySelection",
+                            "librarySource"
+                        ]
                     }
                 },
                 "spotDescriptor": {
@@ -316,6 +310,7 @@
                         },
                         "readSpec": {
                             "type": "object",
+                            "title": "Read Specification",
                             "properties": {
                                 "readIndex": {
                                     "title": "Read Index",
@@ -374,27 +369,34 @@
                                         "type": "object",
                                         "properties": {
                                             "baseCall": {
+                                                "title": "Base Call",
                                                 "type": "string"
                                             },
                                             "readGroupTag": {
+                                                "title": "Read group tag",
                                                 "type": "string"
                                             },
                                             "minMatch": {
+                                                "title": "Min match",
                                                 "type": "number",
                                                 "minimum": 0
                                             },
                                             "maxMisMatch": {
+                                                "title": "Max mismatch",
                                                 "type": "number",
                                                 "minimum": 0
                                             },
                                             "matchEdge": {
+                                                "title": "Match edge",
                                                 "type": "string"
                                             },
                                             "defaultLength": {
+                                                "title": "Default length",
                                                 "type": "number",
                                                 "minimum": 0
                                             },
                                             "baseCoord": {
+                                                "title": "Base coordinate",
                                                 "type": "number",
                                                 "minimum": 0
                                             }
@@ -435,7 +437,7 @@
                                     "prevStepIndex": {
                                         "oneOf": [
                                             {
-                                                "title": "string",
+                                                "title": "String value",
                                                 "type": "string"
                                             },
                                             {
@@ -489,38 +491,38 @@
         "reference": {
             "$id": "#/definitions/reference",
             "type": "object",
-            "additionaProperties": true,
+            "additionalProperties": true,
             "required": [
                 "accessionId"
             ],
             "properties": {
                 "label": {
                     "type": "string",
-                    "title": "label"
+                    "title": "Label"
                 },
                 "refname": {
                     "type": "string",
-                    "title": "refname"
+                    "title": "Record name"
                 },
                 "refcenter": {
                     "type": "string",
-                    "title": "refcenter"
+                    "title": "Center Namespace"
                 },
                 "accessionId": {
                     "type": "string",
-                    "title": "accessionId"
+                    "title": "Accession Id"
                 },
                 "identifiers": {
                     "type": "object",
-                    "title": "identifiers",
+                    "title": "Identifiers",
                     "properties": {
                         "primaryId": {
                             "type": "string",
-                            "title": "primaryId"
+                            "title": "Primary Id"
                         },
                         "submitterId": {
                             "type": "object",
-                            "title": "submitterId",
+                            "title": "Submitter Id",
                             "required": [
                                 "namespace",
                                 "value"
@@ -529,11 +531,11 @@
                             "properties": {
                                 "namespace": {
                                     "type": "string",
-                                    "title": "namespace"
+                                    "title": "Namespace"
                                 },
                                 "value": {
                                     "type": "string",
-                                    "title": "value"
+                                    "title": "Value"
                                 }
                             }
                         }
@@ -634,7 +636,7 @@
             "title": "Processing",
             "oneOf": [
                 {
-                    "title": "Single processing",
+                    "title": "Single Processing",
                     "type": "string"
                 },
                 {

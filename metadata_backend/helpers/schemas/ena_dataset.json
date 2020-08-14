@@ -14,11 +14,11 @@
                 "properties": {
                     "db": {
                         "type": "string",
-                        "title": "DataBase"
+                        "title": "Database"
                     },
                     "id": {
                         "type": "string",
-                        "title": "Associated accession ID"
+                        "title": "Associated accession Id"
                     }
                 }
             }
@@ -26,7 +26,7 @@
         "urlLink": {
             "$id": "#/definitions/urlLink",
             "type": "array",
-            "title": "URL Links",
+            "title": "URL Link",
             "items": {
                 "type": "object",
                 "required": [
@@ -35,14 +35,14 @@
                 ],
                 "properties": {
                     "label": {
-                        "description": "Text label to display for the link.",
+                        "type": "string",
                         "title": "Label",
-                        "type": "string"
+                        "description": "Text label to display for the link."
                     },
                     "url": {
-                        "description": "The internet service link (http(s), ftp) etc.",
                         "type": "string",
                         "title": "URL",
+                        "description": "The internet service link (http(s), ftp) etc.",
                         "pattern": "^(https?|ftp)://"
                     }
                 }
@@ -60,7 +60,7 @@
                 "properties": {
                     "db": {
                         "description": "NCBI controlled vocabulary of permitted cross references. Please see http://www.ncbi.nlm.nih.gov/entrez/eutils/einfo.fcgi? .",
-                        "title": "DataBase",
+                        "title": "Database",
                         "type": "string"
                     },
                     "label": {
@@ -94,38 +94,38 @@
         "reference": {
             "$id": "#/definitions/reference",
             "type": "object",
-            "additionaProperties": true,
+            "additionalProperties": true,
             "required": [
                 "accessionId"
             ],
             "properties": {
                 "label": {
                     "type": "string",
-                    "title": "label"
+                    "title": "Label"
                 },
                 "refname": {
                     "type": "string",
-                    "title": "refname"
+                    "title": "Record name"
                 },
                 "refcenter": {
                     "type": "string",
-                    "title": "refcenter"
+                    "title": "Center Namespace"
                 },
                 "accessionId": {
                     "type": "string",
-                    "title": "accessionId"
+                    "title": "Accession Id"
                 },
                 "identifiers": {
                     "type": "object",
-                    "title": "identifiers",
+                    "title": "Identifiers",
                     "properties": {
                         "primaryId": {
                             "type": "string",
-                            "title": "primaryId"
+                            "title": "Primary Id"
                         },
                         "submitterId": {
                             "type": "object",
-                            "title": "submitterId",
+                            "title": "Submitter Id",
                             "required": [
                                 "namespace",
                                 "value"
@@ -134,11 +134,11 @@
                             "properties": {
                                 "namespace": {
                                     "type": "string",
-                                    "title": "namespace"
+                                    "title": "Namespace"
                                 },
                                 "value": {
                                     "type": "string",
-                                    "title": "value"
+                                    "title": "Value"
                                 }
                             }
                         }
@@ -197,7 +197,7 @@
             "description": "Identifies the runs which are part of this dataset.",
             "$ref": "#/definitions/reference"
         },
-        "anlysisRef": {
+        "analysisRef": {
             "title": "Analysis Identifier (Accession ID or title)",
             "description": "Identifies the data access committee to which this policy pertains.",
             "$ref": "#/definitions/reference"
@@ -217,7 +217,7 @@
                 }
             }
         },
-        "datasetAtrributes": {
+        "datasetAttributes": {
             "type": "array",
             "title": "Dataset Attributes",
             "items": {
