@@ -33,7 +33,14 @@ setup(
         "docs": ["sphinx >= 1.4", "sphinx_rtd_theme"],
     },
     package_data={
-        "": ["schemas/*.xsd", "schemas/*.json", "frontend/*", "frontend/static/js/*", "conf/ena_schemas.json"]
+        "": [
+            "schemas/*.xsd",
+            "schemas/*.json",
+            "frontend/*",
+            "frontend/static/js/*",
+            "frontend/static/media/*",
+            "conf/ena_schemas.json",
+        ]
     },
     include_package_data=True,
     entry_points={"console_scripts": ["metadata_submitter=metadata_backend.server:main"]},
