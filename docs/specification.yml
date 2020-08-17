@@ -384,7 +384,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Object"
+                $ref: "#/components/schemas/ObjectCreated"
         400:
           description: Bad Request
           content:
@@ -409,7 +409,7 @@ paths:
       summary: Update the whole object object, on success return the updated object
       requestBody:
         content:
-          multipart/form-data::
+          multipart/form-data:
             schema:
               type: string
               format: binary
@@ -435,7 +435,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Object"
+                $ref: "#/components/schemas/ObjectCreated"
         400:
           description: Bad Request
           content:
@@ -503,7 +503,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ""
+                $ref: '#/components/schemas/FolderList'
         401:
           description: Unauthorized
           content:
@@ -520,6 +520,11 @@ paths:
       tags:
         - Submission
       summary: Create a new folder for the user.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
       responses:
         201:
           description: OK
@@ -563,7 +568,25 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ""
+                $ref: "#/components/schemas/Folder"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
     patch:
       tags:
         - Manage
@@ -581,7 +604,25 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ""
+                $ref: "#/components/schemas/FolderCreated"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
     delete:
       tags:
         - Manage
@@ -596,6 +637,24 @@ paths:
       responses:
         204:
           description: No Content
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
   /users/{userId}:
     get:
       tags:
@@ -614,7 +673,25 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ""
+                $ref: "#/components/schemas/User"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
     patch:
       tags:
         - Manage
@@ -632,7 +709,25 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ""
+                $ref: "#/components/schemas/UserUpdated"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
     delete:
       tags:
         - Manage
@@ -647,6 +742,24 @@ paths:
       responses:
         204:
           description: No Content
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
 
 components:
   schemas:
@@ -862,4 +975,47 @@ components:
                 description: Accession id generated to identify an object
               schema:
                 type: string
-                description: type of schema this Accession ID relates to
+                description: type of schema this Accession ID relates to and was added in submit
+    FolderList:
+      type: object
+      required:
+        - folders
+      additionalProperties: false
+      properties:
+        folders:
+          type: array
+          items:
+            $ref: '#/components/schemas/Folder'
+    User:
+      type: object
+      required:
+        - userId
+        - username
+        - drafts
+        - folders
+      additionalProperties: false
+      properties:
+        userId:
+          type: string
+          description: User Id
+        username:
+          type: string
+          description: User Name
+        drafts:
+          type: array
+          items:
+            type: string
+            description: Folder Id
+        folders:
+          type: array
+          items:
+            type: string
+            description: Folder Id
+    UserUpdated:
+      type: object
+      required:
+        - userId
+      properties:
+        userId:
+          type: string
+          description: Custom generated ID for the user object.
