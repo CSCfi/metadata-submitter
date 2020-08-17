@@ -492,6 +492,49 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
+  /drafts/{schema}:
+    post:
+      tags:
+        - Submission
+      summary: Submit data draft to a specific schema
+      parameters:
+        - name: schema
+          in: path
+          description: Title of the XML schema.
+          schema:
+            type: string
+          required: true
+      requestBody:
+        content:
+          multipart/form-data::
+            schema:
+              type: object
+              properties:
+                schema:
+                  type: string
+                  format: binary
+          application/json:
+            schema:
+              type: object
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ObjectCreated"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
   /drafts/{schema}/{accessionId}:
     get:
       tags:
