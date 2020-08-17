@@ -525,6 +525,14 @@ paths:
           application/json:
             schema:
               type: object
+              required:
+                - name
+                - description
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
       responses:
         201:
           description: OK
@@ -591,6 +599,11 @@ paths:
       tags:
         - Manage
       summary: Update information of an object folder.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JSONPatch"
       parameters:
       - name: folderId
         in: path
@@ -696,6 +709,11 @@ paths:
       tags:
         - Manage
       summary: Update user's folder related information.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JSONPatch"
       parameters:
       - name: userId
         in: path
@@ -1019,3 +1037,27 @@ components:
         userId:
           type: string
           description: Custom generated ID for the user object.
+    JSONPatch:
+      type: array
+      items:
+        type: object
+        required:
+          - op
+          - path
+          - value
+        additionalProperties: false
+        properties:
+          op:
+            type: string
+            description: JSON Patch operation
+            example: add
+          path:
+            type: string
+            description: Key that will be patched
+            example: /metadataObjects
+          value:
+            additionalProperties:
+              oneOf:
+                - type: string
+                - type: array
+            example: [object]
