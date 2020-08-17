@@ -789,7 +789,7 @@ paths:
       summary: Update information of an object folder.
       requestBody:
         content:
-          application/json:
+          application/json-patch+json:
             schema:
               $ref: "#/components/schemas/JSONPatch"
       parameters:
@@ -899,7 +899,7 @@ paths:
       summary: Update user's folder related information.
       requestBody:
         content:
-          application/json:
+          application/json-patch+json:
             schema:
               $ref: "#/components/schemas/JSONPatch"
       parameters:
