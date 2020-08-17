@@ -7,7 +7,7 @@ info:
   title: CSC Metadata Submitter API
   license:
     name: License Apache 2.0
-    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+    url: "http://www.apache.org/licenses/LICENSE-2.0.html"
 tags:
   - name: Submission
     description: Endpoints used in submission
@@ -87,7 +87,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SchemasList'
+                $ref: "#/components/schemas/SchemasList"
         404:
           description: Not Found
           content:
@@ -106,16 +106,16 @@ paths:
         - Query
       summary: List of objects. By default it will show 10 results per page.
       parameters:
-      - in: query
-        name: page
-        schema:
-          type: string
-        description: Page number
-      - in: query
-        name: per_page
-        schema:
-          type: string
-        description: Results per page
+        - in: query
+          name: page
+          schema:
+            type: string
+          description: Page number
+        - in: query
+          name: per_page
+          schema:
+            type: string
+          description: Results per page
       responses:
         200:
           description: OK
@@ -135,102 +135,102 @@ paths:
         - Query
       summary: Filter objects from a specific schema using various query string parameters. By default it will show 10 results per page.
       parameters:
-      - name: schema
-        in: path
-        description: Title of the XML schema.
-        schema:
-          type: string
-        required: true
-      - in: query
-        name: page
-        schema:
-          type: string
-        description: Page number
-      - in: query
-        name: per_page
-        schema:
-          type: string
-        description: Results per page
-      - in: query
-        name: title
-        schema:
-          type: string
-        description: Some description for title
-      - in: query
-        name: studyType
-        schema:
-          type: string
-        description: Some description for studyType
-      - in: query
-        name: studyAbstract
-        schema:
-          type: string
-        description: Some description for studyAbstract
-      - in: query
-        name: projectID
-        schema:
-          type: string
-        description: Some description for projectID
-      - in: query
-        name: relatedStudies
-        schema:
-          type: string
-        description: Some description for relatedStudies
-      - in: query
-        name: studyAttributes
-        schema:
-          type: string
-        description: Some description for studyAttributes
-      - in: query
-        name: sampleName
-        schema:
-          type: string
-        description: Some description for sampleName
-      - in: query
-        name: scientificName
-        schema:
-          type: string
-        description: Some description for scientificName
-      - in: query
-        name: commonName
-        schema:
-          type: string
-        description: Some description for commonName
-      - in: query
-        name: fileType
-        schema:
-          type: string
-        description: Some description for fileType
-      - in: query
-        name: studyReference
-        schema:
-          type: string
-        description: Some description for studyReference
-      - in: query
-        name: sampleReference
-        schema:
-          type: string
-        description: Some description for sampleReference
-      - in: query
-        name: experimentReference
-        schema:
-          type: string
-        description: Some description for experimentReference
-      - in: query
-        name: runReference
-        schema:
-          type: string
-        description: Some description for runReference
-      - in: query
-        name: analysisReference
-        schema:
-          type: string
-        description: Some description for analysisReference
-      - in: query
-        name: analysisType
-        schema:
-          type: string
-        description: Some description for analysisType
+        - name: schema
+          in: path
+          description: Title of the XML schema.
+          schema:
+            type: string
+          required: true
+        - in: query
+          name: page
+          schema:
+            type: string
+          description: Page number
+        - in: query
+          name: per_page
+          schema:
+            type: string
+          description: Results per page
+        - in: query
+          name: title
+          schema:
+            type: string
+          description: Some description for title
+        - in: query
+          name: studyType
+          schema:
+            type: string
+          description: Some description for studyType
+        - in: query
+          name: studyAbstract
+          schema:
+            type: string
+          description: Some description for studyAbstract
+        - in: query
+          name: projectID
+          schema:
+            type: string
+          description: Some description for projectID
+        - in: query
+          name: relatedStudies
+          schema:
+            type: string
+          description: Some description for relatedStudies
+        - in: query
+          name: studyAttributes
+          schema:
+            type: string
+          description: Some description for studyAttributes
+        - in: query
+          name: sampleName
+          schema:
+            type: string
+          description: Some description for sampleName
+        - in: query
+          name: scientificName
+          schema:
+            type: string
+          description: Some description for scientificName
+        - in: query
+          name: commonName
+          schema:
+            type: string
+          description: Some description for commonName
+        - in: query
+          name: fileType
+          schema:
+            type: string
+          description: Some description for fileType
+        - in: query
+          name: studyReference
+          schema:
+            type: string
+          description: Some description for studyReference
+        - in: query
+          name: sampleReference
+          schema:
+            type: string
+          description: Some description for sampleReference
+        - in: query
+          name: experimentReference
+          schema:
+            type: string
+          description: Some description for experimentReference
+        - in: query
+          name: runReference
+          schema:
+            type: string
+          description: Some description for runReference
+        - in: query
+          name: analysisReference
+          schema:
+            type: string
+          description: Some description for analysisReference
+        - in: query
+          name: analysisType
+          schema:
+            type: string
+          description: Some description for analysisType
       responses:
         200:
           description: OK
@@ -267,12 +267,12 @@ paths:
         - Submission
       summary: Submit data to a specific schema
       parameters:
-      - name: schema
-        in: path
-        description: Title of the XML schema.
-        schema:
-          type: string
-        required: true
+        - name: schema
+          in: path
+          description: Title of the XML schema.
+          schema:
+            type: string
+          required: true
       requestBody:
         content:
           multipart/form-data::
@@ -283,8 +283,8 @@ paths:
                   type: string
                   format: binary
           application/json:
-              schema:
-                type: object
+            schema:
+              type: object
       responses:
         201:
           description: Created
@@ -310,23 +310,23 @@ paths:
         - Query
       summary: List of object by accession ID.
       parameters:
-      - name: schema
-        in: path
-        description: Unique id of the targeted service.
-        schema:
-          type: string
-        required: true
-      - name: accessionId
-        in: path
-        description: filter objects in schema using accession ID
-        schema:
-          type: string
-        required: true
-      - name: format
-        in: query
-        schema:
-          type: string
-        description: Set response content-type. Will be JSON by default, use XML if you want originally submitted XML file.
+        - name: schema
+          in: path
+          description: Unique id of the targeted service.
+          schema:
+            type: string
+          required: true
+        - name: accessionId
+          in: path
+          description: filter objects in schema using accession ID
+          schema:
+            type: string
+          required: true
+        - name: format
+          in: query
+          schema:
+            type: string
+          description: Set response content-type. Will be JSON by default, use XML if you want originally submitted XML file.
       responses:
         200:
           description: OK
@@ -363,21 +363,21 @@ paths:
       requestBody:
         content:
           application/json:
-              schema:
-                type: object
+            schema:
+              type: object
       parameters:
-      - name: schema
-        in: path
-        description: Unique id of the targeted service.
-        schema:
-          type: string
-        required: true
-      - name: accessionId
-        in: path
-        description: filter objects in schema using accession ID
-        schema:
-          type: string
-        required: true
+        - name: schema
+          in: path
+          description: Unique id of the targeted service.
+          schema:
+            type: string
+          required: true
+        - name: accessionId
+          in: path
+          description: filter objects in schema using accession ID
+          schema:
+            type: string
+          required: true
       responses:
         200:
           description: OK
@@ -414,21 +414,21 @@ paths:
               type: string
               format: binary
           application/json:
-              schema:
-                type: object
+            schema:
+              type: object
       parameters:
-      - name: schema
-        in: path
-        description: Unique id of the targeted service.
-        schema:
-          type: string
-        required: true
-      - name: accessionId
-        in: path
-        description: filter objects in schema using accession ID
-        schema:
-          type: string
-        required: true
+        - name: schema
+          in: path
+          description: Unique id of the targeted service.
+          schema:
+            type: string
+          required: true
+        - name: accessionId
+          in: path
+          description: filter objects in schema using accession ID
+          schema:
+            type: string
+          required: true
       responses:
         200:
           description: OK
@@ -459,18 +459,18 @@ paths:
         - Manage
       summary: Delete object from a schema with a specified accession ID
       parameters:
-      - name: schema
-        in: path
-        description: Unique id of the targeted service.
-        schema:
-          type: string
-        required: true
-      - name: accessionId
-        in: path
-        description: filter objects in schema using accession ID
-        schema:
-          type: string
-        required: true
+        - name: schema
+          in: path
+          description: Unique id of the targeted service.
+          schema:
+            type: string
+          required: true
+        - name: accessionId
+          in: path
+          description: filter objects in schema using accession ID
+          schema:
+            type: string
+          required: true
       responses:
         204:
           description: No Content
@@ -541,23 +541,23 @@ paths:
         - Query
       summary: List of object drafts by accession ID.
       parameters:
-      - name: schema
-        in: path
-        description: Unique id of the targeted service.
-        schema:
-          type: string
-        required: true
-      - name: accessionId
-        in: path
-        description: filter objects in schema using accession ID
-        schema:
-          type: string
-        required: true
-      - name: format
-        in: query
-        schema:
-          type: string
-        description: Set response content-type. Will be JSON by default, use XML if you want originally submitted XML file.
+        - name: schema
+          in: path
+          description: Unique id of the targeted service.
+          schema:
+            type: string
+          required: true
+        - name: accessionId
+          in: path
+          description: filter objects in schema using accession ID
+          schema:
+            type: string
+          required: true
+        - name: format
+          in: query
+          schema:
+            type: string
+          description: Set response content-type. Will be JSON by default, use XML if you want originally submitted XML file.
       responses:
         200:
           description: OK
@@ -594,21 +594,21 @@ paths:
       requestBody:
         content:
           application/json:
-              schema:
-                type: object
+            schema:
+              type: object
       parameters:
-      - name: schema
-        in: path
-        description: Unique id of the targeted service.
-        schema:
-          type: string
-        required: true
-      - name: accessionId
-        in: path
-        description: filter objects in schema using accession ID
-        schema:
-          type: string
-        required: true
+        - name: schema
+          in: path
+          description: Unique id of the targeted service.
+          schema:
+            type: string
+          required: true
+        - name: accessionId
+          in: path
+          description: filter objects in schema using accession ID
+          schema:
+            type: string
+          required: true
       responses:
         200:
           description: OK
@@ -645,21 +645,21 @@ paths:
               type: string
               format: binary
           application/json:
-              schema:
-                type: object
+            schema:
+              type: object
       parameters:
-      - name: schema
-        in: path
-        description: Unique id of the targeted service.
-        schema:
-          type: string
-        required: true
-      - name: accessionId
-        in: path
-        description: filter objects in schema using accession ID
-        schema:
-          type: string
-        required: true
+        - name: schema
+          in: path
+          description: Unique id of the targeted service.
+          schema:
+            type: string
+          required: true
+        - name: accessionId
+          in: path
+          description: filter objects in schema using accession ID
+          schema:
+            type: string
+          required: true
       responses:
         200:
           description: OK
@@ -690,18 +690,18 @@ paths:
         - Manage
       summary: Delete object from a schema with a specified accession ID
       parameters:
-      - name: schema
-        in: path
-        description: Unique id of the targeted service.
-        schema:
-          type: string
-        required: true
-      - name: accessionId
-        in: path
-        description: filter objects in schema using accession ID
-        schema:
-          type: string
-        required: true
+        - name: schema
+          in: path
+          description: Unique id of the targeted service.
+          schema:
+            type: string
+          required: true
+        - name: accessionId
+          in: path
+          description: filter objects in schema using accession ID
+          schema:
+            type: string
+          required: true
       responses:
         204:
           description: No Content
@@ -734,7 +734,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FolderList'
+                $ref: "#/components/schemas/FolderList"
         401:
           description: Unauthorized
           content:
@@ -795,12 +795,12 @@ paths:
         - Query
       summary: Object folder by its folder ID.
       parameters:
-      - name: folderId
-        in: path
-        description: ID of the object folder.
-        schema:
-          type: string
-        required: true
+        - name: folderId
+          in: path
+          description: ID of the object folder.
+          schema:
+            type: string
+          required: true
       responses:
         200:
           description: OK
@@ -836,12 +836,12 @@ paths:
             schema:
               $ref: "#/components/schemas/JSONPatch"
       parameters:
-      - name: folderId
-        in: path
-        description: ID of the object folder.
-        schema:
-          type: string
-        required: true
+        - name: folderId
+          in: path
+          description: ID of the object folder.
+          schema:
+            type: string
+          required: true
       responses:
         200:
           description: OK
@@ -872,12 +872,12 @@ paths:
         - Manage
       summary: Delete an object folder with a specified folder ID.
       parameters:
-      - name: folderId
-        in: path
-        description: ID of the object folder.
-        schema:
-          type: string
-        required: true
+        - name: folderId
+          in: path
+          description: ID of the object folder.
+          schema:
+            type: string
+          required: true
       responses:
         204:
           description: No Content
@@ -905,12 +905,12 @@ paths:
         - Query
       summary: User object by its user ID.
       parameters:
-      - name: userId
-        in: path
-        description: ID of the user object.
-        schema:
-          type: string
-        required: true
+        - name: userId
+          in: path
+          description: ID of the user object.
+          schema:
+            type: string
+          required: true
       responses:
         200:
           description: OK
@@ -946,12 +946,12 @@ paths:
             schema:
               $ref: "#/components/schemas/JSONPatch"
       parameters:
-      - name: userId
-        in: path
-        description: ID of the user object.
-        schema:
-          type: string
-        required: true
+        - name: userId
+          in: path
+          description: ID of the user object.
+          schema:
+            type: string
+          required: true
       responses:
         200:
           description: OK
@@ -982,12 +982,12 @@ paths:
         - Manage
       summary: Delete an user object with a specified user ID.
       parameters:
-      - name: userId
-        in: path
-        description: ID of the user object.
-        schema:
-          type: string
-        required: true
+        - name: userId
+          in: path
+          description: ID of the user object.
+          schema:
+            type: string
+          required: true
       responses:
         204:
           description: No Content
@@ -1033,7 +1033,7 @@ components:
           description: reference to the specific occurence of the problem
     400BadRequest:
       allOf:
-        - $ref: '#/components/schemas/ErrorModel'
+        - $ref: "#/components/schemas/ErrorModel"
       properties:
         title:
           example: Bad Request
@@ -1041,7 +1041,7 @@ components:
           example: the current request could not be processed as the submitted file was not valid
     404NotFound:
       allOf:
-        - $ref: '#/components/schemas/ErrorModel'
+        - $ref: "#/components/schemas/ErrorModel"
       properties:
         title:
           example: Not Found
@@ -1049,16 +1049,15 @@ components:
           example: the current endpoint does not retrieve any results
     401Unauthorized:
       allOf:
-        - $ref: '#/components/schemas/ErrorModel'
+        - $ref: "#/components/schemas/ErrorModel"
       properties:
-
         title:
           example: Unauthorized
         detail:
           example: the request cannot be authorized
     403Forbidden:
       allOf:
-        - $ref: '#/components/schemas/ErrorModel'
+        - $ref: "#/components/schemas/ErrorModel"
       properties:
         title:
           example: Forbidden
@@ -1116,11 +1115,11 @@ components:
         - page
       properties:
         page:
-          $ref: '#/components/schemas/Pagination'
+          $ref: "#/components/schemas/Pagination"
         objects:
           type: array
           items:
-            $ref: '#/components/schemas/Object'
+            $ref: "#/components/schemas/Object"
     Pagination:
       type: object
       required:
@@ -1234,7 +1233,7 @@ components:
         folders:
           type: array
           items:
-            $ref: '#/components/schemas/Folder'
+            $ref: "#/components/schemas/Folder"
     User:
       type: object
       required:
