@@ -133,7 +133,7 @@ paths:
     get:
       tags:
         - Query
-      summary: Filter objects from a specific schema using various query string parameters.By default it will show 10 results per page.
+      summary: Filter objects from a specific schema using various query string parameters. By default it will show 10 results per page.
       parameters:
       - name: schema
         in: path
@@ -504,6 +504,18 @@ paths:
             application/json:
               schema:
                 $ref: ""
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
     post:
       tags:
         - Submission
@@ -514,12 +526,37 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ""
+                $ref: "#/components/schemas/FolderCreated"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
   /folders/{folderId}:
     get:
       tags:
         - Query
       summary: Object folder by its folder ID.
+      parameters:
+      - name: folderId
+        in: path
+        description: ID of the object folder.
+        schema:
+          type: string
+        required: true
       responses:
         200:
           description: OK
@@ -531,6 +568,13 @@ paths:
       tags:
         - Manage
       summary: Update information of an object folder.
+      parameters:
+      - name: folderId
+        in: path
+        description: ID of the object folder.
+        schema:
+          type: string
+        required: true
       responses:
         200:
           description: OK
@@ -542,6 +586,13 @@ paths:
       tags:
         - Manage
       summary: Delete an object folder with a specified folder ID.
+      parameters:
+      - name: folderId
+        in: path
+        description: ID of the object folder.
+        schema:
+          type: string
+        required: true
       responses:
         204:
           description: No Content
@@ -550,6 +601,13 @@ paths:
       tags:
         - Query
       summary: User object by its user ID.
+      parameters:
+      - name: userId
+        in: path
+        description: ID of the user object.
+        schema:
+          type: string
+        required: true
       responses:
         200:
           description: OK
@@ -561,6 +619,13 @@ paths:
       tags:
         - Manage
       summary: Update user's folder related information.
+      parameters:
+      - name: userId
+        in: path
+        description: ID of the user object.
+        schema:
+          type: string
+        required: true
       responses:
         200:
           description: OK
@@ -572,6 +637,13 @@ paths:
       tags:
         - Manage
       summary: Delete an user object with a specified user ID.
+      parameters:
+      - name: userId
+        in: path
+        description: ID of the user object.
+        schema:
+          type: string
+        required: true
       responses:
         204:
           description: No Content
@@ -687,18 +759,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Object'
-    ObjectDeleted:
-      type: object
-      required:
-        - accessionId
-      additionalProperties: false
-      properties:
-        accessionId:
-          type: string
-          description: accession id generated to identify an object
-        detail:
-          type: string
-          description: detail if the operation was done successfully or not
     Pagination:
       type: object
       required:
@@ -758,3 +818,48 @@ components:
             instance:
               type: string
               description: specific element(s) where error occurred
+    FolderCreated:
+      type: object
+      required:
+        - folderId
+      properties:
+        folderId:
+          type: string
+          description: Custom generated ID for the object folder.
+    Folder:
+      type: object
+      required:
+        - folderId
+        - name
+        - description
+        - published
+        - metadataObjects
+      additionalProperties: false
+      properties:
+        folderId:
+          type: string
+          description: Folder id
+        name:
+          type: string
+          description: Folder name
+        description:
+          type: string
+          description: Folder description
+        published:
+          type: boolean
+          description: If folder is published or not
+        metadataObjects:
+          type: array
+          items:
+            type: object
+            required:
+              - accessionId
+              - schema
+            additionalProperties: false
+            properties:
+              accessionId:
+                type: string
+                description: Accession id generated to identify an object
+              schema:
+                type: string
+                description: type of schema this Accession ID relates to
