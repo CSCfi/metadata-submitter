@@ -492,6 +492,194 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
+  /drafts/{schema}/{accessionId}:
+    get:
+      tags:
+        - Query
+      summary: List of object drafts by accession ID.
+      parameters:
+      - name: schema
+        in: path
+        description: Unique id of the targeted service.
+        schema:
+          type: string
+        required: true
+      - name: accessionId
+        in: path
+        description: filter objects in schema using accession ID
+        schema:
+          type: string
+        required: true
+      - name: format
+        in: query
+        schema:
+          type: string
+        description: Set response content-type. Will be JSON by default, use XML if you want originally submitted XML file.
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Object"
+            text/xml:
+              schema:
+                type: string
+                format: binary
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
+        404:
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/404NotFound"
+    patch:
+      tags:
+        - Manage
+      summary: Update information on an object, on success return the updated object
+      requestBody:
+        content:
+          application/json:
+              schema:
+                type: object
+      parameters:
+      - name: schema
+        in: path
+        description: Unique id of the targeted service.
+        schema:
+          type: string
+        required: true
+      - name: accessionId
+        in: path
+        description: filter objects in schema using accession ID
+        schema:
+          type: string
+        required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ObjectCreated"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
+    put:
+      tags:
+        - Manage
+      summary: Update the whole object object, on success return the updated object
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: string
+              format: binary
+          application/json:
+              schema:
+                type: object
+      parameters:
+      - name: schema
+        in: path
+        description: Unique id of the targeted service.
+        schema:
+          type: string
+        required: true
+      - name: accessionId
+        in: path
+        description: filter objects in schema using accession ID
+        schema:
+          type: string
+        required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ObjectCreated"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
+    delete:
+      tags:
+        - Manage
+      summary: Delete object from a schema with a specified accession ID
+      parameters:
+      - name: schema
+        in: path
+        description: Unique id of the targeted service.
+        schema:
+          type: string
+        required: true
+      - name: accessionId
+        in: path
+        description: filter objects in schema using accession ID
+        schema:
+          type: string
+        required: true
+      responses:
+        204:
+          description: No Content
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
   /folders:
     get:
       tags:
