@@ -64,7 +64,7 @@ html_static_path = ["_static"]
 
 def setup(app: Callable) -> None:
     """Add custom stylesheet."""
-    app.add_css_file("custom.css")
+    app.add_css_file("style.css")
 
 
 htmlhelp_basename = "metadata-submitter"
