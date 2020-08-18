@@ -317,6 +317,42 @@ async def test_getting_all_objects_from_schema_works():
         await asyncio.gather(*[delete_object(sess, "study", accession_id) for accession_id in accession_ids])
 
 
+async def test_crud_folders_works():
+    """Test folders REST api POST, GET and DELETE reqs.
+
+    Tries to create new folder, gets folder id and checks if correct resource is returned with that id.
+    Finally deletes the folder and checks it was deleted.
+    """
+    raise NotImplementedError
+
+
+async def test_patch_folders_works():
+    """Test folders REST api PATCH reqs.
+
+    Tries to patch a folder with a JSON patch in the request, gets folder id and
+    checks if correct resource is returned with that id.
+    """
+    raise NotImplementedError
+
+
+async def test_crud_users_works():
+    """Test users REST api GET and DELETE reqs.
+
+    Tries to create new user, gets user id and checks if correct resource is returned with that id.
+    Finally deletes the user and checks it was deleted.
+    """
+    raise NotImplementedError
+
+
+async def test_patch_users_works():
+    """Test users REST api PATCH reqs.
+
+    Tries to patch an user with a JSON patch in the request, gets user id and
+    checks if correct resource is returned with that id.
+    """
+    raise NotImplementedError
+
+
 async def main():
     """Launch different test tasks and run them."""
     # Test adding and getting objects
