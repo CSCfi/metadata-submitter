@@ -10,7 +10,8 @@ CSC Metadata Submitter
    :maxdepth: 2
    :caption: Contents:
 
-   validator
+   Metadata Validator Tool <validator>
+   Metadata Backend Modules <code>
 
 
 Indices and tables
