@@ -6,6 +6,7 @@ should be taken into account.
 """
 
 import asyncio
+import json
 import logging
 from pathlib import Path
 
@@ -141,6 +142,16 @@ async def delete_folder(sess, folder_id):
     async with sess.delete(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Deleting folder {folder_id}")
         assert resp.status == 204, "HTTP Status code error"
+
+
+async def patch_folder(sess, folder_id, patch):
+    """Patch one object folder within session, return folderId."""
+    async with sess.patch(f"{folders_url}/{folder_id}", data=patch) as resp:
+        LOG.debug(f"Updating folder {folder_id}")
+        assert resp.status == 200, "HTTP Status code error"
+        ans_patch = await resp.json()
+        assert ans_patch["folderId"] == folder_id, "folder ID error"
+        return ans_patch["folderId"]
 
 
 # === Integration tests ===
@@ -342,24 +353,29 @@ async def test_crud_folders_works():
     """
     async with aiohttp.ClientSession() as sess:
         data = {"name": "test", "description": "test folder"}
-        folder_id = await post_object(sess, data)
+        folder_id = await post_folder(sess, data)
         async with sess.get(f"{folders_url}/{folder_id}") as resp:
             LOG.debug(f"Checking that folder {folder_id} was created")
             assert resp.status == 200, "HTTP Status code error"
 
-        await delete_object(sess, folder_id)
+        accession_id = await post_object(sess, "sample", "SRS001433.xml")
+        patch = [{"op": "add", "path": "/metadataObjects/0", "value": {accession_id, "sample"}}]
+        folder_id = await patch_folder(sess, folder_id, patch)
+        async with sess.patch(f"{folders_url}/{folder_id}") as resp:
+            LOG.debug(f"Checking that folder {folder_id} was patched")
+            folder = {
+                "folderId": folder_id,
+                "name": "test",
+                "description": "test folder",
+                "published": False,
+                "metadataObjects": [{accession_id, "sample"}],
+            }
+            assert json.loads(resp.json) == folder, "Response data error"
+
+        await delete_folder(sess, folder_id)
         async with sess.get(f"{folders_url}/{folder_id}") as resp:
             LOG.debug(f"Checking that folder {folder_id} was deleted")
             assert resp.status == 404, "HTTP Status code error"
-
-
-async def test_patch_folders_works():
-    """Test folders REST api PATCH reqs.
-
-    Tries to patch a folder with a JSON patch in the request, gets folder id and
-    checks if correct resource is returned with that id.
-    """
-    raise NotImplementedError
 
 
 async def test_crud_users_works():
@@ -403,10 +419,11 @@ async def main():
     LOG.debug("=== Testing getting all objects & pagination ===")
     await test_getting_all_objects_from_schema_works()
 
-    # Test adding and getting folders
+    # Test creating, reading, updating and deleting folders
     LOG.debug("=== Testing basic CRUD folder operations ===")
     await test_crud_folders_works()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
