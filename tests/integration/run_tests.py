@@ -6,7 +6,6 @@ should be taken into account.
 """
 
 import asyncio
-import json
 import logging
 from pathlib import Path
 
@@ -40,6 +39,7 @@ test_json_files = [
 base_url = "http://localhost:5430/objects"
 drafts_url = "http://localhost:5430/drafts"
 folders_url = "http://localhost:5430/folders"
+users_url = "http://localhost:5430/users"
 
 
 # === Helper functions ===
@@ -137,13 +137,6 @@ async def post_folder(sess, data):
         return ans["folderId"]
 
 
-async def delete_folder(sess, folder_id):
-    """Delete object folder within session."""
-    async with sess.delete(f"{folders_url}/{folder_id}") as resp:
-        LOG.debug(f"Deleting folder {folder_id}")
-        assert resp.status == 204, "HTTP Status code error"
-
-
 async def patch_folder(sess, folder_id, patch):
     """Patch one object folder within session, return folderId."""
     async with sess.patch(f"{folders_url}/{folder_id}", data=patch) as resp:
@@ -152,6 +145,30 @@ async def patch_folder(sess, folder_id, patch):
         ans_patch = await resp.json()
         assert ans_patch["folderId"] == folder_id, "folder ID error"
         return ans_patch["folderId"]
+
+
+async def delete_folder(sess, folder_id):
+    """Delete object folder within session."""
+    async with sess.delete(f"{folders_url}/{folder_id}") as resp:
+        LOG.debug(f"Deleting folder {folder_id}")
+        assert resp.status == 204, "HTTP Status code error"
+
+
+async def patch_user(sess, user_id, patch):
+    """Patch one user object within session, return userId."""
+    async with sess.patch(f"{users_url}/{user_id}", data=patch) as resp:
+        LOG.debug(f"Updating user {user_id}")
+        assert resp.status == 200, "HTTP Status code error"
+        ans_patch = await resp.json()
+        assert ans_patch["userId"] == user_id, "user ID error"
+        return ans_patch["userId"]
+
+
+async def delete_user(sess, user_id):
+    """Delete user object within session."""
+    async with sess.delete(f"{users_url}/{user_id}") as resp:
+        LOG.debug(f"Deleting user {user_id}")
+        assert resp.status == 204, "HTTP Status code error"
 
 
 # === Integration tests ===
@@ -359,7 +376,7 @@ async def test_crud_folders_works():
         accession_id = await post_object(sess, "sample", "SRS001433.xml")
         patch = [{"op": "add", "path": "/metadataObjects/0", "value": {accession_id, "sample"}}]
         folder_id = await patch_folder(sess, folder_id, patch)
-        async with sess.patch(f"{folders_url}/{folder_id}") as resp:
+        async with sess.get(f"{folders_url}/{folder_id}") as resp:
             LOG.debug(f"Checking that folder {folder_id} was patched")
             folder = {
                 "folderId": folder_id,
@@ -368,7 +385,7 @@ async def test_crud_folders_works():
                 "published": False,
                 "metadataObjects": [{accession_id, "sample"}],
             }
-            assert json.loads(resp.json) == folder, "Response data error"
+            assert resp.json == folder, "Response data error"
 
         # Delete folder
         await delete_folder(sess, folder_id)
@@ -379,7 +396,33 @@ async def test_crud_folders_works():
 
 async def test_crud_users_works():
     """Test users REST api GET, PATCH and DELETE reqs."""
-    raise NotImplementedError
+    async with aiohttp.ClientSession() as sess:
+        # Check user exists in database (requires an user object to be mocked)
+        user_id = "USR12345678"
+        user = {
+            "userId": user_id,
+            "username": "tester",
+            "drafts": [],
+            "folders": [],
+        }
+        async with sess.get(f"{users_url}/{user_id}") as resp:
+            LOG.debug(f"Reading user {user_id}")
+            assert resp.status == 200, "HTTP Status code error"
+
+        # Add user to session and create a patch to add folder to user
+        data = {"name": "test", "description": "test folder"}
+        folder_id = await post_folder(sess, data)
+        patch = [{"op": "add", "path": "/folders/0", "value": folder_id}]
+        user_id = await patch_user(sess, user_id, patch)
+        async with sess.get(f"{users_url}/{user_id}") as resp:
+            LOG.debug(f"Checking that user {user_id} was patched")
+            assert resp.json == user, "Response data error"
+
+        # Delete user
+        await delete_user(sess, user_id)
+        async with sess.get(f"{users_url}/{user_id}") as resp:
+            LOG.debug(f"Checking that user {user_id} was deleted")
+            assert resp.status == 404, "HTTP Status code error"
 
 
 async def main():
@@ -408,6 +451,10 @@ async def main():
     # Test creating, reading, updating and deleting folders
     LOG.debug("=== Testing basic CRUD folder operations ===")
     await test_crud_folders_works()
+
+    # Test reading, updating and deleting folders
+    LOG.debug("=== Testing basic CRUD user operations ===")
+    await test_crud_users_works()
 
 
 if __name__ == "__main__":
