@@ -38,6 +38,7 @@ test_json_files = [
 ]
 base_url = "http://localhost:5430/objects"
 drafts_url = "http://localhost:5430/drafts"
+folders_url = "http://localhost:5430/folders"
 
 
 # === Helper functions ===
@@ -123,6 +124,22 @@ async def delete_draft(sess, schema, accession_id):
     """Delete metadata object within session."""
     async with sess.delete(f"{drafts_url}/{schema}/{accession_id}") as resp:
         LOG.debug(f"Deleting object {accession_id} from {schema}")
+        assert resp.status == 204, "HTTP Status code error"
+
+
+async def post_folder(sess, data):
+    """Post one object folder within session, returns folderId."""
+    async with sess.post(f"{folders_url}", data=data) as resp:
+        LOG.debug("Adding new folder")
+        assert resp.status == 201, "HTTP Status code error"
+        ans = await resp.json()
+        return ans["folderId"]
+
+
+async def delete_folder(sess, folder_id):
+    """Delete object folder within session."""
+    async with sess.delete(f"{folders_url}/{folder_id}") as resp:
+        LOG.debug(f"Deleting folder {folder_id}")
         assert resp.status == 204, "HTTP Status code error"
 
 
@@ -323,7 +340,17 @@ async def test_crud_folders_works():
     Tries to create new folder, gets folder id and checks if correct resource is returned with that id.
     Finally deletes the folder and checks it was deleted.
     """
-    raise NotImplementedError
+    async with aiohttp.ClientSession() as sess:
+        data = {"name": "test", "description": "test folder"}
+        folder_id = await post_object(sess, data)
+        async with sess.get(f"{folders_url}/{folder_id}") as resp:
+            LOG.debug(f"Checking that folder {folder_id} was created")
+            assert resp.status == 200, "HTTP Status code error"
+
+        await delete_object(sess, folder_id)
+        async with sess.get(f"{folders_url}/{folder_id}") as resp:
+            LOG.debug(f"Checking that folder {folder_id} was deleted")
+            assert resp.status == 404, "HTTP Status code error"
 
 
 async def test_patch_folders_works():
@@ -375,6 +402,10 @@ async def main():
     # Test /objects/study endpoint for query pagination
     LOG.debug("=== Testing getting all objects & pagination ===")
     await test_getting_all_objects_from_schema_works()
+
+    # Test adding and getting folders
+    LOG.debug("=== Testing basic CRUD folder operations ===")
+    await test_crud_folders_works()
 
 
 if __name__ == "__main__":
