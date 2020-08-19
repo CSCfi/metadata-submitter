@@ -346,18 +346,16 @@ async def test_getting_all_objects_from_schema_works():
 
 
 async def test_crud_folders_works():
-    """Test folders REST api POST, GET and DELETE reqs.
-
-    Tries to create new folder, gets folder id and checks if correct resource is returned with that id.
-    Finally deletes the folder and checks it was deleted.
-    """
+    """Test folders REST api POST, GET, PATCH and DELETE reqs."""
     async with aiohttp.ClientSession() as sess:
+        # Create new folder and check it creation succeeded
         data = {"name": "test", "description": "test folder"}
         folder_id = await post_folder(sess, data)
         async with sess.get(f"{folders_url}/{folder_id}") as resp:
             LOG.debug(f"Checking that folder {folder_id} was created")
             assert resp.status == 200, "HTTP Status code error"
 
+        # Add object to session and create a patch to add object to folder
         accession_id = await post_object(sess, "sample", "SRS001433.xml")
         patch = [{"op": "add", "path": "/metadataObjects/0", "value": {accession_id, "sample"}}]
         folder_id = await patch_folder(sess, folder_id, patch)
@@ -372,6 +370,7 @@ async def test_crud_folders_works():
             }
             assert json.loads(resp.json) == folder, "Response data error"
 
+        # Delete folder
         await delete_folder(sess, folder_id)
         async with sess.get(f"{folders_url}/{folder_id}") as resp:
             LOG.debug(f"Checking that folder {folder_id} was deleted")
@@ -379,20 +378,7 @@ async def test_crud_folders_works():
 
 
 async def test_crud_users_works():
-    """Test users REST api GET and DELETE reqs.
-
-    Tries to create new user, gets user id and checks if correct resource is returned with that id.
-    Finally deletes the user and checks it was deleted.
-    """
-    raise NotImplementedError
-
-
-async def test_patch_users_works():
-    """Test users REST api PATCH reqs.
-
-    Tries to patch an user with a JSON patch in the request, gets user id and
-    checks if correct resource is returned with that id.
-    """
+    """Test users REST api GET, PATCH and DELETE reqs."""
     raise NotImplementedError
 
 
