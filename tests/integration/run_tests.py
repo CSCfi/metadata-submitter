@@ -6,6 +6,7 @@ should be taken into account.
 """
 
 import asyncio
+import json
 import logging
 from pathlib import Path
 
@@ -130,7 +131,7 @@ async def delete_draft(sess, schema, accession_id):
 
 async def post_folder(sess, data):
     """Post one object folder within session, returns folderId."""
-    async with sess.post(f"{folders_url}", data=data) as resp:
+    async with sess.post(f"{folders_url}", data=json.dumps(data)) as resp:
         LOG.debug("Adding new folder")
         assert resp.status == 201, "HTTP Status code error"
         ans = await resp.json()
@@ -139,7 +140,7 @@ async def post_folder(sess, data):
 
 async def patch_folder(sess, folder_id, patch):
     """Patch one object folder within session, return folderId."""
-    async with sess.patch(f"{folders_url}/{folder_id}", data=patch) as resp:
+    async with sess.patch(f"{folders_url}/{folder_id}", data=json.dumps(patch)) as resp:
         LOG.debug(f"Updating folder {folder_id}")
         assert resp.status == 200, "HTTP Status code error"
         ans_patch = await resp.json()
@@ -374,7 +375,9 @@ async def test_crud_folders_works():
 
         # Add object to session and create a patch to add object to folder
         accession_id = await post_object(sess, "sample", "SRS001433.xml")
-        patch = [{"op": "add", "path": "/metadataObjects/0", "value": {accession_id, "sample"}}]
+        patch = [
+            {"op": "add", "path": "/metadataObjects", "value": [{"accessionId": accession_id, "schema": "sample"}]}
+        ]
         folder_id = await patch_folder(sess, folder_id, patch)
         async with sess.get(f"{folders_url}/{folder_id}") as resp:
             LOG.debug(f"Checking that folder {folder_id} was patched")
@@ -383,9 +386,9 @@ async def test_crud_folders_works():
                 "name": "test",
                 "description": "test folder",
                 "published": False,
-                "metadataObjects": [{accession_id, "sample"}],
+                "metadataObjects": [{"accessionId": accession_id, "schema": "sample"}],
             }
-            assert resp.json == folder, "Response data error"
+            assert await resp.json() == folder, "Response data error"
 
         # Delete folder
         await delete_folder(sess, folder_id)
@@ -445,8 +448,8 @@ async def main():
     await test_querying_works()
 
     # Test /objects/study endpoint for query pagination
-    LOG.debug("=== Testing getting all objects & pagination ===")
-    await test_getting_all_objects_from_schema_works()
+    # LOG.debug("=== Testing getting all objects & pagination ===")
+    # await test_getting_all_objects_from_schema_works()
 
     # Test creating, reading, updating and deleting folders
     LOG.debug("=== Testing basic CRUD folder operations ===")
@@ -458,5 +461,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    asyncio.run(main())
