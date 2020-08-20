@@ -381,19 +381,12 @@ async def test_crud_folders_works():
         folder_id = await patch_folder(sess, folder_id, patch)
         async with sess.get(f"{folders_url}/{folder_id}") as resp:
             LOG.debug(f"Checking that folder {folder_id} was patched")
-            folder = {
-                "folderId": folder_id,
-                "name": "test",
-                "description": "test folder",
-                "published": False,
-                "metadataObjects": [{"accessionId": accession_id, "schema": "sample"}],
-            }
             res = await resp.json()
-            assert res['folderId'] == folder_id, "content mismatch"
-            assert res['name'] == "test", "content mismatch"
-            assert res['description'] == "test folder", "content mismatch"
-            assert res['published'] == False, "content mismatch"
-            assert res['metadataObjects'] == [{"accessionId": accession_id, "schema": "sample"}], "content mismatch"
+            assert res["folderId"] == folder_id, "content mismatch"
+            assert res["name"] == "test", "content mismatch"
+            assert res["description"] == "test folder", "content mismatch"
+            assert res["published"] is False, "content mismatch"
+            assert res["metadataObjects"] == [{"accessionId": accession_id, "schema": "sample"}], "content mismatch"
 
         # Delete folder
         await delete_folder(sess, folder_id)
