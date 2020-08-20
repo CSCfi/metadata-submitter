@@ -388,7 +388,12 @@ async def test_crud_folders_works():
                 "published": False,
                 "metadataObjects": [{"accessionId": accession_id, "schema": "sample"}],
             }
-            assert await resp.json() == folder, "Response data error"
+            res = await resp.json()
+            assert res['folderId'] == folder_id, "content mismatch"
+            assert res['name'] == "test", "content mismatch"
+            assert res['description'] == "test folder", "content mismatch"
+            assert res['published'] == False, "content mismatch"
+            assert res['metadataObjects'] == [{"accessionId": accession_id, "schema": "sample"}], "content mismatch"
 
         # Delete folder
         await delete_folder(sess, folder_id)
