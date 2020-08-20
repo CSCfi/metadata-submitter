@@ -8,6 +8,7 @@ should be taken into account.
 import asyncio
 import json
 import logging
+import motor.motor_tornado
 from pathlib import Path
 
 import aiofiles
@@ -41,6 +42,14 @@ base_url = "http://localhost:5430/objects"
 drafts_url = "http://localhost:5430/drafts"
 folders_url = "http://localhost:5430/folders"
 users_url = "http://localhost:5430/users"
+
+user_id = "USR12345678"
+test_user = {
+    "userId": user_id,
+    "username": "tester",
+    "drafts": [],
+    "folders": [],
+}
 
 
 # === Helper functions ===
@@ -155,9 +164,18 @@ async def delete_folder(sess, folder_id):
         assert resp.status == 204, "HTTP Status code error"
 
 
+async def create_test_user():
+    """Manually create a user to test database."""
+    LOG.debug(f"Creating test user {user_id}")
+    uri = "mongodb://admin:admin@database:27017/users"
+    client = motor.motor_tornado.MotorClient(uri)
+    db = motor.motor_tornado.MotorDatabase(client, "users")
+    await db.user.insert_one(test_user)
+
+
 async def patch_user(sess, user_id, patch):
     """Patch one user object within session, return userId."""
-    async with sess.patch(f"{users_url}/{user_id}", data=patch) as resp:
+    async with sess.patch(f"{users_url}/{user_id}", data=json.dump(patch)) as resp:
         LOG.debug(f"Updating user {user_id}")
         assert resp.status == 200, "HTTP Status code error"
         ans_patch = await resp.json()
@@ -399,13 +417,7 @@ async def test_crud_users_works():
     """Test users REST api GET, PATCH and DELETE reqs."""
     async with aiohttp.ClientSession() as sess:
         # Check user exists in database (requires an user object to be mocked)
-        user_id = "USR12345678"
-        user = {
-            "userId": user_id,
-            "username": "tester",
-            "drafts": [],
-            "folders": [],
-        }
+        await create_test_user()
         async with sess.get(f"{users_url}/{user_id}") as resp:
             LOG.debug(f"Reading user {user_id}")
             assert resp.status == 200, "HTTP Status code error"
@@ -413,11 +425,15 @@ async def test_crud_users_works():
         # Add user to session and create a patch to add folder to user
         data = {"name": "test", "description": "test folder"}
         folder_id = await post_folder(sess, data)
-        patch = [{"op": "add", "path": "/folders/0", "value": folder_id}]
-        user_id = await patch_user(sess, user_id, patch)
+        patch = [{"op": "add", "path": "/folders", "value": [folder_id]}]
+        await patch_user(sess, user_id, patch)
         async with sess.get(f"{users_url}/{user_id}") as resp:
             LOG.debug(f"Checking that user {user_id} was patched")
-            assert resp.json == user, "Response data error"
+            res = await resp.json()
+            assert res["userId"] == user_id, "content mismatch"
+            assert res["username"] == "tester", "content mismatch"
+            assert res["drafts"] == [], "content mismatch"
+            assert res["folders"] == [folder_id], "content mismatch"
 
         # Delete user
         await delete_user(sess, user_id)
@@ -446,8 +462,8 @@ async def main():
     await test_querying_works()
 
     # Test /objects/study endpoint for query pagination
-    # LOG.debug("=== Testing getting all objects & pagination ===")
-    # await test_getting_all_objects_from_schema_works()
+    LOG.debug("=== Testing getting all objects & pagination ===")
+    await test_getting_all_objects_from_schema_works()
 
     # Test creating, reading, updating and deleting folders
     LOG.debug("=== Testing basic CRUD folder operations ===")
