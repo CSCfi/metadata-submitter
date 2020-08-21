@@ -6,7 +6,9 @@ should be taken into account.
 """
 
 import asyncio
+import json
 import logging
+from motor.motor_asyncio import AsyncIOMotorClient
 from pathlib import Path
 
 import aiofiles
@@ -38,6 +40,16 @@ test_json_files = [
 ]
 base_url = "http://localhost:5430/objects"
 drafts_url = "http://localhost:5430/drafts"
+folders_url = "http://localhost:5430/folders"
+users_url = "http://localhost:5430/users"
+
+user_id = "USR12345678"
+test_user = {
+    "userId": user_id,
+    "username": "tester",
+    "drafts": [],
+    "folders": [],
+}
 
 
 # === Helper functions ===
@@ -123,6 +135,58 @@ async def delete_draft(sess, schema, accession_id):
     """Delete metadata object within session."""
     async with sess.delete(f"{drafts_url}/{schema}/{accession_id}") as resp:
         LOG.debug(f"Deleting object {accession_id} from {schema}")
+        assert resp.status == 204, "HTTP Status code error"
+
+
+async def post_folder(sess, data):
+    """Post one object folder within session, returns folderId."""
+    async with sess.post(f"{folders_url}", data=json.dumps(data)) as resp:
+        LOG.debug("Adding new folder")
+        assert resp.status == 201, "HTTP Status code error"
+        ans = await resp.json()
+        return ans["folderId"]
+
+
+async def patch_folder(sess, folder_id, patch):
+    """Patch one object folder within session, return folderId."""
+    async with sess.patch(f"{folders_url}/{folder_id}", data=json.dumps(patch)) as resp:
+        LOG.debug(f"Updating folder {folder_id}")
+        assert resp.status == 200, "HTTP Status code error"
+        ans_patch = await resp.json()
+        assert ans_patch["folderId"] == folder_id, "folder ID error"
+        return ans_patch["folderId"]
+
+
+async def delete_folder(sess, folder_id):
+    """Delete object folder within session."""
+    async with sess.delete(f"{folders_url}/{folder_id}") as resp:
+        LOG.debug(f"Deleting folder {folder_id}")
+        assert resp.status == 204, "HTTP Status code error"
+
+
+async def create_test_user():
+    """Manually create a user to test database."""
+    LOG.debug(f"Creating test user {user_id}")
+    uri = "mongodb://admin:admin@localhost:27017/"
+    db_client = AsyncIOMotorClient(uri)
+    database = db_client["users"]
+    await database["user"].insert_one(test_user)
+
+
+async def patch_user(sess, user_id, patch):
+    """Patch one user object within session, return userId."""
+    async with sess.patch(f"{users_url}/{user_id}", data=json.dumps(patch)) as resp:
+        LOG.debug(f"Updating user {user_id}")
+        assert resp.status == 200, "HTTP Status code error"
+        ans_patch = await resp.json()
+        assert ans_patch["userId"] == user_id, "user ID error"
+        return ans_patch["userId"]
+
+
+async def delete_user(sess, user_id):
+    """Delete user object within session."""
+    async with sess.delete(f"{users_url}/{user_id}") as resp:
+        LOG.debug(f"Deleting user {user_id}")
         assert resp.status == 204, "HTTP Status code error"
 
 
@@ -317,6 +381,67 @@ async def test_getting_all_objects_from_schema_works():
         await asyncio.gather(*[delete_object(sess, "study", accession_id) for accession_id in accession_ids])
 
 
+async def test_crud_folders_works():
+    """Test folders REST api POST, GET, PATCH and DELETE reqs."""
+    async with aiohttp.ClientSession() as sess:
+        # Create new folder and check it creation succeeded
+        data = {"name": "test", "description": "test folder"}
+        folder_id = await post_folder(sess, data)
+        async with sess.get(f"{folders_url}/{folder_id}") as resp:
+            LOG.debug(f"Checking that folder {folder_id} was created")
+            assert resp.status == 200, "HTTP Status code error"
+
+        # Add object to session and create a patch to add object to folder
+        accession_id = await post_object(sess, "sample", "SRS001433.xml")
+        patch = [
+            {"op": "add", "path": "/metadataObjects", "value": [{"accessionId": accession_id, "schema": "sample"}]}
+        ]
+        folder_id = await patch_folder(sess, folder_id, patch)
+        async with sess.get(f"{folders_url}/{folder_id}") as resp:
+            LOG.debug(f"Checking that folder {folder_id} was patched")
+            res = await resp.json()
+            assert res["folderId"] == folder_id, "content mismatch"
+            assert res["name"] == "test", "content mismatch"
+            assert res["description"] == "test folder", "content mismatch"
+            assert res["published"] is False, "content mismatch"
+            assert res["metadataObjects"] == [{"accessionId": accession_id, "schema": "sample"}], "content mismatch"
+
+        # Delete folder
+        await delete_folder(sess, folder_id)
+        async with sess.get(f"{folders_url}/{folder_id}") as resp:
+            LOG.debug(f"Checking that folder {folder_id} was deleted")
+            assert resp.status == 404, "HTTP Status code error"
+
+
+async def test_crud_users_works():
+    """Test users REST api GET, PATCH and DELETE reqs."""
+    async with aiohttp.ClientSession() as sess:
+        # Check user exists in database (requires an user object to be mocked)
+        await create_test_user()
+        async with sess.get(f"{users_url}/{user_id}") as resp:
+            LOG.debug(f"Reading user {user_id}")
+            assert resp.status == 200, "HTTP Status code error"
+
+        # Add user to session and create a patch to add folder to user
+        data = {"name": "test", "description": "test folder"}
+        folder_id = await post_folder(sess, data)
+        patch = [{"op": "add", "path": "/folders", "value": [folder_id]}]
+        await patch_user(sess, user_id, patch)
+        async with sess.get(f"{users_url}/{user_id}") as resp:
+            LOG.debug(f"Checking that user {user_id} was patched")
+            res = await resp.json()
+            assert res["userId"] == user_id, "content mismatch"
+            assert res["username"] == "tester", "content mismatch"
+            assert res["drafts"] == [], "content mismatch"
+            assert res["folders"] == [folder_id], "content mismatch"
+
+        # Delete user
+        await delete_user(sess, user_id)
+        async with sess.get(f"{users_url}/{user_id}") as resp:
+            LOG.debug(f"Checking that user {user_id} was deleted")
+            assert resp.status == 404, "HTTP Status code error"
+
+
 async def main():
     """Launch different test tasks and run them."""
     # Test adding and getting objects
@@ -339,6 +464,14 @@ async def main():
     # Test /objects/study endpoint for query pagination
     LOG.debug("=== Testing getting all objects & pagination ===")
     await test_getting_all_objects_from_schema_works()
+
+    # Test creating, reading, updating and deleting folders
+    LOG.debug("=== Testing basic CRUD folder operations ===")
+    await test_crud_folders_works()
+
+    # Test reading, updating and deleting folders
+    LOG.debug("=== Testing basic CRUD user operations ===")
+    await test_crud_users_works()
 
 
 if __name__ == "__main__":
