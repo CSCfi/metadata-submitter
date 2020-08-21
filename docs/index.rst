@@ -6,11 +6,16 @@
 CSC Metadata Submitter
 ======================
 
+Metadata submission service to handle submissions of EGA metadata, either as XML files or via form submissions. Submissions through graphical frontend and POST are supported.
+Service also validates submitted metadata objects against EGA XSD metadata models and saves objects to database.
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
-   validator
+   Metadata Submitter <submitter>
+   Metadata Validator Tool <validator>
+   Metadata Backend Modules <code>
 
 
 Indices and tables

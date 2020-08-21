@@ -22,7 +22,7 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install requirements
       run: |
-         pip install aiohttp aiofiles
+         pip install aiohttp aiofiles motor
         
     - name: Start Services
       run: |
