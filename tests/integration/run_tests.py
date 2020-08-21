@@ -8,7 +8,7 @@ should be taken into account.
 import asyncio
 import json
 import logging
-import motor.motor_tornado
+from motor.motor_asyncio import AsyncIOMotorClient
 from pathlib import Path
 
 import aiofiles
@@ -167,15 +167,15 @@ async def delete_folder(sess, folder_id):
 async def create_test_user():
     """Manually create a user to test database."""
     LOG.debug(f"Creating test user {user_id}")
-    uri = "mongodb://admin:admin@database:27017/users"
-    client = motor.motor_tornado.MotorClient(uri)
-    db = motor.motor_tornado.MotorDatabase(client, "users")
-    await db.user.insert_one(test_user)
+    uri = "mongodb://admin:admin@localhost:27017/"
+    db_client = AsyncIOMotorClient(uri)
+    database = db_client["users"]
+    await database["user"].insert_one(test_user)
 
 
 async def patch_user(sess, user_id, patch):
     """Patch one user object within session, return userId."""
-    async with sess.patch(f"{users_url}/{user_id}", data=json.dump(patch)) as resp:
+    async with sess.patch(f"{users_url}/{user_id}", data=json.dumps(patch)) as resp:
         LOG.debug(f"Updating user {user_id}")
         assert resp.status == 200, "HTTP Status code error"
         ans_patch = await resp.json()
