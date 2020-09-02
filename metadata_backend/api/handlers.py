@@ -541,6 +541,34 @@ class StaticHandler:
         return self.path / "static"
 
 
+class AccessHandler:
+    """Handler for user access methods."""
+
+    async def login(self, req: Request) -> Response:
+        """TBD.
+
+        :param req: GET request
+        :returns: TBD
+        """
+        raise web.HTTPNotImplemented()
+
+    async def logout(self, req: Request) -> Response:
+        """TBD.
+
+        :param req: GET request
+        :returns: TBD
+        """
+        raise web.HTTPNotImplemented()
+
+    async def callback(self, req: Request) -> Response:
+        """TBD.
+
+        :param req: GET request
+        :returns: TBD
+        """
+        raise web.HTTPNotImplemented()
+
+
 # Private functions shared between handlers
 async def _extract_xml_upload(req: Request, extract_one: bool = False) -> List[Tuple[str, str]]:
     """Extract submitted xml-file(s) from multi-part request.
