@@ -1,6 +1,7 @@
 """Handle HTTP methods for server."""
 import json
 import mimetypes
+import urllib.parse
 from collections import Counter
 from math import ceil
 from pathlib import Path
@@ -9,6 +10,7 @@ from typing import Dict, List, Tuple, Union, cast
 from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
 from jsonpatch import JsonPatch
+from uuid import uuid4
 from xmlschema import XMLSchemaException
 
 from ..conf.conf import schema_types
@@ -550,7 +552,26 @@ class AccessHandler:
         :param req: GET request
         :returns: TBD
         """
-        raise web.HTTPNotImplemented()
+        # A state for authentication request
+        state = str(uuid4())
+        nonce = str(uuid4())
+
+        # Parameters for authorisation request
+        params = {
+            "client_id": "<CLIENT ID HERE>",
+            "response_type": "code",
+            "state": state,
+            "nonce": nonce,
+            "redirect_uri": f"{req.url}/callback",
+        }
+
+        # Craft authorisation URL
+        url = f"test-user-auth.csc.fi?{urllib.parse.urlencode(params)}"
+
+        # Prepare response and save state to cookies
+        response = web.HTTPSeeOther(url)
+        response.set_cookie("oidc_state", state, domain=f"{req.url}", max_age=300, secure="true", httponly="true")
+        raise response
 
     async def logout(self, req: Request) -> Response:
         """TBD.
