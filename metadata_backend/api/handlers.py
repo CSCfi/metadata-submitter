@@ -577,11 +577,43 @@ class AccessHandler:
         response.set_cookie("oidc_state", state, domain=f"{req.url}", max_age=300, secure="True", httponly="True")
         raise response
 
+    async def callback(self, req: Request) -> Response:
+        """TBD.
+
+        :param req: GET request
+        :raises: TBD
+        """
+        try:
+            state = req.cookies["oidc_state"]
+        except KeyError as e:
+            reason = f"Cookies has no value for access token: {e}."
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
+        except Exception as e:
+            reason = f"Failed to retrieve cookie: {e}"
+            LOG.error(reason)
+            raise web.HTTPInternalServerError(reason=reason)
+
+        # Response from AAI must have the query params `state` and `code`
+        if "state" in req.query and "code" in req.query:
+            LOG.debug("AAI response contained the correct params.")
+            params = {"state": req.query["state"], "code": req.query["code"]}
+        else:
+            reason = f"AAI response is missing mandatory params, received: {req.query}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        # Verify, that states match
+        if not state == params["state"]:
+            raise web.HTTPForbidden(reason="Bad user session.")
+
+        raise web.HTTPNotImplemented()
+
     async def logout(self, req: Request) -> Response:
         """TBD.
 
         :param req: GET request
-        :returns: TBD
+        :raises: 303 redirect
         """
         try:
             access_token = req.cookies["access_token"]
@@ -613,14 +645,6 @@ class AccessHandler:
         response.set_cookie("access_token", "token_has_been_revoked", max_age=0, httponly="True")
         response.set_cookie("access_token", "False", max_age=0, httponly="False")
         raise response
-
-    async def callback(self, req: Request) -> Response:
-        """TBD.
-
-        :param req: GET request
-        :returns: TBD
-        """
-        raise web.HTTPNotImplemented()
 
 
 # Private functions shared between handlers
