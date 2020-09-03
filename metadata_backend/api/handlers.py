@@ -7,7 +7,7 @@ from math import ceil
 from pathlib import Path
 from typing import Dict, List, Tuple, Union, cast
 
-from aiohttp import BodyPartReader, web
+from aiohttp import BodyPartReader, web, BasicAuth, ClientSession
 from aiohttp.web import Request, Response
 from jsonpatch import JsonPatch
 from uuid import uuid4
@@ -546,11 +546,15 @@ class StaticHandler:
 class AccessHandler:
     """Handler for user access methods."""
 
+    def __init__(self) -> None:
+        """Define AAI paths."""
+        self.aai_url = "test-user-auth.csc.fi"
+
     async def login(self, req: Request) -> Response:
         """TBD.
 
         :param req: GET request
-        :returns: TBD
+        :raises: 303 redirect
         """
         # A state for authentication request
         state = str(uuid4())
@@ -558,7 +562,7 @@ class AccessHandler:
 
         # Parameters for authorisation request
         params = {
-            "client_id": "<CLIENT ID HERE>",
+            "client_id": "<CLIENT_ID>",
             "response_type": "code",
             "state": state,
             "nonce": nonce,
@@ -566,11 +570,11 @@ class AccessHandler:
         }
 
         # Craft authorisation URL
-        url = f"test-user-auth.csc.fi?{urllib.parse.urlencode(params)}"
+        url = f"{self.aai_url}/oidc/authorize?{urllib.parse.urlencode(params)}"
 
         # Prepare response and save state to cookies
         response = web.HTTPSeeOther(url)
-        response.set_cookie("oidc_state", state, domain=f"{req.url}", max_age=300, secure="true", httponly="true")
+        response.set_cookie("oidc_state", state, domain=f"{req.url}", max_age=300, secure="True", httponly="True")
         raise response
 
     async def logout(self, req: Request) -> Response:
@@ -579,7 +583,36 @@ class AccessHandler:
         :param req: GET request
         :returns: TBD
         """
-        raise web.HTTPNotImplemented()
+        try:
+            access_token = req.cookies["access_token"]
+        except KeyError as e:
+            reason = f"Cookies has no value for access token: {e}."
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
+        except Exception as e:
+            reason = f"Failed to retrieve cookie: {e}"
+            LOG.error(reason)
+            raise web.HTTPInternalServerError(reason=reason)
+
+        # Revoke token at AAI
+        auth = BasicAuth(login="<CLIENT_ID>", password="<CLIENT_SECRET>")
+        params = {"token": access_token}
+        # Set up client authentication for request
+        async with ClientSession(auth=auth) as session:
+            # Send request to AAI
+            async with session.get(f"{self.aai_url}/oidc/revoke?{urllib.parse.urlencode(params)}") as resp:
+                LOG.debug(f"AAI response status: {resp.status}.")
+                # Validate response from AAI
+                if resp.status != 200:
+                    LOG.error(f"Logout failed at AAI: {resp}.")
+                    LOG.error(await resp.json())
+                    raise web.HTTPBadRequest(reason=f"Logout failed at AAI: {resp.status}.")
+
+        # Overwrite status cookies with instantly expiring ones
+        response = web.HTTPSeeOther(f"{req.url}")
+        response.set_cookie("access_token", "token_has_been_revoked", max_age=0, httponly="True")
+        response.set_cookie("access_token", "False", max_age=0, httponly="False")
+        raise response
 
     async def callback(self, req: Request) -> Response:
         """TBD.
