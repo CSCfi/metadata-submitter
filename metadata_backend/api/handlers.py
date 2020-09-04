@@ -607,6 +607,31 @@ class AccessHandler:
         if not state == params["state"]:
             raise web.HTTPForbidden(reason="Bad user session.")
 
+        auth = BasicAuth(login="<CLIENT_ID>", password="<CLIENT_SECRET>")
+        data = {"grant_type": "authorization_code", "code": params["code"], "redirect_uri": f"{req.url}/callback"}
+
+        # Set up client authentication for request
+        async with ClientSession(auth=auth) as session:
+            # Send request to AAI
+            async with session.post(f"{self.aai_url}/oidc/token", data=data) as resp:
+                LOG.debug(f"AAI response status: {resp.status}.")
+                # Validate response from AAI
+                if resp.status == 200:
+                    # Parse response
+                    result = await resp.json()
+                    # Look for access token
+                    if "access_token" in result:
+                        LOG.debug("Access token received.")
+                        # access_token = result['access_token']
+                    else:
+                        reason = "AAI response did not contain an access token."
+                        LOG.error(reason)
+                        raise web.HTTPBadRequest(reason=reason)
+                else:
+                    reason = "Token request to AAI failed."
+                    LOG.error(reason)
+                    raise web.HTTPBadRequest(reason=reason)
+
         raise web.HTTPNotImplemented()
 
     async def logout(self, req: Request) -> Response:
