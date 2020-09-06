@@ -622,7 +622,7 @@ class AccessHandler:
                     # Look for access token
                     if "access_token" in result:
                         LOG.debug("Access token received.")
-                        # access_token = result['access_token']
+                        access_token = result["access_token"]
                     else:
                         reason = "AAI response did not contain an access token."
                         LOG.error(reason)
@@ -632,7 +632,14 @@ class AccessHandler:
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
 
-        raise web.HTTPNotImplemented()
+        # Validate access token here
+        #
+
+        # Save access token and logged in status to cookies
+        response = web.HTTPSeeOther(f"{req.url}")
+        response.set_cookie("access_token", access_token, max_age=300, httponly="True")
+        response.set_cookie("logged_in", "True", max_age=300, httponly="False")
+        raise response
 
     async def logout(self, req: Request) -> Response:
         """TBD.
@@ -668,7 +675,7 @@ class AccessHandler:
         # Overwrite status cookies with instantly expiring ones
         response = web.HTTPSeeOther(f"{req.url}")
         response.set_cookie("access_token", "token_has_been_revoked", max_age=0, httponly="True")
-        response.set_cookie("access_token", "False", max_age=0, httponly="False")
+        response.set_cookie("logged_in", "False", max_age=0, httponly="False")
         raise response
 
 
