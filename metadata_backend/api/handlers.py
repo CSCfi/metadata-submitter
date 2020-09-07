@@ -549,10 +549,13 @@ class AccessHandler:
 
     def __init__(self, aai: Dict) -> None:
         """Define AAI variables and paths."""
-        self.aai_url = "test-user-auth.csc.fi"
+        self.domain = aai["domain"]
         self.client_id = aai["client_id"]
         self.client_secret = aai["client_secret"]
         self.callback_url = aai["callback_url"]
+        self.auth_url = aai["auth_url"]
+        self.token_url = aai["token_url"]
+        self.revoke_url = aai["revoke_url"]
 
     async def login(self, req: Request) -> Response:
         """TBD.
@@ -573,19 +576,17 @@ class AccessHandler:
             "redirect_uri": self.callback_url,
         }
 
-        # Craft authorisation URL
-        url = f"{self.aai_url}/oidc/authorize?{urllib.parse.urlencode(params)}"
-
         # Prepare response and save state to cookies
+        url = f"{self.auth_url}?{urllib.parse.urlencode(params)}"
         response = web.HTTPSeeOther(url)
-        response.set_cookie("oidc_state", state, domain=f"{req.url}", max_age=300, secure="True", httponly="True")
+        response.set_cookie("oidc_state", state, domain=self.domain, max_age=300, secure="True", httponly="True")
         raise response
 
     async def callback(self, req: Request) -> Response:
         """TBD.
 
         :param req: GET request
-        :raises: TBD
+        :raises: 303 redirect
         """
         # Response from AAI must have the query params `state` and `code`
         if "state" in req.query and "code" in req.query:
@@ -602,12 +603,12 @@ class AccessHandler:
             raise web.HTTPForbidden(reason="Bad user session.")
 
         auth = BasicAuth(login=self.client_id, password=self.client_secret)
-        data = {"grant_type": "authorization_code", "code": params["code"], "redirect_uri": f"{req.url}/callback"}
+        data = {"grant_type": "authorization_code", "code": params["code"], "redirect_uri": self.callback_url}
 
         # Set up client authentication for request
         async with ClientSession(auth=auth) as session:
             # Send request to AAI
-            async with session.post(f"{self.aai_url}/oidc/token", data=data) as resp:
+            async with session.post(f"{self.token_url}", data=data) as resp:
                 LOG.debug(f"AAI response status: {resp.status}.")
                 # Validate response from AAI
                 if resp.status == 200:
@@ -628,7 +629,7 @@ class AccessHandler:
         await validate_jwt(access_token)
 
         # Save access token and logged in status to cookies
-        response = web.HTTPSeeOther(f"{req.url}")
+        response = web.HTTPSeeOther(self.domain)
         response.set_cookie("access_token", access_token, max_age=300, httponly="True")
         response.set_cookie("logged_in", "True", max_age=300, httponly="False")
         raise response
@@ -645,7 +646,7 @@ class AccessHandler:
         params = {"token": access_token}
         # Set up client authentication for request
         async with ClientSession(auth=auth) as session:
-            async with session.get(f"{self.aai_url}/oidc/revoke?{urllib.parse.urlencode(params)}") as resp:
+            async with session.get(f"{self.revoke_url}?{urllib.parse.urlencode(params)}") as resp:
                 LOG.debug(f"AAI response status: {resp.status}.")
                 # Validate response from AAI
                 if resp.status != 200:
@@ -669,7 +670,7 @@ class AccessHandler:
         try:
             return req.cookies[key]
         except KeyError as e:
-            reason = f"Cookies has no value for access token: {e}."
+            reason = f"Cookies has no value for {key}: {e}."
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)
         except Exception as e:
