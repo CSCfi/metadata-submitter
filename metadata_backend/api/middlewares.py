@@ -68,36 +68,49 @@ async def jwt_authentication(req: Request, handler: Callable) -> Response:
         if token is None:
             raise web.HTTPUnauthorized(reason="Token cannot be empty.")
 
-        # JWK and JWTClaims parameters for decoding
-        key = environ.get("PUBLIC_KEY", None)
+        # Validate access token
+        await validate_jwt(token)
 
-        # Include claims that are required to be present
-        # in the payload of the token
-        claims_options = {
-            "iss": {"essential": True, "values": ["haka_iss", "elixir_iss"]},
-            "exp": {"essential": True},
-        }
+        req["token"] = {"authenticated": True}
+        return await handler(req)
 
-        # Decode and validate token
-        try:
-            claims = jwt.decode(token, key, claims_options=claims_options)
-            claims.validate()
-            LOG.info("Auth token decoded and validated.")
-            req["token"] = {"authenticated": True}
-            return await handler(req)
-        except errors.MissingClaimError as err:
-            raise web.HTTPUnauthorized(reason=f"{err}")
-        except errors.ExpiredTokenError as err:
-            raise web.HTTPUnauthorized(reason=f"{err}")
-        except errors.InvalidClaimError as err:
-            raise web.HTTPForbidden(reason=f"Token contains {err}")
-        except errors.BadSignatureError as err:
-            raise web.HTTPUnauthorized(reason="Token signature is invalid" f", {err}")
-        except errors.InvalidTokenError as err:
-            raise web.HTTPUnauthorized(reason="Invalid authorization token" f": {err}")
     else:
         req["token"] = {"authenticated": False}
         return await handler(req)
+
+
+async def validate_jwt(token: str) -> None:
+    """Validate a JSON web token.
+
+    :param token: JSON Web Token string
+    :raises: Authorization errors
+    """
+
+    # JWK and JWTClaims parameters for decoding
+    key = environ.get("PUBLIC_KEY", None)
+
+    # Include claims that are required to be present
+    # in the payload of the token
+    claims_options = {
+        "iss": {"essential": True, "values": ["haka_iss", "elixir_iss"]},
+        "exp": {"essential": True},
+    }
+
+    # Decode and validate token
+    try:
+        claims = jwt.decode(token, key, claims_options=claims_options)
+        claims.validate()
+        LOG.info("Auth token decoded and validated.")
+    except errors.MissingClaimError as err:
+        raise web.HTTPUnauthorized(reason=f"{err}")
+    except errors.ExpiredTokenError as err:
+        raise web.HTTPUnauthorized(reason=f"{err}")
+    except errors.InvalidClaimError as err:
+        raise web.HTTPForbidden(reason=f"Token contains {err}")
+    except errors.BadSignatureError as err:
+        raise web.HTTPUnauthorized(reason="Token signature is invalid" f", {err}")
+    except errors.InvalidTokenError as err:
+        raise web.HTTPUnauthorized(reason="Invalid authorization token" f": {err}")
 
 
 def _json_exception(status: int, exception: web.HTTPException, url: URL) -> str:
