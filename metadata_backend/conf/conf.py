@@ -95,10 +95,14 @@ frontend_static_files = Path(__file__).parent.parent / "frontend"
 def setup_aai() -> dict:
     """Initialize AAI client variables.
 
-    :returns: Dictionary of all required variables
+    :returns: Dictionary of all AAI related variables
     """
     aai = {}
     aai["client_id"] = os.getenv("CSC_AAI_CLIENT_ID", "public")
     aai["client_secret"] = os.getenv("CSC_AAI_CLIENT_SECRET", "secret")
-    aai["callback_url"] = "0.0.0.0:5430/callback"
+    aai["domain"] = "localhost:5430"
+    aai["callback_url"] = "localhost:5430/callback"
+    aai["auth_url"] = ""
+    aai["token_url"] = ""
+    aai["revoke_url"] = ""
     return aai
