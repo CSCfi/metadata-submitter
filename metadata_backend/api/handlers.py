@@ -584,17 +584,6 @@ class AccessHandler:
         :param req: GET request
         :raises: TBD
         """
-        try:
-            state = req.cookies["oidc_state"]
-        except KeyError as e:
-            reason = f"Cookies has no value for access token: {e}."
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
-        except Exception as e:
-            reason = f"Failed to retrieve cookie: {e}"
-            LOG.error(reason)
-            raise web.HTTPInternalServerError(reason=reason)
-
         # Response from AAI must have the query params `state` and `code`
         if "state" in req.query and "code" in req.query:
             LOG.debug("AAI response contained the correct params.")
@@ -605,6 +594,7 @@ class AccessHandler:
             raise web.HTTPBadRequest(reason=reason)
 
         # Verify, that states match
+        state = self._get_cookie(req, "oidc_state")
         if not state == params["state"]:
             raise web.HTTPForbidden(reason="Bad user session.")
 
@@ -618,9 +608,7 @@ class AccessHandler:
                 LOG.debug(f"AAI response status: {resp.status}.")
                 # Validate response from AAI
                 if resp.status == 200:
-                    # Parse response
                     result = await resp.json()
-                    # Look for access token
                     if "access_token" in result:
                         LOG.debug("Access token received.")
                         access_token = result["access_token"]
@@ -648,23 +636,12 @@ class AccessHandler:
         :param req: GET request
         :raises: 303 redirect
         """
-        try:
-            access_token = req.cookies["access_token"]
-        except KeyError as e:
-            reason = f"Cookies has no value for access token: {e}."
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
-        except Exception as e:
-            reason = f"Failed to retrieve cookie: {e}"
-            LOG.error(reason)
-            raise web.HTTPInternalServerError(reason=reason)
-
         # Revoke token at AAI
+        access_token = self._get_cookie(req, "access_token")
         auth = BasicAuth(login="<CLIENT_ID>", password="<CLIENT_SECRET>")
         params = {"token": access_token}
         # Set up client authentication for request
         async with ClientSession(auth=auth) as session:
-            # Send request to AAI
             async with session.get(f"{self.aai_url}/oidc/revoke?{urllib.parse.urlencode(params)}") as resp:
                 LOG.debug(f"AAI response status: {resp.status}.")
                 # Validate response from AAI
@@ -678,6 +655,24 @@ class AccessHandler:
         response.set_cookie("access_token", "token_has_been_revoked", max_age=0, httponly="True")
         response.set_cookie("logged_in", "False", max_age=0, httponly="False")
         raise response
+
+    async def _get_cookie(self, req: Request, key: str) -> str:
+        """Get a value from cookies.
+
+        :param req: GET request containing cookies
+        :param key: name of the key to be returned from cookies
+        :returns: Specific value from cookies
+        """
+        try:
+            return req.cookies[key]
+        except KeyError as e:
+            reason = f"Cookies has no value for access token: {e}."
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
+        except Exception as e:
+            reason = f"Failed to retrieve cookie: {e}"
+            LOG.error(reason)
+            raise web.HTTPInternalServerError(reason=reason)
 
 
 # Private functions shared between handlers
