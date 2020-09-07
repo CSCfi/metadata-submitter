@@ -2,6 +2,7 @@
 
 import json
 import os
+import time
 
 from aiohttp import FormData
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
@@ -57,6 +58,8 @@ class AuthMiddlewareTestCase(AioHTTPTestCase):
             "name": "tester",
             "iss": "haka_iss",
             "exp": 9999999999,
+            "aud": None,
+            "iat": int(time.time()),
         }
         self.pem = {"kty": "oct", "alg": "RS256", "k": "GawgguFyGrWKav7AX4VKUg"}
         os.environ["PUBLIC_KEY"] = json.dumps(self.pem)

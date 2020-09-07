@@ -93,6 +93,8 @@ async def validate_jwt(token: str) -> None:
     # in the payload of the token
     claims_options = {
         "iss": {"essential": True, "values": ["haka_iss", "elixir_iss"]},
+        "aud": {"essential": True, "values": None},  # Add audiences here
+        "iat": {"essential": True},
         "exp": {"essential": True},
     }
 
