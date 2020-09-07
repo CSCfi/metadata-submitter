@@ -547,9 +547,12 @@ class StaticHandler:
 class AccessHandler:
     """Handler for user access methods."""
 
-    def __init__(self) -> None:
-        """Define AAI paths."""
+    def __init__(self, aai: Dict) -> None:
+        """Define AAI variables and paths."""
         self.aai_url = "test-user-auth.csc.fi"
+        self.client_id = aai["client_id"]
+        self.client_secret = aai["client_secret"]
+        self.callback_url = aai["callback_url"]
 
     async def login(self, req: Request) -> Response:
         """TBD.
@@ -563,11 +566,11 @@ class AccessHandler:
 
         # Parameters for authorisation request
         params = {
-            "client_id": "<CLIENT_ID>",
+            "client_id": self.client_id,
             "response_type": "code",
             "state": state,
             "nonce": nonce,
-            "redirect_uri": f"{req.url}/callback",
+            "redirect_uri": self.callback_url,
         }
 
         # Craft authorisation URL
@@ -598,7 +601,7 @@ class AccessHandler:
         if not state == params["state"]:
             raise web.HTTPForbidden(reason="Bad user session.")
 
-        auth = BasicAuth(login="<CLIENT_ID>", password="<CLIENT_SECRET>")
+        auth = BasicAuth(login=self.client_id, password=self.client_secret)
         data = {"grant_type": "authorization_code", "code": params["code"], "redirect_uri": f"{req.url}/callback"}
 
         # Set up client authentication for request
@@ -638,7 +641,7 @@ class AccessHandler:
         """
         # Revoke token at AAI
         access_token = self._get_cookie(req, "access_token")
-        auth = BasicAuth(login="<CLIENT_ID>", password="<CLIENT_SECRET>")
+        auth = BasicAuth(login=self.client_id, password=self.client_secret)
         params = {"token": access_token}
         # Set up client authentication for request
         async with ClientSession(auth=auth) as session:

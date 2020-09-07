@@ -89,3 +89,16 @@ query_map = {
 
 # 4) Set frontend folder to be inside metadata_backend modules root
 frontend_static_files = Path(__file__).parent.parent / "frontend"
+
+
+# 5) Set up configurations for AAI server
+def setup_aai() -> dict:
+    """Initialize AAI client variables.
+
+    :returns: Dictionary of all required variables
+    """
+    aai = {}
+    aai["client_id"] = os.getenv("CSC_AAI_CLIENT_ID", "public")
+    aai["client_secret"] = os.getenv("CSC_AAI_CLIENT_SECRET", "secret")
+    aai["callback_url"] = "0.0.0.0:5430/callback"
+    return aai

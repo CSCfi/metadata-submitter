@@ -7,7 +7,7 @@ from aiohttp import web
 
 from .api.handlers import RESTApiHandler, StaticHandler, SubmissionAPIHandler, AccessHandler
 from .api.middlewares import http_error_handler, jwt_authentication
-from .conf.conf import create_db_client, frontend_static_files
+from .conf.conf import create_db_client, frontend_static_files, setup_aai
 from .helpers.logger import LOG
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -26,7 +26,6 @@ async def init() -> web.Application:
     server = web.Application(middlewares=[http_error_handler, jwt_authentication])
     rest_handler = RESTApiHandler()
     submission_handler = SubmissionAPIHandler()
-    access_handler = AccessHandler()
     api_routes = [
         web.get("/schemas", rest_handler.get_schema_types),
         web.get("/schemas/{schema}", rest_handler.get_json_schema),
@@ -49,9 +48,6 @@ async def init() -> web.Application:
         web.delete("/users/{userId}", rest_handler.delete_user),
         web.post("/submit", submission_handler.submit),
         web.post("/validate", submission_handler.validate),
-        web.get("/login", access_handler.login),
-        web.get("/logout", access_handler.logout),
-        web.get("/callback", access_handler.callback),
     ]
     server.router.add_routes(api_routes)
     LOG.info("Server configurations and routes loaded")
@@ -65,6 +61,15 @@ async def init() -> web.Application:
         LOG.info("Frontend routes loaded")
     server["db_client"] = create_db_client()
     LOG.info("Database client loaded")
+    aai_vars = setup_aai()
+    access_handler = AccessHandler(aai_vars)
+    aai_routes = [
+        web.get("/login", access_handler.login),
+        web.get("/logout", access_handler.logout),
+        web.get("/callback", access_handler.callback),
+    ]
+    server.router.add_routes(aai_routes)
+    LOG.info("AAI routes loaded")
     return server
 
 
