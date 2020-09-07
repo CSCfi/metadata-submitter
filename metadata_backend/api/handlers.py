@@ -19,6 +19,7 @@ from ..helpers.parser import XMLToJSONParser
 from ..helpers.schema_loader import JSONSchemaLoader, SchemaNotFoundException, XMLSchemaLoader
 from ..helpers.validator import JSONValidator, XMLValidator
 from .operators import FolderOperator, Operator, XMLOperator, UserOperator
+from .middlewares import validate_jwt
 
 
 class RESTApiHandler:
@@ -632,8 +633,8 @@ class AccessHandler:
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
 
-        # Validate access token here
-        #
+        # Validate access token
+        await validate_jwt(access_token)
 
         # Save access token and logged in status to cookies
         response = web.HTTPSeeOther(f"{req.url}")
