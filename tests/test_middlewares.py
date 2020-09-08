@@ -9,6 +9,7 @@ from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
 from authlib.jose import jwt
 
 from metadata_backend.server import init
+from metadata_backend.conf.conf import setup_aai
 
 
 class ErrorMiddlewareTestCase(AioHTTPTestCase):
@@ -53,12 +54,13 @@ class AuthMiddlewareTestCase(AioHTTPTestCase):
         Also set pem as an environment variable for the duration of the tests.
         """
         self.header = {"alg": "HS256", "typ": "JWT"}
+        aai = setup_aai()
         self.payload = {
             "sub": "test",
             "name": "tester",
-            "iss": "haka_iss",
+            "iss": aai["iss"].split(",")[0],
             "exp": 9999999999,
-            "aud": None,
+            "aud": aai["aud"].split(",")[0],
             "iat": int(time.time()),
         }
         self.pem = {"kty": "oct", "alg": "RS256", "k": "GawgguFyGrWKav7AX4VKUg"}
