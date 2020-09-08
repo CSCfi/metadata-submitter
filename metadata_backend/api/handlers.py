@@ -556,9 +556,10 @@ class AccessHandler:
         self.auth_url = aai["auth_url"]
         self.token_url = aai["token_url"]
         self.revoke_url = aai["revoke_url"]
+        self.scope = aai["scope"]
 
     async def login(self, req: Request) -> Response:
-        """TBD.
+        """Redirect user to AAI login.
 
         :param req: GET request
         :raises: 303 redirect
@@ -574,6 +575,7 @@ class AccessHandler:
             "state": state,
             "nonce": nonce,
             "redirect_uri": self.callback_url,
+            "scope": self.scope,
         }
 
         # Prepare response and save state to cookies
@@ -583,7 +585,7 @@ class AccessHandler:
         raise response
 
     async def callback(self, req: Request) -> Response:
-        """TBD.
+        """Include correct tokens in cookies as a callback after login.
 
         :param req: GET request
         :raises: 303 redirect
@@ -635,7 +637,7 @@ class AccessHandler:
         raise response
 
     async def logout(self, req: Request) -> Response:
-        """TBD.
+        """Log the user out by revoking tokens.
 
         :param req: GET request
         :raises: 303 redirect

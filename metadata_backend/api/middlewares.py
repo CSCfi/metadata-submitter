@@ -5,12 +5,13 @@ from http import HTTPStatus
 from os import environ
 from typing import Callable
 
-from aiohttp import web
+from aiohttp import web, ClientSession
 from aiohttp.web import Request, Response, middleware
 from authlib.jose import errors, jwt
 from yarl import URL
 
 from ..helpers.logger import LOG
+from ..conf.conf import setup_aai
 
 
 @middleware
@@ -85,15 +86,24 @@ async def validate_jwt(token: str) -> None:
     :param token: JSON Web Token string
     :raises: Authorization errors
     """
+    aai = setup_aai()
 
-    # JWK and JWTClaims parameters for decoding
+    # JWK for decoding
     key = environ.get("PUBLIC_KEY", None)
+    if key is None:
+        try:
+            async with ClientSession() as session:
+                async with session.get(aai["jwk_server"]) as r:
+                    # This can be a single key or a list of JWK
+                    key = await r.json()
+        except Exception as e:
+            LOG.error(f"Could not retrieve JWK: {e}")
+            raise web.HTTPBadRequest(reason="Could not retrieve public key.")
 
-    # Include claims that are required to be present
-    # in the payload of the token
+    # JWTClaims parameters for decoding
     claims_options = {
-        "iss": {"essential": True, "values": ["haka_iss", "elixir_iss"]},
-        "aud": {"essential": True, "values": None},  # Add audiences here
+        "iss": {"essential": True, "values": aai["iss"].split(",")},
+        "aud": {"essential": True, "values": aai["aud"].split(",")},
         "iat": {"essential": True},
         "exp": {"essential": True},
     }

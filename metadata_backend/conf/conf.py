@@ -33,6 +33,7 @@ and inserted here in projects Dockerfile.
 import json
 import os
 from pathlib import Path
+from typing import Dict
 
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -92,7 +93,7 @@ frontend_static_files = Path(__file__).parent.parent / "frontend"
 
 
 # 5) Set up configurations for AAI server
-def setup_aai() -> dict:
+def setup_aai() -> Dict:
     """Initialize AAI client variables.
 
     :returns: Dictionary of all AAI related variables
@@ -101,8 +102,12 @@ def setup_aai() -> dict:
     aai["client_id"] = os.getenv("CSC_AAI_CLIENT_ID", "public")
     aai["client_secret"] = os.getenv("CSC_AAI_CLIENT_SECRET", "secret")
     aai["domain"] = "localhost:5430"
+    aai["scope"] = "openid"
+    aai["iss"] = "https://test-user-auth.csc.fi,"
+    aai["aud"] = "aud1,"
     aai["callback_url"] = "localhost:5430/callback"
-    aai["auth_url"] = ""
-    aai["token_url"] = ""
+    aai["auth_url"] = "https://test-user-auth.csc.fi/idp/profile/oidc/authorize"
+    aai["token_url"] = "https://test-user-auth.csc.fi/idp/profile/oidc/token"
     aai["revoke_url"] = ""
+    aai["jwk_server"] = "https://test-user-auth.csc.fi/idp/profile/oidc/keyset"
     return aai
