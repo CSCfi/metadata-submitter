@@ -10,6 +10,7 @@ from typing import Dict, List, Tuple, Union, cast
 
 from aiohttp import BodyPartReader, web, BasicAuth, ClientSession
 from aiohttp.web import Request, Response
+from aiohttp_session import get_session
 from jsonpatch import JsonPatch
 from xmlschema import XMLSchemaException
 
@@ -565,8 +566,10 @@ class AccessHandler:
         :param req: GET request
         :raises: 303 redirect
         """
-        # A state for authentication request
+        # Generate a state for callback and save it to session storage
         state = secrets.token_hex()
+        session = await get_session(req)
+        session["oidc_state"] = state
 
         # Parameters for authorisation request
         params = {
@@ -577,10 +580,9 @@ class AccessHandler:
             "scope": self.scope,
         }
 
-        # Prepare response and save state to cookies
+        # Prepare response
         url = f"{self.auth_url}?{urllib.parse.urlencode(params)}"
         response = web.HTTPSeeOther(url)
-        response.set_cookie("oidc_state", state, domain=self.domain, max_age=300, secure="True", httponly="True")
         raise response
 
     async def callback(self, req: Request) -> Response:
@@ -599,17 +601,17 @@ class AccessHandler:
             raise web.HTTPBadRequest(reason=reason)
 
         # Verify, that states match
-        state = self._get_cookie(req, "oidc_state")
-        if not state == params["state"]:
+        state = self._get_from_session(req, "oidc_state")
+        if not secrets.compare_digest(str(state), str(params["state"])):
             raise web.HTTPForbidden(reason="Bad user session.")
 
         auth = BasicAuth(login=self.client_id, password=self.client_secret)
         data = {"grant_type": "authorization_code", "code": params["code"], "redirect_uri": self.callback_url}
 
         # Set up client authentication for request
-        async with ClientSession(auth=auth) as session:
+        async with ClientSession(auth=auth) as sess:
             # Send request to AAI
-            async with session.post(f"{self.token_url}", data=data) as resp:
+            async with sess.post(f"{self.token_url}", data=data) as resp:
                 LOG.debug(f"AAI response status: {resp.status}.")
                 # Validate response from AAI
                 if resp.status == 200:
@@ -622,14 +624,16 @@ class AccessHandler:
                         LOG.error(reason)
                         raise web.HTTPBadRequest(reason=reason)
                 else:
-                    reason = "Token request to AAI failed."
+                    reason = f"Token request to AAI failed: {resp}"
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
 
         # Validate access token
         # await validate_jwt(access_token)
 
-        # Save access token and logged in status to cookies
+        # Save access token to session cookies and logged in status to cookies
+        session = await get_session(req)
+        session["access_token"] = access_token
         response = web.HTTPSeeOther(self.domain)
         response.set_cookie("access_token", access_token, max_age=300, httponly="True")
         response.set_cookie("logged_in", "True", max_age=300, httponly="False")
@@ -642,7 +646,7 @@ class AccessHandler:
         :raises: 303 redirect
         """
         # Revoke token at AAI
-        access_token = self._get_cookie(req, "access_token")
+        access_token = self._get_from_session(req, "access_token")
         auth = BasicAuth(login=self.client_id, password=self.client_secret)
         params = {"token": access_token}
         # Set up client authentication for request
@@ -661,21 +665,22 @@ class AccessHandler:
         response.set_cookie("logged_in", "False", max_age=0, httponly="False")
         raise response
 
-    async def _get_cookie(self, req: Request, key: str) -> str:
-        """Get a value from cookies.
+    async def _get_from_session(self, req: Request, key: str) -> str:
+        """Get a value from session storage.
 
-        :param req: GET request containing cookies
-        :param key: name of the key to be returned from cookies
-        :returns: Specific value from cookies
+        :param req: GET request
+        :param key: name of the key to be returned from session storage
+        :returns: Specific value from session storage
         """
         try:
-            return req.cookies[key]
+            session = await get_session(req)
+            return session[key]
         except KeyError as e:
-            reason = f"Cookies has no value for {key}: {e}."
+            reason = f"Session has no value for {key}: {e}."
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)
         except Exception as e:
-            reason = f"Failed to retrieve cookie: {e}"
+            reason = f"Failed to retrieve {key} from session: {e}"
             LOG.error(reason)
             raise web.HTTPInternalServerError(reason=reason)
 

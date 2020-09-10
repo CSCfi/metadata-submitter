@@ -1,9 +1,11 @@
 aiohttp
+aiohttp-session
 Authlib
+cryptography
 gunicorn
+jsonschema
+jsonpatch
 motor
 python-dateutil
 uvloop
 xmlschema>=1.2.2
-jsonschema
-jsonpatch

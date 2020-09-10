@@ -4,6 +4,9 @@ import asyncio
 
 import uvloop
 from aiohttp import web
+from aiohttp_session import setup as session_setup
+from aiohttp_session.cookie_storage import EncryptedCookieStorage
+from cryptography.fernet import Fernet
 
 from .api.handlers import RESTApiHandler, StaticHandler, SubmissionAPIHandler, AccessHandler
 from .api.middlewares import http_error_handler, jwt_authentication
@@ -24,6 +27,7 @@ async def init() -> web.Application:
     specific ones on top of more generic ones.
     """
     server = web.Application(middlewares=[http_error_handler, jwt_authentication])
+    session_setup(server, EncryptedCookieStorage(Fernet.generate_key()[:32]))
     rest_handler = RESTApiHandler()
     submission_handler = SubmissionAPIHandler()
     api_routes = [
