@@ -102,7 +102,7 @@ def setup_aai() -> Dict:
     aai["client_id"] = os.getenv("CSC_AAI_CLIENT_ID", "public")
     aai["client_secret"] = os.getenv("CSC_AAI_CLIENT_SECRET", "secret")
     aai["domain"] = "localhost:5430"
-    aai["scope"] = "openid"
+    aai["scope"] = "openid profile email"
     aai["iss"] = "https://test-user-auth.csc.fi,"
     aai["aud"] = "aud1,"
     aai["callback_url"] = "localhost:5430/callback"
