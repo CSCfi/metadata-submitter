@@ -1,6 +1,7 @@
 """Handle HTTP methods for server."""
 import json
 import mimetypes
+import secrets
 import urllib.parse
 from collections import Counter
 from math import ceil
@@ -10,7 +11,6 @@ from typing import Dict, List, Tuple, Union, cast
 from aiohttp import BodyPartReader, web, BasicAuth, ClientSession
 from aiohttp.web import Request, Response
 from jsonpatch import JsonPatch
-from uuid import uuid4
 from xmlschema import XMLSchemaException
 
 from ..conf.conf import schema_types
@@ -19,7 +19,8 @@ from ..helpers.parser import XMLToJSONParser
 from ..helpers.schema_loader import JSONSchemaLoader, SchemaNotFoundException, XMLSchemaLoader
 from ..helpers.validator import JSONValidator, XMLValidator
 from .operators import FolderOperator, Operator, XMLOperator, UserOperator
-from .middlewares import validate_jwt
+
+# from .middlewares import validate_jwt
 
 
 class RESTApiHandler:
@@ -565,15 +566,13 @@ class AccessHandler:
         :raises: 303 redirect
         """
         # A state for authentication request
-        state = str(uuid4())
-        nonce = str(uuid4())
+        state = secrets.token_hex()
 
         # Parameters for authorisation request
         params = {
             "client_id": self.client_id,
-            "response_type": "code",
+            "response_type": "code id_token",
             "state": state,
-            "nonce": nonce,
             "redirect_uri": self.callback_url,
             "scope": self.scope,
         }
@@ -628,7 +627,7 @@ class AccessHandler:
                     raise web.HTTPBadRequest(reason=reason)
 
         # Validate access token
-        await validate_jwt(access_token)
+        # await validate_jwt(access_token)
 
         # Save access token and logged in status to cookies
         response = web.HTTPSeeOther(self.domain)
