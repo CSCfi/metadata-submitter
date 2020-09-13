@@ -578,8 +578,7 @@ class AccessHandler:
         """
         # Generate a state for callback and save it to session storage
         state = secrets.token_hex()
-        session = await get_session(req)
-        session["oidc_state"] = state
+        await self._save_to_session(req, key="oidc_state", value=state)
 
         # Parameters for authorisation request
         params = {
@@ -611,7 +610,7 @@ class AccessHandler:
             raise web.HTTPBadRequest(reason=reason)
 
         # Verify, that states match
-        state = self._get_from_session(req, "oidc_state")
+        state = await self._get_from_session(req, "oidc_state")
         if not secrets.compare_digest(str(state), str(params["state"])):
             raise web.HTTPForbidden(reason="Bad user session.")
 
@@ -642,8 +641,7 @@ class AccessHandler:
         # await validate_jwt(access_token)
 
         # Save access token to session cookies and logged in status to cookies
-        session = await get_session(req)
-        session["access_token"] = access_token
+        await self._save_to_session(req, key="access_token", value=access_token)
         response = web.HTTPSeeOther(self.domain)
         response.set_cookie("access_token", access_token, max_age=300, httponly="True")
         response.set_cookie("logged_in", "True", max_age=300, httponly="False")
@@ -674,6 +672,13 @@ class AccessHandler:
         response.set_cookie("access_token", "token_has_been_revoked", max_age=0, httponly="True")
         response.set_cookie("logged_in", "False", max_age=0, httponly="False")
         raise response
+
+    async def _save_to_session(self, request: web.Request, key: str = "key", value: str = "value") -> None:
+        """Save a given value to a session key."""
+        LOG.debug(f"Save a value for {key} to session.")
+
+        session = await get_session(request)
+        session[key] = value
 
     async def _get_from_session(self, req: Request, key: str) -> str:
         """Get a value from session storage.
