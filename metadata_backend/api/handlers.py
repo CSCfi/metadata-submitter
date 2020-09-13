@@ -584,7 +584,7 @@ class AccessHandler:
         # Parameters for authorisation request
         params = {
             "client_id": self.client_id,
-            "response_type": "code id_token",
+            "response_type": "code",
             "state": state,
             "redirect_uri": self.callback_url,
             "scope": self.scope,
