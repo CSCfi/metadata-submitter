@@ -105,7 +105,12 @@ class RESTApiHandler:
         link_headers = self._header_links(url, page_num, per_page, total_objects)
         LOG.debug(f"Pagination header links: {link_headers}")
         LOG.info(f"Querying for objects in {collection} " f"resulted in {total_objects} objects ")
-        return web.Response(body=result, status=200, headers=link_headers, content_type="application/json",)
+        return web.Response(
+            body=result,
+            status=200,
+            headers=link_headers,
+            content_type="application/json",
+        )
 
     async def _get_data(self, req: Request) -> Dict:
         """Get the data content from a request.
@@ -204,7 +209,12 @@ class RESTApiHandler:
         url = f"{req.scheme}://{req.host}{req.path}"
         location_headers = {"Location": f"{url}{accession_id}"}
         LOG.info(f"POST object with accesssion ID {accession_id} " f"in schema {collection} was successful.")
-        return web.Response(body=body, status=201, headers=location_headers, content_type="application/json",)
+        return web.Response(
+            body=body,
+            status=201,
+            headers=location_headers,
+            content_type="application/json",
+        )
 
     async def query_objects(self, req: Request) -> Response:
         """Query metadata objects from database.

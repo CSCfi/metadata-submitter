@@ -130,7 +130,11 @@ class MetadataXMLConverter(XMLSchemaConverter):
         return True
 
     def element_decode(
-        self, data: Any, xsd_element: XsdElement, xsd_type: XsdType = None, level: int = 0,
+        self,
+        data: Any,
+        xsd_element: XsdElement,
+        xsd_type: XsdType = None,
+        level: int = 0,
     ) -> Union[Dict, List, str, None]:
         """Decode XML to JSON.
 

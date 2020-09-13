@@ -70,7 +70,8 @@ class ParserTestCase(unittest.TestCase):
         analysis_xml = self.load_xml_from_file("analysis", "ERZ266973.xml")
         analysis_json = self.parser.parse("analysis", analysis_xml)
         self.assertIn(
-            "GCA_000001405.1", analysis_json["analysisType"]["processedReads"]["assembly"]["standard"]["accessionId"],
+            "GCA_000001405.1",
+            analysis_json["analysisType"]["processedReads"]["assembly"]["standard"]["accessionId"],
         )
 
     def test_error_raised_when_schema_not_found(self):
