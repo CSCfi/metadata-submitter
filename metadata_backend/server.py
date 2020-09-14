@@ -55,6 +55,15 @@ async def init() -> web.Application:
     ]
     server.router.add_routes(api_routes)
     LOG.info("Server configurations and routes loaded")
+    aai_vars = setup_aai()
+    access_handler = AccessHandler(aai_vars)
+    aai_routes = [
+        web.get("/aai", access_handler.login),
+        web.get("/logout", access_handler.logout),
+        web.get("/callback", access_handler.callback),
+    ]
+    server.router.add_routes(aai_routes)
+    LOG.info("AAI routes loaded")
     if frontend_static_files.exists():
         static_handler = StaticHandler(frontend_static_files)
         frontend_routes = [
@@ -65,15 +74,6 @@ async def init() -> web.Application:
         LOG.info("Frontend routes loaded")
     server["db_client"] = create_db_client()
     LOG.info("Database client loaded")
-    aai_vars = setup_aai()
-    access_handler = AccessHandler(aai_vars)
-    aai_routes = [
-        web.get("/login", access_handler.login),
-        web.get("/logout", access_handler.logout),
-        web.get("/callback", access_handler.callback),
-    ]
-    server.router.add_routes(aai_routes)
-    LOG.info("AAI routes loaded")
     return server
 
 
