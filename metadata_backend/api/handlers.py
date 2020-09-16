@@ -493,8 +493,14 @@ class SubmissionAPIHandler:
                     }
                 )
                 LOG.debug(f"added some content in {schema_type} ...")
+            elif action == "modify":
+                pass
+            elif action == "validate":
+                pass
+            elif action == "release":
+                pass
             else:
-                reason = f"action {action} is not supported yet"
+                reason = f"Action {action} in xml is not supported."
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
         body = json.dumps(results)
