@@ -2,16 +2,15 @@
 import json
 import re
 from http import HTTPStatus
-from os import environ
-from typing import Callable
+from typing import Callable, Dict
 
 from aiohttp import web, ClientSession
-from aiohttp.web import Request, Response, middleware
-from authlib.jose import errors, jwt
+from aiohttp.web import Request, Response, middleware, StreamResponse
+from aiohttp_session import get_session
 from yarl import URL
 
 from ..helpers.logger import LOG
-from ..conf.conf import setup_aai
+from ..conf.conf import aai_config
 
 
 @middleware
@@ -43,86 +42,41 @@ async def http_error_handler(req: Request, handler: Callable) -> Response:
         else:
             raise web.HTTPServerError()
 
-    return http_error_handler
-
 
 @middleware
-async def jwt_authentication(req: Request, handler: Callable) -> Response:
-    """Middleware for validating and authenticating JSON web token.
+async def check_login(request: Request, handler: Callable) -> StreamResponse:
+    """Check login if there is a username."""
+    if request.path not in ["/aai", "/callback"]:
+        session = await get_session(request)
+        token = session.get("access_token")
+        logged = request.cookies.get("logged_in")
+        if not (token and logged):
+            raise web.HTTPSeeOther(location="/aai")
 
-    :param req: A request instance
-    :param handler: A request handler
-    :raises: HTTP Exception with status code 401 or 403
-    :returns: Successful requests unaffected
-    """
-    if "Authorization" in req.headers:
-        # Check token exists
-        try:
-            scheme, token = req.headers.get("Authorization").split(" ")
-            LOG.info("Auth token received.")
-        except ValueError as err:
-            raise web.HTTPUnauthorized(reason=f"Failure to read token: {err}")
-
-        # Check token has proper scheme and was provided.
-        if not re.match("Bearer", scheme):
-            raise web.HTTPUnauthorized(reason="Invalid token scheme, " "Bearer required.")
-        if token is None:
-            raise web.HTTPUnauthorized(reason="Token cannot be empty.")
-
-        # Validate access token
-        await validate_jwt(token)
-
-        req["token"] = {"authenticated": True}
-        return await handler(req)
-
+        return await handler(request)
     else:
-        req["token"] = {"authenticated": False}
-        return await handler(req)
+        return await handler(request)
 
 
-async def validate_jwt(token: str) -> None:
-    """Validate a JSON web token.
-
-    :param token: JSON Web Token string
-    :raises: Authorization errors
-    """
-    aai = setup_aai()
-
-    # JWK for decoding
-    key = environ.get("PUBLIC_KEY", None)
-    if key is None:
-        try:
-            async with ClientSession() as session:
-                async with session.get(aai["jwk_server"]) as r:
-                    # This can be a single key or a list of JWK
-                    key = await r.json()
-        except Exception as e:
-            LOG.error(f"Could not retrieve JWK: {e}")
-            raise web.HTTPBadRequest(reason="Could not retrieve public key.")
-
-    # JWTClaims parameters for decoding
-    claims_options = {
-        "iss": {"essential": True, "values": aai["iss"].split(",")},
-        "aud": {"essential": True, "values": aai["aud"].split(",")},
-        "iat": {"essential": True},
-        "exp": {"essential": True},
-    }
-
-    # Decode and validate token
+async def get_userinfo(req: Request, user_info) -> Dict[str, str]:
+    """Get information from userinfo endpoint."""
+    token = ""
     try:
-        claims = jwt.decode(token, key, claims_options=claims_options)
-        claims.validate()
-        LOG.info("Auth token decoded and validated.")
-    except errors.MissingClaimError as err:
-        raise web.HTTPUnauthorized(reason=f"{err}")
-    except errors.ExpiredTokenError as err:
-        raise web.HTTPUnauthorized(reason=f"{err}")
-    except errors.InvalidClaimError as err:
-        raise web.HTTPForbidden(reason=f"Token contains {err}")
-    except errors.BadSignatureError as err:
-        raise web.HTTPUnauthorized(reason="Token signature is invalid" f", {err}")
-    except errors.InvalidTokenError as err:
-        raise web.HTTPUnauthorized(reason="Invalid authorization token" f": {err}")
+        session = await get_session(req)
+        token = session["access_token"]
+    except Exception as e:
+        LOG.error(f"Could not get information from AAI UserInfo endpoint because of: {e}")
+        raise web.HTTPBadRequest(reason="Could not get information from AAI UserInfo endpoint.")
+
+    try:
+        headers = {"Authorization": f"Bearer {token}"}
+        async with ClientSession(headers=headers) as sess:
+            async with sess.get(f"{aai_config['user_info']}") as resp:
+                result = await resp.json()
+                return result
+    except Exception as e:
+        LOG.error(f"Could not get information from AAI UserInfo endpoint because of: {e}")
+        raise web.HTTPBadRequest(reason="Could not get information from AAI UserInfo endpoint.")
 
 
 def _json_exception(status: int, exception: web.HTTPException, url: URL) -> str:
