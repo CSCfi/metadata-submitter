@@ -33,7 +33,6 @@ and inserted here in projects Dockerfile.
 import json
 import os
 from pathlib import Path
-from typing import Dict
 
 from motor.motor_asyncio import AsyncIOMotorClient
 

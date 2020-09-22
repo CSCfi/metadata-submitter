@@ -1,6 +1,5 @@
 """Middleware methods for server."""
 import json
-import re
 from http import HTTPStatus
 from typing import Callable, Dict
 
@@ -58,7 +57,7 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
         return await handler(request)
 
 
-async def get_userinfo(req: Request, user_info) -> Dict[str, str]:
+async def get_userinfo(req: Request) -> Dict[str, str]:
     """Get information from userinfo endpoint."""
     token = ""
     try:
