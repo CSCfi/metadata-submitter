@@ -13,6 +13,11 @@ services:
     restart: on-failure
     environment:
       - "MONGODB_HOST=database:27017"
+      - "CSC_AAI_CLIENT_SECRET="
+      - "CSC_AAI_CLIENT_ID="
+      - "AUTH_URL="
+      - "OIDC_URL="
+      - "JWK_URL="
   database:
     image: "mongo"
     container_name: "metadata_submitter_database_dev"
