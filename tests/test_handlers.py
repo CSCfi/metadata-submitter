@@ -179,6 +179,17 @@ class HandlersTestCase(AioHTTPTestCase):
         response = await self.client.post("/submit", data=data)
         self.assertEqual(response.status, 200)
         self.assertEqual(response.content_type, "application/json")
+        # content = await response.json()
+        # self.assertEqual(len(content), 2)
+
+    @unittest_run_loop
+    async def test_submit_endpoint_submission_new_actions(self):
+        """Test new actions."""
+        files = [("submission", "ERA521986_modify.xml")]
+        data = self.create_submission_data(files)
+        response = await self.client.post("/submit", data=data)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.content_type, "application/json")
 
     @unittest_run_loop
     async def test_submit_endpoint_fails_without_submission_xml(self):

@@ -74,6 +74,16 @@ class ParserTestCase(unittest.TestCase):
             analysis_json["analysisType"]["processedReads"]["assembly"]["standard"]["accessionId"],
         )
 
+    def test_submission_is_parsed(self):
+        """Test that submission is parsed correctly.
+
+        Test for specific actions in submission.
+        """
+        # submission_xml = self.load_xml_from_file("submission", "ERA521986_valid.xml")
+        # submission_json = self.parser.parse("submission", submission_xml)
+        # self.assertIn("asdf", submission_json["actions"]["action"])
+        pass
+
     def test_error_raised_when_schema_not_found(self):
         """Test 400 is returned when schema."""
         with self.assertRaises(web.HTTPBadRequest):
