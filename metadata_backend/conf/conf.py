@@ -93,21 +93,18 @@ frontend_static_files = Path(__file__).parent.parent / "frontend"
 
 
 # 5) Set up configurations for AAI server
-def setup_aai() -> Dict:
-    """Initialize AAI client variables.
 
-    :returns: Dictionary of all AAI related variables
-    """
-    aai = {}
-    aai["client_id"] = os.getenv("CSC_AAI_CLIENT_ID", "public")
-    aai["client_secret"] = os.getenv("CSC_AAI_CLIENT_SECRET", "secret")
-    aai["domain"] = os.getenv("BASE_URL", "http://localhost:5430")
-    aai["scope"] = "openid profile email"
-    aai["iss"] = "https://test-user-auth.csc.fi,"
-    aai["aud"] = "aud1,"
-    aai["callback_url"] = os.getenv("CALLBACK_URL", "http://localhost:5430/callback")
-    aai["auth_url"] = "https://test-user-auth.csc.fi/idp/profile/oidc/authorize"
-    aai["token_url"] = "https://test-user-auth.csc.fi/idp/profile/oidc/token"
-    aai["revoke_url"] = ""
-    aai["jwk_server"] = "https://test-user-auth.csc.fi/idp/profile/oidc/keyset"
-    return aai
+aai_config = {
+    "client_id": os.getenv("CSC_AAI_CLIENT_ID", "public"),
+    "client_secret": os.getenv("CSC_AAI_CLIENT_SECRET", "secret"),
+    "domain": os.getenv("BASE_URL", "http://localhost:5430"),
+    "scope": "openid profile email",
+    "iss": os.getenv("AUTH_URL", ""),
+    "aud": "aud1",
+    "callback_url": f'{os.getenv("BASE_URL", "http://localhost:5430")}/callback',
+    "auth_url": f'{os.getenv("OIDC_URL", "")}/authorize',
+    "token_url": f'{os.getenv("OIDC_URL", "")}/token',
+    "user_info": f'{os.getenv("OIDC_URL", "")}/userinfo',
+    "revoke_url": "",
+    "jwk_server": f'{os.getenv("JWK_URL", "")}',
+}
