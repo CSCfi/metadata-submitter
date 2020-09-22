@@ -55,8 +55,7 @@ async def init() -> web.Application:
     ]
     server.router.add_routes(api_routes)
     LOG.info("Server configurations and routes loaded")
-    aai_vars = setup_aai()
-    access_handler = AccessHandler(aai_vars)
+    access_handler = AccessHandler(aai_config)
     aai_routes = [
         web.get("/aai", access_handler.login),
         web.get("/logout", access_handler.logout),
