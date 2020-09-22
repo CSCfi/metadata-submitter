@@ -494,9 +494,18 @@ class SubmissionAPIHandler:
                 )
                 LOG.debug(f"added some content in {schema_type} ...")
             elif action == "modify":
-                pass
+                # TODO get accession_id from source
+                results.append(
+                    {
+                        "accessionId": await XMLOperator(db_client).update_metadata_object(
+                            schema_type, "something for accession_id", content_xml
+                        ),
+                        "schema": schema_type,
+                    }
+                )
             elif action == "validate":
-                pass
+                validator = await self._perform_validation(schema_type, content_xml)
+                results.append(json.loads(validator.resp_body))
             elif action == "release":
                 pass
             else:
@@ -508,26 +517,33 @@ class SubmissionAPIHandler:
         return web.Response(body=body, status=200, content_type="application/json")
 
     async def validate(self, req: Request) -> Response:
-        """Validate xml file sent to endpoint.
+        """Handle validating an xml file sent to endpoint.
 
         :param req: Multipart POST request with submission.xml and files
-        :raises: HTTP Exception with status code 400 if schema load fails
         :returns: JSON response indicating if validation was successful or not
         """
         files = await _extract_xml_upload(req, extract_one=True)
         xml_content, schema_type = files[0]
+        validator = await self._perform_validation(schema_type, xml_content)
+        return web.Response(body=validator.resp_body, content_type="application/json")
 
+    async def _perform_validation(self, schema_type: str, xml_content: str) -> XMLValidator:
+        """Validate an xml.
+
+        :param schema_type: Schema type of the object to validate.
+        :param xml_content: Metadata object
+        :raises: HTTP Exception with status code 400 if schema load fails
+        :returns: JSON response indicating if validation was successful or not
+        """
         try:
             schema = XMLSchemaLoader().get_schema(schema_type)
             LOG.info(f"{schema_type} schema loaded.")
-            validator = XMLValidator(schema, xml_content)
+            return XMLValidator(schema, xml_content)
 
         except (SchemaNotFoundException, XMLSchemaException) as error:
             reason = f"{error} ({schema_type})"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-
-        return web.Response(body=validator.resp_body, content_type="application/json")
 
 
 class StaticHandler:
