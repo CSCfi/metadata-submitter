@@ -9,8 +9,8 @@ from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from cryptography.fernet import Fernet
 
 from .api.handlers import RESTApiHandler, StaticHandler, SubmissionAPIHandler, AccessHandler
-from .api.middlewares import http_error_handler, jwt_authentication
-from .conf.conf import create_db_client, frontend_static_files, setup_aai
+from .api.middlewares import http_error_handler, check_login
+from .conf.conf import create_db_client, frontend_static_files, aai_config
 from .helpers.logger import LOG
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -26,8 +26,10 @@ async def init() -> web.Application:
     Note:: if using variable resources (such as {schema}), add
     specific ones on top of more generic ones.
     """
-    server = web.Application(middlewares=[http_error_handler, jwt_authentication])
+    server = web.Application()
     session_setup(server, EncryptedCookieStorage(Fernet.generate_key()[:32]))
+    server.middlewares.append(http_error_handler)
+    server.middlewares.append(check_login)
     rest_handler = RESTApiHandler()
     submission_handler = SubmissionAPIHandler()
     api_routes = [

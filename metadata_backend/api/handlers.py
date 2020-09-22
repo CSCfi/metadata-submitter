@@ -21,8 +21,6 @@ from ..helpers.schema_loader import JSONSchemaLoader, SchemaNotFoundException, X
 from ..helpers.validator import JSONValidator, XMLValidator
 from .operators import FolderOperator, Operator, XMLOperator, UserOperator
 
-# from .middlewares import validate_jwt
-
 
 class RESTApiHandler:
     """Handler for REST API methods."""
@@ -637,13 +635,8 @@ class AccessHandler:
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
 
-        # Validate access token
-        # await validate_jwt(access_token)
-
-        # Save access token to session cookies and logged in status to cookies
         await self._save_to_session(req, key="access_token", value=access_token)
         response = web.HTTPSeeOther(self.domain)
-        response.set_cookie("access_token", access_token, max_age=300, httponly="True")
         response.set_cookie("logged_in", "True", max_age=300, httponly="False")
         raise response
 
@@ -669,11 +662,10 @@ class AccessHandler:
 
         # Overwrite status cookies with instantly expiring ones
         response = web.HTTPSeeOther(f"{req.url}")
-        response.set_cookie("access_token", "token_has_been_revoked", max_age=0, httponly="True")
         response.set_cookie("logged_in", "False", max_age=0, httponly="False")
         raise response
 
-    async def _save_to_session(self, request: web.Request, key: str = "key", value: str = "value") -> None:
+    async def _save_to_session(self, request: Request, key: str = "key", value: str = "value") -> None:
         """Save a given value to a session key."""
         LOG.debug(f"Save a value for {key} to session.")
 
