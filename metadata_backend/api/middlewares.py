@@ -7,6 +7,7 @@ from aiohttp import web, ClientSession
 from aiohttp.web import Request, Response, middleware, StreamResponse
 from aiohttp_session import get_session
 from yarl import URL
+import os
 
 from ..helpers.logger import LOG
 from ..conf.conf import aai_config
@@ -45,7 +46,7 @@ async def http_error_handler(req: Request, handler: Callable) -> Response:
 @middleware
 async def check_login(request: Request, handler: Callable) -> StreamResponse:
     """Check login if there is a username."""
-    if request.path not in ["/aai", "/callback"]:
+    if request.path not in ["/aai", "/callback"] and "OIDC_URL" in os.environ:
         session = await get_session(request)
         token = session.get("access_token")
         logged = request.cookies.get("logged_in")
