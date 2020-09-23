@@ -79,10 +79,9 @@ class ParserTestCase(unittest.TestCase):
 
         Test for specific actions in submission.
         """
-        # submission_xml = self.load_xml_from_file("submission", "ERA521986_valid.xml")
-        # submission_json = self.parser.parse("submission", submission_xml)
-        # self.assertIn("asdf", submission_json["actions"]["action"])
-        pass
+        submission_xml = self.load_xml_from_file("submission", "ERA521986_valid.xml")
+        submission_json = self.parser.parse("submission", submission_xml)
+        self.assertEqual({"schema": "study", "source": "SRP000539.xml"}, submission_json["actions"]["action"][0]["add"])
 
     def test_error_raised_when_schema_not_found(self):
         """Test 400 is returned when schema."""

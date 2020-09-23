@@ -212,7 +212,8 @@ class XMLToJSONParser:
         result = schema.to_dict(content, converter=MetadataXMLConverter, decimal_type=float, dict_class=dict)[
             schema_type.lower()
         ]
-        JSONValidator(result, schema_type.lower()).validate
+        if schema_type.lower() != "submission":
+            JSONValidator(result, schema_type.lower()).validate
         return result
 
     @staticmethod
