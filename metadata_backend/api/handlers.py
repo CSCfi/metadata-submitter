@@ -475,7 +475,7 @@ class SubmissionAPIHandler:
                 LOG.debug(f"submission has action {action}")
                 actions[attr["schema"]] = action
         # Go through parsed files and do the actual action
-        # Only "add" action is supported for now.
+        # Only "add/modify/validate/release" actions are supported
         results: List[Dict] = []
         db_client = req.app["db_client"]
         for file in files:
