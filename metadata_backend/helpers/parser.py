@@ -206,7 +206,7 @@ class XMLToJSONParser:
         LOG.info(f"{schema_type} schema loaded.")
         validator = XMLValidator(schema, content)
         if not validator.is_valid:
-            reason = "Current request could not be processed" " as the submitted file was not valid"
+            reason = "Current request could not be processed as the submitted file was not valid"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         result = schema.to_dict(content, converter=MetadataXMLConverter, decimal_type=float, dict_class=dict)[

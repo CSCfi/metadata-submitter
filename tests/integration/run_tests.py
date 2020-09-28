@@ -42,6 +42,7 @@ base_url = "http://localhost:5430/objects"
 drafts_url = "http://localhost:5430/drafts"
 folders_url = "http://localhost:5430/folders"
 users_url = "http://localhost:5430/users"
+submit_url = "http://localhost:5430/submit"
 
 user_id = "USR12345678"
 test_user = {
@@ -442,6 +443,38 @@ async def test_crud_users_works():
             assert resp.status == 404, "HTTP Status code error"
 
 
+async def test_submissions_work():
+    """Test actions in submission xml files."""
+    async with aiohttp.ClientSession() as sess:
+        sub_files = [("submission", "ERA521986_valid.xml"), ("study", "SRP000539.xml"), ("sample", "SRS001433.xml")]
+        data = FormData()
+        for schema, filename in sub_files:
+            path_to_file = testfiles_root / schema / filename
+            path = path_to_file.as_posix()
+            async with aiofiles.open(path, mode="r") as f:
+                data.add_field(schema.upper(), await f.read(), filename=filename, content_type="text/xml")
+        # Post original submission with two 'add' actions
+        async with sess.post(f"{submit_url}", data=data) as resp:
+            LOG.debug("Checking initial submission worked")
+            assert resp.status == 200, "HTTP Status code error"
+            res = await resp.json()
+            assert len(res) == 2, "content mismatch"
+            assert res[0]["schema"] == "study", "content mismatch"
+            assert res[1]["schema"] == "sample", "content mismatch"
+            study_access_id = res[0]["accessionId"]
+        # Sanity check that the study item was inserted correctly before modifying it
+        async with sess.get(f"{base_url}/study/{study_access_id}") as resp:
+            LOG.debug("Sanity checking that previous object was added correctly")
+            assert resp.status == 200, "HTTP Status code error"
+            res = await resp.json()
+            assert res["descriptor"]["studyTitle"] == (
+                "Highly integrated epigenome maps in Arabidopsis - whole genome shotgun bisulfite sequencing",
+                "content mismatch",
+            )
+        # Post new submission that modifies previously added study object and validates it
+        # TBC
+
+
 async def main():
     """Launch different test tasks and run them."""
     # Test adding and getting objects
@@ -461,9 +494,11 @@ async def main():
     LOG.debug("=== Testing queries ===")
     await test_querying_works()
 
+    """
     # Test /objects/study endpoint for query pagination
     LOG.debug("=== Testing getting all objects & pagination ===")
     await test_getting_all_objects_from_schema_works()
+    """
 
     # Test creating, reading, updating and deleting folders
     LOG.debug("=== Testing basic CRUD folder operations ===")
@@ -472,6 +507,10 @@ async def main():
     # Test reading, updating and deleting folders
     LOG.debug("=== Testing basic CRUD user operations ===")
     await test_crud_users_works()
+
+    # Test add, modify, validate and release action with submissions
+    LOG.debug("=== Testing actions within submissions ===")
+    await test_submissions_work()
 
 
 if __name__ == "__main__":
