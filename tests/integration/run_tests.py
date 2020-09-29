@@ -68,6 +68,20 @@ async def create_request_data(schema, filename):
     return data
 
 
+async def create_multi_file_request_data(filepairs):
+    """Create request data with multiple files.
+
+    :param filepairs: tuple containing pairs of schemas and filenames used for testing
+    """
+    data = FormData()
+    for schema, filename in filepairs:
+        path_to_file = testfiles_root / schema / filename
+        path = path_to_file.as_posix()
+        async with aiofiles.open(path, mode="r") as f:
+            data.add_field(schema.upper(), await f.read(), filename=filename, content_type="text/xml")
+    return data
+
+
 async def create_request_json_data(schema, filename):
     """Create request data from pairs of schemas and filenames.
 
@@ -446,14 +460,9 @@ async def test_crud_users_works():
 async def test_submissions_work():
     """Test actions in submission xml files."""
     async with aiohttp.ClientSession() as sess:
-        sub_files = [("submission", "ERA521986_valid.xml"), ("study", "SRP000539.xml"), ("sample", "SRS001433.xml")]
-        data = FormData()
-        for schema, filename in sub_files:
-            path_to_file = testfiles_root / schema / filename
-            path = path_to_file.as_posix()
-            async with aiofiles.open(path, mode="r") as f:
-                data.add_field(schema.upper(), await f.read(), filename=filename, content_type="text/xml")
         # Post original submission with two 'add' actions
+        sub_files = [("submission", "ERA521986_valid.xml"), ("study", "SRP000539.xml"), ("sample", "SRS001433.xml")]
+        data = await create_multi_file_request_data(sub_files)
         async with sess.post(f"{submit_url}", data=data) as resp:
             LOG.debug("Checking initial submission worked")
             assert resp.status == 200, "HTTP Status code error"
@@ -462,17 +471,27 @@ async def test_submissions_work():
             assert res[0]["schema"] == "study", "content mismatch"
             assert res[1]["schema"] == "sample", "content mismatch"
             study_access_id = res[0]["accessionId"]
-        # Sanity check that the study item was inserted correctly before modifying it
+
+        # Sanity check that the study object was inserted correctly before modifying it
         async with sess.get(f"{base_url}/study/{study_access_id}") as resp:
             LOG.debug("Sanity checking that previous object was added correctly")
             assert resp.status == 200, "HTTP Status code error"
             res = await resp.json()
+            assert res["accessionId"] == study_access_id
+            assert res["alias"] == "GSE10966"
             assert res["descriptor"]["studyTitle"] == (
-                "Highly integrated epigenome maps in Arabidopsis - whole genome shotgun bisulfite sequencing",
-                "content mismatch",
-            )
+                "Highly integrated epigenome maps in Arabidopsis - whole genome shotgun bisulfite sequencing"
+            ), "content mismatch"
+
         # Post new submission that modifies previously added study object and validates it
-        # TBC
+        sub_files = [("submission", "ERA521986_modify.xml"), ("study", "SRP000539_modified.xml")]
+        data = await create_multi_file_request_data(sub_files)
+        async with sess.post(f"{submit_url}", data=data) as resp:
+            LOG.debug("Checking object in initial submission was modified")
+            assert resp.status == 200, "HTTP Status code error"
+            res = await resp.json()
+            LOG.debug(res)
+            assert len(res) == 1, "content mismatch"
 
 
 async def main():
