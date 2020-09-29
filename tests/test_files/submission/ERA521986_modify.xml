@@ -10,7 +10,6 @@
         <ACTIONS>
             <ACTION>
                 <MODIFY schema="study" source="SRP000539_modified.xml"/>
-                <VALIDATE/>
             </ACTION>
         </ACTIONS>
     </SUBMISSION>
