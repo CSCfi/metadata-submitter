@@ -473,14 +473,13 @@ class SubmissionAPIHandler:
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
                 LOG.debug(f"submission has action {action}")
-                if actions[attr["schema"]]:
+                if attr["schema"] in actions:
                     set = []
                     set.append(actions[attr["schema"]])
                     set.append(action)
                     actions[attr["schema"]] = set
                 else:
                     actions[attr["schema"]] = action
-        return web.Response(body=json.dumps(actions), status=200, content_type="application/json")
 
         # Go through parsed files and do the actual action
         results: List[Dict] = []
@@ -492,11 +491,13 @@ class SubmissionAPIHandler:
                 LOG.debug("file has schema of submission type, continuing ...")
                 continue  # No need to use submission xml
             action = actions[schema_type]
-            if type(action) == List:
-                for i in action:
-                    results.append(self._execute_action(schema_type, content_xml, db_client, action))
+            if isinstance(action, List):
+                for item in action:
+                    result = await self._execute_action(schema_type, content_xml, db_client, item)
+                    results.append(result)
             else:
-                results.append(self._execute_action(schema_type, content_xml, db_client, action))
+                result = await self._execute_action(schema_type, content_xml, db_client, action)
+                results.append(result)
 
         body = json.dumps(results)
         LOG.info(f"Processed a submission of {len(results)} actions.")
@@ -544,12 +545,12 @@ class SubmissionAPIHandler:
         :returns: Dict containing specific action that was completed
         """
         if action == "add":
-            results = {
+            result = {
                 "accessionId": await XMLOperator(db_client).create_metadata_object(schema, content),
                 "schema": schema,
             }
             LOG.debug(f"added some content in {schema} ...")
-            return results
+            return result
 
         elif action == "modify":
             data_as_json = XMLToJSONParser().parse(schema, content)
@@ -564,12 +565,12 @@ class SubmissionAPIHandler:
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
                 accession_id = data["accessionId"]
-            results = {
+            result = {
                 "accessionId": await Operator(db_client).update_metadata_object(schema, accession_id, data_as_json),
                 "schema": schema,
             }
             LOG.debug(f"modified some content in {schema} ...")
-            return results
+            return result
 
         elif action == "validate":
             validator = await self._perform_validation(schema, content)
