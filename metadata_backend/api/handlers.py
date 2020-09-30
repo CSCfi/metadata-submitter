@@ -1,6 +1,5 @@
 """Handle HTTP methods for server."""
 import json
-import logging
 import mimetypes
 import secrets
 import urllib.parse
@@ -14,6 +13,7 @@ from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 from aiohttp_session import get_session
 from jsonpatch import JsonPatch
+from motor.motor_asyncio import AsyncIOMotorClient
 from multidict import MultiDict, MultiDictProxy
 from xmlschema import XMLSchemaException
 
@@ -462,7 +462,7 @@ class SubmissionAPIHandler:
         submission_json = XMLToJSONParser().parse("submission", submission_xml)
 
         # Check what actions should be performed, collect them to dictionary
-        actions = {}
+        actions: Dict[str, List] = {}
         for action_set in submission_json["actions"]["action"]:
             for action, attr in action_set.items():
                 if not attr:
@@ -473,10 +473,16 @@ class SubmissionAPIHandler:
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
                 LOG.debug(f"submission has action {action}")
-                actions[attr["schema"]] = action
+                if actions[attr["schema"]]:
+                    set = []
+                    set.append(actions[attr["schema"]])
+                    set.append(action)
+                    actions[attr["schema"]] = set
+                else:
+                    actions[attr["schema"]] = action
+        return web.Response(body=json.dumps(actions), status=200, content_type="application/json")
 
         # Go through parsed files and do the actual action
-        # Only "add/modify/validate/release" actions are supported
         results: List[Dict] = []
         db_client = req.app["db_client"]
         for file in files:
@@ -486,50 +492,11 @@ class SubmissionAPIHandler:
                 LOG.debug("file has schema of submission type, continuing ...")
                 continue  # No need to use submission xml
             action = actions[schema_type]
-
-            if action == "add":
-                results.append(
-                    {
-                        "accessionId": await XMLOperator(db_client).create_metadata_object(schema_type, content_xml),
-                        "schema": schema_type,
-                    }
-                )
-                LOG.debug(f"added some content in {schema_type} ...")
-
-            elif action == "modify":
-                data_as_json = XMLToJSONParser().parse(schema_type, content_xml)
-                if data_as_json["accessionId"]:
-                    accession_id = data_as_json["accessionId"]
-                else:
-                    alias = data_as_json["alias"]
-                    query = MultiDictProxy(MultiDict([("alias", alias)]))
-                    data, _, _, _ = await Operator(db_client).query_metadata_database(schema_type, query, 1, 1)
-                    if len(data) > 1:
-                        reason = "Alias in provided XML file corresponds with more than one existing metadata object."
-                        LOG.error(reason)
-                        raise web.HTTPBadRequest(reason=reason)
-                    accession_id = data["accessionId"]
-                results.append(
-                    {
-                        "accessionId": await Operator(db_client).update_metadata_object(
-                            schema_type, accession_id, data_as_json
-                        ),
-                        "schema": schema_type,
-                    }
-                )
-                LOG.debug(f"modified some content in {schema_type} ...")
-
-            elif action == "validate":
-                validator = await self._perform_validation(schema_type, content_xml)
-                results.append(json.loads(validator.resp_body))
-
-            elif action == "release":
-                pass
-
+            if type(action) == List:
+                for i in action:
+                    results.append(self._execute_action(schema_type, content_xml, db_client, action))
             else:
-                reason = f"Action {action} in xml is not supported."
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
+                results.append(self._execute_action(schema_type, content_xml, db_client, action))
 
         body = json.dumps(results)
         LOG.info(f"Processed a submission of {len(results)} actions.")
@@ -561,6 +528,58 @@ class SubmissionAPIHandler:
 
         except (SchemaNotFoundException, XMLSchemaException) as error:
             reason = f"{error} ({schema_type})"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+    async def _execute_action(self, schema: str, content: str, db_client: AsyncIOMotorClient, action: str) -> Dict:
+        """Complete the command in the action set of the submission file.
+
+        Only "add/modify/validate/release" actions are supported.
+
+        :param schema: Schema type of the object in question
+        :param content: Metadata object referred to in submission
+        :param db_client: Database client for database operations
+        :param action: Type of action to be done
+        :raises: HTTP Exception if an incorrect or non-supported action is called
+        :returns: Dict containing specific action that was completed
+        """
+        if action == "add":
+            results = {
+                "accessionId": await XMLOperator(db_client).create_metadata_object(schema, content),
+                "schema": schema,
+            }
+            LOG.debug(f"added some content in {schema} ...")
+            return results
+
+        elif action == "modify":
+            data_as_json = XMLToJSONParser().parse(schema, content)
+            if data_as_json["accessionId"]:
+                accession_id = data_as_json["accessionId"]
+            else:
+                alias = data_as_json["alias"]
+                query = MultiDictProxy(MultiDict([("alias", alias)]))
+                data, _, _, _ = await Operator(db_client).query_metadata_database(schema, query, 1, 1)
+                if len(data) > 1:
+                    reason = "Alias in provided XML file corresponds with more than one existing metadata object."
+                    LOG.error(reason)
+                    raise web.HTTPBadRequest(reason=reason)
+                accession_id = data["accessionId"]
+            results = {
+                "accessionId": await Operator(db_client).update_metadata_object(schema, accession_id, data_as_json),
+                "schema": schema,
+            }
+            LOG.debug(f"modified some content in {schema} ...")
+            return results
+
+        elif action == "validate":
+            validator = await self._perform_validation(schema, content)
+            return json.loads(validator.resp_body)
+
+        elif action == "release":
+            raise web.HTTPNotImplemented()
+
+        else:
+            reason = f"Action {action} in xml is not supported."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
