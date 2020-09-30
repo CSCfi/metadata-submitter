@@ -465,9 +465,8 @@ async def test_submissions_work():
         data = await create_multi_file_request_data(sub_files)
         async with sess.post(f"{submit_url}", data=data) as resp:
             LOG.debug("Checking initial submission worked")
-            # assert resp.status == 200, "HTTP Status code error"
+            assert resp.status == 200, "HTTP Status code error"
             res = await resp.json()
-            LOG.debug(res)
             assert len(res) == 2, "content mismatch"
             assert res[0]["schema"] == "study", "content mismatch"
             assert res[1]["schema"] == "sample", "content mismatch"
