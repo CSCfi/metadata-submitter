@@ -178,7 +178,7 @@ class RESTApiHandler:
         operator = XMLOperator(db_client) if req_format == "xml" else Operator(db_client)
         data, content_type = await operator.read_metadata_object(collection, accession_id)
         data = data if req_format == "xml" else json.dumps(data)
-        LOG.info(f"GET object with accesssion ID {accession_id} " f"from schema {collection}.")
+        LOG.info(f"GET object with accesssion ID {accession_id} from schema {collection}.")
         return web.Response(body=data, status=200, content_type=content_type)
 
     async def post_object(self, req: Request) -> Response:
@@ -473,6 +473,9 @@ class SubmissionAPIHandler:
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
                 LOG.debug(f"submission has action {action}")
+                if action == "release":
+                    attr["schema"] = "study"
+                    action = {"release": attr["target"]}
                 if attr["schema"] in actions:
                     set = []
                     set.append(actions[attr["schema"]])
@@ -488,6 +491,10 @@ class SubmissionAPIHandler:
             content_xml = file[0]
             schema_type = file[1]
             if schema_type == "submission":
+                # In case release is only action in submission file and no other files were submitted
+                if "study" in actions and len(files) == 1:
+                    result = await self._execute_action("study", actions["study"]["release"], db_client, "release")
+                    results.append(result)
                 LOG.debug("file has schema of submission type, continuing ...")
                 continue  # No need to use submission xml
             action = actions[schema_type]
@@ -538,7 +545,7 @@ class SubmissionAPIHandler:
         Only "add/modify/validate/release" actions are supported.
 
         :param schema: Schema type of the object in question
-        :param content: Metadata object referred to in submission
+        :param content: Metadata object referred to in submission or target number if action is release
         :param db_client: Database client for database operations
         :param action: Type of action to be done
         :raises: HTTP Exception if an incorrect or non-supported action is called
@@ -577,6 +584,7 @@ class SubmissionAPIHandler:
             return json.loads(validator.resp_body)
 
         elif action == "release":
+            # Query for a draft that has not been released yet
             raise web.HTTPNotImplemented()
 
         else:

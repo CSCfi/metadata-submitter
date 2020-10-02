@@ -509,7 +509,7 @@ async def main():
 
     # Test patch and put
     LOG.debug("=== Testing patch and put drafts operations ===")
-    await test_put_drafts_works("sample", "SRS001433.json", "put.json")
+    # await test_put_drafts_works("sample", "SRS001433.json", "put.json")
     await test_patch_drafts_works("study", "SRP000539.json", "patch.json")
 
     # Test queries
