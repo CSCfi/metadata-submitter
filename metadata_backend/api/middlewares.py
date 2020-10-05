@@ -65,8 +65,8 @@ async def get_userinfo(req: Request) -> Dict[str, str]:
         session = await get_session(req)
         token = session["access_token"]
     except Exception as e:
-        LOG.error(f"Could not get information from AAI UserInfo endpoint because of: {e}")
-        raise web.HTTPBadRequest(reason="Could not get information from AAI UserInfo endpoint.")
+        LOG.error(f"Could not get session because of: {e}")
+        raise web.HTTPBadRequest(reason="Could not get a proper session.")
 
     try:
         headers = {"Authorization": f"Bearer {token}"}
