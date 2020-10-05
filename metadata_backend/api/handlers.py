@@ -637,7 +637,7 @@ class AccessHandler:
 
         await self._save_to_session(req, key="access_token", value=access_token)
         response = web.HTTPSeeOther(self.domain)
-        response.set_cookie("logged_in", "True", max_age=300, httponly="False")
+        response.set_cookie("logged_in", "True", max_age=300, secure=True, httponly=True)  # type: ignore
         raise response
 
     async def logout(self, req: Request) -> Response:
@@ -662,7 +662,7 @@ class AccessHandler:
 
         # Overwrite status cookies with instantly expiring ones
         response = web.HTTPSeeOther(f"{req.url}")
-        response.set_cookie("logged_in", "False", max_age=0, httponly="False")
+        response.set_cookie("logged_in", "False", max_age=0, secure=True, httponly=True)  # type: ignore
         raise response
 
     async def _save_to_session(self, request: Request, key: str = "key", value: str = "value") -> None:
