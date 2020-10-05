@@ -1,6 +1,5 @@
 aiohttp
 aiohttp-session
-Authlib
 cryptography
 gunicorn
 jsonschema
