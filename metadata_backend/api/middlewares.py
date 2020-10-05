@@ -46,7 +46,7 @@ async def http_error_handler(req: Request, handler: Callable) -> Response:
 @middleware
 async def check_login(request: Request, handler: Callable) -> StreamResponse:
     """Check login if there is a username."""
-    if request.path not in ["/aai", "/callback"] and "OIDC_URL" in os.environ:
+    if request.path not in ["/aai", "/callback"] and "OIDC_URL" in os.environ and bool(os.getenv("OIDC_URL")):
         session = await get_session(request)
         token = session.get("access_token")
         logged = request.cookies.get("logged_in")
