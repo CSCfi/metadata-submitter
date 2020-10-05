@@ -10,6 +10,7 @@ from typing import Dict, List, Tuple, Union, cast
 
 from aiohttp import BodyPartReader, web, BasicAuth, ClientSession
 from aiohttp.web import Request, Response
+from multidict import CIMultiDict
 from aiohttp_session import get_session
 from jsonpatch import JsonPatch
 from xmlschema import XMLSchemaException
@@ -36,7 +37,7 @@ class RESTApiHandler:
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
 
-    def _header_links(self, url: str, page: int, size: int, total_objects: int) -> Dict[str, str]:
+    def _header_links(self, url: str, page: int, size: int, total_objects: int) -> CIMultiDict[str]:
         """Create link header for pagination.
 
         :param url: base url for request
@@ -52,7 +53,7 @@ class RESTApiHandler:
         comma = ", " if page > 1 and page < total_pages else ""
         first_link = f'<{url}?page=1&per_page={size}>; rel="first"{comma}' if page > 1 else ""
         links = f"{prev_link}{next_link}{first_link}{last_link}"
-        link_headers = {"Link": f"{links}"}
+        link_headers = CIMultiDict(Link=f"{links}")
         LOG.debug("Link headers created")
         return link_headers
 
@@ -205,7 +206,7 @@ class RESTApiHandler:
         accession_id = await operator.create_metadata_object(collection, content)
         body = json.dumps({"accessionId": accession_id})
         url = f"{req.scheme}://{req.host}{req.path}"
-        location_headers = {"Location": f"{url}{accession_id}"}
+        location_headers = CIMultiDict(Location=f"{url}{accession_id}")
         LOG.info(f"POST object with accesssion ID {accession_id} " f"in schema {collection} was successful.")
         return web.Response(
             body=body,
@@ -322,7 +323,7 @@ class RESTApiHandler:
         folder = await operator.create_folder(content)
         body = json.dumps({"folderId": folder})
         url = f"{req.scheme}://{req.host}{req.path}"
-        location_headers = {"Location": f"{url}/{folder}"}
+        location_headers = CIMultiDict(Location=f"{url}/{folder}")
         LOG.info(f"POST new folder with ID {folder} was successful.")
         return web.Response(body=body, status=201, headers=location_headers, content_type="application/json")
 

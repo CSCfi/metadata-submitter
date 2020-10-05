@@ -6,6 +6,7 @@ from typing import Callable, Dict
 from aiohttp import web, ClientSession
 from aiohttp.web import Request, Response, middleware, StreamResponse
 from aiohttp_session import get_session
+from multidict import CIMultiDict
 from yarl import URL
 import os
 
@@ -69,7 +70,7 @@ async def get_userinfo(req: Request) -> Dict[str, str]:
         raise web.HTTPBadRequest(reason="Could not get a proper session.")
 
     try:
-        headers = {"Authorization": f"Bearer {token}"}
+        headers = CIMultiDict({"Authorization": f"Bearer {token}"})
         async with ClientSession(headers=headers) as sess:
             async with sess.get(f"{aai_config['user_info']}") as resp:
                 result = await resp.json()
