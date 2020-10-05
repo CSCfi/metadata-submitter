@@ -304,7 +304,7 @@ class Operator(BaseOperator):
         :returns: Query result with pagination numbers
         """
         # Generate mongodb query from query parameters
-        mongo_query: Dict = {}
+        mongo_query: Dict[Any, Any] = {}
         for query, value in que.items():
             if query in query_map:
                 regx = re.compile(f".*{value}.*", re.IGNORECASE)
