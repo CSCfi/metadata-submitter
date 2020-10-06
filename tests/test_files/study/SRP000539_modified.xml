@@ -1,14 +1,14 @@
 <STUDY_SET>
-    <STUDY center_name="GEO" alias="GSE10966" accession="SRP000539">
+    <STUDY alias="GSE10966" center_name="GEO">
         <IDENTIFIERS>
             <PRIMARY_ID>SRP000539</PRIMARY_ID>
-            <EXTERNAL_ID namespace="BioProject" label="primary">PRJNA108793</EXTERNAL_ID>
+            <EXTERNAL_ID label="primary" namespace="BioProject">PRJNA108793</EXTERNAL_ID>
             <EXTERNAL_ID namespace="GEO">GSE10966</EXTERNAL_ID>
         </IDENTIFIERS>
         <DESCRIPTOR>
             <STUDY_TITLE>Different title for testing purposes
             </STUDY_TITLE>
-            <STUDY_TYPE existing_study_type="Other"/>
+            <STUDY_TYPE existing_study_type="Other" />
             <STUDY_ABSTRACT>Part of a set of highly integrated epigenome maps for Arabidopsis thaliana. Keywords:
                 Illumina high-throughput bisulfite sequencing Overall design: Whole genome shotgun bisulfite sequencing
                 of wildtype Arabidopsis plants (Columbia-0), and met1, drm1 drm2 cmt3, and ros1 dml2 dml3 null mutants

@@ -477,24 +477,42 @@ async def test_submissions_work():
             LOG.debug("Sanity checking that previous object was added correctly")
             assert resp.status == 200, "HTTP Status code error"
             res = await resp.json()
-            assert res["accessionId"] == study_access_id
-            assert res["alias"] == "GSE10966"
+            assert res["accessionId"] == study_access_id, "content mismatch"
+            assert res["alias"] == "GSE10966", "content mismatch"
             assert res["descriptor"]["studyTitle"] == (
                 "Highly integrated epigenome maps in Arabidopsis - whole genome shotgun bisulfite sequencing"
             ), "content mismatch"
 
         """
+        import xml.etree.ElementTree as ET
+        LOG.debug("Sharing the correct accession ID created in this test instance")
+        mod_study = testfiles_root / "study" / "SRP000539_modified.xml"
+        tree = ET.parse(mod_study)
+        root = tree.getroot()
+        for elem in root.iter("STUDY"):
+            elem.set("accession", study_access_id)
+        tree.write(mod_study, encoding="utf-8")
+        """
+
         # Post new submission that modifies previously added study object and validates it
         sub_files = [("submission", "ERA521986_modify.xml"), ("study", "SRP000539_modified.xml")]
         data = await create_multi_file_request_data(sub_files)
         async with sess.post(f"{submit_url}", data=data) as resp:
             LOG.debug("Checking object in initial submission was modified")
-            LOG.debug(resp)
-            # assert resp.status == 200, "HTTP Status code error"
+            assert resp.status == 200, "HTTP Status code error"
             res = await resp.json()
             LOG.debug(res)
-            assert len(res) == 1, "content mismatch"
-        """
+            assert len(res) == 2, "content mismatch"
+            new_study_access_id = res[0]["accessionId"]
+
+        # Check the modified object was inserted correctly
+        async with sess.get(f"{base_url}/study/{new_study_access_id}") as resp:
+            LOG.debug("Checking that previous object was modified correctly")
+            assert resp.status == 200, "HTTP Status code error"
+            res = await resp.json()
+            assert res["accessionId"] == new_study_access_id, "content mismatch"
+            assert res["alias"] == "GSE10966", "content mismatch"
+            assert res["descriptor"]["studyTitle"] == ("Different title for testing purposes"), "content mismatch"
 
 
 async def main():
@@ -509,18 +527,16 @@ async def main():
 
     # Test patch and put
     LOG.debug("=== Testing patch and put drafts operations ===")
-    # await test_put_drafts_works("sample", "SRS001433.json", "put.json")
+    await test_put_drafts_works("sample", "SRS001433.json", "put.json")
     await test_patch_drafts_works("study", "SRP000539.json", "patch.json")
 
     # Test queries
     LOG.debug("=== Testing queries ===")
     await test_querying_works()
 
-    """
     # Test /objects/study endpoint for query pagination
     LOG.debug("=== Testing getting all objects & pagination ===")
     await test_getting_all_objects_from_schema_works()
-    """
 
     # Test creating, reading, updating and deleting folders
     LOG.debug("=== Testing basic CRUD folder operations ===")

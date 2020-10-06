@@ -491,10 +491,6 @@ class SubmissionAPIHandler:
             content_xml = file[0]
             schema_type = file[1]
             if schema_type == "submission":
-                # In case release is only action in submission file and no other files were submitted
-                if "study" in actions and len(files) == 1:
-                    result = await self._execute_action("study", actions["study"]["release"], db_client, "release")
-                    results.append(result)
                 LOG.debug("file has schema of submission type, continuing ...")
                 continue  # No need to use submission xml
             action = actions[schema_type]
@@ -561,7 +557,7 @@ class SubmissionAPIHandler:
 
         elif action == "modify":
             data_as_json = XMLToJSONParser().parse(schema, content)
-            if data_as_json["accessionId"]:
+            if "accessionId" in data_as_json:
                 accession_id = data_as_json["accessionId"]
             else:
                 alias = data_as_json["alias"]
@@ -571,7 +567,7 @@ class SubmissionAPIHandler:
                     reason = "Alias in provided XML file corresponds with more than one existing metadata object."
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
-                accession_id = data["accessionId"]
+                accession_id = data[0]["accessionId"]
             result = {
                 "accessionId": await Operator(db_client).update_metadata_object(schema, accession_id, data_as_json),
                 "schema": schema,
