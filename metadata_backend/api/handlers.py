@@ -579,10 +579,6 @@ class SubmissionAPIHandler:
             validator = await self._perform_validation(schema, content)
             return json.loads(validator.resp_body)
 
-        elif action == "release":
-            # Query for a draft that has not been released yet
-            raise web.HTTPNotImplemented()
-
         else:
             reason = f"Action {action} in xml is not supported."
             LOG.error(reason)
