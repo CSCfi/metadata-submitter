@@ -256,28 +256,6 @@ async def test_crud_drafts_works(schema, filename, filename2):
             assert resp.status == 404, "HTTP Status code error"
 
 
-async def test_put_drafts_works(schema, filename, filename2):
-    """Test REST api POST, PUT and DELETE reqs.
-
-    Tries to create put and patch object, gets accession id and
-    checks if correct resource is returned with that id.
-    Finally deletes the object and checks it was deleted.
-
-    :param schema: name of the schema (folder) used for testing
-    :param filename: name of the file used for testing.
-    """
-    async with aiohttp.ClientSession() as sess:
-        accession_id = await put_draft(sess, schema, filename, filename2)
-        async with sess.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
-            LOG.debug(f"Checking that {accession_id} JSON is in {schema}")
-            assert resp.status == 200, "HTTP Status code error"
-
-        await delete_draft(sess, schema, accession_id)
-        async with sess.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
-            LOG.debug(f"Checking that JSON object {accession_id} was deleted")
-            assert resp.status == 404, "HTTP Status code error"
-
-
 async def test_patch_drafts_works(schema, filename, filename2):
     """Test REST api POST, PATCH and DELETE reqs.
 
@@ -527,7 +505,7 @@ async def main():
 
     # Test patch and put
     LOG.debug("=== Testing patch and put drafts operations ===")
-    await test_put_drafts_works("sample", "SRS001433.json", "put.json")
+    await test_crud_drafts_works("sample", "SRS001433.json", "put.json")
     await test_patch_drafts_works("study", "SRP000539.json", "patch.json")
 
     # Test queries
