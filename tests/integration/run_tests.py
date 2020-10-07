@@ -10,6 +10,7 @@ import json
 import logging
 from motor.motor_asyncio import AsyncIOMotorClient
 from pathlib import Path
+import xml.etree.ElementTree as ET
 
 import aiofiles
 import aiohttp
@@ -461,8 +462,6 @@ async def test_submissions_work():
                 "Highly integrated epigenome maps in Arabidopsis - whole genome shotgun bisulfite sequencing"
             ), "content mismatch"
 
-        """
-        import xml.etree.ElementTree as ET
         LOG.debug("Sharing the correct accession ID created in this test instance")
         mod_study = testfiles_root / "study" / "SRP000539_modified.xml"
         tree = ET.parse(mod_study)
@@ -470,7 +469,6 @@ async def test_submissions_work():
         for elem in root.iter("STUDY"):
             elem.set("accession", study_access_id)
         tree.write(mod_study, encoding="utf-8")
-        """
 
         # Post new submission that modifies previously added study object and validates it
         sub_files = [("submission", "ERA521986_modify.xml"), ("study", "SRP000539_modified.xml")]
@@ -479,9 +477,9 @@ async def test_submissions_work():
             LOG.debug("Checking object in initial submission was modified")
             assert resp.status == 200, "HTTP Status code error"
             res = await resp.json()
-            LOG.debug(res)
             assert len(res) == 2, "content mismatch"
             new_study_access_id = res[0]["accessionId"]
+            assert study_access_id == new_study_access_id
 
         # Check the modified object was inserted correctly
         async with sess.get(f"{base_url}/study/{new_study_access_id}") as resp:
