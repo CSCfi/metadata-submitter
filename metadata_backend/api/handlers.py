@@ -441,7 +441,7 @@ class SubmissionAPIHandler:
         """Handle submission.xml containing submissions to server.
 
         First submission info is parsed and then for every action in submission
-        (add/modify/validate/release) corresponding operation is performed.
+        (add/modify/validate) corresponding operation is performed.
         Finally submission info itself is added.
 
         :param req: Multipart POST request with submission.xml and files
@@ -538,7 +538,7 @@ class SubmissionAPIHandler:
     async def _execute_action(self, schema: str, content: str, db_client: AsyncIOMotorClient, action: str) -> Dict:
         """Complete the command in the action set of the submission file.
 
-        Only "add/modify/validate/release" actions are supported.
+        Only "add/modify/validate" actions are supported.
 
         :param schema: Schema type of the object in question
         :param content: Metadata object referred to in submission or target number if action is release
