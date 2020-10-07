@@ -10,6 +10,7 @@ import json
 import logging
 from motor.motor_asyncio import AsyncIOMotorClient
 from pathlib import Path
+import xml.etree.ElementTree as ET
 
 import aiofiles
 import aiohttp
@@ -42,6 +43,7 @@ base_url = "http://localhost:5430/objects"
 drafts_url = "http://localhost:5430/drafts"
 folders_url = "http://localhost:5430/folders"
 users_url = "http://localhost:5430/users"
+submit_url = "http://localhost:5430/submit"
 
 user_id = "USR12345678"
 test_user = {
@@ -64,6 +66,20 @@ async def create_request_data(schema, filename):
     path = path_to_file.as_posix()
     async with aiofiles.open(path, mode="r") as f:
         data.add_field(schema.upper(), await f.read(), filename=filename, content_type="text/xml")
+    return data
+
+
+async def create_multi_file_request_data(filepairs):
+    """Create request data with multiple files.
+
+    :param filepairs: tuple containing pairs of schemas and filenames used for testing
+    """
+    data = FormData()
+    for schema, filename in filepairs:
+        path_to_file = testfiles_root / schema / filename
+        path = path_to_file.as_posix()
+        async with aiofiles.open(path, mode="r") as f:
+            data.add_field(schema.upper(), await f.read(), filename=filename, content_type="text/xml")
     return data
 
 
@@ -225,28 +241,6 @@ async def test_crud_drafts_works(schema, filename, filename2):
     Tries to create new draft object, gets accession id and checks if correct
     resource is returned with that id. Finally deletes the object and checks it
     was deleted.
-
-    :param schema: name of the schema (folder) used for testing
-    :param filename: name of the file used for testing.
-    """
-    async with aiohttp.ClientSession() as sess:
-        accession_id = await put_draft(sess, schema, filename, filename2)
-        async with sess.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
-            LOG.debug(f"Checking that {accession_id} JSON is in {schema}")
-            assert resp.status == 200, "HTTP Status code error"
-
-        await delete_draft(sess, schema, accession_id)
-        async with sess.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
-            LOG.debug(f"Checking that JSON object {accession_id} was deleted")
-            assert resp.status == 404, "HTTP Status code error"
-
-
-async def test_put_drafts_works(schema, filename, filename2):
-    """Test REST api POST, PUT and DELETE reqs.
-
-    Tries to create put and patch object, gets accession id and
-    checks if correct resource is returned with that id.
-    Finally deletes the object and checks it was deleted.
 
     :param schema: name of the schema (folder) used for testing
     :param filename: name of the file used for testing.
@@ -442,6 +436,71 @@ async def test_crud_users_works():
             assert resp.status == 404, "HTTP Status code error"
 
 
+async def test_submissions_work():
+    """Test actions in submission xml files."""
+    async with aiohttp.ClientSession() as sess:
+        # Post original submission with two 'add' actions
+        sub_files = [("submission", "ERA521986_valid.xml"), ("study", "SRP000539.xml"), ("sample", "SRS001433.xml")]
+        data = await create_multi_file_request_data(sub_files)
+        async with sess.post(f"{submit_url}", data=data) as resp:
+            LOG.debug("Checking initial submission worked")
+            assert resp.status == 200, "HTTP Status code error"
+            res = await resp.json()
+            assert len(res) == 2, "content mismatch"
+            assert res[0]["schema"] == "study", "content mismatch"
+            assert res[1]["schema"] == "sample", "content mismatch"
+            study_access_id = res[0]["accessionId"]
+
+        # Sanity check that the study object was inserted correctly before modifying it
+        async with sess.get(f"{base_url}/study/{study_access_id}") as resp:
+            LOG.debug("Sanity checking that previous object was added correctly")
+            assert resp.status == 200, "HTTP Status code error"
+            res = await resp.json()
+            assert res["accessionId"] == study_access_id, "content mismatch"
+            assert res["alias"] == "GSE10966", "content mismatch"
+            assert res["descriptor"]["studyTitle"] == (
+                "Highly integrated epigenome maps in Arabidopsis - whole genome shotgun bisulfite sequencing"
+            ), "content mismatch"
+
+        # Give test file the correct accession id
+        LOG.debug("Sharing the correct accession ID created in this test instance")
+        mod_study = testfiles_root / "study" / "SRP000539_modified.xml"
+        tree = ET.parse(mod_study)
+        root = tree.getroot()
+        for elem in root.iter("STUDY"):
+            elem.set("accession", study_access_id)
+        tree.write(mod_study, encoding="utf-8")
+
+        # Post new submission that modifies previously added study object and validates it
+        sub_files = [("submission", "ERA521986_modify.xml"), ("study", "SRP000539_modified.xml")]
+        data = await create_multi_file_request_data(sub_files)
+        async with sess.post(f"{submit_url}", data=data) as resp:
+            LOG.debug("Checking object in initial submission was modified")
+            assert resp.status == 200, "HTTP Status code error"
+            res = await resp.json()
+            assert len(res) == 2, "content mismatch"
+            new_study_access_id = res[0]["accessionId"]
+            assert study_access_id == new_study_access_id
+
+        # Check the modified object was inserted correctly
+        async with sess.get(f"{base_url}/study/{new_study_access_id}") as resp:
+            LOG.debug("Checking that previous object was modified correctly")
+            assert resp.status == 200, "HTTP Status code error"
+            res = await resp.json()
+            assert res["accessionId"] == new_study_access_id, "content mismatch"
+            assert res["alias"] == "GSE10966", "content mismatch"
+            assert res["descriptor"]["studyTitle"] == ("Different title for testing purposes"), "content mismatch"
+
+        # Remove the accession id that was used for testing from test file
+        LOG.debug("Sharing the correct accession ID created in this test instance")
+        mod_study = testfiles_root / "study" / "SRP000539_modified.xml"
+        tree = ET.parse(mod_study)
+        root = tree.getroot()
+        for elem in root.iter("STUDY"):
+            del elem.attrib["accession"]
+        tree.write(mod_study, encoding="utf-8")
+
+
 async def main():
     """Launch different test tasks and run them."""
     # Test adding and getting objects
@@ -454,7 +513,7 @@ async def main():
 
     # Test patch and put
     LOG.debug("=== Testing patch and put drafts operations ===")
-    await test_put_drafts_works("sample", "SRS001433.json", "put.json")
+    await test_crud_drafts_works("sample", "SRS001433.json", "put.json")
     await test_patch_drafts_works("study", "SRP000539.json", "patch.json")
 
     # Test queries
@@ -472,6 +531,10 @@ async def main():
     # Test reading, updating and deleting folders
     LOG.debug("=== Testing basic CRUD user operations ===")
     await test_crud_users_works()
+
+    # Test add, modify, validate and release action with submissions
+    LOG.debug("=== Testing actions within submissions ===")
+    await test_submissions_work()
 
 
 if __name__ == "__main__":

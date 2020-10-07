@@ -340,8 +340,9 @@ class Operator(BaseOperator):
         cursor.skip(skips).limit(page_size)
         data = await self._format_read_data(schema_type, cursor)
         if not data:
-            LOG.error(f"could not find any data in {schema_type}.")
-            raise web.HTTPNotFound
+            reason = f"could not find any data in {schema_type}."
+            LOG.error(reason)
+            raise web.HTTPNotFound(reason=reason)
         page_size = len(data) if len(data) != page_size else page_size
         total_objects = await self.db_service.get_count(schema_type, mongo_query)
         LOG.debug(f"DB query: {que}")
@@ -506,7 +507,7 @@ class XMLOperator(BaseOperator):
         """Format XML metadata object and add it to db.
 
         XML is validated, then parsed to json and json is added to database.
-         After successful json insertion, xml itself is backed up to database
+        After successful json insertion, xml itself is backed up to database.
 
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
