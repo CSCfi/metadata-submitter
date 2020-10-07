@@ -565,6 +565,7 @@ class SubmissionAPIHandler:
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
                 accession_id = data[0]["accessionId"]
+            data_as_json.pop("accessionId", None)
             result = {
                 "accessionId": await Operator(db_client).update_metadata_object(schema, accession_id, data_as_json),
                 "schema": schema,
