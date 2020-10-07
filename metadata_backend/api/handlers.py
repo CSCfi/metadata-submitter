@@ -473,9 +473,6 @@ class SubmissionAPIHandler:
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
                 LOG.debug(f"submission has action {action}")
-                if action == "release":
-                    attr["schema"] = "study"
-                    action = {"release": attr["target"]}
                 if attr["schema"] in actions:
                     set = []
                     set.append(actions[attr["schema"]])
@@ -541,7 +538,7 @@ class SubmissionAPIHandler:
         Only "add/modify/validate" actions are supported.
 
         :param schema: Schema type of the object in question
-        :param content: Metadata object referred to in submission or target number if action is release
+        :param content: Metadata object referred to in submission
         :param db_client: Database client for database operations
         :param action: Type of action to be done
         :raises: HTTP Exception if an incorrect or non-supported action is called
