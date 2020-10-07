@@ -462,6 +462,7 @@ async def test_submissions_work():
                 "Highly integrated epigenome maps in Arabidopsis - whole genome shotgun bisulfite sequencing"
             ), "content mismatch"
 
+        # Give test file the correct accession id
         LOG.debug("Sharing the correct accession ID created in this test instance")
         mod_study = testfiles_root / "study" / "SRP000539_modified.xml"
         tree = ET.parse(mod_study)
@@ -489,6 +490,15 @@ async def test_submissions_work():
             assert res["accessionId"] == new_study_access_id, "content mismatch"
             assert res["alias"] == "GSE10966", "content mismatch"
             assert res["descriptor"]["studyTitle"] == ("Different title for testing purposes"), "content mismatch"
+
+        # Remove the accession id that was used for testing from test file
+        LOG.debug("Sharing the correct accession ID created in this test instance")
+        mod_study = testfiles_root / "study" / "SRP000539_modified.xml"
+        tree = ET.parse(mod_study)
+        root = tree.getroot()
+        for elem in root.iter("STUDY"):
+            del elem.attrib["accession"]
+        tree.write(mod_study, encoding="utf-8")
 
 
 async def main():
