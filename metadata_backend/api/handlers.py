@@ -1,14 +1,20 @@
 """Handle HTTP methods for server."""
 import json
 import mimetypes
+import secrets
+import urllib.parse
 from collections import Counter
 from math import ceil
 from pathlib import Path
 from typing import Dict, List, Tuple, Union, cast
 
-from aiohttp import BodyPartReader, web
+from aiohttp import BodyPartReader, web, BasicAuth, ClientSession
 from aiohttp.web import Request, Response
+from multidict import CIMultiDict
+from aiohttp_session import get_session
 from jsonpatch import JsonPatch
+from motor.motor_asyncio import AsyncIOMotorClient
+from multidict import MultiDict, MultiDictProxy
 from xmlschema import XMLSchemaException
 
 from ..conf.conf import schema_types
@@ -33,7 +39,7 @@ class RESTApiHandler:
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
 
-    def _header_links(self, url: str, page: int, size: int, total_objects: int) -> Dict[str, str]:
+    def _header_links(self, url: str, page: int, size: int, total_objects: int) -> CIMultiDict[str]:
         """Create link header for pagination.
 
         :param url: base url for request
@@ -49,7 +55,7 @@ class RESTApiHandler:
         comma = ", " if page > 1 and page < total_pages else ""
         first_link = f'<{url}?page=1&per_page={size}>; rel="first"{comma}' if page > 1 else ""
         links = f"{prev_link}{next_link}{first_link}{last_link}"
-        link_headers = {"Link": f"{links}"}
+        link_headers = CIMultiDict(Link=f"{links}")
         LOG.debug("Link headers created")
         return link_headers
 
@@ -99,8 +105,13 @@ class RESTApiHandler:
         url = f"{req.scheme}://{req.host}{req.path}"
         link_headers = self._header_links(url, page_num, per_page, total_objects)
         LOG.debug(f"Pagination header links: {link_headers}")
-        LOG.info(f"Querying for objects in {collection} " f"resulted in {total_objects} objects ")
-        return web.Response(body=result, status=200, headers=link_headers, content_type="application/json",)
+        LOG.info(f"Querying for objects in {collection} resulted in {total_objects} objects ")
+        return web.Response(
+            body=result,
+            status=200,
+            headers=link_headers,
+            content_type="application/json",
+        )
 
     async def _get_data(self, req: Request) -> Dict:
         """Get the data content from a request.
@@ -167,7 +178,7 @@ class RESTApiHandler:
         operator = XMLOperator(db_client) if req_format == "xml" else Operator(db_client)
         data, content_type = await operator.read_metadata_object(collection, accession_id)
         data = data if req_format == "xml" else json.dumps(data)
-        LOG.info(f"GET object with accesssion ID {accession_id} " f"from schema {collection}.")
+        LOG.info(f"GET object with accesssion ID {accession_id} from schema {collection}.")
         return web.Response(body=data, status=200, content_type=content_type)
 
     async def post_object(self, req: Request) -> Response:
@@ -197,9 +208,14 @@ class RESTApiHandler:
         accession_id = await operator.create_metadata_object(collection, content)
         body = json.dumps({"accessionId": accession_id})
         url = f"{req.scheme}://{req.host}{req.path}"
-        location_headers = {"Location": f"{url}{accession_id}"}
+        location_headers = CIMultiDict(Location=f"{url}{accession_id}")
         LOG.info(f"POST object with accesssion ID {accession_id} " f"in schema {collection} was successful.")
-        return web.Response(body=body, status=201, headers=location_headers, content_type="application/json",)
+        return web.Response(
+            body=body,
+            status=201,
+            headers=location_headers,
+            content_type="application/json",
+        )
 
     async def query_objects(self, req: Request) -> Response:
         """Query metadata objects from database.
@@ -309,7 +325,7 @@ class RESTApiHandler:
         folder = await operator.create_folder(content)
         body = json.dumps({"folderId": folder})
         url = f"{req.scheme}://{req.host}{req.path}"
-        location_headers = {"Location": f"{url}/{folder}"}
+        location_headers = CIMultiDict(Location=f"{url}/{folder}")
         LOG.info(f"POST new folder with ID {folder} was successful.")
         return web.Response(body=body, status=201, headers=location_headers, content_type="application/json")
 
@@ -425,7 +441,7 @@ class SubmissionAPIHandler:
         """Handle submission.xml containing submissions to server.
 
         First submission info is parsed and then for every action in submission
-        (such as "add", or "modify") corresponding operation is performed.
+        (add/modify/validate) corresponding operation is performed.
         Finally submission info itself is added.
 
         :param req: Multipart POST request with submission.xml and files
@@ -434,21 +450,19 @@ class SubmissionAPIHandler:
         """
         files = await _extract_xml_upload(req)
         schema_types = Counter(file[1] for file in files)
-
         if "submission" not in schema_types:
             reason = "There must be a submission.xml file in submission."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-
         if schema_types["submission"] > 1:
             reason = "You should submit only one submission.xml file."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-
         submission_xml = files[0][0]
         submission_json = XMLToJSONParser().parse("submission", submission_xml)
+
         # Check what actions should be performed, collect them to dictionary
-        actions = {}
+        actions: Dict[str, List] = {}
         for action_set in submission_json["actions"]["action"]:
             for action, attr in action_set.items():
                 if not attr:
@@ -459,9 +473,15 @@ class SubmissionAPIHandler:
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
                 LOG.debug(f"submission has action {action}")
-                actions[attr["schema"]] = action
+                if attr["schema"] in actions:
+                    set = []
+                    set.append(actions[attr["schema"]])
+                    set.append(action)
+                    actions[attr["schema"]] = set
+                else:
+                    actions[attr["schema"]] = action
+
         # Go through parsed files and do the actual action
-        # Only "add" action is supported for now.
         results: List[Dict] = []
         db_client = req.app["db_client"]
         for file in files:
@@ -471,43 +491,96 @@ class SubmissionAPIHandler:
                 LOG.debug("file has schema of submission type, continuing ...")
                 continue  # No need to use submission xml
             action = actions[schema_type]
-            if action == "add":
-                results.append(
-                    {
-                        "accessionId": await XMLOperator(db_client).create_metadata_object(schema_type, content_xml),
-                        "schema": schema_type,
-                    }
-                )
-                LOG.debug(f"added some content in {schema_type} ...")
+            if isinstance(action, List):
+                for item in action:
+                    result = await self._execute_action(schema_type, content_xml, db_client, item)
+                    results.append(result)
             else:
-                reason = f"action {action} is not supported yet"
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
+                result = await self._execute_action(schema_type, content_xml, db_client, action)
+                results.append(result)
+
         body = json.dumps(results)
         LOG.info(f"Processed a submission of {len(results)} actions.")
         return web.Response(body=body, status=200, content_type="application/json")
 
     async def validate(self, req: Request) -> Response:
-        """Validate xml file sent to endpoint.
+        """Handle validating an xml file sent to endpoint.
 
         :param req: Multipart POST request with submission.xml and files
-        :raises: HTTP Exception with status code 400 if schema load fails
         :returns: JSON response indicating if validation was successful or not
         """
         files = await _extract_xml_upload(req, extract_one=True)
         xml_content, schema_type = files[0]
+        validator = await self._perform_validation(schema_type, xml_content)
+        return web.Response(body=validator.resp_body, content_type="application/json")
 
+    async def _perform_validation(self, schema_type: str, xml_content: str) -> XMLValidator:
+        """Validate an xml.
+
+        :param schema_type: Schema type of the object to validate.
+        :param xml_content: Metadata object
+        :raises: HTTP Exception with status code 400 if schema load fails
+        :returns: JSON response indicating if validation was successful or not
+        """
         try:
             schema = XMLSchemaLoader().get_schema(schema_type)
             LOG.info(f"{schema_type} schema loaded.")
-            validator = XMLValidator(schema, xml_content)
+            return XMLValidator(schema, xml_content)
 
         except (SchemaNotFoundException, XMLSchemaException) as error:
             reason = f"{error} ({schema_type})"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        return web.Response(body=validator.resp_body, content_type="application/json")
+    async def _execute_action(self, schema: str, content: str, db_client: AsyncIOMotorClient, action: str) -> Dict:
+        """Complete the command in the action set of the submission file.
+
+        Only "add/modify/validate" actions are supported.
+
+        :param schema: Schema type of the object in question
+        :param content: Metadata object referred to in submission
+        :param db_client: Database client for database operations
+        :param action: Type of action to be done
+        :raises: HTTP Exception if an incorrect or non-supported action is called
+        :returns: Dict containing specific action that was completed
+        """
+        if action == "add":
+            result = {
+                "accessionId": await XMLOperator(db_client).create_metadata_object(schema, content),
+                "schema": schema,
+            }
+            LOG.debug(f"added some content in {schema} ...")
+            return result
+
+        elif action == "modify":
+            data_as_json = XMLToJSONParser().parse(schema, content)
+            if "accessionId" in data_as_json:
+                accession_id = data_as_json["accessionId"]
+            else:
+                alias = data_as_json["alias"]
+                query = MultiDictProxy(MultiDict([("alias", alias)]))
+                data, _, _, _ = await Operator(db_client).query_metadata_database(schema, query, 1, 1)
+                if len(data) > 1:
+                    reason = "Alias in provided XML file corresponds with more than one existing metadata object."
+                    LOG.error(reason)
+                    raise web.HTTPBadRequest(reason=reason)
+                accession_id = data[0]["accessionId"]
+            data_as_json.pop("accessionId", None)
+            result = {
+                "accessionId": await Operator(db_client).update_metadata_object(schema, accession_id, data_as_json),
+                "schema": schema,
+            }
+            LOG.debug(f"modified some content in {schema} ...")
+            return result
+
+        elif action == "validate":
+            validator = await self._perform_validation(schema, content)
+            return json.loads(validator.resp_body)
+
+        else:
+            reason = f"Action {action} in xml is not supported."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
 
 
 class StaticHandler:
@@ -539,6 +612,144 @@ class StaticHandler:
         mimetypes.types_map[".svg"] = "image/svg+xml"
         LOG.debug("static paths for SPA set.")
         return self.path / "static"
+
+
+class AccessHandler:
+    """Handler for user access methods."""
+
+    def __init__(self, aai: Dict) -> None:
+        """Define AAI variables and paths."""
+        self.domain = aai["domain"]
+        self.client_id = aai["client_id"]
+        self.client_secret = aai["client_secret"]
+        self.callback_url = aai["callback_url"]
+        self.auth_url = aai["auth_url"]
+        self.token_url = aai["token_url"]
+        self.revoke_url = aai["revoke_url"]
+        self.scope = aai["scope"]
+
+    async def login(self, req: Request) -> Response:
+        """Redirect user to AAI login.
+
+        :param req: GET request
+        :raises: 303 redirect
+        """
+        # Generate a state for callback and save it to session storage
+        state = secrets.token_hex()
+        await self._save_to_session(req, key="oidc_state", value=state)
+
+        # Parameters for authorisation request
+        params = {
+            "client_id": self.client_id,
+            "response_type": "code",
+            "state": state,
+            "redirect_uri": self.callback_url,
+            "scope": self.scope,
+        }
+
+        # Prepare response
+        url = f"{self.auth_url}?{urllib.parse.urlencode(params)}"
+        response = web.HTTPSeeOther(url)
+        raise response
+
+    async def callback(self, req: Request) -> Response:
+        """Include correct tokens in cookies as a callback after login.
+
+        :param req: GET request
+        :raises: 303 redirect
+        """
+        # Response from AAI must have the query params `state` and `code`
+        if "state" in req.query and "code" in req.query:
+            LOG.debug("AAI response contained the correct params.")
+            params = {"state": req.query["state"], "code": req.query["code"]}
+        else:
+            reason = f"AAI response is missing mandatory params, received: {req.query}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        # Verify, that states match
+        state = await self._get_from_session(req, "oidc_state")
+        if not secrets.compare_digest(str(state), str(params["state"])):
+            raise web.HTTPForbidden(reason="Bad user session.")
+
+        auth = BasicAuth(login=self.client_id, password=self.client_secret)
+        data = {"grant_type": "authorization_code", "code": params["code"], "redirect_uri": self.callback_url}
+
+        # Set up client authentication for request
+        async with ClientSession(auth=auth) as sess:
+            # Send request to AAI
+            async with sess.post(f"{self.token_url}", data=data) as resp:
+                LOG.debug(f"AAI response status: {resp.status}.")
+                # Validate response from AAI
+                if resp.status == 200:
+                    result = await resp.json()
+                    if "access_token" in result:
+                        LOG.debug("Access token received.")
+                        access_token = result["access_token"]
+                    else:
+                        reason = "AAI response did not contain an access token."
+                        LOG.error(reason)
+                        raise web.HTTPBadRequest(reason=reason)
+                else:
+                    reason = f"Token request to AAI failed: {resp}"
+                    LOG.error(reason)
+                    raise web.HTTPBadRequest(reason=reason)
+
+        await self._save_to_session(req, key="access_token", value=access_token)
+        response = web.HTTPSeeOther(self.domain)
+        response.set_cookie("logged_in", "True", max_age=300, secure=True, httponly=True)  # type: ignore
+        raise response
+
+    async def logout(self, req: Request) -> Response:
+        """Log the user out by revoking tokens.
+
+        :param req: GET request
+        :raises: 303 redirect
+        """
+        # Revoke token at AAI
+        access_token = self._get_from_session(req, "access_token")
+        auth = BasicAuth(login=self.client_id, password=self.client_secret)
+        params = {"token": access_token}
+        # Set up client authentication for request
+        async with ClientSession(auth=auth) as session:
+            async with session.get(f"{self.revoke_url}?{urllib.parse.urlencode(params)}") as resp:
+                LOG.debug(f"AAI response status: {resp.status}.")
+                # Validate response from AAI
+                if resp.status != 200:
+                    LOG.error(f"Logout failed at AAI: {resp}.")
+                    LOG.error(await resp.json())
+                    raise web.HTTPBadRequest(reason=f"Logout failed at AAI: {resp.status}.")
+
+        # Overwrite status cookies with instantly expiring ones
+        response = web.HTTPSeeOther(f"{req.url}")
+        response.set_cookie("logged_in", "False", max_age=0, secure=True, httponly=True)  # type: ignore
+        raise response
+
+    async def _save_to_session(self, request: Request, key: str = "key", value: str = "value") -> None:
+        """Save a given value to a session key."""
+        LOG.debug(f"Save a value for {key} to session.")
+
+        session = await get_session(request)
+        session[key] = value
+
+    async def _get_from_session(self, req: Request, key: str) -> str:
+        """Get a value from session storage.
+
+        :param req: GET request
+        :param key: name of the key to be returned from session storage
+        :returns: Specific value from session storage
+        """
+        try:
+            session = await get_session(req)
+            return session[key]
+        except KeyError as e:
+            reason = f"Session has no value for {key}: {e}."
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
+        except Exception as e:
+            reason = f"Failed to retrieve {key} from session: {e}"
+            LOG.error(reason)
+            raise web.HTTPInternalServerError(reason=reason)
 
 
 # Private functions shared between handlers

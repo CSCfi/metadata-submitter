@@ -1,16 +1,17 @@
 """Middleware methods for server."""
 import json
-import re
 from http import HTTPStatus
-from os import environ
-from typing import Callable
+from typing import Callable, Dict
 
-from aiohttp import web
-from aiohttp.web import Request, Response, middleware
-from authlib.jose import errors, jwt
+from aiohttp import web, ClientSession
+from aiohttp.web import Request, Response, middleware, StreamResponse
+from aiohttp_session import get_session
+from multidict import CIMultiDict
 from yarl import URL
+import os
 
 from ..helpers.logger import LOG
+from ..conf.conf import aai_config
 
 
 @middleware
@@ -42,62 +43,41 @@ async def http_error_handler(req: Request, handler: Callable) -> Response:
         else:
             raise web.HTTPServerError()
 
-    return http_error_handler
-
 
 @middleware
-async def jwt_authentication(req: Request, handler: Callable) -> Response:
-    """Middleware for validating and authenticating JSON web token.
+async def check_login(request: Request, handler: Callable) -> StreamResponse:
+    """Check login if there is a username."""
+    if request.path not in ["/aai", "/callback"] and "OIDC_URL" in os.environ and bool(os.getenv("OIDC_URL")):
+        session = await get_session(request)
+        token = session.get("access_token")
+        logged = request.cookies.get("logged_in")
+        if not (token and logged):
+            raise web.HTTPSeeOther(location="/aai")
 
-    :param req: A request instance
-    :param handler: A request handler
-    :raises: HTTP Exception with status code 401 or 403
-    :returns: Successful requests unaffected
-    """
-    if "Authorization" in req.headers:
-        # Check token exists
-        try:
-            scheme, token = req.headers.get("Authorization").split(" ")
-            LOG.info("Auth token received.")
-        except ValueError as err:
-            raise web.HTTPUnauthorized(reason=f"Failure to read token: {err}")
-
-        # Check token has proper scheme and was provided.
-        if not re.match("Bearer", scheme):
-            raise web.HTTPUnauthorized(reason="Invalid token scheme, " "Bearer required.")
-        if token is None:
-            raise web.HTTPUnauthorized(reason="Token cannot be empty.")
-
-        # JWK and JWTClaims parameters for decoding
-        key = environ.get("PUBLIC_KEY", None)
-
-        # Include claims that are required to be present
-        # in the payload of the token
-        claims_options = {
-            "iss": {"essential": True, "values": ["haka_iss", "elixir_iss"]},
-            "exp": {"essential": True},
-        }
-
-        # Decode and validate token
-        try:
-            claims = jwt.decode(token, key, claims_options=claims_options)
-            claims.validate()
-            LOG.info("Auth token decoded and validated.")
-            req["token"] = {"authenticated": True}
-            return await handler(req)
-        except errors.MissingClaimError as err:
-            raise web.HTTPUnauthorized(reason=f"{err}")
-        except errors.ExpiredTokenError as err:
-            raise web.HTTPUnauthorized(reason=f"{err}")
-        except errors.InvalidClaimError as err:
-            raise web.HTTPForbidden(reason=f"Token contains {err}")
-        except errors.BadSignatureError as err:
-            raise web.HTTPUnauthorized(reason="Token signature is invalid" f", {err}")
-        except errors.InvalidTokenError as err:
-            raise web.HTTPUnauthorized(reason="Invalid authorization token" f": {err}")
+        return await handler(request)
     else:
-        req["token"] = {"authenticated": False}
-        return await handler(req)
+        return await handler(request)
+
+
+async def get_userinfo(req: Request) -> Dict[str, str]:
+    """Get information from userinfo endpoint."""
+    token = ""
+    try:
+        session = await get_session(req)
+        token = session["access_token"]
+    except Exception as e:
+        LOG.error(f"Could not get session because of: {e}")
+        raise web.HTTPBadRequest(reason="Could not get a proper session.")
+
+    try:
+        headers = CIMultiDict({"Authorization": f"Bearer {token}"})
+        async with ClientSession(headers=headers) as sess:
+            async with sess.get(f"{aai_config['user_info']}") as resp:
+                result = await resp.json()
+                return result
+    except Exception as e:
+        LOG.error(f"Could not get information from AAI UserInfo endpoint because of: {e}")
+        raise web.HTTPBadRequest(reason="Could not get information from AAI UserInfo endpoint.")
 
 
 def _json_exception(status: int, exception: web.HTTPException, url: URL) -> str:
