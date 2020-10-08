@@ -119,7 +119,9 @@ class HandlersTestCase(AioHTTPTestCase):
 
     async def fake_operator_query_metadata_object(self, schema_type, query, page_num, page_size):
         """Fake query operation to return list containing mocked json."""
-        return await futurized(([self.metadata_json], self.page_num, self.page_size, self.total_objects),)
+        return await futurized(
+            ([self.metadata_json], self.page_num, self.page_size, self.total_objects),
+        )
 
     async def fake_xmloperator_read_metadata_object(self, schema_type, accession_id):
         """Fake read operation to return mocked xml."""

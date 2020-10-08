@@ -89,3 +89,21 @@ query_map = {
 
 # 4) Set frontend folder to be inside metadata_backend modules root
 frontend_static_files = Path(__file__).parent.parent / "frontend"
+
+
+# 5) Set up configurations for AAI server
+
+aai_config = {
+    "client_id": os.getenv("CSC_AAI_CLIENT_ID", "public"),
+    "client_secret": os.getenv("CSC_AAI_CLIENT_SECRET", "secret"),
+    "domain": os.getenv("BASE_URL", "http://localhost:5430"),
+    "scope": "openid profile email",
+    "iss": os.getenv("AUTH_URL", ""),
+    "aud": "aud1",
+    "callback_url": f'{os.getenv("BASE_URL", "http://localhost:5430")}/callback',
+    "auth_url": f'{os.getenv("OIDC_URL", "")}/authorize',
+    "token_url": f'{os.getenv("OIDC_URL", "")}/token',
+    "user_info": f'{os.getenv("OIDC_URL", "")}/userinfo',
+    "revoke_url": "",
+    "jwk_server": f'{os.getenv("JWK_URL", "")}',
+}
