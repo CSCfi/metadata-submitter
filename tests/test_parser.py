@@ -70,8 +70,18 @@ class ParserTestCase(unittest.TestCase):
         analysis_xml = self.load_xml_from_file("analysis", "ERZ266973.xml")
         analysis_json = self.parser.parse("analysis", analysis_xml)
         self.assertIn(
-            "GCA_000001405.1", analysis_json["analysisType"]["processedReads"]["assembly"]["standard"]["accessionId"],
+            "GCA_000001405.1",
+            analysis_json["analysisType"]["processedReads"]["assembly"]["standard"]["accessionId"],
         )
+
+    def test_submission_is_parsed(self):
+        """Test that submission is parsed correctly.
+
+        Test for specific actions in submission.
+        """
+        submission_xml = self.load_xml_from_file("submission", "ERA521986_valid.xml")
+        submission_json = self.parser.parse("submission", submission_xml)
+        self.assertEqual({"schema": "study", "source": "SRP000539.xml"}, submission_json["actions"]["action"][0]["add"])
 
     def test_error_raised_when_schema_not_found(self):
         """Test 400 is returned when schema."""
