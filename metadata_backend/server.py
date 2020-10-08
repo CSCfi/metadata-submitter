@@ -4,10 +4,13 @@ import asyncio
 
 import uvloop
 from aiohttp import web
+from aiohttp_session import setup as session_setup
+from aiohttp_session.cookie_storage import EncryptedCookieStorage
+from cryptography.fernet import Fernet
 
-from .api.handlers import RESTApiHandler, StaticHandler, SubmissionAPIHandler
-from .api.middlewares import http_error_handler, jwt_authentication
-from .conf.conf import create_db_client, frontend_static_files
+from .api.handlers import RESTApiHandler, StaticHandler, SubmissionAPIHandler, AccessHandler
+from .api.middlewares import http_error_handler, check_login
+from .conf.conf import create_db_client, frontend_static_files, aai_config
 from .helpers.logger import LOG
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -23,7 +26,10 @@ async def init() -> web.Application:
     Note:: if using variable resources (such as {schema}), add
     specific ones on top of more generic ones.
     """
-    server = web.Application(middlewares=[http_error_handler, jwt_authentication])
+    server = web.Application()
+    session_setup(server, EncryptedCookieStorage(Fernet.generate_key()[:32]))
+    server.middlewares.append(http_error_handler)
+    server.middlewares.append(check_login)
     rest_handler = RESTApiHandler()
     submission_handler = SubmissionAPIHandler()
     api_routes = [
@@ -51,6 +57,14 @@ async def init() -> web.Application:
     ]
     server.router.add_routes(api_routes)
     LOG.info("Server configurations and routes loaded")
+    access_handler = AccessHandler(aai_config)
+    aai_routes = [
+        web.get("/aai", access_handler.login),
+        web.get("/logout", access_handler.logout),
+        web.get("/callback", access_handler.callback),
+    ]
+    server.router.add_routes(aai_routes)
+    LOG.info("AAI routes loaded")
     if frontend_static_files.exists():
         static_handler = StaticHandler(frontend_static_files)
         frontend_routes = [
