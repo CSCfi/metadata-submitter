@@ -696,7 +696,7 @@ class AccessHandler:
                     raise web.HTTPBadRequest(reason=reason)
 
         await self._save_to_session(req, key="access_token", value=access_token)
-        response = web.HTTPSeeOther(self.domain)
+        response = web.HTTPSeeOther(f"{self.domain}/home")
         response.set_cookie("logged_in", "True", max_age=300, secure=True, httponly=True)  # type: ignore
         raise response
 
