@@ -781,18 +781,19 @@ async def _extract_xml_upload(req: Request, extract_one: bool = False) -> List[T
             reason = "Only one file can be sent to this endpoint at a time."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        schema_type = part.name.lower()
-        if schema_type not in schema_types:
-            reason = f"Specified schema {schema_type} was not found."
-            LOG.error(reason)
-            raise web.HTTPNotFound(reason=reason)
-        data = []
-        while True:
-            chunk = await part.read_chunk()
-            if not chunk:
-                break
-            data.append(chunk)
-        xml_content = "".join(x.decode("UTF-8") for x in data)
-        files.append((xml_content, schema_type))
-        LOG.debug(f"processed file in {schema_type}")
+        if part.name:
+            schema_type = part.name.lower()
+            if schema_type not in schema_types:
+                reason = f"Specified schema {schema_type} was not found."
+                LOG.error(reason)
+                raise web.HTTPNotFound(reason=reason)
+            data = []
+            while True:
+                chunk = await part.read_chunk()
+                if not chunk:
+                    break
+                data.append(chunk)
+            xml_content = "".join(x.decode("UTF-8") for x in data)
+            files.append((xml_content, schema_type))
+            LOG.debug(f"processed file in {schema_type}")
     return sorted(files, key=lambda x: schema_types[x[1]]["priority"])
