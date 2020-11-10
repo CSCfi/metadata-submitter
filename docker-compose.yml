@@ -18,6 +18,7 @@ services:
       - "AUTH_URL="
       - "OIDC_URL="
       - "JWK_URL="
+      - "AUTH_REFERER="
   database:
     image: "mongo"
     container_name: "metadata_submitter_database_dev"
