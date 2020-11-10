@@ -4,11 +4,11 @@ import asyncio
 
 import uvloop
 from aiohttp import web
-from aiohttp_session import setup as session_setup
-from aiohttp_session.cookie_storage import EncryptedCookieStorage
 from cryptography.fernet import Fernet
+import secrets
 
-from .api.handlers import RESTApiHandler, StaticHandler, SubmissionAPIHandler, AccessHandler
+from .api.handlers import RESTApiHandler, StaticHandler, SubmissionAPIHandler
+from .api.auth import AccessHandler
 from .api.middlewares import http_error_handler, check_login
 from .conf.conf import create_db_client, frontend_static_files, aai_config
 from .helpers.logger import LOG
@@ -27,7 +27,15 @@ async def init() -> web.Application:
     specific ones on top of more generic ones.
     """
     server = web.Application()
-    session_setup(server, EncryptedCookieStorage(Fernet.generate_key()[:32]))
+    # Mutable_map handles cookie storage, also stores the object that provides
+    # the encryption we use
+    server["Crypt"] = Fernet(Fernet.generate_key())
+    # Create a signature salt to prevent editing the signature on the client
+    # side. Hash function doesn't need to be cryptographically secure, it's
+    # just a convenient way of getting ascii output from byte values.
+    server["Salt"] = secrets.token_hex(64)
+    server["Session"] = {}
+
     server.middlewares.append(http_error_handler)
     server.middlewares.append(check_login)
     rest_handler = RESTApiHandler()
