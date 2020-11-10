@@ -51,14 +51,30 @@ async def http_error_handler(req: Request, handler: Callable) -> Response:
 async def check_login(request: Request, handler: Callable) -> StreamResponse:
     """Check login if there is a username."""
     if (
-        request.path in ["/schemas", "/drafts", "/validate", "/submit", "/folders", "/objects", "/users", "/logout"]
+        request.path
+        in [
+            "/schemas",
+            "/drafts",
+            "/validate",
+            "/submit",
+            "/folders",
+            "/objects",
+            "/users",
+            "/logout",
+            "/home",
+            "newdraft",
+        ]
         and "OIDC_URL" in os.environ
         and bool(os.getenv("OIDC_URL"))
     ):
         session = request.app["Session"]
         if "access_token" not in session:
             raise web.HTTPSeeOther(location="/aai")
-        _check_csrf(request)
+        if decrypt_cookie(request)["id"] in request.app["Cookies"]:
+            _check_csrf(request)
+        else:
+            LOG.debug("Cannot find cookie in session")
+            raise web.HTTPUnauthorized(headers={"WWW-Authenticate": 'Bearer realm="/", charset="UTF-8"'})
         return await handler(request)
     else:
         return await handler(request)
@@ -83,6 +99,7 @@ def generate_cookie(request: Request) -> Tuple[dict, str]:
 def decrypt_cookie(request: web.Request) -> dict:
     """Decrypt a cookie using the server instance specific fernet key."""
     if "MTD_SESSION" not in request.cookies:
+        LOG.debug("Cannot find MTD_SESSION cookie")
         raise web.HTTPUnauthorized()
     cookie_json = request.app["Crypt"].decrypt(request.cookies["MTD_SESSION"].encode("utf-8")).decode("utf-8")
     cookie = json.loads(cookie_json)

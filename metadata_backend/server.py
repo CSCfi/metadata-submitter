@@ -35,6 +35,7 @@ async def init() -> web.Application:
     # just a convenient way of getting ascii output from byte values.
     server["Salt"] = secrets.token_hex(64)
     server["Session"] = {}
+    server["Cookies"] = set({})
 
     server.middlewares.append(http_error_handler)
     server.middlewares.append(check_login)
