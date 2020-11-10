@@ -1195,6 +1195,7 @@ components:
         - description
         - published
         - metadataObjects
+        - drafts
       additionalProperties: false
       properties:
         folderId:
@@ -1210,6 +1211,21 @@ components:
           type: boolean
           description: If folder is published or not
         metadataObjects:
+          type: array
+          items:
+            type: object
+            required:
+              - accessionId
+              - schema
+            additionalProperties: false
+            properties:
+              accessionId:
+                type: string
+                description: Accession id generated to identify an object
+              schema:
+                type: string
+                description: type of schema this Accession ID relates to and was added in submit
+        drafts:
           type: array
           items:
             type: object
