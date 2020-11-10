@@ -164,6 +164,8 @@ class AccessHandler:
         req.app["Session"]["access_token"] = None
         req.app["Session"]["id_token"] = None
         req.app["Session"] = {}
+        req.app["Cookies"] = set({})
+        LOG.debug("Logged out user ")
 
         raise response
 

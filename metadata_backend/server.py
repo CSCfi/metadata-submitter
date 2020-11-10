@@ -6,6 +6,7 @@ import uvloop
 from aiohttp import web
 from cryptography.fernet import Fernet
 import secrets
+import time
 
 from .api.handlers import RESTApiHandler, StaticHandler, SubmissionAPIHandler
 from .api.auth import AccessHandler
@@ -14,6 +15,19 @@ from .conf.conf import create_db_client, frontend_static_files, aai_config
 from .helpers.logger import LOG
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+
+
+async def kill_sess_on_shutdown(app: web.Application) -> None:
+    """Kill all open sessions and purge their data when killed."""
+    LOG.info("Gracefully shutting down the program at %s", time.ctime())
+    while app["Session"].keys():
+        key = list(app["Session"].keys())[0]
+        LOG.info("Purging session for %s", key)
+        # Purge the openstack connection from the server
+        app["Session"].pop(key)
+        LOG.debug("Purged connection information for %s :: %s", key, time.ctime())
+    app["Cookies"] = set({})
+    LOG.debug("Removed session")
 
 
 async def init() -> web.Application:
@@ -83,6 +97,7 @@ async def init() -> web.Application:
         server.router.add_routes(frontend_routes)
         LOG.info("Frontend routes loaded")
     server["db_client"] = create_db_client()
+    server.on_shutdown.append(kill_sess_on_shutdown)
     LOG.info("Database client loaded")
     return server
 
