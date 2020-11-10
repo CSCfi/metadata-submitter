@@ -139,6 +139,9 @@ async def get_userinfo(req: Request) -> Dict[str, str]:
     token = ""
     try:
         session = req.app["Session"]
+        if "access_token" not in session:
+            raise web.HTTPSeeOther(location="/aai")
+
         token = session["access_token"]
     except Exception as e:
         LOG.error(f"Could not get session because of: {e}")
