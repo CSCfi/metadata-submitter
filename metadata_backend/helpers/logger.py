@@ -3,6 +3,7 @@
 import json
 import logging
 from typing import Any, Dict
+import os
 
 FORMAT = (
     "[%(asctime)s][%(name)s][%(process)d %(processName)s]" "[%(levelname)-8s](L:%(lineno)s) %(funcName)s: %(message)s"
@@ -10,7 +11,7 @@ FORMAT = (
 logging.basicConfig(format=FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
 
 LOG = logging.getLogger("server")
-LOG.setLevel(logging.INFO)
+LOG.setLevel(os.getenv("LOG_LEVEL", "INFO"))
 
 
 def get_attributes(obj: Any) -> None:
