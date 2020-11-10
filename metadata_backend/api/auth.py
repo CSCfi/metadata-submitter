@@ -115,6 +115,8 @@ class AccessHandler:
             hashlib.sha256((cookie["id"] + cookie["referer"] + req.app["Salt"]).encode("utf-8"))
         ).hexdigest()
 
+        session = cookie["id"]
+
         cookie_crypted = req.app["Crypt"].encrypt(json.dumps(cookie).encode("utf-8")).decode("utf-8")
 
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -126,10 +128,15 @@ class AccessHandler:
             value=cookie_crypted,
             max_age=3600,
             # secure=trust,  # type: ignore
-            # httponly=trust,  # type: ignore
+            # httponly=False,  # type: ignore
         )
+
+        req.app["Cookies"].add(session)
+
+        response.headers["Location"] = "/home"
+
         LOG.debug(f"cookie MTD_SESSION set {cookie_crypted}")
-        raise response
+        return response
 
     async def logout(self, req: Request) -> Response:
         """Log the user out by revoking tokens.
@@ -189,7 +196,7 @@ class AccessHandler:
             "nonce": {"essential": True, "value": self.nonce},
         }
         try:
-
+            LOG.debug("Validate ID Token")
             decoded_data = jwt.decode(token, key, claims_options=claims_options)  # decode the token
             decoded_data.validate()  # validate the token contents
         # Testing the exceptions is done in integration tests
