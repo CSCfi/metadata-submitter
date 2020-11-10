@@ -574,6 +574,7 @@ class FolderOperator:
         folder_id = self._generate_folder_id()
         data["folderId"] = folder_id
         data["published"] = False
+        data["metadataObjects"], data["drafts"] = [], []
         try:
             insert_success = await self.db_service.create("folder", data)
         except (ConnectionFailure, OperationFailure) as error:
