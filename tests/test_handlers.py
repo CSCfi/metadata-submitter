@@ -48,6 +48,7 @@ class HandlersTestCase(AioHTTPTestCase):
             "description": "test folder",
             "published": False,
             "metadataObjects": [],
+            "drafts": [],
         }
         self.user_id = "USR12345678"
         self.test_user = {

@@ -406,9 +406,7 @@ async def test_crud_folders_works():
 
         # Create draft from test XML file and patch the draft into the newly created folder
         draft_id = await post_draft(sess, "sample", "SRS001433.xml")
-        patch1 = [
-            {"op": "add", "path": "/drafts", "value": [{"accessionId": draft_id, "schema": "sample"}]}
-        ]
+        patch1 = [{"op": "add", "path": "/drafts", "value": [{"accessionId": draft_id, "schema": "sample"}]}]
         folder_id = await patch_folder(sess, folder_id, patch1)
         async with sess.get(f"{folders_url}/{folder_id}") as resp:
             LOG.debug(f"Checking that folder {folder_id} was patched")
@@ -423,7 +421,7 @@ async def test_crud_folders_works():
         # Get the draft from the collection within this session and post it to objects collection
         draft = await get_draft(sess, "sample", draft_id)
         async with sess.post(f"{base_url}/sample", data=draft) as resp:
-            LOG.debug(f"Adding draft to actual objects")
+            LOG.debug("Adding draft to actual objects")
             assert resp.status == 201, "HTTP Status code error"
             ans = await resp.json()
             assert ans["accessionId"] != draft_id, "content mismatch"
@@ -432,7 +430,7 @@ async def test_crud_folders_works():
         # Patch folder so that original draft is moved to objects array
         patch2 = [
             {"op": "add", "path": "/metadataObjects", "value": [{"accessionId": accession_id, "schema": "sample"}]},
-            {"op": "remove", "path": "/drafts/0"}
+            {"op": "remove", "path": "/drafts/0"},
         ]
         folder_id = await patch_folder(sess, folder_id, patch2)
         async with sess.get(f"{folders_url}/{folder_id}") as resp:
