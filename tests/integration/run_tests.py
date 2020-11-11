@@ -113,6 +113,25 @@ async def delete_object(sess, schema, accession_id):
         assert resp.status == 204, "HTTP Status code error"
 
 
+async def post_draft(sess, schema, filename):
+    """Post one draft metadata object within session, returns accessionId."""
+    data = await create_request_data(schema, filename)
+    async with sess.post(f"{drafts_url}/{schema}", data=data) as resp:
+        LOG.debug(f"Adding new object to {schema}")
+        assert resp.status == 201, "HTTP Status code error"
+        ans = await resp.json()
+        return ans["accessionId"]
+
+
+async def get_draft(sess, schema, draft_id):
+    """Get and return a drafted metadata object."""
+    async with sess.get(f"{drafts_url}/sample/{draft_id}") as resp:
+        LOG.debug(f"Checking that {draft_id} JSON exists")
+        assert resp.status == 200, "HTTP Status code error"
+        ans = await resp.json()
+        return json.dumps(ans)
+
+
 async def put_draft(sess, schema, filename, filename2):
     """Post & put one metadata object within session, returns accessionId."""
     data = await create_request_json_data(schema, filename)
@@ -378,19 +397,19 @@ async def test_getting_all_objects_from_schema_works():
 async def test_crud_folders_works():
     """Test folders REST api POST, GET, PATCH and DELETE reqs."""
     async with aiohttp.ClientSession() as sess:
-        # Create new folder and check it creation succeeded
+        # Create new folder and check its creation succeeded
         data = {"name": "test", "description": "test folder"}
         folder_id = await post_folder(sess, data)
         async with sess.get(f"{folders_url}/{folder_id}") as resp:
             LOG.debug(f"Checking that folder {folder_id} was created")
             assert resp.status == 200, "HTTP Status code error"
 
-        # Add object to session and create a patch to add object to folder
-        accession_id = await post_object(sess, "sample", "SRS001433.xml")
-        patch = [
-            {"op": "add", "path": "/metadataObjects", "value": [{"accessionId": accession_id, "schema": "sample"}]}
+        # Create draft from test XML file and patch the draft into the newly created folder
+        draft_id = await post_draft(sess, "sample", "SRS001433.xml")
+        patch1 = [
+            {"op": "add", "path": "/drafts", "value": [{"accessionId": draft_id, "schema": "sample"}]}
         ]
-        folder_id = await patch_folder(sess, folder_id, patch)
+        folder_id = await patch_folder(sess, folder_id, patch1)
         async with sess.get(f"{folders_url}/{folder_id}") as resp:
             LOG.debug(f"Checking that folder {folder_id} was patched")
             res = await resp.json()
@@ -398,6 +417,32 @@ async def test_crud_folders_works():
             assert res["name"] == "test", "content mismatch"
             assert res["description"] == "test folder", "content mismatch"
             assert res["published"] is False, "content mismatch"
+            assert res["drafts"] == [{"accessionId": draft_id, "schema": "sample"}], "content mismatch"
+            assert res["metadataObjects"] == [], "content mismatch"
+
+        # Get the draft from the collection within this session and post it to objects collection
+        draft = await get_draft(sess, "sample", draft_id)
+        async with sess.post(f"{base_url}/sample", data=draft) as resp:
+            LOG.debug(f"Adding draft to actual objects")
+            assert resp.status == 201, "HTTP Status code error"
+            ans = await resp.json()
+            assert ans["accessionId"] != draft_id, "content mismatch"
+            accession_id = ans["accessionId"]
+
+        # Patch folder so that original draft is moved to objects array
+        patch2 = [
+            {"op": "add", "path": "/metadataObjects", "value": [{"accessionId": accession_id, "schema": "sample"}]},
+            {"op": "remove", "path": "/drafts/0"}
+        ]
+        folder_id = await patch_folder(sess, folder_id, patch2)
+        async with sess.get(f"{folders_url}/{folder_id}") as resp:
+            LOG.debug(f"Checking that folder {folder_id} was patched")
+            res = await resp.json()
+            assert res["folderId"] == folder_id, "content mismatch"
+            assert res["name"] == "test", "content mismatch"
+            assert res["description"] == "test folder", "content mismatch"
+            assert res["published"] is False, "content mismatch"
+            assert res["drafts"] == [], "content mismatch"
             assert res["metadataObjects"] == [{"accessionId": accession_id, "schema": "sample"}], "content mismatch"
 
         # Delete folder
