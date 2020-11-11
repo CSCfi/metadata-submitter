@@ -352,7 +352,7 @@ class RESTApiHandler:
 
         # Check patch operations in request are valid
         patch_ops = await self._get_data(req)
-        allowed_paths = ["/name", "/description", "/metadataObjects", "/published"]
+        allowed_paths = ["/name", "/description", "/metadataObjects", "/published", "/drafts"]
         for op in patch_ops:
             if all(i not in op["path"] for i in allowed_paths):
                 reason = f"Request contains '{op['path']}' key that cannot be updated to folders."
