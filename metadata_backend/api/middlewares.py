@@ -62,7 +62,7 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
             "/users",
             "/logout",
             "/home",
-            "newdraft",
+            "/newdraft",
         ]
         and "OIDC_URL" in os.environ
         and bool(os.getenv("OIDC_URL"))
