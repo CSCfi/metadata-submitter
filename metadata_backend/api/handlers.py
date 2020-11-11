@@ -366,6 +366,15 @@ class RESTApiHandler:
         LOG.info(f"PATCH folder with ID {folder} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
+    async def publish_folder(self, req: Request) -> Response:
+        """Update object folder specifically into published state.
+
+        :param req: PATCH request
+        :raises: HTTP 400 if something fails during processing the request
+        :returns: JSON response containing folder ID for updated folder
+        """
+        return web.HTTPNotImplemented()
+
     async def delete_folder(self, req: Request) -> Response:
         """Delete object folder from database.
 
