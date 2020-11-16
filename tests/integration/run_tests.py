@@ -192,6 +192,16 @@ async def patch_folder(sess, folder_id, patch):
         return ans_patch["folderId"]
 
 
+async def publish_folder(sess, folder_id):
+    """Publish one object folder within session, return folderId."""
+    async with sess.get(f"{folders_url}/publish/{folder_id}") as resp:
+        LOG.debug(f"Publishing folder {folder_id}")
+        assert resp.status == 200, "HTTP Status code error"
+        ans = await resp.json()
+        assert ans["folderId"] == folder_id, "folder ID error"
+        return ans["folderId"]
+
+
 async def delete_folder(sess, folder_id):
     """Delete object folder within session."""
     async with sess.delete(f"{folders_url}/{folder_id}") as resp:
@@ -395,7 +405,7 @@ async def test_getting_all_objects_from_schema_works():
 
 
 async def test_crud_folders_works():
-    """Test folders REST api POST, GET, PATCH and DELETE reqs."""
+    """Test folders REST api POST, GET, PATCH, PUBLISH and DELETE reqs."""
     async with aiohttp.ClientSession() as sess:
         # Create new folder and check its creation succeeded
         data = {"name": "test", "description": "test folder"}
@@ -427,19 +437,26 @@ async def test_crud_folders_works():
             assert ans["accessionId"] != draft_id, "content mismatch"
             accession_id = ans["accessionId"]
 
-        # Patch folder so that original draft is moved to objects array
+        # Patch folder so that original draft becomes an object in the folder
         patch2 = [
             {"op": "add", "path": "/metadataObjects", "value": [{"accessionId": accession_id, "schema": "sample"}]},
-            {"op": "remove", "path": "/drafts/0"},
         ]
         folder_id = await patch_folder(sess, folder_id, patch2)
         async with sess.get(f"{folders_url}/{folder_id}") as resp:
             LOG.debug(f"Checking that folder {folder_id} was patched")
             res = await resp.json()
             assert res["folderId"] == folder_id, "content mismatch"
-            assert res["name"] == "test", "content mismatch"
-            assert res["description"] == "test folder", "content mismatch"
             assert res["published"] is False, "content mismatch"
+            assert res["drafts"] == [{"accessionId": draft_id, "schema": "sample"}], "content mismatch"
+            assert res["metadataObjects"] == [{"accessionId": accession_id, "schema": "sample"}], "content mismatch"
+
+        # Publish the folder
+        folder_id = await publish_folder(sess, folder_id)
+        async with sess.get(f"{folders_url}/{folder_id}") as resp:
+            LOG.debug(f"Checking that folder {folder_id} was patched")
+            res = await resp.json()
+            assert res["folderId"] == folder_id, "content mismatch"
+            assert res["published"] is True, "content mismatch"
             assert res["drafts"] == [], "content mismatch"
             assert res["metadataObjects"] == [{"accessionId": accession_id, "schema": "sample"}], "content mismatch"
 

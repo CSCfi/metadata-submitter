@@ -386,7 +386,10 @@ class RESTApiHandler:
             accession_id = await Operator(db_client).delete_metadata_object(collection, accession_id)
             LOG.info(f"DELETE draft with accession ID {accession_id} in schema {collection} was successful.")
 
-        patch = [{"op": "replace", "path": "/publish", "value": True}, {"op": "remove", "path": "/drafts"}]
+        patch = [
+            {"op": "replace", "path": "/published", "value": True},
+            {"op": "replace", "path": "/drafts", "value": []},
+        ]
         new_folder = await operator.update_folder(folder_id, JsonPatch(patch))
         body = json.dumps({"folderId": new_folder})
         LOG.info(f"PATCH folder with ID {new_folder} was successful.")
