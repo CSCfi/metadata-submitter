@@ -613,6 +613,17 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(json_resp["folderId"], self.folder_id)
 
     @unittest_run_loop
+    async def test_folder_is_published(self):
+        """Test that folder would be published."""
+        self.MockedFolderOperator().update_folder.return_value = futurized(self.folder_id)
+        response = await self.client.get("/folders/publish/FOL12345678")
+        self.MockedFolderOperator().read_folder.assert_called_once()
+        self.MockedFolderOperator().update_folder.assert_called_once()
+        self.assertEqual(response.status, 200)
+        json_resp = await response.json()
+        self.assertEqual(json_resp["folderId"], self.folder_id)
+
+    @unittest_run_loop
     async def test_folder_deletion_is_called(self):
         """Test that folder would be deleted."""
         response = await self.client.delete("/folders/FOL12345678")
