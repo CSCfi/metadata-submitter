@@ -44,6 +44,7 @@ drafts_url = "http://localhost:5430/drafts"
 folders_url = "http://localhost:5430/folders"
 users_url = "http://localhost:5430/users"
 submit_url = "http://localhost:5430/submit"
+publish_url = "http://localhost:5430/publish"
 
 user_id = "USR12345678"
 test_user = {
@@ -194,7 +195,7 @@ async def patch_folder(sess, folder_id, patch):
 
 async def publish_folder(sess, folder_id):
     """Publish one object folder within session, return folderId."""
-    async with sess.get(f"{folders_url}/publish/{folder_id}") as resp:
+    async with sess.patch(f"{publish_url}/{folder_id}") as resp:
         LOG.debug(f"Publishing folder {folder_id}")
         assert resp.status == 200, "HTTP Status code error"
         ans = await resp.json()

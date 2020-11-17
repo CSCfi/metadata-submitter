@@ -616,7 +616,7 @@ class HandlersTestCase(AioHTTPTestCase):
     async def test_folder_is_published(self):
         """Test that folder would be published."""
         self.MockedFolderOperator().update_folder.return_value = futurized(self.folder_id)
-        response = await self.client.get("/folders/publish/FOL12345678")
+        response = await self.client.patch("/publish/FOL12345678")
         self.MockedFolderOperator().read_folder.assert_called_once()
         self.MockedFolderOperator().update_folder.assert_called_once()
         self.assertEqual(response.status, 200)
