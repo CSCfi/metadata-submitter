@@ -80,6 +80,7 @@ async def init() -> web.Application:
         web.delete("/users/{userId}", rest_handler.delete_user),
         web.post("/submit", submission_handler.submit),
         web.post("/validate", submission_handler.validate),
+        web.get("/mirror/{datasetId}", rest_handler.mirror_dataset),
     ]
     server.router.add_routes(api_routes)
     LOG.info("Server configurations and routes loaded")

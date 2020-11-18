@@ -6,6 +6,7 @@ jsonschema
 jsonpatch
 motor
 python-dateutil
+requests
 uvloop
 xmlschema>=1.2.2
 Authlib

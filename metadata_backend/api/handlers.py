@@ -18,6 +18,7 @@ from ..helpers.logger import LOG
 from ..helpers.parser import XMLToJSONParser
 from ..helpers.schema_loader import JSONSchemaLoader, SchemaNotFoundException, XMLSchemaLoader
 from ..helpers.validator import JSONValidator, XMLValidator
+from ..helpers.mirror import MetadataMirror
 from .operators import FolderOperator, Operator, XMLOperator, UserOperator
 
 from ..conf.conf import aai_config
@@ -710,6 +711,37 @@ class RESTApiHandler:
         )
         LOG.debug("Logged out user ")
         raise response
+
+    async def mirror_dataset(self, req: Request) -> Response:
+        """Mirror dataset content queried from EGA into the database.
+
+        :param req: POST request
+        :returns: HTTP No Content response
+        """
+        dataset_id = req.match_info["datasetId"]
+        db_client = req.app["db_client"]
+        # Get the dataset from EGA
+        ega_data = MetadataMirror().mirror_dataset(dataset_id)
+        # POST the metadata objects from the dataset
+        operator = Operator(db_client)
+        accession_ids = []
+        for schema_type in ega_data:
+            for object in ega_data[schema_type]:
+                # json_obj = json.dumps(object)
+                JSONValidator(object, schema_type).validate
+                accession_id = await operator.create_metadata_object(schema_type, object)
+                accession_ids.append(accession_id)
+                LOG.info(f"POST object with accesssion ID {accession_id} in schema {schema_type} was successful.")
+        body = json.dumps({"accessionIds": accession_id})
+        # url = f"{req.scheme}://{req.host}{req.path}"
+        # location_headers = CIMultiDict(Location=f"{url}{accession_id}")
+        return web.Response(
+            body=body,
+            status=201,
+            # headers=location_headers,
+            content_type="application/json",
+        )
+        return web.Response(body=json.dumps(ega_data), status=200, content_type="application/json")
 
 
 class SubmissionAPIHandler:
