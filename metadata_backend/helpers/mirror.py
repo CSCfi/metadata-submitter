@@ -5,7 +5,6 @@ Reworked from implementation found here: https://github.com/neicnordic/sda-metad
 from typing import Generator, Iterable, Dict
 import itertools
 import requests
-import json
 
 from aiohttp import web
 
@@ -19,23 +18,24 @@ SESSION = requests.Session()
 class MetadataMirror:
     """Methods for mirroring metadata from EGA."""
 
-    def mirror_dataset(self, dataset: str) -> Dict:
-        """Write data to JSON file."""
-        if not dataset.startswith("EGAD"):
-            reason = f"{dataset} does not appear to be a valid EGA dataset."
+    def mirror_dataset(self, dataset_id: str) -> Dict:
+        """Return data from mirrored dataset."""
+        if not dataset_id.startswith("EGAD"):
+            reason = f"{dataset_id} does not appear to be a valid EGA dataset."
+            LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        r = SESSION.get(f"{BASE_URL}datasets/{dataset}")
+        r = SESSION.get(f"{BASE_URL}datasets/{dataset_id}")
         if r.status_code == 200:
-            LOG.info(f"Retrieving dataset {dataset}.")
+            LOG.info(f"Retrieving dataset {dataset_id}.")
             response = r.json()
-            dataset = json.dumps(response["response"]["result"][0])
+            dataset = response["response"]["result"][0]
+            dataset["datasetLinks"] = {}
             addable = {"dataset": dataset}
 
-            objects = self.get_dataset_objects(dataset)
+            objects = self.get_dataset_objects(dataset_id)
             for idx, val in enumerate(objects):
-                the_data = list(val)
-                object = json.dumps(the_data)
-                addable[ENDPOINTS[idx]] = object
+                data = list(val)
+                addable[ENDPOINTS[idx]] = data
             return addable
         else:
             raise web.HTTPBadRequest(reason="Something went wrong")
@@ -60,6 +60,20 @@ class MetadataMirror:
                 results_nb = int(response["response"]["numTotalResults"])
                 LOG.info(f"Retrieving {limit} {data_type} for {dataset_id} from {results_nb} results.")
                 for res in response["response"]["result"]:
+                    # Edit mirrored data here to remove conflicts with current ENA schemas
+                    if data_type == "analyses":
+                        res["analysisType"] = {"referenceAlignment": {}}
+                    elif data_type == "dacs":
+                        contacts = res["contacts"]
+                        fixed_contacts = []
+                        for contact in contacts:
+                            contact["name"] = contact.pop("contactName")
+                            fixed_contacts.append(contact)
+                        res["contacts"] = fixed_contacts
+                    elif data_type == "samples":
+                        res["sampleName"] = {}
+                    elif data_type == "studies":
+                        res["descriptor"] = {"studyTitle": res["title"], "studyType": res["studyType"]}
                     yield res
 
                 if results_nb >= limit:
