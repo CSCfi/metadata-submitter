@@ -899,6 +899,43 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
+  /publish/{folderId}:
+    patch:
+      tags:
+        - Manage
+      summary: Update object folder into published state.
+      parameters:
+        - name: folderId
+          in: path
+          description: ID of the object folder.
+          schema:
+            type: string
+          required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FolderCreated"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
   /users/{userId}:
     get:
       tags:
@@ -1195,6 +1232,7 @@ components:
         - description
         - published
         - metadataObjects
+        - drafts
       additionalProperties: false
       properties:
         folderId:
@@ -1210,6 +1248,21 @@ components:
           type: boolean
           description: If folder is published or not
         metadataObjects:
+          type: array
+          items:
+            type: object
+            required:
+              - accessionId
+              - schema
+            additionalProperties: false
+            properties:
+              accessionId:
+                type: string
+                description: Accession id generated to identify an object
+              schema:
+                type: string
+                description: type of schema this Accession ID relates to and was added in submit
+        drafts:
           type: array
           items:
             type: object

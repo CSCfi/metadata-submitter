@@ -48,6 +48,7 @@ class HandlersTestCase(AioHTTPTestCase):
             "description": "test folder",
             "published": False,
             "metadataObjects": [],
+            "drafts": [],
         }
         self.user_id = "USR12345678"
         self.test_user = {
@@ -606,6 +607,17 @@ class HandlersTestCase(AioHTTPTestCase):
         self.MockedFolderOperator().update_folder.return_value = futurized(self.folder_id)
         data = [{"op": "replace", "path": "/name", "value": "test2"}]
         response = await self.client.patch("/folders/FOL12345678", json=data)
+        self.MockedFolderOperator().update_folder.assert_called_once()
+        self.assertEqual(response.status, 200)
+        json_resp = await response.json()
+        self.assertEqual(json_resp["folderId"], self.folder_id)
+
+    @unittest_run_loop
+    async def test_folder_is_published(self):
+        """Test that folder would be published."""
+        self.MockedFolderOperator().update_folder.return_value = futurized(self.folder_id)
+        response = await self.client.patch("/publish/FOL12345678")
+        self.MockedFolderOperator().read_folder.assert_called_once()
         self.MockedFolderOperator().update_folder.assert_called_once()
         self.assertEqual(response.status, 200)
         json_resp = await response.json()

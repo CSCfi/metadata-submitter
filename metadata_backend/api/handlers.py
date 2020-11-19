@@ -206,7 +206,7 @@ class RESTApiHandler:
         body = json.dumps({"accessionId": accession_id})
         url = f"{req.scheme}://{req.host}{req.path}"
         location_headers = CIMultiDict(Location=f"{url}{accession_id}")
-        LOG.info(f"POST object with accesssion ID {accession_id} " f"in schema {collection} was successful.")
+        LOG.info(f"POST object with accesssion ID {accession_id} in schema {collection} was successful.")
         return web.Response(
             body=body,
             status=201,
@@ -237,7 +237,7 @@ class RESTApiHandler:
         accession_id = req.match_info["accessionId"]
         db_client = req.app["db_client"]
         accession_id = await Operator(db_client).delete_metadata_object(collection, accession_id)
-        LOG.info(f"DELETE object with accession ID {accession_id} " f"in schema {collection} was successful.")
+        LOG.info(f"DELETE object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(status=204)
 
     async def put_object(self, req: Request) -> Response:
@@ -267,7 +267,7 @@ class RESTApiHandler:
             operator = Operator(db_client)
         accession_id = await operator.replace_metadata_object(collection, accession_id, content)
         body = json.dumps({"accessionId": accession_id})
-        LOG.info(f"PUT object with accession ID {accession_id} " f"in schema {collection} was successful.")
+        LOG.info(f"PUT object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
     async def patch_object(self, req: Request) -> Response:
@@ -293,7 +293,7 @@ class RESTApiHandler:
             operator = Operator(db_client)
         accession_id = await operator.update_metadata_object(collection, accession_id, content)
         body = json.dumps({"accessionId": accession_id})
-        LOG.info(f"PATCH object with accession ID {accession_id} " f"in schema {collection} was successful.")
+        LOG.info(f"PATCH object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
     async def get_folders(self, req: Request) -> Response:
@@ -352,7 +352,7 @@ class RESTApiHandler:
 
         # Check patch operations in request are valid
         patch_ops = await self._get_data(req)
-        allowed_paths = ["/name", "/description", "/metadataObjects", "/published"]
+        allowed_paths = ["/name", "/description", "/metadataObjects", "/published", "/drafts"]
         for op in patch_ops:
             if all(i not in op["path"] for i in allowed_paths):
                 reason = f"Request contains '{op['path']}' key that cannot be updated to folders."
@@ -364,6 +364,37 @@ class RESTApiHandler:
         folder = await operator.update_folder(folder_id, patch)
         body = json.dumps({"folderId": folder})
         LOG.info(f"PATCH folder with ID {folder} was successful.")
+        return web.Response(body=body, status=200, content_type="application/json")
+
+    async def publish_folder(self, req: Request) -> Response:
+        """Update object folder specifically into published state.
+
+        :param req: PATCH request
+        :raises: HTTP 400 if something fails during processing the request
+        :returns: JSON response containing folder ID for updated folder
+        """
+        folder_id = req.match_info["folderId"]
+        db_client = req.app["db_client"]
+        operator = FolderOperator(db_client)
+        old_folder = await operator.read_folder(folder_id)
+        LOG.info(f"GET folder with ID {folder_id} was successful.")
+
+        # Delete the drafts within the folder from the database
+        for draft in old_folder["drafts"]:
+            schema_type, accession_id = draft["schema"], draft["accessionId"]
+            collection = f"draft-{schema_type}"
+            self._check_schema_exists(schema_type)
+            accession_id = await Operator(db_client).delete_metadata_object(collection, accession_id)
+            LOG.info(f"DELETE draft with accession ID {accession_id} in schema {collection} was successful.")
+
+        # Patch the folder into a published state
+        patch = [
+            {"op": "replace", "path": "/published", "value": True},
+            {"op": "replace", "path": "/drafts", "value": []},
+        ]
+        new_folder = await operator.update_folder(folder_id, JsonPatch(patch))
+        body = json.dumps({"folderId": new_folder})
+        LOG.info(f"Patching folder with ID {new_folder} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
     async def delete_folder(self, req: Request) -> Response:
