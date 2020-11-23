@@ -36,6 +36,12 @@ class MetadataMirror:
             for idx, val in enumerate(objects):
                 data = list(val)
                 addable[ENDPOINTS[idx]] = data
+
+            # Change key values so they match with the correct schema titles
+            addable["analysis"] = addable.pop("analyses")
+            addable["dac"] = addable.pop("dacs")
+            addable["sample"] = addable.pop("samples")
+            addable["study"] = addable.pop("studies")
             return addable
         else:
             raise web.HTTPBadRequest(reason="Something went wrong")
@@ -65,11 +71,9 @@ class MetadataMirror:
                         res["analysisType"] = {"referenceAlignment": {}}
                     elif data_type == "dacs":
                         contacts = res["contacts"]
-                        fixed_contacts = []
                         for contact in contacts:
                             contact["name"] = contact.pop("contactName")
-                            fixed_contacts.append(contact)
-                        res["contacts"] = fixed_contacts
+                            contact["mainContact"] = True
                     elif data_type == "samples":
                         res["sampleName"] = {}
                     elif data_type == "studies":

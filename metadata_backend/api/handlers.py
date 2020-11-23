@@ -724,15 +724,16 @@ class RESTApiHandler:
         ega_data = MetadataMirror().mirror_dataset(dataset_id)
         # POST the metadata objects from the dataset
         operator = Operator(db_client)
-        accession_ids = []
+        added = []
         for schema_type in ega_data:
-            for object in ega_data[schema_type]:
+            objects = [ega_data[schema_type]] if schema_type == "dataset" else ega_data[schema_type]
+            for object in objects:
                 # json_obj = json.dumps(object)
                 JSONValidator(object, schema_type).validate
                 accession_id = await operator.create_metadata_object(schema_type, object)
-                accession_ids.append(accession_id)
+                added.append({schema_type: accession_id})
                 LOG.info(f"POST object with accesssion ID {accession_id} in schema {schema_type} was successful.")
-        body = json.dumps({"accessionIds": accession_id})
+        body = json.dumps({"objectsAdded": added})
         # url = f"{req.scheme}://{req.host}{req.path}"
         # location_headers = CIMultiDict(Location=f"{url}{accession_id}")
         return web.Response(
@@ -741,7 +742,6 @@ class RESTApiHandler:
             # headers=location_headers,
             content_type="application/json",
         )
-        return web.Response(body=json.dumps(ega_data), status=200, content_type="application/json")
 
 
 class SubmissionAPIHandler:
