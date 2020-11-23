@@ -1,17 +1,14 @@
 """Handle HTTP methods for server."""
 import json
 import mimetypes
-import secrets
-import urllib.parse
 from collections import Counter
 from math import ceil
 from pathlib import Path
 from typing import Dict, List, Tuple, Union, cast
 
-from aiohttp import BodyPartReader, web, BasicAuth, ClientSession
+from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
-from aiohttp_session import get_session
 from jsonpatch import JsonPatch
 from motor.motor_asyncio import AsyncIOMotorClient
 from multidict import MultiDict, MultiDictProxy
@@ -209,7 +206,7 @@ class RESTApiHandler:
         body = json.dumps({"accessionId": accession_id})
         url = f"{req.scheme}://{req.host}{req.path}"
         location_headers = CIMultiDict(Location=f"{url}{accession_id}")
-        LOG.info(f"POST object with accesssion ID {accession_id} " f"in schema {collection} was successful.")
+        LOG.info(f"POST object with accesssion ID {accession_id} in schema {collection} was successful.")
         return web.Response(
             body=body,
             status=201,
@@ -240,7 +237,7 @@ class RESTApiHandler:
         accession_id = req.match_info["accessionId"]
         db_client = req.app["db_client"]
         accession_id = await Operator(db_client).delete_metadata_object(collection, accession_id)
-        LOG.info(f"DELETE object with accession ID {accession_id} " f"in schema {collection} was successful.")
+        LOG.info(f"DELETE object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(status=204)
 
     async def put_object(self, req: Request) -> Response:
@@ -270,7 +267,7 @@ class RESTApiHandler:
             operator = Operator(db_client)
         accession_id = await operator.replace_metadata_object(collection, accession_id, content)
         body = json.dumps({"accessionId": accession_id})
-        LOG.info(f"PUT object with accession ID {accession_id} " f"in schema {collection} was successful.")
+        LOG.info(f"PUT object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
     async def patch_object(self, req: Request) -> Response:
@@ -296,7 +293,7 @@ class RESTApiHandler:
             operator = Operator(db_client)
         accession_id = await operator.update_metadata_object(collection, accession_id, content)
         body = json.dumps({"accessionId": accession_id})
-        LOG.info(f"PATCH object with accession ID {accession_id} " f"in schema {collection} was successful.")
+        LOG.info(f"PATCH object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
     async def get_folders(self, req: Request) -> Response:
@@ -355,7 +352,7 @@ class RESTApiHandler:
 
         # Check patch operations in request are valid
         patch_ops = await self._get_data(req)
-        allowed_paths = ["/name", "/description", "/metadataObjects"]
+        allowed_paths = ["/name", "/description", "/metadataObjects", "/published", "/drafts"]
         for op in patch_ops:
             if all(i not in op["path"] for i in allowed_paths):
                 reason = f"Request contains '{op['path']}' key that cannot be updated to folders."
@@ -367,6 +364,37 @@ class RESTApiHandler:
         folder = await operator.update_folder(folder_id, patch)
         body = json.dumps({"folderId": folder})
         LOG.info(f"PATCH folder with ID {folder} was successful.")
+        return web.Response(body=body, status=200, content_type="application/json")
+
+    async def publish_folder(self, req: Request) -> Response:
+        """Update object folder specifically into published state.
+
+        :param req: PATCH request
+        :raises: HTTP 400 if something fails during processing the request
+        :returns: JSON response containing folder ID for updated folder
+        """
+        folder_id = req.match_info["folderId"]
+        db_client = req.app["db_client"]
+        operator = FolderOperator(db_client)
+        old_folder = await operator.read_folder(folder_id)
+        LOG.info(f"GET folder with ID {folder_id} was successful.")
+
+        # Delete the drafts within the folder from the database
+        for draft in old_folder["drafts"]:
+            schema_type, accession_id = draft["schema"], draft["accessionId"]
+            collection = f"draft-{schema_type}"
+            self._check_schema_exists(schema_type)
+            accession_id = await Operator(db_client).delete_metadata_object(collection, accession_id)
+            LOG.info(f"DELETE draft with accession ID {accession_id} in schema {collection} was successful.")
+
+        # Patch the folder into a published state
+        patch = [
+            {"op": "replace", "path": "/published", "value": True},
+            {"op": "replace", "path": "/drafts", "value": []},
+        ]
+        new_folder = await operator.update_folder(folder_id, JsonPatch(patch))
+        body = json.dumps({"folderId": new_folder})
+        LOG.info(f"Patching folder with ID {new_folder} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
     async def delete_folder(self, req: Request) -> Response:
@@ -614,144 +642,6 @@ class StaticHandler:
         return self.path / "static"
 
 
-class AccessHandler:
-    """Handler for user access methods."""
-
-    def __init__(self, aai: Dict) -> None:
-        """Define AAI variables and paths."""
-        self.domain = aai["domain"]
-        self.client_id = aai["client_id"]
-        self.client_secret = aai["client_secret"]
-        self.callback_url = aai["callback_url"]
-        self.auth_url = aai["auth_url"]
-        self.token_url = aai["token_url"]
-        self.revoke_url = aai["revoke_url"]
-        self.scope = aai["scope"]
-
-    async def login(self, req: Request) -> Response:
-        """Redirect user to AAI login.
-
-        :param req: GET request
-        :raises: 303 redirect
-        """
-        # Generate a state for callback and save it to session storage
-        state = secrets.token_hex()
-        await self._save_to_session(req, key="oidc_state", value=state)
-
-        # Parameters for authorisation request
-        params = {
-            "client_id": self.client_id,
-            "response_type": "code",
-            "state": state,
-            "redirect_uri": self.callback_url,
-            "scope": self.scope,
-        }
-
-        # Prepare response
-        url = f"{self.auth_url}?{urllib.parse.urlencode(params)}"
-        response = web.HTTPSeeOther(url)
-        raise response
-
-    async def callback(self, req: Request) -> Response:
-        """Include correct tokens in cookies as a callback after login.
-
-        :param req: GET request
-        :raises: 303 redirect
-        """
-        # Response from AAI must have the query params `state` and `code`
-        if "state" in req.query and "code" in req.query:
-            LOG.debug("AAI response contained the correct params.")
-            params = {"state": req.query["state"], "code": req.query["code"]}
-        else:
-            reason = f"AAI response is missing mandatory params, received: {req.query}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        # Verify, that states match
-        state = await self._get_from_session(req, "oidc_state")
-        if not secrets.compare_digest(str(state), str(params["state"])):
-            raise web.HTTPForbidden(reason="Bad user session.")
-
-        auth = BasicAuth(login=self.client_id, password=self.client_secret)
-        data = {"grant_type": "authorization_code", "code": params["code"], "redirect_uri": self.callback_url}
-
-        # Set up client authentication for request
-        async with ClientSession(auth=auth) as sess:
-            # Send request to AAI
-            async with sess.post(f"{self.token_url}", data=data) as resp:
-                LOG.debug(f"AAI response status: {resp.status}.")
-                # Validate response from AAI
-                if resp.status == 200:
-                    result = await resp.json()
-                    if "access_token" in result:
-                        LOG.debug("Access token received.")
-                        access_token = result["access_token"]
-                    else:
-                        reason = "AAI response did not contain an access token."
-                        LOG.error(reason)
-                        raise web.HTTPBadRequest(reason=reason)
-                else:
-                    reason = f"Token request to AAI failed: {resp}"
-                    LOG.error(reason)
-                    raise web.HTTPBadRequest(reason=reason)
-
-        await self._save_to_session(req, key="access_token", value=access_token)
-        response = web.HTTPSeeOther(self.domain)
-        response.set_cookie("logged_in", "True", max_age=300, secure=True, httponly=True)  # type: ignore
-        raise response
-
-    async def logout(self, req: Request) -> Response:
-        """Log the user out by revoking tokens.
-
-        :param req: GET request
-        :raises: 303 redirect
-        """
-        # Revoke token at AAI
-        access_token = self._get_from_session(req, "access_token")
-        auth = BasicAuth(login=self.client_id, password=self.client_secret)
-        params = {"token": access_token}
-        # Set up client authentication for request
-        async with ClientSession(auth=auth) as session:
-            async with session.get(f"{self.revoke_url}?{urllib.parse.urlencode(params)}") as resp:
-                LOG.debug(f"AAI response status: {resp.status}.")
-                # Validate response from AAI
-                if resp.status != 200:
-                    LOG.error(f"Logout failed at AAI: {resp}.")
-                    LOG.error(await resp.json())
-                    raise web.HTTPBadRequest(reason=f"Logout failed at AAI: {resp.status}.")
-
-        # Overwrite status cookies with instantly expiring ones
-        response = web.HTTPSeeOther(f"{req.url}")
-        response.set_cookie("logged_in", "False", max_age=0, secure=True, httponly=True)  # type: ignore
-        raise response
-
-    async def _save_to_session(self, request: Request, key: str = "key", value: str = "value") -> None:
-        """Save a given value to a session key."""
-        LOG.debug(f"Save a value for {key} to session.")
-
-        session = await get_session(request)
-        session[key] = value
-
-    async def _get_from_session(self, req: Request, key: str) -> str:
-        """Get a value from session storage.
-
-        :param req: GET request
-        :param key: name of the key to be returned from session storage
-        :returns: Specific value from session storage
-        """
-        try:
-            session = await get_session(req)
-            return session[key]
-        except KeyError as e:
-            reason = f"Session has no value for {key}: {e}."
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
-        except Exception as e:
-            reason = f"Failed to retrieve {key} from session: {e}"
-            LOG.error(reason)
-            raise web.HTTPInternalServerError(reason=reason)
-
-
 # Private functions shared between handlers
 async def _extract_xml_upload(req: Request, extract_one: bool = False) -> List[Tuple[str, str]]:
     """Extract submitted xml-file(s) from multi-part request.
@@ -781,18 +671,19 @@ async def _extract_xml_upload(req: Request, extract_one: bool = False) -> List[T
             reason = "Only one file can be sent to this endpoint at a time."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        schema_type = part.name.lower()
-        if schema_type not in schema_types:
-            reason = f"Specified schema {schema_type} was not found."
-            LOG.error(reason)
-            raise web.HTTPNotFound(reason=reason)
-        data = []
-        while True:
-            chunk = await part.read_chunk()
-            if not chunk:
-                break
-            data.append(chunk)
-        xml_content = "".join(x.decode("UTF-8") for x in data)
-        files.append((xml_content, schema_type))
-        LOG.debug(f"processed file in {schema_type}")
+        if part.name:
+            schema_type = part.name.lower()
+            if schema_type not in schema_types:
+                reason = f"Specified schema {schema_type} was not found."
+                LOG.error(reason)
+                raise web.HTTPNotFound(reason=reason)
+            data = []
+            while True:
+                chunk = await part.read_chunk()
+                if not chunk:
+                    break
+                data.append(chunk)
+            xml_content = "".join(x.decode("UTF-8") for x in data)
+            files.append((xml_content, schema_type))
+            LOG.debug(f"processed file in {schema_type}")
     return sorted(files, key=lambda x: schema_types[x[1]]["priority"])
