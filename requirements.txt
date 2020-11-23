@@ -8,3 +8,4 @@ motor
 python-dateutil
 uvloop
 xmlschema>=1.2.2
+Authlib
