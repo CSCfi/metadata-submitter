@@ -9,8 +9,9 @@ import requests
 from aiohttp import web
 
 from ..helpers.logger import LOG
+from ..conf import conf
 
-BASE_URL = "https://ega-archive.org/metadata/v2/"
+BASE_URL = conf.ega_url
 ENDPOINTS = ["analyses", "dacs", "samples", "studies"]
 SESSION = requests.Session()
 

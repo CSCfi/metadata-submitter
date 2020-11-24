@@ -113,3 +113,7 @@ aai_config = {
     "jwk_server": f'{os.getenv("JWK_URL", "")}',
     "auth_referer": f'{os.getenv("AUTH_REFERER", "")}',
 }
+
+# 6) Set the base url for EGA queries
+
+ega_url = os.getenv("EGA_URL", "https://ega-archive.org/metadata/v2/")
