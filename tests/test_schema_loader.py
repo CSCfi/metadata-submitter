@@ -1,4 +1,4 @@
-"""Tests for helper classes."""
+"""Test the schema loading utility."""
 import unittest
 
 import xmlschema

@@ -1,4 +1,4 @@
-"""Test api endpoints from views module."""
+"""Test operators that handling database-related operations."""
 import datetime
 import re
 import unittest
