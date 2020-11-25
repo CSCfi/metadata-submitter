@@ -11,13 +11,15 @@ from aiohttp import web
 from ..helpers.logger import LOG
 from ..conf import conf
 
-BASE_URL = conf.ega_url
-ENDPOINTS = ["analyses", "dacs", "samples", "studies"]
-SESSION = requests.Session()
-
 
 class MetadataMirror:
     """Methods for mirroring metadata from EGA."""
+
+    def __init__(self) -> None:
+        """Set endpoints which are to be queried from the url and initialize session."""
+        self.base_url = conf.ega_url
+        self.endpoints = ["analyses", "dacs", "samples", "studies"]
+        self.session = requests.Session()
 
     def mirror_dataset(self, dataset_id: str) -> Dict:
         """Return data from mirrored dataset."""
@@ -25,7 +27,7 @@ class MetadataMirror:
             reason = f"{dataset_id} does not appear to be a valid EGA dataset."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        r = SESSION.get(f"{BASE_URL}datasets/{dataset_id}")
+        r = self.session.get(f"{self.base_url}datasets/{dataset_id}")
         if r.status_code == 200:
             LOG.info(f"Retrieving dataset {dataset_id}.")
             response = r.json()
@@ -36,7 +38,7 @@ class MetadataMirror:
             objects = self.get_dataset_objects(dataset_id)
             for idx, val in enumerate(objects):
                 data = list(val)
-                addable[ENDPOINTS[idx]] = data
+                addable[self.endpoints[idx]] = data
 
             # Change key values so they match with the correct schema titles
             addable["analysis"] = addable.pop("analyses")
@@ -50,8 +52,8 @@ class MetadataMirror:
     def get_dataset_objects(self, dataset_id: str) -> Generator:
         """Retrieve information associated to dataset."""
         raw_events: Iterable = iter(())
-        for endpoint in ENDPOINTS:
-            LOG.info(f"Processing {endpoint} for {dataset_id} ...")
+        for endpoint in self.endpoints:
+            LOG.info(f"Processing {self.endpoints} for {dataset_id} ...")
             yield itertools.chain(raw_events, self.get_dataset_object(endpoint, dataset_id))
 
     def get_dataset_object(self, data_type: str, dataset_id: str) -> Generator:
@@ -61,7 +63,7 @@ class MetadataMirror:
         has_more = True
         payload = {"queryBy": "dataset", "queryId": dataset_id, "skip": str(skip), "limit": str(limit)}
         while has_more:
-            r = SESSION.get(f"{BASE_URL}{data_type}", params=payload)
+            r = self.session.get(f"{self.base_url}{data_type}", params=payload)
             if r.status_code == 200:
                 response = r.json()
                 results_nb = int(response["response"]["numTotalResults"])
