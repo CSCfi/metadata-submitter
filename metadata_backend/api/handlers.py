@@ -720,28 +720,23 @@ class RESTApiHandler:
         """
         dataset_id = req.match_info["datasetId"]
         db_client = req.app["db_client"]
-        # Get the dataset from EGA
+        self.data_mirroring(dataset_id, db_client)
+        return web.Response(status=202)
+
+    async def data_mirroring(self, dataset_id: str, db_client: AsyncIOMotorClient) -> None:
+        """Get the dataset and its objects from EGA and POST the metadata objects.
+
+        :param dataset_id: ID of dataset in EGA
+        :param db_client: Motor client used for database connections
+        """
         ega_data = MetadataMirror().mirror_dataset(dataset_id)
-        # POST the metadata objects from the dataset
         operator = Operator(db_client)
-        added = []
         for schema_type in ega_data:
             objects = [ega_data[schema_type]] if schema_type == "dataset" else ega_data[schema_type]
             for object in objects:
-                # json_obj = json.dumps(object)
                 JSONValidator(object, schema_type).validate
                 accession_id = await operator.create_metadata_object(schema_type, object)
-                added.append({schema_type: accession_id})
                 LOG.info(f"POST object with accesssion ID {accession_id} in schema {schema_type} was successful.")
-        body = json.dumps({"objectsAdded": added})
-        # url = f"{req.scheme}://{req.host}{req.path}"
-        # location_headers = CIMultiDict(Location=f"{url}{accession_id}")
-        return web.Response(
-            body=body,
-            status=201,
-            # headers=location_headers,
-            content_type="application/json",
-        )
 
 
 class SubmissionAPIHandler:
