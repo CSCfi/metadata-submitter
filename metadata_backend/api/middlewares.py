@@ -49,7 +49,7 @@ async def http_error_handler(req: Request, handler: Callable) -> Response:
 
 @middleware
 async def check_login(request: Request, handler: Callable) -> StreamResponse:
-    """Check login if there is a username."""
+    """Check login if session is user is logged in and can access API."""
     if (
         request.path
         in [
@@ -71,10 +71,12 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
         if "access_token" not in session:
             raise web.HTTPSeeOther(location="/aai")
         if decrypt_cookie(request)["id"] in request.app["Cookies"]:
+            LOG.debug("checked cookie session")
             _check_csrf(request)
         else:
             LOG.debug("Cannot find cookie in session")
             raise web.HTTPUnauthorized(headers={"WWW-Authenticate": 'Bearer realm="/", charset="UTF-8"'})
+
         return await handler(request)
     else:
         return await handler(request)
@@ -114,7 +116,7 @@ def _check_csrf(request: web.Request) -> bool:
     # site's wrong)
     if "Referer" in request.headers.keys():
         # Pass referer check if we're returning from the login.
-        if request.headers["Referer"] in aai_config["referer"]:
+        if request.headers["Referer"].startswith(aai_config["referer"]):
             LOG.info("Skipping Referer check due to request coming from OIDC.")
             return True
         if cookie["referer"] not in request.headers["Referer"]:
