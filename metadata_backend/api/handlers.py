@@ -417,9 +417,15 @@ class RESTApiHandler:
         :returns: JSON response containing user object
         """
         user_id = req.match_info["userId"]
+        if user_id != "current":
+            raise web.HTTPUnauthorized(reason="Only current user retrieval is allowed now")
         db_client = req.app["db_client"]
         operator = UserOperator(db_client)
-        user = await operator.read_user(user_id)
+
+        session = req.app["Session"]
+        current_user = session["user_info"][0]
+        user = await operator.read_user(current_user)
+
         LOG.info(f"GET user with ID {user_id} was successful.")
         return web.Response(body=json.dumps(user), status=200, content_type="application/json")
 
@@ -430,6 +436,8 @@ class RESTApiHandler:
         :returns: JSON response containing user ID for updated user object
         """
         user_id = req.match_info["userId"]
+        if user_id != "current":
+            raise web.HTTPUnauthorized(reason="Only current user operations are allowed now")
         db_client = req.app["db_client"]
 
         # Check patch operations in request are valid
@@ -443,7 +451,11 @@ class RESTApiHandler:
         patch = JsonPatch(patch_ops)
 
         operator = UserOperator(db_client)
-        user = await operator.update_user(user_id, patch)
+
+        session = req.app["Session"]
+        current_user = session["user_info"][0]
+        user = await operator.update_user(current_user, patch)
+
         body = json.dumps({"userId": user})
         LOG.info(f"PATCH user with ID {user} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
@@ -455,11 +467,22 @@ class RESTApiHandler:
         :returns: HTTP No Content response
         """
         user_id = req.match_info["userId"]
+        if user_id != "current":
+            raise web.HTTPUnauthorized(reason="Only current user deleteion is allowed now")
         db_client = req.app["db_client"]
         operator = UserOperator(db_client)
-        user = await operator.delete_user(user_id)
+
+        session = req.app["Session"]
+        current_user = session["user_info"][0]
+        user = await operator.delete_user(current_user)
         LOG.info(f"DELETE user with ID {user} was successful.")
-        return web.Response(status=204)
+        response = web.HTTPSeeOther(f"{req.url}")
+        req.app["Session"]["access_token"] = None
+        req.app["Session"]["user_info"] = None
+        req.app["Session"] = {}
+        req.app["Cookies"] = set({})
+        LOG.debug("Logged out user ")
+        raise response
 
 
 class SubmissionAPIHandler:
