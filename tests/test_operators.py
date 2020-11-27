@@ -585,7 +585,7 @@ class TestOperators(AsyncTestCase):
 
     async def test_folder_update_fails_with_bad_patch(self):
         """Test folder update raises error with improper JSON Patch."""
-        patch = JsonPatch([{"op": "replace", "path": "nothing"}])
+        patch = JsonPatch([{"op": "replace", "path": "/nothing"}])
         operator = FolderOperator(self.client)
         operator.db_service.exists.return_value = futurized(True)
         operator.db_service.read.return_value = futurized(self.test_folder)
@@ -636,7 +636,7 @@ class TestOperators(AsyncTestCase):
 
     async def test_user_update_fails_with_bad_patch(self):
         """Test user update raises error with improper JSON Patch."""
-        patch = JsonPatch([{"op": "replace", "path": "nothing"}])
+        patch = JsonPatch([{"op": "replace", "path": "/nothing"}])
         operator = UserOperator(self.client)
         operator.db_service.exists.return_value = futurized(True)
         operator.db_service.read.return_value = futurized(self.test_user)
