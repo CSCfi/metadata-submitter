@@ -1,11 +1,10 @@
 """Middleware methods for server."""
 import json
 from http import HTTPStatus
-from typing import Callable, Dict, Tuple
+from typing import Callable, Tuple
 
-from aiohttp import web, ClientSession
+from aiohttp import web
 from aiohttp.web import Request, Response, middleware, StreamResponse
-from multidict import CIMultiDict
 from yarl import URL
 import os
 import secrets
@@ -68,7 +67,8 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
         and bool(os.getenv("OIDC_URL"))
     ):
         session = request.app["Session"]
-        if "access_token" not in session:
+        if "access_token" not in session and "user_info" not in session:
+            LOG.debug("checked session parameter")
             raise web.HTTPSeeOther(location="/aai")
         if decrypt_cookie(request)["id"] in request.app["Cookies"]:
             LOG.debug("checked cookie session")
@@ -134,30 +134,6 @@ def _check_csrf(request: web.Request) -> bool:
         raise web.HTTPForbidden()
     # If all is well, return True.
     return True
-
-
-async def get_userinfo(req: Request) -> Dict[str, str]:
-    """Get information from userinfo endpoint."""
-    token = ""
-    try:
-        session = req.app["Session"]
-        if "access_token" not in session:
-            raise web.HTTPSeeOther(location="/aai")
-
-        token = session["access_token"]
-    except Exception as e:
-        LOG.error(f"Could not get session because of: {e}")
-        raise web.HTTPBadRequest(reason="Could not get a proper session.")
-
-    try:
-        headers = CIMultiDict({"Authorization": f"Bearer {token}"})
-        async with ClientSession(headers=headers) as sess:
-            async with sess.get(f"{aai_config['user_info']}") as resp:
-                result = await resp.json()
-                return result
-    except Exception as e:
-        LOG.error(f"Could not get information from AAI UserInfo endpoint because of: {e}")
-        raise web.HTTPBadRequest(reason="Could not get information from AAI UserInfo endpoint.")
 
 
 def _json_exception(status: int, exception: web.HTTPException, url: URL) -> str:

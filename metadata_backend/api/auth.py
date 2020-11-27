@@ -10,8 +10,10 @@ from aiohttp.web import Request, Response
 from .middlewares import generate_cookie
 from authlib.jose import jwt
 from authlib.jose.errors import MissingClaimError, InvalidClaimError, ExpiredTokenError, InvalidTokenError, DecodeError
+from multidict import CIMultiDict
+from .operators import UserOperator
 
-from typing import Dict
+from typing import Dict, Tuple, Union
 
 from ..helpers.logger import LOG
 
@@ -31,6 +33,7 @@ class AccessHandler:
         self.scope = aai["scope"]
         self.jwk = aai["jwk_server"]
         self.iss = aai["iss"]
+        self.user_info = aai["user_info"]
         self.nonce = secrets.token_hex()
 
     async def login(self, req: Request) -> Response:
@@ -104,7 +107,7 @@ class AccessHandler:
                     raise web.HTTPBadRequest(reason=reason)
 
         await self._save_to_session(req, key="access_token", value=access_token)
-        await self._save_to_session(req, key="id_token", value=id_token)
+        await self._set_user(req, access_token)
 
         response = web.HTTPSeeOther(f"{self.domain}/home")
 
@@ -145,7 +148,7 @@ class AccessHandler:
         :raises: 303 redirect
         """
         # Revoke token at AAI
-        access_token = self._get_from_session(req, "access_token")
+        access_token = await self._get_from_session(req, "access_token")
         auth = BasicAuth(login=self.client_id, password=self.client_secret)
         params = {"token": access_token}
         # Set up client authentication for request
@@ -160,14 +163,31 @@ class AccessHandler:
 
         # Overwrite status cookies with instantly expiring ones
         response = web.HTTPSeeOther(f"{req.url}")
-        # response.set_cookie("logged_in", "False", max_age=0, httponly=False)  # type: ignore
         req.app["Session"]["access_token"] = None
-        req.app["Session"]["id_token"] = None
+        req.app["Session"]["user_info"] = None
         req.app["Session"] = {}
         req.app["Cookies"] = set({})
         LOG.debug("Logged out user ")
 
         raise response
+
+    async def _set_user(self, req: Request, token: str) -> None:
+        """Set user in current session and return user id based on result of create_user."""
+        user_data: Tuple[str, str]
+        try:
+            headers = CIMultiDict({"Authorization": f"Bearer {token}"})
+            async with ClientSession(headers=headers) as sess:
+                async with sess.get(f"{self.user_info}") as resp:
+                    result = await resp.json()
+                    user_data = result["eppn"], f"{result['given_name']} {result['family_name']}"
+                    await self._save_to_session(req, key="user_info", value=user_data)
+        except Exception as e:
+            LOG.error(f"Could not get information from AAI UserInfo endpoint because of: {e}")
+            raise web.HTTPBadRequest(reason="Could not get information from AAI UserInfo endpoint.")
+
+        db_client = req.app["db_client"]
+        operator = UserOperator(db_client)
+        await operator.create_user(user_data)
 
     async def _get_key(self) -> dict:
         """Get OAuth2 public key and transform it to usable pem key."""
@@ -215,7 +235,9 @@ class AccessHandler:
         except Exception:
             raise web.HTTPForbidden(reason="No access")
 
-    async def _save_to_session(self, request: Request, key: str = "key", value: str = "value") -> None:
+    async def _save_to_session(
+        self, request: Request, key: str = "key", value: Union[Tuple[str, str], str] = "value"
+    ) -> None:
         """Save a given value to a session key."""
         LOG.debug(f"Save a value for {key} to session.")
 
