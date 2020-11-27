@@ -49,7 +49,7 @@ publish_url = "http://localhost:5430/publish"
 user_id = "USR12345678"
 test_user = {
     "userId": user_id,
-    "username": "tester",
+    "name": "tester",
     "drafts": [],
     "folders": [],
 }
@@ -221,7 +221,7 @@ async def create_test_user():
 
 async def patch_user(sess, user_id, patch):
     """Patch one user object within session, return userId."""
-    async with sess.patch(f"{users_url}/{user_id}", data=json.dumps(patch)) as resp:
+    async with sess.patch(f"{users_url}/current", data=json.dumps(patch)) as resp:
         LOG.debug(f"Updating user {user_id}")
         assert resp.status == 200, "HTTP Status code error"
         ans_patch = await resp.json()
@@ -231,7 +231,7 @@ async def patch_user(sess, user_id, patch):
 
 async def delete_user(sess, user_id):
     """Delete user object within session."""
-    async with sess.delete(f"{users_url}/{user_id}") as resp:
+    async with sess.delete(f"{users_url}/current") as resp:
         LOG.debug(f"Deleting user {user_id}")
         assert resp.status == 204, "HTTP Status code error"
 
@@ -486,7 +486,7 @@ async def test_crud_users_works():
             LOG.debug(f"Checking that user {user_id} was patched")
             res = await resp.json()
             assert res["userId"] == user_id, "content mismatch"
-            assert res["username"] == "tester", "content mismatch"
+            assert res["name"] == "tester", "content mismatch"
             assert res["drafts"] == [], "content mismatch"
             assert res["folders"] == [folder_id], "content mismatch"
 
