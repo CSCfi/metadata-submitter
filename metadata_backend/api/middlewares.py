@@ -56,23 +56,19 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
     :raises: 401 in case cookie cannot be found
     :returns: Successful requests unaffected
     """
-    if (
-        request.path
-        in [
-            "/schemas",
-            "/drafts",
-            "/validate",
-            "/submit",
-            "/folders",
-            "/objects",
-            "/users",
-            "/logout",
-            "/home",
-            "/newdraft",
-        ]
-        and "OIDC_URL" in os.environ
-        and bool(os.getenv("OIDC_URL"))
-    ):
+    controlled_paths = [
+        "/schemas",
+        "/drafts",
+        "/validate",
+        "/submit",
+        "/folders",
+        "/objects",
+        "/users",
+        "/logout",
+        "/home",
+        "/newdraft",
+    ]
+    if request.path.startswith(tuple(controlled_paths)) and "OIDC_URL" in os.environ and bool(os.getenv("OIDC_URL")):
         session = request.app["Session"]
         if not all(x in ["access_token", "user_info", "oidc_state"] for x in session):
             LOG.debug("checked session parameter")
