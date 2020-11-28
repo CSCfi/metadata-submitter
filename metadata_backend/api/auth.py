@@ -9,6 +9,7 @@ from aiohttp import web, BasicAuth, ClientSession
 from aiohttp.web import Request, Response
 from .middlewares import generate_cookie
 from authlib.jose import jwt
+from authlib.oidc.core import CodeIDToken
 from authlib.jose.errors import MissingClaimError, InvalidClaimError, ExpiredTokenError, InvalidTokenError, DecodeError
 from multidict import CIMultiDict
 from .operators import UserOperator
@@ -174,6 +175,7 @@ class AccessHandler:
         response = web.HTTPSeeOther(f"{req.url}")
         req.app["Session"]["access_token"] = None
         req.app["Session"]["user_info"] = None
+        req.app["Session"]["oidc_state"] = None
         req.app["Session"] = {}
         req.app["Cookies"] = set({})
         LOG.debug("Logged out user ")
@@ -233,16 +235,21 @@ class AccessHandler:
             "aud": {"essential": True, "value": self.client_id},
             "exp": {"essential": True},
             "iat": {"essential": True},
+        }
+        claims_params = {
             "auth_time": {"essential": True},
             "acr": {
                 "essential": True,
-                "value": f"{self.iss}/LoginHaka",
+                "values": f"{self.iss}/LoginHaka,{self.iss}/LoginCSC",
             },
-            "nonce": {"essential": True, "value": self.nonce},
+            "nonce": self.nonce,
         }
         try:
             LOG.debug("Validate ID Token")
-            decoded_data = jwt.decode(token, key, claims_options=claims_options)  # decode the token
+
+            decoded_data = jwt.decode(
+                token, key, claims_options=claims_options, claims_params=claims_params, claims_cls=CodeIDToken
+            )  # decode the token
             decoded_data.validate()  # validate the token contents
         # Testing the exceptions is done in integration tests
         except MissingClaimError as e:
