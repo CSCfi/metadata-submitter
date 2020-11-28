@@ -17,7 +17,7 @@ services:
       - "CSC_AAI_CLIENT_SECRET=secret"
       - "CSC_AAI_CLIENT_ID=aud2"
       - "ISS_URL=http://mockauth:8000"
-      - "AUTH_URL=http://localhost:8000"
+      - "AUTH_URL=http://localhost:8000/authorize"
       - "OIDC_URL=http://mockauth:8000"
       - "JWK_URL=http://mockauth:8000/keyset"
       - "AUTH_REFERER=http://mockauth:8000/"
@@ -36,14 +36,17 @@ services:
     ports:
       - 27017:27017
   mockauth:
-      hostname: mockauth
-      image: cscfi/metadata-submitter-dev
-      expose:
-        - 8000
-      ports:
-        - 8000:8000
-      volumes:
-        - ./tests/integration/mock_auth.py:/mock_auth.py
-      entrypoint: ["python", "/mock_auth.py", "0.0.0.0", "8000"]
+    build:
+      dockerfile: Dockerfile-dev
+      context: .
+    image: cscfi/metadata-submitter-dev
+    hostname: mockauth
+    expose:
+      - 8000
+    ports:
+      - 8000:8000
+    volumes:
+      - ./tests/integration/mock_auth.py:/mock_auth.py
+    entrypoint: ["python", "/mock_auth.py", "0.0.0.0", "8000"]
 volumes:
   data: 
