@@ -100,7 +100,9 @@ aai_config = {
     "scope": "openid profile email",
     "iss": os.getenv("ISS_URL", ""),
     "callback_url": f'{os.getenv("BASE_URL", "http://localhost:5430")}/callback',
-    "auth_url": f'{os.getenv("AUTH_URL", "")}/authorize',
+    "auth_url": f'{os.getenv("AUTH_URL", "")}'
+    if bool(os.getenv("AUTH_URL"))
+    else f'{os.getenv("OIDC_URL", "")}/authorize',
     "token_url": f'{os.getenv("OIDC_URL", "")}/token',
     "user_info": f'{os.getenv("OIDC_URL", "")}/userinfo',
     "revoke_url": "",

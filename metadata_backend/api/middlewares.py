@@ -72,7 +72,9 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
         session = request.app["Session"]
         if not all(x in ["access_token", "user_info", "oidc_state"] for x in session):
             LOG.debug("checked session parameter")
-            raise web.HTTPSeeOther(location="/aai")
+            response = web.HTTPSeeOther(f"{aai_config['domain']}/aai")
+            response.headers["Location"] = "/aai"
+            raise response
         if decrypt_cookie(request)["id"] in request.app["Cookies"]:
             LOG.debug("checked cookie session")
             _check_csrf(request)
