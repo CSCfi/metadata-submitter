@@ -48,7 +48,14 @@ async def http_error_handler(req: Request, handler: Callable) -> Response:
 
 @middleware
 async def check_login(request: Request, handler: Callable) -> StreamResponse:
-    """Check login if session user is logged in and can access API."""
+    """Check login if session user is logged in and can access API.
+
+    :param req: A request instance
+    :param handler: A request handler
+    :raises: 303 in case session does not contain access token and user_info
+    :raises: 401 in case cookie cannot be found
+    :returns: Successful requests unaffected
+    """
     if (
         request.path
         in [
@@ -86,7 +93,8 @@ def generate_cookie(request: Request) -> Tuple[dict, str]:
     """
     Generate an encrypted and unencrypted cookie.
 
-    Returns a tuple containing both the unencrypted and encrypted cookie.
+    :param request: A HTTP request instance
+    :returns: a tuple containing both the unencrypted and encrypted cookie.
     """
     cookie = {
         "id": secrets.token_hex(64),
@@ -99,18 +107,27 @@ def generate_cookie(request: Request) -> Tuple[dict, str]:
 
 
 def decrypt_cookie(request: web.Request) -> dict:
-    """Decrypt a cookie using the server instance specific fernet key."""
+    """Decrypt a cookie using the server instance specific fernet key.
+
+    :param request: A HTTP request instance
+    :raises: 401 in case cookie not in request
+    :returns: decrypted cookie
+    """
     if "MTD_SESSION" not in request.cookies:
         LOG.debug("Cannot find MTD_SESSION cookie")
         raise web.HTTPUnauthorized()
     cookie_json = request.app["Crypt"].decrypt(request.cookies["MTD_SESSION"].encode("utf-8")).decode("utf-8")
     cookie = json.loads(cookie_json)
-    LOG.debug("Decrypted cookie: {0}".format(cookie))
+    LOG.debug(f"Decrypted cookie: {cookie}")
     return cookie
 
 
 def _check_csrf(request: web.Request) -> bool:
-    """Check that the signature matches and referrer is correct."""
+    """Check that the signature matches and referrer is correct.
+
+    :raises: 403 in case signature does not match
+    :param request: A HTTP request instance
+    """
     cookie = decrypt_cookie(request)
     # Throw if the cookie originates from incorrect referer (meaning the
     # site's wrong)
@@ -120,7 +137,7 @@ def _check_csrf(request: web.Request) -> bool:
             LOG.info("Skipping Referer check due to request coming from OIDC.")
             return True
         if cookie["referer"] not in request.headers["Referer"]:
-            LOG.info("Throw due to invalid referer: {0}".format(request.headers["Referer"]))
+            LOG.info(f"Throw due to invalid referer: {request.headers['Referer']}")
             raise web.HTTPForbidden()
     else:
         LOG.debug("Skipping referral validation due to missing Referer-header.")
@@ -130,7 +147,7 @@ def _check_csrf(request: web.Request) -> bool:
         hashlib.sha256((cookie["id"] + cookie["referer"] + request.app["Salt"]).encode("utf-8")).hexdigest(),
         cookie["signature"],
     ):
-        LOG.info("Throw due to invalid referer: {0}".format(request.headers["Referer"]))
+        LOG.info(f"Throw due to invalid referer: {request.headers['Referer']}")
         raise web.HTTPForbidden()
     # If all is well, return True.
     return True
