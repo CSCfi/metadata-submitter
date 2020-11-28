@@ -479,6 +479,7 @@ class RESTApiHandler:
         response = web.HTTPSeeOther(f"{req.url}")
         req.app["Session"]["access_token"] = None
         req.app["Session"]["user_info"] = None
+        req.app["Session"]["oidc_state"] = None
         req.app["Session"] = {}
         req.app["Cookies"] = set({})
         LOG.debug("Logged out user ")

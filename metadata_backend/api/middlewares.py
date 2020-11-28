@@ -74,7 +74,7 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
         and bool(os.getenv("OIDC_URL"))
     ):
         session = request.app["Session"]
-        if "access_token" not in session and "user_info" not in session:
+        if not all(x in ["access_token", "user_info", "oidc_state"] for x in session):
             LOG.debug("checked session parameter")
             raise web.HTTPSeeOther(location="/aai")
         if decrypt_cookie(request)["id"] in request.app["Cookies"]:
