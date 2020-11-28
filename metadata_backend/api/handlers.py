@@ -21,6 +21,8 @@ from ..helpers.schema_loader import JSONSchemaLoader, SchemaNotFoundException, X
 from ..helpers.validator import JSONValidator, XMLValidator
 from .operators import FolderOperator, Operator, XMLOperator, UserOperator
 
+from ..conf.conf import aai_config
+
 
 class RESTApiHandler:
     """Handler for REST API methods."""
@@ -476,7 +478,8 @@ class RESTApiHandler:
         current_user = session["user_info"]
         user = await operator.delete_user(current_user)
         LOG.info(f"DELETE user with ID {user} was successful.")
-        response = web.HTTPSeeOther(f"{req.url}")
+        response = web.HTTPSeeOther(f"{aai_config['domain']}/")
+        response.headers["Location"] = "/"
         req.app["Session"]["access_token"] = None
         req.app["Session"]["user_info"] = None
         req.app["Session"]["oidc_state"] = None

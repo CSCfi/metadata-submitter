@@ -63,6 +63,7 @@ class AccessHandler:
         # Prepare response
         url = f"{self.auth_url}?{urllib.parse.urlencode(params)}"
         response = web.HTTPSeeOther(url)
+        response.headers["Location"] = url
         raise response
 
     async def callback(self, req: Request) -> Response:
@@ -172,7 +173,8 @@ class AccessHandler:
                     raise web.HTTPBadRequest(reason=f"Logout failed at AAI: {resp.status}.")
 
         # Overwrite status cookies with instantly expiring ones
-        response = web.HTTPSeeOther(f"{req.url}")
+        response = web.HTTPSeeOther(f"{self.domain}/aai")
+        response.headers["Location"] = "/aai"
         req.app["Session"]["access_token"] = None
         req.app["Session"]["user_info"] = None
         req.app["Session"]["oidc_state"] = None
