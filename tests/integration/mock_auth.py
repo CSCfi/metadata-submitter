@@ -30,7 +30,7 @@ def generate_token() -> Tuple:
 
 
 nonce = ""
-jwk = generate_token()
+jwk_pair = generate_token()
 
 header = {"jku": "http://mockauth:8000/jwk", "kid": "rsa1", "alg": "RS256", "typ": "JWT"}
 
@@ -90,13 +90,13 @@ async def token(req: web.Request) -> web.Response:
         "family_name": "test",
         "email": "test@test.what",
     }
-    data = {"access_token": "test", "id_token": jwt.encode(header, id_token, jwk[1]).decode("utf-8")}
+    data = {"access_token": "test", "id_token": jwt.encode(header, id_token, jwk_pair[1]).decode("utf-8")}
     return web.json_response(data)
 
 
 async def jwk_response(request: web.Request) -> web.Response:
     """Mock JSON Web Key server."""
-    keys = [jwk[0]]
+    keys = [jwk_pair[0]]
     keys[0]["kid"] = "rsa1"
     data = {"keys": keys}
     return web.json_response(data)
