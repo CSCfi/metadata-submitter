@@ -10,15 +10,18 @@ services:
       - 5430:5430
     depends_on:
       - database
+      - mockauth
     restart: on-failure
     environment:
       - "MONGODB_HOST=database:27017"
-      - "CSC_AAI_CLIENT_SECRET="
-      - "CSC_AAI_CLIENT_ID="
-      - "AUTH_URL="
-      - "OIDC_URL="
-      - "JWK_URL="
-      - "AUTH_REFERER="
+      - "CSC_AAI_CLIENT_SECRET=secret"
+      - "CSC_AAI_CLIENT_ID=aud2"
+      - "ISS_URL=http://mockauth:8000"
+      - "AUTH_URL=http://localhost:8000"
+      - "OIDC_URL=http://mockauth:8000"
+      - "JWK_URL=http://mockauth:8000/keyset"
+      - "AUTH_REFERER=http://mockauth:8000/"
+      - "LOG_LEVEL=DEBUG"
   database:
     image: "mongo"
     container_name: "metadata_submitter_database_dev"
@@ -32,6 +35,15 @@ services:
       - 27017
     ports:
       - 27017:27017
-
+  mockauth:
+      hostname: mockauth
+      image: cscfi/metadata-submitter-dev
+      expose:
+        - 8000
+      ports:
+        - 8000:8000
+      volumes:
+        - ./tests/integration/mock_auth.py:/mock_auth.py
+      entrypoint: ["python", "/mock_auth.py", "0.0.0.0", "8000"]
 volumes:
   data: 
