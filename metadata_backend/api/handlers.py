@@ -423,7 +423,7 @@ class RESTApiHandler:
         operator = UserOperator(db_client)
 
         session = req.app["Session"]
-        current_user = session["user_info"][0]
+        current_user = session["user_info"]
         user = await operator.read_user(current_user)
 
         LOG.info(f"GET user with ID {user_id} was successful.")
@@ -453,7 +453,7 @@ class RESTApiHandler:
         operator = UserOperator(db_client)
 
         session = req.app["Session"]
-        current_user = session["user_info"][0]
+        current_user = session["user_info"]
         user = await operator.update_user(current_user, patch)
 
         body = json.dumps({"userId": user})
@@ -473,7 +473,7 @@ class RESTApiHandler:
         operator = UserOperator(db_client)
 
         session = req.app["Session"]
-        current_user = session["user_info"][0]
+        current_user = session["user_info"]
         user = await operator.delete_user(current_user)
         LOG.info(f"DELETE user with ID {user} was successful.")
         response = web.HTTPSeeOther(f"{req.url}")
