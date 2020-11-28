@@ -49,7 +49,7 @@ async def http_error_handler(req: Request, handler: Callable) -> Response:
 
 @middleware
 async def check_login(request: Request, handler: Callable) -> StreamResponse:
-    """Check login if session is user is logged in and can access API."""
+    """Check login if session user is logged in and can access API."""
     if (
         request.path
         in [
