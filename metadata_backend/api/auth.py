@@ -196,14 +196,14 @@ class AccessHandler:
                 async with sess.get(f"{self.user_info}") as resp:
                     result = await resp.json()
                     user_data = result["eppn"], f"{result['given_name']} {result['family_name']}"
-                    await self._save_to_session(req, key="user_info", value=user_data)
         except Exception as e:
             LOG.error(f"Could not get information from AAI UserInfo endpoint because of: {e}")
             raise web.HTTPBadRequest(reason="Could not get information from AAI UserInfo endpoint.")
 
         db_client = req.app["db_client"]
         operator = UserOperator(db_client)
-        await operator.create_user(user_data)
+        user_id = await operator.create_user(user_data)
+        await self._save_to_session(req, key="user_info", value=user_id)
 
     async def _get_key(self) -> dict:
         """Get OAuth2 public key and transform it to usable pem key.
