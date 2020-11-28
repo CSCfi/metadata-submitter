@@ -8,7 +8,6 @@ should be taken into account.
 import asyncio
 import json
 import logging
-from motor.motor_asyncio import AsyncIOMotorClient
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
@@ -50,11 +49,12 @@ publish_url = "http://localhost:5430/publish"
 user_id = "current"
 test_user = "test@test.what", "test test"
 
+
 # === Helper functions ===
 async def login(sess):
     """Mock login."""
-    async with sess.get(f"{base_url}/aai") as resp:
-        LOG.debug(f"Doing mock user login")
+    async with sess.get(f"{base_url}/aai"):
+        LOG.debug("Doing mock user login")
 
 
 async def create_request_data(schema, filename):
