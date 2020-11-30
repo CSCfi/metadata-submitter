@@ -8,6 +8,7 @@ from typing import Dict, List, Tuple, Union, cast, AsyncGenerator
 
 from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
+from aiojobs.aiohttp import spawn
 from multidict import CIMultiDict
 from motor.motor_asyncio import AsyncIOMotorClient
 from multidict import MultiDict, MultiDictProxy
@@ -720,7 +721,7 @@ class RESTApiHandler:
         """
         dataset_id = req.match_info["datasetId"]
         db_client = req.app["db_client"]
-        self.data_mirroring(dataset_id, db_client)
+        await spawn(req, self.data_mirroring(dataset_id, db_client))
         return web.Response(status=202)
 
     async def data_mirroring(self, dataset_id: str, db_client: AsyncIOMotorClient) -> None:
