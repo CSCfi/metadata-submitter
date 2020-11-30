@@ -39,12 +39,12 @@ test_json_files = [
     ("analysis", "ERZ266973.json", "ERZ266973.json"),
 ]
 base_url = "http://localhost:5430"
-objects_url = "http://localhost:5430/objects"
-drafts_url = "http://localhost:5430/drafts"
-folders_url = "http://localhost:5430/folders"
-users_url = "http://localhost:5430/users"
-submit_url = "http://localhost:5430/submit"
-publish_url = "http://localhost:5430/publish"
+objects_url = f"{base_url}/objects"
+drafts_url = f"{base_url}/drafts"
+folders_url = f"{base_url}/folders"
+users_url = f"{base_url}/users"
+submit_url = f"{base_url}/submit"
+publish_url = f"{base_url}/publish"
 
 user_id = "current"
 test_user = "test@test.what", "test test"
@@ -226,7 +226,7 @@ async def delete_user(sess, user_id):
     async with sess.delete(f"{users_url}/current") as resp:
         LOG.debug(f"Deleting user {user_id}")
         # we expect 404 as there is no frontend
-        assert str(resp.url) == "http://localhost:5430/", "redirect url user delete differs"
+        assert str(resp.url) == f"{base_url}/", "redirect url user delete differs"
         assert resp.status == 404, "HTTP Status code error"
 
 
@@ -556,7 +556,7 @@ async def main():
         await login(sess)
 
         LOG.debug("=== Testing basic CRUD operations ===")
-        # await asyncio.gather(*[test_crud_works(sess, schema, file) for schema, file in test_xml_files])
+        await asyncio.gather(*[test_crud_works(sess, schema, file) for schema, file in test_xml_files])
 
         # Test adding and getting draft objects
         LOG.debug("=== Testing basic CRUD drafts operations ===")
