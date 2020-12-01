@@ -75,7 +75,7 @@ class RESTApiHandler:
             try:
                 param = int(req.query.get(param_name, default))
             except ValueError:
-                reason = f"{param_name} must a number, now it was " f"{req.query.get(param_name)}"
+                reason = f"{param_name} must be a number, now it is " f"{req.query.get(param_name)}"
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
             if param < 1:
@@ -204,7 +204,9 @@ class RESTApiHandler:
             content = await self._get_data(req)
             JSONValidator(content, schema_type).validate
             operator = Operator(db_client)
+
         accession_id = await operator.create_metadata_object(collection, content)
+
         body = json.dumps({"accessionId": accession_id})
         url = f"{req.scheme}://{req.host}{req.path}"
         location_headers = CIMultiDict(Location=f"{url}{accession_id}")
@@ -239,6 +241,7 @@ class RESTApiHandler:
         accession_id = req.match_info["accessionId"]
         db_client = req.app["db_client"]
         accession_id = await Operator(db_client).delete_metadata_object(collection, accession_id)
+
         LOG.info(f"DELETE object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(status=204)
 
@@ -268,6 +271,7 @@ class RESTApiHandler:
             JSONValidator(content, schema_type).validate
             operator = Operator(db_client)
         accession_id = await operator.replace_metadata_object(collection, accession_id, content)
+
         body = json.dumps({"accessionId": accession_id})
         LOG.info(f"PUT object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
@@ -294,6 +298,7 @@ class RESTApiHandler:
             content = await self._get_data(req)
             operator = Operator(db_client)
         accession_id = await operator.update_metadata_object(collection, accession_id, content)
+
         body = json.dumps({"accessionId": accession_id})
         LOG.info(f"PATCH object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
@@ -305,8 +310,10 @@ class RESTApiHandler:
         :returns: JSON list of folders available for the user
         """
         db_client = req.app["db_client"]
+
         operator = FolderOperator(db_client)
         folders = await operator.query_folders({})
+
         body = json.dumps({"folders": folders})
         LOG.info(f"GET folders. Retrieved {len(folders)} folders.")
         return web.Response(body=body, status=200, content_type="application/json")
@@ -320,9 +327,12 @@ class RESTApiHandler:
         db_client = req.app["db_client"]
         content = await self._get_data(req)
         JSONValidator(content, "folders").validate
+
         operator = FolderOperator(db_client)
         folder = await operator.create_folder(content)
+
         body = json.dumps({"folderId": folder})
+
         url = f"{req.scheme}://{req.host}{req.path}"
         location_headers = CIMultiDict(Location=f"{url}/{folder}")
         LOG.info(f"POST new folder with ID {folder} was successful.")
@@ -337,8 +347,10 @@ class RESTApiHandler:
         """
         folder_id = req.match_info["folderId"]
         db_client = req.app["db_client"]
+
         operator = FolderOperator(db_client)
         folder = await operator.read_folder(folder_id)
+
         LOG.info(f"GET folder with ID {folder_id} was successful.")
         return web.Response(body=json.dumps(folder), status=200, content_type="application/json")
 
@@ -364,6 +376,7 @@ class RESTApiHandler:
 
         operator = FolderOperator(db_client)
         folder = await operator.update_folder(folder_id, patch)
+
         body = json.dumps({"folderId": folder})
         LOG.info(f"PATCH folder with ID {folder} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
@@ -395,6 +408,7 @@ class RESTApiHandler:
             {"op": "replace", "path": "/drafts", "value": []},
         ]
         new_folder = await operator.update_folder(folder_id, JsonPatch(patch))
+
         body = json.dumps({"folderId": new_folder})
         LOG.info(f"Patching folder with ID {new_folder} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
@@ -407,8 +421,10 @@ class RESTApiHandler:
         """
         folder_id = req.match_info["folderId"]
         db_client = req.app["db_client"]
+
         operator = FolderOperator(db_client)
         folder = await operator.delete_folder(folder_id)
+
         LOG.info(f"DELETE folder with ID {folder} was successful.")
         return web.Response(status=204)
 
@@ -420,7 +436,8 @@ class RESTApiHandler:
         """
         user_id = req.match_info["userId"]
         if user_id != "current":
-            raise web.HTTPUnauthorized(reason="Only current user retrieval is allowed now")
+            LOG.info(f"User ID {user_id} was requested")
+            raise web.HTTPUnauthorized(reason="Only current user retrieval is allowed")
         db_client = req.app["db_client"]
         operator = UserOperator(db_client)
 
@@ -439,7 +456,8 @@ class RESTApiHandler:
         """
         user_id = req.match_info["userId"]
         if user_id != "current":
-            raise web.HTTPUnauthorized(reason="Only current user operations are allowed now")
+            LOG.info(f"User ID {user_id} patch was requested")
+            raise web.HTTPUnauthorized(reason="Only current user operations are allowed")
         db_client = req.app["db_client"]
 
         # Check patch operations in request are valid
@@ -470,7 +488,8 @@ class RESTApiHandler:
         """
         user_id = req.match_info["userId"]
         if user_id != "current":
-            raise web.HTTPUnauthorized(reason="Only current user deleteion is allowed now")
+            LOG.info(f"User ID {user_id} delete was requested")
+            raise web.HTTPUnauthorized(reason="Only current user deleteion is allowed")
         db_client = req.app["db_client"]
         operator = UserOperator(db_client)
 
@@ -478,13 +497,15 @@ class RESTApiHandler:
         current_user = session["user_info"]
         user = await operator.delete_user(current_user)
         LOG.info(f"DELETE user with ID {user} was successful.")
-        response = web.HTTPSeeOther(f"{aai_config['domain']}/")
-        response.headers["Location"] = "/"
+
         req.app["Session"]["access_token"] = None
         req.app["Session"]["user_info"] = None
         req.app["Session"]["oidc_state"] = None
         req.app["Session"] = {}
         req.app["Cookies"] = set({})
+
+        response = web.HTTPSeeOther(f"{aai_config['domain']}/")
+        response.headers["Location"] = "/"
         LOG.debug("Logged out user ")
         raise response
 

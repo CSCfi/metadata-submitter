@@ -129,7 +129,7 @@ class BaseOperator(ABC):
             LOG.info(f"{accession_id} successfully deleted from collection")
             return accession_id
         else:
-            reason = "Deleting for {accession_id} from database failed."
+            reason = f"Deleting {accession_id} from database failed."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
