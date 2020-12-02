@@ -9,7 +9,6 @@ from typing import Dict, List, Tuple, Union, cast
 from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
-from jsonpatch import JsonPatch
 from motor.motor_asyncio import AsyncIOMotorClient
 from multidict import MultiDict, MultiDictProxy
 from xmlschema import XMLSchemaException
@@ -463,13 +462,21 @@ class RESTApiHandler:
 
         # Check patch operations in request are valid
         patch_ops = await self._get_data(req)
-        allowed_paths = ["/name", "/description", "/metadataObjects", "/published", "/drafts"]
+        allowed_paths = ["/name", "/description"]
+        array_paths = ["/metadataObjects/-", "/drafts/-"]
         for op in patch_ops:
-            if all(i not in op["path"] for i in allowed_paths):
+            if all(i not in op["path"] for i in allowed_paths + array_paths):
                 reason = f"Request contains '{op['path']}' key that cannot be updated to folders."
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
-        patch = JsonPatch(patch_ops)
+            if op["op"] in ["remove", "copy", "test", "move"]:
+                reason = f"{op['op']} on {op['path']} is not allowed."
+                LOG.error(reason)
+                raise web.HTTPUnauthorized(reason=reason)
+            if op["op"] == "replace" and op["path"] in array_paths:
+                reason = f"{op['op']} on {op['path']} is not allowed."
+                LOG.error(reason)
+                raise web.HTTPUnauthorized(reason=reason)
 
         check_user = await self._handle_check_ownedby_user(req, "folder", folder_id)
         if not check_user:
@@ -478,7 +485,7 @@ class RESTApiHandler:
             raise web.HTTPUnauthorized(reason=reason)
 
         operator = FolderOperator(db_client)
-        folder = await operator.update_folder(folder_id, patch)
+        folder = await operator.update_folder(folder_id, patch_ops if isinstance(patch_ops, list) else [patch_ops])
 
         body = json.dumps({"folderId": folder})
         LOG.info(f"PATCH folder with ID {folder} was successful.")
@@ -517,7 +524,7 @@ class RESTApiHandler:
             {"op": "replace", "path": "/published", "value": True},
             {"op": "replace", "path": "/drafts", "value": []},
         ]
-        new_folder = await operator.update_folder(folder_id, JsonPatch(patch))
+        new_folder = await operator.update_folder(folder_id, patch)
 
         body = json.dumps({"folderId": new_folder})
         LOG.info(f"Patching folder with ID {new_folder} was successful.")
@@ -540,6 +547,10 @@ class RESTApiHandler:
 
         operator = FolderOperator(db_client)
         folder = await operator.delete_folder(folder_id)
+
+        user_op = UserOperator(db_client)
+        current_user = req.app["Session"]["user_info"]
+        user_op.remove_objects(current_user, "folders", [folder_id])
 
         LOG.info(f"DELETE folder with ID {folder} was successful.")
         return web.Response(status=204)

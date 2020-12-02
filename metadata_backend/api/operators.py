@@ -677,6 +677,32 @@ class FolderOperator:
             LOG.info(f"Updating folder with id {folder_id} to database " "succeeded.")
             return folder_id
 
+    async def remove_object(self, folder_id: str, collection: str, accession_id: str) -> None:
+        """Remove object from folders in the database.
+
+        :param folder_id: ID of folder to update
+        :param accession_id: ID of object to remove
+        :param collection: collection where to remove the id from
+        :returns: None
+        """
+        await self._check_folder_exists(self.db_service, folder_id)
+
+        try:
+            folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
+            upd_content = {folder_path: {"accessionId": accession_id}}
+            result = await self.db_service.remove("folder", folder_id, upd_content)
+            JSONValidator(result, "users").validate
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting user: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        except Exception as e:
+            reason = f"Updating user to database failed beacause of: {e}."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        LOG.info(f"Removing object {accession_id} from {folder_id} succeeded.")
+
     async def delete_folder(self, folder_id: str) -> str:
         """Delete object folder from database.
 
@@ -839,6 +865,62 @@ class UserOperator:
         else:
             LOG.info(f"Updating user with id {user_id} to database " "succeeded.")
             return user_id
+
+    async def assign_objects(self, user_id: str, collection: str, object_ids: List) -> None:
+        """Assing object to user.
+
+        An object can be folder(s) or draft(s).
+
+        :param user_id: ID of user to update
+        :param collection: collection where to remove the id from
+        :param object_ids: ID or list of IDs of folder(s) to add
+        returns: None
+        """
+        await self._check_user_exists(self.db_service, user_id)
+
+        try:
+            LOG.info(object_ids)
+            upd_content = {collection: {"$each": object_ids}}
+            LOG.info(upd_content)
+            result = await self.db_service.append("user", user_id, upd_content)
+            JSONValidator(result, "users").validate
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting user: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        except Exception as e:
+            reason = f"Updating user to database failed beacause of: {e}."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        LOG.info(f"Assigning {object_ids} from {user_id} succeeded.")
+
+    async def remove_objects(self, user_id: str, collection: str, object_ids: List) -> None:
+        """Remove object from user.
+
+        An object can be folder(s) or draft(s).
+
+        :param user_id: ID of user to update
+        :param collection: collection where to remove the id from
+        :param object_ids: ID or list of IDs of folder(s) to add
+        returns: None
+        """
+        await self._check_user_exists(self.db_service, user_id)
+
+        try:
+            upd_content = {collection: {"$in": object_ids}}
+            result = await self.db_service.remove("user", user_id, upd_content)
+            JSONValidator(result, "users").validate
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting user: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        except Exception as e:
+            reason = f"Updating user to database failed beacause of: {e}."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        LOG.info(f"Removing {object_ids} from {user_id} succeeded.")
 
     async def delete_user(self, user_id: str) -> str:
         """Delete user object from database.
