@@ -214,7 +214,15 @@ class RESTApiHandler:
         req_format = req.query.get("format", "json").lower()
         db_client = req.app["db_client"]
         operator = XMLOperator(db_client) if req_format == "xml" else Operator(db_client)
+
+        check_user = await self._handle_check_ownedby_user(req, collection, accession_id)
+        if not check_user:
+            reason = f"The object {accession_id} does not belong to current user."
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
+
         data, content_type = await operator.read_metadata_object(collection, accession_id)
+
         data = data if req_format == "xml" else json.dumps(data)
         LOG.info(f"GET object with accesssion ID {accession_id} from schema {collection}.")
         return web.Response(body=data, status=200, content_type=content_type)
@@ -279,6 +287,32 @@ class RESTApiHandler:
 
         accession_id = req.match_info["accessionId"]
         db_client = req.app["db_client"]
+
+        check_user = await self._handle_check_ownedby_user(req, collection, accession_id)
+        if not check_user:
+            reason = f"The object {accession_id} does not belong to current user."
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
+
+        folder_op = FolderOperator(db_client)
+        exists, folder_id, published = await folder_op.check_object_in_folder(collection, accession_id)
+        if exists:
+            if published:
+                reason = "published objects cannot be deleted."
+                LOG.error(reason)
+                raise web.HTTPUnauthorized(reason=reason)
+            folder_op.remove_object(folder_id, collection, accession_id)
+        else:
+            user_op = UserOperator(db_client)
+            current_user = req.app["Session"]["user_info"]
+            check_user = await user_op.check_user_has_doc(collection, current_user, accession_id)
+            if check_user:
+                collection = "drafts"
+            else:
+                reason = "This object does not seem to belong to anything."
+                LOG.error(reason)
+                raise web.HTTPUnprocessableEntity(reason=reason)
+
         accession_id = await Operator(db_client).delete_metadata_object(collection, accession_id)
 
         LOG.info(f"DELETE object with accession ID {accession_id} in schema {collection} was successful.")
@@ -309,6 +343,13 @@ class RESTApiHandler:
             content = await self._get_data(req)
             JSONValidator(content, schema_type).validate
             operator = Operator(db_client)
+
+        check_user = await self._handle_check_ownedby_user(req, collection, accession_id)
+        if not check_user:
+            reason = f"The object {accession_id} does not belong to current user."
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
+
         accession_id = await operator.replace_metadata_object(collection, accession_id, content)
 
         body = json.dumps({"accessionId": accession_id})
@@ -336,6 +377,13 @@ class RESTApiHandler:
         else:
             content = await self._get_data(req)
             operator = Operator(db_client)
+
+        check_user = await self._handle_check_ownedby_user(req, collection, accession_id)
+        if not check_user:
+            reason = f"The object {accession_id} does not belong to current user."
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
+
         accession_id = await operator.update_metadata_object(collection, accession_id, content)
 
         body = json.dumps({"accessionId": accession_id})
