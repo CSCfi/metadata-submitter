@@ -8,7 +8,7 @@ from metadata_backend.helpers.parser import XMLToJSONParser
 
 
 class ParserTestCase(unittest.TestCase):
-    """Api endpoint class test cases."""
+    """API endpoint class test cases."""
 
     TESTFILES_ROOT = Path(__file__).parent / "test_files"
 
