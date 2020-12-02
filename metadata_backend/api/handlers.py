@@ -418,6 +418,10 @@ class RESTApiHandler:
         operator = FolderOperator(db_client)
         folder = await operator.create_folder(content)
 
+        user_op = UserOperator(db_client)
+        current_user = req.app["Session"]["user_info"]
+        await user_op.assign_objects(current_user, "folders", [folder])
+
         body = json.dumps({"folderId": folder})
 
         url = f"{req.scheme}://{req.host}{req.path}"
@@ -434,6 +438,12 @@ class RESTApiHandler:
         """
         folder_id = req.match_info["folderId"]
         db_client = req.app["db_client"]
+
+        check_user = await self._handle_check_ownedby_user(req, "folder", folder_id)
+        if not check_user:
+            reason = f"The folder {folder_id} does not belong to current user."
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
 
         operator = FolderOperator(db_client)
         folder = await operator.read_folder(folder_id)
@@ -461,6 +471,12 @@ class RESTApiHandler:
                 raise web.HTTPBadRequest(reason=reason)
         patch = JsonPatch(patch_ops)
 
+        check_user = await self._handle_check_ownedby_user(req, "folder", folder_id)
+        if not check_user:
+            reason = f"The folder {folder_id} does not belong to current user."
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
+
         operator = FolderOperator(db_client)
         folder = await operator.update_folder(folder_id, patch)
 
@@ -477,6 +493,13 @@ class RESTApiHandler:
         """
         folder_id = req.match_info["folderId"]
         db_client = req.app["db_client"]
+
+        check_user = await self._handle_check_ownedby_user(req, "folder", folder_id)
+        if not check_user:
+            reason = f"The folder {folder_id} does not belong to current user."
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
+
         operator = FolderOperator(db_client)
         old_folder = await operator.read_folder(folder_id)
         LOG.info(f"GET folder with ID {folder_id} was successful.")
@@ -508,6 +531,12 @@ class RESTApiHandler:
         """
         folder_id = req.match_info["folderId"]
         db_client = req.app["db_client"]
+
+        check_user = await self._handle_check_ownedby_user(req, "folder", folder_id)
+        if not check_user:
+            reason = f"The folder {folder_id} does not belong to current user."
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
 
         operator = FolderOperator(db_client)
         folder = await operator.delete_folder(folder_id)
