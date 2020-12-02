@@ -10,6 +10,7 @@ from xmlschema import XMLSchema, XMLSchemaConverter, XMLSchemaException, XsdElem
 from .logger import LOG
 from .schema_loader import SchemaNotFoundException, XMLSchemaLoader
 from .validator import JSONValidator, XMLValidator
+from pymongo import ReplaceOne, UpdateOne
 
 
 class MetadataXMLConverter(XMLSchemaConverter):
@@ -232,3 +233,34 @@ class XMLToJSONParser:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         return schema
+
+
+def jsonpatch_mongo(identifier: Dict, json_patch: List[Dict[str, Any]]) -> List:
+    """Convert JSONpatch object to mongo query.
+
+    :param jsonpatch: array with JSON patch actions
+    :returns: dictionary of mongodb actions
+    """
+    queries: List[Any] = []
+    for op in json_patch:
+        if op["op"] == "add":
+            if op["path"].endswith("/-"):
+                queries.append(
+                    UpdateOne(
+                        identifier,
+                        {
+                            "$addToSet": {
+                                op["path"][1:-2]: {
+                                    "$each": op["value"] if isinstance(op["value"], list) else [op["value"]]
+                                },
+                            },
+                        },
+                    )
+                )
+            else:
+                queries.append(UpdateOne(identifier, {"$set": {op["path"][1:]: op["value"]}}))
+        elif op["op"] == "replace":
+            path = op["path"][1:-2] if op["path"].endswith("/-") else op["path"][1:]
+            queries.append(ReplaceOne(identifier, {"$set": {path: op["value"]}}))
+
+    return queries
