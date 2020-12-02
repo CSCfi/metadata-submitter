@@ -58,6 +58,45 @@ class RESTApiHandler:
         LOG.debug("Link headers created")
         return link_headers
 
+    async def _handle_check_ownedby_user(self, req: Request, collection: str, accession_id: str) -> bool:
+        """Check if object belongs to user.
+
+        For this we need to check the object is in exactly 1 folder and we need to check
+        that folder belongs to a user. If the folder is published that means it can be
+        browsed by other users as well.
+
+        :param req: HTTP request
+        :param collection: collection or schema of document
+        :param doc_id: document accession id
+        :raises: HTTPUnauthorized if accession id does not belong to user
+        :returns: bool
+        """
+        db_client = req.app["db_client"]
+        current_user = req.app["Session"]["user_info"]
+        user_op = UserOperator(db_client)
+
+        if collection != "folder":
+
+            folder_op = FolderOperator(db_client)
+            check, folder_id, published = await folder_op.check_object_in_folder(collection, accession_id)
+
+            if published:
+                return True
+            elif check:
+                if collection.startswith("draft"):
+                    # if the draft object is found in folder we just need to check if the folder belongs to user
+                    return await user_op.check_user_has_doc("folder", current_user, folder_id)
+                else:
+                    return await user_op.check_user_has_doc(collection, current_user, folder_id)
+            elif collection.startswith("draft"):
+                # if collection is draft but not found in a folder we also check if object is in drafts of the user
+                # they will be here if they will not be deleted after publish
+                return await user_op.check_user_has_doc(collection, current_user, accession_id)
+            else:
+                return False
+        else:
+            return await user_op.check_user_has_doc(collection, current_user, accession_id)
+
     async def _handle_query(self, req: Request) -> Response:
         """Handle query results.
 
