@@ -8,8 +8,6 @@ from typing import Any, Dict, List, Tuple, Union
 
 from aiohttp import web
 from dateutil.relativedelta import relativedelta
-from jsonpatch import InvalidJsonPatch, JsonPatch, JsonPatchConflict
-from jsonpointer import JsonPointerException
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
 from multidict import MultiDictProxy
 from pymongo.errors import ConnectionFailure, OperationFailure
@@ -166,7 +164,7 @@ class BaseOperator(ABC):
         try:
             check_exists = await self.db_service.exists(schema_type, accession_id)
             if not check_exists:
-                reason = f"Object with accession id {accession_id} " "was not found."
+                reason = f"Object with accession id {accession_id} was not found."
                 LOG.error(reason)
                 raise web.HTTPNotFound(reason=reason)
             replace_success = await self.db_service.replace(schema_type, accession_id, data)
@@ -197,7 +195,7 @@ class BaseOperator(ABC):
         try:
             check_exists = await self.db_service.exists(schema_type, accession_id)
             if not check_exists:
-                reason = f"Object with accession id {accession_id} " "was not found."
+                reason = f"Object with accession id {accession_id} was not found."
                 LOG.error(reason)
                 raise web.HTTPNotFound(reason=reason)
             update_success = await self.db_service.update(schema_type, accession_id, data)
@@ -231,7 +229,7 @@ class BaseOperator(ABC):
         try:
             check_exists = await operator.db_service.exists(schema_type, accession_id)
             if not check_exists and not isinstance(operator, XMLOperator):
-                reason = f"Object with accession id {accession_id} " "was not found."
+                reason = f"Object with accession id {accession_id} was not found."
                 LOG.error(reason)
                 raise web.HTTPNotFound(reason=reason)
             else:
@@ -392,7 +390,7 @@ class Operator(BaseOperator):
         """
         forbidden_keys = ["accessionId", "publishDate", "dateCreated"]
         if any(i in data for i in forbidden_keys):
-            reason = f"Some items (e.g: {', '.join(forbidden_keys)}) " "cannot be changed."
+            reason = f"Some items (e.g: {', '.join(forbidden_keys)}) cannot be changed."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         data["accessionId"] = accession_id
@@ -410,7 +408,7 @@ class Operator(BaseOperator):
         """
         forbidden_keys = ["accessionId", "publishDate", "dateCreated"]
         if any(i in data for i in forbidden_keys):
-            reason = f"Some items (e.g: {', '.join(forbidden_keys)}) " "cannot be changed."
+            reason = f"Some items (e.g: {', '.join(forbidden_keys)}) cannot be changed."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         data["accessionId"] = accession_id
@@ -600,7 +598,8 @@ class FolderOperator:
         folder_id = self._generate_folder_id()
         data["folderId"] = folder_id
         data["published"] = False
-        data["metadataObjects"], data["drafts"] = [], []
+        data["metadataObjects"] = data["metadataObjects"] if "metadataObjects" in data else []
+        data["drafts"] = data["drafts"] if "drafts" in data else []
         try:
             insert_success = await self.db_service.create("folder", data)
         except (ConnectionFailure, OperationFailure) as error:
@@ -613,7 +612,7 @@ class FolderOperator:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         else:
-            LOG.info(f"Inserting folder with id {folder_id} to database " "succeeded.")
+            LOG.info(f"Inserting folder with id {folder_id} to database succeeded.")
             return folder_id
 
     @auto_reconnect
@@ -642,7 +641,7 @@ class FolderOperator:
             raise web.HTTPBadRequest(reason=reason)
         return folder
 
-    async def update_folder(self, folder_id: str, patch: JsonPatch) -> str:
+    async def update_folder(self, folder_id: str, patch: List) -> str:
         """Update object folder from database.
 
         Utilizes JSON Patch operations specified at: http://jsonpatch.com/
@@ -652,20 +651,13 @@ class FolderOperator:
         :returns: ID of the folder updated to database
         """
         await self._check_folder_exists(self.db_service, folder_id)
+
         try:
-            folder = await self.db_service.read("folder", folder_id)
-            upd_content = patch.apply(folder)
-            JSONValidator(upd_content, "folders").validate
-            update_success = await self.db_service.update("folder", folder_id, upd_content)
+            update_success = await self.db_service.patch("folder", folder_id, patch)
             sanity_check = await self.db_service.read("folder", folder_id)
             JSONValidator(sanity_check, "folders").validate
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting folder: {error}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        except (InvalidJsonPatch, JsonPatchConflict, JsonPointerException) as error:
-            reason = f"Error happened while applying JSON Patch: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -674,7 +666,7 @@ class FolderOperator:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         else:
-            LOG.info(f"Updating folder with id {folder_id} to database " "succeeded.")
+            LOG.info(f"Updating folder with id {folder_id} to database succeeded.")
             return folder_id
 
     async def remove_object(self, folder_id: str, collection: str, accession_id: str) -> None:
@@ -833,28 +825,21 @@ class UserOperator:
             raise web.HTTPBadRequest(reason=reason)
         return user
 
-    async def update_user(self, user_id: str, patch: JsonPatch) -> str:
+    async def update_user(self, user_id: str, patch: List) -> str:
         """Update user object from database.
 
         :param user_id: ID of user to update
-        :param patch: JSON Patch operations determined in the request
+        :param patch: Patch operations determined in the request
         :returns: ID of the user updated to database
         """
         await self._check_user_exists(self.db_service, user_id)
+
         try:
-            user = await self.db_service.read("user", user_id)
-            upd_content = patch.apply(user)
-            JSONValidator(upd_content, "users").validate
-            update_success = await self.db_service.update("user", user_id, upd_content)
+            update_success = await self.db_service.patch("user", user_id, patch)
             sanity_check = await self.db_service.read("user", user_id)
             JSONValidator(sanity_check, "users").validate
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting user: {error}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        except (InvalidJsonPatch, JsonPatchConflict, JsonPointerException) as error:
-            reason = f"Error happened while applying JSON Patch: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -863,7 +848,7 @@ class UserOperator:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         else:
-            LOG.info(f"Updating user with id {user_id} to database " "succeeded.")
+            LOG.info(f"Updating user with id {user_id} to database succeeded.")
             return user_id
 
     async def assign_objects(self, user_id: str, collection: str, object_ids: List) -> None:

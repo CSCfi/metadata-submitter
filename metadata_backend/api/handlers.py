@@ -568,8 +568,7 @@ class RESTApiHandler:
         db_client = req.app["db_client"]
         operator = UserOperator(db_client)
 
-        session = req.app["Session"]
-        current_user = session["user_info"]
+        current_user = req.app["Session"]["user_info"]
         user = await operator.read_user(current_user)
 
         LOG.info(f"GET user with ID {user_id} was successful.")
@@ -589,19 +588,21 @@ class RESTApiHandler:
 
         # Check patch operations in request are valid
         patch_ops = await self._get_data(req)
-        allowed_paths = ["/drafts", "/folders"]
+        allowed_paths = ["/drafts/-", "/folders/-"]
         for op in patch_ops:
             if all(i not in op["path"] for i in allowed_paths):
-                reason = f"Request contains '{op['path']}' key that cannot be updated to user object."
+                reason = f"Request contains '{op['path']}' key that cannot be updated to user object"
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
-        patch = JsonPatch(patch_ops)
+            if op["op"] in ["remove", "copy", "test", "move", "replace"]:
+                reason = f"{op['op']} on {op['path']} is not allowed."
+                LOG.error(reason)
+                raise web.HTTPUnauthorized(reason=reason)
 
         operator = UserOperator(db_client)
 
-        session = req.app["Session"]
-        current_user = session["user_info"]
-        user = await operator.update_user(current_user, patch)
+        current_user = req.app["Session"]["user_info"]
+        user = await operator.update_user(current_user, patch_ops if isinstance(patch_ops, list) else [patch_ops])
 
         body = json.dumps({"userId": user})
         LOG.info(f"PATCH user with ID {user} was successful.")
@@ -620,8 +621,7 @@ class RESTApiHandler:
         db_client = req.app["db_client"]
         operator = UserOperator(db_client)
 
-        session = req.app["Session"]
-        current_user = session["user_info"]
+        current_user = req.app["Session"]["user_info"]
         user = await operator.delete_user(current_user)
         LOG.info(f"DELETE user with ID {user} was successful.")
 
