@@ -12,7 +12,7 @@ from metadata_backend.server import init
 
 
 class HandlersTestCase(AioHTTPTestCase):
-    """Api endpoint class test cases."""
+    """API endpoint class test cases."""
 
     TESTFILES_ROOT = Path(__file__).parent / "test_files"
 
@@ -49,7 +49,7 @@ class HandlersTestCase(AioHTTPTestCase):
             "name": "test",
             "description": "test folder",
             "published": False,
-            "metadataObjects": [],
+            "metadataObjects": ["EDAG3991701442770179", "EGA123456"],
             "drafts": [],
         }
         self.user_id = "USR12345678"
@@ -57,7 +57,7 @@ class HandlersTestCase(AioHTTPTestCase):
             "userId": self.user_id,
             "name": "tester",
             "drafts": [],
-            "folders": [],
+            "folders": ["FOL12345678"],
         }
 
         class_parser = "metadata_backend.api.handlers.XMLToJSONParser"
@@ -82,10 +82,12 @@ class HandlersTestCase(AioHTTPTestCase):
             "create_folder.side_effect": self.fake_folderoperator_create_folder,
             "read_folder.side_effect": self.fake_folderoperator_read_folder,
             "delete_folder.side_effect": self.fake_folderoperator_delete_folder,
+            "check_object_in_folder.side_effect": self.fake_folderoperator_check_object,
         }
         useroperator_config = {
             "create_user.side_effect": self.fake_useroperator_create_user,
             "read_user.side_effect": self.fake_useroperator_read_user,
+            "check_user_has_doc.side_effect": self.fake_useroperator_user_has_folder,
         }
         self.patch_parser = patch(class_parser, spec=True)
         self.patch_operator = patch(class_operator, **operator_config, spec=True)
@@ -165,6 +167,15 @@ class HandlersTestCase(AioHTTPTestCase):
     async def fake_folderoperator_delete_folder(self, folder_id):
         """Fake delete folder to await nothing."""
         return await futurized(None)
+
+    async def fake_folderoperator_check_object(self, schema_type, accession_id):
+        """Fake check object in folder."""
+        data = True, self.folder_id, False
+        return await futurized(data)
+
+    async def fake_useroperator_user_has_folder(self, schema_type, user_id, folder_id):
+        """Fake check object in folder."""
+        return await futurized(True)
 
     async def fake_useroperator_create_user(self, content):
         """Fake user operation to return mocked userId."""
@@ -655,14 +666,14 @@ class HandlersTestCase(AioHTTPTestCase):
         response = await self.client.patch("/users/current", json=data)
         self.assertEqual(response.status, 400)
         json_resp = await response.json()
-        reason = "Request contains '/userId' key that cannot be updated to user object."
+        reason = "Request contains '/userId' key that cannot be updated to user object"
         self.assertEqual(reason, json_resp["detail"])
 
     @unittest_run_loop
     async def test_update_user_passes(self):
         """Test that user object would update with correct keys."""
         self.MockedUserOperator().update_user.return_value = futurized(self.user_id)
-        data = [{"op": "add", "path": "/drafts/0", "value": "test_value"}]
+        data = [{"op": "add", "path": "/drafts/-", "value": "test_value"}]
         response = await self.client.patch("/users/current", json=data)
         self.MockedUserOperator().update_user.assert_called_once()
         self.assertEqual(response.status, 200)

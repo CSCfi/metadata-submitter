@@ -7,7 +7,6 @@ from unittest.mock import MagicMock, patch
 from aiohttp.web import HTTPBadRequest, HTTPNotFound
 from aiounittest import AsyncTestCase, futurized
 from aiounittest.mock import AsyncMockIterator
-from jsonpatch import JsonPatch
 from multidict import MultiDict, MultiDictProxy
 from pymongo.errors import ConnectionFailure
 
@@ -572,20 +571,20 @@ class TestOperators(AsyncTestCase):
 
     async def test_folder_update_passes_and_returns_id(self):
         """Test update method for folders works."""
-        patch = JsonPatch([{"op": "add", "path": "/name", "value": "test2"}])
+        patch = [{"op": "add", "path": "/name", "value": "test2"}]
         operator = FolderOperator(self.client)
         operator.db_service.exists.return_value = futurized(True)
         operator.db_service.read.return_value = futurized(self.test_folder)
-        operator.db_service.update.return_value = futurized(True)
+        operator.db_service.patch.return_value = futurized(True)
         folder = await operator.update_folder(self.test_folder, patch)
         operator.db_service.exists.assert_called_once()
-        operator.db_service.update.assert_called_once()
-        self.assertEqual(len(operator.db_service.read.mock_calls), 2)
+        operator.db_service.patch.assert_called_once()
+        self.assertEqual(len(operator.db_service.read.mock_calls), 1)
         self.assertEqual(folder["folderId"], self.folder_id)
 
     async def test_folder_update_fails_with_bad_patch(self):
         """Test folder update raises error with improper JSON Patch."""
-        patch = JsonPatch([{"op": "replace", "path": "/nothing"}])
+        patch = [{"op": "replace", "path": "/nothing"}]
         operator = FolderOperator(self.client)
         operator.db_service.exists.return_value = futurized(True)
         operator.db_service.read.return_value = futurized(self.test_folder)
@@ -623,20 +622,20 @@ class TestOperators(AsyncTestCase):
 
     async def test_user_update_passes_and_returns_id(self):
         """Test update method for users works."""
-        patch = JsonPatch([{"op": "add", "path": "/name", "value": "test2"}])
+        patch = [{"op": "add", "path": "/name", "value": "test2"}]
         operator = UserOperator(self.client)
         operator.db_service.exists.return_value = futurized(True)
         operator.db_service.read.return_value = futurized(self.test_user)
-        operator.db_service.update.return_value = futurized(True)
+        operator.db_service.patch.return_value = futurized(True)
         user = await operator.update_user(self.test_user, patch)
         operator.db_service.exists.assert_called_once()
-        operator.db_service.update.assert_called_once()
-        self.assertEqual(len(operator.db_service.read.mock_calls), 2)
+        operator.db_service.patch.assert_called_once()
+        self.assertEqual(len(operator.db_service.read.mock_calls), 1)
         self.assertEqual(user["userId"], self.user_id)
 
     async def test_user_update_fails_with_bad_patch(self):
         """Test user update raises error with improper JSON Patch."""
-        patch = JsonPatch([{"op": "replace", "path": "/nothing"}])
+        patch = [{"op": "replace", "path": "/nothing"}]
         operator = UserOperator(self.client)
         operator.db_service.exists.return_value = futurized(True)
         operator.db_service.read.return_value = futurized(self.test_user)
