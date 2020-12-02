@@ -564,6 +564,32 @@ class FolderOperator:
         """
         self.db_service = DBService("folders", db_client)
 
+    async def check_object_in_folder(self, collection: str, accession_id: str) -> Tuple[bool, str, bool]:
+        """Check a object/draft is in a folder.
+
+        :param collection: collection it belongs to, it would be used as path
+        :param accession_id: document by accession_id
+        :raises: 422 if error occurs during the process
+        :returns: True for the check, folder id and if published or not
+        """
+        folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
+        folder_query = {folder_path: {"$elemMatch": {"accessionId": accession_id, "schema": collection}}}
+
+        folder_cursor = self.db_service.query("folder", folder_query)
+        folder_check = [folder async for folder in folder_cursor]
+
+        if len(folder_check) == 0:
+            LOG.info(f"doc {accession_id} belongs to no folder something is off")
+            return False, "", False
+        elif len(folder_check) > 1:
+            reason = f"The {accession_id} is in more than 1 folder."
+            LOG.error(reason)
+            raise web.HTTPUnprocessableEntity(reason=reason)
+        else:
+            folder_id = folder_check[0]["folderId"]
+            LOG.info(f"found doc {accession_id} in {folder_id}")
+            return True, folder_id, folder_check[0]["published"]
+
     async def create_folder(self, data: Dict) -> str:
         """Create new object folder to database.
 
@@ -701,6 +727,32 @@ class UserOperator:
         Application.
         """
         self.db_service = DBService("users", db_client)
+
+    async def check_user_has_doc(self, collection: str, user_id: str, accession_id: str) -> bool:
+        """Check a folder/draft belongs to user.
+
+        :param collection: collection it belongs to, it would be used as path
+        :param user_id: user_id from session
+        :param accession_id: document by accession_id
+        :raises: 422 if error occurs during the process
+        :returns: True if accession_id belongs to user
+        """
+        doc_path = "drafts" if collection.startswith("draft") else "folders"
+        user_query = {doc_path: {"$elemMatch": {"$eq": accession_id}}, "userId": user_id}
+        LOG.info(user_query)
+        user_cursor = self.db_service.query("user", user_query)
+        user_check = [user async for user in user_cursor]
+
+        if len(user_check) == 0:
+            LOG.info(f"doc {accession_id} belongs to no user something is off")
+            return False
+        elif len(user_check) > 1:
+            reason = "There seem to be more users with same ID and/or same folders."
+            LOG.error(reason)
+            raise web.HTTPUnprocessableEntity(reason=reason)
+        else:
+            LOG.info(f"found doc {accession_id} at current user")
+            return True
 
     async def create_user(self, data: Tuple) -> str:
         """Create new user object to database.
