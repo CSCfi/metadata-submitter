@@ -10,7 +10,7 @@ from xmlschema import XMLSchema, XMLSchemaConverter, XMLSchemaException, XsdElem
 from .logger import LOG
 from .schema_loader import SchemaNotFoundException, XMLSchemaLoader
 from .validator import JSONValidator, XMLValidator
-from pymongo import ReplaceOne, UpdateOne
+from pymongo import UpdateOne
 
 
 class MetadataXMLConverter(XMLSchemaConverter):
@@ -261,6 +261,6 @@ def jsonpatch_mongo(identifier: Dict, json_patch: List[Dict[str, Any]]) -> List:
                 queries.append(UpdateOne(identifier, {"$set": {op["path"][1:]: op["value"]}}))
         elif op["op"] == "replace":
             path = op["path"][1:-2] if op["path"].endswith("/-") else op["path"][1:]
-            queries.append(ReplaceOne(identifier, {"$set": {path: op["value"]}}))
+            queries.append(UpdateOne(identifier, {"$set": {path: op["value"]}}))
 
     return queries
