@@ -514,9 +514,9 @@ class RESTApiHandler:
         # Delete the drafts within the folder from the database
         for draft in old_folder["drafts"]:
             schema_type, accession_id = draft["schema"], draft["accessionId"]
-            collection = f"draft-{schema_type}"
-            self._check_schema_exists(schema_type)
-            accession_id = await Operator(db_client).delete_metadata_object(collection, accession_id)
+            collection = schema_type[6:] if schema_type.startswith("draft") else schema_type
+            self._check_schema_exists(collection)
+            accession_id = await Operator(db_client).delete_metadata_object(schema_type, accession_id)
             LOG.info(f"DELETE draft with accession ID {accession_id} in schema {collection} was successful.")
 
         # Patch the folder into a published state
