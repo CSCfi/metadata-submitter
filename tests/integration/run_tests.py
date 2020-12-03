@@ -408,7 +408,7 @@ async def test_crud_folders_works(sess):
 
     # Create draft from test XML file and patch the draft into the newly created folder
     draft_id = await post_draft(sess, "sample", "SRS001433.xml")
-    patch1 = [{"op": "add", "path": "/drafts/-", "value": [{"accessionId": draft_id, "schema": "sample"}]}]
+    patch1 = [{"op": "add", "path": "/drafts/-", "value": [{"accessionId": draft_id, "schema": "draft-sample"}]}]
     folder_id = await patch_folder(sess, folder_id, patch1)
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was patched")
@@ -417,7 +417,7 @@ async def test_crud_folders_works(sess):
         assert res["name"] == "test", "content mismatch"
         assert res["description"] == "test folder", "content mismatch"
         assert res["published"] is False, "content mismatch"
-        assert res["drafts"] == [{"accessionId": draft_id, "schema": "sample"}], "content mismatch"
+        assert res["drafts"] == [{"accessionId": draft_id, "schema": "draft-sample"}], "content mismatch"
         assert res["metadataObjects"] == [], "content mismatch"
 
     # Get the draft from the collection within this session and post it to objects collection
@@ -439,7 +439,7 @@ async def test_crud_folders_works(sess):
         res = await resp.json()
         assert res["folderId"] == folder_id, "content mismatch"
         assert res["published"] is False, "content mismatch"
-        assert res["drafts"] == [{"accessionId": draft_id, "schema": "sample"}], "content mismatch"
+        assert res["drafts"] == [{"accessionId": draft_id, "schema": "draft-sample"}], "content mismatch"
         assert res["metadataObjects"] == [{"accessionId": accession_id, "schema": "sample"}], "content mismatch"
 
     # Publish the folder
@@ -470,8 +470,8 @@ async def test_crud_users_works(sess):
 
     # Add user to session and create a patch to add folder to user
     data = {"name": "test", "description": "test folder"}
-    folder_id = await patch_folder(sess, data)
-    patch = [{"op": "add", "path": "/folders", "value": [folder_id]}]
+    folder_id = await post_folder(sess, data)
+    patch = [{"op": "add", "path": "/folders/-", "value": [folder_id]}]
     await patch_user(sess, user_id, real_user_id, patch)
     async with sess.get(f"{users_url}/{user_id}") as resp:
         LOG.debug(f"Checking that user {user_id} was patched")
@@ -479,7 +479,7 @@ async def test_crud_users_works(sess):
         assert res["userId"] == real_user_id, "content mismatch"
         assert res["name"] == "test test", "content mismatch"
         assert res["drafts"] == [], "content mismatch"
-        assert res["folders"] == [folder_id], "content mismatch"
+        assert folder_id in res["folders"], "content mismatch"
 
     # Delete user
     await delete_user(sess, user_id)
@@ -490,7 +490,7 @@ async def test_crud_users_works(sess):
         assert resp.status == 401, "HTTP Status code error"
 
 
-async def test_submissions_work(sess):
+async def test_submissions_work(sess, folder_id):
     """Test actions in submission xml files."""
     # Post original submission with two 'add' actions
     sub_files = [("submission", "ERA521986_valid.xml"), ("study", "SRP000539.xml"), ("sample", "SRS001433.xml")]
@@ -503,6 +503,19 @@ async def test_submissions_work(sess):
         assert res[0]["schema"] == "study", "content mismatch"
         assert res[1]["schema"] == "sample", "content mismatch"
         study_access_id = res[0]["accessionId"]
+        patch = [
+            {
+                "op": "add",
+                "path": "/metadataObjects/-",
+                "value": {"accessionId": res[0]["accessionId"], "schema": res[0]["schema"]},
+            },
+            {
+                "op": "add",
+                "path": "/metadataObjects/-",
+                "value": {"accessionId": res[1]["accessionId"], "schema": res[1]["schema"]},
+            },
+        ]
+        await patch_folder(sess, folder_id, patch)
 
     # Sanity check that the study object was inserted correctly before modifying it
     async with sess.get(f"{objects_url}/study/{study_access_id}") as resp:
@@ -598,18 +611,23 @@ async def main():
         # LOG.debug("=== Testing getting all objects & pagination ===")
         # await test_getting_all_objects_from_schema_works(sess)
 
-        # # Test creating, reading, updating and deleting folders
-        # LOG.debug("=== Testing basic CRUD folder operations ===")
-        # await test_crud_folders_works(sess)
+        # Test creating, reading, updating and deleting folders
+        LOG.debug("=== Testing basic CRUD folder operations ===")
+        await test_crud_folders_works(sess)
 
-        # # Test add, modify, validate and release action with submissions
-        # LOG.debug("=== Testing actions within submissions ===")
-        # await test_submissions_work(sess)
+        # Test add, modify, validate and release action with submissions
+        LOG.debug("=== Testing actions within submissions ===")
+        submission_folder = {
+            "name": "submission test",
+            "description": "submission test folder",
+        }
+        submission_folder_id = await post_folder(sess, submission_folder)
+        await test_submissions_work(sess, submission_folder_id)
 
-        # # Test reading, updating and deleting users
-        # # this needs to be done last as it deletes users
-        # LOG.debug("=== Testing basic CRUD user operations ===")
-        # await test_crud_users_works(sess)
+        # Test reading, updating and deleting users
+        # this needs to be done last as it deletes users
+        LOG.debug("=== Testing basic CRUD user operations ===")
+        await test_crud_users_works(sess)
 
 
 if __name__ == "__main__":
