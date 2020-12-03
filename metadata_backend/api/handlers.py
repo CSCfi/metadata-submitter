@@ -82,11 +82,8 @@ class RESTApiHandler:
             if published:
                 return True
             elif check:
-                if collection.startswith("draft"):
-                    # if the draft object is found in folder we just need to check if the folder belongs to user
-                    return await user_op.check_user_has_doc("folder", current_user, folder_id)
-                else:
-                    return await user_op.check_user_has_doc(collection, current_user, folder_id)
+                # if the draft object is found in folder we just need to check if the folder belongs to user
+                return await user_op.check_user_has_doc("folders", current_user, folder_id)
             elif collection.startswith("draft"):
                 # if collection is draft but not found in a folder we also check if object is in drafts of the user
                 # they will be here if they will not be deleted after publish
