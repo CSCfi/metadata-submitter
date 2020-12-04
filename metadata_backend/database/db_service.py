@@ -93,13 +93,13 @@ class DBService:
         return True if exists else False
 
     @auto_reconnect
-    async def exists_eppn_user(self, eppn: str) -> Union[None, str]:
+    async def exists_eppn_user(self, eppn: str, name: str) -> Union[None, str]:
         """Check user exists by its eppn.
 
         :param eppn: eduPersonPrincipalName to be searched
         :returns: True if exists and False if it does not
         """
-        find_by_id = {"eppn": eppn}
+        find_by_id = {"eppn": eppn, "name": name}
         user = await self.database["user"].find_one(find_by_id, {"_id": False, "eppn": False})
         LOG.debug(f"DB check user exists for {eppn} returned {user}.")
         return user["userId"] if user else None

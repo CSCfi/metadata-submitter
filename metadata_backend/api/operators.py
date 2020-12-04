@@ -794,7 +794,7 @@ class UserOperator:
         eppn = data[0]
         name = data[1]
 
-        existing_user_id = await self.db_service.exists_eppn_user(eppn)
+        existing_user_id = await self.db_service.exists_eppn_user(eppn, name)
         if existing_user_id:
             LOG.info(f"User with eppn: {eppn} exists, no need to create.")
             return existing_user_id
