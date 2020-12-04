@@ -1,4 +1,4 @@
-"""Test api endpoints from views module."""
+"""Test API endpoints from handlers module."""
 
 from pathlib import Path
 from unittest.mock import patch
