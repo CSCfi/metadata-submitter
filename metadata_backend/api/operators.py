@@ -767,7 +767,6 @@ class UserOperator:
         """
         doc_path = "drafts" if collection.startswith("draft") else "folders"
         user_query = {doc_path: {"$elemMatch": {"$eq": accession_id}}, "userId": user_id}
-        LOG.info(user_query)
         user_cursor = self.db_service.query("user", user_query)
         user_check = [user async for user in user_cursor]
 
@@ -875,9 +874,7 @@ class UserOperator:
         await self._check_user_exists(self.db_service, user_id)
 
         try:
-            LOG.info(object_ids)
             upd_content = {collection: {"$each": object_ids}}
-            LOG.info(upd_content)
             result = await self.db_service.append("user", user_id, upd_content)
             JSONValidator(result, "users").validate
         except (ConnectionFailure, OperationFailure) as error:
