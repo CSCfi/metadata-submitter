@@ -44,7 +44,7 @@ class AccessHandler:
         """Redirect user to AAI login.
 
         :param req: A HTTP request instance
-        :raises: 303 redirect
+        :raises: HTTPSeeOther redirect to login AAI
         """
         # Generate a state for callback and save it to session storage
         state = secrets.token_hex()
@@ -72,10 +72,10 @@ class AccessHandler:
         Sets session information such as access_token and user_info.
         Sets encrypted cookie to identify clients.
 
-        :raises: 400 in case login failed
-        :raises: 403 in case of bad session
+        :raises: HTTPBadRequest in case login failed
+        :raises: HTTPForbidden in case of bad session
         :param req: A HTTP request instance with callback parameters
-        :returns: 303 redirect
+        :returns: HTTPSeeOther redirect to home page
         """
         # Response from AAI must have the query params `state` and `code`
         if "state" in req.query and "code" in req.query:
@@ -155,8 +155,8 @@ class AccessHandler:
         """Log the user out by revoking tokens.
 
         :param req: A HTTP request instance
-        :raises: 400 in case logout failed
-        :raises: 303 redirect
+        :raises: HTTPBadRequest in case logout failed
+        :returns: HTTPSeeOther redirect to login page
         """
         # Revoke token at AAI
         access_token = await self._get_from_session(req, "access_token")
@@ -187,7 +187,7 @@ class AccessHandler:
     async def _set_user(self, req: Request, token: str) -> None:
         """Set user in current session and return user id based on result of create_user.
 
-        :raises: 400 in could not get user info from AAI OIDC
+        :raises: HTTPBadRequest in could not get user info from AAI OIDC
         :param req: A HTTP request instance
         :param token: access token from AAI
         """
@@ -224,8 +224,8 @@ class AccessHandler:
     async def _validate_jwt(self, token: str) -> None:
         """Validate id token from AAI according to OIDC specs.
 
-        :raises: 401 in case token is missing claim, has expired signature or invalid
-        :raises: 403 does not provide access to the token received
+        :raises: HTTPUnauthorized in case token is missing claim, has expired signature or invalid
+        :raises: HTTPForbidden does not provide access to the token received
         :param token: id token received from AAI
         """
         key = await self._get_key()  # JWK used to decode token with
@@ -286,8 +286,8 @@ class AccessHandler:
 
         :param req: HTTP request
         :param key: name of the key to be returned from session storage
-        :raises: 401 in case session does not have value for key
-        :raises: 403 in case session does not have key
+        :raises: HTTPUnauthorized in case session does not have value for key
+        :raises: HTTPForbidden in case session does not have key
         :returns: Specific value from session storage
         """
         try:

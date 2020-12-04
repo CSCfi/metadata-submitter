@@ -55,8 +55,8 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
 
     :param req: A request instance
     :param handler: A request handler
-    :raises: 303 in case session does not contain access token and user_info
-    :raises: 401 in case cookie cannot be found
+    :raises: HTTPSeeOther in case session does not contain access token and user_info
+    :raises: HTTPUnauthorized in case cookie cannot be found
     :returns: Successful requests unaffected
     """
     controlled_paths = [
@@ -111,7 +111,7 @@ def decrypt_cookie(request: web.Request) -> dict:
     """Decrypt a cookie using the server instance specific fernet key.
 
     :param request: A HTTP request instance
-    :raises: 401 in case cookie not in request
+    :raises: HTTPUnauthorized in case cookie not in request or invalid token
     :returns: decrypted cookie
     """
     if "MTD_SESSION" not in request.cookies:
@@ -130,7 +130,7 @@ def decrypt_cookie(request: web.Request) -> dict:
 def _check_csrf(request: web.Request) -> bool:
     """Check that the signature matches and referrer is correct.
 
-    :raises: 403 in case signature does not match
+    :raises: HTTPForbidden in case signature does not match
     :param request: A HTTP request instance
     """
     cookie = decrypt_cookie(request)

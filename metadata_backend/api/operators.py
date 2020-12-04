@@ -95,14 +95,14 @@ class BaseOperator(ABC):
 
         :param schema_type: Schema type of the object to read.
         :param accession_id: Accession Id of the object to read.
-        :raises: 400 if reading was not successful, 404 if no data found
+        :raises: HTTPBadRequest if reading was not successful, HTTPNotFound if no data found
         :returns: Metadata object formatted to JSON or XML, content type
         """
         try:
             data_raw = await self.db_service.read(schema_type, accession_id)
             if not data_raw:
                 LOG.error(f"Object with {accession_id} not found.")
-                raise web.HTTPNotFound
+                raise web.HTTPNotFound()
             data = await self._format_read_data(schema_type, data_raw)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting object: {error}"
@@ -118,7 +118,7 @@ class BaseOperator(ABC):
 
         :param schema_type: Schema type of the object to delete.
         :param accession_id: Accession Id of the object to delete.
-        :raises: 400 if deleting was not successful
+        :raises: HTTPBadRequest if deleting was not successful
         """
         db_client = self.db_service.db_client
         JSON_deletion_success = await self._remove_object_from_db(Operator(db_client), schema_type, accession_id)
@@ -137,7 +137,7 @@ class BaseOperator(ABC):
         :param schema_type: Schema type of the object to insert.
         :param data: Single document formatted as JSON
         :returns: Accession Id for object inserted to database
-        :raises: 400 if reading was not successful
+        :raises: HTTPBadRequest if reading was not successful
         """
         try:
             insert_success = await self.db_service.create(schema_type, data)
@@ -158,7 +158,7 @@ class BaseOperator(ABC):
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
         :param data: Single document formatted as JSON
-        :raises: 400 if reading was not successful, 404 if no data found
+        :raises: HTTPBadRequest if reading was not successful, HTTPNotFound if no data found
         :returns: Accession Id for object inserted to database
         """
         try:
@@ -189,7 +189,7 @@ class BaseOperator(ABC):
         :param schema_type: Schema type of the object to update.
         :param accession_id: Identifier of object to update.
         :param data: Single document formatted as JSON
-        :raises: 400 if reading was not successful, 404 if no data found
+        :raises: HTTPBadRequest if reading was not successful, HTTPNotFound if no data found
         :returns: Accession Id for object inserted to database
         """
         try:
@@ -223,7 +223,7 @@ class BaseOperator(ABC):
         :param schema_type: Schema type of the object to delete.
         :param accession_id: Identifier of object to delete.
         :param data: Single document formatted as JSON
-        :raises: 400 if reading was not successful, 404 if no data found
+        :raises: HTTPBadRequest if reading was not successful, HTTPNotFound if no data found
         :returns: None
         """
         try:
@@ -567,7 +567,7 @@ class FolderOperator:
 
         :param collection: collection it belongs to, it would be used as path
         :param accession_id: document by accession_id
-        :raises: 422 if error occurs during the process
+        :raises: HTTPUnprocessableEntity if error occurs during the process and object in more than 1 folder
         :returns: True for the check, folder id and if published or not
         """
         folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
@@ -592,7 +592,7 @@ class FolderOperator:
         """Create new object folder to database.
 
         :param data: Data to be saved to database
-        :raises: 400 if error occurs during the process
+        :raises: HTTPBadRequest if error occurs during the process of insert
         :returns: Folder id for the folder inserted to database
         """
         folder_id = self._generate_folder_id()
@@ -629,7 +629,7 @@ class FolderOperator:
         """Read object folder from database.
 
         :param folder_id: Folder ID of the object to read
-        :raises: 400 if reading was not successful
+        :raises: HTTPBadRequest if reading was not successful
         :returns: Object folder formatted to JSON
         """
         await self._check_folder_exists(self.db_service, folder_id)
@@ -648,6 +648,7 @@ class FolderOperator:
 
         :param folder_id: ID of folder to update
         :param patch: JSON Patch operations determined in the request
+        :raises: HTTPBadRequest if updating was not successful
         :returns: ID of the folder updated to database
         """
         await self._check_folder_exists(self.db_service, folder_id)
@@ -675,6 +676,7 @@ class FolderOperator:
         :param folder_id: ID of folder to update
         :param accession_id: ID of object to remove
         :param collection: collection where to remove the id from
+        :raises: HTTPBadRequest if removing was not successful
         :returns: None
         """
         await self._check_folder_exists(self.db_service, folder_id)
@@ -699,7 +701,8 @@ class FolderOperator:
         """Delete object folder from database.
 
         :param folder_id: ID of the folder to delete.
-        :raises: 400 if deleting was not successful
+        :raises: HTTPBadRequest if deleting was not successful
+        :returns: ID of the folder deleted from database
         """
         await self._check_folder_exists(self.db_service, folder_id)
         try:
@@ -717,7 +720,11 @@ class FolderOperator:
             return folder_id
 
     async def _check_folder_exists(self, db: DBService, folder_id: str) -> None:
-        """Check the existance of a folder by its id in the database."""
+        """Check the existance of a folder by its id in the database.
+
+        :raises: HTTPNotFound if folder does not exist
+        :returns: None
+        """
         exists = await db.exists("folder", folder_id)
         if not exists:
             reason = f"Folder with id {folder_id} was not found."
@@ -725,7 +732,10 @@ class FolderOperator:
             raise web.HTTPNotFound(reason=reason)
 
     def _generate_folder_id(self) -> str:
-        """Generate random folder id."""
+        """Generate random folder id.
+
+        :returns: str with folder id
+        """
         sequence = "".join(secrets.choice(string.digits) for i in range(8))
         LOG.debug("Generated folder ID.")
         return f"FOL{sequence}"
@@ -752,7 +762,7 @@ class UserOperator:
         :param collection: collection it belongs to, it would be used as path
         :param user_id: user_id from session
         :param accession_id: document by accession_id
-        :raises: 422 if error occurs during the process
+        :raises: HTTPUnprocessableEntity if more users seem to have same folder
         :returns: True if accession_id belongs to user
         """
         doc_path = "drafts" if collection.startswith("draft") else "folders"
@@ -776,7 +786,7 @@ class UserOperator:
         """Create new user object to database.
 
         :param data: User Data to identify user
-        :raises: 400 if error occurs during the process
+        :raises: HTTPBadRequest if error occurs during the process of creating user
         :returns: User id for the user object inserted to database
         """
         user_data: Dict[str, Union[list, str]] = dict()
@@ -813,7 +823,7 @@ class UserOperator:
         """Read user object from database.
 
         :param user_id: User ID of the object to read
-        :raises: 400 if reading was not successful
+        :raises: HTTPBadRequest if reading user was not successful
         :returns: User object formatted to JSON
         """
         await self._check_user_exists(self.db_service, user_id)
@@ -858,7 +868,8 @@ class UserOperator:
 
         :param user_id: ID of user to update
         :param collection: collection where to remove the id from
-        :param object_ids: ID or list of IDs of folder(s) to add
+        :param object_ids: ID or list of IDs of folder(s) to assign
+        :raises: HTTPBadRequest if assigning drafts/folders to user was not successful
         returns: None
         """
         await self._check_user_exists(self.db_service, user_id)
@@ -887,7 +898,8 @@ class UserOperator:
 
         :param user_id: ID of user to update
         :param collection: collection where to remove the id from
-        :param object_ids: ID or list of IDs of folder(s) to add
+        :param object_ids: ID or list of IDs of folder(s) to remove
+        :raises: HTTPBadRequest if removing drafts/folders from user was not successful
         returns: None
         """
         await self._check_user_exists(self.db_service, user_id)
@@ -911,7 +923,8 @@ class UserOperator:
         """Delete user object from database.
 
         :param user_id: ID of the user to delete.
-        :raises: 400 if deleting was not successful
+        :raises: HTTPBadRequest if deleting user was not successful
+        :returns: ID of the user deleted from database
         """
         await self._check_user_exists(self.db_service, user_id)
         try:
@@ -929,7 +942,11 @@ class UserOperator:
             return user_id
 
     async def _check_user_exists(self, db: DBService, user_id: str) -> None:
-        """Check the existance of a user by its id in the database."""
+        """Check the existance of a user by its id in the database.
+
+        :raises: HTTPNotFound if user does not exist
+        :returns: None
+        """
         exists = await db.exists("user", user_id)
         if not exists:
             reason = f"User with id {user_id} was not found."
@@ -937,7 +954,10 @@ class UserOperator:
             raise web.HTTPNotFound(reason=reason)
 
     def _generate_user_id(self) -> str:
-        """Generate random user id."""
+        """Generate random user id.
+
+        :returns: str with user id
+        """
         sequence = "".join(secrets.choice(string.digits) for i in range(8))
         LOG.debug("Generated user ID.")
         return f"USR{sequence}"

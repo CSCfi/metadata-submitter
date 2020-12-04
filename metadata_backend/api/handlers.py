@@ -178,6 +178,7 @@ class RESTApiHandler:
 
         Basically returns which objects user can submit and query for.
         :param req: GET Request
+        :raises: HTTPBadRequest if request does not find the schema
         :returns: JSON list of schema types
         """
         schema_type = req.match_info["schema"]
@@ -200,6 +201,7 @@ class RESTApiHandler:
         set, otherwise json.
 
         :param req: GET request
+        :raises: HTTPUnauthorized if object not owned by user
         :returns: JSON or XML response containing metadata object
         """
         accession_id = req.match_info["accessionId"]
@@ -275,7 +277,8 @@ class RESTApiHandler:
         """Delete metadata object from database.
 
         :param req: DELETE request
-        :returns: HTTP No Content response
+        :raises: HTTPUnauthorized if object not owned by user
+        :returns: HTTPNoContent response
         """
         schema_type = req.match_info["schema"]
         self._check_schema_exists(schema_type)
@@ -321,6 +324,7 @@ class RESTApiHandler:
         required fields before replacing in the DB.
 
         :param req: PUT request
+        :raises: HTTPUnauthorized if object not owned by user
         :returns: JSON response containing accessionId for submitted object
         """
         schema_type = req.match_info["schema"]
@@ -358,6 +362,7 @@ class RESTApiHandler:
         We do not support patch for XML.
 
         :param req: PATCH request
+        :raises: HTTPUnauthorized if object not owned by user
         :returns: JSON response containing accessionId for submitted object
         """
         schema_type = req.match_info["schema"]
@@ -404,6 +409,8 @@ class RESTApiHandler:
     async def post_folder(self, req: Request) -> Response:
         """Save object folder to database.
 
+        Also assigns the folder to the current user.
+
         :param req: POST request
         :returns: JSON response containing folder ID for submitted folder
         """
@@ -429,7 +436,7 @@ class RESTApiHandler:
         """Get one object folder by its folder id.
 
         :param req: GET request
-        :raises: HTTP 404 if folder not found and 400 if something else fails
+        :raises: HTTPUnauthorized if folder not owned by user
         :returns: JSON response containing object folder
         """
         folder_id = req.match_info["folderId"]
@@ -451,7 +458,8 @@ class RESTApiHandler:
         """Update object folder with a specific folder id.
 
         :param req: PATCH request
-        :raises: HTTP 400 if something fails during processing the request
+        :raises: HTTPUnauthorized if folder not owned by user, HTTPBadRequest if JSONpatch operation
+        is not allowed
         :returns: JSON response containing folder ID for updated folder
         """
         folder_id = req.match_info["folderId"]
@@ -492,7 +500,7 @@ class RESTApiHandler:
         """Update object folder specifically into published state.
 
         :param req: PATCH request
-        :raises: HTTP 400 if something fails during processing the request
+        :raises: HTTPUnauthorized if folder not owned by user
         :returns: JSON response containing folder ID for updated folder
         """
         folder_id = req.match_info["folderId"]
@@ -531,6 +539,7 @@ class RESTApiHandler:
         """Delete object folder from database.
 
         :param req: DELETE request
+        :raises: HTTPUnauthorized if folder not owned by user
         :returns: HTTP No Content response
         """
         folder_id = req.match_info["folderId"]
@@ -556,6 +565,7 @@ class RESTApiHandler:
         """Get one user by its user ID.
 
         :param req: GET request
+        :raises: HTTPUnauthorized if not current user
         :returns: JSON response containing user object
         """
         user_id = req.match_info["userId"]
@@ -575,6 +585,7 @@ class RESTApiHandler:
         """Update user object with a specific user ID.
 
         :param req: PATCH request
+        :raises: HTTPUnauthorized if not current user
         :returns: JSON response containing user ID for updated user object
         """
         user_id = req.match_info["userId"]
@@ -609,7 +620,8 @@ class RESTApiHandler:
         """Delete user from database.
 
         :param req: DELETE request
-        :returns: HTTP No Content response
+        :raises: HTTPUnauthorized if not current user
+        :returns: HTTPNoContent response
         """
         user_id = req.match_info["userId"]
         if user_id != "current":
@@ -645,7 +657,7 @@ class SubmissionAPIHandler:
         Finally submission info itself is added.
 
         :param req: Multipart POST request with submission.xml and files
-        :raises: HTTP Exceptions with status code 201 or 400
+        :raises: HTTPBadRequest if request is missing some parameters or cannot be processed
         :returns: XML-based receipt from submission
         """
         files = await _extract_xml_upload(req)
@@ -719,7 +731,7 @@ class SubmissionAPIHandler:
 
         :param schema_type: Schema type of the object to validate.
         :param xml_content: Metadata object
-        :raises: HTTP Exception with status code 400 if schema load fails
+        :raises: HTTPBadRequest if schema load fails
         :returns: JSON response indicating if validation was successful or not
         """
         try:
@@ -741,7 +753,7 @@ class SubmissionAPIHandler:
         :param content: Metadata object referred to in submission
         :param db_client: Database client for database operations
         :param action: Type of action to be done
-        :raises: HTTP Exception if an incorrect or non-supported action is called
+        :raises: HTTPBadRequest if an incorrect or non-supported action is called
         :returns: Dict containing specific action that was completed
         """
         if action == "add":
@@ -794,7 +806,6 @@ class StaticHandler:
         """Serve requests related to frontend SPA.
 
         :param req: GET request
-        :raises: HTTP Exceptions if error happens
         :returns: Response containing frontpage static file
         """
         index_path = self.path / "index.html"
@@ -822,6 +833,8 @@ async def _extract_xml_upload(req: Request, extract_one: bool = False) -> List[T
     submission should be processed before study).
 
     :param req: POST request containing "multipart/form-data" upload
+    :raises: HTTPBadRequest if request is not valid for multipart or multiple files sent. HTTPNotFound if
+    schema was not found.
     :returns: content and schema type for each uploaded file, sorted by schema
     type.
     """
