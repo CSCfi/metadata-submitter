@@ -105,7 +105,7 @@ async def post_object(sess, schema, filename):
         LOG.debug(f"Adding new object to {schema}")
         assert resp.status == 201, "HTTP Status code error"
         ans = await resp.json()
-        return ans["accessionId"]
+        return ans["accessionId"], schema
 
 
 async def delete_object(sess, schema, accession_id):
@@ -240,21 +240,21 @@ async def test_crud_works(sess, schema, filename, folder_id):
     :param filename: name of the file used for testing.
     """
     accession_id = await post_object(sess, schema, filename)
-    patch = [{"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id, "schema": schema}}]
+    patch = [{"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id[0], "schema": schema}}]
     await patch_folder(sess, folder_id, patch)
-    async with sess.get(f"{objects_url}/{schema}/{accession_id}") as resp:
-        LOG.debug(f"Checking that {accession_id} JSON is in {schema}")
+    async with sess.get(f"{objects_url}/{schema}/{accession_id[0]}") as resp:
+        LOG.debug(f"Checking that {accession_id[0]} JSON is in {schema}")
         assert resp.status == 200, "HTTP Status code error"
-    async with sess.get(f"{objects_url}/{schema}/{accession_id}" "?format=xml") as resp:
-        LOG.debug(f"Checking that {accession_id} XML is in {schema}")
+    async with sess.get(f"{objects_url}/{schema}/{accession_id[0]}" "?format=xml") as resp:
+        LOG.debug(f"Checking that {accession_id[0]} XML is in {schema}")
         assert resp.status == 200, "HTTP Status code error"
 
-    await delete_object(sess, schema, accession_id)
-    async with sess.get(f"{objects_url}/{schema}/{accession_id}") as resp:
-        LOG.debug(f"Checking that JSON object {accession_id} was deleted")
+    await delete_object(sess, schema, accession_id[0])
+    async with sess.get(f"{objects_url}/{schema}/{accession_id[0]}") as resp:
+        LOG.debug(f"Checking that JSON object {accession_id[0]} was deleted")
         assert resp.status == 404, "HTTP Status code error"
-    async with sess.get(f"{objects_url}/{schema}/{accession_id}" "?format=xml") as resp:
-        LOG.debug(f"Checking that XML object {accession_id} was deleted")
+    async with sess.get(f"{objects_url}/{schema}/{accession_id[0]}" "?format=xml") as resp:
+        LOG.debug(f"Checking that XML object {accession_id[0]} was deleted")
         assert resp.status == 404, "HTTP Status code error"
 
 
@@ -309,9 +309,13 @@ async def test_patch_drafts_works(sess, schema, filename, filename2, folder_id):
         assert resp.status == 404, "HTTP Status code error"
 
 
-async def test_querying_works(sess):
+async def test_querying_works(sess, folder_id):
     """Test query endpoint with working and failing query."""
-    accession_ids = await asyncio.gather(*[post_object(sess, schema, filename) for schema, filename in test_xml_files])
+    files = await asyncio.gather(*[post_object(sess, schema, filename) for schema, filename in test_xml_files])
+
+    for accession_id, schema in files:
+        patch = [{"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id, "schema": schema}}]
+        await patch_folder(sess, folder_id, patch)
 
     queries = {
         "study": [
@@ -353,19 +357,18 @@ async def test_querying_works(sess):
         invalid = "yoloswaggings"
         await asyncio.gather(*[do_one_query(schema, key, invalid, 404) for key, _ in schema_queries])
 
-    await asyncio.gather(
-        *[
-            delete_object(sess, schema, accession_id)
-            for schema, accession_id in list(zip([schema for schema, _ in test_xml_files], accession_ids))
-        ]
-    )
+    await asyncio.gather(*[delete_object(sess, schema, accession_id) for accession_id, schema in files])
 
 
-async def test_getting_all_objects_from_schema_works(sess):
+async def test_getting_all_objects_from_schema_works(sess, folder_id):
     """Check that /objects/study returns objects with correct pagination."""
 
     # Add objects
-    accession_ids = await asyncio.gather(*[post_object(sess, "study", "SRP000539.xml") for _ in range(13)])
+    files = await asyncio.gather(*[post_object(sess, "study", "SRP000539.xml") for _ in range(13)])
+
+    for accession_id, schema in files:
+        patch = [{"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id, "schema": schema}}]
+        await patch_folder(sess, folder_id, patch)
 
     # Test default values
     async with sess.get(f"{objects_url}/study") as resp:
@@ -394,7 +397,7 @@ async def test_getting_all_objects_from_schema_works(sess):
         assert resp.status == 400
 
     # Delete objects
-    await asyncio.gather(*[delete_object(sess, "study", accession_id) for accession_id in accession_ids])
+    await asyncio.gather(*[delete_object(sess, "study", accession_id) for accession_id, _ in files])
 
 
 async def test_crud_folders_works(sess):
@@ -603,13 +606,23 @@ async def main():
         await test_crud_drafts_works(sess, "sample", "SRS001433.json", "put.json", draft_folder_id)
         await test_patch_drafts_works(sess, "study", "SRP000539.json", "patch.json", draft_folder_id)
 
-        # # Test queries
-        # LOG.debug("=== Testing queries ===")
-        # await test_querying_works(sess)
+        # Test queries
+        LOG.debug("=== Testing queries ===")
+        query_folder = {
+            "name": "basic test draft",
+            "description": "basic test draft folder",
+        }
+        query_folder_id = await post_folder(sess, query_folder)
+        await test_querying_works(sess, query_folder_id)
 
-        # # Test /objects/study endpoint for query pagination
-        # LOG.debug("=== Testing getting all objects & pagination ===")
-        # await test_getting_all_objects_from_schema_works(sess)
+        # Test /objects/study endpoint for query pagination
+        LOG.debug("=== Testing getting all objects & pagination ===")
+        pagination_folder = {
+            "name": "basic test draft",
+            "description": "basic test draft folder",
+        }
+        pagination_folder_id = await post_folder(sess, pagination_folder)
+        await test_getting_all_objects_from_schema_works(sess, pagination_folder_id)
 
         # Test creating, reading, updating and deleting folders
         LOG.debug("=== Testing basic CRUD folder operations ===")
