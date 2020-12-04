@@ -127,9 +127,7 @@ class JSONValidator:
         """Check validation against JSON schema.
 
         :returns: Nothing if it is valid
-        :raises: 404 if schema not found, most likely will never be
-        raised if it this is called in handlers which checks schema
-        exists first. Raise 400 if validation fails.
+        :raises: HTTPBadRequest if validation fails.
         """
         try:
             schema = JSONSchemaLoader().get_schema(self.schema_type)

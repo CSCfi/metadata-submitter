@@ -86,9 +86,9 @@ class DBService:
         :returns: True if exists and False if it does not
         """
         id_key = f"{collection}Id" if (collection in ["folder", "user"]) else "accessionId"
-        omit = {"_id": False, "eppn": False} if collection == "user" else {"_id": False}
+        projection = {"_id": False, "eppn": False} if collection == "user" else {"_id": False}
         find_by_id = {id_key: the_id}
-        exists = await self.database[collection].find_one(find_by_id, omit)
+        exists = await self.database[collection].find_one(find_by_id, projection)
         LOG.debug(f"DB check exists for {the_id} in collection {collection}.")
         return True if exists else False
 
@@ -113,10 +113,10 @@ class DBService:
         :returns: First document matching the accession_id
         """
         id_key = f"{collection}Id" if (collection in ["folder", "user"]) else "accessionId"
-        omit = {"_id": False, "eppn": False} if collection == "user" else {"_id": False}
+        projection = {"_id": False, "eppn": False} if collection == "user" else {"_id": False}
         find_by_id = {id_key: the_id}
         LOG.debug(f"DB doc read for {the_id}.")
-        return await self.database[collection].find_one(find_by_id, omit)
+        return await self.database[collection].find_one(find_by_id, projection)
 
     @auto_reconnect
     async def patch(self, collection: str, the_id: str, patch_data: List[Dict]) -> bool:
@@ -243,8 +243,8 @@ class DBService:
         :returns: Async cursor instance which should be awaited when iterating
         """
         LOG.debug("DB doc query performed.")
-        omit = {"_id": False, "eppn": False} if collection == "user" else {"_id": False}
-        return self.database[collection].find(query, omit)
+        projection = {"_id": False, "eppn": False} if collection == "user" else {"_id": False}
+        return self.database[collection].find(query, projection)
 
     @auto_reconnect
     async def get_count(self, collection: str, query: Dict) -> int:
