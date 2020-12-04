@@ -201,8 +201,8 @@ class BaseOperator(ABC):
             update_success = await self.db_service.update(schema_type, accession_id, data)
             sanity_check = await self.db_service.read(schema_type, accession_id)
             # remove `draft-` from schema type
-            schema = schema_type[6:] if schema_type.startswith("draft") else schema_type
-            JSONValidator(sanity_check, schema).validate
+            if not schema_type.startswith("draft"):
+                JSONValidator(sanity_check, schema_type).validate
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting object: {error}"
             LOG.error(reason)

@@ -247,7 +247,8 @@ class RESTApiHandler:
             operator = XMLOperator(db_client)
         else:
             content = await self._get_data(req)
-            JSONValidator(content, schema_type).validate
+            if not req.path.startswith("/drafts"):
+                JSONValidator(content, schema_type).validate
             operator = Operator(db_client)
 
         accession_id = await operator.create_metadata_object(collection, content)
@@ -341,7 +342,8 @@ class RESTApiHandler:
             operator = XMLOperator(db_client)
         else:
             content = await self._get_data(req)
-            JSONValidator(content, schema_type).validate
+            if not req.path.startswith("/drafts"):
+                JSONValidator(content, schema_type).validate
             operator = Operator(db_client)
 
         check_user = await self._handle_check_ownedby_user(req, collection, accession_id)
