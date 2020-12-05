@@ -35,10 +35,8 @@ class HandlersTestCase(AioHTTPTestCase):
         self.page_size = 50
         self.total_objects = 150
         self.metadata_json = {
-            "study": {
-                "attributes": {"centerName": "GEO", "alias": "GSE10966", "accession": "SRP000539"},
-                "accessionId": "EDAG3991701442770179",
-            }
+            "attributes": {"centerName": "GEO", "alias": "GSE10966", "accession": "SRP000539"},
+            "accessionId": "EDAG3991701442770179",
         }
         path_to_xml_file = self.TESTFILES_ROOT / "study" / "SRP000539.xml"
         self.metadata_xml = path_to_xml_file.read_text()
@@ -83,6 +81,7 @@ class HandlersTestCase(AioHTTPTestCase):
             "read_folder.side_effect": self.fake_folderoperator_read_folder,
             "delete_folder.side_effect": self.fake_folderoperator_delete_folder,
             "check_object_in_folder.side_effect": self.fake_folderoperator_check_object,
+            "get_collection_objects.side_effect": self.fake_folderoperator_get_collection_objects,
         }
         useroperator_config = {
             "create_user.side_effect": self.fake_useroperator_create_user,
@@ -122,7 +121,7 @@ class HandlersTestCase(AioHTTPTestCase):
         """Fake read operation to return mocked json."""
         return await futurized((self.metadata_json, "application/json"))
 
-    async def fake_operator_query_metadata_object(self, schema_type, query, page_num, page_size):
+    async def fake_operator_query_metadata_object(self, schema_type, query, page_num, page_size, filtered_list):
         """Fake query operation to return list containing mocked json."""
         return await futurized(
             ([self.metadata_json], self.page_num, self.page_size, self.total_objects),
@@ -172,6 +171,10 @@ class HandlersTestCase(AioHTTPTestCase):
         """Fake check object in folder."""
         data = True, self.folder_id, False
         return await futurized(data)
+
+    async def fake_folderoperator_get_collection_objects(self, schema_type, accession_id):
+        """Fake get collection of objects in folder."""
+        return await futurized(["EDAG3991701442770179", "EGA123456"])
 
     async def fake_useroperator_user_has_folder(self, schema_type, user_id, folder_id):
         """Fake check object in folder."""

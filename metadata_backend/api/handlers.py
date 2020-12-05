@@ -4,7 +4,7 @@ import mimetypes
 from collections import Counter
 from math import ceil
 from pathlib import Path
-from typing import Dict, List, Tuple, Union, cast
+from typing import Dict, List, Tuple, Union, cast, AsyncGenerator
 
 from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
@@ -93,6 +93,50 @@ class RESTApiHandler:
         else:
             return await user_op.check_user_has_doc(collection, current_user, accession_id)
 
+    async def _get_collection_objects(
+        self, folder_op: AsyncIOMotorClient, collection: str, seq: List
+    ) -> AsyncGenerator:
+        """Get objects ids based on folder and collection.
+
+        Considering that many objects will be returned good to have a generator.
+        """
+        for el in seq:
+            result = await folder_op.get_collection_objects(el, collection)
+
+            yield result
+
+    async def _handle_user_objects_collection(self, req: Request, collection: str) -> List:
+        """Retrieve objects ids list belonging to user in collection.
+
+        Get a list of objects belong
+
+        :param req: HTTP request
+        :param collection: collection or schema of document
+        :returns: bool
+        """
+        db_client = req.app["db_client"]
+        current_user = req.app["Session"]["user_info"]
+        user_op = UserOperator(db_client)
+        folder_op = FolderOperator(db_client)
+
+        user = await user_op.read_user(current_user)
+        res = self._get_collection_objects(folder_op, collection, user["folders"])
+
+        dt = []
+        async for r in res:
+            dt.extend(r)
+
+        return dt
+
+    async def _filter_by_user(self, req: Request, collection: str, seq: List) -> AsyncGenerator:
+        """For a list of objects check if these are owned by a user.
+
+        This can be called using a partial from functools.
+        """
+        for el in seq:
+            if await self._handle_check_ownedby_user(req, collection, el["accessionId"]):
+                yield el
+
     async def _handle_query(self, req: Request) -> Response:
         """Handle query results.
 
@@ -122,9 +166,12 @@ class RESTApiHandler:
         page = get_page_param("page", 1)
         per_page = get_page_param("per_page", 10)
         db_client = req.app["db_client"]
+
+        filter_list = await self._handle_user_objects_collection(req, collection)
         data, page_num, page_size, total_objects = await Operator(db_client).query_metadata_database(
-            collection, req.query, page, per_page
+            collection, req.query, page, per_page, filter_list
         )
+
         result = json.dumps(
             {
                 "page": {
@@ -438,7 +485,7 @@ class RESTApiHandler:
         """Get one object folder by its folder id.
 
         :param req: GET request
-        :raises: HTTPUnauthorized if folder not owned by user
+        :raises: HTTPNotFound if folder not owned by user
         :returns: JSON response containing object folder
         """
         folder_id = req.match_info["folderId"]
@@ -448,7 +495,7 @@ class RESTApiHandler:
         if not check_user:
             reason = f"The folder {folder_id} does not belong to current user."
             LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
+            raise web.HTTPNotFound(reason=reason)
 
         operator = FolderOperator(db_client)
         folder = await operator.read_folder(folder_id)
@@ -558,7 +605,7 @@ class RESTApiHandler:
 
         user_op = UserOperator(db_client)
         current_user = req.app["Session"]["user_info"]
-        user_op.remove_objects(current_user, "folders", [folder_id])
+        await user_op.remove_objects(current_user, "folders", [folder_id])
 
         LOG.info(f"DELETE folder with ID {folder} was successful.")
         return web.Response(status=204)
@@ -773,7 +820,7 @@ class SubmissionAPIHandler:
             else:
                 alias = data_as_json["alias"]
                 query = MultiDictProxy(MultiDict([("alias", alias)]))
-                data, _, _, _ = await Operator(db_client).query_metadata_database(schema, query, 1, 1)
+                data, _, _, _ = await Operator(db_client).query_metadata_database(schema, query, 1, 1, [])
                 if len(data) > 1:
                     reason = "Alias in provided XML file corresponds with more than one existing metadata object."
                     LOG.error(reason)
