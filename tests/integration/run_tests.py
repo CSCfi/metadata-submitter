@@ -9,6 +9,7 @@ import asyncio
 import json
 import logging
 from pathlib import Path
+import urllib
 import xml.etree.ElementTree as ET
 
 import aiofiles
@@ -39,6 +40,7 @@ test_json_files = [
     ("analysis", "ERZ266973.json", "ERZ266973.json"),
 ]
 base_url = "http://localhost:5430"
+mock_auth_url = "http://localhost:8000"
 objects_url = f"{base_url}/objects"
 drafts_url = f"{base_url}/drafts"
 folders_url = f"{base_url}/folders"
@@ -47,12 +49,28 @@ submit_url = f"{base_url}/submit"
 publish_url = f"{base_url}/publish"
 
 user_id = "current"
-test_user = "test@test.what", "test test"
+test_user_given = "test"
+test_user_family = "test"
+test_user = "test@test.what"
+
+other_test_user_given = "test"
+other_test_user_family = "test"
+other_test_user = "test2@test.what"
 
 
 # === Helper functions ===
-async def login(sess):
+async def login(sess, eppn, given, family):
     """Mock login."""
+    params = {
+        "eppn": eppn,
+        "family": family,
+        "given": given,
+    }
+
+    # Prepare response
+    url = f"{mock_auth_url}/setmock?{urllib.parse.urlencode(params)}"
+    async with sess.get(f"{url}"):
+        LOG.debug("Setting mock user")
     async with sess.get(f"{base_url}/aai"):
         LOG.debug("Doing mock user login")
 
@@ -574,8 +592,22 @@ async def main():
     """Launch different test tasks and run them."""
 
     async with aiohttp.ClientSession() as sess:
+
+        LOG.debug("=== Login other mock user ===")
+        await login(sess, other_test_user, other_test_user_given, other_test_user_family)
+
+        # Test add, modify, validate and release action with submissions
+        LOG.debug("=== Testing actions within submissions ===")
+        submission_folder = {
+            "name": "submission test 1",
+            "description": "submission test folder 1",
+        }
+        submission_folder_id = await post_folder(sess, submission_folder)
+        await test_submissions_work(sess, submission_folder_id)
+
+    async with aiohttp.ClientSession() as sess:
         LOG.debug("=== Login mock user ===")
-        await login(sess)
+        await login(sess, test_user, test_user_given, test_user_family)
 
         # Test adding and getting objects
         LOG.debug("=== Testing basic CRUD operations ===")
@@ -609,8 +641,8 @@ async def main():
         # Test queries
         LOG.debug("=== Testing queries ===")
         query_folder = {
-            "name": "basic test draft",
-            "description": "basic test draft folder",
+            "name": "basic test query",
+            "description": "basic test query folder",
         }
         query_folder_id = await post_folder(sess, query_folder)
         await test_querying_works(sess, query_folder_id)
@@ -618,8 +650,8 @@ async def main():
         # Test /objects/study endpoint for query pagination
         LOG.debug("=== Testing getting all objects & pagination ===")
         pagination_folder = {
-            "name": "basic test draft",
-            "description": "basic test draft folder",
+            "name": "basic test pagination",
+            "description": "basic test pagination folder",
         }
         pagination_folder_id = await post_folder(sess, pagination_folder)
         await test_getting_all_objects_from_schema_works(sess, pagination_folder_id)
