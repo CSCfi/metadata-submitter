@@ -256,3 +256,15 @@ class DBService:
         """
         LOG.debug("DB doc count performed.")
         return await self.database[collection].count_documents(query)
+
+    @auto_reconnect
+    async def aggregate(self, collection: str, query: List) -> AsyncIOMotorCursor:
+        """Peform aggregate query.
+
+        :param collection: Collection where document should be searched from
+        :param query: query to be used
+        :returns: Estimate of the number of documents
+        """
+        LOG.debug("DB aggregate performed.")
+        aggregate = self.database[collection].aggregate(query)
+        return [doc async for doc in aggregate]

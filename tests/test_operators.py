@@ -2,7 +2,7 @@
 import datetime
 import re
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, call
 
 from aiohttp.web import HTTPBadRequest, HTTPNotFound
 from aiounittest import AsyncTestCase, futurized
@@ -439,18 +439,45 @@ class TestOperators(AsyncTestCase):
                 "dateModified": datetime.datetime(2020, 6, 14, 0, 0),
             }
         ]
-        operator.db_service.query.return_value = MockCursor(study_test)
+        study_total = [{"total": 0}]
+        operator.db_service.aggregate.side_effect = [futurized(study_test), futurized(study_total)]
         query = MultiDictProxy(MultiDict([("studyAttributes", "foo")]))
-        await operator.query_metadata_database("study", query, 1, 10)
-        operator.db_service.query.assert_called_once_with(
-            "study",
-            {
-                "$or": [
-                    {"studyAttributes.tag": re.compile(".*foo.*", re.IGNORECASE)},
-                    {"studyAttributes.value": re.compile(".*foo.*", re.IGNORECASE)},
-                ]
-            },
-        )
+        await operator.query_metadata_database("study", query, 1, 10, [])
+        calls = [
+            call(
+                "sample",
+                [
+                    {
+                        "$match": {
+                            "$or": [
+                                {"studyAttributes.tag": re.compile(".*foo.*", re.IGNORECASE)},
+                                {"studyAttributes.value": re.compile(".*foo.*", re.IGNORECASE)},
+                            ]
+                        }
+                    },
+                    {"$redact": {"$cond": {"if": {}, "then": "$$DESCEND", "else": "$$PRUNE"}}},
+                    {"$skip": 0},
+                    {"$limit": 10},
+                    {"$project": {"_id": 0}},
+                ],
+            ),
+            call(
+                "sample",
+                [
+                    {
+                        "$match": {
+                            "$or": [
+                                {"studyAttributes.tag": re.compile(".*foo.*", re.IGNORECASE)},
+                                {"studyAttributes.value": re.compile(".*foo.*", re.IGNORECASE)},
+                            ]
+                        }
+                    },
+                    {"$redact": {"$cond": {"if": {}, "then": "$$DESCEND", "else": "$$PRUNE"}}},
+                    {"$count": "total"},
+                ],
+            ),
+        ]
+        operator.db_service.aggregate.asser_has_calls(calls, any_order=True)
 
     async def test_non_working_query_params_are_not_passed_to_db_query(self):
         """Test that database with empty query, when url params are wrong."""
@@ -463,14 +490,36 @@ class TestOperators(AsyncTestCase):
                 "dateModified": datetime.datetime(2020, 6, 14, 0, 0),
             }
         ]
-        operator.db_service.query.return_value = MockCursor(study_test)
+        study_total = [{"total": 0}]
+        operator.db_service.aggregate.side_effect = [futurized(study_test), futurized(study_total)]
         query = MultiDictProxy(MultiDict([("swag", "littinen")]))
         with patch(
             "metadata_backend.api.operators.Operator._format_read_data",
             return_value=futurized(study_test),
         ):
-            await operator.query_metadata_database("study", query, 1, 10)
-        operator.db_service.query.assert_called_once_with("study", {})
+            await operator.query_metadata_database("study", query, 1, 10, [])
+        calls = [
+            call(
+                "sample",
+                [
+                    {"$match": {}},
+                    {"$redact": {"$cond": {"if": {}, "then": "$$DESCEND", "else": "$$PRUNE"}}},
+                    {"$skip": 0},
+                    {"$limit": 10},
+                    {"$project": {"_id": 0}},
+                ],
+            ),
+            call(
+                "sample",
+                [
+                    {"$match": {}},
+                    {"$redact": {"$cond": {"if": {}, "then": "$$DESCEND", "else": "$$PRUNE"}}},
+                    {"$count": "total"},
+                ],
+            ),
+        ]
+        operator.db_service.aggregate.asser_has_calls(calls, any_order=True)
+        self.assertEqual(operator.db_service.aggregate.call_count, 2)
 
     async def test_query_result_is_parsed_correctly(self):
         """Test json is read and correct pagination values are returned."""
@@ -489,15 +538,15 @@ class TestOperators(AsyncTestCase):
                 "foo": "bar",
             },
         ]
-        operator.db_service.query.return_value = MockCursor(multiple_result)
-        operator.db_service.get_count.return_value = futurized(100)
+        study_total = [{"total": 100}]
+        operator.db_service.aggregate.side_effect = [futurized(multiple_result), futurized(study_total)]
         query = MultiDictProxy(MultiDict([]))
         (
             parsed,
             page_num,
             page_size,
             total_objects,
-        ) = await operator.query_metadata_database("sample", query, 1, 10)
+        ) = await operator.query_metadata_database("sample", query, 1, 10, [])
         for doc in parsed:
             self.assertEqual(doc["dateCreated"], "2020-06-14T00:00:00")
             self.assertEqual(doc["dateModified"], "2020-06-14T00:00:00")
@@ -516,21 +565,41 @@ class TestOperators(AsyncTestCase):
             return_value=futurized([]),
         ):
             with self.assertRaises(HTTPNotFound):
-                await operator.query_metadata_database("study", query, 1, 10)
+                await operator.query_metadata_database("study", query, 1, 10, [])
 
     async def test_query_skip_and_limit_are_set_correctly(self):
         """Test custom skip and limits."""
         operator = Operator(self.client)
         data = {"foo": "bar"}
-        cursor = MockCursor([])
-        operator.db_service.query.return_value = cursor
+        result = futurized([])
+        operator.db_service.aggregate.side_effect = [result, futurized([{"total": 0}])]
         with patch(
             "metadata_backend.api.operators.Operator._format_read_data",
             return_value=futurized(data),
         ):
-            await operator.query_metadata_database("sample", {}, 3, 50)
-            self.assertEqual(cursor._skip, 100)
-            self.assertEqual(cursor._limit, 50)
+            await operator.query_metadata_database("sample", {}, 3, 50, [])
+            calls = [
+                call(
+                    "sample",
+                    [
+                        {"$match": {}},
+                        {"$redact": {"$cond": {"if": {}, "then": "$$DESCEND", "else": "$$PRUNE"}}},
+                        {"$skip": 50 * (3 - 1)},
+                        {"$limit": 50},
+                        {"$project": {"_id": 0}},
+                    ],
+                ),
+                call(
+                    "sample",
+                    [
+                        {"$match": {}},
+                        {"$redact": {"$cond": {"if": {}, "then": "$$DESCEND", "else": "$$PRUNE"}}},
+                        {"$count": "total"},
+                    ],
+                ),
+            ]
+            operator.db_service.aggregate.asser_has_calls(calls, any_order=True)
+            self.assertEqual(operator.db_service.aggregate.call_count, 2)
 
     async def test_create_folder_works_and_returns_folderId(self):
         """Test create method for folders work."""

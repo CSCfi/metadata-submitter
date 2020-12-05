@@ -286,8 +286,8 @@ class Operator(BaseOperator):
         super().__init__("objects", "application/json", db_client)
 
     async def query_metadata_database(
-        self, schema_type: str, que: MultiDictProxy, page_num: int, page_size: int
-    ) -> Tuple[Dict, int, int, int]:
+        self, schema_type: str, que: MultiDictProxy, page_num: int, page_size: int, filter_objects: List
+    ) -> Tuple[List, int, int, int]:
         """Query database based on url query parameters.
 
         Url queries are mapped to mongodb queries based on query_map in
@@ -297,10 +297,21 @@ class Operator(BaseOperator):
         :param que: Dict containing query information
         :param page_size: Results per page
         :param page_num: Page number
+        :param filter_objects: List of objects belonging to a user
         :raises: HTTPBadRequest if error happened when connection to database
         and HTTPNotFound error if object with given accession id is not found.
         :returns: Query result with pagination numbers
         """
+        # Redact the query by checking the accessionId belongs to user
+        redacted_content = {
+            "$redact": {
+                "$cond": {
+                    "if": {"$in": ["$accessionId", filter_objects]} if len(filter_objects) > 1 else {},
+                    "then": "$$DESCEND",
+                    "else": "$$PRUNE",
+                }
+            }
+        }
         # Generate mongodb query from query parameters
         mongo_query: Dict[Any, Any] = {}
         for query, value in que.items():
@@ -328,28 +339,39 @@ class Operator(BaseOperator):
                     # Query with regex from just one field
                     mongo_query = {query_map[query]: regx}
         LOG.debug(f"Query construct: {mongo_query}")
+        LOG.debug(f"redacted filter: {redacted_content}")
+        skips = page_size * (page_num - 1)
+        aggregate_query = [
+            {"$match": mongo_query},
+            redacted_content,
+            {"$skip": skips},
+            {"$limit": page_size},
+            {"$project": {"_id": 0}},
+        ]
         try:
-            cursor = self.db_service.query(schema_type, mongo_query)
+            cursor = await self.db_service.aggregate(schema_type, aggregate_query)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting object: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        skips = page_size * (page_num - 1)
-        cursor.skip(skips).limit(page_size)
         data = await self._format_read_data(schema_type, cursor)
+
         if not data:
             reason = f"could not find any data in {schema_type}."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
+
         page_size = len(data) if len(data) != page_size else page_size
-        total_objects = await self.db_service.get_count(schema_type, mongo_query)
+        count_query = [{"$match": mongo_query}, redacted_content, {"$count": "total"}]
+        total_objects = await self.db_service.aggregate(schema_type, count_query)
+
         LOG.debug(f"DB query: {que}")
         LOG.info(
             f"DB query successful for query on {schema_type} "
-            f"resulted in {total_objects}. "
+            f"resulted in {total_objects[0]['total']}. "
             f"Requested was page {page_num} and page size {page_size}."
         )
-        return data, page_num, page_size, total_objects
+        return data, page_num, page_size, total_objects[0]["total"]
 
     async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: Dict) -> str:
         """Format JSON metadata object and add it to db.
@@ -444,7 +466,7 @@ class Operator(BaseOperator):
         if isinstance(data_raw, dict):
             return self._format_single_dict(schema_type, data_raw)
         else:
-            return [self._format_single_dict(schema_type, doc) async for doc in data_raw]
+            return [self._format_single_dict(schema_type, doc) for doc in data_raw]
 
     def _format_single_dict(self, schema_type: str, doc: Dict) -> Dict:
         """Format single result dictionary.
@@ -587,6 +609,23 @@ class FolderOperator:
             folder_id = folder_check[0]["folderId"]
             LOG.info(f"found doc {accession_id} in {folder_id}")
             return True, folder_id, folder_check[0]["published"]
+
+    async def get_collection_objects(self, folder_id: str, collection: str) -> List:
+        """List objects ids per collection.
+
+        :param collection: collection it belongs to, it would be used as path
+        :returns: count of objects
+        """
+        folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
+        folder_query = {"$and": [{folder_path: {"$elemMatch": {"schema": collection}}}, {"folderId": folder_id}]}
+
+        folder_cursor = self.db_service.query("folder", folder_query)
+        folders = [folder async for folder in folder_cursor]
+
+        if len(folders) >= 1:
+            return [i["accessionId"] for i in folders[0][folder_path]]
+        else:
+            return []
 
     async def create_folder(self, data: Dict) -> str:
         """Create new object folder to database.
