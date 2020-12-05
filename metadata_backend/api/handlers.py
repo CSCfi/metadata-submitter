@@ -74,7 +74,7 @@ class RESTApiHandler:
         current_user = req.app["Session"]["user_info"]
         user_op = UserOperator(db_client)
 
-        if collection != "folder":
+        if collection != "folders":
 
             folder_op = FolderOperator(db_client)
             check, folder_id, published = await folder_op.check_object_in_folder(collection, accession_id)
@@ -448,8 +448,24 @@ class RESTApiHandler:
         """
         db_client = req.app["db_client"]
 
+        user_operator = UserOperator(db_client)
+
+        current_user = req.app["Session"]["user_info"]
+        user = await user_operator.read_user(current_user)
+
         operator = FolderOperator(db_client)
-        folders = await operator.query_folders({})
+        folders = await operator.query_folders(
+            {
+                "$redact": {
+                    "$cond": {
+                        "if": {"$or": [{"$eq": ["$published", True]}, {"$in": ["$folderId", user["folders"]]}]},
+                        "then": "$$DESCEND",
+                        "else": "$$PRUNE",
+                    }
+                }
+            },
+            {"$project": {"_id": 0}},
+        )
 
         body = json.dumps({"folders": folders})
         LOG.info(f"GET folders. Retrieved {len(folders)} folders.")
@@ -491,7 +507,7 @@ class RESTApiHandler:
         folder_id = req.match_info["folderId"]
         db_client = req.app["db_client"]
 
-        check_user = await self._handle_check_ownedby_user(req, "folder", folder_id)
+        check_user = await self._handle_check_ownedby_user(req, "folders", folder_id)
         if not check_user:
             reason = f"The folder {folder_id} does not belong to current user."
             LOG.error(reason)
@@ -532,7 +548,7 @@ class RESTApiHandler:
                 LOG.error(reason)
                 raise web.HTTPUnauthorized(reason=reason)
 
-        check_user = await self._handle_check_ownedby_user(req, "folder", folder_id)
+        check_user = await self._handle_check_ownedby_user(req, "folders", folder_id)
         if not check_user:
             reason = f"The folder {folder_id} does not belong to current user."
             LOG.error(reason)
@@ -555,7 +571,7 @@ class RESTApiHandler:
         folder_id = req.match_info["folderId"]
         db_client = req.app["db_client"]
 
-        check_user = await self._handle_check_ownedby_user(req, "folder", folder_id)
+        check_user = await self._handle_check_ownedby_user(req, "folders", folder_id)
         if not check_user:
             reason = f"The folder {folder_id} does not belong to current user."
             LOG.error(reason)
@@ -594,7 +610,7 @@ class RESTApiHandler:
         folder_id = req.match_info["folderId"]
         db_client = req.app["db_client"]
 
-        check_user = await self._handle_check_ownedby_user(req, "folder", folder_id)
+        check_user = await self._handle_check_ownedby_user(req, "folders", folder_id)
         if not check_user:
             reason = f"The folder {folder_id} does not belong to current user."
             LOG.error(reason)
