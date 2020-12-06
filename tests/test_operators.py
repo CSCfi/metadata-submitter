@@ -69,10 +69,10 @@ class TestOperators(AsyncTestCase):
             "published": False,
             "metadataObjects": [],
         }
-        self.user_id = "USR12345678"
+        self.user_id = "current"
         self.test_user = {
             "userId": self.user_id,
-            "username": "tester",
+            "name": "tester",
             "drafts": [],
             "folders": [],
         }
@@ -605,7 +605,7 @@ class TestOperators(AsyncTestCase):
     async def test_create_user_works_and_returns_userId(self):
         """Test create method for users work."""
         operator = UserOperator(self.client)
-        data = {}
+        data = "eppn", "name"
         operator.db_service.create.return_value = futurized(True)
         folder = await operator.create_user(data)
         operator.db_service.create.assert_called_once()
@@ -651,7 +651,7 @@ class TestOperators(AsyncTestCase):
         operator.db_service.exists.return_value = futurized(True)
         operator.db_service.delete.return_value = futurized(True)
         await operator.delete_user(self.user_id)
-        operator.db_service.delete.assert_called_with("user", "USR12345678")
+        operator.db_service.delete.assert_called_with("user", "current")
 
 
 if __name__ == "__main__":

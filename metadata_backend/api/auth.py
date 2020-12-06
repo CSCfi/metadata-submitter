@@ -9,9 +9,12 @@ from aiohttp import web, BasicAuth, ClientSession
 from aiohttp.web import Request, Response
 from .middlewares import generate_cookie
 from authlib.jose import jwt
+from authlib.oidc.core import CodeIDToken
 from authlib.jose.errors import MissingClaimError, InvalidClaimError, ExpiredTokenError, InvalidTokenError, DecodeError
+from multidict import CIMultiDict
+from .operators import UserOperator
 
-from typing import Dict
+from typing import Dict, Tuple, Union
 
 from ..helpers.logger import LOG
 
@@ -20,7 +23,10 @@ class AccessHandler:
     """Handler for user access methods."""
 
     def __init__(self, aai: Dict) -> None:
-        """Define AAI variables and paths."""
+        """Define AAI variables and paths.
+
+        :param aai: dictionary with AAI specific config
+        """
         self.domain = aai["domain"]
         self.client_id = aai["client_id"]
         self.client_secret = aai["client_secret"]
@@ -31,12 +37,13 @@ class AccessHandler:
         self.scope = aai["scope"]
         self.jwk = aai["jwk_server"]
         self.iss = aai["iss"]
+        self.user_info = aai["user_info"]
         self.nonce = secrets.token_hex()
 
     async def login(self, req: Request) -> Response:
         """Redirect user to AAI login.
 
-        :param req: GET request
+        :param req: A HTTP request instance
         :raises: 303 redirect
         """
         # Generate a state for callback and save it to session storage
@@ -56,13 +63,19 @@ class AccessHandler:
         # Prepare response
         url = f"{self.auth_url}?{urllib.parse.urlencode(params)}"
         response = web.HTTPSeeOther(url)
+        response.headers["Location"] = url
         raise response
 
     async def callback(self, req: Request) -> Response:
         """Include correct tokens in cookies as a callback after login.
 
-        :param req: GET request
-        :raises: 303 redirect
+        Sets session information such as access_token and user_info.
+        Sets encrypted cookie to identify clients.
+
+        :raises: 400 in case login failed
+        :raises: 403 in case of bad session
+        :param req: A HTTP request instance with callback parameters
+        :returns: 303 redirect
         """
         # Response from AAI must have the query params `state` and `code`
         if "state" in req.query and "code" in req.query:
@@ -104,7 +117,7 @@ class AccessHandler:
                     raise web.HTTPBadRequest(reason=reason)
 
         await self._save_to_session(req, key="access_token", value=access_token)
-        await self._save_to_session(req, key="id_token", value=id_token)
+        await self._set_user(req, access_token)
 
         response = web.HTTPSeeOther(f"{self.domain}/home")
 
@@ -141,11 +154,12 @@ class AccessHandler:
     async def logout(self, req: Request) -> Response:
         """Log the user out by revoking tokens.
 
-        :param req: GET request
+        :param req: A HTTP request instance
+        :raises: 400 in case logout failed
         :raises: 303 redirect
         """
         # Revoke token at AAI
-        access_token = self._get_from_session(req, "access_token")
+        access_token = await self._get_from_session(req, "access_token")
         auth = BasicAuth(login=self.client_id, password=self.client_secret)
         params = {"token": access_token}
         # Set up client authentication for request
@@ -159,18 +173,46 @@ class AccessHandler:
                     raise web.HTTPBadRequest(reason=f"Logout failed at AAI: {resp.status}.")
 
         # Overwrite status cookies with instantly expiring ones
-        response = web.HTTPSeeOther(f"{req.url}")
-        # response.set_cookie("logged_in", "False", max_age=0, httponly=False)  # type: ignore
+        response = web.HTTPSeeOther(f"{self.domain}/aai")
+        response.headers["Location"] = "/aai"
         req.app["Session"]["access_token"] = None
-        req.app["Session"]["id_token"] = None
+        req.app["Session"]["user_info"] = None
+        req.app["Session"]["oidc_state"] = None
         req.app["Session"] = {}
         req.app["Cookies"] = set({})
         LOG.debug("Logged out user ")
 
         raise response
 
+    async def _set_user(self, req: Request, token: str) -> None:
+        """Set user in current session and return user id based on result of create_user.
+
+        :raises: 400 in could not get user info from AAI OIDC
+        :param req: A HTTP request instance
+        :param token: access token from AAI
+        """
+        user_data: Tuple[str, str]
+        try:
+            headers = CIMultiDict({"Authorization": f"Bearer {token}"})
+            async with ClientSession(headers=headers) as sess:
+                async with sess.get(f"{self.user_info}") as resp:
+                    result = await resp.json()
+                    user_data = result["eppn"], f"{result['given_name']} {result['family_name']}"
+        except Exception as e:
+            LOG.error(f"Could not get information from AAI UserInfo endpoint because of: {e}")
+            raise web.HTTPBadRequest(reason="Could not get information from AAI UserInfo endpoint.")
+
+        db_client = req.app["db_client"]
+        operator = UserOperator(db_client)
+        user_id = await operator.create_user(user_data)
+        await self._save_to_session(req, key="user_info", value=user_id)
+
     async def _get_key(self) -> dict:
-        """Get OAuth2 public key and transform it to usable pem key."""
+        """Get OAuth2 public key and transform it to usable pem key.
+
+        :raises: 401 in case JWK could not be retrieved
+        :returns: dictionary with JWK (JSON Web Keys)
+        """
         try:
             async with ClientSession() as session:
                 async with session.get(self.jwk) as r:
@@ -180,7 +222,12 @@ class AccessHandler:
             raise web.HTTPUnauthorized(reason="JWK cannot be retrieved")
 
     async def _validate_jwt(self, token: str) -> None:
-        """."""
+        """Validate id token from AAI according to OIDC specs.
+
+        :raises: 401 in case token is missing claim, has expired signature or invalid
+        :raises: 403 does not provide access to the token received
+        :param token: id token received from AAI
+        """
         key = await self._get_key()  # JWK used to decode token with
         claims_options = {
             "iss": {
@@ -190,16 +237,21 @@ class AccessHandler:
             "aud": {"essential": True, "value": self.client_id},
             "exp": {"essential": True},
             "iat": {"essential": True},
+        }
+        claims_params = {
             "auth_time": {"essential": True},
             "acr": {
                 "essential": True,
-                "value": f"{self.iss}/LoginHaka",
+                "values": f"{self.iss}/LoginHaka,{self.iss}/LoginCSC",
             },
-            "nonce": {"essential": True, "value": self.nonce},
+            "nonce": self.nonce,
         }
         try:
             LOG.debug("Validate ID Token")
-            decoded_data = jwt.decode(token, key, claims_options=claims_options)  # decode the token
+
+            decoded_data = jwt.decode(
+                token, key, claims_options=claims_options, claims_params=claims_params, claims_cls=CodeIDToken
+            )  # decode the token
             decoded_data.validate()  # validate the token contents
         # Testing the exceptions is done in integration tests
         except MissingClaimError as e:
@@ -215,8 +267,15 @@ class AccessHandler:
         except Exception:
             raise web.HTTPForbidden(reason="No access")
 
-    async def _save_to_session(self, request: Request, key: str = "key", value: str = "value") -> None:
-        """Save a given value to a session key."""
+    async def _save_to_session(
+        self, request: Request, key: str = "key", value: Union[Tuple[str, str], str] = "value"
+    ) -> None:
+        """Save a given value to a session key.
+
+        :param request: HTTP request
+        :param key: key to identify in the session storage
+        :param value: value for the key stored the session storage
+        """
         LOG.debug(f"Save a value for {key} to session.")
 
         session = request.app["Session"]
@@ -225,8 +284,10 @@ class AccessHandler:
     async def _get_from_session(self, req: Request, key: str) -> str:
         """Get a value from session storage.
 
-        :param req: GET request
+        :param req: HTTP request
         :param key: name of the key to be returned from session storage
+        :raises: 401 in case session does not have value for key
+        :raises: 403 in case session does not have key
         :returns: Specific value from session storage
         """
         try:
@@ -239,4 +300,4 @@ class AccessHandler:
         except Exception as e:
             reason = f"Failed to retrieve {key} from session: {e}"
             LOG.error(reason)
-            raise web.HTTPInternalServerError(reason=reason)
+            raise web.HTTPForbidden(reason=reason)

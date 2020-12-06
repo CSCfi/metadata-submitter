@@ -1291,7 +1291,7 @@ components:
       type: object
       required:
         - userId
-        - username
+        - name
         - drafts
         - folders
       additionalProperties: false
@@ -1299,9 +1299,9 @@ components:
         userId:
           type: string
           description: User Id
-        username:
+        name:
           type: string
-          description: User Name
+          description: User's Name
         drafts:
           type: array
           items:
