@@ -672,11 +672,11 @@ class FolderOperator:
             LOG.info(f"Deleting folder with id {folder_id} to database succeeded.")
             return folder_id
 
-    async def _check_folder_exists(self, db: DBService, id: str) -> None:
+    async def _check_folder_exists(self, db: DBService, folder_id: str) -> None:
         """Check the existance of a folder by its id in the database."""
-        exists = await db.exists("folder", id)
+        exists = await db.exists("folder", folder_id)
         if not exists:
-            reason = f"Folder with id {id} was not found."
+            reason = f"Folder with id {folder_id} was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
 
@@ -702,29 +702,42 @@ class UserOperator:
         """
         self.db_service = DBService("users", db_client)
 
-    async def create_user(self, data: Dict) -> str:
+    async def create_user(self, data: Tuple) -> str:
         """Create new user object to database.
 
-        :param data: Data to be saved to database
+        :param data: User Data to identify user
         :raises: 400 if error occurs during the process
         :returns: User id for the user object inserted to database
         """
-        user_id = self._generate_user_id()
-        data["userId"] = user_id
-        try:
-            insert_success = await self.db_service.create("user", data)
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while inserting user: {error}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
+        user_data: Dict[str, Union[list, str]] = dict()
 
-        if not insert_success:
-            reason = "Inserting user to database failed for some reason."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
+        eppn = data[0]
+        name = data[1]
+
+        existing_user_id = await self.db_service.exists_eppn_user(eppn)
+        if existing_user_id:
+            LOG.info(f"User with eppn: {eppn} exists, no need to create.")
+            return existing_user_id
         else:
-            LOG.info(f"Inserting user with id {user_id} to database succeeded.")
-            return user_id
+            user_data["drafts"] = []
+            user_data["folders"] = []
+            user_data["userId"] = user_id = self._generate_user_id()
+            user_data["name"] = name
+            user_data["eppn"] = eppn
+            try:
+                insert_success = await self.db_service.create("user", user_data)
+            except (ConnectionFailure, OperationFailure) as error:
+                reason = f"Error happened while inserting user: {error}"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+
+            if not insert_success:
+                reason = "Inserting user to database failed for some reason."
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+            else:
+                LOG.info(f"Inserting user with id {user_id} to database succeeded.")
+                return user_id
 
     async def read_user(self, user_id: str) -> Dict:
         """Read user object from database.
@@ -796,11 +809,11 @@ class UserOperator:
             LOG.info(f"{user_id} successfully deleted from collection.")
             return user_id
 
-    async def _check_user_exists(self, db: DBService, id: str) -> None:
+    async def _check_user_exists(self, db: DBService, user_id: str) -> None:
         """Check the existance of a user by its id in the database."""
-        exists = await db.exists("user", id)
+        exists = await db.exists("user", user_id)
         if not exists:
-            reason = f"User with id {id} was not found."
+            reason = f"User with id {user_id} was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
 

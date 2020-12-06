@@ -3,14 +3,14 @@
   "title": "Folder schema for user objects",
   "required": [
     "userId",
-    "username"
+    "name"
   ],
   "properties": {
     "userId": {
       "type": "string",
       "title": "User Id"
     },
-    "username": {
+    "name": {
       "type": "string",
       "title": "User Name"
     },
