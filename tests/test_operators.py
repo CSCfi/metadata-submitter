@@ -445,7 +445,7 @@ class TestOperators(AsyncTestCase):
         await operator.query_metadata_database("study", query, 1, 10, [])
         calls = [
             call(
-                "sample",
+                "study",
                 [
                     {
                         "$match": {
@@ -462,7 +462,7 @@ class TestOperators(AsyncTestCase):
                 ],
             ),
             call(
-                "sample",
+                "study",
                 [
                     {
                         "$match": {
@@ -477,7 +477,7 @@ class TestOperators(AsyncTestCase):
                 ],
             ),
         ]
-        operator.db_service.aggregate.asser_has_calls(calls, any_order=True)
+        operator.db_service.aggregate.assert_has_calls(calls, any_order=True)
 
     async def test_non_working_query_params_are_not_passed_to_db_query(self):
         """Test that database with empty query, when url params are wrong."""
@@ -500,7 +500,7 @@ class TestOperators(AsyncTestCase):
             await operator.query_metadata_database("study", query, 1, 10, [])
         calls = [
             call(
-                "sample",
+                "study",
                 [
                     {"$match": {}},
                     {"$redact": {"$cond": {"if": {}, "then": "$$DESCEND", "else": "$$PRUNE"}}},
@@ -510,7 +510,7 @@ class TestOperators(AsyncTestCase):
                 ],
             ),
             call(
-                "sample",
+                "study",
                 [
                     {"$match": {}},
                     {"$redact": {"$cond": {"if": {}, "then": "$$DESCEND", "else": "$$PRUNE"}}},
@@ -518,7 +518,7 @@ class TestOperators(AsyncTestCase):
                 ],
             ),
         ]
-        operator.db_service.aggregate.asser_has_calls(calls, any_order=True)
+        operator.db_service.aggregate.assert_has_calls(calls, any_order=True)
         self.assertEqual(operator.db_service.aggregate.call_count, 2)
 
     async def test_query_result_is_parsed_correctly(self):
@@ -598,7 +598,7 @@ class TestOperators(AsyncTestCase):
                     ],
                 ),
             ]
-            operator.db_service.aggregate.asser_has_calls(calls, any_order=True)
+            operator.db_service.aggregate.assert_has_calls(calls, any_order=True)
             self.assertEqual(operator.db_service.aggregate.call_count, 2)
 
     async def test_create_folder_works_and_returns_folderId(self):
