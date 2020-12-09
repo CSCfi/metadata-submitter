@@ -105,7 +105,7 @@ aai_config = {
     else f'{os.getenv("OIDC_URL", "")}/authorize',
     "token_url": f'{os.getenv("OIDC_URL", "")}/token',
     "user_info": f'{os.getenv("OIDC_URL", "")}/userinfo',
-    "revoke_url": "",
+    "revoke_url": f'{os.getenv("OIDC_URL", "")}/revoke',
     "jwk_server": f'{os.getenv("JWK_URL", "")}',
     "referer": f'{os.getenv("AUTH_REFERER", "")}',
 }
