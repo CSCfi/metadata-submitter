@@ -28,6 +28,7 @@ class AccessHandler:
         :param aai: dictionary with AAI specific config
         """
         self.domain = aai["domain"]
+        self.redirect = aai["redirect"]
         self.client_id = aai["client_id"]
         self.client_secret = aai["client_secret"]
         self.callback_url = aai["callback_url"]
@@ -119,7 +120,7 @@ class AccessHandler:
         await self._save_to_session(req, key="access_token", value=access_token)
         await self._set_user(req, access_token)
 
-        response = web.HTTPSeeOther(f"{self.domain}/home")
+        response = web.HTTPSeeOther(f"{self.redirect}/home")
 
         cookie, _ = generate_cookie(req)
 
@@ -146,7 +147,8 @@ class AccessHandler:
 
         req.app["Cookies"].add(session)
 
-        response.headers["Location"] = "/home"
+        # done like this otherwise it will not redirect properly
+        response.headers["Location"] = "/" if self.redirect == self.domain else f"{self.redirect}/home"
 
         LOG.debug(f"cookie MTD_SESSION set {cookie_crypted}")
         return response
@@ -166,7 +168,7 @@ class AccessHandler:
         req.app["Cookies"] = set({})
 
         response = web.HTTPSeeOther(f"{self.domain}/")
-        response.headers["Location"] = "/"
+        response.headers["Location"] = f"{self.domain}/"
         LOG.debug("Logged out user ")
 
         raise response
