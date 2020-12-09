@@ -99,6 +99,11 @@ class RESTApiHandler:
         """Get objects ids based on folder and collection.
 
         Considering that many objects will be returned good to have a generator.
+
+        :param req: HTTP request
+        :param collection: collection or schema of document
+        :param seq: list of folders
+        :returns: AsyncGenerator
         """
         for el in seq:
             result = await folder_op.get_collection_objects(el, collection)
@@ -106,13 +111,11 @@ class RESTApiHandler:
             yield result
 
     async def _handle_user_objects_collection(self, req: Request, collection: str) -> List:
-        """Retrieve objects ids list belonging to user in collection.
-
-        Get a list of objects belong
+        """Retrieve list of  objects accession ids belonging to user in collection.
 
         :param req: HTTP request
         :param collection: collection or schema of document
-        :returns: bool
+        :returns: List
         """
         db_client = req.app["db_client"]
         current_user = req.app["Session"]["user_info"]
@@ -132,6 +135,11 @@ class RESTApiHandler:
         """For a list of objects check if these are owned by a user.
 
         This can be called using a partial from functools.
+
+        :param req: HTTP request
+        :param collection: collection or schema of document
+        :param seq: list of folders
+        :returns: AsyncGenerator
         """
         for el in seq:
             if await self._handle_check_ownedby_user(req, collection, el["accessionId"]):
