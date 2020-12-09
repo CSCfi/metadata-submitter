@@ -159,27 +159,14 @@ class AccessHandler:
         :returns: HTTPSeeOther redirect to login page
         """
         # Revoke token at AAI
-        access_token = await self._get_from_session(req, "access_token")
-        auth = BasicAuth(login=self.client_id, password=self.client_secret)
-        params = {"token": access_token}
-        # Set up client authentication for request
-        async with ClientSession(auth=auth) as session:
-            async with session.get(f"{self.revoke_url}?{urllib.parse.urlencode(params)}") as resp:
-                LOG.debug(f"AAI response status: {resp.status}.")
-                # Validate response from AAI
-                if resp.status != 200:
-                    LOG.error(f"Logout failed at AAI: {resp}.")
-                    LOG.error(await resp.json())
-                    raise web.HTTPBadRequest(reason=f"Logout failed at AAI: {resp.status}.")
-
-        # Overwrite status cookies with instantly expiring ones
-        response = web.HTTPSeeOther(f"{self.domain}/aai")
-        response.headers["Location"] = "/aai"
         req.app["Session"]["access_token"] = None
         req.app["Session"]["user_info"] = None
         req.app["Session"]["oidc_state"] = None
         req.app["Session"] = {}
         req.app["Cookies"] = set({})
+
+        response = web.HTTPSeeOther(f"{self.domain}/")
+        response.headers["Location"] = "/"
         LOG.debug("Logged out user ")
 
         raise response
