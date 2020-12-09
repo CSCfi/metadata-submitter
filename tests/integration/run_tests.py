@@ -9,6 +9,7 @@ import asyncio
 import json
 import logging
 from pathlib import Path
+import urllib
 import xml.etree.ElementTree as ET
 
 import aiofiles
@@ -39,6 +40,7 @@ test_json_files = [
     ("analysis", "ERZ266973.json", "ERZ266973.json"),
 ]
 base_url = "http://localhost:5430"
+mock_auth_url = "http://localhost:8000"
 objects_url = f"{base_url}/objects"
 drafts_url = f"{base_url}/drafts"
 folders_url = f"{base_url}/folders"
@@ -47,12 +49,28 @@ submit_url = f"{base_url}/submit"
 publish_url = f"{base_url}/publish"
 
 user_id = "current"
-test_user = "test@test.what", "test test"
+test_user_given = "test"
+test_user_family = "test"
+test_user = "test@test.what"
+
+other_test_user_given = "test"
+other_test_user_family = "test"
+other_test_user = "test2@test.what"
 
 
 # === Helper functions ===
-async def login(sess):
+async def login(sess, eppn, given, family):
     """Mock login."""
+    params = {
+        "eppn": eppn,
+        "family": family,
+        "given": given,
+    }
+
+    # Prepare response
+    url = f"{mock_auth_url}/setmock?{urllib.parse.urlencode(params)}"
+    async with sess.get(f"{url}"):
+        LOG.debug("Setting mock user")
     async with sess.get(f"{base_url}/aai"):
         LOG.debug("Doing mock user login")
 
@@ -105,7 +123,7 @@ async def post_object(sess, schema, filename):
         LOG.debug(f"Adding new object to {schema}")
         assert resp.status == 201, "HTTP Status code error"
         ans = await resp.json()
-        return ans["accessionId"]
+        return ans["accessionId"], schema
 
 
 async def delete_object(sess, schema, accession_id):
@@ -125,6 +143,16 @@ async def post_draft(sess, schema, filename):
         return ans["accessionId"]
 
 
+async def post_draft_json(sess, schema, filename):
+    """Post & put one metadata object within session, returns accessionId."""
+    data = await create_request_json_data(schema, filename)
+    async with sess.post(f"{drafts_url}/{schema}", data=data) as resp:
+        LOG.debug(f"Adding new draft object to {schema}")
+        assert resp.status == 201, "HTTP Status code error"
+        ans = await resp.json()
+        return ans["accessionId"]
+
+
 async def get_draft(sess, schema, draft_id):
     """Get and return a drafted metadata object."""
     async with sess.get(f"{drafts_url}/sample/{draft_id}") as resp:
@@ -134,14 +162,8 @@ async def get_draft(sess, schema, draft_id):
         return json.dumps(ans)
 
 
-async def put_draft(sess, schema, filename, filename2):
-    """Post & put one metadata object within session, returns accessionId."""
-    data = await create_request_json_data(schema, filename)
-    async with sess.post(f"{drafts_url}/{schema}", data=data) as resp:
-        LOG.debug(f"Adding new draft object to {schema}")
-        assert resp.status == 201, "HTTP Status code error"
-        ans = await resp.json()
-        test_id = ans["accessionId"]
+async def put_draft(sess, schema, test_id, filename2):
+    """Put one metadata object within session, returns accessionId."""
     data2 = await create_request_json_data(schema, filename2)
     async with sess.put(f"{drafts_url}/{schema}/{test_id}", data=data2) as resp:
         LOG.debug(f"Replace draft object in {schema}")
@@ -151,14 +173,8 @@ async def put_draft(sess, schema, filename, filename2):
         return ans_put["accessionId"]
 
 
-async def patch_draft(sess, schema, filename, filename2):
-    """Post & patch one metadata object within session, return accessionId."""
-    data = await create_request_json_data(schema, filename)
-    async with sess.post(f"{drafts_url}/{schema}", data=data) as resp:
-        LOG.debug(f"Adding new draft object to {schema}")
-        assert resp.status == 201, "HTTP Status code error"
-        ans = await resp.json()
-        test_id = ans["accessionId"]
+async def patch_draft(sess, schema, test_id, filename2):
+    """Patch one metadata object within session, return accessionId."""
     data = await create_request_json_data(schema, filename2)
     async with sess.patch(f"{drafts_url}/{schema}/{test_id}", data=data) as resp:
         LOG.debug(f"Update draft object in {schema}")
@@ -231,7 +247,7 @@ async def delete_user(sess, user_id):
 
 
 # === Integration tests ===
-async def test_crud_works(sess, schema, filename):
+async def test_crud_works(sess, schema, filename, folder_id):
     """Test REST api POST, GET and DELETE reqs.
 
     Tries to create new object, gets accession id and checks if correct
@@ -242,23 +258,25 @@ async def test_crud_works(sess, schema, filename):
     :param filename: name of the file used for testing.
     """
     accession_id = await post_object(sess, schema, filename)
-    async with sess.get(f"{objects_url}/{schema}/{accession_id}") as resp:
-        LOG.debug(f"Checking that {accession_id} JSON is in {schema}")
+    patch = [{"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id[0], "schema": schema}}]
+    await patch_folder(sess, folder_id, patch)
+    async with sess.get(f"{objects_url}/{schema}/{accession_id[0]}") as resp:
+        LOG.debug(f"Checking that {accession_id[0]} JSON is in {schema}")
         assert resp.status == 200, "HTTP Status code error"
-    async with sess.get(f"{objects_url}/{schema}/{accession_id}" "?format=xml") as resp:
-        LOG.debug(f"Checking that {accession_id} XML is in {schema}")
+    async with sess.get(f"{objects_url}/{schema}/{accession_id[0]}" "?format=xml") as resp:
+        LOG.debug(f"Checking that {accession_id[0]} XML is in {schema}")
         assert resp.status == 200, "HTTP Status code error"
 
-    await delete_object(sess, schema, accession_id)
-    async with sess.get(f"{objects_url}/{schema}/{accession_id}") as resp:
-        LOG.debug(f"Checking that JSON object {accession_id} was deleted")
+    await delete_object(sess, schema, accession_id[0])
+    async with sess.get(f"{objects_url}/{schema}/{accession_id[0]}") as resp:
+        LOG.debug(f"Checking that JSON object {accession_id[0]} was deleted")
         assert resp.status == 404, "HTTP Status code error"
-    async with sess.get(f"{objects_url}/{schema}/{accession_id}" "?format=xml") as resp:
-        LOG.debug(f"Checking that XML object {accession_id} was deleted")
+    async with sess.get(f"{objects_url}/{schema}/{accession_id[0]}" "?format=xml") as resp:
+        LOG.debug(f"Checking that XML object {accession_id[0]} was deleted")
         assert resp.status == 404, "HTTP Status code error"
 
 
-async def test_crud_drafts_works(sess, schema, filename, filename2):
+async def test_crud_drafts_works(sess, schema, filename, filename2, folder_id):
     """Test drafts REST api POST, PUT and DELETE reqs.
 
     Tries to create new draft object, gets accession id and checks if correct
@@ -268,7 +286,10 @@ async def test_crud_drafts_works(sess, schema, filename, filename2):
     :param schema: name of the schema (folder) used for testing
     :param filename: name of the file used for testing.
     """
-    accession_id = await put_draft(sess, schema, filename, filename2)
+    test_id = await post_draft_json(sess, schema, filename)
+    patch = [{"op": "add", "path": "/drafts/-", "value": {"accessionId": test_id, "schema": f"draft-{schema}"}}]
+    await patch_folder(sess, folder_id, patch)
+    accession_id = await put_draft(sess, schema, test_id, filename2)
     async with sess.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
         LOG.debug(f"Checking that {accession_id} JSON is in {schema}")
         assert resp.status == 200, "HTTP Status code error"
@@ -279,7 +300,7 @@ async def test_crud_drafts_works(sess, schema, filename, filename2):
         assert resp.status == 404, "HTTP Status code error"
 
 
-async def test_patch_drafts_works(sess, schema, filename, filename2):
+async def test_patch_drafts_works(sess, schema, filename, filename2, folder_id):
     """Test REST api POST, PATCH and DELETE reqs.
 
     Tries to create put and patch object, gets accession id and
@@ -289,7 +310,10 @@ async def test_patch_drafts_works(sess, schema, filename, filename2):
     :param schema: name of the schema (folder) used for testing
     :param filename: name of the file used for testing.
     """
-    accession_id = await patch_draft(sess, schema, filename, filename2)
+    test_id = await post_draft_json(sess, schema, filename)
+    patch = [{"op": "add", "path": "/drafts/-", "value": {"accessionId": test_id, "schema": f"draft-{schema}"}}]
+    await patch_folder(sess, folder_id, patch)
+    accession_id = await patch_draft(sess, schema, test_id, filename2)
     async with sess.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
         LOG.debug(f"Checking that {accession_id} JSON is in {schema}")
         res = await resp.json()
@@ -303,9 +327,13 @@ async def test_patch_drafts_works(sess, schema, filename, filename2):
         assert resp.status == 404, "HTTP Status code error"
 
 
-async def test_querying_works(sess):
+async def test_querying_works(sess, folder_id):
     """Test query endpoint with working and failing query."""
-    accession_ids = await asyncio.gather(*[post_object(sess, schema, filename) for schema, filename in test_xml_files])
+    files = await asyncio.gather(*[post_object(sess, schema, filename) for schema, filename in test_xml_files])
+
+    for accession_id, schema in files:
+        patch = [{"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id, "schema": schema}}]
+        await patch_folder(sess, folder_id, patch)
 
     queries = {
         "study": [
@@ -347,19 +375,18 @@ async def test_querying_works(sess):
         invalid = "yoloswaggings"
         await asyncio.gather(*[do_one_query(schema, key, invalid, 404) for key, _ in schema_queries])
 
-    await asyncio.gather(
-        *[
-            delete_object(sess, schema, accession_id)
-            for schema, accession_id in list(zip([schema for schema, _ in test_xml_files], accession_ids))
-        ]
-    )
+    await asyncio.gather(*[delete_object(sess, schema, accession_id) for accession_id, schema in files])
 
 
-async def test_getting_all_objects_from_schema_works(sess):
+async def test_getting_all_objects_from_schema_works(sess, folder_id):
     """Check that /objects/study returns objects with correct pagination."""
 
     # Add objects
-    accession_ids = await asyncio.gather(*[post_object(sess, "study", "SRP000539.xml") for _ in range(13)])
+    files = await asyncio.gather(*[post_object(sess, "study", "SRP000539.xml") for _ in range(13)])
+
+    for accession_id, schema in files:
+        patch = [{"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id, "schema": schema}}]
+        await patch_folder(sess, folder_id, patch)
 
     # Test default values
     async with sess.get(f"{objects_url}/study") as resp:
@@ -388,7 +415,7 @@ async def test_getting_all_objects_from_schema_works(sess):
         assert resp.status == 400
 
     # Delete objects
-    await asyncio.gather(*[delete_object(sess, "study", accession_id) for accession_id in accession_ids])
+    await asyncio.gather(*[delete_object(sess, "study", accession_id) for accession_id, _ in files])
 
 
 async def test_crud_folders_works(sess):
@@ -402,7 +429,7 @@ async def test_crud_folders_works(sess):
 
     # Create draft from test XML file and patch the draft into the newly created folder
     draft_id = await post_draft(sess, "sample", "SRS001433.xml")
-    patch1 = [{"op": "add", "path": "/drafts", "value": [{"accessionId": draft_id, "schema": "sample"}]}]
+    patch1 = [{"op": "add", "path": "/drafts/-", "value": [{"accessionId": draft_id, "schema": "draft-sample"}]}]
     folder_id = await patch_folder(sess, folder_id, patch1)
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was patched")
@@ -411,7 +438,7 @@ async def test_crud_folders_works(sess):
         assert res["name"] == "test", "content mismatch"
         assert res["description"] == "test folder", "content mismatch"
         assert res["published"] is False, "content mismatch"
-        assert res["drafts"] == [{"accessionId": draft_id, "schema": "sample"}], "content mismatch"
+        assert res["drafts"] == [{"accessionId": draft_id, "schema": "draft-sample"}], "content mismatch"
         assert res["metadataObjects"] == [], "content mismatch"
 
     # Get the draft from the collection within this session and post it to objects collection
@@ -425,7 +452,7 @@ async def test_crud_folders_works(sess):
 
     # Patch folder so that original draft becomes an object in the folder
     patch2 = [
-        {"op": "add", "path": "/metadataObjects", "value": [{"accessionId": accession_id, "schema": "sample"}]},
+        {"op": "add", "path": "/metadataObjects/-", "value": [{"accessionId": accession_id, "schema": "sample"}]},
     ]
     folder_id = await patch_folder(sess, folder_id, patch2)
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
@@ -433,7 +460,7 @@ async def test_crud_folders_works(sess):
         res = await resp.json()
         assert res["folderId"] == folder_id, "content mismatch"
         assert res["published"] is False, "content mismatch"
-        assert res["drafts"] == [{"accessionId": draft_id, "schema": "sample"}], "content mismatch"
+        assert res["drafts"] == [{"accessionId": draft_id, "schema": "draft-sample"}], "content mismatch"
         assert res["metadataObjects"] == [{"accessionId": accession_id, "schema": "sample"}], "content mismatch"
 
     # Publish the folder
@@ -465,7 +492,7 @@ async def test_crud_users_works(sess):
     # Add user to session and create a patch to add folder to user
     data = {"name": "test", "description": "test folder"}
     folder_id = await post_folder(sess, data)
-    patch = [{"op": "add", "path": "/folders", "value": [folder_id]}]
+    patch = [{"op": "add", "path": "/folders/-", "value": [folder_id]}]
     await patch_user(sess, user_id, real_user_id, patch)
     async with sess.get(f"{users_url}/{user_id}") as resp:
         LOG.debug(f"Checking that user {user_id} was patched")
@@ -473,7 +500,7 @@ async def test_crud_users_works(sess):
         assert res["userId"] == real_user_id, "content mismatch"
         assert res["name"] == "test test", "content mismatch"
         assert res["drafts"] == [], "content mismatch"
-        assert res["folders"] == [folder_id], "content mismatch"
+        assert folder_id in res["folders"], "content mismatch"
 
     # Delete user
     await delete_user(sess, user_id)
@@ -484,7 +511,7 @@ async def test_crud_users_works(sess):
         assert resp.status == 401, "HTTP Status code error"
 
 
-async def test_submissions_work(sess):
+async def test_submissions_work(sess, folder_id):
     """Test actions in submission xml files."""
     # Post original submission with two 'add' actions
     sub_files = [("submission", "ERA521986_valid.xml"), ("study", "SRP000539.xml"), ("sample", "SRS001433.xml")]
@@ -497,6 +524,19 @@ async def test_submissions_work(sess):
         assert res[0]["schema"] == "study", "content mismatch"
         assert res[1]["schema"] == "sample", "content mismatch"
         study_access_id = res[0]["accessionId"]
+        patch = [
+            {
+                "op": "add",
+                "path": "/metadataObjects/-",
+                "value": {"accessionId": res[0]["accessionId"], "schema": res[0]["schema"]},
+            },
+            {
+                "op": "add",
+                "path": "/metadataObjects/-",
+                "value": {"accessionId": res[1]["accessionId"], "schema": res[1]["schema"]},
+            },
+        ]
+        await patch_folder(sess, folder_id, patch)
 
     # Sanity check that the study object was inserted correctly before modifying it
     async with sess.get(f"{objects_url}/study/{study_access_id}") as resp:
@@ -550,32 +590,71 @@ async def test_submissions_work(sess):
 
 async def main():
     """Launch different test tasks and run them."""
-    # Test adding and getting objects
+
+    async with aiohttp.ClientSession() as sess:
+
+        LOG.debug("=== Login other mock user ===")
+        await login(sess, other_test_user, other_test_user_given, other_test_user_family)
+
+        # Test add, modify, validate and release action with submissions
+        LOG.debug("=== Testing actions within submissions ===")
+        submission_folder = {
+            "name": "submission test 1",
+            "description": "submission test folder 1",
+        }
+        submission_folder_id = await post_folder(sess, submission_folder)
+        await test_submissions_work(sess, submission_folder_id)
+
     async with aiohttp.ClientSession() as sess:
         LOG.debug("=== Login mock user ===")
-        await login(sess)
+        await login(sess, test_user, test_user_given, test_user_family)
 
+        # Test adding and getting objects
         LOG.debug("=== Testing basic CRUD operations ===")
-        await asyncio.gather(*[test_crud_works(sess, schema, file) for schema, file in test_xml_files])
+        basic_folder = {
+            "name": "basic test",
+            "description": "basic test folder",
+        }
+        basic_folder_id = await post_folder(sess, basic_folder)
+
+        await asyncio.gather(*[test_crud_works(sess, schema, file, basic_folder_id) for schema, file in test_xml_files])
 
         # Test adding and getting draft objects
         LOG.debug("=== Testing basic CRUD drafts operations ===")
+        draft_folder = {
+            "name": "basic test draft",
+            "description": "basic test draft folder",
+        }
+        draft_folder_id = await post_folder(sess, draft_folder)
         await asyncio.gather(
-            *[test_crud_drafts_works(sess, schema, file, file2) for schema, file, file2 in test_json_files]
+            *[
+                test_crud_drafts_works(sess, schema, file, file2, draft_folder_id)
+                for schema, file, file2 in test_json_files
+            ]
         )
 
         # Test patch and put
         LOG.debug("=== Testing patch and put drafts operations ===")
-        await test_crud_drafts_works(sess, "sample", "SRS001433.json", "put.json")
-        await test_patch_drafts_works(sess, "study", "SRP000539.json", "patch.json")
+        await test_crud_drafts_works(sess, "sample", "SRS001433.json", "put.json", draft_folder_id)
+        await test_patch_drafts_works(sess, "study", "SRP000539.json", "patch.json", draft_folder_id)
 
         # Test queries
         LOG.debug("=== Testing queries ===")
-        await test_querying_works(sess)
+        query_folder = {
+            "name": "basic test query",
+            "description": "basic test query folder",
+        }
+        query_folder_id = await post_folder(sess, query_folder)
+        await test_querying_works(sess, query_folder_id)
 
         # Test /objects/study endpoint for query pagination
         LOG.debug("=== Testing getting all objects & pagination ===")
-        await test_getting_all_objects_from_schema_works(sess)
+        pagination_folder = {
+            "name": "basic test pagination",
+            "description": "basic test pagination folder",
+        }
+        pagination_folder_id = await post_folder(sess, pagination_folder)
+        await test_getting_all_objects_from_schema_works(sess, pagination_folder_id)
 
         # Test creating, reading, updating and deleting folders
         LOG.debug("=== Testing basic CRUD folder operations ===")
@@ -583,7 +662,12 @@ async def main():
 
         # Test add, modify, validate and release action with submissions
         LOG.debug("=== Testing actions within submissions ===")
-        await test_submissions_work(sess)
+        submission_folder = {
+            "name": "submission test",
+            "description": "submission test folder",
+        }
+        submission_folder_id = await post_folder(sess, submission_folder)
+        await test_submissions_work(sess, submission_folder_id)
 
         # Test reading, updating and deleting users
         # this needs to be done last as it deletes users

@@ -2,6 +2,7 @@
 import json
 from http import HTTPStatus
 from typing import Callable, Tuple
+from cryptography.fernet import InvalidToken
 
 from aiohttp import web
 from aiohttp.web import Request, Response, middleware, StreamResponse
@@ -42,6 +43,8 @@ async def http_error_handler(req: Request, handler: Callable) -> Response:
             raise web.HTTPNotFound(text=details, content_type=c_type)
         elif error.status == 415:
             raise web.HTTPUnsupportedMediaType(text=details, content_type=c_type)
+        elif error.status == 422:
+            raise web.HTTPUnprocessableEntity(text=details, content_type=c_type)
         else:
             raise web.HTTPServerError()
 
@@ -52,8 +55,8 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
 
     :param req: A request instance
     :param handler: A request handler
-    :raises: 303 in case session does not contain access token and user_info
-    :raises: 401 in case cookie cannot be found
+    :raises: HTTPSeeOther in case session does not contain access token and user_info
+    :raises: HTTPUnauthorized in case cookie cannot be found
     :returns: Successful requests unaffected
     """
     controlled_paths = [
@@ -108,22 +111,26 @@ def decrypt_cookie(request: web.Request) -> dict:
     """Decrypt a cookie using the server instance specific fernet key.
 
     :param request: A HTTP request instance
-    :raises: 401 in case cookie not in request
+    :raises: HTTPUnauthorized in case cookie not in request or invalid token
     :returns: decrypted cookie
     """
     if "MTD_SESSION" not in request.cookies:
         LOG.debug("Cannot find MTD_SESSION cookie")
         raise web.HTTPUnauthorized()
-    cookie_json = request.app["Crypt"].decrypt(request.cookies["MTD_SESSION"].encode("utf-8")).decode("utf-8")
-    cookie = json.loads(cookie_json)
-    LOG.debug(f"Decrypted cookie: {cookie}")
-    return cookie
+    try:
+        cookie_json = request.app["Crypt"].decrypt(request.cookies["MTD_SESSION"].encode("utf-8")).decode("utf-8")
+        cookie = json.loads(cookie_json)
+        LOG.debug(f"Decrypted cookie: {cookie}")
+        return cookie
+    except InvalidToken:
+        LOG.info("Throw due to invalid token.")
+        raise web.HTTPUnauthorized()
 
 
 def _check_csrf(request: web.Request) -> bool:
     """Check that the signature matches and referrer is correct.
 
-    :raises: 403 in case signature does not match
+    :raises: HTTPForbidden in case signature does not match
     :param request: A HTTP request instance
     """
     cookie = decrypt_cookie(request)

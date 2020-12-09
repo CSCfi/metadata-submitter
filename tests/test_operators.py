@@ -2,12 +2,11 @@
 import datetime
 import re
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, call
 
 from aiohttp.web import HTTPBadRequest, HTTPNotFound
 from aiounittest import AsyncTestCase, futurized
 from aiounittest.mock import AsyncMockIterator
-from jsonpatch import JsonPatch
 from multidict import MultiDict, MultiDictProxy
 from pymongo.errors import ConnectionFailure
 
@@ -440,18 +439,45 @@ class TestOperators(AsyncTestCase):
                 "dateModified": datetime.datetime(2020, 6, 14, 0, 0),
             }
         ]
-        operator.db_service.query.return_value = MockCursor(study_test)
+        study_total = [{"total": 0}]
+        operator.db_service.aggregate.side_effect = [futurized(study_test), futurized(study_total)]
         query = MultiDictProxy(MultiDict([("studyAttributes", "foo")]))
-        await operator.query_metadata_database("study", query, 1, 10)
-        operator.db_service.query.assert_called_once_with(
-            "study",
-            {
-                "$or": [
-                    {"studyAttributes.tag": re.compile(".*foo.*", re.IGNORECASE)},
-                    {"studyAttributes.value": re.compile(".*foo.*", re.IGNORECASE)},
-                ]
-            },
-        )
+        await operator.query_metadata_database("study", query, 1, 10, [])
+        calls = [
+            call(
+                "study",
+                [
+                    {
+                        "$match": {
+                            "$or": [
+                                {"studyAttributes.tag": re.compile(".*foo.*", re.IGNORECASE)},
+                                {"studyAttributes.value": re.compile(".*foo.*", re.IGNORECASE)},
+                            ]
+                        }
+                    },
+                    {"$redact": {"$cond": {"if": {}, "then": "$$DESCEND", "else": "$$PRUNE"}}},
+                    {"$skip": 0},
+                    {"$limit": 10},
+                    {"$project": {"_id": 0}},
+                ],
+            ),
+            call(
+                "study",
+                [
+                    {
+                        "$match": {
+                            "$or": [
+                                {"studyAttributes.tag": re.compile(".*foo.*", re.IGNORECASE)},
+                                {"studyAttributes.value": re.compile(".*foo.*", re.IGNORECASE)},
+                            ]
+                        }
+                    },
+                    {"$redact": {"$cond": {"if": {}, "then": "$$DESCEND", "else": "$$PRUNE"}}},
+                    {"$count": "total"},
+                ],
+            ),
+        ]
+        operator.db_service.aggregate.assert_has_calls(calls, any_order=True)
 
     async def test_non_working_query_params_are_not_passed_to_db_query(self):
         """Test that database with empty query, when url params are wrong."""
@@ -464,14 +490,36 @@ class TestOperators(AsyncTestCase):
                 "dateModified": datetime.datetime(2020, 6, 14, 0, 0),
             }
         ]
-        operator.db_service.query.return_value = MockCursor(study_test)
+        study_total = [{"total": 0}]
+        operator.db_service.aggregate.side_effect = [futurized(study_test), futurized(study_total)]
         query = MultiDictProxy(MultiDict([("swag", "littinen")]))
         with patch(
             "metadata_backend.api.operators.Operator._format_read_data",
             return_value=futurized(study_test),
         ):
-            await operator.query_metadata_database("study", query, 1, 10)
-        operator.db_service.query.assert_called_once_with("study", {})
+            await operator.query_metadata_database("study", query, 1, 10, [])
+        calls = [
+            call(
+                "study",
+                [
+                    {"$match": {}},
+                    {"$redact": {"$cond": {"if": {}, "then": "$$DESCEND", "else": "$$PRUNE"}}},
+                    {"$skip": 0},
+                    {"$limit": 10},
+                    {"$project": {"_id": 0}},
+                ],
+            ),
+            call(
+                "study",
+                [
+                    {"$match": {}},
+                    {"$redact": {"$cond": {"if": {}, "then": "$$DESCEND", "else": "$$PRUNE"}}},
+                    {"$count": "total"},
+                ],
+            ),
+        ]
+        operator.db_service.aggregate.assert_has_calls(calls, any_order=True)
+        self.assertEqual(operator.db_service.aggregate.call_count, 2)
 
     async def test_query_result_is_parsed_correctly(self):
         """Test json is read and correct pagination values are returned."""
@@ -490,15 +538,15 @@ class TestOperators(AsyncTestCase):
                 "foo": "bar",
             },
         ]
-        operator.db_service.query.return_value = MockCursor(multiple_result)
-        operator.db_service.get_count.return_value = futurized(100)
+        study_total = [{"total": 100}]
+        operator.db_service.aggregate.side_effect = [futurized(multiple_result), futurized(study_total)]
         query = MultiDictProxy(MultiDict([]))
         (
             parsed,
             page_num,
             page_size,
             total_objects,
-        ) = await operator.query_metadata_database("sample", query, 1, 10)
+        ) = await operator.query_metadata_database("sample", query, 1, 10, [])
         for doc in parsed:
             self.assertEqual(doc["dateCreated"], "2020-06-14T00:00:00")
             self.assertEqual(doc["dateModified"], "2020-06-14T00:00:00")
@@ -517,21 +565,41 @@ class TestOperators(AsyncTestCase):
             return_value=futurized([]),
         ):
             with self.assertRaises(HTTPNotFound):
-                await operator.query_metadata_database("study", query, 1, 10)
+                await operator.query_metadata_database("study", query, 1, 10, [])
 
     async def test_query_skip_and_limit_are_set_correctly(self):
         """Test custom skip and limits."""
         operator = Operator(self.client)
         data = {"foo": "bar"}
-        cursor = MockCursor([])
-        operator.db_service.query.return_value = cursor
+        result = futurized([])
+        operator.db_service.aggregate.side_effect = [result, futurized([{"total": 0}])]
         with patch(
             "metadata_backend.api.operators.Operator._format_read_data",
             return_value=futurized(data),
         ):
-            await operator.query_metadata_database("sample", {}, 3, 50)
-            self.assertEqual(cursor._skip, 100)
-            self.assertEqual(cursor._limit, 50)
+            await operator.query_metadata_database("sample", {}, 3, 50, [])
+            calls = [
+                call(
+                    "sample",
+                    [
+                        {"$match": {}},
+                        {"$redact": {"$cond": {"if": {}, "then": "$$DESCEND", "else": "$$PRUNE"}}},
+                        {"$skip": 50 * (3 - 1)},
+                        {"$limit": 50},
+                        {"$project": {"_id": 0}},
+                    ],
+                ),
+                call(
+                    "sample",
+                    [
+                        {"$match": {}},
+                        {"$redact": {"$cond": {"if": {}, "then": "$$DESCEND", "else": "$$PRUNE"}}},
+                        {"$count": "total"},
+                    ],
+                ),
+            ]
+            operator.db_service.aggregate.assert_has_calls(calls, any_order=True)
+            self.assertEqual(operator.db_service.aggregate.call_count, 2)
 
     async def test_create_folder_works_and_returns_folderId(self):
         """Test create method for folders work."""
@@ -545,19 +613,17 @@ class TestOperators(AsyncTestCase):
     async def test_query_folders_empty_list(self):
         """Test query returns empty list."""
         operator = FolderOperator(self.client)
-        cursor = MockCursor([])
-        operator.db_service.query.return_value = cursor
+        operator.db_service.aggregate.return_value = futurized([])
         folders = await operator.query_folders({})
-        operator.db_service.query.assert_called_once()
+        operator.db_service.aggregate.assert_called_once()
         self.assertEqual(folders, [])
 
     async def test_query_folders_1_item(self):
         """Test query returns a list with item."""
         operator = FolderOperator(self.client)
-        cursor = MockCursor([{"name": "folder"}])
-        operator.db_service.query.return_value = cursor
+        operator.db_service.aggregate.return_value = futurized([{"name": "folder"}])
         folders = await operator.query_folders({})
-        operator.db_service.query.assert_called_once()
+        operator.db_service.aggregate.assert_called_once()
         self.assertEqual(folders, [{"name": "folder"}])
 
     async def test_reading_folder_works(self):
@@ -572,20 +638,20 @@ class TestOperators(AsyncTestCase):
 
     async def test_folder_update_passes_and_returns_id(self):
         """Test update method for folders works."""
-        patch = JsonPatch([{"op": "add", "path": "/name", "value": "test2"}])
+        patch = [{"op": "add", "path": "/name", "value": "test2"}]
         operator = FolderOperator(self.client)
         operator.db_service.exists.return_value = futurized(True)
         operator.db_service.read.return_value = futurized(self.test_folder)
-        operator.db_service.update.return_value = futurized(True)
+        operator.db_service.patch.return_value = futurized(True)
         folder = await operator.update_folder(self.test_folder, patch)
         operator.db_service.exists.assert_called_once()
-        operator.db_service.update.assert_called_once()
-        self.assertEqual(len(operator.db_service.read.mock_calls), 2)
+        operator.db_service.patch.assert_called_once()
+        self.assertEqual(len(operator.db_service.read.mock_calls), 1)
         self.assertEqual(folder["folderId"], self.folder_id)
 
     async def test_folder_update_fails_with_bad_patch(self):
         """Test folder update raises error with improper JSON Patch."""
-        patch = JsonPatch([{"op": "replace", "path": "/nothing"}])
+        patch = [{"op": "replace", "path": "/nothing"}]
         operator = FolderOperator(self.client)
         operator.db_service.exists.return_value = futurized(True)
         operator.db_service.read.return_value = futurized(self.test_folder)
@@ -623,20 +689,20 @@ class TestOperators(AsyncTestCase):
 
     async def test_user_update_passes_and_returns_id(self):
         """Test update method for users works."""
-        patch = JsonPatch([{"op": "add", "path": "/name", "value": "test2"}])
+        patch = [{"op": "add", "path": "/name", "value": "test2"}]
         operator = UserOperator(self.client)
         operator.db_service.exists.return_value = futurized(True)
         operator.db_service.read.return_value = futurized(self.test_user)
-        operator.db_service.update.return_value = futurized(True)
+        operator.db_service.patch.return_value = futurized(True)
         user = await operator.update_user(self.test_user, patch)
         operator.db_service.exists.assert_called_once()
-        operator.db_service.update.assert_called_once()
-        self.assertEqual(len(operator.db_service.read.mock_calls), 2)
+        operator.db_service.patch.assert_called_once()
+        self.assertEqual(len(operator.db_service.read.mock_calls), 1)
         self.assertEqual(user["userId"], self.user_id)
 
     async def test_user_update_fails_with_bad_patch(self):
         """Test user update raises error with improper JSON Patch."""
-        patch = JsonPatch([{"op": "replace", "path": "/nothing"}])
+        patch = [{"op": "replace", "path": "/nothing"}]
         operator = UserOperator(self.client)
         operator.db_service.exists.return_value = futurized(True)
         operator.db_service.read.return_value = futurized(self.test_user)
