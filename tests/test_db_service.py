@@ -44,7 +44,7 @@ class DatabaseTestCase(AsyncTestCase):
             "folderId": self.f_id_stub,
             "name": "test",
             "description": "test folder",
-            "metadata_objects": [],
+            "metadata_objects": ["EGA123456"],
         }
 
     def test_db_services_share_mongodb_client(self):

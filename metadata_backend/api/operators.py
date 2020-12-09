@@ -8,8 +8,6 @@ from typing import Any, Dict, List, Tuple, Union
 
 from aiohttp import web
 from dateutil.relativedelta import relativedelta
-from jsonpatch import InvalidJsonPatch, JsonPatch, JsonPatchConflict
-from jsonpointer import JsonPointerException
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
 from multidict import MultiDictProxy
 from pymongo.errors import ConnectionFailure, OperationFailure
@@ -97,14 +95,14 @@ class BaseOperator(ABC):
 
         :param schema_type: Schema type of the object to read.
         :param accession_id: Accession Id of the object to read.
-        :raises: 400 if reading was not successful, 404 if no data found
+        :raises: HTTPBadRequest if reading was not successful, HTTPNotFound if no data found
         :returns: Metadata object formatted to JSON or XML, content type
         """
         try:
             data_raw = await self.db_service.read(schema_type, accession_id)
             if not data_raw:
                 LOG.error(f"Object with {accession_id} not found.")
-                raise web.HTTPNotFound
+                raise web.HTTPNotFound()
             data = await self._format_read_data(schema_type, data_raw)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting object: {error}"
@@ -120,7 +118,7 @@ class BaseOperator(ABC):
 
         :param schema_type: Schema type of the object to delete.
         :param accession_id: Accession Id of the object to delete.
-        :raises: 400 if deleting was not successful
+        :raises: HTTPBadRequest if deleting was not successful
         """
         db_client = self.db_service.db_client
         JSON_deletion_success = await self._remove_object_from_db(Operator(db_client), schema_type, accession_id)
@@ -129,7 +127,7 @@ class BaseOperator(ABC):
             LOG.info(f"{accession_id} successfully deleted from collection")
             return accession_id
         else:
-            reason = "Deleting for {accession_id} from database failed."
+            reason = f"Deleting {accession_id} from database failed."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -139,7 +137,7 @@ class BaseOperator(ABC):
         :param schema_type: Schema type of the object to insert.
         :param data: Single document formatted as JSON
         :returns: Accession Id for object inserted to database
-        :raises: 400 if reading was not successful
+        :raises: HTTPBadRequest if reading was not successful
         """
         try:
             insert_success = await self.db_service.create(schema_type, data)
@@ -160,13 +158,13 @@ class BaseOperator(ABC):
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
         :param data: Single document formatted as JSON
-        :raises: 400 if reading was not successful, 404 if no data found
+        :raises: HTTPBadRequest if reading was not successful, HTTPNotFound if no data found
         :returns: Accession Id for object inserted to database
         """
         try:
             check_exists = await self.db_service.exists(schema_type, accession_id)
             if not check_exists:
-                reason = f"Object with accession id {accession_id} " "was not found."
+                reason = f"Object with accession id {accession_id} was not found."
                 LOG.error(reason)
                 raise web.HTTPNotFound(reason=reason)
             replace_success = await self.db_service.replace(schema_type, accession_id, data)
@@ -191,20 +189,20 @@ class BaseOperator(ABC):
         :param schema_type: Schema type of the object to update.
         :param accession_id: Identifier of object to update.
         :param data: Single document formatted as JSON
-        :raises: 400 if reading was not successful, 404 if no data found
+        :raises: HTTPBadRequest if reading was not successful, HTTPNotFound if no data found
         :returns: Accession Id for object inserted to database
         """
         try:
             check_exists = await self.db_service.exists(schema_type, accession_id)
             if not check_exists:
-                reason = f"Object with accession id {accession_id} " "was not found."
+                reason = f"Object with accession id {accession_id} was not found."
                 LOG.error(reason)
                 raise web.HTTPNotFound(reason=reason)
             update_success = await self.db_service.update(schema_type, accession_id, data)
             sanity_check = await self.db_service.read(schema_type, accession_id)
             # remove `draft-` from schema type
-            schema = schema_type[6:] if schema_type.startswith("draft") else schema_type
-            JSONValidator(sanity_check, schema).validate
+            if not schema_type.startswith("draft"):
+                JSONValidator(sanity_check, schema_type).validate
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting object: {error}"
             LOG.error(reason)
@@ -225,13 +223,13 @@ class BaseOperator(ABC):
         :param schema_type: Schema type of the object to delete.
         :param accession_id: Identifier of object to delete.
         :param data: Single document formatted as JSON
-        :raises: 400 if reading was not successful, 404 if no data found
+        :raises: HTTPBadRequest if reading was not successful, HTTPNotFound if no data found
         :returns: None
         """
         try:
             check_exists = await operator.db_service.exists(schema_type, accession_id)
             if not check_exists and not isinstance(operator, XMLOperator):
-                reason = f"Object with accession id {accession_id} " "was not found."
+                reason = f"Object with accession id {accession_id} was not found."
                 LOG.error(reason)
                 raise web.HTTPNotFound(reason=reason)
             else:
@@ -288,8 +286,8 @@ class Operator(BaseOperator):
         super().__init__("objects", "application/json", db_client)
 
     async def query_metadata_database(
-        self, schema_type: str, que: MultiDictProxy, page_num: int, page_size: int
-    ) -> Tuple[Dict, int, int, int]:
+        self, schema_type: str, que: MultiDictProxy, page_num: int, page_size: int, filter_objects: List
+    ) -> Tuple[List, int, int, int]:
         """Query database based on url query parameters.
 
         Url queries are mapped to mongodb queries based on query_map in
@@ -299,10 +297,21 @@ class Operator(BaseOperator):
         :param que: Dict containing query information
         :param page_size: Results per page
         :param page_num: Page number
+        :param filter_objects: List of objects belonging to a user
         :raises: HTTPBadRequest if error happened when connection to database
         and HTTPNotFound error if object with given accession id is not found.
         :returns: Query result with pagination numbers
         """
+        # Redact the query by checking the accessionId belongs to user
+        redacted_content = {
+            "$redact": {
+                "$cond": {
+                    "if": {"$in": ["$accessionId", filter_objects]} if len(filter_objects) > 1 else {},
+                    "then": "$$DESCEND",
+                    "else": "$$PRUNE",
+                }
+            }
+        }
         # Generate mongodb query from query parameters
         mongo_query: Dict[Any, Any] = {}
         for query, value in que.items():
@@ -330,28 +339,39 @@ class Operator(BaseOperator):
                     # Query with regex from just one field
                     mongo_query = {query_map[query]: regx}
         LOG.debug(f"Query construct: {mongo_query}")
+        LOG.debug(f"redacted filter: {redacted_content}")
+        skips = page_size * (page_num - 1)
+        aggregate_query = [
+            {"$match": mongo_query},
+            redacted_content,
+            {"$skip": skips},
+            {"$limit": page_size},
+            {"$project": {"_id": 0}},
+        ]
         try:
-            cursor = self.db_service.query(schema_type, mongo_query)
+            cursor = await self.db_service.aggregate(schema_type, aggregate_query)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting object: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        skips = page_size * (page_num - 1)
-        cursor.skip(skips).limit(page_size)
         data = await self._format_read_data(schema_type, cursor)
+
         if not data:
             reason = f"could not find any data in {schema_type}."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
+
         page_size = len(data) if len(data) != page_size else page_size
-        total_objects = await self.db_service.get_count(schema_type, mongo_query)
+        count_query = [{"$match": mongo_query}, redacted_content, {"$count": "total"}]
+        total_objects = await self.db_service.aggregate(schema_type, count_query)
+
         LOG.debug(f"DB query: {que}")
         LOG.info(
             f"DB query successful for query on {schema_type} "
-            f"resulted in {total_objects}. "
+            f"resulted in {total_objects[0]['total']}. "
             f"Requested was page {page_num} and page size {page_size}."
         )
-        return data, page_num, page_size, total_objects
+        return data, page_num, page_size, total_objects[0]["total"]
 
     async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: Dict) -> str:
         """Format JSON metadata object and add it to db.
@@ -392,7 +412,7 @@ class Operator(BaseOperator):
         """
         forbidden_keys = ["accessionId", "publishDate", "dateCreated"]
         if any(i in data for i in forbidden_keys):
-            reason = f"Some items (e.g: {', '.join(forbidden_keys)}) " "cannot be changed."
+            reason = f"Some items (e.g: {', '.join(forbidden_keys)}) cannot be changed."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         data["accessionId"] = accession_id
@@ -410,7 +430,7 @@ class Operator(BaseOperator):
         """
         forbidden_keys = ["accessionId", "publishDate", "dateCreated"]
         if any(i in data for i in forbidden_keys):
-            reason = f"Some items (e.g: {', '.join(forbidden_keys)}) " "cannot be changed."
+            reason = f"Some items (e.g: {', '.join(forbidden_keys)}) cannot be changed."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         data["accessionId"] = accession_id
@@ -446,7 +466,7 @@ class Operator(BaseOperator):
         if isinstance(data_raw, dict):
             return self._format_single_dict(schema_type, data_raw)
         else:
-            return [self._format_single_dict(schema_type, doc) async for doc in data_raw]
+            return [self._format_single_dict(schema_type, doc) for doc in data_raw]
 
     def _format_single_dict(self, schema_type: str, doc: Dict) -> Dict:
         """Format single result dictionary.
@@ -564,17 +584,61 @@ class FolderOperator:
         """
         self.db_service = DBService("folders", db_client)
 
+    async def check_object_in_folder(self, collection: str, accession_id: str) -> Tuple[bool, str, bool]:
+        """Check a object/draft is in a folder.
+
+        :param collection: collection it belongs to, it would be used as path
+        :param accession_id: document by accession_id
+        :raises: HTTPUnprocessableEntity if error occurs during the process and object in more than 1 folder
+        :returns: True for the check, folder id and if published or not
+        """
+        folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
+        folder_query = {folder_path: {"$elemMatch": {"accessionId": accession_id, "schema": collection}}}
+
+        folder_cursor = self.db_service.query("folder", folder_query)
+        folder_check = [folder async for folder in folder_cursor]
+
+        if len(folder_check) == 0:
+            LOG.info(f"doc {accession_id} belongs to no folder something is off")
+            return False, "", False
+        elif len(folder_check) > 1:
+            reason = f"The {accession_id} is in more than 1 folder."
+            LOG.error(reason)
+            raise web.HTTPUnprocessableEntity(reason=reason)
+        else:
+            folder_id = folder_check[0]["folderId"]
+            LOG.info(f"found doc {accession_id} in {folder_id}")
+            return True, folder_id, folder_check[0]["published"]
+
+    async def get_collection_objects(self, folder_id: str, collection: str) -> List:
+        """List objects ids per collection.
+
+        :param collection: collection it belongs to, it would be used as path
+        :returns: count of objects
+        """
+        folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
+        folder_query = {"$and": [{folder_path: {"$elemMatch": {"schema": collection}}}, {"folderId": folder_id}]}
+
+        folder_cursor = self.db_service.query("folder", folder_query)
+        folders = [folder async for folder in folder_cursor]
+
+        if len(folders) >= 1:
+            return [i["accessionId"] for i in folders[0][folder_path]]
+        else:
+            return []
+
     async def create_folder(self, data: Dict) -> str:
         """Create new object folder to database.
 
         :param data: Data to be saved to database
-        :raises: 400 if error occurs during the process
+        :raises: HTTPBadRequest if error occurs during the process of insert
         :returns: Folder id for the folder inserted to database
         """
         folder_id = self._generate_folder_id()
         data["folderId"] = folder_id
         data["published"] = False
-        data["metadataObjects"], data["drafts"] = [], []
+        data["metadataObjects"] = data["metadataObjects"] if "metadataObjects" in data else []
+        data["drafts"] = data["drafts"] if "drafts" in data else []
         try:
             insert_success = await self.db_service.create("folder", data)
         except (ConnectionFailure, OperationFailure) as error:
@@ -587,7 +651,7 @@ class FolderOperator:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         else:
-            LOG.info(f"Inserting folder with id {folder_id} to database " "succeeded.")
+            LOG.info(f"Inserting folder with id {folder_id} to database succeeded.")
             return folder_id
 
     @auto_reconnect
@@ -597,14 +661,14 @@ class FolderOperator:
         :param que: Dict containing query information
         :returns: Query result as list
         """
-        cursor = self.db_service.query("folder", que)
-        return [folder async for folder in cursor]
+        folders = await self.db_service.aggregate("folder", que)
+        return folders
 
     async def read_folder(self, folder_id: str) -> Dict:
         """Read object folder from database.
 
         :param folder_id: Folder ID of the object to read
-        :raises: 400 if reading was not successful
+        :raises: HTTPBadRequest if reading was not successful
         :returns: Object folder formatted to JSON
         """
         await self._check_folder_exists(self.db_service, folder_id)
@@ -616,30 +680,24 @@ class FolderOperator:
             raise web.HTTPBadRequest(reason=reason)
         return folder
 
-    async def update_folder(self, folder_id: str, patch: JsonPatch) -> str:
+    async def update_folder(self, folder_id: str, patch: List) -> str:
         """Update object folder from database.
 
         Utilizes JSON Patch operations specified at: http://jsonpatch.com/
 
         :param folder_id: ID of folder to update
         :param patch: JSON Patch operations determined in the request
+        :raises: HTTPBadRequest if updating was not successful
         :returns: ID of the folder updated to database
         """
         await self._check_folder_exists(self.db_service, folder_id)
+
         try:
-            folder = await self.db_service.read("folder", folder_id)
-            upd_content = patch.apply(folder)
-            JSONValidator(upd_content, "folders").validate
-            update_success = await self.db_service.update("folder", folder_id, upd_content)
+            update_success = await self.db_service.patch("folder", folder_id, patch)
             sanity_check = await self.db_service.read("folder", folder_id)
             JSONValidator(sanity_check, "folders").validate
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting folder: {error}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        except (InvalidJsonPatch, JsonPatchConflict, JsonPointerException) as error:
-            reason = f"Error happened while applying JSON Patch: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -648,14 +706,42 @@ class FolderOperator:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         else:
-            LOG.info(f"Updating folder with id {folder_id} to database " "succeeded.")
+            LOG.info(f"Updating folder with id {folder_id} to database succeeded.")
             return folder_id
+
+    async def remove_object(self, folder_id: str, collection: str, accession_id: str) -> None:
+        """Remove object from folders in the database.
+
+        :param folder_id: ID of folder to update
+        :param accession_id: ID of object to remove
+        :param collection: collection where to remove the id from
+        :raises: HTTPBadRequest if removing was not successful
+        :returns: None
+        """
+        await self._check_folder_exists(self.db_service, folder_id)
+
+        try:
+            folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
+            upd_content = {folder_path: {"accessionId": accession_id}}
+            result = await self.db_service.remove("folder", folder_id, upd_content)
+            JSONValidator(result, "users").validate
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting user: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        except Exception as e:
+            reason = f"Updating user to database failed beacause of: {e}."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        LOG.info(f"Removing object {accession_id} from {folder_id} succeeded.")
 
     async def delete_folder(self, folder_id: str) -> str:
         """Delete object folder from database.
 
         :param folder_id: ID of the folder to delete.
-        :raises: 400 if deleting was not successful
+        :raises: HTTPBadRequest if deleting was not successful
+        :returns: ID of the folder deleted from database
         """
         await self._check_folder_exists(self.db_service, folder_id)
         try:
@@ -673,7 +759,11 @@ class FolderOperator:
             return folder_id
 
     async def _check_folder_exists(self, db: DBService, folder_id: str) -> None:
-        """Check the existance of a folder by its id in the database."""
+        """Check the existance of a folder by its id in the database.
+
+        :raises: HTTPNotFound if folder does not exist
+        :returns: None
+        """
         exists = await db.exists("folder", folder_id)
         if not exists:
             reason = f"Folder with id {folder_id} was not found."
@@ -681,7 +771,10 @@ class FolderOperator:
             raise web.HTTPNotFound(reason=reason)
 
     def _generate_folder_id(self) -> str:
-        """Generate random folder id."""
+        """Generate random folder id.
+
+        :returns: str with folder id
+        """
         sequence = "".join(secrets.choice(string.digits) for i in range(8))
         LOG.debug("Generated folder ID.")
         return f"FOL{sequence}"
@@ -702,11 +795,36 @@ class UserOperator:
         """
         self.db_service = DBService("users", db_client)
 
+    async def check_user_has_doc(self, collection: str, user_id: str, accession_id: str) -> bool:
+        """Check a folder/draft belongs to user.
+
+        :param collection: collection it belongs to, it would be used as path
+        :param user_id: user_id from session
+        :param accession_id: document by accession_id
+        :raises: HTTPUnprocessableEntity if more users seem to have same folder
+        :returns: True if accession_id belongs to user
+        """
+        doc_path = "drafts" if collection.startswith("draft") else "folders"
+        user_query = {doc_path: {"$elemMatch": {"$eq": accession_id}}, "userId": user_id}
+        user_cursor = self.db_service.query("user", user_query)
+        user_check = [user async for user in user_cursor]
+
+        if len(user_check) == 0:
+            LOG.info(f"doc {accession_id} belongs to no user something is off")
+            return False
+        elif len(user_check) > 1:
+            reason = "There seem to be more users with same ID and/or same folders."
+            LOG.error(reason)
+            raise web.HTTPUnprocessableEntity(reason=reason)
+        else:
+            LOG.info(f"found doc {accession_id} at current user")
+            return True
+
     async def create_user(self, data: Tuple) -> str:
         """Create new user object to database.
 
         :param data: User Data to identify user
-        :raises: 400 if error occurs during the process
+        :raises: HTTPBadRequest if error occurs during the process of creating user
         :returns: User id for the user object inserted to database
         """
         user_data: Dict[str, Union[list, str]] = dict()
@@ -714,7 +832,7 @@ class UserOperator:
         eppn = data[0]
         name = data[1]
 
-        existing_user_id = await self.db_service.exists_eppn_user(eppn)
+        existing_user_id = await self.db_service.exists_eppn_user(eppn, name)
         if existing_user_id:
             LOG.info(f"User with eppn: {eppn} exists, no need to create.")
             return existing_user_id
@@ -743,7 +861,7 @@ class UserOperator:
         """Read user object from database.
 
         :param user_id: User ID of the object to read
-        :raises: 400 if reading was not successful
+        :raises: HTTPBadRequest if reading user was not successful
         :returns: User object formatted to JSON
         """
         await self._check_user_exists(self.db_service, user_id)
@@ -755,28 +873,21 @@ class UserOperator:
             raise web.HTTPBadRequest(reason=reason)
         return user
 
-    async def update_user(self, user_id: str, patch: JsonPatch) -> str:
+    async def update_user(self, user_id: str, patch: List) -> str:
         """Update user object from database.
 
         :param user_id: ID of user to update
-        :param patch: JSON Patch operations determined in the request
+        :param patch: Patch operations determined in the request
         :returns: ID of the user updated to database
         """
         await self._check_user_exists(self.db_service, user_id)
+
         try:
-            user = await self.db_service.read("user", user_id)
-            upd_content = patch.apply(user)
-            JSONValidator(upd_content, "users").validate
-            update_success = await self.db_service.update("user", user_id, upd_content)
+            update_success = await self.db_service.patch("user", user_id, patch)
             sanity_check = await self.db_service.read("user", user_id)
             JSONValidator(sanity_check, "users").validate
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting user: {error}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        except (InvalidJsonPatch, JsonPatchConflict, JsonPointerException) as error:
-            reason = f"Error happened while applying JSON Patch: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -785,14 +896,71 @@ class UserOperator:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         else:
-            LOG.info(f"Updating user with id {user_id} to database " "succeeded.")
+            LOG.info(f"Updating user with id {user_id} to database succeeded.")
             return user_id
+
+    async def assign_objects(self, user_id: str, collection: str, object_ids: List) -> None:
+        """Assing object to user.
+
+        An object can be folder(s) or draft(s).
+
+        :param user_id: ID of user to update
+        :param collection: collection where to remove the id from
+        :param object_ids: ID or list of IDs of folder(s) to assign
+        :raises: HTTPBadRequest if assigning drafts/folders to user was not successful
+        returns: None
+        """
+        await self._check_user_exists(self.db_service, user_id)
+
+        try:
+            upd_content = {collection: {"$each": object_ids}}
+            result = await self.db_service.append("user", user_id, upd_content)
+            JSONValidator(result, "users").validate
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting user: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        except Exception as e:
+            reason = f"Updating user to database failed beacause of: {e}."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        LOG.info(f"Assigning {object_ids} from {user_id} succeeded.")
+
+    async def remove_objects(self, user_id: str, collection: str, object_ids: List) -> None:
+        """Remove object from user.
+
+        An object can be folder(s) or draft(s).
+
+        :param user_id: ID of user to update
+        :param collection: collection where to remove the id from
+        :param object_ids: ID or list of IDs of folder(s) to remove
+        :raises: HTTPBadRequest if removing drafts/folders from user was not successful
+        returns: None
+        """
+        await self._check_user_exists(self.db_service, user_id)
+
+        try:
+            upd_content = {collection: {"$in": object_ids}}
+            result = await self.db_service.remove("user", user_id, upd_content)
+            JSONValidator(result, "users").validate
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting user: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        except Exception as e:
+            reason = f"Updating user to database failed beacause of: {e}."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        LOG.info(f"Removing {object_ids} from {user_id} succeeded.")
 
     async def delete_user(self, user_id: str) -> str:
         """Delete user object from database.
 
         :param user_id: ID of the user to delete.
-        :raises: 400 if deleting was not successful
+        :raises: HTTPBadRequest if deleting user was not successful
+        :returns: ID of the user deleted from database
         """
         await self._check_user_exists(self.db_service, user_id)
         try:
@@ -810,7 +978,11 @@ class UserOperator:
             return user_id
 
     async def _check_user_exists(self, db: DBService, user_id: str) -> None:
-        """Check the existance of a user by its id in the database."""
+        """Check the existance of a user by its id in the database.
+
+        :raises: HTTPNotFound if user does not exist
+        :returns: None
+        """
         exists = await db.exists("user", user_id)
         if not exists:
             reason = f"User with id {user_id} was not found."
@@ -818,7 +990,10 @@ class UserOperator:
             raise web.HTTPNotFound(reason=reason)
 
     def _generate_user_id(self) -> str:
-        """Generate random user id."""
+        """Generate random user id.
+
+        :returns: str with user id
+        """
         sequence = "".join(secrets.choice(string.digits) for i in range(8))
         LOG.debug("Generated user ID.")
         return f"USR{sequence}"

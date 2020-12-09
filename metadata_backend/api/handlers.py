@@ -4,12 +4,11 @@ import mimetypes
 from collections import Counter
 from math import ceil
 from pathlib import Path
-from typing import Dict, List, Tuple, Union, cast
+from typing import Dict, List, Tuple, Union, cast, AsyncGenerator
 
 from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
-from jsonpatch import JsonPatch
 from motor.motor_asyncio import AsyncIOMotorClient
 from multidict import MultiDict, MultiDictProxy
 from xmlschema import XMLSchemaException
@@ -58,6 +57,94 @@ class RESTApiHandler:
         LOG.debug("Link headers created")
         return link_headers
 
+    async def _handle_check_ownedby_user(self, req: Request, collection: str, accession_id: str) -> bool:
+        """Check if object belongs to user.
+
+        For this we need to check the object is in exactly 1 folder and we need to check
+        that folder belongs to a user. If the folder is published that means it can be
+        browsed by other users as well.
+
+        :param req: HTTP request
+        :param collection: collection or schema of document
+        :param doc_id: document accession id
+        :raises: HTTPUnauthorized if accession id does not belong to user
+        :returns: bool
+        """
+        db_client = req.app["db_client"]
+        current_user = req.app["Session"]["user_info"]
+        user_op = UserOperator(db_client)
+
+        if collection != "folders":
+
+            folder_op = FolderOperator(db_client)
+            check, folder_id, published = await folder_op.check_object_in_folder(collection, accession_id)
+
+            if published:
+                return True
+            elif check:
+                # if the draft object is found in folder we just need to check if the folder belongs to user
+                return await user_op.check_user_has_doc("folders", current_user, folder_id)
+            elif collection.startswith("draft"):
+                # if collection is draft but not found in a folder we also check if object is in drafts of the user
+                # they will be here if they will not be deleted after publish
+                return await user_op.check_user_has_doc(collection, current_user, accession_id)
+            else:
+                return False
+        else:
+            return await user_op.check_user_has_doc(collection, current_user, accession_id)
+
+    async def _get_collection_objects(
+        self, folder_op: AsyncIOMotorClient, collection: str, seq: List
+    ) -> AsyncGenerator:
+        """Get objects ids based on folder and collection.
+
+        Considering that many objects will be returned good to have a generator.
+
+        :param req: HTTP request
+        :param collection: collection or schema of document
+        :param seq: list of folders
+        :returns: AsyncGenerator
+        """
+        for el in seq:
+            result = await folder_op.get_collection_objects(el, collection)
+
+            yield result
+
+    async def _handle_user_objects_collection(self, req: Request, collection: str) -> List:
+        """Retrieve list of  objects accession ids belonging to user in collection.
+
+        :param req: HTTP request
+        :param collection: collection or schema of document
+        :returns: List
+        """
+        db_client = req.app["db_client"]
+        current_user = req.app["Session"]["user_info"]
+        user_op = UserOperator(db_client)
+        folder_op = FolderOperator(db_client)
+
+        user = await user_op.read_user(current_user)
+        res = self._get_collection_objects(folder_op, collection, user["folders"])
+
+        dt = []
+        async for r in res:
+            dt.extend(r)
+
+        return dt
+
+    async def _filter_by_user(self, req: Request, collection: str, seq: List) -> AsyncGenerator:
+        """For a list of objects check if these are owned by a user.
+
+        This can be called using a partial from functools.
+
+        :param req: HTTP request
+        :param collection: collection or schema of document
+        :param seq: list of folders
+        :returns: AsyncGenerator
+        """
+        for el in seq:
+            if await self._handle_check_ownedby_user(req, collection, el["accessionId"]):
+                yield el
+
     async def _handle_query(self, req: Request) -> Response:
         """Handle query results.
 
@@ -75,7 +162,7 @@ class RESTApiHandler:
             try:
                 param = int(req.query.get(param_name, default))
             except ValueError:
-                reason = f"{param_name} must a number, now it was " f"{req.query.get(param_name)}"
+                reason = f"{param_name} must be a number, now it is " f"{req.query.get(param_name)}"
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
             if param < 1:
@@ -87,9 +174,12 @@ class RESTApiHandler:
         page = get_page_param("page", 1)
         per_page = get_page_param("per_page", 10)
         db_client = req.app["db_client"]
+
+        filter_list = await self._handle_user_objects_collection(req, collection)
         data, page_num, page_size, total_objects = await Operator(db_client).query_metadata_database(
-            collection, req.query, page, per_page
+            collection, req.query, page, per_page, filter_list
         )
+
         result = json.dumps(
             {
                 "page": {
@@ -143,6 +233,7 @@ class RESTApiHandler:
 
         Basically returns which objects user can submit and query for.
         :param req: GET Request
+        :raises: HTTPBadRequest if request does not find the schema
         :returns: JSON list of schema types
         """
         schema_type = req.match_info["schema"]
@@ -165,6 +256,7 @@ class RESTApiHandler:
         set, otherwise json.
 
         :param req: GET request
+        :raises: HTTPUnauthorized if object not owned by user
         :returns: JSON or XML response containing metadata object
         """
         accession_id = req.match_info["accessionId"]
@@ -175,7 +267,15 @@ class RESTApiHandler:
         req_format = req.query.get("format", "json").lower()
         db_client = req.app["db_client"]
         operator = XMLOperator(db_client) if req_format == "xml" else Operator(db_client)
+
+        check_user = await self._handle_check_ownedby_user(req, collection, accession_id)
+        if not check_user:
+            reason = f"The object {accession_id} does not belong to current user."
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
+
         data, content_type = await operator.read_metadata_object(collection, accession_id)
+
         data = data if req_format == "xml" else json.dumps(data)
         LOG.info(f"GET object with accesssion ID {accession_id} from schema {collection}.")
         return web.Response(body=data, status=200, content_type=content_type)
@@ -202,9 +302,12 @@ class RESTApiHandler:
             operator = XMLOperator(db_client)
         else:
             content = await self._get_data(req)
-            JSONValidator(content, schema_type).validate
+            if not req.path.startswith("/drafts"):
+                JSONValidator(content, schema_type).validate
             operator = Operator(db_client)
+
         accession_id = await operator.create_metadata_object(collection, content)
+
         body = json.dumps({"accessionId": accession_id})
         url = f"{req.scheme}://{req.host}{req.path}"
         location_headers = CIMultiDict(Location=f"{url}{accession_id}")
@@ -230,7 +333,8 @@ class RESTApiHandler:
         """Delete metadata object from database.
 
         :param req: DELETE request
-        :returns: HTTP No Content response
+        :raises: HTTPUnauthorized if object not owned by user
+        :returns: HTTPNoContent response
         """
         schema_type = req.match_info["schema"]
         self._check_schema_exists(schema_type)
@@ -238,7 +342,34 @@ class RESTApiHandler:
 
         accession_id = req.match_info["accessionId"]
         db_client = req.app["db_client"]
+
+        check_user = await self._handle_check_ownedby_user(req, collection, accession_id)
+        if not check_user:
+            reason = f"The object {accession_id} does not belong to current user."
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
+
+        folder_op = FolderOperator(db_client)
+        exists, folder_id, published = await folder_op.check_object_in_folder(collection, accession_id)
+        if exists:
+            if published:
+                reason = "published objects cannot be deleted."
+                LOG.error(reason)
+                raise web.HTTPUnauthorized(reason=reason)
+            folder_op.remove_object(folder_id, collection, accession_id)
+        else:
+            user_op = UserOperator(db_client)
+            current_user = req.app["Session"]["user_info"]
+            check_user = await user_op.check_user_has_doc(collection, current_user, accession_id)
+            if check_user:
+                collection = "drafts"
+            else:
+                reason = "This object does not seem to belong to anything."
+                LOG.error(reason)
+                raise web.HTTPUnprocessableEntity(reason=reason)
+
         accession_id = await Operator(db_client).delete_metadata_object(collection, accession_id)
+
         LOG.info(f"DELETE object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(status=204)
 
@@ -249,6 +380,7 @@ class RESTApiHandler:
         required fields before replacing in the DB.
 
         :param req: PUT request
+        :raises: HTTPUnauthorized if object not owned by user
         :returns: JSON response containing accessionId for submitted object
         """
         schema_type = req.match_info["schema"]
@@ -265,9 +397,18 @@ class RESTApiHandler:
             operator = XMLOperator(db_client)
         else:
             content = await self._get_data(req)
-            JSONValidator(content, schema_type).validate
+            if not req.path.startswith("/drafts"):
+                JSONValidator(content, schema_type).validate
             operator = Operator(db_client)
+
+        check_user = await self._handle_check_ownedby_user(req, collection, accession_id)
+        if not check_user:
+            reason = f"The object {accession_id} does not belong to current user."
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
+
         accession_id = await operator.replace_metadata_object(collection, accession_id, content)
+
         body = json.dumps({"accessionId": accession_id})
         LOG.info(f"PUT object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
@@ -278,6 +419,7 @@ class RESTApiHandler:
         We do not support patch for XML.
 
         :param req: PATCH request
+        :raises: HTTPUnauthorized if object not owned by user
         :returns: JSON response containing accessionId for submitted object
         """
         schema_type = req.match_info["schema"]
@@ -293,7 +435,15 @@ class RESTApiHandler:
         else:
             content = await self._get_data(req)
             operator = Operator(db_client)
+
+        check_user = await self._handle_check_ownedby_user(req, collection, accession_id)
+        if not check_user:
+            reason = f"The object {accession_id} does not belong to current user."
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
+
         accession_id = await operator.update_metadata_object(collection, accession_id, content)
+
         body = json.dumps({"accessionId": accession_id})
         LOG.info(f"PATCH object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
@@ -305,8 +455,26 @@ class RESTApiHandler:
         :returns: JSON list of folders available for the user
         """
         db_client = req.app["db_client"]
+
+        user_operator = UserOperator(db_client)
+
+        current_user = req.app["Session"]["user_info"]
+        user = await user_operator.read_user(current_user)
+
         operator = FolderOperator(db_client)
-        folders = await operator.query_folders({})
+        folders = await operator.query_folders(
+            {
+                "$redact": {
+                    "$cond": {
+                        "if": {"$or": [{"$eq": ["$published", True]}, {"$in": ["$folderId", user["folders"]]}]},
+                        "then": "$$DESCEND",
+                        "else": "$$PRUNE",
+                    }
+                }
+            },
+            {"$project": {"_id": 0}},
+        )
+
         body = json.dumps({"folders": folders})
         LOG.info(f"GET folders. Retrieved {len(folders)} folders.")
         return web.Response(body=body, status=200, content_type="application/json")
@@ -314,15 +482,24 @@ class RESTApiHandler:
     async def post_folder(self, req: Request) -> Response:
         """Save object folder to database.
 
+        Also assigns the folder to the current user.
+
         :param req: POST request
         :returns: JSON response containing folder ID for submitted folder
         """
         db_client = req.app["db_client"]
         content = await self._get_data(req)
         JSONValidator(content, "folders").validate
+
         operator = FolderOperator(db_client)
         folder = await operator.create_folder(content)
+
+        user_op = UserOperator(db_client)
+        current_user = req.app["Session"]["user_info"]
+        await user_op.assign_objects(current_user, "folders", [folder])
+
         body = json.dumps({"folderId": folder})
+
         url = f"{req.scheme}://{req.host}{req.path}"
         location_headers = CIMultiDict(Location=f"{url}/{folder}")
         LOG.info(f"POST new folder with ID {folder} was successful.")
@@ -332,13 +509,21 @@ class RESTApiHandler:
         """Get one object folder by its folder id.
 
         :param req: GET request
-        :raises: HTTP 404 if folder not found and 400 if something else fails
+        :raises: HTTPNotFound if folder not owned by user
         :returns: JSON response containing object folder
         """
         folder_id = req.match_info["folderId"]
         db_client = req.app["db_client"]
+
+        check_user = await self._handle_check_ownedby_user(req, "folders", folder_id)
+        if not check_user:
+            reason = f"The folder {folder_id} does not belong to current user."
+            LOG.error(reason)
+            raise web.HTTPNotFound(reason=reason)
+
         operator = FolderOperator(db_client)
         folder = await operator.read_folder(folder_id)
+
         LOG.info(f"GET folder with ID {folder_id} was successful.")
         return web.Response(body=json.dumps(folder), status=200, content_type="application/json")
 
@@ -346,7 +531,8 @@ class RESTApiHandler:
         """Update object folder with a specific folder id.
 
         :param req: PATCH request
-        :raises: HTTP 400 if something fails during processing the request
+        :raises: HTTPUnauthorized if folder not owned by user, HTTPBadRequest if JSONpatch operation
+        is not allowed
         :returns: JSON response containing folder ID for updated folder
         """
         folder_id = req.match_info["folderId"]
@@ -354,16 +540,31 @@ class RESTApiHandler:
 
         # Check patch operations in request are valid
         patch_ops = await self._get_data(req)
-        allowed_paths = ["/name", "/description", "/metadataObjects", "/published", "/drafts"]
+        allowed_paths = ["/name", "/description"]
+        array_paths = ["/metadataObjects/-", "/drafts/-"]
         for op in patch_ops:
-            if all(i not in op["path"] for i in allowed_paths):
+            if all(i not in op["path"] for i in allowed_paths + array_paths):
                 reason = f"Request contains '{op['path']}' key that cannot be updated to folders."
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
-        patch = JsonPatch(patch_ops)
+            if op["op"] in ["remove", "copy", "test", "move"]:
+                reason = f"{op['op']} on {op['path']} is not allowed."
+                LOG.error(reason)
+                raise web.HTTPUnauthorized(reason=reason)
+            if op["op"] == "replace" and op["path"] in array_paths:
+                reason = f"{op['op']} on {op['path']} is not allowed."
+                LOG.error(reason)
+                raise web.HTTPUnauthorized(reason=reason)
+
+        check_user = await self._handle_check_ownedby_user(req, "folders", folder_id)
+        if not check_user:
+            reason = f"The folder {folder_id} does not belong to current user."
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
 
         operator = FolderOperator(db_client)
-        folder = await operator.update_folder(folder_id, patch)
+        folder = await operator.update_folder(folder_id, patch_ops if isinstance(patch_ops, list) else [patch_ops])
+
         body = json.dumps({"folderId": folder})
         LOG.info(f"PATCH folder with ID {folder} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
@@ -372,11 +573,18 @@ class RESTApiHandler:
         """Update object folder specifically into published state.
 
         :param req: PATCH request
-        :raises: HTTP 400 if something fails during processing the request
+        :raises: HTTPUnauthorized if folder not owned by user
         :returns: JSON response containing folder ID for updated folder
         """
         folder_id = req.match_info["folderId"]
         db_client = req.app["db_client"]
+
+        check_user = await self._handle_check_ownedby_user(req, "folders", folder_id)
+        if not check_user:
+            reason = f"The folder {folder_id} does not belong to current user."
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
+
         operator = FolderOperator(db_client)
         old_folder = await operator.read_folder(folder_id)
         LOG.info(f"GET folder with ID {folder_id} was successful.")
@@ -384,9 +592,9 @@ class RESTApiHandler:
         # Delete the drafts within the folder from the database
         for draft in old_folder["drafts"]:
             schema_type, accession_id = draft["schema"], draft["accessionId"]
-            collection = f"draft-{schema_type}"
-            self._check_schema_exists(schema_type)
-            accession_id = await Operator(db_client).delete_metadata_object(collection, accession_id)
+            collection = schema_type[6:] if schema_type.startswith("draft") else schema_type
+            self._check_schema_exists(collection)
+            accession_id = await Operator(db_client).delete_metadata_object(schema_type, accession_id)
             LOG.info(f"DELETE draft with accession ID {accession_id} in schema {collection} was successful.")
 
         # Patch the folder into a published state
@@ -394,7 +602,8 @@ class RESTApiHandler:
             {"op": "replace", "path": "/published", "value": True},
             {"op": "replace", "path": "/drafts", "value": []},
         ]
-        new_folder = await operator.update_folder(folder_id, JsonPatch(patch))
+        new_folder = await operator.update_folder(folder_id, patch)
+
         body = json.dumps({"folderId": new_folder})
         LOG.info(f"Patching folder with ID {new_folder} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
@@ -403,12 +612,25 @@ class RESTApiHandler:
         """Delete object folder from database.
 
         :param req: DELETE request
+        :raises: HTTPUnauthorized if folder not owned by user
         :returns: HTTP No Content response
         """
         folder_id = req.match_info["folderId"]
         db_client = req.app["db_client"]
+
+        check_user = await self._handle_check_ownedby_user(req, "folders", folder_id)
+        if not check_user:
+            reason = f"The folder {folder_id} does not belong to current user."
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
+
         operator = FolderOperator(db_client)
         folder = await operator.delete_folder(folder_id)
+
+        user_op = UserOperator(db_client)
+        current_user = req.app["Session"]["user_info"]
+        await user_op.remove_objects(current_user, "folders", [folder_id])
+
         LOG.info(f"DELETE folder with ID {folder} was successful.")
         return web.Response(status=204)
 
@@ -416,16 +638,17 @@ class RESTApiHandler:
         """Get one user by its user ID.
 
         :param req: GET request
+        :raises: HTTPUnauthorized if not current user
         :returns: JSON response containing user object
         """
         user_id = req.match_info["userId"]
         if user_id != "current":
-            raise web.HTTPUnauthorized(reason="Only current user retrieval is allowed now")
+            LOG.info(f"User ID {user_id} was requested")
+            raise web.HTTPUnauthorized(reason="Only current user retrieval is allowed")
         db_client = req.app["db_client"]
         operator = UserOperator(db_client)
 
-        session = req.app["Session"]
-        current_user = session["user_info"]
+        current_user = req.app["Session"]["user_info"]
         user = await operator.read_user(current_user)
 
         LOG.info(f"GET user with ID {user_id} was successful.")
@@ -435,28 +658,32 @@ class RESTApiHandler:
         """Update user object with a specific user ID.
 
         :param req: PATCH request
+        :raises: HTTPUnauthorized if not current user
         :returns: JSON response containing user ID for updated user object
         """
         user_id = req.match_info["userId"]
         if user_id != "current":
-            raise web.HTTPUnauthorized(reason="Only current user operations are allowed now")
+            LOG.info(f"User ID {user_id} patch was requested")
+            raise web.HTTPUnauthorized(reason="Only current user operations are allowed")
         db_client = req.app["db_client"]
 
         # Check patch operations in request are valid
         patch_ops = await self._get_data(req)
-        allowed_paths = ["/drafts", "/folders"]
+        allowed_paths = ["/drafts/-", "/folders/-"]
         for op in patch_ops:
             if all(i not in op["path"] for i in allowed_paths):
-                reason = f"Request contains '{op['path']}' key that cannot be updated to user object."
+                reason = f"Request contains '{op['path']}' key that cannot be updated to user object"
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
-        patch = JsonPatch(patch_ops)
+            if op["op"] in ["remove", "copy", "test", "move", "replace"]:
+                reason = f"{op['op']} on {op['path']} is not allowed."
+                LOG.error(reason)
+                raise web.HTTPUnauthorized(reason=reason)
 
         operator = UserOperator(db_client)
 
-        session = req.app["Session"]
-        current_user = session["user_info"]
-        user = await operator.update_user(current_user, patch)
+        current_user = req.app["Session"]["user_info"]
+        user = await operator.update_user(current_user, patch_ops if isinstance(patch_ops, list) else [patch_ops])
 
         body = json.dumps({"userId": user})
         LOG.info(f"PATCH user with ID {user} was successful.")
@@ -466,25 +693,28 @@ class RESTApiHandler:
         """Delete user from database.
 
         :param req: DELETE request
-        :returns: HTTP No Content response
+        :raises: HTTPUnauthorized if not current user
+        :returns: HTTPNoContent response
         """
         user_id = req.match_info["userId"]
         if user_id != "current":
-            raise web.HTTPUnauthorized(reason="Only current user deleteion is allowed now")
+            LOG.info(f"User ID {user_id} delete was requested")
+            raise web.HTTPUnauthorized(reason="Only current user deleteion is allowed")
         db_client = req.app["db_client"]
         operator = UserOperator(db_client)
 
-        session = req.app["Session"]
-        current_user = session["user_info"]
+        current_user = req.app["Session"]["user_info"]
         user = await operator.delete_user(current_user)
         LOG.info(f"DELETE user with ID {user} was successful.")
-        response = web.HTTPSeeOther(f"{aai_config['domain']}/")
-        response.headers["Location"] = "/"
+
         req.app["Session"]["access_token"] = None
         req.app["Session"]["user_info"] = None
         req.app["Session"]["oidc_state"] = None
         req.app["Session"] = {}
         req.app["Cookies"] = set({})
+
+        response = web.HTTPSeeOther(f"{aai_config['domain']}/")
+        response.headers["Location"] = "/"
         LOG.debug("Logged out user ")
         raise response
 
@@ -500,7 +730,7 @@ class SubmissionAPIHandler:
         Finally submission info itself is added.
 
         :param req: Multipart POST request with submission.xml and files
-        :raises: HTTP Exceptions with status code 201 or 400
+        :raises: HTTPBadRequest if request is missing some parameters or cannot be processed
         :returns: XML-based receipt from submission
         """
         files = await _extract_xml_upload(req)
@@ -574,7 +804,7 @@ class SubmissionAPIHandler:
 
         :param schema_type: Schema type of the object to validate.
         :param xml_content: Metadata object
-        :raises: HTTP Exception with status code 400 if schema load fails
+        :raises: HTTPBadRequest if schema load fails
         :returns: JSON response indicating if validation was successful or not
         """
         try:
@@ -596,7 +826,7 @@ class SubmissionAPIHandler:
         :param content: Metadata object referred to in submission
         :param db_client: Database client for database operations
         :param action: Type of action to be done
-        :raises: HTTP Exception if an incorrect or non-supported action is called
+        :raises: HTTPBadRequest if an incorrect or non-supported action is called
         :returns: Dict containing specific action that was completed
         """
         if action == "add":
@@ -614,7 +844,7 @@ class SubmissionAPIHandler:
             else:
                 alias = data_as_json["alias"]
                 query = MultiDictProxy(MultiDict([("alias", alias)]))
-                data, _, _, _ = await Operator(db_client).query_metadata_database(schema, query, 1, 1)
+                data, _, _, _ = await Operator(db_client).query_metadata_database(schema, query, 1, 1, [])
                 if len(data) > 1:
                     reason = "Alias in provided XML file corresponds with more than one existing metadata object."
                     LOG.error(reason)
@@ -649,7 +879,6 @@ class StaticHandler:
         """Serve requests related to frontend SPA.
 
         :param req: GET request
-        :raises: HTTP Exceptions if error happens
         :returns: Response containing frontpage static file
         """
         index_path = self.path / "index.html"
@@ -677,6 +906,8 @@ async def _extract_xml_upload(req: Request, extract_one: bool = False) -> List[T
     submission should be processed before study).
 
     :param req: POST request containing "multipart/form-data" upload
+    :raises: HTTPBadRequest if request is not valid for multipart or multiple files sent. HTTPNotFound if
+    schema was not found.
     :returns: content and schema type for each uploaded file, sorted by schema
     type.
     """
