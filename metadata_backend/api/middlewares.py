@@ -63,6 +63,7 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
         "/schemas",
         "/drafts",
         "/validate",
+        "/publish",
         "/submit",
         "/folders",
         "/objects",
