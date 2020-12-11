@@ -148,7 +148,7 @@ class AccessHandler:
         req.app["Cookies"].add(session)
 
         # done like this otherwise it will not redirect properly
-        response.headers["Location"] = "/" if self.redirect == self.domain else f"{self.redirect}/home"
+        response.headers["Location"] = "/home" if self.redirect == self.domain else f"{self.redirect}/home"
 
         LOG.debug(f"cookie MTD_SESSION set {cookie_crypted}")
         return response
