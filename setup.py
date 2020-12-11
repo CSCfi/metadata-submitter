@@ -39,6 +39,7 @@ setup(
             "frontend/*",
             "frontend/static/js/*",
             "frontend/static/media/*",
+            "frontend/static/css/*",
             "conf/ena_schemas.json",
         ]
     },
