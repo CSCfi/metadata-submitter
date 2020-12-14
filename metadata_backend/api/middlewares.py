@@ -63,6 +63,7 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
         "/schemas",
         "/drafts",
         "/validate",
+        "/publish",
         "/submit",
         "/folders",
         "/objects",
@@ -71,6 +72,13 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
         "/home",
         "/newdraft",
     ]
+    main_paths = ["/aai", "/callback", "/static"]
+    if (
+        request.path.startswith(tuple(main_paths))
+        or request.path == "/"
+        or (request.path.startswith("/") and request.path.endswith(tuple([".svg", ".jpg", ".ico"])))
+    ):
+        return await handler(request)
     if request.path.startswith(tuple(controlled_paths)) and "OIDC_URL" in os.environ and bool(os.getenv("OIDC_URL")):
         session = request.app["Session"]
         if not all(x in ["access_token", "user_info", "oidc_state"] for x in session):
@@ -86,6 +94,9 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
             raise web.HTTPUnauthorized(headers={"WWW-Authenticate": 'Bearer realm="/", charset="UTF-8"'})
 
         return await handler(request)
+    elif "OIDC_URL" in os.environ and bool(os.getenv("OIDC_URL")):
+        LOG.debug(f"not authorised to view this page {request.path}")
+        raise web.HTTPUnauthorized(headers={"WWW-Authenticate": 'Bearer realm="/", charset="UTF-8"'})
     else:
         return await handler(request)
 
