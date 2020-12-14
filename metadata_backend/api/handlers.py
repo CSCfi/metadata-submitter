@@ -894,6 +894,8 @@ class StaticHandler:
         mimetypes.types_map[".js"] = "application/javascript"
         mimetypes.types_map[".js.map"] = "application/json"
         mimetypes.types_map[".svg"] = "image/svg+xml"
+        mimetypes.types_map[".css"] = "text/css"
+        mimetypes.types_map[".css.map"] = "application/json"
         LOG.debug("static paths for SPA set.")
         return self.path / "static"
 
