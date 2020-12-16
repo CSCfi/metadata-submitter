@@ -633,7 +633,6 @@ class HandlersTestCase(AioHTTPTestCase):
         """Test that folder would be published."""
         self.MockedFolderOperator().update_folder.return_value = futurized(self.folder_id)
         response = await self.client.patch("/publish/FOL12345678")
-        self.MockedFolderOperator().read_folder.assert_called_once()
         self.MockedFolderOperator().update_folder.assert_called_once()
         self.assertEqual(response.status, 200)
         json_resp = await response.json()

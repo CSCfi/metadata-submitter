@@ -586,16 +586,7 @@ class RESTApiHandler:
             raise web.HTTPUnauthorized(reason=reason)
 
         operator = FolderOperator(db_client)
-        old_folder = await operator.read_folder(folder_id)
         LOG.info(f"GET folder with ID {folder_id} was successful.")
-
-        # Delete the drafts within the folder from the database
-        for draft in old_folder["drafts"]:
-            schema_type, accession_id = draft["schema"], draft["accessionId"]
-            collection = schema_type[6:] if schema_type.startswith("draft") else schema_type
-            self._check_schema_exists(collection)
-            accession_id = await Operator(db_client).delete_metadata_object(schema_type, accession_id)
-            LOG.info(f"DELETE draft with accession ID {accession_id} in schema {collection} was successful.")
 
         # Patch the folder into a published state
         patch = [
