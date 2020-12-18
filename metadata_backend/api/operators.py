@@ -1,7 +1,6 @@
 """Operators for handling database-related operations."""
 import re
-import secrets
-import string
+import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Dict, List, Tuple, Union
@@ -443,9 +442,9 @@ class Operator(BaseOperator):
 
         Will be replaced later with external id generator.
         """
-        sequence = "".join(secrets.choice(string.digits) for i in range(16))
+        sequence = "".join(str(uuid.uuid4()))
         LOG.debug("Generated accession ID.")
-        return f"EDAG{sequence}"
+        return sequence
 
     @auto_reconnect
     async def _format_read_data(
@@ -775,9 +774,9 @@ class FolderOperator:
 
         :returns: str with folder id
         """
-        sequence = "".join(secrets.choice(string.digits) for i in range(8))
+        sequence = "".join(str(uuid.uuid4()))
         LOG.debug("Generated folder ID.")
-        return f"FOL{sequence}"
+        return sequence
 
 
 class UserOperator:
@@ -994,6 +993,6 @@ class UserOperator:
 
         :returns: str with user id
         """
-        sequence = "".join(secrets.choice(string.digits) for i in range(8))
+        sequence = "".join(str(uuid.uuid4()))
         LOG.debug("Generated user ID.")
-        return f"USR{sequence}"
+        return sequence
