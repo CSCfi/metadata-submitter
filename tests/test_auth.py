@@ -1,7 +1,6 @@
 """Test API auth endpoints."""
 
 from unittest.mock import patch
-from aiohttp import web
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
 
 from metadata_backend.server import init
@@ -28,7 +27,7 @@ class AccessHandlerTestCase(AioHTTPTestCase):
     async def test_login_with_default_config_values(self):
         """Test that login raises 404 when the AUTH_URL env variable is not a proper endpoint."""
         response = await self.client.get("/aai")
-        self.assertRaises(web.HTTPNotFound)
+        self.assertEqual(response.status, 404)
         resp_json = await response.json()
         self.assertEqual(resp_json["instance"], "/authorize")
         # Also check oidc_state is saved to session storage
@@ -38,9 +37,9 @@ class AccessHandlerTestCase(AioHTTPTestCase):
     async def test_callback_fails_without_query_params(self):
         """Test that callback endpoint raises 400 if no params provided in the request."""
         response = await self.client.get("/callback")
-        self.assertRaises(web.HTTPBadRequest)
+        self.assertEqual(response.status, 400)
         resp_json = await response.json()
-        self.assertIn("AAI response is missing mandatory params", resp_json["detail"])
+        self.assertEqual("AAI response is missing mandatory params, received: <MultiDictProxy()>", resp_json["detail"])
 
     @unittest_run_loop
     async def test_callback_fails_with_wrong_oidc_state(self):
@@ -55,12 +54,14 @@ class AccessHandlerTestCase(AioHTTPTestCase):
     async def test_callback_(self):
         """Test that callback ..."""
         self.client.app["Session"] = {"oidc_state": "test_value"}
-        await self.client.get("/callback?state=test_value&code=code")
-        # Fails at POSTing to token url when it's not set
+        response = await self.client.get("/callback?state=test_value&code=code")
+        self.assertEqual(response.status, 500)
 
     @unittest_run_loop
     async def test_logout_works(self):
         """Test that logout revokes all tokens."""
         self.client.app["Session"] = {"access_token": "test_token"}
-        await self.client.get("/logout")
-        # Revoke url is not configured at conf.py ?
+        response = await self.client.get("/logout")
+        self.assertEqual(response.status, 404)
+        self.assertEqual(self.client.app["Session"], {})
+        self.assertEqual(self.client.app["Cookies"], set())
