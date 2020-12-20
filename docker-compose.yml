@@ -23,7 +23,6 @@ services:
       # or change to http://frontend:3000 if started using docker-compose
       # - "REDIRECT_URL=http://localhost:3000"
       - "JWK_URL=http://mockauth:8000/keyset"
-      - "AUTH_REFERER=http://mockauth:8000/"
       - "LOG_LEVEL=DEBUG"
   database:
     image: "mongo"
