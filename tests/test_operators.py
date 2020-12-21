@@ -2,7 +2,7 @@
 import datetime
 import re
 import unittest
-import uuid
+from uuid import uuid4
 from unittest.mock import MagicMock, patch, call
 
 from aiohttp.web import HTTPBadRequest, HTTPNotFound
@@ -60,8 +60,8 @@ class TestOperators(AsyncTestCase):
 
         MagicMock.__await__ = lambda x: async_patch().__await__()
         self.client = MagicMock()
-        self.accession_id = str(uuid.uuid4())
-        self.folder_id = str(uuid.uuid4())
+        self.accession_id = uuid4().hex
+        self.folder_id = uuid4().hex
         self.test_folder = {
             "folderId": self.folder_id,
             "name": "test",
