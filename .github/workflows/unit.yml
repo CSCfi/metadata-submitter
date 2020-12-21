@@ -8,7 +8,7 @@ jobs:
       max-parallel: 4
       matrix:
         os: [ubuntu-latest]
-        python-version: [3.7]
+        python-version: [3.7, 3.8]
     
     runs-on: ${{ matrix.os }}
 
@@ -31,3 +31,8 @@ jobs:
       env:
         COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
       run: tox -e py37
+    - name: Run unit tests for python 3.8
+      if: ${{ matrix.python-version == '3.8' }}
+      env:
+        COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+      run: tox -e py38
