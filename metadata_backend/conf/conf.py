@@ -4,13 +4,14 @@
 You need to specify the necessary environmental variables for connecting to
 MongoDB.
 Currently in use:
-- MONGO_INITDB_ROOT_USERNAME - Admin username for mongodb
-- MONGO_INITDB_ROOT_PASSWORD - Admin password for mongodb
-- MONGODB_HOST - Mongodb server hostname, with port spesified if needed
+
+- ``MONGO_INITDB_ROOT_USERNAME`` - Admin username for mongodb
+- ``MONGO_INITDB_ROOT_PASSWORD`` - Admin password for mongodb
+- ``MONGODB_HOST`` - Mongodb server hostname, with port specified
 
 Admin access is needed in order to create new databases during runtime.
 Default values are the same that are used in docker-compose file
-found from deploy/mongodb.
+found from root directory.
 
 MongoDB client should be shared across the whole application. Since aiohttp
 discourages usage of singletons, recommended way is to initialize database
@@ -18,7 +19,7 @@ when setting up server and store db to application instance in server.py
 module.
 
 2) Metadata schema types
-Schema types (such as "submission", "study", "sample") are needed in
+Schema types (such as ``"submission"``, ``"study"``, ``"sample"``) are needed in
 different parts of the application.
 
 3) Mongodb query mappings
@@ -94,8 +95,8 @@ frontend_static_files = Path(__file__).parent.parent / "frontend"
 # 5) Set up configurations for AAI server
 
 aai_config = {
-    "client_id": os.getenv("CSC_AAI_CLIENT_ID", "public"),
-    "client_secret": os.getenv("CSC_AAI_CLIENT_SECRET", "secret"),
+    "client_id": os.getenv("AAI_CLIENT_ID", "public"),
+    "client_secret": os.getenv("AAI_CLIENT_SECRET", "secret"),
     "domain": os.getenv("BASE_URL", "http://localhost:5430"),
     "redirect": f'{os.getenv("REDIRECT_URL")}'
     if bool(os.getenv("REDIRECT_URL"))
