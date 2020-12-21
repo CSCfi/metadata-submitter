@@ -875,6 +875,7 @@ class DataMirrorHandler:
         dataset_id = req.match_info["datasetId"]
         db_client = req.app["db_client"]
         await spawn(req, self.data_mirroring(dataset_id, db_client))
+        LOG.info(f"New job spawned for mirroring {dataset_id}")
         return web.Response(status=202)
 
     async def data_mirroring(self, dataset_id: str, db_client: AsyncIOMotorClient) -> None:

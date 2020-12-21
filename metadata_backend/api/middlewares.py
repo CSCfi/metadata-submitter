@@ -71,6 +71,7 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
         "/logout",
         "/home",
         "/newdraft",
+        "/mirror",
     ]
     main_paths = ["/aai", "/callback", "/static"]
     if (
