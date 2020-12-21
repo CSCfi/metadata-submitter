@@ -279,7 +279,7 @@ class RESTApiHandler:
         data, content_type = await operator.read_metadata_object(collection, accession_id)
 
         data = data if req_format == "xml" else json.dumps(data)
-        LOG.info(f"GET object with accesssion ID {accession_id} from schema {collection}.")
+        LOG.info(f"GET object with accession ID {accession_id} from schema {collection}.")
         return web.Response(body=data, status=200, content_type=content_type)
 
     async def post_object(self, req: Request) -> Response:
@@ -313,7 +313,7 @@ class RESTApiHandler:
         body = json.dumps({"accessionId": accession_id})
         url = f"{req.scheme}://{req.host}{req.path}"
         location_headers = CIMultiDict(Location=f"{url}{accession_id}")
-        LOG.info(f"POST object with accesssion ID {accession_id} in schema {collection} was successful.")
+        LOG.info(f"POST object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(
             body=body,
             status=201,
@@ -465,16 +465,18 @@ class RESTApiHandler:
 
         operator = FolderOperator(db_client)
         folders = await operator.query_folders(
-            {
-                "$redact": {
-                    "$cond": {
-                        "if": {"$or": [{"$eq": ["$published", True]}, {"$in": ["$folderId", user["folders"]]}]},
-                        "then": "$$DESCEND",
-                        "else": "$$PRUNE",
+            [
+                {
+                    "$redact": {
+                        "$cond": {
+                            "if": {"$or": [{"$eq": ["$published", True]}, {"$in": ["$folderId", user["folders"]]}]},
+                            "then": "$$DESCEND",
+                            "else": "$$PRUNE",
+                        }
                     }
-                }
-            },
-            {"$project": {"_id": 0}},
+                },
+                {"$project": {"_id": 0}},
+            ]
         )
 
         body = json.dumps({"folders": folders})
@@ -884,14 +886,18 @@ class DataMirrorHandler:
         :param dataset_id: ID of dataset in EGA
         :param db_client: Motor client used for database connections
         """
-        ega_data = MetadataMirror().mirror_dataset(dataset_id)
-        operator = Operator(db_client)
-        for schema_type in ega_data:
-            objects = [ega_data[schema_type]] if schema_type == "dataset" else ega_data[schema_type]
-            for object in objects:
-                JSONValidator(object, schema_type).validate
-                accession_id = await operator.create_metadata_object(schema_type, object)
-                LOG.info(f"POST object with accesssion ID {accession_id} in schema {schema_type} was successful.")
+        # First check if current database already contains the requested dataset
+        query = MultiDictProxy(MultiDict([("egaStableId", dataset_id)]))
+        _, _, _, total_objects = await Operator(db_client).query_metadata_database("dataset", query, 1, 1, [])
+        if total_objects > 0:
+            ega_data = MetadataMirror().mirror_dataset(dataset_id)
+            operator = Operator(db_client)
+            for schema_type in ega_data:
+                objects = [ega_data[schema_type]] if schema_type == "dataset" else ega_data[schema_type]
+                for object in objects:
+                    JSONValidator(object, schema_type).validate
+                    accession_id = await operator.create_metadata_object(schema_type, object)
+                    LOG.info(f"POST object with accession ID {accession_id} in schema {schema_type} was successful.")
 
 
 class StaticHandler:
