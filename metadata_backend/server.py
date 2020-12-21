@@ -8,7 +8,7 @@ from cryptography.fernet import Fernet
 import secrets
 import time
 
-from .api.handlers import RESTApiHandler, StaticHandler, SubmissionAPIHandler
+from .api.handlers import RESTApiHandler, StaticHandler, SubmissionAPIHandler, DataMirrorHandler
 from .api.auth import AccessHandler
 from .api.middlewares import http_error_handler, check_login
 from .conf.conf import create_db_client, frontend_static_files, aai_config
@@ -57,6 +57,7 @@ async def init() -> web.Application:
     server.middlewares.append(check_login)
     rest_handler = RESTApiHandler()
     submission_handler = SubmissionAPIHandler()
+    mirror_handler = DataMirrorHandler()
     api_routes = [
         web.get("/schemas", rest_handler.get_schema_types),
         web.get("/schemas/{schema}", rest_handler.get_json_schema),
@@ -80,7 +81,7 @@ async def init() -> web.Application:
         web.delete("/users/{userId}", rest_handler.delete_user),
         web.post("/submit", submission_handler.submit),
         web.post("/validate", submission_handler.validate),
-        web.get("/mirror/{datasetId}", rest_handler.mirror_dataset),
+        web.get("/mirror/{datasetId}", mirror_handler.mirror_dataset),
     ]
     server.router.add_routes(api_routes)
     LOG.info("Server configurations and routes loaded")
