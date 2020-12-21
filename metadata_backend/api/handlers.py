@@ -890,6 +890,10 @@ class DataMirrorHandler:
         query = MultiDictProxy(MultiDict([("egaStableId", dataset_id)]))
         _, _, _, total_objects = await Operator(db_client).query_metadata_database("dataset", query, 1, 1, [])
         if total_objects > 0:
+            LOG.info(f"Dataset {dataset_id} has already been mirrored into the database.")
+            # Idea with this is to query for a dataset with the exactly same egaStableId value
+            # and if none is found, then it is mirrored from EGA. As of now, this query doesn't work properly
+        else:
             ega_data = MetadataMirror().mirror_dataset(dataset_id)
             operator = Operator(db_client)
             for schema_type in ega_data:

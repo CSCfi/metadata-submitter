@@ -52,4 +52,4 @@ services:
       - ./tests/integration/mock_auth.py:/mock_auth.py
     entrypoint: ["python", "/mock_auth.py", "0.0.0.0", "8000"]
 volumes:
-  data: 
+  data:
