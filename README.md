@@ -13,7 +13,7 @@ Service also validates submitted metadata objects against EGA XSD metadata model
 
 Requirements:
 - Python 3.7+
-- Mongodb
+- MongoDB
 - Docker + docker-compose
 
 For quick testing, launch both server and database with Docker by running `docker-compose up --build` (add `-d` flag to run containers in background). Server can then be found from `http://localhost:5430`.
@@ -22,8 +22,8 @@ For more detailed setup, do following:
 - Install project by running: `pip install .` in project root
 - Setup mongodb and env variables via desired way, details:
   - Server expects to find mongodb instance running, spesified with following environmental variables:
-    - `MONGO_INITDB_ROOT_USERNAME`, username for admin user to mondogb instance
-    - `MONGO_INITDB_ROOT_PASSWORD`, password for admin user to mondogb instance
+    - `MONGO_INITDB_ROOT_USERNAME`, username for admin user to mondogdb instance
+    - `MONGO_INITDB_ROOT_PASSWORD`, password for admin user to mondogdb instance
     - `MONGODB_HOST`, host and port for mongodb instance (e.g. `localhost:27017`)
   - Out of the box, metadata submitter is configured with default values from MongoDB Docker image
   - Suitable mongodb instance can be launched with Docker by running `docker-compose up database`
