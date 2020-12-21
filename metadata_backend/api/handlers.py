@@ -563,10 +563,10 @@ class RESTApiHandler:
             raise web.HTTPUnauthorized(reason=reason)
 
         operator = FolderOperator(db_client)
-        folder = await operator.update_folder(folder_id, patch_ops if isinstance(patch_ops, list) else [patch_ops])
+        await operator.update_folder(folder_id, patch_ops if isinstance(patch_ops, list) else [patch_ops])
 
-        body = json.dumps({"folderId": folder})
-        LOG.info(f"PATCH folder with ID {folder} was successful.")
+        body = json.dumps({"folderId": folder_id})
+        LOG.info(f"PATCH folder with ID {folder_id} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
     async def publish_folder(self, req: Request) -> Response:
@@ -593,10 +593,10 @@ class RESTApiHandler:
             {"op": "replace", "path": "/published", "value": True},
             {"op": "replace", "path": "/drafts", "value": []},
         ]
-        new_folder = await operator.update_folder(folder_id, patch)
+        await operator.update_folder(folder_id, patch)
 
-        body = json.dumps({"folderId": new_folder})
-        LOG.info(f"Patching folder with ID {new_folder} was successful.")
+        body = json.dumps({"folderId": folder_id})
+        LOG.info(f"Patching folder with ID {folder_id} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
     async def delete_folder(self, req: Request) -> Response:

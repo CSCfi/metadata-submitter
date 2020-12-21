@@ -680,7 +680,7 @@ class FolderOperator:
             raise web.HTTPBadRequest(reason=reason)
         return folder
 
-    async def update_folder(self, folder_id: str, patch: List) -> str:
+    async def update_folder(self, folder_id: str, patch: List) -> None:
         """Update object folder from database.
 
         Utilizes JSON Patch operations specified at: http://jsonpatch.com/
@@ -707,7 +707,6 @@ class FolderOperator:
             raise web.HTTPBadRequest(reason=reason)
         else:
             LOG.info(f"Updating folder with id {folder_id} to database succeeded.")
-            return folder_id
 
     async def remove_object(self, folder_id: str, collection: str, accession_id: str) -> None:
         """Remove object from folders in the database.
