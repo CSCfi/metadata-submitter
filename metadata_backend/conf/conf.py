@@ -1,7 +1,7 @@
 """Python-based app configurations.
 
 1) Database configurations
-You need to specify the necessary environmental variables for connecting to
+You need to specify the necessary environment variables for connecting to
 MongoDB.
 Currently in use:
 
