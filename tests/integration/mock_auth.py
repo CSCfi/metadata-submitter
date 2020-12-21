@@ -30,12 +30,12 @@ def generate_token() -> Tuple:
     return (public_jwk, private_jwk)
 
 
-nonce = ""
+nonce = "defaultnonce"
 jwk_pair = generate_token()
 
-user_eppn = ""
-user_given_name = ""
-user_family_name = ""
+user_eppn = "default@user.smth"
+user_given_name = "default"
+user_family_name = "user"
 
 header = {"jku": "http://mockauth:8000/jwk", "kid": "rsa1", "alg": "RS256", "typ": "JWT"}
 
