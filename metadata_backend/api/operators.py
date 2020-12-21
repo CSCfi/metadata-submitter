@@ -1,9 +1,9 @@
 """Operators for handling database-related operations."""
 import re
-import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Dict, List, Tuple, Union
+from uuid import uuid4
 
 from aiohttp import web
 from dateutil.relativedelta import relativedelta
@@ -442,7 +442,7 @@ class Operator(BaseOperator):
 
         Will be replaced later with external id generator.
         """
-        sequence = "".join(str(uuid.uuid4()))
+        sequence = uuid4().hex
         LOG.debug("Generated accession ID.")
         return sequence
 
@@ -774,7 +774,7 @@ class FolderOperator:
 
         :returns: str with folder id
         """
-        sequence = "".join(str(uuid.uuid4()))
+        sequence = uuid4().hex
         LOG.debug("Generated folder ID.")
         return sequence
 
@@ -993,6 +993,6 @@ class UserOperator:
 
         :returns: str with user id
         """
-        sequence = "".join(str(uuid.uuid4()))
+        sequence = uuid4().hex
         LOG.debug("Generated user ID.")
         return sequence
