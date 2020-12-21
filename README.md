@@ -21,7 +21,7 @@ For quick testing, launch both server and database with Docker by running `docke
 For more detailed setup, do following:
 - Install project by running: `pip install .` in project root
 - Setup mongodb and env variables via desired way, details:
-  - Server expects to find mongodb instance running, spesified with following environmental variables:
+  - Server expects to find mongodb instance running, specified with following environment variables:
     - `MONGO_INITDB_ROOT_USERNAME`, username for admin user to mondogdb instance
     - `MONGO_INITDB_ROOT_PASSWORD`, password for admin user to mondogdb instance
     - `MONGODB_HOST`, host and port for mongodb instance (e.g. `localhost:27017`)
