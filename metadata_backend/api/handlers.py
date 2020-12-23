@@ -704,8 +704,10 @@ class RESTApiHandler:
         req.app["Session"] = {}
         req.app["Cookies"] = set({})
 
-        response = web.HTTPSeeOther(f"{aai_config['domain']}/")
-        response.headers["Location"] = "/"
+        response = web.HTTPSeeOther(f"{aai_config['redirect']}/")
+        response.headers["Location"] = (
+            "/" if aai_config["redirect"] == aai_config["domain"] else f"{aai_config['redirect']}/"
+        )
         LOG.debug("Logged out user ")
         raise response
 
