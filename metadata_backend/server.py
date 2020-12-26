@@ -91,6 +91,12 @@ async def init() -> web.Application:
     ]
     server.router.add_routes(aai_routes)
     LOG.info("AAI routes loaded")
+    health_handler = HealthHandler()
+    health_routes = [
+        web.get("/health", health_handler.get_health_status),
+    ]
+    server.router.add_routes(health_routes)
+    LOG.info("Health routes loaded")
     if frontend_static_files.exists():
         static_handler = StaticHandler(frontend_static_files)
         frontend_routes = [
