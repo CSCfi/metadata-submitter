@@ -8,7 +8,7 @@ from cryptography.fernet import Fernet
 import secrets
 import time
 
-from .api.handlers import RESTApiHandler, StaticHandler, SubmissionAPIHandler
+from .api.handlers import RESTApiHandler, StaticHandler, SubmissionAPIHandler, HealthHandler
 from .api.auth import AccessHandler
 from .api.middlewares import http_error_handler, check_login
 from .conf.conf import create_db_client, frontend_static_files, aai_config
