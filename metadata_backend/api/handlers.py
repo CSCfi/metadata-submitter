@@ -861,6 +861,19 @@ class SubmissionAPIHandler:
             raise web.HTTPBadRequest(reason=reason)
 
 
+class HealthHandler:
+    """Handler for health status."""
+
+    async def get_health_status(self, req: Request) -> Response:
+        """Check health status of the application and return a JSON object portraying the status.
+
+        :param req: GET request
+        :returns: JSON response containing health statuses
+        """
+        body = {"status": "Ok", "services": {"database": {"status": "Ok"}}}
+        return web.Response(body=body, status=200, content_type="application/json")
+
+
 class StaticHandler:
     """Handler for static routes, mostly frontend and 404."""
 
