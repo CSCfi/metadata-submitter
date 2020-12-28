@@ -149,7 +149,7 @@ def _check_csrf(request: web.Request) -> bool:
     # site's wrong)
     if "Referer" in request.headers.keys():
         # Pass referer check if we're returning from the login.
-        if request.headers["Referer"].startswith(aai_config["referer"]):
+        if "redirect" in aai_config and request.headers["Referer"].startswith(aai_config["redirect"]):
             LOG.info("Skipping Referer check due to request coming from OIDC.")
             return True
         if cookie["referer"] not in request.headers["Referer"]:
