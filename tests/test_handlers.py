@@ -503,7 +503,7 @@ class HandlersTestCase(AioHTTPTestCase):
         response = await self.client.post("/validate", data=data)
         resp_dict = await response.json()
         self.assertEqual(response.status, 200)
-        self.assertIn("invalid value", resp_dict["detail"]["reason"])
+        self.assertIn("value must be one of", resp_dict["detail"]["reason"])
 
     @unittest_run_loop
     async def test_validation_fails_with_too_many_files(self):
