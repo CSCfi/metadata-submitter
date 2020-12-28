@@ -19,6 +19,7 @@ from ..helpers.parser import XMLToJSONParser
 from ..helpers.schema_loader import JSONSchemaLoader, SchemaNotFoundException, XMLSchemaLoader
 from ..helpers.validator import JSONValidator, XMLValidator
 from .operators import FolderOperator, Operator, XMLOperator, UserOperator
+from ..database.db_service import DBService
 
 from ..conf.conf import aai_config
 
@@ -870,7 +871,13 @@ class HealthHandler:
         :param req: GET request
         :returns: JSON response containing health statuses
         """
-        body = {"status": "Ok", "services": {"database": {"status": "Ok"}}}
+        db_client = req.app["db_client"]
+        db_service = DBService("objects", db_client)
+        services: Dict[str, Dict] = {}
+
+        services["database"] = {"status": "Ok"} if db_service.try_connection() else {"status": "Ok"}
+
+        body = {"status": "Ok", "services": services}
         return web.Response(body=body, status=200, content_type="application/json")
 
 

@@ -32,12 +32,11 @@ def auto_reconnect(db_func: Callable) -> Callable:
                 return await db_func(*args, **kwargs)
             except AutoReconnect:
                 if attempt == max_attempts:
-                    message = f"Connection to database failed after {attempt}" "tries"
+                    message = f"Connection to database failed after {attempt} tries"
                     raise ConnectionFailure(message=message)
                 LOG.error(
                     "Connection not successful, trying to reconnect."
-                    f"Reconnection attempt number {attempt}, waiting "
-                    f" for {default_timeout} seconds."
+                    f"Reconnection attempt number {attempt}, waiting for {default_timeout} seconds."
                 )
                 continue
 
@@ -268,3 +267,16 @@ class DBService:
         LOG.debug("DB aggregate performed.")
         aggregate = self.database[collection].aggregate(query)
         return [doc async for doc in aggregate]
+
+    async def try_connection(self) -> bool:
+        """Check the connection to database.
+
+        :returns: True if check was successful
+        """
+        try:
+            self.db_client.server_info()
+            LOG.debug("Connection to db succeeded.")
+            return True
+        except ConnectionFailure:
+            LOG.debug("Connection to db failed.")
+            return False
