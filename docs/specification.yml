@@ -1051,7 +1051,7 @@ components:
   schemas:
     ErrorModel:
       type: object
-      description: Response when some error(s) occured in one of the endpoints
+      description: Response when some error(s) occurred in one of the endpoints
       required:
         - title
         - detail
@@ -1064,10 +1064,10 @@ components:
           description: Short message, human readable
         detail:
           type: string
-          description: details about what error occured while processing the request
+          description: details about what error occurred while processing the request
         instance:
           type: string
-          description: reference to the specific occurence of the problem
+          description: reference to the specific occurrence of the problem
     400BadRequest:
       allOf:
         - $ref: "#/components/schemas/ErrorModel"

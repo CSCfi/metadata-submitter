@@ -14,16 +14,15 @@ services:
     restart: on-failure
     environment:
       - "MONGODB_HOST=database:27017"
-      - "CSC_AAI_CLIENT_SECRET=secret"
-      - "CSC_AAI_CLIENT_ID=aud2"
+      - "AAI_CLIENT_SECRET=secret"
+      - "AAI_CLIENT_ID=aud2"
       - "ISS_URL=http://mockauth:8000"
       - "AUTH_URL=http://localhost:8000/authorize"
       - "OIDC_URL=http://mockauth:8000"
-      # Enable this we working with front-end on localhost
+      # Enable this for working with front-end on localhost
       # or change to http://frontend:3000 if started using docker-compose
       # - "REDIRECT_URL=http://localhost:3000"
       - "JWK_URL=http://mockauth:8000/keyset"
-      - "AUTH_REFERER=http://mockauth:8000/"
       - "LOG_LEVEL=DEBUG"
   database:
     image: "mongo"
