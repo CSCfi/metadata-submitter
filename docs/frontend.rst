@@ -137,7 +137,7 @@ Styles
 
 App uses `Material UI <https://material-ui.com/>`_ components.
 
-Global styles are defined with ``style.css`` and Material UI theme, customized for CSC. Material UI theme is set in ``index.js`` file.
+Global styles are defined with ``style.css`` and Material UI theme, customized for CSC. Material UI theme is set ``theme.js``, and added to ``index.js`` for use.
 
 Styles are also used inside components, either with ``withStyles`` (modifies Material UI components) or ``makeStyles`` 
 (creates css for component and its children). See `customizing components <https://material-ui.com/customization/components/>`_ for more info.
