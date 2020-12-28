@@ -167,8 +167,8 @@ class AccessHandler:
         req.app["Session"] = {}
         req.app["Cookies"] = set({})
 
-        response = web.HTTPSeeOther(f"{self.domain}/")
-        response.headers["Location"] = f"{self.domain}/"
+        response = web.HTTPSeeOther(f"{self.redirect}/")
+        response.headers["Location"] = "/" if self.redirect == self.domain else f"{self.redirect}/"
         LOG.debug("Logged out user ")
 
         raise response
