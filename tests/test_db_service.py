@@ -42,7 +42,7 @@ class DatabaseTestCase(AsyncTestCase):
         Monkey patching can probably be removed when upgrading requirements to
         python 3.8+ since Mock 4.0+ library has async version of MagicMock.
         """
-
+        # setup async patch
         async def async_patch():
             pass
 
