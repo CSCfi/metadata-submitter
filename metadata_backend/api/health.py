@@ -1,5 +1,6 @@
 """Handle health check endpoint."""
-from typing import Dict
+import json
+from typing import Dict, Union
 
 from aiohttp import web
 from aiohttp.web import Request, Response
@@ -20,20 +21,21 @@ class HealthHandler:
         """
         db_client = req.app["db_client"]
         services: Dict[str, Dict] = {}
-
-        services["database"] = {"status": "Ok"} if self.try_connection(db_client) else {"status": "Down"}
-        body = {"status": "Ok", "services": services}
+        full_status: Dict[str, Union[Dict, str]] = {}
+        services["database"] = {"status": "Ok"} if await self.try_db_connection(db_client) else {"status": "Down"}
+        full_status["status"] = "Ok" if services["database"]["status"] == "Ok" else "Partially down"
+        full_status["services"] = services
         LOG.info("Health status collected.")
-        return web.Response(body=body, status=200, content_type="application/json")
+        return web.Response(body=json.dumps(full_status), status=200, content_type="application/json")
 
-    async def try_connection(self, db_client: AsyncIOMotorClient) -> bool:
+    async def try_db_connection(self, db_client: AsyncIOMotorClient) -> bool:
         """Check the connection to database.
 
         :param db_client: Motor client used for database connections
         :returns: True if check was successful
         """
         try:
-            db_client.server_info()
+            await db_client.server_info()
             LOG.info("Connection to db succeeded.")
             return True
         except ConnectionFailure:
