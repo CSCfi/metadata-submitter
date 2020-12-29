@@ -4,7 +4,8 @@ from pathlib import Path
 
 from aiohttp import web
 
-from metadata_backend.helpers.parser import XMLToJSONParser
+from metadata_backend.helpers.parser import XMLToJSONParser, jsonpatch_mongo
+from pymongo import UpdateOne
 
 
 class ParserTestCase(unittest.TestCase):
@@ -93,3 +94,27 @@ class ParserTestCase(unittest.TestCase):
         study_xml = self.load_xml_from_file("study", "SRP000539_invalid.xml")
         with self.assertRaises(web.HTTPBadRequest):
             self.parser.parse("study", study_xml)
+
+    def test_json_patch_mongo_conversion(self):
+        """Test json patch to mongo query conversion."""
+        json_patch = [
+            {"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": "id", "schema": "study"}},
+            {"op": "add", "path": "/drafts", "value": []},
+            {"op": "replace", "path": "/published", "value": True},
+        ]
+        expected_mongo = [
+            UpdateOne(
+                {"accessionId": "id"},
+                {"$addToSet": {"metadataObjects": {"$each": [{"accessionId": "id", "schema": "study"}]}}},
+                False,
+                None,
+                None,
+                None,
+            ),
+            UpdateOne({"accessionId": "id"}, {"$set": {"drafts": []}}, False, None, None, None),
+            UpdateOne({"accessionId": "id"}, {"$set": {"published": True}}, False, None, None, None),
+        ]
+
+        result = jsonpatch_mongo({"accessionId": "id"}, json_patch)
+        print(result)
+        self.assertEqual(result, expected_mongo)
