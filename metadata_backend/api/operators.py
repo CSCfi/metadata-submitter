@@ -348,12 +348,12 @@ class Operator(BaseOperator):
             {"$project": {"_id": 0}},
         ]
         try:
-            cursor = await self.db_service.aggregate(schema_type, aggregate_query)
+            result_aggregate = await self.db_service.aggregate(schema_type, aggregate_query)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting object: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        data = await self._format_read_data(schema_type, cursor)
+        data = await self._format_read_data(schema_type, result_aggregate)
 
         if not data:
             reason = f"could not find any data in {schema_type}."

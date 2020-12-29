@@ -132,6 +132,7 @@ class DBService:
         requests = jsonpatch_mongo(find_by_id, patch_data)
         try:
             result = await self.database[collection].bulk_write(requests, ordered=False)
+            LOG.debug(f"DB doc patched for {accession_id} with data {patch_data}.")
             return result.acknowledged
         except BulkWriteError as bwe:
             LOG.error(bwe.details)
@@ -151,7 +152,7 @@ class DBService:
         find_by_id = {id_key: accession_id}
         update_op = {"$set": data_to_be_updated}
         result = await self.database[collection].update_one(find_by_id, update_op)
-        LOG.debug(f"DB doc updated for {accession_id}.")
+        LOG.debug(f"DB doc updated for {accession_id} with data {data_to_be_updated}.")
         return result.acknowledged
 
     @auto_reconnect
@@ -170,7 +171,7 @@ class DBService:
         result = await self.database[collection].find_one_and_update(
             find_by_id, remove_op, projection={"_id": False}, return_document=ReturnDocument.AFTER
         )
-        LOG.debug(f"DB doc updated for {accession_id}.")
+        LOG.debug(f"DB doc data {data_to_be_removed} removed from {accession_id}.")
         return result
 
     @auto_reconnect
@@ -190,7 +191,7 @@ class DBService:
         result = await self.database[collection].find_one_and_update(
             find_by_id, append_op, projection={"_id": False}, return_document=ReturnDocument.AFTER
         )
-        LOG.debug(f"DB doc updated for {accession_id}.")
+        LOG.debug(f"DB doc data {data_to_be_addded} appeneded for {accession_id}.")
         return result
 
     @auto_reconnect
@@ -215,7 +216,7 @@ class DBService:
             if "publishDate" in old_data:
                 new_data["publishDate"] = old_data["publishDate"]
         result = await self.database[collection].replace_one(find_by_id, new_data)
-        LOG.debug(f"DB doc replaced for {accession_id}.")
+        LOG.debug(f"DB doc replaced with {new_data} for {accession_id}.")
         return result.acknowledged
 
     @auto_reconnect
@@ -258,12 +259,12 @@ class DBService:
         return await self.database[collection].count_documents(query)
 
     @auto_reconnect
-    async def aggregate(self, collection: str, query: List) -> AsyncIOMotorCursor:
+    async def aggregate(self, collection: str, query: List) -> List:
         """Peform aggregate query.
 
         :param collection: Collection where document should be searched from
         :param query: query to be used
-        :returns: Estimate of the number of documents
+        :returns: aggregated query result list
         """
         LOG.debug("DB aggregate performed.")
         aggregate = self.database[collection].aggregate(query)
