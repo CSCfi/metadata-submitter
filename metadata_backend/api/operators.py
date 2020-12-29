@@ -591,11 +591,16 @@ class FolderOperator:
         :raises: HTTPUnprocessableEntity if error occurs during the process and object in more than 1 folder
         :returns: True for the check, folder id and if published or not
         """
-        folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
-        folder_query = {folder_path: {"$elemMatch": {"accessionId": accession_id, "schema": collection}}}
+        try:
+            folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
+            folder_query = {folder_path: {"$elemMatch": {"accessionId": accession_id, "schema": collection}}}
 
-        folder_cursor = self.db_service.query("folder", folder_query)
-        folder_check = [folder async for folder in folder_cursor]
+            folder_cursor = self.db_service.query("folder", folder_query)
+            folder_check = [folder async for folder in folder_cursor]
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while inserting user: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
 
         if len(folder_check) == 0:
             LOG.info(f"doc {accession_id} belongs to no folder something is off")
@@ -615,11 +620,16 @@ class FolderOperator:
         :param collection: collection it belongs to, it would be used as path
         :returns: count of objects
         """
-        folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
-        folder_query = {"$and": [{folder_path: {"$elemMatch": {"schema": collection}}}, {"folderId": folder_id}]}
+        try:
+            folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
+            folder_query = {"$and": [{folder_path: {"$elemMatch": {"schema": collection}}}, {"folderId": folder_id}]}
 
-        folder_cursor = self.db_service.query("folder", folder_query)
-        folders = [folder async for folder in folder_cursor]
+            folder_cursor = self.db_service.query("folder", folder_query)
+            folders = [folder async for folder in folder_cursor]
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while inserting user: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
 
         if len(folders) >= 1:
             return [i["accessionId"] for i in folders[0][folder_path]]
@@ -797,10 +807,15 @@ class UserOperator:
         :raises: HTTPUnprocessableEntity if more users seem to have same folder
         :returns: True if accession_id belongs to user
         """
-        doc_path = "drafts" if collection.startswith("draft") else "folders"
-        user_query = {doc_path: {"$elemMatch": {"$eq": accession_id}}, "userId": user_id}
-        user_cursor = self.db_service.query("user", user_query)
-        user_check = [user async for user in user_cursor]
+        try:
+            doc_path = "drafts" if collection.startswith("draft") else "folders"
+            user_query = {doc_path: {"$elemMatch": {"$eq": accession_id}}, "userId": user_id}
+            user_cursor = self.db_service.query("user", user_query)
+            user_check = [user async for user in user_cursor]
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while inserting user: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
 
         if len(user_check) == 0:
             LOG.info(f"doc {accession_id} belongs to no user something is off")
@@ -824,31 +839,29 @@ class UserOperator:
 
         eppn = data[0]
         name = data[1]
-
-        existing_user_id = await self.db_service.exists_eppn_user(eppn, name)
-        if existing_user_id:
-            LOG.info(f"User with eppn: {eppn} exists, no need to create.")
-            return existing_user_id
-        else:
-            user_data["drafts"] = []
-            user_data["folders"] = []
-            user_data["userId"] = user_id = self._generate_user_id()
-            user_data["name"] = name
-            user_data["eppn"] = eppn
-            try:
-                insert_success = await self.db_service.create("user", user_data)
-            except (ConnectionFailure, OperationFailure) as error:
-                reason = f"Error happened while inserting user: {error}"
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
-
-            if not insert_success:
-                reason = "Inserting user to database failed for some reason."
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
+        try:
+            existing_user_id = await self.db_service.exists_eppn_user(eppn, name)
+            if existing_user_id:
+                LOG.info(f"User with eppn: {eppn} exists, no need to create.")
+                return existing_user_id
             else:
-                LOG.info(f"Inserting user with id {user_id} to database succeeded.")
-                return user_id
+                user_data["drafts"] = []
+                user_data["folders"] = []
+                user_data["userId"] = user_id = self._generate_user_id()
+                user_data["name"] = name
+                user_data["eppn"] = eppn
+                insert_success = await self.db_service.create("user", user_data)
+                if not insert_success:
+                    reason = "Inserting user to database failed for some reason."
+                    LOG.error(reason)
+                    raise web.HTTPBadRequest(reason=reason)
+                else:
+                    LOG.info(f"Inserting user with id {user_id} to database succeeded.")
+                    return user_id
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while inserting user: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
 
     async def read_user(self, user_id: str) -> Dict:
         """Read user object from database.

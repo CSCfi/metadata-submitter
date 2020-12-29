@@ -5,11 +5,13 @@ import unittest
 from uuid import uuid4
 from unittest.mock import MagicMock, patch, call
 
-from aiohttp.web import HTTPBadRequest, HTTPNotFound
+from aiohttp.web import HTTPBadRequest, HTTPNotFound, HTTPUnprocessableEntity
 from aiounittest import AsyncTestCase, futurized
 from aiounittest.mock import AsyncMockIterator
 from multidict import MultiDict, MultiDictProxy
 from pymongo.errors import ConnectionFailure
+
+from .test_db_service import AsyncIterator
 
 from metadata_backend.api.operators import (
     FolderOperator,
@@ -54,7 +56,7 @@ class TestOperators(AsyncTestCase):
         Monkey patches MagicMock to work with async / await, then sets up
         other patches and mocks for tests.
         """
-
+        # setup async patch
         async def async_patch():
             pass
 
@@ -67,7 +69,7 @@ class TestOperators(AsyncTestCase):
             "name": "test",
             "description": "test folder",
             "published": False,
-            "metadataObjects": [],
+            "metadataObjects": [{"accessionId": "EGA1234567", "schema": "study"}],
         }
         self.user_id = "current"
         self.user_generated_id = "5fb82fa1dcf9431fa5fcfb72e2d2ee14"
@@ -419,6 +421,17 @@ class TestOperators(AsyncTestCase):
             self.assertEqual(operator.db_service.delete.call_count, 2)
             operator.db_service.delete.assert_called_with("sample", "EGA123456")
 
+    async def test_deleting_metadata_delete_raises_bad_request(self):
+        """Test bad request error raised with delete."""
+        operator = Operator(self.client)
+        operator.db_service.db_client = self.client
+        operator.db_service.exists.return_value = futurized(True)
+        operator.db_service.delete.return_value = futurized(False)
+        with self.assertRaises(HTTPBadRequest):
+            await operator.delete_metadata_object("sample", "EGA123456")
+            self.assertEqual(operator.db_service.delete.call_count, 2)
+            operator.db_service.delete.assert_called_with("sample", "EGA123456")
+
     async def test_working_query_params_are_passed_to_db_query(self):
         """Test that database is called with correct query."""
         operator = Operator(self.client)
@@ -601,6 +614,22 @@ class TestOperators(AsyncTestCase):
         operator.db_service.create.assert_called_once()
         self.assertEqual(folder, self.folder_id)
 
+    async def test_create_folder_fails(self):
+        """Test create method for folders fails."""
+        operator = FolderOperator(self.client)
+        data = {"name": "test", "description": "test folder"}
+        operator.db_service.create.side_effect = ConnectionFailure
+        with self.assertRaises(HTTPBadRequest):
+            await operator.create_folder(data)
+
+    async def test_create_folder_db_create_fails(self):
+        """Test create method for folders db create fails."""
+        operator = FolderOperator(self.client)
+        data = {"name": "test", "description": "test folder"}
+        operator.db_service.create.return_value = futurized(False)
+        with self.assertRaises(HTTPBadRequest):
+            await operator.create_folder(data)
+
     async def test_query_folders_empty_list(self):
         """Test query returns empty list."""
         operator = FolderOperator(self.client)
@@ -617,6 +646,70 @@ class TestOperators(AsyncTestCase):
         operator.db_service.aggregate.assert_called_once()
         self.assertEqual(folders, [{"name": "folder"}])
 
+    async def test_check_object_folder_fails(self):
+        """Test check object folder fails."""
+        operator = FolderOperator(self.client)
+        operator.db_service.query.side_effect = ConnectionFailure
+        with self.assertRaises(HTTPBadRequest):
+            await operator.check_object_in_folder("study", self.accession_id)
+
+    async def test_check_object_folder_passes(self):
+        """Test check object folder returns proper data."""
+        operator = FolderOperator(self.client)
+        operator.db_service.query.return_value = AsyncIterator([self.test_folder])
+        result = await operator.check_object_in_folder("study", self.accession_id)
+        operator.db_service.query.assert_called_once_with(
+            "folder", {"metadataObjects": {"$elemMatch": {"accessionId": self.accession_id, "schema": "study"}}}
+        )
+        self.assertEqual(result, (True, self.folder_id, False))
+
+    async def test_check_object_folder_multiple_objects_fails(self):
+        """Test check object folder returns multiple unique folders."""
+        operator = FolderOperator(self.client)
+        operator.db_service.query.return_value = AsyncIterator([self.test_folder, self.test_folder])
+        with self.assertRaises(HTTPUnprocessableEntity):
+            await operator.check_object_in_folder("study", self.accession_id)
+            operator.db_service.query.assert_called_once_with(
+                "folder", {"metadataObjects": {"$elemMatch": {"accessionId": self.accession_id, "schema": "study"}}}
+            )
+
+    async def test_check_object_folder_no_data(self):
+        """Test check object folder returns no data."""
+        operator = FolderOperator(self.client)
+        operator.db_service.query.return_value = AsyncIterator([])
+        result = await operator.check_object_in_folder("study", self.accession_id)
+        operator.db_service.query.assert_called_once_with(
+            "folder", {"metadataObjects": {"$elemMatch": {"accessionId": self.accession_id, "schema": "study"}}}
+        )
+        self.assertEqual(result, (False, "", False))
+
+    async def test_get_objects_folder_fails(self):
+        """Test check object folder fails."""
+        operator = FolderOperator(self.client)
+        operator.db_service.query.side_effect = ConnectionFailure
+        with self.assertRaises(HTTPBadRequest):
+            await operator.get_collection_objects(self.folder_id, "study")
+
+    async def test_get_objects_folder_passes(self):
+        """Test get objects from folder returns proper data."""
+        operator = FolderOperator(self.client)
+        operator.db_service.query.return_value = AsyncIterator([self.test_folder])
+        result = await operator.get_collection_objects(self.folder_id, "study")
+        operator.db_service.query.assert_called_once_with(
+            "folder", {"$and": [{"metadataObjects": {"$elemMatch": {"schema": "study"}}}, {"folderId": self.folder_id}]}
+        )
+        self.assertEqual(result, ["EGA1234567"])
+
+    async def test_get_objects_folder_no_data(self):
+        """Test get objects from folder returns no data."""
+        operator = FolderOperator(self.client)
+        operator.db_service.query.return_value = AsyncIterator([])
+        result = await operator.get_collection_objects(self.folder_id, "study")
+        operator.db_service.query.assert_called_once_with(
+            "folder", {"$and": [{"metadataObjects": {"$elemMatch": {"schema": "study"}}}, {"folderId": self.folder_id}]}
+        )
+        self.assertEqual(result, [])
+
     async def test_reading_folder_works(self):
         """Test folder is read from db correctly."""
         operator = FolderOperator(self.client)
@@ -626,6 +719,13 @@ class TestOperators(AsyncTestCase):
         operator.db_service.exists.assert_called_once()
         operator.db_service.read.assert_called_once_with("folder", self.folder_id)
         self.assertEqual(read_data, self.test_folder)
+
+    async def test_folder_object_read_fails(self):
+        """Test folder read fails."""
+        operator = FolderOperator(self.client)
+        operator.db_service.exists.side_effect = ConnectionFailure
+        with self.assertRaises(HTTPBadRequest):
+            await operator.read_folder(self.folder_id)
 
     async def test_folder_update_passes_and_returns_id(self):
         """Test update method for folders works."""
@@ -651,6 +751,38 @@ class TestOperators(AsyncTestCase):
             operator.db_service.exists.assert_called_once()
             operator.db_service.read.assert_called_once()
 
+    async def test_folder_object_update_fails(self):
+        """Test folder update fails."""
+        operator = FolderOperator(self.client)
+        operator.db_service.exists.side_effect = ConnectionFailure
+        with self.assertRaises(HTTPBadRequest):
+            await operator.update_folder(self.test_folder, [])
+
+    async def test_folder_object_remove_passes(self):
+        """Test remove object method for folders works."""
+        operator = FolderOperator(self.client)
+        operator.db_service.exists.return_value = futurized(True)
+        operator.db_service.remove.return_value = futurized(self.test_folder)
+        await operator.remove_object(self.test_folder, "study", self.accession_id)
+        operator.db_service.exists.assert_called_once()
+        operator.db_service.remove.assert_called_once()
+        self.assertEqual(len(operator.db_service.remove.mock_calls), 1)
+
+    async def test_folder_object_remove_fails(self):
+        """Test folder remove object fails."""
+        operator = FolderOperator(self.client)
+        operator.db_service.exists.side_effect = ConnectionFailure
+        with self.assertRaises(HTTPBadRequest):
+            await operator.remove_object(self.test_folder, "study", self.accession_id)
+
+    async def test_check_folder_exists_fails(self):
+        """Test fails exists fails."""
+        operator = FolderOperator(self.client)
+        operator.db_service.exists.return_value = futurized(False)
+        with self.assertRaises(HTTPNotFound):
+            await operator._check_folder_exists(self.folder_id)
+            operator.db_service.exists.assert_called_once()
+
     async def test_deleting_folder_passes(self):
         """Test folder is deleted correctly."""
         operator = FolderOperator(self.client)
@@ -659,14 +791,95 @@ class TestOperators(AsyncTestCase):
         await operator.delete_folder(self.folder_id)
         operator.db_service.delete.assert_called_with("folder", self.folder_id)
 
+    async def test_deleting_folder_fails_on_delete(self):
+        """Test folder fails on db delete."""
+        operator = FolderOperator(self.client)
+        operator.db_service.exists.return_value = futurized(True)
+        operator.db_service.delete.return_value = futurized(False)
+        with self.assertRaises(HTTPBadRequest):
+            await operator.delete_folder(self.folder_id)
+            operator.db_service.delete.assert_called_with("folder", self.folder_id)
+
+    async def test_delete_folder_fails(self):
+        """Test folder delete fails."""
+        operator = FolderOperator(self.client)
+        operator.db_service.exists.side_effect = ConnectionFailure
+        with self.assertRaises(HTTPBadRequest):
+            await operator.delete_folder(self.folder_id)
+
     async def test_create_user_works_and_returns_userId(self):
         """Test create method for users work."""
         operator = UserOperator(self.client)
         data = "eppn", "name"
+        operator.db_service.exists_eppn_user.return_value = futurized(None)
         operator.db_service.create.return_value = futurized(True)
-        folder = await operator.create_user(data)
+        user = await operator.create_user(data)
         operator.db_service.create.assert_called_once()
-        self.assertEqual(folder, self.user_generated_id)
+        self.assertEqual(user, self.user_generated_id)
+
+    async def test_create_user_on_create_fails(self):
+        """Test create method fails on db create."""
+        operator = UserOperator(self.client)
+        data = "eppn", "name"
+        operator.db_service.exists_eppn_user.return_value = futurized(None)
+        operator.db_service.create.return_value = futurized(False)
+        with self.assertRaises(HTTPBadRequest):
+            await operator.create_user(data)
+            operator.db_service.create.assert_called_once()
+
+    async def test_check_user_doc_fails(self):
+        """Test check user doc fails."""
+        operator = UserOperator(self.client)
+        operator.db_service.query.side_effect = ConnectionFailure
+        with self.assertRaises(HTTPBadRequest):
+            await operator.check_user_has_doc("folders", self.user_generated_id, self.folder_id)
+
+    async def test_check_user_doc_passes(self):
+        """Test check user doc returns proper data."""
+        operator = UserOperator(self.client)
+        operator.db_service.query.return_value = AsyncIterator(["1"])
+        result = await operator.check_user_has_doc("folders", self.user_generated_id, self.folder_id)
+        operator.db_service.query.assert_called_once_with(
+            "user", {"folders": {"$elemMatch": {"$eq": self.folder_id}}, "userId": self.user_generated_id}
+        )
+        self.assertTrue(result)
+
+    async def test_check_user_doc_multiple_folders_fails(self):
+        """Test check user doc returns multiple unique folders."""
+        operator = UserOperator(self.client)
+        operator.db_service.query.return_value = AsyncIterator(["1", "2"])
+        with self.assertRaises(HTTPUnprocessableEntity):
+            await operator.check_user_has_doc("folders", self.user_generated_id, self.folder_id)
+            operator.db_service.query.assert_called_once_with(
+                "user", {"folders": {"$elemMatch": {"$eq": self.folder_id}}, "userId": self.user_generated_id}
+            )
+
+    async def test_check_user_doc_no_data(self):
+        """Test check user doc returns no data."""
+        operator = UserOperator(self.client)
+        operator.db_service.query.return_value = AsyncIterator([])
+        result = await operator.check_user_has_doc("folders", self.user_generated_id, self.folder_id)
+        operator.db_service.query.assert_called_once_with(
+            "user", {"folders": {"$elemMatch": {"$eq": self.folder_id}}, "userId": self.user_generated_id}
+        )
+        self.assertFalse(result)
+
+    async def test_create_user_works_existing_userId(self):
+        """Test create method for existing user."""
+        operator = UserOperator(self.client)
+        data = "eppn", "name"
+        operator.db_service.exists_eppn_user.return_value = futurized(self.user_generated_id)
+        user = await operator.create_user(data)
+        operator.db_service.create.assert_not_called()
+        self.assertEqual(user, self.user_generated_id)
+
+    async def test_create_user_fails(self):
+        """Test create user fails."""
+        data = "eppn", "name"
+        operator = UserOperator(self.client)
+        operator.db_service.exists_eppn_user.side_effect = ConnectionFailure
+        with self.assertRaises(HTTPBadRequest):
+            await operator.create_user(data)
 
     async def test_reading_user_works(self):
         """Test user object is read from db correctly."""
@@ -677,6 +890,21 @@ class TestOperators(AsyncTestCase):
         operator.db_service.exists.assert_called_once()
         operator.db_service.read.assert_called_once_with("user", self.user_id)
         self.assertEqual(read_data, self.test_user)
+
+    async def test_read_user_fails(self):
+        """Test user read fails."""
+        operator = UserOperator(self.client)
+        operator.db_service.exists.side_effect = ConnectionFailure
+        with self.assertRaises(HTTPBadRequest):
+            await operator.read_user(self.user_id)
+
+    async def test_check_user_exists_fails(self):
+        """Test user exists fails."""
+        operator = UserOperator(self.client)
+        operator.db_service.exists.return_value = futurized(False)
+        with self.assertRaises(HTTPNotFound):
+            await operator._check_user_exists(self.user_id)
+            operator.db_service.exists.assert_called_once()
 
     async def test_user_update_passes_and_returns_id(self):
         """Test update method for users works."""
@@ -702,6 +930,13 @@ class TestOperators(AsyncTestCase):
             operator.db_service.exists.assert_called_once()
             operator.db_service.read.assert_called_once()
 
+    async def test_update_user_fails(self):
+        """Test user update fails."""
+        operator = UserOperator(self.client)
+        operator.db_service.exists.side_effect = ConnectionFailure
+        with self.assertRaises(HTTPBadRequest):
+            await operator.update_user(self.user_id, [])
+
     async def test_deleting_user_passes(self):
         """Test user is deleted correctly."""
         operator = UserOperator(self.client)
@@ -710,11 +945,66 @@ class TestOperators(AsyncTestCase):
         await operator.delete_user(self.user_id)
         operator.db_service.delete.assert_called_with("user", "current")
 
-    def test_generate_accession_id(self):
-        """Test generate accession id."""
+    async def test_deleting_user_fails_on_delete(self):
+        """Test user fails on delete operation."""
         operator = UserOperator(self.client)
-        result = operator._generate_user_id()
-        self.assertEqual(result, "5fb82fa1dcf9431fa5fcfb72e2d2ee14")
+        operator.db_service.exists.return_value = futurized(True)
+        operator.db_service.delete.return_value = futurized(False)
+        with self.assertRaises(HTTPBadRequest):
+            await operator.delete_user(self.user_id)
+            operator.db_service.delete.assert_called_with("user", "current")
+
+    async def test_deleting_user_fails(self):
+        """Test user delete fails."""
+        operator = UserOperator(self.client)
+        operator.db_service.exists.side_effect = ConnectionFailure
+        with self.assertRaises(HTTPBadRequest):
+            await operator.delete_user(self.user_id)
+
+    async def test_user_objects_remove_passes(self):
+        """Test remove objects method for users works."""
+        operator = UserOperator(self.client)
+        operator.db_service.exists.return_value = futurized(True)
+        operator.db_service.remove.return_value = futurized(self.test_user)
+        await operator.remove_objects(self.user_generated_id, "study", [])
+        operator.db_service.exists.assert_called_once()
+        operator.db_service.remove.assert_called_once()
+        self.assertEqual(len(operator.db_service.remove.mock_calls), 1)
+
+    async def test_user_objects_remove_fails(self):
+        """Test remove objects method for users fails."""
+        operator = UserOperator(self.client)
+        operator.db_service.exists.return_value = futurized(True)
+        operator.db_service.remove.side_effect = ConnectionFailure
+        with self.assertRaises(HTTPBadRequest):
+            await operator.remove_objects(self.user_generated_id, "study", [])
+
+    async def test_user_objects_append_passes(self):
+        """Test append objects method for users works."""
+        operator = UserOperator(self.client)
+        operator.db_service.exists.return_value = futurized(True)
+        operator.db_service.append.return_value = futurized(self.test_user)
+        await operator.assign_objects(self.user_generated_id, "study", [])
+        operator.db_service.exists.assert_called_once()
+        operator.db_service.append.assert_called_once()
+        self.assertEqual(len(operator.db_service.append.mock_calls), 1)
+
+    async def test_user_objects_append_on_result_fails(self):
+        """Test append objects method for users fails on db response validation."""
+        operator = UserOperator(self.client)
+        operator.db_service.exists.return_value = futurized(True)
+        operator.db_service.append.return_value = futurized(False)
+        with self.assertRaises(HTTPBadRequest):
+            await operator.assign_objects(self.user_generated_id, "study", [])
+            operator.db_service.exists.assert_called_once()
+            operator.db_service.append.assert_called_once()
+
+    async def test_user_objects_assing_fails(self):
+        """Test append objects method for users fails."""
+        operator = UserOperator(self.client)
+        operator.db_service.exists.side_effect = ConnectionFailure
+        with self.assertRaises(HTTPBadRequest):
+            await operator.assign_objects(self.user_generated_id, "study", [])
 
 
 if __name__ == "__main__":
