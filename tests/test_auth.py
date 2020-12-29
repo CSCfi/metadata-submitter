@@ -129,16 +129,16 @@ class AccessHandlerPassTestCase(AsyncTestCase):
     async def test_set_user_fail(self):
         """Test set user exception."""
         request = Mock_Request()
-        token = "something"
+        tk = "something"
         with self.assertRaises(HTTPBadRequest):
-            await self.AccessHandler._set_user(request, token)
+            await self.AccessHandler._set_user(request, tk)
 
     async def test_set_user(self):
         """Test set user."""
         request = Mock_Request()
         request.app["db_client"] = MagicMock()
         request.app["Session"] = {}
-        token = "something"
+        tk = "something"
         data = {
             "eppn": "eppn@test.fi",
             "given_name": "User",
@@ -148,4 +148,21 @@ class AccessHandlerPassTestCase(AsyncTestCase):
 
         with patch("aiohttp.ClientSession.get", return_value=resp):
             with patch("metadata_backend.api.operators.UserOperator.create_user", return_value=futurized("USR12345")):
-                await self.AccessHandler._set_user(request, token)
+                await self.AccessHandler._set_user(request, tk)
+
+    async def test_callback_fail(self):
+        """Test callback."""
+        request = Mock_Request()
+        request.query["state"] = "state"
+        request.query["code"] = "code"
+        request.app["Session"] = {"oidc_state": "state"}
+        resp_no_token = MockResponse({}, 200)
+        resp_400 = MockResponse({}, 400)
+
+        with patch("aiohttp.ClientSession.post", return_value=resp_no_token):
+            with self.assertRaises(HTTPBadRequest):
+                await self.AccessHandler.callback(request)
+
+        with patch("aiohttp.ClientSession.post", return_value=resp_400):
+            with self.assertRaises(HTTPBadRequest):
+                await self.AccessHandler.callback(request)
