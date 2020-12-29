@@ -70,6 +70,7 @@ class TestOperators(AsyncTestCase):
             "metadataObjects": [],
         }
         self.user_id = "current"
+        self.user_generated_id = "5fb82fa1dcf9431fa5fcfb72e2d2ee14"
         self.test_user = {
             "userId": self.user_id,
             "name": "tester",
@@ -93,7 +94,7 @@ class TestOperators(AsyncTestCase):
         self.patch_folder.start()
         self.patch_user = patch(
             ("metadata_backend.api.operators.UserOperator._generate_user_id"),
-            return_value=self.user_id,
+            return_value=self.user_generated_id,
             autospec=True,
         )
         self.patch_user.start()
@@ -665,7 +666,7 @@ class TestOperators(AsyncTestCase):
         operator.db_service.create.return_value = futurized(True)
         folder = await operator.create_user(data)
         operator.db_service.create.assert_called_once()
-        self.assertEqual(folder, self.user_id)
+        self.assertEqual(folder, self.user_generated_id)
 
     async def test_reading_user_works(self):
         """Test user object is read from db correctly."""
@@ -708,6 +709,12 @@ class TestOperators(AsyncTestCase):
         operator.db_service.delete.return_value = futurized(True)
         await operator.delete_user(self.user_id)
         operator.db_service.delete.assert_called_with("user", "current")
+
+    def test_generate_accession_id(self):
+        """Test generate accession id."""
+        operator = UserOperator(self.client)
+        result = operator._generate_user_id()
+        self.assertEqual(result, "5fb82fa1dcf9431fa5fcfb72e2d2ee14")
 
 
 if __name__ == "__main__":
