@@ -283,7 +283,7 @@ class AccessHandler:
             session = req.app["Session"]
             return session[key]
         except KeyError as e:
-            reason = f"Session has no value for {key}: {e}."
+            reason = f"Session has no key {key}, error: {e}."
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)
         except Exception as e:
