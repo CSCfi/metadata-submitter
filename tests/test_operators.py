@@ -72,7 +72,7 @@ class TestOperators(AsyncTestCase):
         self.user_id = "current"
         self.user_generated_id = "5fb82fa1dcf9431fa5fcfb72e2d2ee14"
         self.test_user = {
-            "userId": self.user_id,
+            "userId": self.user_generated_id,
             "name": "tester",
             "drafts": [],
             "folders": [],
@@ -689,7 +689,7 @@ class TestOperators(AsyncTestCase):
         operator.db_service.exists.assert_called_once()
         operator.db_service.patch.assert_called_once()
         self.assertEqual(len(operator.db_service.read.mock_calls), 1)
-        self.assertEqual(user["userId"], self.user_id)
+        self.assertEqual(user["userId"], self.user_generated_id)
 
     async def test_user_update_fails_with_bad_patch(self):
         """Test user update raises error with improper JSON Patch."""

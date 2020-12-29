@@ -60,8 +60,8 @@ class Mock_Request:
 def get_request_with_fernet():
     """Create a request with a working fernet object."""
     ret = Mock_Request()
-    ret.app["Sessions"] = set({})
-    ret.app["Creds"] = {}
+    ret.app["Session"] = set({})
+    ret.app["Cookies"] = {}
     ret.app["Crypt"] = cryptography.fernet.Fernet(cryptography.fernet.Fernet.generate_key())
     ret.app["Salt"] = hashlib.sha256(os.urandom(512)).hexdigest()
     return ret
