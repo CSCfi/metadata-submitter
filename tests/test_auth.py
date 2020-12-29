@@ -5,9 +5,12 @@ from unittest.mock import MagicMock, patch
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
 
 from metadata_backend.server import init
-from .mockups import Mock_Request, MockResponse
+from .mockups import Mock_Request, MockResponse, jwt_data, jwk_data, jwt_data_claim_miss, jwt_data_bad_nonce
 from aiounittest import AsyncTestCase, futurized
 import json
+import cryptography.fernet
+import hashlib
+from os import urandom
 
 
 class AccessHandlerFailTestCase(AioHTTPTestCase):
@@ -77,7 +80,7 @@ class AccessHandlerPassTestCase(AsyncTestCase):
     def setUp(self):
         """Configure mock values for tests."""
         access_config = {
-            "client_id": "public",
+            "client_id": "aud2",
             "client_secret": "secret",
             "domain": "http://domain.com:5430",
             "redirect": "http://domain.com:5430",
@@ -92,6 +95,7 @@ class AccessHandlerPassTestCase(AsyncTestCase):
             "auth_referer": "http://auth.domain.com:5430",
         }
         self.AccessHandler = AccessHandler(access_config)
+        self.AccessHandler.nonce = "nonce"
 
     def tearDown(self):
         """Cleanup mocked stuff."""
@@ -151,7 +155,7 @@ class AccessHandlerPassTestCase(AsyncTestCase):
                 await self.AccessHandler._set_user(request, tk)
 
     async def test_callback_fail(self):
-        """Test callback."""
+        """Test callback fails."""
         request = Mock_Request()
         request.query["state"] = "state"
         request.query["code"] = "code"
@@ -166,3 +170,59 @@ class AccessHandlerPassTestCase(AsyncTestCase):
         with patch("aiohttp.ClientSession.post", return_value=resp_400):
             with self.assertRaises(HTTPBadRequest):
                 await self.AccessHandler.callback(request)
+
+    async def test_callback_pass(self):
+        """Test callback correct validation."""
+        request = Mock_Request()
+        request.query["state"] = "state"
+        request.query["code"] = "code"
+        request.app["Session"] = {"oidc_state": "state"}
+        request.app["Cookies"] = set({})
+        request.app["Crypt"] = cryptography.fernet.Fernet(cryptography.fernet.Fernet.generate_key())
+        request.app["Salt"] = hashlib.sha256(urandom(512)).hexdigest()
+
+        resp_token = MockResponse(jwt_data, 200)
+        resp_jwk = MockResponse(jwk_data, 200)
+
+        with patch("aiohttp.ClientSession.post", return_value=resp_token):
+            with patch("aiohttp.ClientSession.get", return_value=resp_jwk):
+                with patch("metadata_backend.api.auth.AccessHandler._set_user", return_value=futurized(None)):
+                    await self.AccessHandler.callback(request)
+
+    async def test_callback_missing_claim(self):
+        """Test callback missing claim validation."""
+        request = Mock_Request()
+        request.query["state"] = "state"
+        request.query["code"] = "code"
+        request.app["Session"] = {"oidc_state": "state"}
+        request.app["Cookies"] = set({})
+        request.app["Crypt"] = cryptography.fernet.Fernet(cryptography.fernet.Fernet.generate_key())
+        request.app["Salt"] = hashlib.sha256(urandom(512)).hexdigest()
+
+        resp_token = MockResponse(jwt_data_claim_miss, 200)
+        resp_jwk = MockResponse(jwk_data, 200)
+
+        with patch("aiohttp.ClientSession.post", return_value=resp_token):
+            with patch("aiohttp.ClientSession.get", return_value=resp_jwk):
+                with patch("metadata_backend.api.auth.AccessHandler._set_user", return_value=futurized(None)):
+                    with self.assertRaises(HTTPUnauthorized):
+                        await self.AccessHandler.callback(request)
+
+    async def test_callback_bad_claim(self):
+        """Test callback bad nonce validation."""
+        request = Mock_Request()
+        request.query["state"] = "state"
+        request.query["code"] = "code"
+        request.app["Session"] = {"oidc_state": "state"}
+        request.app["Cookies"] = set({})
+        request.app["Crypt"] = cryptography.fernet.Fernet(cryptography.fernet.Fernet.generate_key())
+        request.app["Salt"] = hashlib.sha256(urandom(512)).hexdigest()
+
+        resp_token = MockResponse(jwt_data_bad_nonce, 200)
+        resp_jwk = MockResponse(jwk_data, 200)
+
+        with patch("aiohttp.ClientSession.post", return_value=resp_token):
+            with patch("aiohttp.ClientSession.get", return_value=resp_jwk):
+                with patch("metadata_backend.api.auth.AccessHandler._set_user", return_value=futurized(None)):
+                    with self.assertRaises(HTTPForbidden):
+                        await self.AccessHandler.callback(request)
