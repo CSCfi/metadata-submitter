@@ -35,7 +35,7 @@ async def http_error_handler(req: Request, handler: Callable) -> Response:
             raise web.HTTPBadRequest(text=details, content_type=c_type)
         elif error.status == 401:
             raise web.HTTPUnauthorized(
-                headers={"WWW-Authenticate": 'Bearer realm="/", charset="UTF-8"'}, text=details, content_type=c_type
+                headers={"WWW-Authenticate": 'OAuth realm="/", charset="UTF-8"'}, text=details, content_type=c_type
             )
         elif error.status == 403:
             raise web.HTTPForbidden(text=details, content_type=c_type)
@@ -91,12 +91,12 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
             _check_csrf(request)
         else:
             LOG.debug("Cannot find cookie in session")
-            raise web.HTTPUnauthorized(headers={"WWW-Authenticate": 'Bearer realm="/", charset="UTF-8"'})
+            raise web.HTTPUnauthorized(headers={"WWW-Authenticate": 'OAuth realm="/", charset="UTF-8"'})
 
         return await handler(request)
     elif "OIDC_URL" in os.environ and bool(os.getenv("OIDC_URL")):
         LOG.debug(f"not authorised to view this page {request.path}")
-        raise web.HTTPUnauthorized(headers={"WWW-Authenticate": 'Bearer realm="/", charset="UTF-8"'})
+        raise web.HTTPUnauthorized(headers={"WWW-Authenticate": 'OAuth realm="/", charset="UTF-8"'})
     else:
         return await handler(request)
 
