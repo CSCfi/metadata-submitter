@@ -22,6 +22,7 @@ services:
       # Enable this for working with front-end on localhost
       # or change to http://frontend:3000 if started using docker-compose
       # - "REDIRECT_URL=http://localhost:3000"
+      - "AUTH_REFERER=http://mockauth:8000"
       - "JWK_URL=http://mockauth:8000/keyset"
       - "LOG_LEVEL=DEBUG"
   database:
