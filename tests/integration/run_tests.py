@@ -588,6 +588,16 @@ async def test_submissions_work(sess, folder_id):
     tree.write(mod_study, encoding="utf-8")
 
 
+async def test_health_check(sess):
+    """Test the health check endpoint."""
+    async with sess.get(f"{base_url}/health") as resp:
+        LOG.debug("Checking that health status is ok")
+        assert resp.status == 200, "HTTP Status code error"
+        res = await resp.json()
+        assert res["status"] == "Ok"
+        assert res["services"]["database"]["status"] == "Ok"
+
+
 async def main():
     """Launch different test tasks and run them."""
 
@@ -668,6 +678,10 @@ async def main():
         }
         submission_folder_id = await post_folder(sess, submission_folder)
         await test_submissions_work(sess, submission_folder_id)
+
+        # Test health status check
+        LOG.debug("=== Testing health status check ===")
+        await test_health_check(sess)
 
         # Test reading, updating and deleting users
         # this needs to be done last as it deletes users
