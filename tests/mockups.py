@@ -8,6 +8,31 @@ import json
 import cryptography.fernet
 
 
+class MockResponse:
+    """Mock-up class for HTTP response."""
+
+    def __init__(self, text, status):
+        """Initialize Mock Response."""
+        self._text = text
+        self.status = status
+
+    async def text(self):
+        """Get Mock Response body."""
+        return self._text
+
+    async def json(self):
+        """Get Mock Response body."""
+        return self._text
+
+    async def __aexit__(self, exc_type, exc, tb):
+        """Return async exit."""
+        pass
+
+    async def __aenter__(self):
+        """Return async enter."""
+        return self
+
+
 class Mock_Request:
     """
     Mock-up class for the aiohttp.web.Request.
