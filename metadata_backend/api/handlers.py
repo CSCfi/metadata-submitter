@@ -19,7 +19,6 @@ from ..helpers.parser import XMLToJSONParser
 from ..helpers.schema_loader import JSONSchemaLoader, SchemaNotFoundException, XMLSchemaLoader
 from ..helpers.validator import JSONValidator, XMLValidator
 from .operators import FolderOperator, Operator, XMLOperator, UserOperator
-from ..database.db_service import DBService
 
 from ..conf.conf import aai_config
 
@@ -860,25 +859,6 @@ class SubmissionAPIHandler:
             reason = f"Action {action} in xml is not supported."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-
-
-class HealthHandler:
-    """Handler for health status."""
-
-    async def get_health_status(self, req: Request) -> Response:
-        """Check health status of the application and return a JSON object portraying the status.
-
-        :param req: GET request
-        :returns: JSON response containing health statuses
-        """
-        db_client = req.app["db_client"]
-        db_service = DBService("objects", db_client)
-        services: Dict[str, Dict] = {}
-
-        services["database"] = {"status": "Ok"} if db_service.try_connection() else {"status": "Ok"}
-
-        body = {"status": "Ok", "services": services}
-        return web.Response(body=body, status=200, content_type="application/json")
 
 
 class StaticHandler:

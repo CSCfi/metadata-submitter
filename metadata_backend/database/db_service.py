@@ -267,16 +267,3 @@ class DBService:
         LOG.debug("DB aggregate performed.")
         aggregate = self.database[collection].aggregate(query)
         return [doc async for doc in aggregate]
-
-    async def try_connection(self) -> bool:
-        """Check the connection to database.
-
-        :returns: True if check was successful
-        """
-        try:
-            self.db_client.server_info()
-            LOG.debug("Connection to db succeeded.")
-            return True
-        except ConnectionFailure:
-            LOG.debug("Connection to db failed.")
-            return False
