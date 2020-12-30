@@ -1,6 +1,7 @@
 """Handle health check endpoint."""
 import json
-from typing import Dict, Union
+import time
+from typing import Dict, Union, Any
 
 from aiohttp import web
 from aiohttp.web import Request, Response
@@ -23,10 +24,17 @@ class HealthHandler:
         db_client = await self.create_test_db_client()
         services: Dict[str, Dict] = {}
         full_status: Dict[str, Union[Dict, str]] = {}
-        services["database"] = {"status": "Ok"} if await self.try_db_connection(db_client) else {"status": "Down"}
+        conn = await self.try_db_connection(db_client)
+        # Determine database load status
+        if conn:
+            services["database"] = {"status": "Ok"} if conn < 1000 else {"status": "Degraded"}
+        else:
+            services["database"] = {"status": "Down"}
+        # General service status
         full_status["status"] = "Ok" if services["database"]["status"] == "Ok" else "Partially down"
         full_status["services"] = services
         LOG.info("Health status collected.")
+
         return web.Response(body=json.dumps(full_status), status=200, content_type="application/json")
 
     async def create_test_db_client(self) -> AsyncIOMotorClient:
@@ -38,16 +46,18 @@ class HealthHandler:
         LOG.info("Initialised a new DB client as a test")
         return new_client
 
-    async def try_db_connection(self, db_client: AsyncIOMotorClient) -> bool:
+    async def try_db_connection(self, db_client: AsyncIOMotorClient) -> Any:
         """Check the connection to database.
 
         :param db_client: Motor client used for database connections
-        :returns: True if check was successful
+        :returns: Connection time or None if connection fails
         """
         try:
+            start = time.time()
             await db_client.server_info()
             LOG.info("Connection to db succeeded.")
-            return True
+            perf_time = time.time() - start
+            return perf_time
         except ConnectionFailure:
             LOG.info("Connection to db failed.")
-            return False
+            return None
