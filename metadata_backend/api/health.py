@@ -8,6 +8,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import ConnectionFailure
 
 from ..helpers.logger import LOG
+from ..conf.conf import url
 
 
 class HealthHandler:
@@ -19,7 +20,7 @@ class HealthHandler:
         :param req: GET request
         :returns: JSON response containing health statuses
         """
-        db_client = req.app["db_client"]
+        db_client = await self.create_test_db_client()
         services: Dict[str, Dict] = {}
         full_status: Dict[str, Union[Dict, str]] = {}
         services["database"] = {"status": "Ok"} if await self.try_db_connection(db_client) else {"status": "Down"}
@@ -27,6 +28,15 @@ class HealthHandler:
         full_status["services"] = services
         LOG.info("Health status collected.")
         return web.Response(body=json.dumps(full_status), status=200, content_type="application/json")
+
+    async def create_test_db_client(self) -> AsyncIOMotorClient:
+        """Initialize a new database client to test Mongo connection.
+
+        :returns: Coroutine-based Motor client for Mongo operations
+        """
+        new_client = AsyncIOMotorClient(url, connectTimeoutMS=4000, serverSelectionTimeoutMS=4000)
+        LOG.info("Initialised a new DB client as a test")
+        return new_client
 
     async def try_db_connection(self, db_client: AsyncIOMotorClient) -> bool:
         """Check the connection to database.
