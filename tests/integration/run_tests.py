@@ -607,6 +607,7 @@ async def main():
         await login(sess, other_test_user, other_test_user_given, other_test_user_family)
 
         # Test add, modify, validate and release action with submissions
+        # added to validate that objects belong to a specific user
         LOG.debug("=== Testing actions within submissions ===")
         submission_folder = {
             "name": "submission test 1",

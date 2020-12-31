@@ -348,12 +348,12 @@ class Operator(BaseOperator):
             {"$project": {"_id": 0}},
         ]
         try:
-            cursor = await self.db_service.aggregate(schema_type, aggregate_query)
+            result_aggregate = await self.db_service.aggregate(schema_type, aggregate_query)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting object: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        data = await self._format_read_data(schema_type, cursor)
+        data = await self._format_read_data(schema_type, result_aggregate)
 
         if not data:
             reason = f"could not find any data in {schema_type}."
@@ -591,11 +591,16 @@ class FolderOperator:
         :raises: HTTPUnprocessableEntity if error occurs during the process and object in more than 1 folder
         :returns: True for the check, folder id and if published or not
         """
-        folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
-        folder_query = {folder_path: {"$elemMatch": {"accessionId": accession_id, "schema": collection}}}
+        try:
+            folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
+            folder_query = {folder_path: {"$elemMatch": {"accessionId": accession_id, "schema": collection}}}
 
-        folder_cursor = self.db_service.query("folder", folder_query)
-        folder_check = [folder async for folder in folder_cursor]
+            folder_cursor = self.db_service.query("folder", folder_query)
+            folder_check = [folder async for folder in folder_cursor]
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while inserting user: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
 
         if len(folder_check) == 0:
             LOG.info(f"doc {accession_id} belongs to no folder something is off")
@@ -615,11 +620,16 @@ class FolderOperator:
         :param collection: collection it belongs to, it would be used as path
         :returns: count of objects
         """
-        folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
-        folder_query = {"$and": [{folder_path: {"$elemMatch": {"schema": collection}}}, {"folderId": folder_id}]}
+        try:
+            folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
+            folder_query = {"$and": [{folder_path: {"$elemMatch": {"schema": collection}}}, {"folderId": folder_id}]}
 
-        folder_cursor = self.db_service.query("folder", folder_query)
-        folders = [folder async for folder in folder_cursor]
+            folder_cursor = self.db_service.query("folder", folder_query)
+            folders = [folder async for folder in folder_cursor]
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while inserting user: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
 
         if len(folders) >= 1:
             return [i["accessionId"] for i in folders[0][folder_path]]
@@ -670,8 +680,8 @@ class FolderOperator:
         :raises: HTTPBadRequest if reading was not successful
         :returns: Object folder formatted to JSON
         """
-        await self._check_folder_exists(self.db_service, folder_id)
         try:
+            await self._check_folder_exists(folder_id)
             folder = await self.db_service.read("folder", folder_id)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting folder: {error}"
@@ -689,9 +699,8 @@ class FolderOperator:
         :raises: HTTPBadRequest if updating was not successful
         :returns: ID of the folder updated to database
         """
-        await self._check_folder_exists(self.db_service, folder_id)
-
         try:
+            await self._check_folder_exists(folder_id)
             update_success = await self.db_service.patch("folder", folder_id, patch)
             sanity_check = await self.db_service.read("folder", folder_id)
             JSONValidator(sanity_check, "folders").validate
@@ -714,22 +723,17 @@ class FolderOperator:
         :param folder_id: ID of folder to update
         :param accession_id: ID of object to remove
         :param collection: collection where to remove the id from
-        :raises: HTTPBadRequest if removing was not successful
+        :raises: HTTPBadRequest if db connection fails
         :returns: None
         """
-        await self._check_folder_exists(self.db_service, folder_id)
-
         try:
+            await self._check_folder_exists(folder_id)
             folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
             upd_content = {folder_path: {"accessionId": accession_id}}
             result = await self.db_service.remove("folder", folder_id, upd_content)
-            JSONValidator(result, "users").validate
+            JSONValidator(result, "folders").validate
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting user: {error}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-        except Exception as e:
-            reason = f"Updating user to database failed beacause of: {e}."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -742,8 +746,8 @@ class FolderOperator:
         :raises: HTTPBadRequest if deleting was not successful
         :returns: ID of the folder deleted from database
         """
-        await self._check_folder_exists(self.db_service, folder_id)
         try:
+            await self._check_folder_exists(folder_id)
             delete_success = await self.db_service.delete("folder", folder_id)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while deleting folder: {error}"
@@ -757,13 +761,13 @@ class FolderOperator:
             LOG.info(f"Deleting folder with id {folder_id} to database succeeded.")
             return folder_id
 
-    async def _check_folder_exists(self, db: DBService, folder_id: str) -> None:
+    async def _check_folder_exists(self, folder_id: str) -> None:
         """Check the existance of a folder by its id in the database.
 
         :raises: HTTPNotFound if folder does not exist
         :returns: None
         """
-        exists = await db.exists("folder", folder_id)
+        exists = await self.db_service.exists("folder", folder_id)
         if not exists:
             reason = f"Folder with id {folder_id} was not found."
             LOG.error(reason)
@@ -803,10 +807,15 @@ class UserOperator:
         :raises: HTTPUnprocessableEntity if more users seem to have same folder
         :returns: True if accession_id belongs to user
         """
-        doc_path = "drafts" if collection.startswith("draft") else "folders"
-        user_query = {doc_path: {"$elemMatch": {"$eq": accession_id}}, "userId": user_id}
-        user_cursor = self.db_service.query("user", user_query)
-        user_check = [user async for user in user_cursor]
+        try:
+            doc_path = "drafts" if collection.startswith("draft") else "folders"
+            user_query = {doc_path: {"$elemMatch": {"$eq": accession_id}}, "userId": user_id}
+            user_cursor = self.db_service.query("user", user_query)
+            user_check = [user async for user in user_cursor]
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while inserting user: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
 
         if len(user_check) == 0:
             LOG.info(f"doc {accession_id} belongs to no user something is off")
@@ -830,31 +839,29 @@ class UserOperator:
 
         eppn = data[0]
         name = data[1]
-
-        existing_user_id = await self.db_service.exists_eppn_user(eppn, name)
-        if existing_user_id:
-            LOG.info(f"User with eppn: {eppn} exists, no need to create.")
-            return existing_user_id
-        else:
-            user_data["drafts"] = []
-            user_data["folders"] = []
-            user_data["userId"] = user_id = self._generate_user_id()
-            user_data["name"] = name
-            user_data["eppn"] = eppn
-            try:
-                insert_success = await self.db_service.create("user", user_data)
-            except (ConnectionFailure, OperationFailure) as error:
-                reason = f"Error happened while inserting user: {error}"
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
-
-            if not insert_success:
-                reason = "Inserting user to database failed for some reason."
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
+        try:
+            existing_user_id = await self.db_service.exists_eppn_user(eppn, name)
+            if existing_user_id:
+                LOG.info(f"User with eppn: {eppn} exists, no need to create.")
+                return existing_user_id
             else:
-                LOG.info(f"Inserting user with id {user_id} to database succeeded.")
-                return user_id
+                user_data["drafts"] = []
+                user_data["folders"] = []
+                user_data["userId"] = user_id = self._generate_user_id()
+                user_data["name"] = name
+                user_data["eppn"] = eppn
+                insert_success = await self.db_service.create("user", user_data)
+                if not insert_success:
+                    reason = "Inserting user to database failed for some reason."
+                    LOG.error(reason)
+                    raise web.HTTPBadRequest(reason=reason)
+                else:
+                    LOG.info(f"Inserting user with id {user_id} to database succeeded.")
+                    return user_id
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while inserting user: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
 
     async def read_user(self, user_id: str) -> Dict:
         """Read user object from database.
@@ -863,8 +870,8 @@ class UserOperator:
         :raises: HTTPBadRequest if reading user was not successful
         :returns: User object formatted to JSON
         """
-        await self._check_user_exists(self.db_service, user_id)
         try:
+            await self._check_user_exists(user_id)
             user = await self.db_service.read("user", user_id)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting user: {error}"
@@ -879,9 +886,8 @@ class UserOperator:
         :param patch: Patch operations determined in the request
         :returns: ID of the user updated to database
         """
-        await self._check_user_exists(self.db_service, user_id)
-
         try:
+            await self._check_user_exists(user_id)
             update_success = await self.db_service.patch("user", user_id, patch)
             sanity_check = await self.db_service.read("user", user_id)
             JSONValidator(sanity_check, "users").validate
@@ -909,9 +915,8 @@ class UserOperator:
         :raises: HTTPBadRequest if assigning drafts/folders to user was not successful
         returns: None
         """
-        await self._check_user_exists(self.db_service, user_id)
-
         try:
+            await self._check_user_exists(user_id)
             upd_content = {collection: {"$each": object_ids}}
             result = await self.db_service.append("user", user_id, upd_content)
             JSONValidator(result, "users").validate
@@ -934,21 +939,16 @@ class UserOperator:
         :param user_id: ID of user to update
         :param collection: collection where to remove the id from
         :param object_ids: ID or list of IDs of folder(s) to remove
-        :raises: HTTPBadRequest if removing drafts/folders from user was not successful
+        :raises: HTTPBadRequest if db connection fails
         returns: None
         """
-        await self._check_user_exists(self.db_service, user_id)
-
         try:
+            await self._check_user_exists(user_id)
             upd_content = {collection: {"$in": object_ids}}
             result = await self.db_service.remove("user", user_id, upd_content)
             JSONValidator(result, "users").validate
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting user: {error}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-        except Exception as e:
-            reason = f"Updating user to database failed beacause of: {e}."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -961,8 +961,8 @@ class UserOperator:
         :raises: HTTPBadRequest if deleting user was not successful
         :returns: ID of the user deleted from database
         """
-        await self._check_user_exists(self.db_service, user_id)
         try:
+            await self._check_user_exists(user_id)
             delete_success = await self.db_service.delete("user", user_id)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while deleting user: {error}"
@@ -976,13 +976,13 @@ class UserOperator:
             LOG.info(f"{user_id} successfully deleted from collection.")
             return user_id
 
-    async def _check_user_exists(self, db: DBService, user_id: str) -> None:
+    async def _check_user_exists(self, user_id: str) -> None:
         """Check the existance of a user by its id in the database.
 
         :raises: HTTPNotFound if user does not exist
         :returns: None
         """
-        exists = await db.exists("user", user_id)
+        exists = await self.db_service.exists("user", user_id)
         if not exists:
             reason = f"User with id {user_id} was not found."
             LOG.error(reason)

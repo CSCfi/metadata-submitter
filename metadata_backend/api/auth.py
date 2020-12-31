@@ -137,12 +137,14 @@ class AccessHandler:
         response.headers["Pragma"] = "no-Cache"
         response.headers["Expires"] = "0"
 
+        trust = False if self.domain.startswith("http://localhost:5430") else True
+
         response.set_cookie(
             name="MTD_SESSION",
             value=cookie_crypted,
             max_age=3600,
-            # secure=trust,  # type: ignore
-            # httponly=False,  # type: ignore
+            secure=trust,  # type: ignore
+            httponly=trust,  # type: ignore
         )
 
         req.app["Cookies"].add(session)
@@ -283,7 +285,7 @@ class AccessHandler:
             session = req.app["Session"]
             return session[key]
         except KeyError as e:
-            reason = f"Session has no value for {key}: {e}."
+            reason = f"Session has no key {key}, error: {e}."
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)
         except Exception as e:
