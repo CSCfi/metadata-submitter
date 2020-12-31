@@ -32,12 +32,11 @@ def auto_reconnect(db_func: Callable) -> Callable:
                 return await db_func(*args, **kwargs)
             except AutoReconnect:
                 if attempt == max_attempts:
-                    message = f"Connection to database failed after {attempt}" "tries"
+                    message = f"Connection to database failed after {attempt} tries"
                     raise ConnectionFailure(message=message)
                 LOG.error(
                     "Connection not successful, trying to reconnect."
-                    f"Reconnection attempt number {attempt}, waiting "
-                    f" for {default_timeout} seconds."
+                    f"Reconnection attempt number {attempt}, waiting for {default_timeout} seconds."
                 )
                 continue
 
