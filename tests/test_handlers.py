@@ -110,7 +110,8 @@ class HandlersTestCase(AioHTTPTestCase):
         """Create request data from pairs of schemas and filenames."""
         data = FormData()
         for schema, filename in files:
-            path_to_file = self.TESTFILES_ROOT / schema / filename
+            schema_path = "study" if schema == "fake" else schema
+            path_to_file = self.TESTFILES_ROOT / schema_path / filename
             data.add_field(
                 schema.upper(), open(path_to_file.as_posix(), "r"), filename=path_to_file.name, content_type="text/xml"
             )
@@ -485,6 +486,14 @@ class HandlersTestCase(AioHTTPTestCase):
         response = await self.client.post("/validate", data=data)
         self.assertEqual(response.status, 200)
         self.assertIn('{"isValid": true}', await response.text())
+
+    @unittest_run_loop
+    async def test_validation_fails_bad_schema(self):
+        """Test validation fails for bad schema and valid xml."""
+        files = [("fake", "SRP000539.xml")]
+        data = self.create_submission_data(files)
+        response = await self.client.post("/validate", data=data)
+        self.assertEqual(response.status, 404)
 
     @unittest_run_loop
     async def test_validation_fails_for_invalid_xml_syntax(self):
