@@ -1,8 +1,10 @@
+.. _`validate`:
+
 XML Validation CLI
 ==================
 
 A command-line interface for validating any given XML file against a specific XSD Schema has also been implemented.
-The tool can be found and installed from `this separate repository <https://github.com/CSCfi/metadata-submitter-tools>`_.
+The tool can be found and installed from `metadata-submitter-tools repository <https://github.com/CSCfi/metadata-submitter-tools>`_.
 
 Usage
 -----

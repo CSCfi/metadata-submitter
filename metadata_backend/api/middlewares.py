@@ -1,11 +1,11 @@
 """Middleware methods for server."""
 import json
 from http import HTTPStatus
-from typing import Callable, Dict, Tuple
+from typing import Callable, Tuple
+from cryptography.fernet import InvalidToken
 
-from aiohttp import web, ClientSession
+from aiohttp import web
 from aiohttp.web import Request, Response, middleware, StreamResponse
-from multidict import CIMultiDict
 from yarl import URL
 import os
 import secrets
@@ -35,7 +35,7 @@ async def http_error_handler(req: Request, handler: Callable) -> Response:
             raise web.HTTPBadRequest(text=details, content_type=c_type)
         elif error.status == 401:
             raise web.HTTPUnauthorized(
-                headers={"WWW-Authenticate": 'Bearer realm="/", charset="UTF-8"'}, text=details, content_type=c_type
+                headers={"WWW-Authenticate": 'OAuth realm="/", charset="UTF-8"'}, text=details, content_type=c_type
             )
         elif error.status == 403:
             raise web.HTTPForbidden(text=details, content_type=c_type)
@@ -43,39 +43,60 @@ async def http_error_handler(req: Request, handler: Callable) -> Response:
             raise web.HTTPNotFound(text=details, content_type=c_type)
         elif error.status == 415:
             raise web.HTTPUnsupportedMediaType(text=details, content_type=c_type)
+        elif error.status == 422:
+            raise web.HTTPUnprocessableEntity(text=details, content_type=c_type)
         else:
             raise web.HTTPServerError()
 
 
 @middleware
 async def check_login(request: Request, handler: Callable) -> StreamResponse:
-    """Check login if there is a username."""
+    """Check login if session user is logged in and can access API.
+
+    :param req: A request instance
+    :param handler: A request handler
+    :raises: HTTPSeeOther in case session does not contain access token and user_info
+    :raises: HTTPUnauthorized in case cookie cannot be found
+    :returns: Successful requests unaffected
+    """
+    controlled_paths = [
+        "/schemas",
+        "/drafts",
+        "/validate",
+        "/publish",
+        "/submit",
+        "/folders",
+        "/objects",
+        "/users",
+        "/logout",
+        "/home",
+        "/newdraft",
+    ]
+    main_paths = ["/aai", "/callback", "/static", "/health"]
     if (
-        request.path
-        in [
-            "/schemas",
-            "/drafts",
-            "/validate",
-            "/submit",
-            "/folders",
-            "/objects",
-            "/users",
-            "/logout",
-            "/home",
-            "/newdraft",
-        ]
-        and "OIDC_URL" in os.environ
-        and bool(os.getenv("OIDC_URL"))
+        request.path.startswith(tuple(main_paths))
+        or request.path == "/"
+        or (request.path.startswith("/") and request.path.endswith(tuple([".svg", ".jpg", ".ico"])))
     ):
+        return await handler(request)
+    if request.path.startswith(tuple(controlled_paths)) and "OIDC_URL" in os.environ and bool(os.getenv("OIDC_URL")):
         session = request.app["Session"]
-        if "access_token" not in session:
-            raise web.HTTPSeeOther(location="/aai")
+        if not all(x in ["access_token", "user_info", "oidc_state"] for x in session):
+            LOG.debug("checked session parameter")
+            response = web.HTTPSeeOther(f"{aai_config['domain']}/aai")
+            response.headers["Location"] = "/aai"
+            raise response
         if decrypt_cookie(request)["id"] in request.app["Cookies"]:
+            LOG.debug("checked cookie session")
             _check_csrf(request)
         else:
             LOG.debug("Cannot find cookie in session")
-            raise web.HTTPUnauthorized(headers={"WWW-Authenticate": 'Bearer realm="/", charset="UTF-8"'})
+            raise web.HTTPUnauthorized(headers={"WWW-Authenticate": 'OAuth realm="/", charset="UTF-8"'})
+
         return await handler(request)
+    elif "OIDC_URL" in os.environ and bool(os.getenv("OIDC_URL")):
+        LOG.debug(f"not authorised to view this page {request.path}")
+        raise web.HTTPUnauthorized(headers={"WWW-Authenticate": 'OAuth realm="/", charset="UTF-8"'})
     else:
         return await handler(request)
 
@@ -84,7 +105,8 @@ def generate_cookie(request: Request) -> Tuple[dict, str]:
     """
     Generate an encrypted and unencrypted cookie.
 
-    Returns a tuple containing both the unencrypted and encrypted cookie.
+    :param request: A HTTP request instance
+    :returns: a tuple containing both the unencrypted and encrypted cookie.
     """
     cookie = {
         "id": secrets.token_hex(64),
@@ -97,28 +119,44 @@ def generate_cookie(request: Request) -> Tuple[dict, str]:
 
 
 def decrypt_cookie(request: web.Request) -> dict:
-    """Decrypt a cookie using the server instance specific fernet key."""
+    """Decrypt a cookie using the server instance specific fernet key.
+
+    :param request: A HTTP request instance
+    :raises: HTTPUnauthorized in case cookie not in request or invalid token
+    :returns: decrypted cookie
+    """
     if "MTD_SESSION" not in request.cookies:
         LOG.debug("Cannot find MTD_SESSION cookie")
         raise web.HTTPUnauthorized()
-    cookie_json = request.app["Crypt"].decrypt(request.cookies["MTD_SESSION"].encode("utf-8")).decode("utf-8")
-    cookie = json.loads(cookie_json)
-    LOG.debug("Decrypted cookie: {0}".format(cookie))
-    return cookie
+    try:
+        cookie_json = request.app["Crypt"].decrypt(request.cookies["MTD_SESSION"].encode("utf-8")).decode("utf-8")
+        cookie = json.loads(cookie_json)
+        LOG.debug(f"Decrypted cookie: {cookie}")
+        return cookie
+    except InvalidToken:
+        LOG.info("Throw due to invalid token.")
+        raise web.HTTPUnauthorized()
 
 
 def _check_csrf(request: web.Request) -> bool:
-    """Check that the signature matches and referrer is correct."""
+    """Check that the signature matches and referrer is correct.
+
+    :raises: HTTPForbidden in case signature does not match
+    :param request: A HTTP request instance
+    """
     cookie = decrypt_cookie(request)
     # Throw if the cookie originates from incorrect referer (meaning the
     # site's wrong)
     if "Referer" in request.headers.keys():
         # Pass referer check if we're returning from the login.
-        if request.headers["Referer"] in aai_config["referer"]:
+        if "redirect" in aai_config and request.headers["Referer"].startswith(aai_config["redirect"]):
+            LOG.info("Skipping Referer check due to request coming from frontend.")
+            return True
+        if "auth_referer" in aai_config and request.headers["Referer"].startswith(aai_config["auth_referer"]):
             LOG.info("Skipping Referer check due to request coming from OIDC.")
             return True
         if cookie["referer"] not in request.headers["Referer"]:
-            LOG.info("Throw due to invalid referer: {0}".format(request.headers["Referer"]))
+            LOG.info(f"Throw due to invalid referer: {request.headers['Referer']}")
             raise web.HTTPForbidden()
     else:
         LOG.debug("Skipping referral validation due to missing Referer-header.")
@@ -128,34 +166,10 @@ def _check_csrf(request: web.Request) -> bool:
         hashlib.sha256((cookie["id"] + cookie["referer"] + request.app["Salt"]).encode("utf-8")).hexdigest(),
         cookie["signature"],
     ):
-        LOG.info("Throw due to invalid referer: {0}".format(request.headers["Referer"]))
+        LOG.info(f"Throw due to invalid referer: {request.headers['Referer']}")
         raise web.HTTPForbidden()
     # If all is well, return True.
     return True
-
-
-async def get_userinfo(req: Request) -> Dict[str, str]:
-    """Get information from userinfo endpoint."""
-    token = ""
-    try:
-        session = req.app["Session"]
-        if "access_token" not in session:
-            raise web.HTTPSeeOther(location="/aai")
-
-        token = session["access_token"]
-    except Exception as e:
-        LOG.error(f"Could not get session because of: {e}")
-        raise web.HTTPBadRequest(reason="Could not get a proper session.")
-
-    try:
-        headers = CIMultiDict({"Authorization": f"Bearer {token}"})
-        async with ClientSession(headers=headers) as sess:
-            async with sess.get(f"{aai_config['user_info']}") as resp:
-                result = await resp.json()
-                return result
-    except Exception as e:
-        LOG.error(f"Could not get information from AAI UserInfo endpoint because of: {e}")
-        raise web.HTTPBadRequest(reason="Could not get information from AAI UserInfo endpoint.")
 
 
 def _json_exception(status: int, exception: web.HTTPException, url: URL) -> str:
