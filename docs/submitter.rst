@@ -1,48 +1,94 @@
-Metadata Submitter
-==================
+.. _`backend`:
 
-Install and run
----------------
+Metadata Submitter Backend
+==========================
 
 .. note:: Requirements:
 
   - Python 3.7+
-  - Mongodb
-  - Docker + docker-compose
+  - MongoDB
+  
 
-For quick testing, launch both server and database with Docker by running ``docker-compose up --build`` (add ``-d`` flag to run containers in background). Server can then be found from ``http://localhost:5430``.
+Environment Setup
+-----------------
 
-For more detailed setup, do following:
+The application requires some environmental arguments in order to run properly, these are illustrated in
+the table below.
 
-- Install project by running: ``pip install .`` in project root
-- Setup mongodb and env variables via desired way, details:
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ENV                            | Default                       | Description                                                                       |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``MONGODB_HOST``               | ``localhost:27017``           | Mongodb server hostname, with port specified if needed.                           |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``MONGO_INITDB_ROOT_USERNAME`` | ``admin``                     | Admin username for mongodb.                                                       |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``MONGO_INITDB_ROOT_PASSWORD`` | ``admin``                     | Admin password for mongodb.                                                       |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``AAI_CLIENT_SECRET``          | ``public```                   | OIDC client secret.                                                               |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``AAI_CLIENT_ID``              | ``secret``                    | OIDC client ID.                                                                   |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``AUTH_REFERER``               | ``-``                         | OIDC AUTH endpoint that redirects the request to the application.                 |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``BASE_URL``                   | ``http://localhost:5430``     | base URL of the metadata submitter.                                               |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``ISS_URL``                    | ``-``                         | OIDC claim issuer URL.                                                            |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``AUTH_URL``                   | ``-``                         | Set if a special OID authorize URL is required.                                   |
+|                                |                               | otherwise use ``"OIDC_URL"/authorize``.                                           |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``OIDC_URL``                   | ``-``                         | OIDC base URL for constructing OIDC protocol endpoint calls.                      |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``REDIRECT_URL``               | ``-``                         | Enable this for working with front-end on ``localhost`` or or change to           |
+|                                |                               | ``http://frontend:3000`` if started using ``docker-compose`` (see :ref:`deploy`). |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``JWL_URL``                    | ``-``                         | JWK OIDC URL for retrieving key for validating ID token.                          |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``LOG_LEVEL``                  | ``INFO``                      | Set logging level, uppercase.                                                     |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
 
-  - Server expects to find mongodb instance running, spesified with following environmental variables:
+Install and run
+---------------
 
-    - ``MONGO_INITDB_ROOT_USERNAME`` (username for admin user to mondogb instance)
-    - ``MONGO_INITDB_ROOT_PASSWORD`` (password for admin user to mondogb instance)
-    - ``MONGODB_HOST`` (host and port for mongodb instancem, e.g. `localhost:27017`)
-
-  - Out of the box, metadata submitter is configured with default values from MongoDB Docker image
-  - Suitable mongodb instance can be launched with Docker by running: ``docker-compose up database``
-
-- After installing and setting up database, server can be launched with: ``metadata_submitter``
-
-If you also need frontend for development, check out `frontend repository <https://github.com/CSCfi/metadata-submitter-frontend/>`_.
-
-Tests
------
-
-Tests can be run with tox automation: just run ``tox`` on project root (remember to install it first with ``pip install tox``).
-
-Build and deploy
-----------------
-
-Production version can be built and run with following docker commands:
+For installing ``metadata-submitter`` backend do the following:
 
 .. code-block:: console
 
-    docker build --no-cache . -t metadata-submitter
-    docker run -p 5430:5430 metadata-submitter
+    $ git clone https://github.com/CSCfi/metadata-submitter
+    $ pip install .
 
-Frontend is built and added as static files to backend while building.
+.. hint:: Before running the application have MongoDB running.
+
+    MongoDB Server expects to find mongodb instance running, spesified with following environmental variables:
+
+    - ``MONGO_INITDB_ROOT_USERNAME`` (username for admin user to mondogdb instance)
+    - ``MONGO_INITDB_ROOT_PASSWORD`` (password for admin user to mondogdb instance)
+    - ``MONGODB_HOST`` (host and port for mongodb instancem, e.g. `localhost:27017`)
+
+To run the backend from command line use:
+
+.. code-block:: console
+
+    $ metadata_submitter
+
+.. hint:: For a setup that requires also frontend follow the instructions in :ref:`deploy`.
+
+
+REST API
+--------
+
+View `metadata submitter API <https://editor.swagger.io/?url=https://raw.githubusercontent.com/CSCfi/metadata-submitter/master/docs/specification.yml>`_
+in swagger editor.
+
+The REST API is structured as follows:
+
+- `Submission Endpoints` used in submitting data, mostly ``POST`` endpoints;
+- `Query Endpoints` used for data retrieval (``folders``, ``objects``, ``users``) uses HTTP ``GET``;
+- `Management Endpoints` used for handling data updates and deletion, makes use of HTTP ``PUT``, ``PATCH`` and ``DELETE``.
+
+.. important:: A logged in user can only perform operations on the data it has associated.
+               The information for the current user can be retrieved at ``/users/current`` (the user ID is ``current``), and
+               any additional operations on other users are rejected.
+
+
+.. include:: code.rst

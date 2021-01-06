@@ -1,9 +1,13 @@
 """Test API middlewares."""
 
-from aiohttp import FormData
+import unittest
+from aiohttp import FormData, web
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
 
 from metadata_backend.server import init
+from metadata_backend.api.middlewares import generate_cookie, decrypt_cookie, _check_csrf
+from .mockups import get_request_with_fernet, add_csrf_to_cookie, encrypt_cookie
+from cryptography import fernet
 
 
 class ErrorMiddlewareTestCase(AioHTTPTestCase):
@@ -44,3 +48,99 @@ def _create_improper_data():
     data = FormData()
     data.add_field("study", "content of a file", filename="file", content_type="text/xml")
     return data
+
+
+class TestConvenienceFunctions(unittest.TestCase):
+    """Test convenience functions."""
+
+    def test_generate_cookie(self):
+        """Test that the cookie generation works."""
+        testreq = get_request_with_fernet()
+        self.assertTrue(generate_cookie(testreq) is not None)
+
+    def test_decrypt_cookie(self):
+        """Test that the cookie decrypt function works."""
+        testreq = get_request_with_fernet()
+        # Generate cookie is tested separately, it can be used for testing the
+        # rest of the functions without mockups
+        cookie, testreq.cookies["MTD_SESSION"] = generate_cookie(testreq)
+        self.assertEqual(cookie, decrypt_cookie(testreq))
+
+    def test_session_check_nocookie(self):
+        """Test session check raise 401 on non-existing cookie."""
+        req = get_request_with_fernet()
+        with self.assertRaises(web.HTTPUnauthorized):
+            _check_csrf(req)
+
+    def test_session_check_invtoken(self):
+        """Test session check raise 401 on a stale cookie."""
+        req = get_request_with_fernet()
+        _, req.cookies["MTD_SESSION"] = generate_cookie(req)
+        req.app["Crypt"] = fernet.Fernet(fernet.Fernet.generate_key())
+        with self.assertRaises(web.HTTPUnauthorized):
+            _check_csrf(req)
+
+    def test_check_csrf_frontend_skip(self):
+        """Test check_csrf when skipping referer from frontend."""
+        with unittest.mock.patch(
+            "metadata_backend.api.middlewares.aai_config",
+            new={"redirect": "http://frontend:3000"},
+        ):
+            testreq = get_request_with_fernet()
+            cookie, _ = generate_cookie(testreq)
+            cookie = add_csrf_to_cookie(cookie, testreq)
+            encrypt_cookie(cookie, testreq)
+            testreq.headers["Referer"] = "http://frontend:3000"
+            self.assertTrue(_check_csrf(testreq))
+
+    def test_check_csrf_idp_skip(self):
+        """Test check_csrf when skipping referer from auth endpoint."""
+        with unittest.mock.patch(
+            "metadata_backend.api.middlewares.aai_config",
+            new={"auth_referer": "http://idp:3000"},
+        ):
+            testreq = get_request_with_fernet()
+            cookie, _ = generate_cookie(testreq)
+            cookie = add_csrf_to_cookie(cookie, testreq)
+            encrypt_cookie(cookie, testreq)
+            testreq.headers["Referer"] = "http://idp:3000"
+            self.assertTrue(_check_csrf(testreq))
+
+    def test_check_csrf_incorrect_referer(self):
+        """Test check_csrf when Referer header is incorrect."""
+        with unittest.mock.patch(
+            "metadata_backend.api.middlewares.aai_config",
+            new={"redirect": "http://localhost:3000"},
+        ):
+            testreq = get_request_with_fernet()
+            cookie, _ = generate_cookie(testreq)
+            cookie = add_csrf_to_cookie(cookie, testreq)
+            encrypt_cookie(cookie, testreq)
+            testreq.headers["Referer"] = "http://notlocaclhost:8080"
+            with self.assertRaises(web.HTTPForbidden):
+                _check_csrf(testreq)
+
+    def test_check_csrf_no_referer(self):
+        """Test check_csrf when no Referer header is present."""
+        with unittest.mock.patch(
+            "metadata_backend.api.middlewares.aai_config",
+            new={"redirect": "http://localhost:5430"},
+        ):
+            testreq = get_request_with_fernet()
+            cookie, _ = generate_cookie(testreq)
+            cookie = add_csrf_to_cookie(cookie, testreq)
+            encrypt_cookie(cookie, testreq)
+            self.assertTrue(_check_csrf(testreq))
+
+    def test_check_csrf_correct_referer(self):
+        """Test check_csrf when the session is valid."""
+        with unittest.mock.patch(
+            "metadata_backend.api.middlewares.aai_config",
+            new={"redirect": "http://localhost:5430"},
+        ):
+            testreq = get_request_with_fernet()
+            cookie, _ = generate_cookie(testreq)
+            cookie = add_csrf_to_cookie(cookie, testreq)
+            encrypt_cookie(cookie, testreq)
+            testreq.headers["Referer"] = "http://localhost:5430"
+            self.assertTrue(_check_csrf(testreq))
