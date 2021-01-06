@@ -42,7 +42,7 @@ the table below.
 | ``REDIRECT_URL``               | ``-``                         | Enable this for working with front-end on ``localhost`` or or change to           |
 |                                |                               | ``http://frontend:3000`` if started using ``docker-compose`` (see :ref:`deploy`). |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
-| ``JWL_URL``                    | ``-``                         | JWK OIDC URL for retrieving key for validating ID token.                          |
+| ``JWK_URL``                    | ``-``                         | JWK OIDC URL for retrieving key for validating ID token.                          |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
 | ``LOG_LEVEL``                  | ``INFO``                      | Set logging level, uppercase.                                                     |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
@@ -65,7 +65,7 @@ For installing ``metadata-submitter`` backend do the following:
     - ``MONGO_INITDB_ROOT_PASSWORD`` (password for admin user to mondogdb instance)
     - ``MONGODB_HOST`` (host and port for mongodb instancem, e.g. `localhost:27017`)
 
-To run the backend from command line use:
+To run the backend from command line set the environment variables required and use:
 
 .. code-block:: console
 
