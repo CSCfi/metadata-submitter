@@ -240,6 +240,21 @@ class BaseOperator(ABC):
             raise web.HTTPBadRequest(reason=reason)
         return delete_success
 
+    async def check_exists(self, schema_type: str, accession_id: str) -> None:
+        """Check the existance of a object by its id in the database.
+
+        :param schema_type: Schema type of the object to find.
+        :param accession_id: Identifier of object to find.
+        :raises: HTTPNotFound if object does not exist
+        :returns: None
+        """
+        exists = await self.db_service.exists(schema_type, accession_id)
+        LOG.info(f"check_exists: {exists}")
+        if not exists:
+            reason = f"Object with id {accession_id} from schema {schema_type} was not found."
+            LOG.error(reason)
+            raise web.HTTPNotFound(reason=reason)
+
     @abstractmethod
     async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: Any) -> str:
         """Format and add data to database.
@@ -681,7 +696,7 @@ class FolderOperator:
         :returns: Object folder formatted to JSON
         """
         try:
-            await self._check_folder_exists(folder_id)
+            await self.check_folder_exists(folder_id)
             folder = await self.db_service.read("folder", folder_id)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting folder: {error}"
@@ -700,7 +715,7 @@ class FolderOperator:
         :returns: ID of the folder updated to database
         """
         try:
-            await self._check_folder_exists(folder_id)
+            await self.check_folder_exists(folder_id)
             update_success = await self.db_service.patch("folder", folder_id, patch)
             sanity_check = await self.db_service.read("folder", folder_id)
             JSONValidator(sanity_check, "folders").validate
@@ -727,7 +742,7 @@ class FolderOperator:
         :returns: None
         """
         try:
-            await self._check_folder_exists(folder_id)
+            await self.check_folder_exists(folder_id)
             folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
             upd_content = {folder_path: {"accessionId": accession_id}}
             result = await self.db_service.remove("folder", folder_id, upd_content)
@@ -747,7 +762,7 @@ class FolderOperator:
         :returns: ID of the folder deleted from database
         """
         try:
-            await self._check_folder_exists(folder_id)
+            await self.check_folder_exists(folder_id)
             delete_success = await self.db_service.delete("folder", folder_id)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while deleting folder: {error}"
@@ -761,7 +776,7 @@ class FolderOperator:
             LOG.info(f"Deleting folder with id {folder_id} to database succeeded.")
             return folder_id
 
-    async def _check_folder_exists(self, folder_id: str) -> None:
+    async def check_folder_exists(self, folder_id: str) -> None:
         """Check the existance of a folder by its id in the database.
 
         :raises: HTTPNotFound if folder does not exist
@@ -979,6 +994,7 @@ class UserOperator:
     async def _check_user_exists(self, user_id: str) -> None:
         """Check the existance of a user by its id in the database.
 
+        :param user_id: Identifier of user to find.
         :raises: HTTPNotFound if user does not exist
         :returns: None
         """

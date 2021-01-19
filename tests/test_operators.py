@@ -780,7 +780,7 @@ class TestOperators(AsyncTestCase):
         operator = FolderOperator(self.client)
         operator.db_service.exists.return_value = futurized(False)
         with self.assertRaises(HTTPNotFound):
-            await operator._check_folder_exists(self.folder_id)
+            await operator.check_folder_exists(self.folder_id)
             operator.db_service.exists.assert_called_once()
 
     async def test_deleting_folder_passes(self):
