@@ -275,6 +275,12 @@ async def test_crud_works(sess, schema, filename, folder_id):
         LOG.debug(f"Checking that XML object {accession_id[0]} was deleted")
         assert resp.status == 404, "HTTP Status code error"
 
+    async with sess.get(f"{folders_url}/{folder_id}") as resp:
+        LOG.debug(f"Checking that object {accession_id} was deleted from folder {folder_id}")
+        res = await resp.json()
+        expected_true = not any(d["accessionId"] == accession_id for d in res["metadataObjects"])
+        assert expected_true, "draft object still exists"
+
 
 async def test_crud_drafts_works(sess, schema, filename, filename2, folder_id):
     """Test drafts REST api POST, PUT and DELETE reqs.
