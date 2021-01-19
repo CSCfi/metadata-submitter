@@ -775,12 +775,12 @@ class TestOperators(AsyncTestCase):
         with self.assertRaises(HTTPBadRequest):
             await operator.remove_object(self.test_folder, "study", self.accession_id)
 
-    async def test_check_folder_exists_fails(self):
+    async def testcheck_folder_exists_fails(self):
         """Test fails exists fails."""
         operator = FolderOperator(self.client)
         operator.db_service.exists.return_value = futurized(False)
         with self.assertRaises(HTTPNotFound):
-            await operator._check_folder_exists(self.folder_id)
+            await operator.check_folder_exists(self.folder_id)
             operator.db_service.exists.assert_called_once()
 
     async def test_deleting_folder_passes(self):
