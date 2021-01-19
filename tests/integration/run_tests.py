@@ -299,6 +299,12 @@ async def test_crud_drafts_works(sess, schema, filename, filename2, folder_id):
         LOG.debug(f"Checking that JSON object {accession_id} was deleted")
         assert resp.status == 404, "HTTP Status code error"
 
+    async with sess.get(f"{folders_url}/{folder_id}") as resp:
+        LOG.debug(f"Checking that JSON object {accession_id} was deleted from folder {folder_id}")
+        res = await resp.json()
+        expected_true = not any(d["accessionId"] == accession_id for d in res["drafts"])
+        assert expected_true, "draft object still exists"
+
 
 async def test_patch_drafts_works(sess, schema, filename, filename2, folder_id):
     """Test REST api POST, PATCH and DELETE reqs.
@@ -478,6 +484,13 @@ async def test_crud_folders_works(sess):
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was deleted")
         assert resp.status == 404, "HTTP Status code error"
+
+    async with sess.get(f"{users_url}/current") as resp:
+        LOG.debug(f"Checking that folder {folder_id} was deleted from current user")
+        res = await resp.json()
+        print(res)
+        expected_true = not any(d == accession_id for d in res["folders"])
+        assert expected_true, "folder still exists at user"
 
 
 async def test_crud_users_works(sess):
