@@ -268,6 +268,8 @@ class RESTApiHandler:
         db_client = req.app["db_client"]
         operator = XMLOperator(db_client) if req_format == "xml" else Operator(db_client)
 
+        await operator.check_exists(collection, accession_id)
+
         check_user = await self._handle_check_ownedby_user(req, collection, accession_id)
         if not check_user:
             reason = f"The object {accession_id} does not belong to current user."
@@ -343,6 +345,8 @@ class RESTApiHandler:
         accession_id = req.match_info["accessionId"]
         db_client = req.app["db_client"]
 
+        await Operator(db_client).check_exists(collection, accession_id)
+
         check_user = await self._handle_check_ownedby_user(req, collection, accession_id)
         if not check_user:
             reason = f"The object {accession_id} does not belong to current user."
@@ -356,7 +360,7 @@ class RESTApiHandler:
                 reason = "published objects cannot be deleted."
                 LOG.error(reason)
                 raise web.HTTPUnauthorized(reason=reason)
-            folder_op.remove_object(folder_id, collection, accession_id)
+            await folder_op.remove_object(folder_id, collection, accession_id)
         else:
             user_op = UserOperator(db_client)
             current_user = req.app["Session"]["user_info"]
@@ -401,6 +405,8 @@ class RESTApiHandler:
                 JSONValidator(content, schema_type).validate
             operator = Operator(db_client)
 
+        await operator.check_exists(collection, accession_id)
+
         check_user = await self._handle_check_ownedby_user(req, collection, accession_id)
         if not check_user:
             reason = f"The object {accession_id} does not belong to current user."
@@ -435,6 +441,8 @@ class RESTApiHandler:
         else:
             content = await self._get_data(req)
             operator = Operator(db_client)
+
+        await operator.check_exists(collection, accession_id)
 
         check_user = await self._handle_check_ownedby_user(req, collection, accession_id)
         if not check_user:
@@ -514,6 +522,9 @@ class RESTApiHandler:
         """
         folder_id = req.match_info["folderId"]
         db_client = req.app["db_client"]
+        operator = FolderOperator(db_client)
+
+        await operator.check_folder_exists(folder_id)
 
         check_user = await self._handle_check_ownedby_user(req, "folders", folder_id)
         if not check_user:
@@ -521,7 +532,6 @@ class RESTApiHandler:
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
 
-        operator = FolderOperator(db_client)
         folder = await operator.read_folder(folder_id)
 
         LOG.info(f"GET folder with ID {folder_id} was successful.")
@@ -537,6 +547,10 @@ class RESTApiHandler:
         """
         folder_id = req.match_info["folderId"]
         db_client = req.app["db_client"]
+
+        operator = FolderOperator(db_client)
+
+        await operator.check_folder_exists(folder_id)
 
         # Check patch operations in request are valid
         patch_ops = await self._get_data(req)
@@ -562,7 +576,6 @@ class RESTApiHandler:
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)
 
-        operator = FolderOperator(db_client)
         folder = await operator.update_folder(folder_id, patch_ops if isinstance(patch_ops, list) else [patch_ops])
 
         body = json.dumps({"folderId": folder})
@@ -578,6 +591,9 @@ class RESTApiHandler:
         """
         folder_id = req.match_info["folderId"]
         db_client = req.app["db_client"]
+        operator = FolderOperator(db_client)
+
+        await operator.check_folder_exists(folder_id)
 
         check_user = await self._handle_check_ownedby_user(req, "folders", folder_id)
         if not check_user:
@@ -585,7 +601,6 @@ class RESTApiHandler:
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)
 
-        operator = FolderOperator(db_client)
         LOG.info(f"GET folder with ID {folder_id} was successful.")
 
         # Patch the folder into a published state
@@ -608,6 +623,9 @@ class RESTApiHandler:
         """
         folder_id = req.match_info["folderId"]
         db_client = req.app["db_client"]
+        operator = FolderOperator(db_client)
+
+        await operator.check_folder_exists(folder_id)
 
         check_user = await self._handle_check_ownedby_user(req, "folders", folder_id)
         if not check_user:
@@ -615,7 +633,6 @@ class RESTApiHandler:
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)
 
-        operator = FolderOperator(db_client)
         folder = await operator.delete_folder(folder_id)
 
         user_op = UserOperator(db_client)
