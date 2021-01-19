@@ -240,12 +240,20 @@ class BaseOperator(ABC):
             raise web.HTTPBadRequest(reason=reason)
         return delete_success
 
-    @abstractmethod
     async def check_exists(self, schema_type: str, accession_id: str) -> None:
         """Check the existance of a object by its id in the database.
 
-        Must be implemented by subclass.
+        :param schema_type: Schema type of the object to find.
+        :param accession_id: Identifier of object to find.
+        :raises: HTTPNotFound if object does not exist
+        :returns: None
         """
+        exists = await self.db_service.exists(schema_type, accession_id)
+        LOG.info(f"check_exists: {exists}")
+        if not exists:
+            reason = f"Object with id {accession_id} from schema {schema_type} was not found."
+            LOG.error(reason)
+            raise web.HTTPNotFound(reason=reason)
 
     @abstractmethod
     async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: Any) -> str:
@@ -495,21 +503,6 @@ class Operator(BaseOperator):
             doc = format_date("publishDate", doc)
         return doc
 
-    async def check_exists(self, schema_type: str, accession_id: str) -> None:
-        """Check the existance of a object by its id in the database.
-
-        :param schema_type: Schema type of the object to find.
-        :param accession_id: Identifier of object to find.
-        :raises: HTTPNotFound if object does not exist
-        :returns: None
-        """
-        exists = await self.db_service.exists(schema_type, accession_id)
-        LOG.info(f"check_exists: {exists}")
-        if not exists:
-            reason = f"Object with id {accession_id} from schema {schema_type} was not found."
-            LOG.error(reason)
-            raise web.HTTPNotFound(reason=reason)
-
 
 class XMLOperator(BaseOperator):
     """Alternative operator class for handling database operations.
@@ -588,20 +581,6 @@ class XMLOperator(BaseOperator):
         :returns: XML content
         """
         return data_raw["content"]
-
-    async def check_exists(self, schema_type: str, accession_id: str) -> None:
-        """Check the existance of a object by its id in the database.
-
-        :param schema_type: Schema type of the object to find.
-        :param accession_id: Identifier of object to find.
-        :raises: HTTPNotFound if object does not exist
-        :returns: None
-        """
-        exists = await self.db_service.exists(schema_type, accession_id)
-        if not exists:
-            reason = f"Object with id {accession_id} from schema {schema_type} was not found."
-            LOG.error(reason)
-            raise web.HTTPNotFound(reason=reason)
 
 
 class FolderOperator:
