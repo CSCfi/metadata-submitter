@@ -1,0 +1,74 @@
+---
+name: Try build and start of production container
+
+on: [pull_request]
+
+jobs:
+  build:
+    strategy:
+      max-parallel: 4
+      matrix:
+        os: [ubuntu-latest]
+        python-version: [3.7]
+
+    runs-on: ${{ matrix.os }}
+
+    name: Production container tests
+
+    steps:
+      - uses: actions/checkout@v2
+        name: Get sources
+
+      - name: Build production container
+        run: docker build . -t metadata-submitter
+
+      - name: Run production container
+        run: docker run --rm -p 5430:5430 --name ms -d -t metadata-submitter
+
+      - name: Wait for production container to get ready
+        run: .github/workflows/wait_container.sh ms "Listening at"
+
+      - name: See that the static response is delivered
+        run: curl -4 http://localhost:5430/
+
+      - name: Shut down submitter service
+        run: docker kill ms && sleep 20
+
+      - name: Create root key and certificate
+        run: |
+          mkdir -p config && \
+          openssl req -x509 -nodes -days 365 \
+                  -newkey rsa:2048 -sha256 \
+                  -subj '/O=root' \
+                  -keyout config/cakey \
+                  -out config/cacert
+
+      - name: Create server key and certificate request
+        run: |
+          openssl req -nodes -new -days 365 -newkey rsa:2048 \
+                      -sha256 -subj '/CN=localhost' \
+                      -keyout config/key \
+                      -out config/cert.csr
+
+      - name: Create server certificate
+        run: |
+          openssl x509 -req -CAcreateserial -sha256 \
+                       -CA config/cacert \
+                       -CAkey config/cakey \
+                       -in config/cert.csr \
+                       -out config/cert
+
+      - name: Start production container with TLS
+        run: |
+           docker run --rm -p 5430:5430 -d --name mss \
+             -v $PWD/config:/config \
+             -e SERVE_KEY=/config/key \
+             -e SERVE_CERT=/config/cert \
+             -e SERVE_CA=/config/cacert \
+             metadata-submitter
+
+      - name: Wait for secure production container to get ready
+        run: .github/workflows/wait_container.sh mss "Listening at"
+
+      - name: See that the static response is delivered
+        run: curl -4 --cacert ./config/cacert https://localhost:5430/
