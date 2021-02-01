@@ -494,7 +494,6 @@ async def test_crud_folders_works(sess):
     async with sess.get(f"{users_url}/current") as resp:
         LOG.debug(f"Checking that folder {folder_id} was deleted from current user")
         res = await resp.json()
-        print(res)
         expected_true = not any(d == accession_id for d in res["folders"])
         assert expected_true, "folder still exists at user"
 
