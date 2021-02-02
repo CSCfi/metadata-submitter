@@ -188,7 +188,13 @@ class AccessHandler:
             async with ClientSession(headers=headers) as sess:
                 async with sess.get(f"{self.user_info}") as resp:
                     result = await resp.json()
-                    user_data = result["eppn"], f"{result['given_name']} {result['family_name']}"
+                    if "eppn" in result:
+                        user_data = result["eppn"], f"{result['given_name']} {result['family_name']}"
+                    elif "sub" in result:
+                        user_data = result["sub"], f"{result['given_name']} {result['family_name']}"
+                    else:
+                        LOG.error("Could not set user, missing claim eppn or sub.")
+                        raise web.HTTPBadRequest(reason="Could not set user, missing claim eppn or sub.")
         except Exception as e:
             LOG.error(f"Could not get information from AAI UserInfo endpoint because of: {e}")
             raise web.HTTPBadRequest(reason="Could not get information from AAI UserInfo endpoint.")
