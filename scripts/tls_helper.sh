@@ -20,7 +20,7 @@ openssl x509 -req -CAcreateserial -sha256 \
               -out config/cert
 
 openssl req -nodes -new -days 365 -newkey rsa:2048 \
-	    -sha256 -subj '/CN=localhost' \
+	    -sha256 -subj '/CN=database' \
 	    -keyout config/key2 \
 	    -out config/cert2.csr
 
