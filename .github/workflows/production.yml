@@ -34,29 +34,8 @@ jobs:
       - name: Shut down submitter service
         run: docker kill ms && sleep 20
 
-      - name: Create root key and certificate
-        run: |
-          mkdir -p config && \
-          openssl req -x509 -nodes -days 365 \
-                  -newkey rsa:2048 -sha256 \
-                  -subj '/O=root' \
-                  -keyout config/cakey \
-                  -out config/cacert
-
-      - name: Create server key and certificate request
-        run: |
-          openssl req -nodes -new -days 365 -newkey rsa:2048 \
-                      -sha256 -subj '/CN=localhost' \
-                      -keyout config/key \
-                      -out config/cert.csr
-
-      - name: Create server certificate
-        run: |
-          openssl x509 -req -CAcreateserial -sha256 \
-                       -CA config/cacert \
-                       -CAkey config/cakey \
-                       -in config/cert.csr \
-                       -out config/cert
+      - name: Create TLS keys and certificates
+        run: ./scripts/tls_helper.sh
 
       - name: Start production container with TLS
         run: |
