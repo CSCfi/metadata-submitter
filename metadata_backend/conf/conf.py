@@ -50,9 +50,9 @@ mongo_authdb = os.getenv("MONGODB_AUTHDB", "")
 _base = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}/{mongo_authdb}"
 if bool(os.getenv("MONGO_SSL", None)):
     _ca = os.getenv("MONGO_SSL_CA", None)
-    _cert_key = os.getenv("MONGO_SSL_CLIENT_KEY", None)
-
-    tls = f"?tls=true&tlsCAFile={_ca}&tlsCertificateKeyFile={_cert_key}"
+    _key = os.getenv("MONGO_SSL_CLIENT_KEY", None)
+    _cert = os.getenv("MONGO_SSL_CLIENT_CERT", None)
+    tls = f"?tls=true&tlsCAFile={_ca}&ssl_keyfile={_key}&ssl_certfile={_cert}"
     url = f"{_base}{tls}"
 else:
     url = _base
