@@ -52,7 +52,7 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.prep.outputs.tags }}
           cache-from: type=registry,ref=cscfi/metadata-submitter:latest
-          cache-to: type=inline
+          cache-to: type=local,dest=/tmp/.buildx-cache
           labels: |
             org.opencontainers.image.source=${{ github.event.repository.clone_url }}
             org.opencontainers.image.created=${{ steps.prep.outputs.created }}

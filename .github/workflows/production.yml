@@ -39,6 +39,7 @@ jobs:
           file: ./Dockerfile
           tags: localhost:5000/metadata-submitter:latest
           cache-from: localhost:5000/metadata-submitter:latest
+          cache-to: type=local,dest=/tmp/.buildx-cache
 
       - name: Run production container
         run: docker run --rm -p 5430:5430 --name ms -d -t localhost:5000/metadata-submitter:latest
