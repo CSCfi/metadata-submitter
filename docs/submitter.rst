@@ -24,14 +24,13 @@ the table below.
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
 | ``MONGO_INITDB_ROOT_PASSWORD`` | ``admin``                     | Admin password for mongodb.                                                       |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
-| ``MONGO_SSL``                  | `` ``                         | Set to True to enable MONGO TLS connection url.                                   |
+| ``MONGO_SSL``                  | ``-``                         | Set to True to enable MONGO TLS connection url.                                   |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
-| ``MONGO_SSL_CA``               | `` ``                         | Path to CA file, required if ``MONGO_SSL`` enabled.                               |
+| ``MONGO_SSL_CA``               | ``-``                         | Path to CA file, required if ``MONGO_SSL`` enabled.                               |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
-| ``MONGO_SSL_CLIENT_KEY``       | ``-``                         | Path to contains either the client's TLS/SSL X.509 certificate or the             |
-|                                |                               | client's TLS/SSL certificate and key, required if ``MONGO_SSL`` enabled.          |
+| ``MONGO_SSL_CLIENT_KEY``       | ``-``                         | Path to contains client's TLS/SSL X.509 key,required if ``MONGO_SSL`` enabled.    |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
-| ``MONGO_SSL_CLIENT_PRIVKEY``   | `` ``                         | Path to client Private key, required if ``MONGO_SSL`` enabled.                    |
+| ``MONGO_SSL_CLIENT_CERT``      | ``-``                         | Path to contains client's TLS/SSL X.509 cert,required if ``MONGO_SSL`` enabled.   |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
 | ``AAI_CLIENT_SECRET``          | ``public```                   | OIDC client secret.                                                               |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
