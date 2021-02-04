@@ -46,7 +46,19 @@ from ..helpers.logger import LOG
 mongo_user = os.getenv("MONGO_INITDB_ROOT_USERNAME", "admin")
 mongo_password = os.getenv("MONGO_INITDB_ROOT_PASSWORD", "admin")
 mongo_host = os.getenv("MONGODB_HOST", "localhost:27017")
-url = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}"
+mongo_authdb = os.getenv("MONGODB_AUTHDB", "")
+_base = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}/{mongo_authdb}"
+if bool(os.getenv("MONGO_SSL", None)):
+    _ca = os.getenv("MONGO_SSL_CA", None)
+    _key = os.getenv("MONGO_SSL_CLIENT_KEY", None)
+    _cert = os.getenv("MONGO_SSL_CLIENT_CERT", None)
+    tls = f"?tls=true&tlsCAFile={_ca}&ssl_keyfile={_key}&ssl_certfile={_cert}"
+    url = f"{_base}{tls}"
+else:
+    url = _base
+
+LOG.debug(f"mongodb connection string is {url}")
+
 serverTimeout = 15000
 connectTimeout = 15000
 
