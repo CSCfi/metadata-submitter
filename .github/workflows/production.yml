@@ -4,6 +4,7 @@ name: Try build and start of production container
 on: [pull_request]
 
 jobs:
+
   build:
     strategy:
       max-parallel: 4
@@ -15,15 +16,32 @@ jobs:
 
     name: Production container tests
 
+    services:
+      registry:
+        image: registry:2
+        ports:
+          - 5000:5000
+
     steps:
       - uses: actions/checkout@v2
         name: Get sources
 
-      - name: Build production container
-        run: docker build . -t metadata-submitter
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+        with:
+          driver-opts: network=host
+
+      - name: Build
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: true
+          file: ./Dockerfile
+          tags: localhost:5000/metadata-submitter:latest
+          cache-from: localhost:5000/metadata-submitter:latest
 
       - name: Run production container
-        run: docker run --rm -p 5430:5430 --name ms -d -t metadata-submitter
+        run: docker run --rm -p 5430:5430 --name ms -d -t localhost:5000/metadata-submitter:latest
 
       - name: Wait for production container to get ready
         run: .github/workflows/wait_container.sh ms "Listening at"
@@ -44,7 +62,7 @@ jobs:
              -e SERVE_KEY=/config/key \
              -e SERVE_CERT=/config/cert \
              -e SERVE_CA=/config/cacert \
-             metadata-submitter
+             localhost:5000/metadata-submitter:latest
 
       - name: Wait for secure production container to get ready
         run: .github/workflows/wait_container.sh mss "Listening at"
