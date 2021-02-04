@@ -68,6 +68,7 @@ async def init() -> web.Application:
         web.get("/drafts/{schema}/{accessionId}", rest_handler.get_object),
         web.put("/drafts/{schema}/{accessionId}", rest_handler.put_object),
         web.patch("/drafts/{schema}/{accessionId}", rest_handler.patch_object),
+        web.patch("/objects/{schema}/{accessionId}", rest_handler.patch_object),
         web.delete("/drafts/{schema}/{accessionId}", rest_handler.delete_object),
         web.post("/drafts/{schema}", rest_handler.post_object),
         web.get("/folders", rest_handler.get_folders),
