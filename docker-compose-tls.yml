@@ -1,0 +1,63 @@
+version: "3"
+services:
+  backend:
+    build:
+      dockerfile: Dockerfile-dev
+      context: .
+    image: cscfi/metadata-submitter-dev
+    container_name: "metadata_submitter_backend_dev"
+    volumes:
+      - ./config:/tls
+    ports:
+      - 5430:5430
+    depends_on:
+      - database
+      - mockauth
+    restart: on-failure
+    environment:
+      - "MONGODB_HOST=database:27017"
+      - "MONGO_SSL=true"
+      - "MONGO_SSL_CA=/tls/cacert"
+      - "MONGO_SSL_CLIENT_KEY=/tls/key"
+      - "MONGO_SSL_CLIENT_CERT=/tls/cert"
+      - "AAI_CLIENT_SECRET=secret"
+      - "AAI_CLIENT_ID=aud2"
+      - "ISS_URL=http://mockauth:8000"
+      - "AUTH_URL=http://localhost:8000/authorize"
+      - "OIDC_URL=http://mockauth:8000"
+      # Enable this for working with front-end on localhost
+      # or change to http://frontend:3000 if started using docker-compose
+      # - "REDIRECT_URL=http://localhost:3000"
+      - "AUTH_REFERER=http://mockauth:8000"
+      - "JWK_URL=http://mockauth:8000/keyset"
+      - "LOG_LEVEL=DEBUG"
+  database:
+    image: "mongo"
+    container_name: "metadata_submitter_database_dev"
+    command: "mongod --tlsMode=requireTLS --tlsCertificateKeyFile=/tls/combined2 --tlsCAFile=/tls/cacert"
+    restart: on-failure
+    environment:
+      - "MONGO_INITDB_ROOT_USERNAME=admin"
+      - "MONGO_INITDB_ROOT_PASSWORD=admin"
+    volumes:
+      - data:/data/db
+      - ./config:/tls
+    expose:
+      - 27017
+    ports:
+      - 27017:27017
+  mockauth:
+    build:
+      dockerfile: Dockerfile-dev
+      context: .
+    image: cscfi/metadata-submitter-dev
+    hostname: mockauth
+    expose:
+      - 8000
+    ports:
+      - 8000:8000
+    volumes:
+      - ./tests/integration/mock_auth.py:/mock_auth.py
+    entrypoint: ["python", "/mock_auth.py", "0.0.0.0", "8000"]
+volumes:
+  data: 
