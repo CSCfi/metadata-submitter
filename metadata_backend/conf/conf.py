@@ -62,6 +62,7 @@ LOG.debug(f"mongodb connection string is {url}")
 serverTimeout = 15000
 connectTimeout = 15000
 
+
 def create_db_client() -> AsyncIOMotorClient:
     """Initialize database client for AioHTTP App.
 
