@@ -901,8 +901,7 @@ class StaticHandler:
 
         mime_type = mimetypes.guess_type(serve_path.as_posix())
 
-        return Response(body=serve_path.read_bytes(),
-                        content_type=(mime_type[0] if mime_type[0] else "text/html"))
+        return Response(body=serve_path.read_bytes(), content_type=(mime_type[0] if mime_type[0] else "text/html"))
 
     def setup_static(self) -> Path:
         """Set path for static js files and correct return mimetypes.
