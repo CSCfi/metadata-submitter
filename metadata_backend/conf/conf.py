@@ -46,16 +46,31 @@ from ..helpers.logger import LOG
 mongo_user = os.getenv("MONGO_USERNAME", "admin")
 mongo_password = os.getenv("MONGO_PASSWORD", "admin")
 mongo_host = os.getenv("MONGO_HOST", "localhost:27017")
-mongo_authdb = os.getenv("MONGO_AUTHDB", "")
-_base = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}/{mongo_authdb}"
+mongo_database = os.getenv("MONGO_DATABASE", "")
+_base = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}/{mongo_database}"
 if bool(os.getenv("MONGO_SSL", None)):
     _ca = os.getenv("MONGO_SSL_CA", None)
     _key = os.getenv("MONGO_SSL_CLIENT_KEY", None)
     _cert = os.getenv("MONGO_SSL_CLIENT_CERT", None)
     tls = f"?tls=true&tlsCAFile={_ca}&ssl_keyfile={_key}&ssl_certfile={_cert}"
     url = f"{_base}{tls}"
+elif bool(os.getenv("MONGO_SSL", None)) and os.getenv("MONGO_AUTHDB", "") != "":
+    _ca = os.getenv("MONGO_SSL_CA", None)
+    _key = os.getenv("MONGO_SSL_CLIENT_KEY", None)
+    _cert = os.getenv("MONGO_SSL_CLIENT_CERT", None)
+    tls = f"?tls=true&tlsCAFile={_ca}&ssl_keyfile={_key}&ssl_certfile={_cert}"
+    _authdb = os.getenv("MONGO_AUTHDB", "")
+    auth = f"&authSource={_authdb}"
+    url = f"{_base}{tls}{auth}"
+elif os.getenv("MONGO_AUTHDB", "") != "":
+    _authdb = os.getenv("MONGO_AUTHDB", "")
+    auth = f"?authSource={_authdb}"
+    url = f"{_base}{auth}"
 else:
     url = _base
+
+if os.getenv("MONGO_DATABASE", "") == "":
+    mongo_database = "test"
 
 LOG.debug(f"mongodb connection string is {url}")
 
