@@ -5,8 +5,8 @@ You need to specify the necessary environment variables for connecting to
 MongoDB.
 Currently in use:
 
-- ``MONGO_INITDB_ROOT_USERNAME`` - Admin username for mongodb
-- ``MONGO_INITDB_ROOT_PASSWORD`` - Admin password for mongodb
+- ``MONGO_USERNAME`` - Username for mongodb
+- ``MONGO_PASSWORD`` - Password for mongodb
 - ``MONGO_HOST`` - Mongodb server hostname, with port specified
 
 Admin access is needed in order to create new databases during runtime.
@@ -43,8 +43,8 @@ from ..helpers.logger import LOG
 # Set custom timeouts and other parameters here so they can be imported to
 # other modules if needed.
 
-mongo_user = os.getenv("MONGO_INITDB_ROOT_USERNAME", "admin")
-mongo_password = os.getenv("MONGO_INITDB_ROOT_PASSWORD", "admin")
+mongo_user = os.getenv("MONGO_USERNAME", "admin")
+mongo_password = os.getenv("MONGO_PASSWORD", "admin")
 mongo_host = os.getenv("MONGO_HOST", "localhost:27017")
 mongo_authdb = os.getenv("MONGO_AUTHDB", "")
 _base = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}/{mongo_authdb}"
