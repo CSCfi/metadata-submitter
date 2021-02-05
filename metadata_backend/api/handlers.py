@@ -899,7 +899,7 @@ class StaticHandler:
             LOG.debug(f"{serve_path} was not found, returning 404")
             raise web.HTTPNotFound(reason=f"Could not find requested object {req.path}")
 
-        mime_type = mimetypes.guess_type(serve_path)
+        mime_type = mimetypes.guess_type(serve_path.as_posix())
 
         return Response(body=serve_path.read_bytes(),
                         content_type=(mime_type[0] if mime_type[0] else "text/html"))
