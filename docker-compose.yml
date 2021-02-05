@@ -13,7 +13,7 @@ services:
       - mockauth
     restart: on-failure
     environment:
-      - "MONGODB_HOST=database:27017"
+      - "MONGO_HOST=database:27017"
       - "AAI_CLIENT_SECRET=secret"
       - "AAI_CLIENT_ID=aud2"
       - "ISS_URL=http://mockauth:8000"
