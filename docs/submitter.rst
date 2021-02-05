@@ -18,7 +18,9 @@ the table below.
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
 | ENV                            | Default                       | Description                                                                       |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
-| ``MONGODB_HOST``               | ``localhost:27017``           | Mongodb server hostname, with port specified if needed.                           |
+| ``MONGO_HOST``                 | ``localhost:27017``           | Mongodb server hostname, with port specified if needed.                           |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``MONGO_AUTHDB``               | ``-``                         | Mongodb authentication database.                                                  |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
 | ``MONGO_INITDB_ROOT_USERNAME`` | ``admin``                     | Admin username for mongodb.                                                       |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
@@ -89,7 +91,7 @@ For installing ``metadata-submitter`` backend do the following:
 
     - ``MONGO_INITDB_ROOT_USERNAME`` (username for admin user to mondogdb instance)
     - ``MONGO_INITDB_ROOT_PASSWORD`` (password for admin user to mondogdb instance)
-    - ``MONGODB_HOST`` (host and port for mongodb instancem, e.g. `localhost:27017`)
+    - ``MONGO_HOST`` (host and port for mongodb instancem, e.g. `localhost:27017`)
 
 To run the backend from command line use:
 

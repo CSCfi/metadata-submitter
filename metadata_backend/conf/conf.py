@@ -7,7 +7,7 @@ Currently in use:
 
 - ``MONGO_INITDB_ROOT_USERNAME`` - Admin username for mongodb
 - ``MONGO_INITDB_ROOT_PASSWORD`` - Admin password for mongodb
-- ``MONGODB_HOST`` - Mongodb server hostname, with port specified
+- ``MONGO_HOST`` - Mongodb server hostname, with port specified
 
 Admin access is needed in order to create new databases during runtime.
 Default values are the same that are used in docker-compose file
@@ -45,8 +45,8 @@ from ..helpers.logger import LOG
 
 mongo_user = os.getenv("MONGO_INITDB_ROOT_USERNAME", "admin")
 mongo_password = os.getenv("MONGO_INITDB_ROOT_PASSWORD", "admin")
-mongo_host = os.getenv("MONGODB_HOST", "localhost:27017")
-mongo_authdb = os.getenv("MONGODB_AUTHDB", "")
+mongo_host = os.getenv("MONGO_HOST", "localhost:27017")
+mongo_authdb = os.getenv("MONGO_AUTHDB", "")
 _base = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}/{mongo_authdb}"
 if bool(os.getenv("MONGO_SSL", None)):
     _ca = os.getenv("MONGO_SSL_CA", None)
