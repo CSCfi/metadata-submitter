@@ -685,7 +685,8 @@ class FolderOperator:
         :param que: Dict containing query information
         :returns: Query result as list
         """
-        folders = await self.db_service.aggregate("folder", que)
+        folder_cursor = self.db_service.query("folder", que)
+        folders = [folder async for folder in folder_cursor]
         return folders
 
     async def read_folder(self, folder_id: str) -> Dict:
