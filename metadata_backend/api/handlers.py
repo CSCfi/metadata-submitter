@@ -471,16 +471,18 @@ class RESTApiHandler:
 
         operator = FolderOperator(db_client)
         folders = await operator.query_folders(
-            {
-                "$redact": {
-                    "$cond": {
-                        "if": {"$or": [{"$eq": ["$published", True]}, {"$in": ["$folderId", user["folders"]]}]},
-                        "then": "$$DESCEND",
-                        "else": "$$PRUNE",
+            [
+                {
+                    "$redact": {
+                        "$cond": {
+                            "if": {"$or": [{"$eq": ["$published", True]}, {"$in": ["$folderId", user["folders"]]}]},
+                            "then": "$$DESCEND",
+                            "else": "$$PRUNE",
+                        }
                     }
-                }
-            },
-            {"$project": {"_id": 0}},
+                },
+                {"$project": {"_id": 0}},
+            ],
         )
 
         body = json.dumps({"folders": folders})
