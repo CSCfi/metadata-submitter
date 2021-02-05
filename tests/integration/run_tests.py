@@ -529,6 +529,17 @@ async def test_crud_users_works(sess):
         assert resp.status == 401, "HTTP Status code error"
 
 
+async def test_get_folders(sess, folder_id: str):
+    """Test folders REST api GET ."""
+    # Check user exists in database (requires an user object to be mocked)
+    async with sess.get(f"{folders_url}") as resp:
+        LOG.debug(f"Reading user {user_id}")
+        assert resp.status == 200, "HTTP Status code error"
+        response = await resp.json()
+        assert len(response["folders"]) == 1
+        assert response["folders"][0]["folderId"] == folder_id
+
+
 async def test_submissions_work(sess, folder_id):
     """Test actions in submission xml files."""
     # Post original submission with two 'add' actions
@@ -632,6 +643,7 @@ async def main():
             "description": "submission test folder 1",
         }
         submission_folder_id = await post_folder(sess, submission_folder)
+        await test_get_folders(sess, submission_folder_id)
         await test_submissions_work(sess, submission_folder_id)
 
     async with aiohttp.ClientSession() as sess:
