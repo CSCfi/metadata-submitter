@@ -24,7 +24,7 @@ For more detailed setup, do following:
   - Server expects to find mongodb instance running, specified with following environment variables:
     - `MONGO_INITDB_ROOT_USERNAME`, username for admin user to mondogdb instance
     - `MONGO_INITDB_ROOT_PASSWORD`, password for admin user to mondogdb instance
-    - `MONGODB_HOST`, host and port for mongodb instance (e.g. `localhost:27017`)
+    - `MONGO_HOST`, host and port for mongodb instance (e.g. `localhost:27017`)
   - Out of the box, metadata submitter is configured with default values from MongoDB Docker image
   - Suitable mongodb instance can be launched with Docker by running `docker-compose up database`
 - After installing and setting up database, server can be launched with `metadata_submitter`
