@@ -891,9 +891,18 @@ class StaticHandler:
         :param req: GET request
         :returns: Response containing frontpage static file
         """
-        index_path = self.path / "index.html"
-        LOG.debug("Serve Frontend SPA.")
-        return Response(body=index_path.read_bytes(), content_type="text/html")
+
+        serve_path = self.path.joinpath("./" + req.path if req.path != "/" else "index.html")
+        LOG.debug(f"Serve Frontend SPA {req.path} by {serve_path}.")
+
+        if not serve_path.exists():
+            LOG.debug(f"{serve_path} was not found, returning 404")
+            raise web.HTTPNotFound(reason=f"Could not find requested object {req.path}")
+
+        mime_type = mimetypes.guess_type(serve_path)
+
+        return Response(body=serve_path.read_bytes(),
+                        content_type=(mime_type[0] if mime_type[0] else "text/html"))
 
     def setup_static(self) -> Path:
         """Set path for static js files and correct return mimetypes.
