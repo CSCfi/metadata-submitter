@@ -15,7 +15,7 @@ services:
       - mockauth
     restart: on-failure
     environment:
-      - "MONGODB_HOST=database:27017"
+      - "MONGO_HOST=database:27017"
       - "MONGO_SSL=true"
       - "MONGO_SSL_CA=/tls/cacert"
       - "MONGO_SSL_CLIENT_KEY=/tls/key"
