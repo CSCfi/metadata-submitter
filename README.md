@@ -25,6 +25,8 @@ For more detailed setup, do following:
     - `MONGO_USERNAME`, username for connecting to mondogdb instance
     - `MONGO_PASSWORD`, password for connecting to mondogdb instance
     - `MONGO_HOST`, host and port for mongodb instance (e.g. `localhost:27017`)
+    - `MONGO_DATABASE`, If a specific database is to be used, set the name here. 
+    - `MONGO_AUTHDB`, if `MONGO_DATABASE` is set and the user doesn't exists in the database, set this to the database where the user exists (e.g. `admin`)
   - Out of the box, metadata submitter is configured with default values from MongoDB Docker image
   - Suitable mongodb instance can be launched with Docker by running `docker-compose up database`
 - After installing and setting up database, server can be launched with `metadata_submitter`
