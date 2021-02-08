@@ -667,8 +667,10 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_user_deletion_is_called(self):
         """Test that user object would be deleted."""
+        self.MockedUserOperator().read_user.return_value = futurized(self.test_user)
         self.MockedUserOperator().delete_user.return_value = futurized(None)
         await self.client.delete("/users/current")
+        self.MockedUserOperator().read_user.assert_called_once()
         self.MockedUserOperator().delete_user.assert_called_once()
 
     @unittest_run_loop

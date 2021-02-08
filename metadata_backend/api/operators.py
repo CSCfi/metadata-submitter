@@ -697,7 +697,6 @@ class FolderOperator:
         :returns: Object folder formatted to JSON
         """
         try:
-            await self.check_folder_exists(folder_id)
             folder = await self.db_service.read("folder", folder_id)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting folder: {error}"
@@ -716,7 +715,6 @@ class FolderOperator:
         :returns: ID of the folder updated to database
         """
         try:
-            await self.check_folder_exists(folder_id)
             update_success = await self.db_service.patch("folder", folder_id, patch)
             sanity_check = await self.db_service.read("folder", folder_id)
             JSONValidator(sanity_check, "folders").validate
@@ -743,7 +741,6 @@ class FolderOperator:
         :returns: None
         """
         try:
-            await self.check_folder_exists(folder_id)
             folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
             upd_content = {folder_path: {"accessionId": accession_id}}
             result = await self.db_service.remove("folder", folder_id, upd_content)
@@ -763,7 +760,6 @@ class FolderOperator:
         :returns: ID of the folder deleted from database
         """
         try:
-            await self.check_folder_exists(folder_id)
             delete_success = await self.db_service.delete("folder", folder_id)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while deleting folder: {error}"
