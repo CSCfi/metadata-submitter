@@ -111,7 +111,7 @@ class RESTApiHandler:
             yield result
 
     async def _handle_user_objects_collection(self, req: Request, collection: str) -> List:
-        """Retrieve list of  objects accession ids belonging to user in collection.
+        """Retrieve list of objects accession ids belonging to user in collection.
 
         :param req: HTTP request
         :param collection: collection or schema of document
@@ -335,7 +335,7 @@ class RESTApiHandler:
         """Delete metadata object from database.
 
         :param req: DELETE request
-        :raises: HTTPUnauthorized if object not owned by user
+        :raises: HTTPUnauthorized if object not owned by user or folder published
         :returns: HTTPNoContent response
         """
         schema_type = req.match_info["schema"]

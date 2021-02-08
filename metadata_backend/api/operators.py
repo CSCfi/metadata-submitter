@@ -864,12 +864,12 @@ class UserOperator:
         """
         user_data: Dict[str, Union[list, str]] = dict()
 
-        eppn = data[0]
+        eppn = data[0]  # this also can be sub key
         name = data[1]
         try:
             existing_user_id = await self.db_service.exists_eppn_user(eppn, name)
             if existing_user_id:
-                LOG.info(f"User with eppn: {eppn} exists, no need to create.")
+                LOG.info(f"User with identifier: {eppn} exists, no need to create.")
                 return existing_user_id
             else:
                 user_data["drafts"] = []
@@ -1000,7 +1000,7 @@ class UserOperator:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         else:
-            LOG.info(f"{user_id} successfully deleted from collection.")
+            LOG.info(f"User {user_id} successfully deleted.")
             return user_id
 
     async def _check_user_exists(self, user_id: str) -> None:
