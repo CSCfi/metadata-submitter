@@ -713,17 +713,15 @@ class TestOperators(AsyncTestCase):
     async def test_reading_folder_works(self):
         """Test folder is read from db correctly."""
         operator = FolderOperator(self.client)
-        operator.db_service.exists.return_value = futurized(True)
         operator.db_service.read.return_value = futurized(self.test_folder)
         read_data = await operator.read_folder(self.folder_id)
-        operator.db_service.exists.assert_called_once()
         operator.db_service.read.assert_called_once_with("folder", self.folder_id)
         self.assertEqual(read_data, self.test_folder)
 
     async def test_folder_object_read_fails(self):
         """Test folder read fails."""
         operator = FolderOperator(self.client)
-        operator.db_service.exists.side_effect = ConnectionFailure
+        operator.db_service.read.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
             await operator.read_folder(self.folder_id)
 
@@ -731,11 +729,9 @@ class TestOperators(AsyncTestCase):
         """Test update method for folders works."""
         patch = [{"op": "add", "path": "/name", "value": "test2"}]
         operator = FolderOperator(self.client)
-        operator.db_service.exists.return_value = futurized(True)
         operator.db_service.read.return_value = futurized(self.test_folder)
         operator.db_service.patch.return_value = futurized(True)
         folder = await operator.update_folder(self.test_folder, patch)
-        operator.db_service.exists.assert_called_once()
         operator.db_service.patch.assert_called_once()
         self.assertEqual(len(operator.db_service.read.mock_calls), 1)
         self.assertEqual(folder["folderId"], self.folder_id)
@@ -744,34 +740,30 @@ class TestOperators(AsyncTestCase):
         """Test folder update raises error with improper JSON Patch."""
         patch = [{"op": "replace", "path": "/nothing"}]
         operator = FolderOperator(self.client)
-        operator.db_service.exists.return_value = futurized(True)
         operator.db_service.read.return_value = futurized(self.test_folder)
         with self.assertRaises(HTTPBadRequest):
             await operator.update_folder(self.test_folder, patch)
-            operator.db_service.exists.assert_called_once()
             operator.db_service.read.assert_called_once()
 
     async def test_folder_object_update_fails(self):
         """Test folder update fails."""
         operator = FolderOperator(self.client)
-        operator.db_service.exists.side_effect = ConnectionFailure
+        operator.db_service.update.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
             await operator.update_folder(self.test_folder, [])
 
     async def test_folder_object_remove_passes(self):
         """Test remove object method for folders works."""
         operator = FolderOperator(self.client)
-        operator.db_service.exists.return_value = futurized(True)
         operator.db_service.remove.return_value = futurized(self.test_folder)
         await operator.remove_object(self.test_folder, "study", self.accession_id)
-        operator.db_service.exists.assert_called_once()
         operator.db_service.remove.assert_called_once()
         self.assertEqual(len(operator.db_service.remove.mock_calls), 1)
 
     async def test_folder_object_remove_fails(self):
         """Test folder remove object fails."""
         operator = FolderOperator(self.client)
-        operator.db_service.exists.side_effect = ConnectionFailure
+        operator.db_service.remove.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
             await operator.remove_object(self.test_folder, "study", self.accession_id)
 
