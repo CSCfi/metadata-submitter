@@ -7,7 +7,7 @@ RUN apk add --update \
 RUN git clone https://github.com/CSCfi/metadata-submitter-frontend.git
 
 WORKDIR /metadata-submitter-frontend
-RUN npm install && npm run build
+RUN npm install && npm run build --production
 
 FROM python:3.7-alpine3.13 as BUILD-BACKEND
 
