@@ -704,13 +704,27 @@ class RESTApiHandler:
         user_id = req.match_info["userId"]
         if user_id != "current":
             LOG.info(f"User ID {user_id} delete was requested")
-            raise web.HTTPUnauthorized(reason="Only current user deleteion is allowed")
+            raise web.HTTPUnauthorized(reason="Only current user deletion is allowed")
         db_client = req.app["db_client"]
         operator = UserOperator(db_client)
+        fold_ops = FolderOperator(db_client)
+        obj_ops = Operator(db_client)
 
         current_user = req.app["Session"]["user_info"]
-        user = await operator.delete_user(current_user)
-        LOG.info(f"DELETE user with ID {user} was successful.")
+        user = await operator.read_user(current_user)
+
+        for fold in user["folders"]:
+            _folder = await fold_ops.read_folder(fold)
+            if not _folder["published"]:
+                for obj in _folder["drafts"] + _folder["metadataObjects"]:
+                    await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
+                await fold_ops.delete_folder(fold)
+
+        for tmpl in user["drafts"]:
+            await obj_ops.delete_metadata_object(tmpl["schema"], tmpl["accessionId"])
+
+        await operator.delete_user(current_user)
+        LOG.info(f"DELETE user with ID {current_user} was successful.")
 
         req.app["Session"]["access_token"] = None
         req.app["Session"]["user_info"] = None
