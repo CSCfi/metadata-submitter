@@ -46,7 +46,10 @@ class HandlersTestCase(AioHTTPTestCase):
             "name": "test",
             "description": "test folder",
             "published": False,
-            "metadataObjects": ["EDAG3991701442770179", "EGA123456"],
+            "metadataObjects": [
+                {"accessionId": "EDAG3991701442770179", "schema": "study"},
+                {"accessionId": "EGA123456", "schema": "sample"},
+            ],
             "drafts": [],
         }
         self.user_id = "USR12345678"
@@ -651,7 +654,9 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_folder_deletion_is_called(self):
         """Test that folder would be deleted."""
+        self.MockedFolderOperator().read_folder.return_value = futurized(self.test_folder)
         response = await self.client.delete("/folders/FOL12345678")
+        self.MockedFolderOperator().read_folder.assert_called_once()
         self.MockedFolderOperator().delete_folder.assert_called_once()
         self.assertEqual(response.status, 204)
 
