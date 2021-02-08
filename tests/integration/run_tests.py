@@ -237,6 +237,13 @@ async def delete_folder(sess, folder_id):
         assert resp.status == 204, "HTTP Status code error"
 
 
+async def delete_folder_publish(sess, folder_id):
+    """Delete object folder within session."""
+    async with sess.delete(f"{folders_url}/{folder_id}") as resp:
+        LOG.debug(f"Deleting folder {folder_id}")
+        assert resp.status == 401, "HTTP Status code error"
+
+
 async def patch_user(sess, user_id, real_user_id, patch):
     """Patch one user object within session, return userId."""
     async with sess.patch(f"{users_url}/current", data=json.dumps(patch)) as resp:
@@ -496,6 +503,55 @@ async def test_crud_folders_works(sess):
         assert res["metadataObjects"] == [{"accessionId": accession_id, "schema": "sample"}], "content mismatch"
 
     # Delete folder
+    await delete_folder_publish(sess, folder_id)
+
+
+async def test_crud_folders_works_no_publish(sess):
+    """Test folders REST api POST, GET, PATCH, PUBLISH and DELETE reqs."""
+    # Create new folder and check its creation succeeded
+    data = {"name": "test", "description": "test folder"}
+    folder_id = await post_folder(sess, data)
+    async with sess.get(f"{folders_url}/{folder_id}") as resp:
+        LOG.debug(f"Checking that folder {folder_id} was created")
+        assert resp.status == 200, "HTTP Status code error"
+
+    # Create draft from test XML file and patch the draft into the newly created folder
+    draft_id = await post_draft(sess, "sample", "SRS001433.xml")
+    patch1 = [{"op": "add", "path": "/drafts/-", "value": [{"accessionId": draft_id, "schema": "draft-sample"}]}]
+    folder_id = await patch_folder(sess, folder_id, patch1)
+    async with sess.get(f"{folders_url}/{folder_id}") as resp:
+        LOG.debug(f"Checking that folder {folder_id} was patched")
+        res = await resp.json()
+        assert res["folderId"] == folder_id, "content mismatch"
+        assert res["name"] == "test", "content mismatch"
+        assert res["description"] == "test folder", "content mismatch"
+        assert res["published"] is False, "content mismatch"
+        assert res["drafts"] == [{"accessionId": draft_id, "schema": "draft-sample"}], "content mismatch"
+        assert res["metadataObjects"] == [], "content mismatch"
+
+    # Get the draft from the collection within this session and post it to objects collection
+    draft = await get_draft(sess, "sample", draft_id)
+    async with sess.post(f"{objects_url}/sample", data=draft) as resp:
+        LOG.debug("Adding draft to actual objects")
+        assert resp.status == 201, "HTTP Status code error"
+        ans = await resp.json()
+        assert ans["accessionId"] != draft_id, "content mismatch"
+        accession_id = ans["accessionId"]
+
+    # Patch folder so that original draft becomes an object in the folder
+    patch2 = [
+        {"op": "add", "path": "/metadataObjects/-", "value": [{"accessionId": accession_id, "schema": "sample"}]},
+    ]
+    folder_id = await patch_folder(sess, folder_id, patch2)
+    async with sess.get(f"{folders_url}/{folder_id}") as resp:
+        LOG.debug(f"Checking that folder {folder_id} was patched")
+        res = await resp.json()
+        assert res["folderId"] == folder_id, "content mismatch"
+        assert res["published"] is False, "content mismatch"
+        assert res["drafts"] == [{"accessionId": draft_id, "schema": "draft-sample"}], "content mismatch"
+        assert res["metadataObjects"] == [{"accessionId": accession_id, "schema": "sample"}], "content mismatch"
+
+    # Delete folder
     await delete_folder(sess, folder_id)
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was deleted")
@@ -529,6 +585,14 @@ async def test_crud_users_works(sess):
         assert res["name"] == "test test", "content mismatch"
         assert res["drafts"] == [], "content mismatch"
         assert folder_id in res["folders"], "content mismatch"
+
+    data2 = {"name": "test2", "description": "published folder"}
+    folder_id = await post_folder(sess, data2)
+    folder_id = await publish_folder(sess, folder_id)
+    async with sess.get(f"{folders_url}/{folder_id}") as resp:
+        LOG.debug(f"Checking that folder {folder_id} was patched")
+        res = await resp.json()
+        assert res["published"] is True, "content mismatch"
 
     # Delete user
     await delete_user(sess, user_id)
@@ -723,6 +787,7 @@ async def main():
         # Test creating, reading, updating and deleting folders
         LOG.debug("=== Testing basic CRUD folder operations ===")
         await test_crud_folders_works(sess)
+        await test_crud_folders_works_no_publish(sess)
 
         # Test add, modify, validate and release action with submissions
         LOG.debug("=== Testing actions within submissions ===")
