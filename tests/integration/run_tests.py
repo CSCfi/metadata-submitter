@@ -505,6 +505,10 @@ async def test_crud_folders_works(sess):
     # Delete folder
     await delete_folder_publish(sess, folder_id)
 
+    async with sess.get(f"{drafts_url}/sample/{draft_id}") as resp:
+        LOG.debug(f"Checking that JSON object {accession_id} was deleted")
+        assert resp.status == 404, "HTTP Status code error"
+
 
 async def test_crud_folders_works_no_publish(sess):
     """Test folders REST api POST, GET, PATCH, PUBLISH and DELETE reqs."""
