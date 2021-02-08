@@ -590,7 +590,12 @@ class RESTApiHandler:
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)
 
-        LOG.info(f"GET folder with ID {folder_id} was successful.")
+        folder = await operator.read_folder(folder_id)
+
+        obj_ops = Operator(db_client)
+
+        for obj in folder["drafts"]:
+            await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
 
         # Patch the folder into a published state
         patch = [
