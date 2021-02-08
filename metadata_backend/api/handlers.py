@@ -470,20 +470,7 @@ class RESTApiHandler:
         user = await user_operator.read_user(current_user)
 
         operator = FolderOperator(db_client)
-        folders = await operator.query_folders(
-            [
-                {
-                    "$redact": {
-                        "$cond": {
-                            "if": {"$or": [{"$eq": ["$published", True]}, {"$in": ["$folderId", user["folders"]]}]},
-                            "then": "$$DESCEND",
-                            "else": "$$PRUNE",
-                        }
-                    }
-                },
-                {"$project": {"_id": 0}},
-            ],
-        )
+        folders = await operator.query_folders({"folderId": {"$in": user["folders"]}})
 
         body = json.dumps({"folders": folders})
         LOG.info(f"GET folders. Retrieved {len(folders)} folders.")
