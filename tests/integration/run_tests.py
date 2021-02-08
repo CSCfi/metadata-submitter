@@ -126,6 +126,16 @@ async def post_object(sess, schema, filename):
         return ans["accessionId"], schema
 
 
+async def post_object_json(sess, schema, filename):
+    """Post & put one metadata object within session, returns accessionId."""
+    data = await create_request_json_data(schema, filename)
+    async with sess.post(f"{objects_url}/{schema}", data=data) as resp:
+        LOG.debug(f"Adding new draft object to {schema}")
+        assert resp.status == 201, "HTTP Status code error"
+        ans = await resp.json()
+        return ans["accessionId"]
+
+
 async def delete_object(sess, schema, accession_id):
     """Delete metadata object within session."""
     async with sess.delete(f"{objects_url}/{schema}/{accession_id}") as resp:
@@ -531,13 +541,25 @@ async def test_crud_users_works(sess):
 
 async def test_get_folders(sess, folder_id: str):
     """Test folders REST api GET ."""
-    # Check user exists in database (requires an user object to be mocked)
     async with sess.get(f"{folders_url}") as resp:
-        LOG.debug(f"Reading user {user_id}")
+        LOG.debug(f"Reading folder {folder_id}")
         assert resp.status == 200, "HTTP Status code error"
         response = await resp.json()
         assert len(response["folders"]) == 1
         assert response["folders"][0]["folderId"] == folder_id
+
+
+async def test_get_folders_objects(sess, folder_id: str):
+    """Test folders REST api GET with objects."""
+    accession_id = await post_object_json(sess, "study", "SRP000539.json")
+    patch = [{"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id, "schema": "study"}}]
+    await patch_folder(sess, folder_id, patch)
+    async with sess.get(f"{folders_url}") as resp:
+        LOG.debug(f"Reading folder {folders_url}")
+        assert resp.status == 200, "HTTP Status code error"
+        response = await resp.json()
+        assert len(response["folders"]) == 1
+        assert response["folders"][0]["metadataObjects"][0]["accessionId"] == accession_id
 
 
 async def test_submissions_work(sess, folder_id):
@@ -644,6 +666,7 @@ async def main():
         }
         submission_folder_id = await post_folder(sess, submission_folder)
         await test_get_folders(sess, submission_folder_id)
+        await test_get_folders_objects(sess, submission_folder_id)
         await test_submissions_work(sess, submission_folder_id)
 
     async with aiohttp.ClientSession() as sess:
