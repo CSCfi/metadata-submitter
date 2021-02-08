@@ -76,7 +76,7 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
     if (
         request.path.startswith(tuple(main_paths))
         or request.path == "/"
-        or (request.path.startswith("/") and request.path.endswith(tuple([".svg", ".jpg", ".ico"])))
+        or (request.path.startswith("/") and request.path.endswith(tuple([".svg", ".jpg", ".ico", ".json"])))
     ):
         return await handler(request)
     if request.path.startswith(tuple(controlled_paths)) and "OIDC_URL" in os.environ and bool(os.getenv("OIDC_URL")):
