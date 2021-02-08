@@ -615,6 +615,7 @@ class RESTApiHandler:
         operator = FolderOperator(db_client)
 
         await operator.check_folder_exists(folder_id)
+        await operator.check_folder_published(folder_id)
 
         check_user = await self._handle_check_ownedby_user(req, "folders", folder_id)
         if not check_user:
@@ -622,13 +623,20 @@ class RESTApiHandler:
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)
 
-        folder = await operator.delete_folder(folder_id)
+        obj_ops = Operator(db_client)
+
+        folder = await operator.read_folder(folder_id)
+
+        for obj in folder["drafts"] + folder["metadataObjects"]:
+            await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
+
+        _folder_id = await operator.delete_folder(folder_id)
 
         user_op = UserOperator(db_client)
         current_user = req.app["Session"]["user_info"]
         await user_op.remove_objects(current_user, "folders", [folder_id])
 
-        LOG.info(f"DELETE folder with ID {folder} was successful.")
+        LOG.info(f"DELETE folder with ID {_folder_id} was successful.")
         return web.Response(status=204)
 
     async def get_user(self, req: Request) -> Response:

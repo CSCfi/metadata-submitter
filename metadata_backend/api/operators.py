@@ -752,26 +752,29 @@ class FolderOperator:
 
         LOG.info(f"Removing object {accession_id} from {folder_id} succeeded.")
 
-    async def delete_folder(self, folder_id: str) -> str:
+    async def delete_folder(self, folder_id: str) -> Union[str, None]:
         """Delete object folder from database.
 
         :param folder_id: ID of the folder to delete.
         :raises: HTTPBadRequest if deleting was not successful
         :returns: ID of the folder deleted from database
         """
-        try:
-            delete_success = await self.db_service.delete("folder", folder_id)
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while deleting folder: {error}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-        if not delete_success:
-            reason = f"Deleting for {folder_id} from database failed."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-        else:
-            LOG.info(f"Deleting folder with id {folder_id} to database succeeded.")
-            return folder_id
+        published = await self.db_service.published_folder(folder_id)
+        if not published:
+            try:
+                delete_success = await self.db_service.delete("folder", folder_id)
+            except (ConnectionFailure, OperationFailure) as error:
+                reason = f"Error happened while deleting folder: {error}"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+            if not delete_success:
+                reason = f"Deleting for {folder_id} from database failed."
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+            else:
+                LOG.info(f"Deleting folder with id {folder_id} to database succeeded.")
+                return folder_id
+        return None
 
     async def check_folder_exists(self, folder_id: str) -> None:
         """Check the existance of a folder by its id in the database.
@@ -784,6 +787,18 @@ class FolderOperator:
             reason = f"Folder with id {folder_id} was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
+
+    async def check_folder_published(self, folder_id: str) -> None:
+        """Check the existance of a folder by its id in the database.
+
+        :raises: HTTPNotFound if folder does not exist
+        :returns: None
+        """
+        published = await self.db_service.published_folder(folder_id)
+        if published:
+            reason = f"Folder with id {folder_id} is published and cannot be deleted."
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
 
     def _generate_folder_id(self) -> str:
         """Generate random folder id.

@@ -104,6 +104,19 @@ class DBService:
         return user["userId"] if user else None
 
     @auto_reconnect
+    async def published_folder(self, folder_id: str) -> bool:
+        """Check folder is published.
+
+        :param folder_id: folder ID to be searched
+        :returns: True if exists and False if it does not
+        """
+        find_published = {"published": True, "folderId": folder_id}
+        exists = await self.database["folder"].find_one(find_published, {"_id": False})
+        check = True if exists else False
+        LOG.debug(f"DB check folder {folder_id} published, result: {check}.")
+        return check
+
+    @auto_reconnect
     async def read(self, collection: str, accession_id: str) -> Dict:
         """Find object, folder or user by its generated ID.
 
