@@ -404,9 +404,7 @@ class RESTApiHandler:
             if not req.path.startswith("/drafts"):
                 reason = "Replacing objects only allowed for XML."
                 LOG.error(reason)
-                raise web.HTTPMethodNotAllowed(
-                    method="PUT", allowed_methods=["POST", "GET", "PATCH", "DELETE"], reason=reason
-                )
+                raise web.HTTPUnsupportedMediaType(reason=reason)
             operator = Operator(db_client)
 
         await operator.check_exists(collection, accession_id)
