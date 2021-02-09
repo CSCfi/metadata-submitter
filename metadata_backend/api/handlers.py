@@ -718,12 +718,12 @@ class RESTApiHandler:
         current_user = req.app["Session"]["user_info"]
         user = await operator.read_user(current_user)
 
-        for fold in user["folders"]:
-            _folder = await fold_ops.read_folder(fold)
+        for folder_id in user["folders"]:
+            _folder = await fold_ops.read_folder(folder_id)
             if not _folder["published"]:
                 for obj in _folder["drafts"] + _folder["metadataObjects"]:
                     await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
-                await fold_ops.delete_folder(fold)
+                await fold_ops.delete_folder(folder_id)
 
         for tmpl in user["drafts"]:
             await obj_ops.delete_metadata_object(tmpl["schema"], tmpl["accessionId"])
