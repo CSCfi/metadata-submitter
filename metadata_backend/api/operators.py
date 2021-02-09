@@ -759,22 +759,23 @@ class FolderOperator:
         :raises: HTTPBadRequest if deleting was not successful
         :returns: ID of the folder deleted from database
         """
-        published = await self.db_service.published_folder(folder_id)
-        if not published:
-            try:
+        try:
+            published = await self.db_service.published_folder(folder_id)
+            if not published:
                 delete_success = await self.db_service.delete("folder", folder_id)
-            except (ConnectionFailure, OperationFailure) as error:
-                reason = f"Error happened while deleting folder: {error}"
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
-            if not delete_success:
-                reason = f"Deleting for {folder_id} from database failed."
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
             else:
-                LOG.info(f"Deleting folder with id {folder_id} to database succeeded.")
-                return folder_id
-        return None
+                return None
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while deleting folder: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        if not delete_success:
+            reason = f"Deleting for {folder_id} from database failed."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        else:
+            LOG.info(f"Deleting folder with id {folder_id} to database succeeded.")
+            return folder_id
 
     async def check_folder_exists(self, folder_id: str) -> None:
         """Check the existance of a folder by its id in the database.
