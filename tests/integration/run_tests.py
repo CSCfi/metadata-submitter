@@ -17,9 +17,7 @@ import aiohttp
 from aiohttp import FormData
 
 # === Global vars ===
-FORMAT = (
-    "[%(asctime)s][%(name)s][%(process)d %(processName)s]" "[%(levelname)-8s](L:%(lineno)s) %(funcName)s: %(message)s"
-)
+FORMAT = "[%(asctime)s][%(name)s][%(process)d %(processName)s][%(levelname)-8s](L:%(lineno)s) %(funcName)s: %(message)s"
 logging.basicConfig(format=FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
@@ -81,12 +79,12 @@ async def create_request_data(schema, filename):
     :param schema: name of the schema (folder) used for testing
     :param filename: name of the file used for testing.
     """
-    data = FormData()
+    request_data = FormData()
     path_to_file = testfiles_root / schema / filename
     path = path_to_file.as_posix()
     async with aiofiles.open(path, mode="r") as f:
-        data.add_field(schema.upper(), await f.read(), filename=filename, content_type="text/xml")
-    return data
+        request_data.add_field(schema.upper(), await f.read(), filename=filename, content_type="text/xml")
+    return request_data
 
 
 async def create_multi_file_request_data(filepairs):
@@ -94,13 +92,13 @@ async def create_multi_file_request_data(filepairs):
 
     :param filepairs: tuple containing pairs of schemas and filenames used for testing
     """
-    data = FormData()
+    request_data = FormData()
     for schema, filename in filepairs:
         path_to_file = testfiles_root / schema / filename
         path = path_to_file.as_posix()
         async with aiofiles.open(path, mode="r") as f:
-            data.add_field(schema.upper(), await f.read(), filename=filename, content_type="text/xml")
-    return data
+            request_data.add_field(schema.upper(), await f.read(), filename=filename, content_type="text/xml")
+    return request_data
 
 
 async def create_request_json_data(schema, filename):
@@ -112,8 +110,8 @@ async def create_request_json_data(schema, filename):
     path_to_file = testfiles_root / schema / filename
     path = path_to_file.as_posix()
     async with aiofiles.open(path, mode="r") as f:
-        data = await f.read()
-    return data
+        request_data = await f.read()
+    return request_data
 
 
 async def post_object(sess, schema, filename):
@@ -123,8 +121,8 @@ async def post_object(sess, schema, filename):
     :param schema: name of the schema (folder) used for testing
     :param filename: name of the file used for testing.
     """
-    data = await create_request_data(schema, filename)
-    async with sess.post(f"{objects_url}/{schema}", data=data) as resp:
+    request_data = await create_request_data(schema, filename)
+    async with sess.post(f"{objects_url}/{schema}", data=request_data) as resp:
         LOG.debug(f"Adding new object to {schema}")
         assert resp.status == 201, "HTTP Status code error"
         ans = await resp.json()
@@ -138,8 +136,8 @@ async def post_object_json(sess, schema, filename):
     :param schema: name of the schema (folder) used for testing
     :param filename: name of the file used for testing.
     """
-    data = await create_request_json_data(schema, filename)
-    async with sess.post(f"{objects_url}/{schema}", data=data) as resp:
+    request_data = await create_request_json_data(schema, filename)
+    async with sess.post(f"{objects_url}/{schema}", data=request_data) as resp:
         LOG.debug(f"Adding new draft object to {schema}")
         assert resp.status == 201, "HTTP Status code error"
         ans = await resp.json()
@@ -165,8 +163,8 @@ async def post_draft(sess, schema, filename):
     :param schema: name of the schema (folder) used for testing
     :param filename: name of the file used for testing.
     """
-    data = await create_request_data(schema, filename)
-    async with sess.post(f"{drafts_url}/{schema}", data=data) as resp:
+    request_data = await create_request_data(schema, filename)
+    async with sess.post(f"{drafts_url}/{schema}", data=request_data) as resp:
         LOG.debug(f"Adding new object to {schema}")
         assert resp.status == 201, "HTTP Status code error"
         ans = await resp.json()
@@ -180,8 +178,8 @@ async def post_draft_json(sess, schema, filename):
     :param schema: name of the schema (folder) used for testing
     :param filename: name of the file used for testing.
     """
-    data = await create_request_json_data(schema, filename)
-    async with sess.post(f"{drafts_url}/{schema}", data=data) as resp:
+    request_data = await create_request_json_data(schema, filename)
+    async with sess.post(f"{drafts_url}/{schema}", data=request_data) as resp:
         LOG.debug(f"Adding new draft object to {schema}")
         assert resp.status == 201, "HTTP Status code error"
         ans = await resp.json()
@@ -210,12 +208,43 @@ async def put_draft(sess, schema, draft_id, update_filename):
     :param draft_id: id of the draft
     :param update_filename: name of the file used to use for updating data.
     """
-    data2 = await create_request_json_data(schema, update_filename)
-    async with sess.put(f"{drafts_url}/{schema}/{draft_id}", data=data2) as resp:
+    request_data = await create_request_json_data(schema, update_filename)
+    async with sess.put(f"{drafts_url}/{schema}/{draft_id}", data=request_data) as resp:
         LOG.debug(f"Replace draft object in {schema}")
         assert resp.status == 200, "HTTP Status code error"
         ans_put = await resp.json()
         assert ans_put["accessionId"] == draft_id, "accession ID error"
+        return ans_put["accessionId"]
+
+
+async def put_object_json(sess, schema, accession_id, update_filename):
+    """Put one metadata object within session, returns accessionId.
+
+    :param sess: HTTP session in which request call is made
+    :param schema: name of the schema (folder) used for testing
+    :param draft_id: id of the draft
+    :param update_filename: name of the file used to use for updating data.
+    """
+    request_data = await create_request_json_data(schema, update_filename)
+    async with sess.put(f"{objects_url}/{schema}/{accession_id}", data=request_data) as resp:
+        LOG.debug(f"Try to replace object in {schema}")
+        assert resp.status == 415, "HTTP Status code error"
+
+
+async def put_object_xml(sess, schema, accession_id, update_filename):
+    """Put one metadata object within session, returns accessionId.
+
+    :param sess: HTTP session in which request call is made
+    :param schema: name of the schema (folder) used for testing
+    :param draft_id: id of the draft
+    :param update_filename: name of the file used to use for updating data.
+    """
+    request_data = await create_request_data(schema, update_filename)
+    async with sess.put(f"{objects_url}/{schema}/{accession_id}", data=request_data) as resp:
+        LOG.debug(f"Replace object with XML data in {schema}")
+        assert resp.status == 200, "HTTP Status code error"
+        ans_put = await resp.json()
+        assert ans_put["accessionId"] == accession_id, "accession ID error"
         return ans_put["accessionId"]
 
 
@@ -227,8 +256,8 @@ async def patch_draft(sess, schema, draft_id, update_filename):
     :param draft_id: id of the draft
     :param update_filename: name of the file used to use for updating data.
     """
-    data = await create_request_json_data(schema, update_filename)
-    async with sess.patch(f"{drafts_url}/{schema}/{draft_id}", data=data) as resp:
+    request_data = await create_request_json_data(schema, update_filename)
+    async with sess.patch(f"{drafts_url}/{schema}/{draft_id}", data=request_data) as resp:
         LOG.debug(f"Update draft object in {schema}")
         assert resp.status == 200, "HTTP Status code error"
         ans_put = await resp.json()
@@ -362,7 +391,7 @@ async def test_crud_works(sess, schema, filename, folder_id):
     async with sess.get(f"{objects_url}/{schema}/{accession_id[0]}") as resp:
         LOG.debug(f"Checking that {accession_id[0]} JSON is in {schema}")
         assert resp.status == 200, "HTTP Status code error"
-    async with sess.get(f"{objects_url}/{schema}/{accession_id[0]}" "?format=xml") as resp:
+    async with sess.get(f"{objects_url}/{schema}/{accession_id[0]}?format=xml") as resp:
         LOG.debug(f"Checking that {accession_id[0]} XML is in {schema}")
         assert resp.status == 200, "HTTP Status code error"
 
@@ -370,7 +399,7 @@ async def test_crud_works(sess, schema, filename, folder_id):
     async with sess.get(f"{objects_url}/{schema}/{accession_id[0]}") as resp:
         LOG.debug(f"Checking that JSON object {accession_id[0]} was deleted")
         assert resp.status == 404, "HTTP Status code error"
-    async with sess.get(f"{objects_url}/{schema}/{accession_id[0]}" "?format=xml") as resp:
+    async with sess.get(f"{objects_url}/{schema}/{accession_id[0]}?format=xml") as resp:
         LOG.debug(f"Checking that XML object {accession_id[0]} was deleted")
         assert resp.status == 404, "HTTP Status code error"
 
@@ -379,6 +408,25 @@ async def test_crud_works(sess, schema, filename, folder_id):
         res = await resp.json()
         expected_true = not any(d["accessionId"] == accession_id for d in res["metadataObjects"])
         assert expected_true, "draft object still exists"
+
+
+async def test_put_objects(sess, folder_id):
+    """Test PUT reqs.
+
+    Tries to create new object, gets accession id and checks if correct
+    resource is returned with that id. Try to use PUT with JSON and expect failure,
+    try to use PUT with xml and expect success.
+
+    :param sess: HTTP session in which request call is made
+    :param folder_id: id of the folder used to group submission
+    """
+    accession_id = await post_object(sess, "study", "SRP000539.xml")
+    patch_object = [
+        {"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id[0], "schema": "study"}}
+    ]
+    await patch_folder(sess, folder_id, patch_object)
+    await put_object_json(sess, "study", accession_id[0], "SRP000539.json")
+    await put_object_xml(sess, "study", accession_id[0], "SRP000539_put.xml")
 
 
 async def test_crud_drafts_works(sess, schema, orginal_file, update_file, folder_id):
@@ -511,7 +559,6 @@ async def test_getting_all_objects_from_schema_works(sess, folder_id):
     :param sess: HTTP session in which request call is made
     :param folder_id: id of the folder used to group submission objects
     """
-
     # Add objects
     files = await asyncio.gather(*[post_object(sess, "study", "SRP000539.xml") for _ in range(13)])
 
@@ -528,7 +575,7 @@ async def test_getting_all_objects_from_schema_works(sess, folder_id):
         assert ans["page"]["page"] == 1
         assert ans["page"]["size"] == 10
         assert ans["page"]["totalPages"] == 2
-        assert ans["page"]["totalObjects"] == 13
+        assert ans["page"]["totalObjects"] == 14
         assert len(ans["objects"]) == 10
 
     # Test with custom pagination values
@@ -538,7 +585,7 @@ async def test_getting_all_objects_from_schema_works(sess, folder_id):
         assert ans["page"]["page"] == 2
         assert ans["page"]["size"] == 3
         assert ans["page"]["totalPages"] == 5
-        assert ans["page"]["totalObjects"] == 13
+        assert ans["page"]["totalObjects"] == 14
         assert len(ans["objects"]) == 3
 
     # Test with wrong pagination values
@@ -884,6 +931,14 @@ async def main():
         basic_folder_id = await post_folder(sess, basic_folder)
 
         await asyncio.gather(*[test_crud_works(sess, schema, file, basic_folder_id) for schema, file in test_xml_files])
+
+        put_object_folder = {
+            "name": "test put object",
+            "description": "put object test folder",
+        }
+        put_object_folder = await post_folder(sess, put_object_folder)
+
+        await test_put_objects(sess, put_object_folder)
 
         # Test adding and getting draft objects
         LOG.debug("=== Testing basic CRUD drafts operations ===")
