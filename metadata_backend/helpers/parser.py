@@ -258,9 +258,9 @@ def jsonpatch_mongo(identifier: Dict, json_patch: List[Dict[str, Any]]) -> List:
                     )
                 )
             else:
-                queries.append(UpdateOne(identifier, {"$set": {op["path"][1:]: op["value"]}}))
+                queries.append(UpdateOne(identifier, {"$set": {op["path"][1:].replace("/", "."): op["value"]}}))
         elif op["op"] == "replace":
-            path = op["path"][1:-2] if op["path"].endswith("/-") else op["path"][1:]
+            path = op["path"][1:-2] if op["path"].endswith("/-") else op["path"][1:].replace("/", ".")
             queries.append(UpdateOne(identifier, {"$set": {path: op["value"]}}))
 
     return queries

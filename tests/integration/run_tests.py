@@ -802,6 +802,38 @@ async def test_get_folders_objects(sess, folder_id: str):
         response = await resp.json()
         assert len(response["folders"]) == 1
         assert response["folders"][0]["metadataObjects"][0]["accessionId"] == accession_id
+        assert "tags" not in response["folders"][0]["metadataObjects"][0]
+    patch_add_more_object = [
+        {
+            "op": "add",
+            "path": "/metadataObjects/0/tags",
+            "value": {"submissionType": "Form"},
+        }
+    ]
+    await patch_folder(sess, folder_id, patch_add_more_object)
+    async with sess.get(f"{folders_url}") as resp:
+        LOG.debug(f"Reading folder {folders_url}")
+        assert resp.status == 200, "HTTP Status code error"
+        response = await resp.json()
+        assert len(response["folders"]) == 1
+        assert response["folders"][0]["metadataObjects"][0]["accessionId"] == accession_id
+        assert response["folders"][0]["metadataObjects"][0]["tags"]["submissionType"] == "Form"
+
+    patch_change_tags_object = [
+        {
+            "op": "replace",
+            "path": "/metadataObjects/0/tags",
+            "value": {"submissionType": "XML"},
+        }
+    ]
+    await patch_folder(sess, folder_id, patch_change_tags_object)
+    async with sess.get(f"{folders_url}") as resp:
+        LOG.debug(f"Reading folder {folders_url}")
+        assert resp.status == 200, "HTTP Status code error"
+        response = await resp.json()
+        assert len(response["folders"]) == 1
+        assert response["folders"][0]["metadataObjects"][0]["accessionId"] == accession_id
+        assert response["folders"][0]["metadataObjects"][0]["tags"]["submissionType"] == "XML"
 
 
 async def test_submissions_work(sess, folder_id):

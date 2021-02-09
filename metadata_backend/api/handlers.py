@@ -1,5 +1,6 @@
 """Handle HTTP methods for server."""
 import json
+import re
 import mimetypes
 from collections import Counter
 from math import ceil
@@ -547,19 +548,24 @@ class RESTApiHandler:
         patch_ops = await self._get_data(req)
         allowed_paths = ["/name", "/description"]
         array_paths = ["/metadataObjects/-", "/drafts/-"]
+        tags_path = re.compile("^/(metadataObjects|drafts)/[0-9]*/(tags)$")
         for op in patch_ops:
-            if all(i not in op["path"] for i in allowed_paths + array_paths):
-                reason = f"Request contains '{op['path']}' key that cannot be updated to folders."
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
-            if op["op"] in ["remove", "copy", "test", "move"]:
-                reason = f"{op['op']} on {op['path']} is not allowed."
-                LOG.error(reason)
-                raise web.HTTPUnauthorized(reason=reason)
-            if op["op"] == "replace" and op["path"] in array_paths:
-                reason = f"{op['op']} on {op['path']} is not allowed."
-                LOG.error(reason)
-                raise web.HTTPUnauthorized(reason=reason)
+            if tags_path.match(op["path"]):
+                LOG.info(f"{op['op']} on tags in folder")
+                pass
+            else:
+                if all(i not in op["path"] for i in allowed_paths + array_paths):
+                    reason = f"Request contains '{op['path']}' key that cannot be updated to folders."
+                    LOG.error(reason)
+                    raise web.HTTPBadRequest(reason=reason)
+                if op["op"] in ["remove", "copy", "test", "move"]:
+                    reason = f"{op['op']} on {op['path']} is not allowed."
+                    LOG.error(reason)
+                    raise web.HTTPUnauthorized(reason=reason)
+                if op["op"] == "replace" and op["path"] in array_paths:
+                    reason = f"{op['op']} on {op['path']}; replacing all objects is not allowed."
+                    LOG.error(reason)
+                    raise web.HTTPUnauthorized(reason=reason)
 
         check_user = await self._handle_check_ownedby_user(req, "folders", folder_id)
         if not check_user:
