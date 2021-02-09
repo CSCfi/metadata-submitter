@@ -13,7 +13,7 @@ FROM python:3.7-alpine3.13 as BUILD-BACKEND
 
 RUN apk add --update \
     && apk add --no-cache build-base curl-dev linux-headers bash git musl-dev libffi-dev \
-    && apk add --no-cache python3-dev openssl-dev \
+    && apk add --no-cache python3-dev openssl-dev rust cargo \
     && rm -rf /var/cache/apk/*
 
 COPY requirements.txt /root/submitter/requirements.txt
@@ -22,9 +22,6 @@ COPY setup.py /root/submitter/setup.py
 COPY metadata_backend /root/submitter/metadata_backend
 COPY --from=BUILD-FRONTEND /metadata-submitter-frontend/build \
     /root/submitter/metadata_backend/frontend
-
-RUN apk add --no-cache rust cargo \
-    && rm -rf /var/cache/apk/*
 
 RUN pip install --upgrade pip && \
     pip install -r /root/submitter/requirements.txt && \
