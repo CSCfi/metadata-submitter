@@ -958,7 +958,7 @@ class TestOperators(AsyncTestCase):
         operator = UserOperator(self.client)
         operator.db_service.exists.return_value = futurized(True)
         operator.db_service.remove.return_value = futurized(self.test_user)
-        await operator.remove_objects(self.user_generated_id, "study", [])
+        await operator.remove_objects(self.user_generated_id, "study", ["id"])
         operator.db_service.exists.assert_called_once()
         operator.db_service.remove.assert_called_once()
         self.assertEqual(len(operator.db_service.remove.mock_calls), 1)
@@ -969,7 +969,7 @@ class TestOperators(AsyncTestCase):
         operator.db_service.exists.return_value = futurized(True)
         operator.db_service.remove.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
-            await operator.remove_objects(self.user_generated_id, "study", [])
+            await operator.remove_objects(self.user_generated_id, "study", ["id"])
 
     async def test_user_objects_append_passes(self):
         """Test append objects method for users works."""

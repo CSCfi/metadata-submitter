@@ -367,7 +367,7 @@ class RESTApiHandler:
             current_user = req.app["Session"]["user_info"]
             check_user = await user_op.check_user_has_doc(collection, current_user, accession_id)
             if check_user:
-                collection = "drafts"
+                await user_op.remove_objects(current_user, "drafts", [accession_id])
             else:
                 reason = "This object does not seem to belong to anything."
                 LOG.error(reason)
@@ -728,7 +728,7 @@ class RESTApiHandler:
 
         for folder_id in user["folders"]:
             _folder = await fold_ops.read_folder(folder_id)
-            if not _folder["published"]:
+            if "published" in _folder and not _folder["published"]:
                 for obj in _folder["drafts"] + _folder["metadataObjects"]:
                     await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
                 await fold_ops.delete_folder(folder_id)

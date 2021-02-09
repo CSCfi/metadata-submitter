@@ -350,7 +350,7 @@ async def patch_user(sess, user_id, real_user_id, json_patch):
     :param json_patch: JSON Patch object to use in PATCH call
     """
     async with sess.patch(f"{users_url}/current", data=json.dumps(json_patch)) as resp:
-        LOG.debug(f"Updating user {user_id}")
+        LOG.debug(f"Updating user {real_user_id}")
         assert resp.status == 200, "HTTP Status code error"
         ans_patch = await resp.json()
         assert ans_patch["userId"] == real_user_id, "user ID error"
@@ -486,8 +486,8 @@ async def test_patch_drafts_works(sess, schema, orginal_file, update_file, folde
     async with sess.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
         LOG.debug(f"Checking that {accession_id} JSON is in {schema}")
         res = await resp.json()
-        assert res["centerName"] == "GEOM", "content mismatch"
-        assert res["alias"] == "GSE10968", "content mismatch"
+        assert res["centerName"] == "GEOM", "object centerName content mismatch"
+        assert res["alias"] == "GSE10968", "object alias content mismatch"
         assert resp.status == 200, "HTTP Status code error"
 
     await delete_draft(sess, schema, accession_id)
@@ -619,12 +619,12 @@ async def test_crud_folders_works(sess):
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was patched")
         res = await resp.json()
-        assert res["folderId"] == folder_id, "content mismatch"
-        assert res["name"] == folder_data["name"], "content mismatch"
-        assert res["description"] == folder_data["description"], "content mismatch"
-        assert res["published"] is False, "content mismatch"
-        assert res["drafts"] == [{"accessionId": draft_id, "schema": "draft-sample"}], "content mismatch"
-        assert res["metadataObjects"] == [], "content mismatch"
+        assert res["folderId"] == folder_id, "expected folder id does not match"
+        assert res["name"] == folder_data["name"], "expected folder name does not match"
+        assert res["description"] == folder_data["description"], "folder description content mismatch"
+        assert res["published"] is False, "folder is published, expected False"
+        assert res["drafts"] == [{"accessionId": draft_id, "schema": "draft-sample"}], "folder drafts content mismatch"
+        assert res["metadataObjects"] == [], "there are objects in folder, expected empty"
 
     # Get the draft from the collection within this session and post it to objects collection
     draft_data = await get_draft(sess, "sample", draft_id)
@@ -632,7 +632,7 @@ async def test_crud_folders_works(sess):
         LOG.debug("Adding draft to actual objects")
         assert resp.status == 201, "HTTP Status code error"
         ans = await resp.json()
-        assert ans["accessionId"] != draft_id, "content mismatch"
+        assert ans["accessionId"] != draft_id, "draft id does not match expected"
         accession_id = ans["accessionId"]
 
     # Patch folder so that original draft becomes an object in the folder
@@ -643,20 +643,24 @@ async def test_crud_folders_works(sess):
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was patched")
         res = await resp.json()
-        assert res["folderId"] == folder_id, "content mismatch"
-        assert res["published"] is False, "content mismatch"
-        assert res["drafts"] == [{"accessionId": draft_id, "schema": "draft-sample"}], "content mismatch"
-        assert res["metadataObjects"] == [{"accessionId": accession_id, "schema": "sample"}], "content mismatch"
+        assert res["folderId"] == folder_id, "expected folder id does not match"
+        assert res["published"] is False, "folder is published, expected False"
+        assert res["drafts"] == [{"accessionId": draft_id, "schema": "draft-sample"}], "folder drafts content mismatch"
+        assert res["metadataObjects"] == [
+            {"accessionId": accession_id, "schema": "sample"}
+        ], "folder metadataObjects content mismatch"
 
     # Publish the folder
     folder_id = await publish_folder(sess, folder_id)
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was patched")
         res = await resp.json()
-        assert res["folderId"] == folder_id, "content mismatch"
-        assert res["published"] is True, "content mismatch"
-        assert res["drafts"] == [], "content mismatch"
-        assert res["metadataObjects"] == [{"accessionId": accession_id, "schema": "sample"}], "content mismatch"
+        assert res["folderId"] == folder_id, "expected folder id does not match"
+        assert res["published"] is True, "folder is not published, expected True"
+        assert res["drafts"] == [], "there are drafts in folder, expected empty"
+        assert res["metadataObjects"] == [
+            {"accessionId": accession_id, "schema": "sample"}
+        ], "folder metadataObjects content mismatch"
 
     # Delete folder
     await delete_folder_publish(sess, folder_id)
@@ -687,12 +691,12 @@ async def test_crud_folders_works_no_publish(sess):
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was patched")
         res = await resp.json()
-        assert res["folderId"] == folder_id, "content mismatch"
-        assert res["name"] == folder_data["name"], "content mismatch"
-        assert res["description"] == folder_data["description"], "content mismatch"
-        assert res["published"] is False, "content mismatch"
-        assert res["drafts"] == [{"accessionId": draft_id, "schema": "draft-sample"}], "content mismatch"
-        assert res["metadataObjects"] == [], "content mismatch"
+        assert res["folderId"] == folder_id, "expected folder id does not match"
+        assert res["name"] == folder_data["name"], "expected folder name does not match"
+        assert res["description"] == folder_data["description"], "folder description content mismatch"
+        assert res["published"] is False, "folder is published, expected False"
+        assert res["drafts"] == [{"accessionId": draft_id, "schema": "draft-sample"}], "folder drafts content mismatch"
+        assert res["metadataObjects"] == [], "there are objects in folder, expected empty"
 
     # Get the draft from the collection within this session and post it to objects collection
     draft = await get_draft(sess, "sample", draft_id)
@@ -700,7 +704,7 @@ async def test_crud_folders_works_no_publish(sess):
         LOG.debug("Adding draft to actual objects")
         assert resp.status == 201, "HTTP Status code error"
         ans = await resp.json()
-        assert ans["accessionId"] != draft_id, "content mismatch"
+        assert ans["accessionId"] != draft_id, "draft id does not match expected"
         accession_id = ans["accessionId"]
 
     # Patch folder so that original draft becomes an object in the folder
@@ -711,10 +715,12 @@ async def test_crud_folders_works_no_publish(sess):
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was patched")
         res = await resp.json()
-        assert res["folderId"] == folder_id, "content mismatch"
-        assert res["published"] is False, "content mismatch"
-        assert res["drafts"] == [{"accessionId": draft_id, "schema": "draft-sample"}], "content mismatch"
-        assert res["metadataObjects"] == [{"accessionId": accession_id, "schema": "sample"}], "content mismatch"
+        assert res["folderId"] == folder_id, "expected folder id does not match"
+        assert res["published"] is False, "folder is published, expected False"
+        assert res["drafts"] == [{"accessionId": draft_id, "schema": "draft-sample"}], "folder drafts content mismatch"
+        assert res["metadataObjects"] == [
+            {"accessionId": accession_id, "schema": "sample"}
+        ], "folder metadataObjects content mismatch"
 
     # Delete folder
     await delete_folder(sess, folder_id)
@@ -744,23 +750,54 @@ async def test_crud_users_works(sess):
     # Add user to session and create a patch to add folder to user
     folder_not_published = {"name": "Mock User Folder", "description": "Mock folder for testing users"}
     folder_id = await post_folder(sess, folder_not_published)
-    patch = [{"op": "add", "path": "/folders/-", "value": [folder_id]}]
-    await patch_user(sess, user_id, real_user_id, patch)
+    patch_add_folder = [{"op": "add", "path": "/folders/-", "value": [folder_id]}]
+    await patch_user(sess, user_id, real_user_id, patch_add_folder)
     async with sess.get(f"{users_url}/{user_id}") as resp:
-        LOG.debug(f"Checking that user {user_id} was patched")
+        LOG.debug(f"Checking that folder {folder_id} was added")
         res = await resp.json()
-        assert res["userId"] == real_user_id, "content mismatch"
-        assert res["name"] == f"{test_user_given} {test_user_family}", "content mismatch"
-        assert res["drafts"] == [], "content mismatch"
-        assert folder_id in res["folders"], "content mismatch"
+        assert res["userId"] == real_user_id, "user id does not match"
+        assert res["name"] == f"{test_user_given} {test_user_family}", "user name mismatch"
+        assert res["drafts"] == [], "user drafts content mismatch"
+        assert folder_id in res["folders"], "folder added missing mismatch"
 
-    folder_published = {"name": "Anoteher test Folder", "description": "Test published folder does not get deleted"}
-    folder_id = await post_folder(sess, folder_published)
-    folder_id = await publish_folder(sess, folder_id)
-    async with sess.get(f"{folders_url}/{folder_id}") as resp:
-        LOG.debug(f"Checking that folder {folder_id} was patched")
+    folder_published = {"name": "Another test Folder", "description": "Test published folder does not get deleted"}
+    publish_folder_id = await post_folder(sess, folder_published)
+    await publish_folder(sess, publish_folder_id)
+    async with sess.get(f"{folders_url}/{publish_folder_id}") as resp:
+        LOG.debug(f"Checking that folder {publish_folder_id} was published")
         res = await resp.json()
-        assert res["published"] is True, "content mismatch"
+        assert res["published"] is True, "folder is not published, expected True"
+
+    folder_not_published = {"name": "Delete Folder", "description": "Mock folder to delete while testing users"}
+    delete_folder_id = await post_folder(sess, folder_not_published)
+    patch_delete_folder = [{"op": "add", "path": "/folders/-", "value": [delete_folder_id]}]
+    await patch_user(sess, user_id, real_user_id, patch_delete_folder)
+    async with sess.get(f"{users_url}/{user_id}") as resp:
+        LOG.debug(f"Checking that folder {delete_folder_id} was added")
+        res = await resp.json()
+        assert delete_folder_id in res["folders"], "deleted folder added does not exists"
+    await delete_folder(sess, delete_folder_id)
+    async with sess.get(f"{users_url}/{user_id}") as resp:
+        LOG.debug(f"Checking that folder {delete_folder_id} was deleted")
+        res = await resp.json()
+        assert delete_folder_id not in res["folders"], "delete folder still exists at user"
+
+    draft_id = await post_draft_json(sess, "study", "SRP000539.json")
+    patch_drafts_user = [
+        {"op": "add", "path": "/drafts/-", "value": {"accessionId": draft_id, "schema": "draft-study"}}
+    ]
+    await patch_user(sess, user_id, real_user_id, patch_drafts_user)
+    async with sess.get(f"{users_url}/{user_id}") as resp:
+        LOG.debug(f"Checking that draft {draft_id} was added")
+        res = await resp.json()
+        assert res["drafts"][0]["accessionId"] == draft_id, "draft added does not exists"
+
+    await delete_draft(sess, "study", draft_id)
+
+    async with sess.get(f"{users_url}/{user_id}") as resp:
+        LOG.debug(f"Checking that draft {draft_id} was added")
+        res = await resp.json()
+        assert len(res["drafts"]) == 0, "draft was not deleted from users"
 
     # Delete user
     await delete_user(sess, user_id)
@@ -849,9 +886,9 @@ async def test_submissions_work(sess, folder_id):
         LOG.debug("Checking initial submission worked")
         assert resp.status == 200, "HTTP Status code error"
         res = await resp.json()
-        assert len(res) == 2, "content mismatch"
-        assert res[0]["schema"] == "study", "content mismatch"
-        assert res[1]["schema"] == "sample", "content mismatch"
+        assert len(res) == 2, "expected 2 objects"
+        assert res[0]["schema"] == "study", "expected first element to be study"
+        assert res[1]["schema"] == "sample", "expected second element to be sample"
         study_access_id = res[0]["accessionId"]
         patch = [
             {
@@ -872,11 +909,11 @@ async def test_submissions_work(sess, folder_id):
         LOG.debug("Sanity checking that previous object was added correctly")
         assert resp.status == 200, "HTTP Status code error"
         res = await resp.json()
-        assert res["accessionId"] == study_access_id, "content mismatch"
-        assert res["alias"] == "GSE10966", "content mismatch"
+        assert res["accessionId"] == study_access_id, "study accession id does not match"
+        assert res["alias"] == "GSE10966", "study alias does not match"
         assert res["descriptor"]["studyTitle"] == (
             "Highly integrated epigenome maps in Arabidopsis - whole genome shotgun bisulfite sequencing"
-        ), "content mismatch"
+        ), "study title does not match"
 
     # Give test file the correct accession id
     LOG.debug("Sharing the correct accession ID created in this test instance")
@@ -894,7 +931,7 @@ async def test_submissions_work(sess, folder_id):
         LOG.debug("Checking object in initial submission was modified")
         assert resp.status == 200, "HTTP Status code error"
         res = await resp.json()
-        assert len(res) == 2, "content mismatch"
+        assert len(res) == 2, "expected 2 objects"
         new_study_access_id = res[0]["accessionId"]
         assert study_access_id == new_study_access_id
 
@@ -903,9 +940,11 @@ async def test_submissions_work(sess, folder_id):
         LOG.debug("Checking that previous object was modified correctly")
         assert resp.status == 200, "HTTP Status code error"
         res = await resp.json()
-        assert res["accessionId"] == new_study_access_id, "content mismatch"
-        assert res["alias"] == "GSE10966", "content mismatch"
-        assert res["descriptor"]["studyTitle"] == ("Different title for testing purposes"), "content mismatch"
+        assert res["accessionId"] == new_study_access_id, "study accession id does not match"
+        assert res["alias"] == "GSE10966", "study alias does not match"
+        assert res["descriptor"]["studyTitle"] == (
+            "Different title for testing purposes"
+        ), "updated study title does not match"
 
     # Remove the accession id that was used for testing from test file
     LOG.debug("Sharing the correct accession ID created in this test instance")
