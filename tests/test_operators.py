@@ -66,8 +66,8 @@ class TestOperators(AsyncTestCase):
         self.folder_id = uuid4().hex
         self.test_folder = {
             "folderId": self.folder_id,
-            "name": "test",
-            "description": "test folder",
+            "name": "Mock folder",
+            "description": "test mock folder",
             "published": False,
             "metadataObjects": [{"accessionId": "EGA1234567", "schema": "study"}],
         }
@@ -134,7 +134,7 @@ class TestOperators(AsyncTestCase):
     async def test_reading_metadata_works_with_xml(self):
         """Test xml is read from db correctly."""
         operator = XMLOperator(self.client)
-        data = {"accessionId": "EGA123456", "content": "<TEST></TEST>"}
+        data = {"accessionId": "EGA123456", "content": "<MOCK_ELEM></MOCK_ELEM>"}
         operator.db_service.read.return_value = futurized(data)
         r_data, c_type = await operator.read_metadata_object("sample", "EGA123456")
         operator.db_service.read.assert_called_once_with("sample", "EGA123456")
@@ -257,7 +257,7 @@ class TestOperators(AsyncTestCase):
             return_value=futurized(self.accession_id),
         ):
             with patch("metadata_backend.api.operators.XMLToJSONParser"):
-                accession = await operator.create_metadata_object("study", "<TEST></TEST>")
+                accession = await operator.create_metadata_object("study", "<MOCK_ELEM></MOCK_ELEM>")
         operator.db_service.create.assert_called_once()
         self.assertEqual(accession, self.accession_id)
 
@@ -364,7 +364,7 @@ class TestOperators(AsyncTestCase):
         """Test XMLoperator creates object and adds necessary info."""
         operator = XMLOperator(self.client)
         operator.db_service.db_client = self.client
-        xml_data = "<TEST></TEST>"
+        xml_data = "<MOCK_ELEM></MOCK_ELEM>"
         with patch(
             ("metadata_backend.api.operators.Operator._format_data_to_create_and_add_to_db"),
             return_value=futurized(self.accession_id),
@@ -382,7 +382,7 @@ class TestOperators(AsyncTestCase):
         """Test XMLoperator replaces object and adds necessary info."""
         operator = XMLOperator(self.client)
         operator.db_service.db_client = self.client
-        xml_data = "<TEST></TEST>"
+        xml_data = "<MOCK_ELEM></MOCK_ELEM>"
         with patch(
             "metadata_backend.api.operators.Operator._format_data_to_replace_and_add_to_db",
             return_value=futurized(self.accession_id),
@@ -608,7 +608,7 @@ class TestOperators(AsyncTestCase):
     async def test_create_folder_works_and_returns_folderId(self):
         """Test create method for folders work."""
         operator = FolderOperator(self.client)
-        data = {"name": "test", "description": "test folder"}
+        data = {"name": "Mock folder", "description": "test mock folder"}
         operator.db_service.create.return_value = futurized(True)
         folder = await operator.create_folder(data)
         operator.db_service.create.assert_called_once()
@@ -617,7 +617,7 @@ class TestOperators(AsyncTestCase):
     async def test_create_folder_fails(self):
         """Test create method for folders fails."""
         operator = FolderOperator(self.client)
-        data = {"name": "test", "description": "test folder"}
+        data = {"name": "Mock folder", "description": "test mock folder"}
         operator.db_service.create.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
             await operator.create_folder(data)
@@ -625,7 +625,7 @@ class TestOperators(AsyncTestCase):
     async def test_create_folder_db_create_fails(self):
         """Test create method for folders db create fails."""
         operator = FolderOperator(self.client)
-        data = {"name": "test", "description": "test folder"}
+        data = {"name": "Mock folder", "description": "test mock folder"}
         operator.db_service.create.return_value = futurized(False)
         with self.assertRaises(HTTPBadRequest):
             await operator.create_folder(data)

@@ -51,7 +51,7 @@ class AccessHandlerFailTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_callback_fails_with_wrong_oidc_state(self):
         """Test that callback endpoint raises 403 when state in the query is not the same as specified in session."""
-        self.client.app["Session"] = {"oidc_state": "test_value"}
+        self.client.app["Session"] = {"oidc_state": "mock_oidc_state_value"}
         response = await self.client.get("/callback?state=wrong_value&code=code")
         self.assertEqual(response.status, 403)
         resp_json = await response.json()
@@ -59,15 +59,15 @@ class AccessHandlerFailTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_callback_(self):
-        """Test that callback ..."""
-        self.client.app["Session"] = {"oidc_state": "test_value"}
-        response = await self.client.get("/callback?state=test_value&code=code")
+        """Test that callback."""
+        self.client.app["Session"] = {"oidc_state": "mock_oidc_state_value"}
+        response = await self.client.get("/callback?state=mock_oidc_state_value&code=code")
         self.assertEqual(response.status, 500)
 
     @unittest_run_loop
     async def test_logout_works(self):
         """Test that logout revokes all tokens."""
-        self.client.app["Session"] = {"access_token": "test_token"}
+        self.client.app["Session"] = {"access_token": "mock_token_value"}
         response = await self.client.get("/logout")
         self.assertEqual(response.status, 404)
         self.assertEqual(self.client.app["Session"], {})
@@ -105,10 +105,10 @@ class AccessHandlerPassTestCase(AsyncTestCase):
         """Test retrieving key value pair from session exceptions."""
         request = Mock_Request()
         with self.assertRaises(HTTPUnauthorized):
-            await self.AccessHandler._get_from_session(request, "smth")
+            await self.AccessHandler._get_from_session(request, "mock_value")
 
         with self.assertRaises(HTTPForbidden):
-            await self.AccessHandler._get_from_session("request", "smth")
+            await self.AccessHandler._get_from_session("request", "mock_value")
 
     async def test_get_jwk_fail(self):
         """Test retrieving JWK exception."""
@@ -131,14 +131,14 @@ class AccessHandlerPassTestCase(AsyncTestCase):
             self.assertEqual(result, json.dumps(data))
 
     async def test_set_user_fail(self):
-        """Test set user exception."""
+        """Test set user raises exception."""
         request = Mock_Request()
         tk = "something"
         with self.assertRaises(HTTPBadRequest):
             await self.AccessHandler._set_user(request, tk)
 
     async def test_set_user(self):
-        """Test set user."""
+        """Test set user success."""
         request = Mock_Request()
         request.app["db_client"] = MagicMock()
         request.app["Session"] = {}

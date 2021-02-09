@@ -43,8 +43,8 @@ class HandlersTestCase(AioHTTPTestCase):
         self.folder_id = "FOL12345678"
         self.test_folder = {
             "folderId": self.folder_id,
-            "name": "test",
-            "description": "test folder",
+            "name": "mock folder",
+            "description": "test mock folder",
             "published": False,
             "metadataObjects": [
                 {"accessionId": "EDAG3991701442770179", "schema": "study"},
