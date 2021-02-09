@@ -16,13 +16,31 @@
     },
     "drafts": {
       "type": "array",
-      "title": "The drafts schema",
-      "items": [
-        {
-          "type": "string",
-          "title": "Folder Id"
+      "title": "User templates schema",
+      "items": {
+        "type": "object",
+        "title": "Template objects",
+        "required": [
+          "accessionId",
+          "schema"
+        ],
+        "properties": {
+          "accessionId": {
+            "type": "string",
+            "title": "Accession Id"
+          },
+          "schema": {
+            "type": "string",
+            "title": "Draft object's schema"
+          },
+          "tags": {
+            "type": "object",
+            "title": "Different tags to describe the template object.",
+            "additionalProperties": true,
+            "properties": {}
+          }
         }
-      ]
+      }
     },
     "folders": {
       "type": "array",

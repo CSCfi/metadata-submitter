@@ -49,13 +49,13 @@ submit_url = f"{base_url}/submit"
 publish_url = f"{base_url}/publish"
 
 user_id = "current"
-test_user_given = "test"
-test_user_family = "test"
-test_user = "test@test.what"
+test_user_given = "Given"
+test_user_family = "Family"
+test_user = "user_given@test.what"
 
-other_test_user_given = "test"
-other_test_user_family = "test"
-other_test_user = "test2@test.what"
+other_test_user_given = "Mock"
+other_test_user_family = "Family"
+other_test_user = "mock_user@test.what"
 
 
 # === Helper functions ===
@@ -117,7 +117,12 @@ async def create_request_json_data(schema, filename):
 
 
 async def post_object(sess, schema, filename):
-    """Post one metadata object within session, returns accessionId."""
+    """Post one metadata object within session, returns accessionId.
+
+    :param sess: HTTP session in which request call is made
+    :param schema: name of the schema (folder) used for testing
+    :param filename: name of the file used for testing.
+    """
     data = await create_request_data(schema, filename)
     async with sess.post(f"{objects_url}/{schema}", data=data) as resp:
         LOG.debug(f"Adding new object to {schema}")
@@ -127,7 +132,12 @@ async def post_object(sess, schema, filename):
 
 
 async def post_object_json(sess, schema, filename):
-    """Post & put one metadata object within session, returns accessionId."""
+    """Post & put one metadata object within session, returns accessionId.
+
+    :param sess: HTTP session in which request call is made
+    :param schema: name of the schema (folder) used for testing
+    :param filename: name of the file used for testing.
+    """
     data = await create_request_json_data(schema, filename)
     async with sess.post(f"{objects_url}/{schema}", data=data) as resp:
         LOG.debug(f"Adding new draft object to {schema}")
@@ -137,14 +147,24 @@ async def post_object_json(sess, schema, filename):
 
 
 async def delete_object(sess, schema, accession_id):
-    """Delete metadata object within session."""
+    """Delete metadata object within session.
+
+    :param sess: HTTP session in which request call is made
+    :param schema: name of the schema (folder) used for testing
+    :param accession_id: id of the object
+    """
     async with sess.delete(f"{objects_url}/{schema}/{accession_id}") as resp:
         LOG.debug(f"Deleting object {accession_id} from {schema}")
         assert resp.status == 204, "HTTP Status code error"
 
 
 async def post_draft(sess, schema, filename):
-    """Post one draft metadata object within session, returns accessionId."""
+    """Post one draft metadata object within session, returns accessionId.
+
+    :param sess: HTTP session in which request call is made
+    :param schema: name of the schema (folder) used for testing
+    :param filename: name of the file used for testing.
+    """
     data = await create_request_data(schema, filename)
     async with sess.post(f"{drafts_url}/{schema}", data=data) as resp:
         LOG.debug(f"Adding new object to {schema}")
@@ -154,7 +174,12 @@ async def post_draft(sess, schema, filename):
 
 
 async def post_draft_json(sess, schema, filename):
-    """Post & put one metadata object within session, returns accessionId."""
+    """Post & put one metadata object within session, returns accessionId.
+
+    :param sess: HTTP session in which request call is made
+    :param schema: name of the schema (folder) used for testing
+    :param filename: name of the file used for testing.
+    """
     data = await create_request_json_data(schema, filename)
     async with sess.post(f"{drafts_url}/{schema}", data=data) as resp:
         LOG.debug(f"Adding new draft object to {schema}")
@@ -164,45 +189,71 @@ async def post_draft_json(sess, schema, filename):
 
 
 async def get_draft(sess, schema, draft_id):
-    """Get and return a drafted metadata object."""
-    async with sess.get(f"{drafts_url}/sample/{draft_id}") as resp:
+    """Get and return a drafted metadata object.
+
+    :param sess: HTTP session in which request call is made
+    :param schema: name of the schema (folder) used for testing
+    :param draft_id: id of the draft
+    """
+    async with sess.get(f"{drafts_url}/{schema}/{draft_id}") as resp:
         LOG.debug(f"Checking that {draft_id} JSON exists")
         assert resp.status == 200, "HTTP Status code error"
         ans = await resp.json()
         return json.dumps(ans)
 
 
-async def put_draft(sess, schema, test_id, filename2):
-    """Put one metadata object within session, returns accessionId."""
-    data2 = await create_request_json_data(schema, filename2)
-    async with sess.put(f"{drafts_url}/{schema}/{test_id}", data=data2) as resp:
+async def put_draft(sess, schema, draft_id, update_filename):
+    """Put one metadata object within session, returns accessionId.
+
+    :param sess: HTTP session in which request call is made
+    :param schema: name of the schema (folder) used for testing
+    :param draft_id: id of the draft
+    :param update_filename: name of the file used to use for updating data.
+    """
+    data2 = await create_request_json_data(schema, update_filename)
+    async with sess.put(f"{drafts_url}/{schema}/{draft_id}", data=data2) as resp:
         LOG.debug(f"Replace draft object in {schema}")
         assert resp.status == 200, "HTTP Status code error"
         ans_put = await resp.json()
-        assert ans_put["accessionId"] == test_id, "accession ID error"
+        assert ans_put["accessionId"] == draft_id, "accession ID error"
         return ans_put["accessionId"]
 
 
-async def patch_draft(sess, schema, test_id, filename2):
-    """Patch one metadata object within session, return accessionId."""
-    data = await create_request_json_data(schema, filename2)
-    async with sess.patch(f"{drafts_url}/{schema}/{test_id}", data=data) as resp:
+async def patch_draft(sess, schema, draft_id, update_filename):
+    """Patch one metadata object within session, return accessionId.
+
+    :param sess: HTTP session in which request call is made
+    :param schema: name of the schema (folder) used for testing
+    :param draft_id: id of the draft
+    :param update_filename: name of the file used to use for updating data.
+    """
+    data = await create_request_json_data(schema, update_filename)
+    async with sess.patch(f"{drafts_url}/{schema}/{draft_id}", data=data) as resp:
         LOG.debug(f"Update draft object in {schema}")
         assert resp.status == 200, "HTTP Status code error"
         ans_put = await resp.json()
-        assert ans_put["accessionId"] == test_id, "accession ID error"
+        assert ans_put["accessionId"] == draft_id, "accession ID error"
         return ans_put["accessionId"]
 
 
-async def delete_draft(sess, schema, accession_id):
-    """Delete metadata object within session."""
-    async with sess.delete(f"{drafts_url}/{schema}/{accession_id}") as resp:
-        LOG.debug(f"Deleting draft object {accession_id} from {schema}")
+async def delete_draft(sess, schema, draft_id):
+    """Delete metadata object within session.
+
+    :param sess: HTTP session in which request call is made
+    :param schema: name of the schema (folder) used for testing
+    :param draft_id: id of the draft
+    """
+    async with sess.delete(f"{drafts_url}/{schema}/{draft_id}") as resp:
+        LOG.debug(f"Deleting draft object {draft_id} from {schema}")
         assert resp.status == 204, "HTTP Status code error"
 
 
 async def post_folder(sess, data):
-    """Post one object folder within session, returns folderId."""
+    """Post one object folder within session, returns folderId.
+
+    :param sess: HTTP session in which request call is made
+    :param data: data used to update the folder
+    """
     async with sess.post(f"{folders_url}", data=json.dumps(data)) as resp:
         LOG.debug("Adding new folder")
         assert resp.status == 201, "HTTP Status code error"
@@ -210,9 +261,14 @@ async def post_folder(sess, data):
         return ans["folderId"]
 
 
-async def patch_folder(sess, folder_id, patch):
-    """Patch one object folder within session, return folderId."""
-    async with sess.patch(f"{folders_url}/{folder_id}", data=json.dumps(patch)) as resp:
+async def patch_folder(sess, folder_id, json_patch):
+    """Patch one object folder within session, return folderId.
+
+    :param sess: HTTP session in which request call is made
+    :param folder_id: id of the folder
+    :param json_patch: JSON Patch object to use in PATCH call
+    """
+    async with sess.patch(f"{folders_url}/{folder_id}", data=json.dumps(json_patch)) as resp:
         LOG.debug(f"Updating folder {folder_id}")
         assert resp.status == 200, "HTTP Status code error"
         ans_patch = await resp.json()
@@ -221,7 +277,11 @@ async def patch_folder(sess, folder_id, patch):
 
 
 async def publish_folder(sess, folder_id):
-    """Publish one object folder within session, return folderId."""
+    """Publish one object folder within session, return folderId.
+
+    :param sess: HTTP session in which request call is made
+    :param folder_id: id of the folder
+    """
     async with sess.patch(f"{publish_url}/{folder_id}") as resp:
         LOG.debug(f"Publishing folder {folder_id}")
         assert resp.status == 200, "HTTP Status code error"
@@ -231,15 +291,36 @@ async def publish_folder(sess, folder_id):
 
 
 async def delete_folder(sess, folder_id):
-    """Delete object folder within session."""
+    """Delete object folder within session.
+
+    :param sess: HTTP session in which request call is made
+    :param folder_id: id of the folder
+    """
     async with sess.delete(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Deleting folder {folder_id}")
         assert resp.status == 204, "HTTP Status code error"
 
 
-async def patch_user(sess, user_id, real_user_id, patch):
-    """Patch one user object within session, return userId."""
-    async with sess.patch(f"{users_url}/current", data=json.dumps(patch)) as resp:
+async def delete_folder_publish(sess, folder_id):
+    """Delete object folder within session.
+
+    :param sess: HTTP session in which request call is made
+    :param folder_id: id of the folder
+    """
+    async with sess.delete(f"{folders_url}/{folder_id}") as resp:
+        LOG.debug(f"Deleting folder {folder_id}")
+        assert resp.status == 401, "HTTP Status code error"
+
+
+async def patch_user(sess, user_id, real_user_id, json_patch):
+    """Patch one user object within session, return userId.
+
+    :param sess: HTTP session in which request call is made
+    :param user_id: id of the user (current)
+    :param real_user_id: id of the user in the database
+    :param json_patch: JSON Patch object to use in PATCH call
+    """
+    async with sess.patch(f"{users_url}/current", data=json.dumps(json_patch)) as resp:
         LOG.debug(f"Updating user {user_id}")
         assert resp.status == 200, "HTTP Status code error"
         ans_patch = await resp.json()
@@ -248,7 +329,11 @@ async def patch_user(sess, user_id, real_user_id, patch):
 
 
 async def delete_user(sess, user_id):
-    """Delete user object within session."""
+    """Delete user object within session.
+
+    :param sess: HTTP session in which request call is made
+    :param user_id: id of the user (current)
+    """
     async with sess.delete(f"{users_url}/current") as resp:
         LOG.debug(f"Deleting user {user_id}")
         # we expect 404 as there is no frontend
@@ -264,12 +349,16 @@ async def test_crud_works(sess, schema, filename, folder_id):
     resource is returned with that id. Finally deletes the object and checks it
     was deleted.
 
+    :param sess: HTTP session in which request call is made
     :param schema: name of the schema (folder) used for testing
     :param filename: name of the file used for testing.
+    :param folder_id: id of the folder used to group submission
     """
     accession_id = await post_object(sess, schema, filename)
-    patch = [{"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id[0], "schema": schema}}]
-    await patch_folder(sess, folder_id, patch)
+    patch_object = [
+        {"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id[0], "schema": schema}}
+    ]
+    await patch_folder(sess, folder_id, patch_object)
     async with sess.get(f"{objects_url}/{schema}/{accession_id[0]}") as resp:
         LOG.debug(f"Checking that {accession_id[0]} JSON is in {schema}")
         assert resp.status == 200, "HTTP Status code error"
@@ -292,20 +381,25 @@ async def test_crud_works(sess, schema, filename, folder_id):
         assert expected_true, "draft object still exists"
 
 
-async def test_crud_drafts_works(sess, schema, filename, filename2, folder_id):
+async def test_crud_drafts_works(sess, schema, orginal_file, update_file, folder_id):
     """Test drafts REST api POST, PUT and DELETE reqs.
 
     Tries to create new draft object, gets accession id and checks if correct
     resource is returned with that id. Finally deletes the object and checks it
     was deleted.
 
+    :param sess: HTTP session in which request call is made
     :param schema: name of the schema (folder) used for testing
-    :param filename: name of the file used for testing.
+    :param orginal_file: name of the file used for creating object.
+    :param update_file: name of the file used for updating object.
+    :param folder_id: id of the folder used to group submission objects
     """
-    test_id = await post_draft_json(sess, schema, filename)
-    patch = [{"op": "add", "path": "/drafts/-", "value": {"accessionId": test_id, "schema": f"draft-{schema}"}}]
-    await patch_folder(sess, folder_id, patch)
-    accession_id = await put_draft(sess, schema, test_id, filename2)
+    draft_id = await post_draft_json(sess, schema, orginal_file)
+    patch_draft_data = [
+        {"op": "add", "path": "/drafts/-", "value": {"accessionId": draft_id, "schema": f"draft-{schema}"}}
+    ]
+    await patch_folder(sess, folder_id, patch_draft_data)
+    accession_id = await put_draft(sess, schema, draft_id, update_file)
     async with sess.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
         LOG.debug(f"Checking that {accession_id} JSON is in {schema}")
         assert resp.status == 200, "HTTP Status code error"
@@ -322,20 +416,25 @@ async def test_crud_drafts_works(sess, schema, filename, filename2, folder_id):
         assert expected_true, "draft object still exists"
 
 
-async def test_patch_drafts_works(sess, schema, filename, filename2, folder_id):
+async def test_patch_drafts_works(sess, schema, orginal_file, update_file, folder_id):
     """Test REST api POST, PATCH and DELETE reqs.
 
     Tries to create put and patch object, gets accession id and
     checks if correct resource is returned with that id.
     Finally deletes the object and checks it was deleted.
 
+    :param sess: HTTP session in which request call is made
     :param schema: name of the schema (folder) used for testing
-    :param filename: name of the file used for testing.
+    :param orginal_file: name of the file used for creating object.
+    :param update_file: name of the file used for updating object.
+    :param folder_id: id of the folder used to group submission objects
     """
-    test_id = await post_draft_json(sess, schema, filename)
-    patch = [{"op": "add", "path": "/drafts/-", "value": {"accessionId": test_id, "schema": f"draft-{schema}"}}]
-    await patch_folder(sess, folder_id, patch)
-    accession_id = await patch_draft(sess, schema, test_id, filename2)
+    draft_id = await post_draft_json(sess, schema, orginal_file)
+    patch_draft_data = [
+        {"op": "add", "path": "/drafts/-", "value": {"accessionId": draft_id, "schema": f"draft-{schema}"}}
+    ]
+    await patch_folder(sess, folder_id, patch_draft_data)
+    accession_id = await patch_draft(sess, schema, draft_id, update_file)
     async with sess.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
         LOG.debug(f"Checking that {accession_id} JSON is in {schema}")
         res = await resp.json()
@@ -350,12 +449,18 @@ async def test_patch_drafts_works(sess, schema, filename, filename2, folder_id):
 
 
 async def test_querying_works(sess, folder_id):
-    """Test query endpoint with working and failing query."""
+    """Test query endpoint with working and failing query.
+
+    :param sess: HTTP session in which request call is made
+    :param folder_id: id of the folder used to group submission objects
+    """
     files = await asyncio.gather(*[post_object(sess, schema, filename) for schema, filename in test_xml_files])
 
     for accession_id, schema in files:
-        patch = [{"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id, "schema": schema}}]
-        await patch_folder(sess, folder_id, patch)
+        patch_folder_obj = [
+            {"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id, "schema": schema}}
+        ]
+        await patch_folder(sess, folder_id, patch_folder_obj)
 
     queries = {
         "study": [
@@ -401,14 +506,20 @@ async def test_querying_works(sess, folder_id):
 
 
 async def test_getting_all_objects_from_schema_works(sess, folder_id):
-    """Check that /objects/study returns objects with correct pagination."""
+    """Check that /objects/study returns objects with correct pagination.
+
+    :param sess: HTTP session in which request call is made
+    :param folder_id: id of the folder used to group submission objects
+    """
 
     # Add objects
     files = await asyncio.gather(*[post_object(sess, "study", "SRP000539.xml") for _ in range(13)])
 
     for accession_id, schema in files:
-        patch = [{"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id, "schema": schema}}]
-        await patch_folder(sess, folder_id, patch)
+        patch_folder_obj = [
+            {"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id, "schema": schema}}
+        ]
+        await patch_folder(sess, folder_id, patch_folder_obj)
 
     # Test default values
     async with sess.get(f"{objects_url}/study") as resp:
@@ -441,31 +552,36 @@ async def test_getting_all_objects_from_schema_works(sess, folder_id):
 
 
 async def test_crud_folders_works(sess):
-    """Test folders REST api POST, GET, PATCH, PUBLISH and DELETE reqs."""
+    """Test folders REST api POST, GET, PATCH, PUBLISH and DELETE reqs.
+
+    :param sess: HTTP session in which request call is made
+    """
     # Create new folder and check its creation succeeded
-    data = {"name": "test", "description": "test folder"}
-    folder_id = await post_folder(sess, data)
+    folder_data = {"name": "Mock Folder", "description": "Mock Base folder to folder ops"}
+    folder_id = await post_folder(sess, folder_data)
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was created")
         assert resp.status == 200, "HTTP Status code error"
 
     # Create draft from test XML file and patch the draft into the newly created folder
     draft_id = await post_draft(sess, "sample", "SRS001433.xml")
-    patch1 = [{"op": "add", "path": "/drafts/-", "value": [{"accessionId": draft_id, "schema": "draft-sample"}]}]
-    folder_id = await patch_folder(sess, folder_id, patch1)
+    patch_add_draft = [
+        {"op": "add", "path": "/drafts/-", "value": [{"accessionId": draft_id, "schema": "draft-sample"}]}
+    ]
+    folder_id = await patch_folder(sess, folder_id, patch_add_draft)
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was patched")
         res = await resp.json()
         assert res["folderId"] == folder_id, "content mismatch"
-        assert res["name"] == "test", "content mismatch"
-        assert res["description"] == "test folder", "content mismatch"
+        assert res["name"] == folder_data["name"], "content mismatch"
+        assert res["description"] == folder_data["description"], "content mismatch"
         assert res["published"] is False, "content mismatch"
         assert res["drafts"] == [{"accessionId": draft_id, "schema": "draft-sample"}], "content mismatch"
         assert res["metadataObjects"] == [], "content mismatch"
 
     # Get the draft from the collection within this session and post it to objects collection
-    draft = await get_draft(sess, "sample", draft_id)
-    async with sess.post(f"{objects_url}/sample", data=draft) as resp:
+    draft_data = await get_draft(sess, "sample", draft_id)
+    async with sess.post(f"{objects_url}/sample", data=draft_data) as resp:
         LOG.debug("Adding draft to actual objects")
         assert resp.status == 201, "HTTP Status code error"
         ans = await resp.json()
@@ -473,10 +589,10 @@ async def test_crud_folders_works(sess):
         accession_id = ans["accessionId"]
 
     # Patch folder so that original draft becomes an object in the folder
-    patch2 = [
+    patch_folder_move_draft = [
         {"op": "add", "path": "/metadataObjects/-", "value": [{"accessionId": accession_id, "schema": "sample"}]},
     ]
-    folder_id = await patch_folder(sess, folder_id, patch2)
+    folder_id = await patch_folder(sess, folder_id, patch_folder_move_draft)
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was patched")
         res = await resp.json()
@@ -496,6 +612,64 @@ async def test_crud_folders_works(sess):
         assert res["metadataObjects"] == [{"accessionId": accession_id, "schema": "sample"}], "content mismatch"
 
     # Delete folder
+    await delete_folder_publish(sess, folder_id)
+
+    async with sess.get(f"{drafts_url}/sample/{draft_id}") as resp:
+        LOG.debug(f"Checking that JSON object {accession_id} was deleted")
+        assert resp.status == 404, "HTTP Status code error"
+
+
+async def test_crud_folders_works_no_publish(sess):
+    """Test folders REST api POST, GET, PATCH, PUBLISH and DELETE reqs.
+
+    :param sess: HTTP session in which request call is made
+    """
+    # Create new folder and check its creation succeeded
+    folder_data = {"name": "Mock Unpublished folder", "description": "test umpublished folder"}
+    folder_id = await post_folder(sess, folder_data)
+    async with sess.get(f"{folders_url}/{folder_id}") as resp:
+        LOG.debug(f"Checking that folder {folder_id} was created")
+        assert resp.status == 200, "HTTP Status code error"
+
+    # Create draft from test XML file and patch the draft into the newly created folder
+    draft_id = await post_draft(sess, "sample", "SRS001433.xml")
+    patch_add_draft = [
+        {"op": "add", "path": "/drafts/-", "value": [{"accessionId": draft_id, "schema": "draft-sample"}]}
+    ]
+    folder_id = await patch_folder(sess, folder_id, patch_add_draft)
+    async with sess.get(f"{folders_url}/{folder_id}") as resp:
+        LOG.debug(f"Checking that folder {folder_id} was patched")
+        res = await resp.json()
+        assert res["folderId"] == folder_id, "content mismatch"
+        assert res["name"] == folder_data["name"], "content mismatch"
+        assert res["description"] == folder_data["description"], "content mismatch"
+        assert res["published"] is False, "content mismatch"
+        assert res["drafts"] == [{"accessionId": draft_id, "schema": "draft-sample"}], "content mismatch"
+        assert res["metadataObjects"] == [], "content mismatch"
+
+    # Get the draft from the collection within this session and post it to objects collection
+    draft = await get_draft(sess, "sample", draft_id)
+    async with sess.post(f"{objects_url}/sample", data=draft) as resp:
+        LOG.debug("Adding draft to actual objects")
+        assert resp.status == 201, "HTTP Status code error"
+        ans = await resp.json()
+        assert ans["accessionId"] != draft_id, "content mismatch"
+        accession_id = ans["accessionId"]
+
+    # Patch folder so that original draft becomes an object in the folder
+    patch_folder_move_draft = [
+        {"op": "add", "path": "/metadataObjects/-", "value": [{"accessionId": accession_id, "schema": "sample"}]},
+    ]
+    folder_id = await patch_folder(sess, folder_id, patch_folder_move_draft)
+    async with sess.get(f"{folders_url}/{folder_id}") as resp:
+        LOG.debug(f"Checking that folder {folder_id} was patched")
+        res = await resp.json()
+        assert res["folderId"] == folder_id, "content mismatch"
+        assert res["published"] is False, "content mismatch"
+        assert res["drafts"] == [{"accessionId": draft_id, "schema": "draft-sample"}], "content mismatch"
+        assert res["metadataObjects"] == [{"accessionId": accession_id, "schema": "sample"}], "content mismatch"
+
+    # Delete folder
     await delete_folder(sess, folder_id)
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was deleted")
@@ -509,7 +683,10 @@ async def test_crud_folders_works(sess):
 
 
 async def test_crud_users_works(sess):
-    """Test users REST api GET, PATCH and DELETE reqs."""
+    """Test users REST api GET, PATCH and DELETE reqs.
+
+    :param sess: HTTP session in which request call is made
+    """
     # Check user exists in database (requires an user object to be mocked)
     async with sess.get(f"{users_url}/{user_id}") as resp:
         LOG.debug(f"Reading user {user_id}")
@@ -518,17 +695,25 @@ async def test_crud_users_works(sess):
         real_user_id = response["userId"]
 
     # Add user to session and create a patch to add folder to user
-    data = {"name": "test", "description": "test folder"}
-    folder_id = await post_folder(sess, data)
+    folder_not_published = {"name": "Mock User Folder", "description": "Mock folder for testing users"}
+    folder_id = await post_folder(sess, folder_not_published)
     patch = [{"op": "add", "path": "/folders/-", "value": [folder_id]}]
     await patch_user(sess, user_id, real_user_id, patch)
     async with sess.get(f"{users_url}/{user_id}") as resp:
         LOG.debug(f"Checking that user {user_id} was patched")
         res = await resp.json()
         assert res["userId"] == real_user_id, "content mismatch"
-        assert res["name"] == "test test", "content mismatch"
+        assert res["name"] == f"{test_user_given} {test_user_family}", "content mismatch"
         assert res["drafts"] == [], "content mismatch"
         assert folder_id in res["folders"], "content mismatch"
+
+    folder_published = {"name": "Anoteher test Folder", "description": "Test published folder does not get deleted"}
+    folder_id = await post_folder(sess, folder_published)
+    folder_id = await publish_folder(sess, folder_id)
+    async with sess.get(f"{folders_url}/{folder_id}") as resp:
+        LOG.debug(f"Checking that folder {folder_id} was patched")
+        res = await resp.json()
+        assert res["published"] is True, "content mismatch"
 
     # Delete user
     await delete_user(sess, user_id)
@@ -540,7 +725,11 @@ async def test_crud_users_works(sess):
 
 
 async def test_get_folders(sess, folder_id: str):
-    """Test folders REST api GET ."""
+    """Test folders REST api GET .
+
+    :param sess: HTTP session in which request call is made
+    :param folder_id: id of the folder used to group submission objects
+    """
     async with sess.get(f"{folders_url}") as resp:
         LOG.debug(f"Reading folder {folder_id}")
         assert resp.status == 200, "HTTP Status code error"
@@ -550,10 +739,16 @@ async def test_get_folders(sess, folder_id: str):
 
 
 async def test_get_folders_objects(sess, folder_id: str):
-    """Test folders REST api GET with objects."""
+    """Test folders REST api GET with objects.
+
+    :param sess: HTTP session in which request call is made
+    :param folder_id: id of the folder used to group submission objects
+    """
     accession_id = await post_object_json(sess, "study", "SRP000539.json")
-    patch = [{"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id, "schema": "study"}}]
-    await patch_folder(sess, folder_id, patch)
+    patch_add_object = [
+        {"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id, "schema": "study"}}
+    ]
+    await patch_folder(sess, folder_id, patch_add_object)
     async with sess.get(f"{folders_url}") as resp:
         LOG.debug(f"Reading folder {folders_url}")
         assert resp.status == 200, "HTTP Status code error"
@@ -563,11 +758,15 @@ async def test_get_folders_objects(sess, folder_id: str):
 
 
 async def test_submissions_work(sess, folder_id):
-    """Test actions in submission xml files."""
+    """Test actions in submission xml files.
+
+    :param sess: HTTP session in which request call is made
+    :param folder_id: id of the folder used to group submission objects
+    """
     # Post original submission with two 'add' actions
     sub_files = [("submission", "ERA521986_valid.xml"), ("study", "SRP000539.xml"), ("sample", "SRS001433.xml")]
-    data = await create_multi_file_request_data(sub_files)
-    async with sess.post(f"{submit_url}", data=data) as resp:
+    submission_data = await create_multi_file_request_data(sub_files)
+    async with sess.post(f"{submit_url}", data=submission_data) as resp:
         LOG.debug("Checking initial submission worked")
         assert resp.status == 200, "HTTP Status code error"
         res = await resp.json()
@@ -611,8 +810,8 @@ async def test_submissions_work(sess, folder_id):
 
     # Post new submission that modifies previously added study object and validates it
     sub_files = [("submission", "ERA521986_modify.xml"), ("study", "SRP000539_modified.xml")]
-    data = await create_multi_file_request_data(sub_files)
-    async with sess.post(f"{submit_url}", data=data) as resp:
+    more_submission_data = await create_multi_file_request_data(sub_files)
+    async with sess.post(f"{submit_url}", data=more_submission_data) as resp:
         LOG.debug("Checking object in initial submission was modified")
         assert resp.status == 200, "HTTP Status code error"
         res = await resp.json()
@@ -640,7 +839,10 @@ async def test_submissions_work(sess, folder_id):
 
 
 async def test_health_check(sess):
-    """Test the health check endpoint."""
+    """Test the health check endpoint.
+
+    :param sess: HTTP session in which request call is made
+    """
     async with sess.get(f"{base_url}/health") as resp:
         LOG.debug("Checking that health status is ok")
         assert resp.status == 200, "HTTP Status code error"
@@ -723,6 +925,7 @@ async def main():
         # Test creating, reading, updating and deleting folders
         LOG.debug("=== Testing basic CRUD folder operations ===")
         await test_crud_folders_works(sess)
+        await test_crud_folders_works_no_publish(sess)
 
         # Test add, modify, validate and release action with submissions
         LOG.debug("=== Testing actions within submissions ===")

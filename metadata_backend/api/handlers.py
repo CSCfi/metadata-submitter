@@ -111,7 +111,7 @@ class RESTApiHandler:
             yield result
 
     async def _handle_user_objects_collection(self, req: Request, collection: str) -> List:
-        """Retrieve list of  objects accession ids belonging to user in collection.
+        """Retrieve list of objects accession ids belonging to user in collection.
 
         :param req: HTTP request
         :param collection: collection or schema of document
@@ -335,7 +335,7 @@ class RESTApiHandler:
         """Delete metadata object from database.
 
         :param req: DELETE request
-        :raises: HTTPUnauthorized if object not owned by user
+        :raises: HTTPUnauthorized if object not owned by user or folder published
         :returns: HTTPNoContent response
         """
         schema_type = req.match_info["schema"]
@@ -590,7 +590,12 @@ class RESTApiHandler:
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)
 
-        LOG.info(f"GET folder with ID {folder_id} was successful.")
+        folder = await operator.read_folder(folder_id)
+
+        obj_ops = Operator(db_client)
+
+        for obj in folder["drafts"]:
+            await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
 
         # Patch the folder into a published state
         patch = [
@@ -615,6 +620,7 @@ class RESTApiHandler:
         operator = FolderOperator(db_client)
 
         await operator.check_folder_exists(folder_id)
+        await operator.check_folder_published(folder_id)
 
         check_user = await self._handle_check_ownedby_user(req, "folders", folder_id)
         if not check_user:
@@ -622,13 +628,20 @@ class RESTApiHandler:
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)
 
-        folder = await operator.delete_folder(folder_id)
+        obj_ops = Operator(db_client)
+
+        folder = await operator.read_folder(folder_id)
+
+        for obj in folder["drafts"] + folder["metadataObjects"]:
+            await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
+
+        _folder_id = await operator.delete_folder(folder_id)
 
         user_op = UserOperator(db_client)
         current_user = req.app["Session"]["user_info"]
         await user_op.remove_objects(current_user, "folders", [folder_id])
 
-        LOG.info(f"DELETE folder with ID {folder} was successful.")
+        LOG.info(f"DELETE folder with ID {_folder_id} was successful.")
         return web.Response(status=204)
 
     async def get_user(self, req: Request) -> Response:
@@ -696,13 +709,27 @@ class RESTApiHandler:
         user_id = req.match_info["userId"]
         if user_id != "current":
             LOG.info(f"User ID {user_id} delete was requested")
-            raise web.HTTPUnauthorized(reason="Only current user deleteion is allowed")
+            raise web.HTTPUnauthorized(reason="Only current user deletion is allowed")
         db_client = req.app["db_client"]
         operator = UserOperator(db_client)
+        fold_ops = FolderOperator(db_client)
+        obj_ops = Operator(db_client)
 
         current_user = req.app["Session"]["user_info"]
-        user = await operator.delete_user(current_user)
-        LOG.info(f"DELETE user with ID {user} was successful.")
+        user = await operator.read_user(current_user)
+
+        for folder_id in user["folders"]:
+            _folder = await fold_ops.read_folder(folder_id)
+            if not _folder["published"]:
+                for obj in _folder["drafts"] + _folder["metadataObjects"]:
+                    await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
+                await fold_ops.delete_folder(folder_id)
+
+        for tmpl in user["drafts"]:
+            await obj_ops.delete_metadata_object(tmpl["schema"], tmpl["accessionId"])
+
+        await operator.delete_user(current_user)
+        LOG.info(f"DELETE user with ID {current_user} was successful.")
 
         req.app["Session"]["access_token"] = None
         req.app["Session"]["user_info"] = None

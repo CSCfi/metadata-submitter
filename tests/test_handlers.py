@@ -43,10 +43,13 @@ class HandlersTestCase(AioHTTPTestCase):
         self.folder_id = "FOL12345678"
         self.test_folder = {
             "folderId": self.folder_id,
-            "name": "test",
-            "description": "test folder",
+            "name": "mock folder",
+            "description": "test mock folder",
             "published": False,
-            "metadataObjects": ["EDAG3991701442770179", "EGA123456"],
+            "metadataObjects": [
+                {"accessionId": "EDAG3991701442770179", "schema": "study"},
+                {"accessionId": "EGA123456", "schema": "sample"},
+            ],
             "drafts": [],
         }
         self.user_id = "USR12345678"
@@ -651,7 +654,9 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_folder_deletion_is_called(self):
         """Test that folder would be deleted."""
+        self.MockedFolderOperator().read_folder.return_value = futurized(self.test_folder)
         response = await self.client.delete("/folders/FOL12345678")
+        self.MockedFolderOperator().read_folder.assert_called_once()
         self.MockedFolderOperator().delete_folder.assert_called_once()
         self.assertEqual(response.status, 204)
 
@@ -667,8 +672,10 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_user_deletion_is_called(self):
         """Test that user object would be deleted."""
+        self.MockedUserOperator().read_user.return_value = futurized(self.test_user)
         self.MockedUserOperator().delete_user.return_value = futurized(None)
         await self.client.delete("/users/current")
+        self.MockedUserOperator().read_user.assert_called_once()
         self.MockedUserOperator().delete_user.assert_called_once()
 
     @unittest_run_loop

@@ -76,11 +76,11 @@
           },
           "schema": {
             "type": "string",
-            "title": "Draft bbject's schema"
+            "title": "Draft object's schema"
           },
           "tags": {
             "type": "object",
-            "title": "Different tags to describe the object.",
+            "title": "Different tags to describe the draft object.",
             "additionalProperties": true,
             "properties": {
               "submissionType": {

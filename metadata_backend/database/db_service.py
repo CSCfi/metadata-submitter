@@ -73,7 +73,7 @@ class DBService:
         :returns: True if operation was successful
         """
         result = await self.database[collection].insert_one(document)
-        LOG.debug("DB doc inserted.")
+        LOG.debug(f"DB document inserted in {collection}.")
         return result.acknowledged
 
     @auto_reconnect
@@ -104,6 +104,19 @@ class DBService:
         return user["userId"] if user else None
 
     @auto_reconnect
+    async def published_folder(self, folder_id: str) -> bool:
+        """Check folder is published.
+
+        :param folder_id: folder ID to be searched
+        :returns: True if exists and False if it does not
+        """
+        find_published = {"published": True, "folderId": folder_id}
+        exists = await self.database["folder"].find_one(find_published, {"_id": False})
+        check = True if exists else False
+        LOG.debug(f"DB check folder {folder_id} published, result: {check}.")
+        return check
+
+    @auto_reconnect
     async def read(self, collection: str, accession_id: str) -> Dict:
         """Find object, folder or user by its generated ID.
 
@@ -114,7 +127,7 @@ class DBService:
         id_key = f"{collection}Id" if (collection in ["folder", "user"]) else "accessionId"
         projection = {"_id": False, "eppn": False} if collection == "user" else {"_id": False}
         find_by_id = {id_key: accession_id}
-        LOG.debug(f"DB doc read for {accession_id}.")
+        LOG.debug(f"DB doc in {collection} read for {accession_id}.")
         return await self.database[collection].find_one(find_by_id, projection)
 
     @auto_reconnect
@@ -131,7 +144,7 @@ class DBService:
         requests = jsonpatch_mongo(find_by_id, patch_data)
         try:
             result = await self.database[collection].bulk_write(requests, ordered=False)
-            LOG.debug(f"DB doc patched for {accession_id} with data {patch_data}.")
+            LOG.debug(f"DB doc in {collection} patched for {accession_id} with data {patch_data}.")
             return result.acknowledged
         except BulkWriteError as bwe:
             LOG.error(bwe.details)
@@ -151,7 +164,7 @@ class DBService:
         find_by_id = {id_key: accession_id}
         update_op = {"$set": data_to_be_updated}
         result = await self.database[collection].update_one(find_by_id, update_op)
-        LOG.debug(f"DB doc updated for {accession_id} with data {data_to_be_updated}.")
+        LOG.debug(f"DB doc in {collection} updated for {accession_id} with data {data_to_be_updated}.")
         return result.acknowledged
 
     @auto_reconnect
@@ -170,7 +183,7 @@ class DBService:
         result = await self.database[collection].find_one_and_update(
             find_by_id, remove_op, projection={"_id": False}, return_document=ReturnDocument.AFTER
         )
-        LOG.debug(f"DB doc data {data_to_be_removed} removed from {accession_id}.")
+        LOG.debug(f"DB doc in {collection} with data: {data_to_be_removed} removed from {accession_id}.")
         return result
 
     @auto_reconnect
@@ -189,7 +202,7 @@ class DBService:
         result = await self.database[collection].find_one_and_update(
             find_by_id, append_op, projection={"_id": False}, return_document=ReturnDocument.AFTER
         )
-        LOG.debug(f"DB doc data {data_to_be_addded} appeneded for {accession_id}.")
+        LOG.debug(f"DB doc in {collection} with data: {data_to_be_addded} appeneded for {accession_id}.")
         return result
 
     @auto_reconnect
@@ -214,7 +227,7 @@ class DBService:
             if "publishDate" in old_data:
                 new_data["publishDate"] = old_data["publishDate"]
         result = await self.database[collection].replace_one(find_by_id, new_data)
-        LOG.debug(f"DB doc replaced with {new_data} for {accession_id}.")
+        LOG.debug(f"DB doc in {collection} replaced with {new_data} for {accession_id}.")
         return result.acknowledged
 
     @auto_reconnect
@@ -228,7 +241,7 @@ class DBService:
         id_key = f"{collection}Id" if (collection in ["folder", "user"]) else "accessionId"
         find_by_id = {id_key: accession_id}
         result = await self.database[collection].delete_one(find_by_id)
-        LOG.debug(f"DB doc deleted for {accession_id}.")
+        LOG.debug(f"DB doc in {collection} deleted for {accession_id}.")
         return result.acknowledged
 
     def query(self, collection: str, query: Dict) -> AsyncIOMotorCursor:
@@ -241,7 +254,7 @@ class DBService:
         :param query: query to be used
         :returns: Async cursor instance which should be awaited when iterating
         """
-        LOG.debug("DB doc query performed.")
+        LOG.debug(f"DB doc query performed in {collection}.")
         projection = {"_id": False, "eppn": False} if collection == "user" else {"_id": False}
         return self.database[collection].find(query, projection)
 
@@ -253,7 +266,7 @@ class DBService:
         :param query: query to be used
         :returns: Estimate of the number of documents
         """
-        LOG.debug("DB doc count performed.")
+        LOG.debug(f"DB doc count performed in {collection}.")
         return await self.database[collection].count_documents(query)
 
     @auto_reconnect
@@ -264,6 +277,6 @@ class DBService:
         :param query: query to be used
         :returns: aggregated query result list
         """
-        LOG.debug("DB aggregate performed.")
+        LOG.debug(f"DB aggregate performed in {collection}.")
         aggregate = self.database[collection].aggregate(query)
         return [doc async for doc in aggregate]
