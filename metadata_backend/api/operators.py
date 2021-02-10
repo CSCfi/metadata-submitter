@@ -534,8 +534,10 @@ class XMLOperator(BaseOperator):
         schema = schema_type[6:] if schema_type.startswith("draft") else schema_type
         data_as_json = XMLToJSONParser().parse(schema, data)
         accession_id = await Operator(db_client)._format_data_to_create_and_add_to_db(schema_type, data_as_json)
-        LOG.debug(f"XMLOperator formatted data for {schema_type} to add to DB")
-        return await self._insert_formatted_object_to_db(schema_type, {"accessionId": accession_id, "content": data})
+        LOG.debug(f"XMLOperator formatted data for backup-{schema_type} to add to DB")
+        return await self._insert_formatted_object_to_db(
+            f"backup-{schema_type}", {"accessionId": accession_id, "content": data}
+        )
 
     async def _format_data_to_replace_and_add_to_db(self, schema_type: str, accession_id: str, data: str) -> str:
         """Format XML metadata object and add it to db.
@@ -555,9 +557,9 @@ class XMLOperator(BaseOperator):
         accession_id = await Operator(db_client)._format_data_to_replace_and_add_to_db(
             schema_type, accession_id, data_as_json
         )
-        LOG.debug(f"XMLOperator formatted data for {schema_type} to add to DB")
+        LOG.debug(f"XMLOperator formatted data for backup-{schema_type} to add to DB")
         return await self._replace_object_from_db(
-            schema_type, accession_id, {"accessionId": accession_id, "content": data}
+            f"backup-{schema_type}", accession_id, {"accessionId": accession_id, "content": data}
         )
 
     async def _format_data_to_update_and_add_to_db(self, schema_type: str, accession_id: str, data: str) -> str:
