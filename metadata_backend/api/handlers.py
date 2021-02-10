@@ -270,6 +270,7 @@ class RESTApiHandler:
         req_format = req.query.get("format", "json").lower()
         db_client = req.app["db_client"]
         operator = XMLOperator(db_client) if req_format == "xml" else Operator(db_client)
+        type_collection = f"backup-{collection}" if req_format == "xml" else collection
 
         await operator.check_exists(collection, accession_id)
 
@@ -279,7 +280,7 @@ class RESTApiHandler:
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)
 
-        data, content_type = await operator.read_metadata_object(collection, accession_id)
+        data, content_type = await operator.read_metadata_object(type_collection, accession_id)
 
         data = data if req_format == "xml" else json.dumps(data)
         LOG.info(f"GET object with accesssion ID {accession_id} from schema {collection}.")
