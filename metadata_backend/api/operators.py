@@ -836,8 +836,10 @@ class UserOperator:
         :returns: True if accession_id belongs to user
         """
         try:
-            doc_path = "drafts" if collection.startswith("draft") else "folders"
-            user_query = {doc_path: {"$elemMatch": {"$eq": accession_id}}, "userId": user_id}
+            if collection.startswith("draft"):
+                user_query = {"drafts": {"$elemMatch": {"accessionId": accession_id}}, "userId": user_id}
+            else:
+                user_query = {"folders": {"$elemMatch": {"$eq": accession_id}}, "userId": user_id}
             user_cursor = self.db_service.query("user", user_query)
             user_check = [user async for user in user_cursor]
         except (ConnectionFailure, OperationFailure) as error:
@@ -970,13 +972,19 @@ class UserOperator:
         :raises: HTTPBadRequest if db connection fails
         returns: None
         """
+        remove_content: Dict
         try:
             await self._check_user_exists(user_id)
-            upd_content = {collection: {"$in": object_ids}}
-            result = await self.db_service.remove("user", user_id, upd_content)
-            JSONValidator(result, "users").validate
+            for obj in object_ids:
+                if collection == "drafts":
+                    remove_content = {"drafts": {"accessionId": obj}}
+                else:
+                    remove_content = {"folders": obj}
+                result = await self.db_service.remove("user", user_id, remove_content)
+                LOG.info(f"result {result}")
+                JSONValidator(result, "users").validate
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting user: {error}"
+            reason = f"Error happened while removing objects from user: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
