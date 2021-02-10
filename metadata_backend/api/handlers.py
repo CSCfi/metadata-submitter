@@ -402,7 +402,9 @@ class RESTApiHandler:
         else:
             content = await self._get_data(req)
             if not req.path.startswith("/drafts"):
-                JSONValidator(content, schema_type).validate
+                reason = "Replacing objects only allowed for XML."
+                LOG.error(reason)
+                raise web.HTTPUnsupportedMediaType(reason=reason)
             operator = Operator(db_client)
 
         await operator.check_exists(collection, accession_id)
