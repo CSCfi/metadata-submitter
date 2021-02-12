@@ -49,7 +49,7 @@ the table below.
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
 | ``OIDC_URL``                   | ``-``                         | OIDC base URL for constructing OIDC protocol endpoint calls.                      |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
-| ``REDIRECT_URL``               | ``-``                         | Enable this for working with front-end on ``localhost`` or or change to           |
+| ``REDIRECT_URL``               | ``-``                         | Enable this for working with front-end on ``localhost`` or change to              |
 |                                |                               | ``http://frontend:3000`` if started using ``docker-compose`` (see :ref:`deploy`). |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
 | ``JWL_URL``                    | ``-``                         | JWK OIDC URL for retrieving key for validating ID token.                          |
