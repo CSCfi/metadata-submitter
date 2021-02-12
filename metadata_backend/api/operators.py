@@ -685,7 +685,8 @@ class FolderOperator:
         :param que: Dict containing query information
         :returns: Query result as list
         """
-        folders = await self.db_service.aggregate("folder", que)
+        folder_cursor = self.db_service.query("folder", que)
+        folders = [folder async for folder in folder_cursor]
         return folders
 
     async def read_folder(self, folder_id: str) -> Dict:
@@ -696,7 +697,6 @@ class FolderOperator:
         :returns: Object folder formatted to JSON
         """
         try:
-            await self.check_folder_exists(folder_id)
             folder = await self.db_service.read("folder", folder_id)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting folder: {error}"
@@ -715,7 +715,6 @@ class FolderOperator:
         :returns: ID of the folder updated to database
         """
         try:
-            await self.check_folder_exists(folder_id)
             update_success = await self.db_service.patch("folder", folder_id, patch)
             sanity_check = await self.db_service.read("folder", folder_id)
             JSONValidator(sanity_check, "folders").validate
@@ -742,7 +741,6 @@ class FolderOperator:
         :returns: None
         """
         try:
-            await self.check_folder_exists(folder_id)
             folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
             upd_content = {folder_path: {"accessionId": accession_id}}
             result = await self.db_service.remove("folder", folder_id, upd_content)
@@ -754,7 +752,7 @@ class FolderOperator:
 
         LOG.info(f"Removing object {accession_id} from {folder_id} succeeded.")
 
-    async def delete_folder(self, folder_id: str) -> str:
+    async def delete_folder(self, folder_id: str) -> Union[str, None]:
         """Delete object folder from database.
 
         :param folder_id: ID of the folder to delete.
@@ -762,8 +760,11 @@ class FolderOperator:
         :returns: ID of the folder deleted from database
         """
         try:
-            await self.check_folder_exists(folder_id)
-            delete_success = await self.db_service.delete("folder", folder_id)
+            published = await self.db_service.published_folder(folder_id)
+            if not published:
+                delete_success = await self.db_service.delete("folder", folder_id)
+            else:
+                return None
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while deleting folder: {error}"
             LOG.error(reason)
@@ -787,6 +788,18 @@ class FolderOperator:
             reason = f"Folder with id {folder_id} was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
+
+    async def check_folder_published(self, folder_id: str) -> None:
+        """Check the existance of a folder by its id in the database.
+
+        :raises: HTTPNotFound if folder does not exist
+        :returns: None
+        """
+        published = await self.db_service.published_folder(folder_id)
+        if published:
+            reason = f"Folder with id {folder_id} is published and cannot be deleted."
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
 
     def _generate_folder_id(self) -> str:
         """Generate random folder id.
@@ -823,8 +836,10 @@ class UserOperator:
         :returns: True if accession_id belongs to user
         """
         try:
-            doc_path = "drafts" if collection.startswith("draft") else "folders"
-            user_query = {doc_path: {"$elemMatch": {"$eq": accession_id}}, "userId": user_id}
+            if collection.startswith("draft"):
+                user_query = {"drafts": {"$elemMatch": {"accessionId": accession_id}}, "userId": user_id}
+            else:
+                user_query = {"folders": {"$elemMatch": {"$eq": accession_id}}, "userId": user_id}
             user_cursor = self.db_service.query("user", user_query)
             user_check = [user async for user in user_cursor]
         except (ConnectionFailure, OperationFailure) as error:
@@ -852,12 +867,12 @@ class UserOperator:
         """
         user_data: Dict[str, Union[list, str]] = dict()
 
-        eppn = data[0]
+        eppn = data[0]  # this also can be sub key
         name = data[1]
         try:
             existing_user_id = await self.db_service.exists_eppn_user(eppn, name)
             if existing_user_id:
-                LOG.info(f"User with eppn: {eppn} exists, no need to create.")
+                LOG.info(f"User with identifier: {eppn} exists, no need to create.")
                 return existing_user_id
             else:
                 user_data["drafts"] = []
@@ -957,13 +972,19 @@ class UserOperator:
         :raises: HTTPBadRequest if db connection fails
         returns: None
         """
+        remove_content: Dict
         try:
             await self._check_user_exists(user_id)
-            upd_content = {collection: {"$in": object_ids}}
-            result = await self.db_service.remove("user", user_id, upd_content)
-            JSONValidator(result, "users").validate
+            for obj in object_ids:
+                if collection == "drafts":
+                    remove_content = {"drafts": {"accessionId": obj}}
+                else:
+                    remove_content = {"folders": obj}
+                result = await self.db_service.remove("user", user_id, remove_content)
+                LOG.info(f"result {result}")
+                JSONValidator(result, "users").validate
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting user: {error}"
+            reason = f"Error happened while removing objects from user: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -988,7 +1009,7 @@ class UserOperator:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         else:
-            LOG.info(f"{user_id} successfully deleted from collection.")
+            LOG.info(f"User {user_id} successfully deleted.")
             return user_id
 
     async def _check_user_exists(self, user_id: str) -> None:

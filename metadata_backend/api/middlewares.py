@@ -15,6 +15,17 @@ from ..helpers.logger import LOG
 from ..conf.conf import aai_config
 
 
+def _check_error_page_requested(req: Request, error_code: int) -> web.Response:  # type:ignore
+    """Return the correct error page with correct status code."""
+    if "Accept" in req.headers and req.headers["Accept"]:
+        if req.headers["Accept"].split(",")[0] in ["text/html", "application/xhtml+xml"]:
+            raise web.HTTPSeeOther(
+                f"/error{str(error_code)}",
+                content_type="text/html",
+                headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"},
+            )
+
+
 @middleware
 async def http_error_handler(req: Request, handler: Callable) -> Response:
     """Middleware for handling exceptions received from the API methods.
@@ -32,20 +43,27 @@ async def http_error_handler(req: Request, handler: Callable) -> Response:
         LOG.error(details)
         c_type = "application/problem+json"
         if error.status == 400:
+            _check_error_page_requested(req, 500)
             raise web.HTTPBadRequest(text=details, content_type=c_type)
         elif error.status == 401:
+            _check_error_page_requested(req, 401)
             raise web.HTTPUnauthorized(
                 headers={"WWW-Authenticate": 'OAuth realm="/", charset="UTF-8"'}, text=details, content_type=c_type
             )
         elif error.status == 403:
+            _check_error_page_requested(req, 403)
             raise web.HTTPForbidden(text=details, content_type=c_type)
         elif error.status == 404:
+            _check_error_page_requested(req, 404)
             raise web.HTTPNotFound(text=details, content_type=c_type)
         elif error.status == 415:
+            _check_error_page_requested(req, 500)
             raise web.HTTPUnsupportedMediaType(text=details, content_type=c_type)
         elif error.status == 422:
+            _check_error_page_requested(req, 500)
             raise web.HTTPUnprocessableEntity(text=details, content_type=c_type)
         else:
+            _check_error_page_requested(req, 500)
             raise web.HTTPServerError()
 
 
@@ -76,7 +94,7 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
     if (
         request.path.startswith(tuple(main_paths))
         or request.path == "/"
-        or (request.path.startswith("/") and request.path.endswith(tuple([".svg", ".jpg", ".ico"])))
+        or (request.path.startswith("/") and request.path.endswith(tuple([".svg", ".jpg", ".ico", ".json"])))
     ):
         return await handler(request)
     if request.path.startswith(tuple(controlled_paths)) and "OIDC_URL" in os.environ and bool(os.getenv("OIDC_URL")):

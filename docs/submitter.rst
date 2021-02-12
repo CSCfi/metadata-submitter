@@ -18,11 +18,21 @@ the table below.
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
 | ENV                            | Default                       | Description                                                                       |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
-| ``MONGODB_HOST``               | ``localhost:27017``           | Mongodb server hostname, with port specified if needed.                           |
+| ``MONGO_HOST``                 | ``localhost:27017``           | Mongodb server hostname, with port specified if needed.                           |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``MONGO_AUTHDB``               | ``-``                         | Mongodb authentication database.                                                  |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
 | ``MONGO_INITDB_ROOT_USERNAME`` | ``admin``                     | Admin username for mongodb.                                                       |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
 | ``MONGO_INITDB_ROOT_PASSWORD`` | ``admin``                     | Admin password for mongodb.                                                       |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``MONGO_SSL``                  | ``-``                         | Set to True to enable MONGO TLS connection url.                                   |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``MONGO_SSL_CA``               | ``-``                         | Path to CA file, required if ``MONGO_SSL`` enabled.                               |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``MONGO_SSL_CLIENT_KEY``       | ``-``                         | Path to contains client's TLS/SSL X.509 key,required if ``MONGO_SSL`` enabled.    |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``MONGO_SSL_CLIENT_CERT``      | ``-``                         | Path to contains client's TLS/SSL X.509 cert,required if ``MONGO_SSL`` enabled.   |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
 | ``AAI_CLIENT_SECRET``          | ``public```                   | OIDC client secret.                                                               |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
@@ -39,12 +49,30 @@ the table below.
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
 | ``OIDC_URL``                   | ``-``                         | OIDC base URL for constructing OIDC protocol endpoint calls.                      |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
-| ``REDIRECT_URL``               | ``-``                         | Enable this for working with front-end on ``localhost`` or or change to           |
+| ``REDIRECT_URL``               | ``-``                         | Enable this for working with front-end on ``localhost`` or change to              |
 |                                |                               | ``http://frontend:3000`` if started using ``docker-compose`` (see :ref:`deploy`). |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
 | ``JWK_URL``                    | ``-``                         | JWK OIDC URL for retrieving key for validating ID token.                          |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
 | ``LOG_LEVEL``                  | ``INFO``                      | Set logging level, uppercase.                                                     |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``SERVE_KEY``                  | ``-``                         | Keyfile used for TLS.                                                             |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``SERVE_CERT``                 | ``-``                         | Certificate used for TLS.                                                         |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``SERVE_CA``                   | ``-``                         | CA file used for TLS.                                                             |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``SERVE_SLLVERSION``           | ``-``                         | Version used for TLS, see `the gunicorn documentation for ssl_version             |
+|                                |                               | <https://docs.gunicorn.org/en/stable/settings.html#ssl-version>`_                 |
+|                                |                               | for more information.                                                             |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``SERVE_CIPHERS``              | ``-``                         | Ciphers used for TLS, see `the gunicorn documentation for ciphers                 |
+|                                |                               | <https://docs.gunicorn.org/en/stable/settings.html#ciphers>`_                     |
+|                                |                               | for more information.                                                             |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``SERVE_CERTREQS``             | ``-``                         | Client certificate requirement used for TLS, see `the gunicorn documentation for  |
+|                                |                               | cert_reqs <https://docs.gunicorn.org/en/stable/settings.html#cert-reqs>`_         |
+|                                |                               | for more information.                                                             |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
 
 Install and run
@@ -63,7 +91,7 @@ For installing ``metadata-submitter`` backend do the following:
 
     - ``MONGO_INITDB_ROOT_USERNAME`` (username for admin user to mondogdb instance)
     - ``MONGO_INITDB_ROOT_PASSWORD`` (password for admin user to mondogdb instance)
-    - ``MONGODB_HOST`` (host and port for mongodb instancem, e.g. `localhost:27017`)
+    - ``MONGO_HOST`` (host and port for mongodb instancem, e.g. `localhost:27017`)
 
 To run the backend from command line set the environment variables required and use:
 

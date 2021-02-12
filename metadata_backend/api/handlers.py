@@ -1,5 +1,6 @@
 """Handle HTTP methods for server."""
 import json
+import re
 import mimetypes
 from collections import Counter
 from math import ceil
@@ -111,7 +112,7 @@ class RESTApiHandler:
             yield result
 
     async def _handle_user_objects_collection(self, req: Request, collection: str) -> List:
-        """Retrieve list of  objects accession ids belonging to user in collection.
+        """Retrieve list of objects accession ids belonging to user in collection.
 
         :param req: HTTP request
         :param collection: collection or schema of document
@@ -335,7 +336,7 @@ class RESTApiHandler:
         """Delete metadata object from database.
 
         :param req: DELETE request
-        :raises: HTTPUnauthorized if object not owned by user
+        :raises: HTTPUnauthorized if object not owned by user or folder published
         :returns: HTTPNoContent response
         """
         schema_type = req.match_info["schema"]
@@ -366,7 +367,7 @@ class RESTApiHandler:
             current_user = req.app["Session"]["user_info"]
             check_user = await user_op.check_user_has_doc(collection, current_user, accession_id)
             if check_user:
-                collection = "drafts"
+                await user_op.remove_objects(current_user, "drafts", [accession_id])
             else:
                 reason = "This object does not seem to belong to anything."
                 LOG.error(reason)
@@ -402,7 +403,9 @@ class RESTApiHandler:
         else:
             content = await self._get_data(req)
             if not req.path.startswith("/drafts"):
-                JSONValidator(content, schema_type).validate
+                reason = "Replacing objects only allowed for XML."
+                LOG.error(reason)
+                raise web.HTTPUnsupportedMediaType(reason=reason)
             operator = Operator(db_client)
 
         await operator.check_exists(collection, accession_id)
@@ -470,18 +473,7 @@ class RESTApiHandler:
         user = await user_operator.read_user(current_user)
 
         operator = FolderOperator(db_client)
-        folders = await operator.query_folders(
-            {
-                "$redact": {
-                    "$cond": {
-                        "if": {"$or": [{"$eq": ["$published", True]}, {"$in": ["$folderId", user["folders"]]}]},
-                        "then": "$$DESCEND",
-                        "else": "$$PRUNE",
-                    }
-                }
-            },
-            {"$project": {"_id": 0}},
-        )
+        folders = await operator.query_folders({"folderId": {"$in": user["folders"]}})
 
         body = json.dumps({"folders": folders})
         LOG.info(f"GET folders. Retrieved {len(folders)} folders.")
@@ -556,19 +548,24 @@ class RESTApiHandler:
         patch_ops = await self._get_data(req)
         allowed_paths = ["/name", "/description"]
         array_paths = ["/metadataObjects/-", "/drafts/-"]
+        tags_path = re.compile("^/(metadataObjects|drafts)/[0-9]*/(tags)$")
         for op in patch_ops:
-            if all(i not in op["path"] for i in allowed_paths + array_paths):
-                reason = f"Request contains '{op['path']}' key that cannot be updated to folders."
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
-            if op["op"] in ["remove", "copy", "test", "move"]:
-                reason = f"{op['op']} on {op['path']} is not allowed."
-                LOG.error(reason)
-                raise web.HTTPUnauthorized(reason=reason)
-            if op["op"] == "replace" and op["path"] in array_paths:
-                reason = f"{op['op']} on {op['path']} is not allowed."
-                LOG.error(reason)
-                raise web.HTTPUnauthorized(reason=reason)
+            if tags_path.match(op["path"]):
+                LOG.info(f"{op['op']} on tags in folder")
+                pass
+            else:
+                if all(i not in op["path"] for i in allowed_paths + array_paths):
+                    reason = f"Request contains '{op['path']}' key that cannot be updated to folders."
+                    LOG.error(reason)
+                    raise web.HTTPBadRequest(reason=reason)
+                if op["op"] in ["remove", "copy", "test", "move"]:
+                    reason = f"{op['op']} on {op['path']} is not allowed."
+                    LOG.error(reason)
+                    raise web.HTTPUnauthorized(reason=reason)
+                if op["op"] == "replace" and op["path"] in array_paths:
+                    reason = f"{op['op']} on {op['path']}; replacing all objects is not allowed."
+                    LOG.error(reason)
+                    raise web.HTTPUnauthorized(reason=reason)
 
         check_user = await self._handle_check_ownedby_user(req, "folders", folder_id)
         if not check_user:
@@ -601,7 +598,12 @@ class RESTApiHandler:
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)
 
-        LOG.info(f"GET folder with ID {folder_id} was successful.")
+        folder = await operator.read_folder(folder_id)
+
+        obj_ops = Operator(db_client)
+
+        for obj in folder["drafts"]:
+            await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
 
         # Patch the folder into a published state
         patch = [
@@ -626,6 +628,7 @@ class RESTApiHandler:
         operator = FolderOperator(db_client)
 
         await operator.check_folder_exists(folder_id)
+        await operator.check_folder_published(folder_id)
 
         check_user = await self._handle_check_ownedby_user(req, "folders", folder_id)
         if not check_user:
@@ -633,13 +636,20 @@ class RESTApiHandler:
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)
 
-        folder = await operator.delete_folder(folder_id)
+        obj_ops = Operator(db_client)
+
+        folder = await operator.read_folder(folder_id)
+
+        for obj in folder["drafts"] + folder["metadataObjects"]:
+            await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
+
+        _folder_id = await operator.delete_folder(folder_id)
 
         user_op = UserOperator(db_client)
         current_user = req.app["Session"]["user_info"]
         await user_op.remove_objects(current_user, "folders", [folder_id])
 
-        LOG.info(f"DELETE folder with ID {folder} was successful.")
+        LOG.info(f"DELETE folder with ID {_folder_id} was successful.")
         return web.Response(status=204)
 
     async def get_user(self, req: Request) -> Response:
@@ -707,13 +717,27 @@ class RESTApiHandler:
         user_id = req.match_info["userId"]
         if user_id != "current":
             LOG.info(f"User ID {user_id} delete was requested")
-            raise web.HTTPUnauthorized(reason="Only current user deleteion is allowed")
+            raise web.HTTPUnauthorized(reason="Only current user deletion is allowed")
         db_client = req.app["db_client"]
         operator = UserOperator(db_client)
+        fold_ops = FolderOperator(db_client)
+        obj_ops = Operator(db_client)
 
         current_user = req.app["Session"]["user_info"]
-        user = await operator.delete_user(current_user)
-        LOG.info(f"DELETE user with ID {user} was successful.")
+        user = await operator.read_user(current_user)
+
+        for folder_id in user["folders"]:
+            _folder = await fold_ops.read_folder(folder_id)
+            if "published" in _folder and not _folder["published"]:
+                for obj in _folder["drafts"] + _folder["metadataObjects"]:
+                    await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
+                await fold_ops.delete_folder(folder_id)
+
+        for tmpl in user["drafts"]:
+            await obj_ops.delete_metadata_object(tmpl["schema"], tmpl["accessionId"])
+
+        await operator.delete_user(current_user)
+        LOG.info(f"DELETE user with ID {current_user} was successful.")
 
         req.app["Session"]["access_token"] = None
         req.app["Session"]["user_info"] = None
@@ -891,9 +915,18 @@ class StaticHandler:
         :param req: GET request
         :returns: Response containing frontpage static file
         """
-        index_path = self.path / "index.html"
-        LOG.debug("Serve Frontend SPA.")
-        return Response(body=index_path.read_bytes(), content_type="text/html")
+
+        serve_path = self.path.joinpath("./" + req.path)
+
+        if not serve_path.exists() or not serve_path.is_file():
+            LOG.debug(f"{serve_path} was not found or is not a file - serving index.html")
+            serve_path = self.path.joinpath("./index.html")
+
+        LOG.debug(f"Serve Frontend SPA {req.path} by {serve_path}.")
+
+        mime_type = mimetypes.guess_type(serve_path.as_posix())
+
+        return Response(body=serve_path.read_bytes(), content_type=(mime_type[0] or "text/html"))
 
     def setup_static(self) -> Path:
         """Set path for static js files and correct return mimetypes.

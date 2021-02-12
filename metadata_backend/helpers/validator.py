@@ -139,12 +139,12 @@ class JSONValidator:
             raise web.HTTPBadRequest(reason=reason)
         except ValidationError as e:
             if len(e.path) > 0:
-                reason = f"Provided input " f"does not seem correct for field: '{e.path[0]}'"
+                reason = f"Provided input does not seem correct for field: '{e.path[0]}'"
                 LOG.debug(f"Provided json input: '{e.instance}'")
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
             else:
-                reason = f"Provided input " f"does not seem correct because: '{e.message}'"
+                reason = f"Provided input does not seem correct because: '{e.message}'"
                 LOG.debug(f"Provided json input: '{e.instance}'")
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)

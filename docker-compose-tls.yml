@@ -6,6 +6,8 @@ services:
       context: .
     image: cscfi/metadata-submitter-dev
     container_name: "metadata_submitter_backend_dev"
+    volumes:
+      - ./config:/tls
     ports:
       - 5430:5430
     depends_on:
@@ -14,6 +16,10 @@ services:
     restart: on-failure
     environment:
       - "MONGO_HOST=database:27017"
+      - "MONGO_SSL=true"
+      - "MONGO_SSL_CA=/tls/cacert"
+      - "MONGO_SSL_CLIENT_KEY=/tls/key"
+      - "MONGO_SSL_CLIENT_CERT=/tls/cert"
       - "AAI_CLIENT_SECRET=secret"
       - "AAI_CLIENT_ID=aud2"
       - "ISS_URL=http://mockauth:8000"
@@ -28,12 +34,14 @@ services:
   database:
     image: "mongo"
     container_name: "metadata_submitter_database_dev"
+    command: "mongod --tlsMode=requireTLS --tlsCertificateKeyFile=/tls/combined2 --tlsCAFile=/tls/cacert"
     restart: on-failure
     environment:
       - "MONGO_INITDB_ROOT_USERNAME=admin"
       - "MONGO_INITDB_ROOT_PASSWORD=admin"
     volumes:
       - data:/data/db
+      - ./config:/tls
     expose:
       - 27017
     ports:
