@@ -98,14 +98,24 @@ class ParserTestCase(unittest.TestCase):
     def test_json_patch_mongo_conversion(self):
         """Test json patch to mongo query conversion."""
         json_patch = [
-            {"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": "id", "schema": "study"}},
+            {
+                "op": "add",
+                "path": "/metadataObjects/-",
+                "value": {"accessionId": "id", "schema": "study", "tags": {"submissionType": "XML"}},
+            },
             {"op": "add", "path": "/drafts", "value": []},
             {"op": "replace", "path": "/published", "value": True},
         ]
         expected_mongo = [
             UpdateOne(
                 {"accessionId": "id"},
-                {"$addToSet": {"metadataObjects": {"$each": [{"accessionId": "id", "schema": "study"}]}}},
+                {
+                    "$addToSet": {
+                        "metadataObjects": {
+                            "$each": [{"accessionId": "id", "schema": "study", "tags": {"submissionType": "XML"}}]
+                        }
+                    }
+                },
                 False,
                 None,
                 None,
@@ -116,5 +126,4 @@ class ParserTestCase(unittest.TestCase):
         ]
 
         result = jsonpatch_mongo({"accessionId": "id"}, json_patch)
-        print(result)
         self.assertEqual(result, expected_mongo)

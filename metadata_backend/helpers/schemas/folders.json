@@ -29,8 +29,8 @@
         "type": "object",
         "title": "Folder objects",
         "required": [
-            "accessionId",
-            "schema"
+          "accessionId",
+          "schema"
         ],
         "properties": {
           "accessionId": {
@@ -40,6 +40,21 @@
           "schema": {
             "type": "string",
             "title": "Object's schema"
+          },
+          "tags": {
+            "type": "object",
+            "title": "Different tags to describe the object.",
+            "additionalProperties": true,
+            "properties": {
+              "submissionType": {
+                "type": "string",
+                "title": "Type of submission",
+                "enum": [
+                  "XML",
+                  "Form"
+                ]
+              }
+            }
           }
         }
       }
@@ -51,8 +66,8 @@
         "type": "object",
         "title": "Folder objects",
         "required": [
-            "accessionId",
-            "schema"
+          "accessionId",
+          "schema"
         ],
         "properties": {
           "accessionId": {
@@ -61,7 +76,22 @@
           },
           "schema": {
             "type": "string",
-            "title": "Draft bbject's schema"
+            "title": "Draft object's schema"
+          },
+          "tags": {
+            "type": "object",
+            "title": "Different tags to describe the draft object.",
+            "additionalProperties": true,
+            "properties": {
+              "submissionType": {
+                "type": "string",
+                "title": "Type of submission",
+                "enum": [
+                  "XML",
+                  "Form"
+                ]
+              }
+            }
           }
         }
       }

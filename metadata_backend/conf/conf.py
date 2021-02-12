@@ -7,7 +7,7 @@ Currently in use:
 
 - ``MONGO_INITDB_ROOT_USERNAME`` - Admin username for mongodb
 - ``MONGO_INITDB_ROOT_PASSWORD`` - Admin password for mongodb
-- ``MONGODB_HOST`` - Mongodb server hostname, with port specified
+- ``MONGO_HOST`` - Mongodb server hostname, with port specified
 
 Admin access is needed in order to create new databases during runtime.
 Default values are the same that are used in docker-compose file
@@ -45,8 +45,20 @@ from ..helpers.logger import LOG
 
 mongo_user = os.getenv("MONGO_INITDB_ROOT_USERNAME", "admin")
 mongo_password = os.getenv("MONGO_INITDB_ROOT_PASSWORD", "admin")
-mongo_host = os.getenv("MONGODB_HOST", "localhost:27017")
-url = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}"
+mongo_host = os.getenv("MONGO_HOST", "localhost:27017")
+mongo_authdb = os.getenv("MONGO_AUTHDB", "")
+_base = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}/{mongo_authdb}"
+if bool(os.getenv("MONGO_SSL", None)):
+    _ca = os.getenv("MONGO_SSL_CA", None)
+    _key = os.getenv("MONGO_SSL_CLIENT_KEY", None)
+    _cert = os.getenv("MONGO_SSL_CLIENT_CERT", None)
+    tls = f"?tls=true&tlsCAFile={_ca}&ssl_keyfile={_key}&ssl_certfile={_cert}"
+    url = f"{_base}{tls}"
+else:
+    url = _base
+
+LOG.debug(f"mongodb connection string is {url}")
+
 serverTimeout = 15000
 connectTimeout = 15000
 
@@ -103,13 +115,13 @@ aai_config = {
     else os.getenv("BASE_URL", "http://localhost:5430"),
     "scope": "openid profile email",
     "iss": os.getenv("ISS_URL", ""),
-    "callback_url": f'{os.getenv("BASE_URL", "http://localhost:5430")}/callback',
+    "callback_url": f'{os.getenv("BASE_URL", "http://localhost:5430").rstrip("/")}/callback',
     "auth_url": f'{os.getenv("AUTH_URL", "")}'
     if bool(os.getenv("AUTH_URL"))
-    else f'{os.getenv("OIDC_URL", "")}/authorize',
-    "token_url": f'{os.getenv("OIDC_URL", "")}/token',
-    "user_info": f'{os.getenv("OIDC_URL", "")}/userinfo',
-    "revoke_url": f'{os.getenv("OIDC_URL", "")}/revoke',
+    else f'{os.getenv("OIDC_URL", "").rstrip("/")}/authorize',
+    "token_url": f'{os.getenv("OIDC_URL", "").rstrip("/")}/token',
+    "user_info": f'{os.getenv("OIDC_URL", "").rstrip("/")}/userinfo',
+    "revoke_url": f'{os.getenv("OIDC_URL", "").rstrip("/")}/revoke',
     "jwk_server": f'{os.getenv("JWK_URL", "")}',
     "auth_referer": f'{os.getenv("AUTH_REFERER", "")}',
 }

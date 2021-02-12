@@ -66,8 +66,8 @@ class TestOperators(AsyncTestCase):
         self.folder_id = uuid4().hex
         self.test_folder = {
             "folderId": self.folder_id,
-            "name": "test",
-            "description": "test folder",
+            "name": "Mock folder",
+            "description": "test mock folder",
             "published": False,
             "metadataObjects": [{"accessionId": "EGA1234567", "schema": "study"}],
         }
@@ -134,7 +134,7 @@ class TestOperators(AsyncTestCase):
     async def test_reading_metadata_works_with_xml(self):
         """Test xml is read from db correctly."""
         operator = XMLOperator(self.client)
-        data = {"accessionId": "EGA123456", "content": "<TEST></TEST>"}
+        data = {"accessionId": "EGA123456", "content": "<MOCK_ELEM></MOCK_ELEM>"}
         operator.db_service.read.return_value = futurized(data)
         r_data, c_type = await operator.read_metadata_object("sample", "EGA123456")
         operator.db_service.read.assert_called_once_with("sample", "EGA123456")
@@ -257,7 +257,7 @@ class TestOperators(AsyncTestCase):
             return_value=futurized(self.accession_id),
         ):
             with patch("metadata_backend.api.operators.XMLToJSONParser"):
-                accession = await operator.create_metadata_object("study", "<TEST></TEST>")
+                accession = await operator.create_metadata_object("study", "<MOCK_ELEM></MOCK_ELEM>")
         operator.db_service.create.assert_called_once()
         self.assertEqual(accession, self.accession_id)
 
@@ -364,7 +364,7 @@ class TestOperators(AsyncTestCase):
         """Test XMLoperator creates object and adds necessary info."""
         operator = XMLOperator(self.client)
         operator.db_service.db_client = self.client
-        xml_data = "<TEST></TEST>"
+        xml_data = "<MOCK_ELEM></MOCK_ELEM>"
         with patch(
             ("metadata_backend.api.operators.Operator._format_data_to_create_and_add_to_db"),
             return_value=futurized(self.accession_id),
@@ -382,7 +382,7 @@ class TestOperators(AsyncTestCase):
         """Test XMLoperator replaces object and adds necessary info."""
         operator = XMLOperator(self.client)
         operator.db_service.db_client = self.client
-        xml_data = "<TEST></TEST>"
+        xml_data = "<MOCK_ELEM></MOCK_ELEM>"
         with patch(
             "metadata_backend.api.operators.Operator._format_data_to_replace_and_add_to_db",
             return_value=futurized(self.accession_id),
@@ -608,7 +608,7 @@ class TestOperators(AsyncTestCase):
     async def test_create_folder_works_and_returns_folderId(self):
         """Test create method for folders work."""
         operator = FolderOperator(self.client)
-        data = {"name": "test", "description": "test folder"}
+        data = {"name": "Mock folder", "description": "test mock folder"}
         operator.db_service.create.return_value = futurized(True)
         folder = await operator.create_folder(data)
         operator.db_service.create.assert_called_once()
@@ -617,7 +617,7 @@ class TestOperators(AsyncTestCase):
     async def test_create_folder_fails(self):
         """Test create method for folders fails."""
         operator = FolderOperator(self.client)
-        data = {"name": "test", "description": "test folder"}
+        data = {"name": "Mock folder", "description": "test mock folder"}
         operator.db_service.create.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
             await operator.create_folder(data)
@@ -625,7 +625,7 @@ class TestOperators(AsyncTestCase):
     async def test_create_folder_db_create_fails(self):
         """Test create method for folders db create fails."""
         operator = FolderOperator(self.client)
-        data = {"name": "test", "description": "test folder"}
+        data = {"name": "Mock folder", "description": "test mock folder"}
         operator.db_service.create.return_value = futurized(False)
         with self.assertRaises(HTTPBadRequest):
             await operator.create_folder(data)
@@ -633,17 +633,17 @@ class TestOperators(AsyncTestCase):
     async def test_query_folders_empty_list(self):
         """Test query returns empty list."""
         operator = FolderOperator(self.client)
-        operator.db_service.aggregate.return_value = futurized([])
+        operator.db_service.query.return_value = AsyncIterator([])
         folders = await operator.query_folders({})
-        operator.db_service.aggregate.assert_called_once()
+        operator.db_service.query.assert_called_once()
         self.assertEqual(folders, [])
 
     async def test_query_folders_1_item(self):
         """Test query returns a list with item."""
         operator = FolderOperator(self.client)
-        operator.db_service.aggregate.return_value = futurized([{"name": "folder"}])
+        operator.db_service.query.return_value = AsyncIterator([{"name": "folder"}])
         folders = await operator.query_folders({})
-        operator.db_service.aggregate.assert_called_once()
+        operator.db_service.query.assert_called_once()
         self.assertEqual(folders, [{"name": "folder"}])
 
     async def test_check_object_folder_fails(self):
@@ -713,17 +713,15 @@ class TestOperators(AsyncTestCase):
     async def test_reading_folder_works(self):
         """Test folder is read from db correctly."""
         operator = FolderOperator(self.client)
-        operator.db_service.exists.return_value = futurized(True)
         operator.db_service.read.return_value = futurized(self.test_folder)
         read_data = await operator.read_folder(self.folder_id)
-        operator.db_service.exists.assert_called_once()
         operator.db_service.read.assert_called_once_with("folder", self.folder_id)
         self.assertEqual(read_data, self.test_folder)
 
     async def test_folder_object_read_fails(self):
         """Test folder read fails."""
         operator = FolderOperator(self.client)
-        operator.db_service.exists.side_effect = ConnectionFailure
+        operator.db_service.read.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
             await operator.read_folder(self.folder_id)
 
@@ -731,11 +729,9 @@ class TestOperators(AsyncTestCase):
         """Test update method for folders works."""
         patch = [{"op": "add", "path": "/name", "value": "test2"}]
         operator = FolderOperator(self.client)
-        operator.db_service.exists.return_value = futurized(True)
         operator.db_service.read.return_value = futurized(self.test_folder)
         operator.db_service.patch.return_value = futurized(True)
         folder = await operator.update_folder(self.test_folder, patch)
-        operator.db_service.exists.assert_called_once()
         operator.db_service.patch.assert_called_once()
         self.assertEqual(len(operator.db_service.read.mock_calls), 1)
         self.assertEqual(folder["folderId"], self.folder_id)
@@ -744,34 +740,30 @@ class TestOperators(AsyncTestCase):
         """Test folder update raises error with improper JSON Patch."""
         patch = [{"op": "replace", "path": "/nothing"}]
         operator = FolderOperator(self.client)
-        operator.db_service.exists.return_value = futurized(True)
         operator.db_service.read.return_value = futurized(self.test_folder)
         with self.assertRaises(HTTPBadRequest):
             await operator.update_folder(self.test_folder, patch)
-            operator.db_service.exists.assert_called_once()
             operator.db_service.read.assert_called_once()
 
     async def test_folder_object_update_fails(self):
         """Test folder update fails."""
         operator = FolderOperator(self.client)
-        operator.db_service.exists.side_effect = ConnectionFailure
+        operator.db_service.update.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
             await operator.update_folder(self.test_folder, [])
 
     async def test_folder_object_remove_passes(self):
         """Test remove object method for folders works."""
         operator = FolderOperator(self.client)
-        operator.db_service.exists.return_value = futurized(True)
         operator.db_service.remove.return_value = futurized(self.test_folder)
         await operator.remove_object(self.test_folder, "study", self.accession_id)
-        operator.db_service.exists.assert_called_once()
         operator.db_service.remove.assert_called_once()
         self.assertEqual(len(operator.db_service.remove.mock_calls), 1)
 
     async def test_folder_object_remove_fails(self):
         """Test folder remove object fails."""
         operator = FolderOperator(self.client)
-        operator.db_service.exists.side_effect = ConnectionFailure
+        operator.db_service.remove.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
             await operator.remove_object(self.test_folder, "study", self.accession_id)
 
@@ -966,7 +958,7 @@ class TestOperators(AsyncTestCase):
         operator = UserOperator(self.client)
         operator.db_service.exists.return_value = futurized(True)
         operator.db_service.remove.return_value = futurized(self.test_user)
-        await operator.remove_objects(self.user_generated_id, "study", [])
+        await operator.remove_objects(self.user_generated_id, "study", ["id"])
         operator.db_service.exists.assert_called_once()
         operator.db_service.remove.assert_called_once()
         self.assertEqual(len(operator.db_service.remove.mock_calls), 1)
@@ -977,7 +969,7 @@ class TestOperators(AsyncTestCase):
         operator.db_service.exists.return_value = futurized(True)
         operator.db_service.remove.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
-            await operator.remove_objects(self.user_generated_id, "study", [])
+            await operator.remove_objects(self.user_generated_id, "study", ["id"])
 
     async def test_user_objects_append_passes(self):
         """Test append objects method for users works."""
