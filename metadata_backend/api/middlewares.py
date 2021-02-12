@@ -21,8 +21,12 @@ def _check_error_page_requested(req: Request, error_code: int) -> web.Response: 
         if req.headers["Accept"].split(",")[0] in ["text/html", "application/xhtml+xml"]:
             raise web.HTTPSeeOther(
                 f"/error{str(error_code)}",
-                content_type="text/html",
-                headers={"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"},
+                headers={
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    "Pragma": "no-cache",
+                    "Expires": "0",
+                    "Location": f"/error{str(error_code)}",
+                },
             )
 
 
@@ -90,7 +94,7 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
         "/home",
         "/newdraft",
     ]
-    main_paths = ["/aai", "/callback", "/static", "/health"]
+    main_paths = ["/aai", "/callback", "/static", "/health", "/error401", "/error403", "/error404", "/error500"]
     if (
         request.path.startswith(tuple(main_paths))
         or request.path == "/"
