@@ -57,7 +57,8 @@ class AccessHandlerFailTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_callback_fails_with_wrong_oidc_state(self):
         """Test that callback endpoint raises 403 when state in the query is not the same as specified in session."""
-        self.client.app["Session"] = {"oidc_state": "mock_oidc_state_value"}
+        self.client.app["Session"] = {}
+        self.client.app["OIDC_State"] = set()
         response = await self.client.get("/callback?state=wrong_value&code=code")
         self.assertEqual(response.status, 403)
         resp_json = await response.json()
