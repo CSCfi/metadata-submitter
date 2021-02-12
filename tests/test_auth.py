@@ -39,6 +39,7 @@ class AccessHandlerFailTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_login_with_default_config_values(self):
         """Test that login raises 404 when the AUTH_URL env variable is not a proper endpoint."""
+        self.client.app["OIDC_State"] = set()
         response = await self.client.get("/aai")
         self.assertEqual(response.status, 404)
         resp_json = await response.json()
@@ -67,7 +68,7 @@ class AccessHandlerFailTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_callback_(self):
         """Test that callback."""
-        self.client.app["OIDC_State"] = set("mo_state_value")
+        self.client.app["OIDC_State"] = set(("mo_state_value",))
         response = await self.client.get("/callback?state=mo_state_value&code=code")
         self.assertIn(response.status, (403, 500))
 
