@@ -14,6 +14,8 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from multidict import MultiDict, MultiDictProxy
 from xmlschema import XMLSchemaException
 
+from .middlewares import decrypt_cookie, get_session
+
 from ..conf.conf import schema_types
 from ..helpers.logger import LOG
 from ..helpers.parser import XMLToJSONParser
@@ -72,7 +74,7 @@ class RESTApiHandler:
         :returns: bool
         """
         db_client = req.app["db_client"]
-        current_user = req.app["Session"]["user_info"]
+        current_user = get_session(req)["user_info"]
         user_op = UserOperator(db_client)
 
         if collection != "folders":
@@ -119,7 +121,7 @@ class RESTApiHandler:
         :returns: List
         """
         db_client = req.app["db_client"]
-        current_user = req.app["Session"]["user_info"]
+        current_user = get_session(req)["user_info"]
         user_op = UserOperator(db_client)
         folder_op = FolderOperator(db_client)
 
@@ -364,7 +366,7 @@ class RESTApiHandler:
             await folder_op.remove_object(folder_id, collection, accession_id)
         else:
             user_op = UserOperator(db_client)
-            current_user = req.app["Session"]["user_info"]
+            current_user = get_session(req)["user_info"]
             check_user = await user_op.check_user_has_doc(collection, current_user, accession_id)
             if check_user:
                 await user_op.remove_objects(current_user, "drafts", [accession_id])
@@ -469,7 +471,7 @@ class RESTApiHandler:
 
         user_operator = UserOperator(db_client)
 
-        current_user = req.app["Session"]["user_info"]
+        current_user = get_session(req)["user_info"]
         user = await user_operator.read_user(current_user)
 
         operator = FolderOperator(db_client)
@@ -495,7 +497,7 @@ class RESTApiHandler:
         folder = await operator.create_folder(content)
 
         user_op = UserOperator(db_client)
-        current_user = req.app["Session"]["user_info"]
+        current_user = get_session(req)["user_info"]
         await user_op.assign_objects(current_user, "folders", [folder])
 
         body = json.dumps({"folderId": folder})
@@ -646,7 +648,7 @@ class RESTApiHandler:
         _folder_id = await operator.delete_folder(folder_id)
 
         user_op = UserOperator(db_client)
-        current_user = req.app["Session"]["user_info"]
+        current_user = get_session(req)["user_info"]
         await user_op.remove_objects(current_user, "folders", [folder_id])
 
         LOG.info(f"DELETE folder with ID {_folder_id} was successful.")
@@ -666,7 +668,7 @@ class RESTApiHandler:
         db_client = req.app["db_client"]
         operator = UserOperator(db_client)
 
-        current_user = req.app["Session"]["user_info"]
+        current_user = get_session(req)["user_info"]
         user = await operator.read_user(current_user)
 
         LOG.info(f"GET user with ID {user_id} was successful.")
@@ -700,7 +702,7 @@ class RESTApiHandler:
 
         operator = UserOperator(db_client)
 
-        current_user = req.app["Session"]["user_info"]
+        current_user = get_session(req)["user_info"]
         user = await operator.update_user(current_user, patch_ops if isinstance(patch_ops, list) else [patch_ops])
 
         body = json.dumps({"userId": user})
@@ -723,7 +725,7 @@ class RESTApiHandler:
         fold_ops = FolderOperator(db_client)
         obj_ops = Operator(db_client)
 
-        current_user = req.app["Session"]["user_info"]
+        current_user = get_session(req)["user_info"]
         user = await operator.read_user(current_user)
 
         for folder_id in user["folders"]:
@@ -739,11 +741,13 @@ class RESTApiHandler:
         await operator.delete_user(current_user)
         LOG.info(f"DELETE user with ID {current_user} was successful.")
 
-        req.app["Session"]["access_token"] = None
-        req.app["Session"]["user_info"] = None
-        req.app["Session"]["oidc_state"] = None
-        req.app["Session"] = {}
-        req.app["Cookies"] = set({})
+        cookie = decrypt_cookie(req)
+
+        try:
+            req.app["Session"].pop(cookie["id"])
+            req.app["Cookies"].pop(cookie["id"])
+        except KeyError:
+            pass
 
         response = web.HTTPSeeOther(f"{aai_config['redirect']}/")
         response.headers["Location"] = (
