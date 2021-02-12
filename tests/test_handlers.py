@@ -7,6 +7,8 @@ from aiohttp import FormData
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
 from aiounittest import futurized
 
+from metadata_backend.api.middlewares import generate_cookie
+from .mockups import get_request_with_fernet
 from metadata_backend.server import init
 
 
@@ -100,6 +102,13 @@ class HandlersTestCase(AioHTTPTestCase):
         self.MockedXMLOperator = self.patch_xmloperator.start()
         self.MockedFolderOperator = self.patch_folderoperator.start()
         self.MockedUserOperator = self.patch_useroperator.start()
+
+        # Set up authentication
+        request = get_request_with_fernet()
+        request.app["Crypt"] = self.client.app["Crypt"]
+        cookie, cookiestring = generate_cookie(request)
+        self.client.app["Session"] = {cookie["id"]: {"access_token": "mock_token_value", "user_info": {}}}
+        self.client._session.cookie_jar.update_cookies({"MTD_SESSION": cookiestring})
 
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
