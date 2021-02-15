@@ -745,7 +745,7 @@ class RESTApiHandler:
 
         try:
             req.app["Session"].pop(cookie["id"])
-            req.app["Cookies"].pop(cookie["id"])
+            req.app["Cookies"].remove(cookie["id"])
         except KeyError:
             pass
 
