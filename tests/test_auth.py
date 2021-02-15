@@ -113,18 +113,6 @@ class AccessHandlerPassTestCase(AsyncTestCase):
         """Cleanup mocked stuff."""
         pass
 
-    async def test_get_key_value_from_session_fail(self):
-        """Test retrieving key value pair from session exceptions."""
-        request = get_request_with_fernet()
-        _, cookiestring = generate_cookie(request)
-        request.cookies["MTD_SESSION"] = cookiestring
-
-        with self.assertRaises(HTTPUnauthorized):
-            await self.AccessHandler._get_from_session(request, "mock_value")
-
-        with self.assertRaises(HTTPForbidden):
-            await self.AccessHandler._get_from_session("request", "mock_value")
-
     async def test_get_jwk_fail(self):
         """Test retrieving JWK exception."""
         with self.assertRaises(HTTPUnauthorized):

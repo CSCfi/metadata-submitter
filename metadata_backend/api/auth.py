@@ -7,14 +7,14 @@ import json
 
 from aiohttp import web, BasicAuth, ClientSession
 from aiohttp.web import Request, Response
-from .middlewares import decrypt_cookie, generate_cookie, get_session
+from .middlewares import decrypt_cookie, generate_cookie
 from authlib.jose import jwt
 from authlib.oidc.core import CodeIDToken
 from authlib.jose.errors import MissingClaimError, InvalidClaimError, ExpiredTokenError, InvalidTokenError, DecodeError
 from multidict import CIMultiDict
 from .operators import UserOperator
 
-from typing import Dict, Tuple, Union
+from typing import Dict, Tuple
 
 from ..helpers.logger import LOG
 
@@ -273,38 +273,3 @@ class AccessHandler:
             raise web.HTTPUnauthorized(reason=f"Invalid JWT format: {e}")
         except Exception:
             raise web.HTTPForbidden(reason="No access")
-
-    async def _save_to_session(
-        self, request: Request, key: str = "key", value: Union[Tuple[str, str], str] = "value"
-    ) -> None:
-        """Save a given value to a session key.
-
-        :param request: HTTP request
-        :param key: key to identify in the session storage
-        :param value: value for the key stored the session storage
-        """
-        LOG.debug(f"Save a value for {key} to session.")
-
-        session = get_session(request)
-        session[key] = value
-
-    async def _get_from_session(self, req: Request, key: str) -> str:
-        """Get a value from session storage.
-
-        :param req: HTTP request
-        :param key: name of the key to be returned from session storage
-        :raises: HTTPUnauthorized in case session does not have value for key
-        :raises: HTTPForbidden in case session does not have key
-        :returns: Specific value from session storage
-        """
-        try:
-            session = get_session(req)
-            return session[key]
-        except KeyError as e:
-            reason = f"Session has no key {key}, error: {e}."
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
-        except Exception as e:
-            reason = f"Failed to retrieve {key} from session: {e}"
-            LOG.error(reason)
-            raise web.HTTPForbidden(reason=reason)
