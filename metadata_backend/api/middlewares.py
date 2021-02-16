@@ -30,7 +30,6 @@ async def http_error_handler(req: Request, handler: Callable) -> Response:
     except web.HTTPError as error:
         details = _json_exception(error.status, error, req.url)
         LOG.error(details)
-        # LOG.error(error.__traceback__.format_exc())
         c_type = "application/problem+json"
         if error.status == 400:
             raise web.HTTPBadRequest(text=details, content_type=c_type)
