@@ -53,6 +53,7 @@ async def init() -> web.Application:
     server["Salt"] = secrets.token_hex(64)
     server["Session"] = {}
     server["Cookies"] = set({})
+    server["OIDC_State"] = set({})
 
     server.middlewares.append(http_error_handler)
     server.middlewares.append(check_login)
