@@ -3,14 +3,20 @@ from aiohttp.web_exceptions import HTTPForbidden, HTTPUnauthorized, HTTPBadReque
 from metadata_backend.api.auth import AccessHandler
 from unittest.mock import MagicMock, patch
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
+from metadata_backend.api.middlewares import generate_cookie
 
 from metadata_backend.server import init
-from .mockups import Mock_Request, MockResponse, jwt_data, jwk_data, jwt_data_claim_miss, jwt_data_bad_nonce
+from .mockups import (
+    Mock_Request,
+    MockResponse,
+    get_request_with_fernet,
+    jwt_data,
+    jwk_data,
+    jwt_data_claim_miss,
+    jwt_data_bad_nonce,
+)
 from aiounittest import AsyncTestCase, futurized
 import json
-import cryptography.fernet
-import hashlib
-from os import urandom
 
 
 class AccessHandlerFailTestCase(AioHTTPTestCase):
@@ -33,12 +39,13 @@ class AccessHandlerFailTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_login_with_default_config_values(self):
         """Test that login raises 404 when the AUTH_URL env variable is not a proper endpoint."""
+        self.client.app["OIDC_State"] = set()
         response = await self.client.get("/aai")
         self.assertEqual(response.status, 404)
         resp_json = await response.json()
         self.assertEqual(resp_json["instance"], "/authorize")
-        # Also check oidc_state is saved to session storage
-        self.assertIn("oidc_state", self.client.app["Session"])
+        # Also check that we have regisitered oidc state
+        self.assertEqual(1, len(self.client.app["OIDC_State"]))
 
     @unittest_run_loop
     async def test_callback_fails_without_query_params(self):
@@ -51,7 +58,8 @@ class AccessHandlerFailTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_callback_fails_with_wrong_oidc_state(self):
         """Test that callback endpoint raises 403 when state in the query is not the same as specified in session."""
-        self.client.app["Session"] = {"oidc_state": "mock_oidc_state_value"}
+        self.client.app["Session"] = {}
+        self.client.app["OIDC_State"] = set()
         response = await self.client.get("/callback?state=wrong_value&code=code")
         self.assertEqual(response.status, 403)
         resp_json = await response.json()
@@ -60,15 +68,19 @@ class AccessHandlerFailTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_callback_(self):
         """Test that callback."""
-        self.client.app["Session"] = {"oidc_state": "mock_oidc_state_value"}
-        response = await self.client.get("/callback?state=mock_oidc_state_value&code=code")
-        self.assertEqual(response.status, 500)
+        self.client.app["OIDC_State"] = set(("mo_state_value",))
+        response = await self.client.get("/callback?state=mo_state_value&code=code")
+        self.assertIn(response.status, (403, 500))
 
     @unittest_run_loop
     async def test_logout_works(self):
         """Test that logout revokes all tokens."""
-        self.client.app["Session"] = {"access_token": "mock_token_value"}
-        response = await self.client.get("/logout")
+
+        request = get_request_with_fernet()
+        request.app["Crypt"] = self.client.app["Crypt"]
+        cookie, cookiestring = generate_cookie(request)
+        self.client.app["Session"] = {cookie["id"]: {"access_token": "mock_token_value"}}
+        response = await self.client.get("/logout", cookies={"MTD_SESSION": cookiestring})
         self.assertEqual(response.status, 404)
         self.assertEqual(self.client.app["Session"], {})
         self.assertEqual(self.client.app["Cookies"], set())
@@ -101,15 +113,6 @@ class AccessHandlerPassTestCase(AsyncTestCase):
         """Cleanup mocked stuff."""
         pass
 
-    async def test_get_key_value_from_session_fail(self):
-        """Test retrieving key value pair from session exceptions."""
-        request = Mock_Request()
-        with self.assertRaises(HTTPUnauthorized):
-            await self.AccessHandler._get_from_session(request, "mock_value")
-
-        with self.assertRaises(HTTPForbidden):
-            await self.AccessHandler._get_from_session("request", "mock_value")
-
     async def test_get_jwk_fail(self):
         """Test retrieving JWK exception."""
         with self.assertRaises(HTTPUnauthorized):
@@ -133,15 +136,19 @@ class AccessHandlerPassTestCase(AsyncTestCase):
     async def test_set_user_fail(self):
         """Test set user raises exception."""
         request = Mock_Request()
-        tk = "something"
+        tk = ("something",)
+        session_id = "session_id"
         with self.assertRaises(HTTPBadRequest):
-            await self.AccessHandler._set_user(request, tk)
+            await self.AccessHandler._set_user(request, session_id, tk)
 
     async def test_set_user(self):
         """Test set user success."""
-        request = Mock_Request()
+        request = get_request_with_fernet()
+        session_id = "session_id"
+        new_user_id = "USR12345"
+
         request.app["db_client"] = MagicMock()
-        request.app["Session"] = {}
+        request.app["Session"] = {session_id: {}}
         tk = "something"
         data = {
             "eppn": "eppn@test.fi",
@@ -151,15 +158,19 @@ class AccessHandlerPassTestCase(AsyncTestCase):
         resp = MockResponse(data, 200)
 
         with patch("aiohttp.ClientSession.get", return_value=resp):
-            with patch("metadata_backend.api.operators.UserOperator.create_user", return_value=futurized("USR12345")):
-                await self.AccessHandler._set_user(request, tk)
+            with patch("metadata_backend.api.operators.UserOperator.create_user", return_value=futurized(new_user_id)):
+                await self.AccessHandler._set_user(request, session_id, tk)
+
+        self.assertIn("user_info", request.app["Session"][session_id])
+        self.assertEqual(new_user_id, request.app["Session"][session_id]["user_info"])
 
     async def test_callback_fail(self):
         """Test callback fails."""
-        request = Mock_Request()
+        request = get_request_with_fernet()
         request.query["state"] = "state"
         request.query["code"] = "code"
-        request.app["Session"] = {"oidc_state": "state"}
+        request.app["Session"] = {}
+        request.app["OIDC_State"] = set(("state",))
         resp_no_token = MockResponse({}, 200)
         resp_400 = MockResponse({}, 400)
 
@@ -173,13 +184,12 @@ class AccessHandlerPassTestCase(AsyncTestCase):
 
     async def test_callback_pass(self):
         """Test callback correct validation."""
-        request = Mock_Request()
+        request = get_request_with_fernet()
         request.query["state"] = "state"
         request.query["code"] = "code"
-        request.app["Session"] = {"oidc_state": "state"}
+        request.app["Session"] = {}
         request.app["Cookies"] = set({})
-        request.app["Crypt"] = cryptography.fernet.Fernet(cryptography.fernet.Fernet.generate_key())
-        request.app["Salt"] = hashlib.sha256(urandom(512)).hexdigest()
+        request.app["OIDC_State"] = set(("state",))
 
         resp_token = MockResponse(jwt_data, 200)
         resp_jwk = MockResponse(jwk_data, 200)
@@ -191,13 +201,12 @@ class AccessHandlerPassTestCase(AsyncTestCase):
 
     async def test_callback_missing_claim(self):
         """Test callback missing claim validation."""
-        request = Mock_Request()
+        request = get_request_with_fernet()
         request.query["state"] = "state"
         request.query["code"] = "code"
-        request.app["Session"] = {"oidc_state": "state"}
+        request.app["Session"] = {}
         request.app["Cookies"] = set({})
-        request.app["Crypt"] = cryptography.fernet.Fernet(cryptography.fernet.Fernet.generate_key())
-        request.app["Salt"] = hashlib.sha256(urandom(512)).hexdigest()
+        request.app["OIDC_State"] = set(("state",))
 
         resp_token = MockResponse(jwt_data_claim_miss, 200)
         resp_jwk = MockResponse(jwk_data, 200)
@@ -210,13 +219,12 @@ class AccessHandlerPassTestCase(AsyncTestCase):
 
     async def test_callback_bad_claim(self):
         """Test callback bad nonce validation."""
-        request = Mock_Request()
+        request = get_request_with_fernet()
         request.query["state"] = "state"
         request.query["code"] = "code"
-        request.app["Session"] = {"oidc_state": "state"}
+        request.app["OIDC_State"] = set()
+        request.app["Session"] = {}
         request.app["Cookies"] = set({})
-        request.app["Crypt"] = cryptography.fernet.Fernet(cryptography.fernet.Fernet.generate_key())
-        request.app["Salt"] = hashlib.sha256(urandom(512)).hexdigest()
 
         resp_token = MockResponse(jwt_data_bad_nonce, 200)
         resp_jwk = MockResponse(jwk_data, 200)
