@@ -25,6 +25,8 @@ services:
       - "AUTH_REFERER=http://mockauth:8000"
       - "JWK_URL=http://mockauth:8000/keyset"
       - "LOG_LEVEL=DEBUG"
+      - "MONGO_DATABASE=default"
+      - "MONGO_AUTHDB=admin"
   database:
     image: "mongo"
     container_name: "metadata_submitter_database_dev"
