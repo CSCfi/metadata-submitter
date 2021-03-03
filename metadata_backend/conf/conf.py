@@ -34,6 +34,7 @@ and inserted here in projects Dockerfile.
 import json
 import os
 from pathlib import Path
+from distutils.util import strtobool
 
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -55,13 +56,13 @@ mongo_password = os.getenv("MONGO_PASSWORD", "admin")
 mongo_host = os.getenv("MONGO_HOST", "localhost:27017")
 mongo_database = os.getenv("MONGO_DATABASE", "")
 _base = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}/{mongo_database}"
-if bool(os.getenv("MONGO_SSL", None)):
+if strtobool(os.getenv("MONGO_SSL", "False")):
     _ca = os.getenv("MONGO_SSL_CA", None)
     _key = os.getenv("MONGO_SSL_CLIENT_KEY", None)
     _cert = os.getenv("MONGO_SSL_CLIENT_CERT", None)
     tls = f"?tls=true&tlsCAFile={_ca}&ssl_keyfile={_key}&ssl_certfile={_cert}"
     url = f"{_base}{tls}"
-elif bool(os.getenv("MONGO_SSL", None)) and bool(os.getenv("MONGO_AUTHDB")):
+elif strtobool(os.getenv("MONGO_SSL", "False")) and bool(os.getenv("MONGO_AUTHDB")):
     _ca = os.getenv("MONGO_SSL_CA", None)
     _key = os.getenv("MONGO_SSL_CLIENT_KEY", None)
     _cert = os.getenv("MONGO_SSL_CLIENT_CERT", None)
