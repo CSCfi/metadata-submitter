@@ -270,7 +270,7 @@ class RESTApiHandler:
         req_format = req.query.get("format", "json").lower()
         db_client = req.app["db_client"]
         operator = XMLOperator(db_client) if req_format == "xml" else Operator(db_client)
-        type_collection = f"backup-{collection}" if req_format == "xml" else collection
+        type_collection = f"xml-{collection}" if req_format == "xml" else collection
 
         await operator.check_exists(collection, accession_id)
 

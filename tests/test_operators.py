@@ -376,7 +376,7 @@ class TestOperators(AsyncTestCase):
                 with patch("metadata_backend.api.operators.XMLToJSONParser"):
                     acc = await (operator._format_data_to_create_and_add_to_db("study", xml_data))
                     m_insert.assert_called_once_with(
-                        "backup-study", {"accessionId": self.accession_id, "content": xml_data}
+                        "xml-study", {"accessionId": self.accession_id, "content": xml_data}
                     )
                     self.assertEqual(acc, self.accession_id)
 
@@ -396,7 +396,7 @@ class TestOperators(AsyncTestCase):
                 with patch("metadata_backend.api.operators.XMLToJSONParser"):
                     acc = await (operator._format_data_to_replace_and_add_to_db("study", self.accession_id, xml_data))
                     m_insert.assert_called_once_with(
-                        "backup-study",
+                        "xml-study",
                         self.accession_id,
                         {"accessionId": self.accession_id, "content": xml_data},
                     )
