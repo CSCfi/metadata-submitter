@@ -11,7 +11,7 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
 from multidict import MultiDictProxy
 from pymongo.errors import ConnectionFailure, OperationFailure
 
-from ..conf.conf import query_map
+from ..conf.conf import query_map, mongo_database
 from ..database.db_service import DBService, auto_reconnect
 from ..helpers.logger import LOG
 from ..helpers.parser import XMLToJSONParser
@@ -297,7 +297,7 @@ class Operator(BaseOperator):
         running on same loop with aiohttp, so needs to be passed from aiohttp
         Application.
         """
-        super().__init__("objects", "application/json", db_client)
+        super().__init__(mongo_database, "application/json", db_client)
 
     async def query_metadata_database(
         self, schema_type: str, que: MultiDictProxy, page_num: int, page_size: int, filter_objects: List
@@ -517,7 +517,7 @@ class XMLOperator(BaseOperator):
         running on same loop with aiohttp, so needs to be passed from aiohttp
         Application.
         """
-        super().__init__("backups", "text/xml", db_client)
+        super().__init__(mongo_database, "text/xml", db_client)
 
     async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: str) -> str:
         """Format XML metadata object and add it to db.
@@ -534,8 +534,10 @@ class XMLOperator(BaseOperator):
         schema = schema_type[6:] if schema_type.startswith("draft") else schema_type
         data_as_json = XMLToJSONParser().parse(schema, data)
         accession_id = await Operator(db_client)._format_data_to_create_and_add_to_db(schema_type, data_as_json)
-        LOG.debug(f"XMLOperator formatted data for {schema_type} to add to DB")
-        return await self._insert_formatted_object_to_db(schema_type, {"accessionId": accession_id, "content": data})
+        LOG.debug(f"XMLOperator formatted data for xml-{schema_type} to add to DB")
+        return await self._insert_formatted_object_to_db(
+            f"xml-{schema_type}", {"accessionId": accession_id, "content": data}
+        )
 
     async def _format_data_to_replace_and_add_to_db(self, schema_type: str, accession_id: str, data: str) -> str:
         """Format XML metadata object and add it to db.
@@ -555,9 +557,9 @@ class XMLOperator(BaseOperator):
         accession_id = await Operator(db_client)._format_data_to_replace_and_add_to_db(
             schema_type, accession_id, data_as_json
         )
-        LOG.debug(f"XMLOperator formatted data for {schema_type} to add to DB")
+        LOG.debug(f"XMLOperator formatted data for xml-{schema_type} to add to DB")
         return await self._replace_object_from_db(
-            schema_type, accession_id, {"accessionId": accession_id, "content": data}
+            f"xml-{schema_type}", accession_id, {"accessionId": accession_id, "content": data}
         )
 
     async def _format_data_to_update_and_add_to_db(self, schema_type: str, accession_id: str, data: str) -> str:
@@ -596,7 +598,7 @@ class FolderOperator:
         running on same loop with aiohttp, so needs to be passed from aiohttp
         Application.
         """
-        self.db_service = DBService("folders", db_client)
+        self.db_service = DBService(mongo_database, db_client)
 
     async def check_object_in_folder(self, collection: str, accession_id: str) -> Tuple[bool, str, bool]:
         """Check a object/draft is in a folder.
@@ -824,7 +826,7 @@ class UserOperator:
         running on same loop with aiohttp, so needs to be passed from aiohttp
         Application.
         """
-        self.db_service = DBService("users", db_client)
+        self.db_service = DBService(mongo_database, db_client)
 
     async def check_user_has_doc(self, collection: str, user_id: str, accession_id: str) -> bool:
         """Check a folder/draft belongs to user.

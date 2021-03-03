@@ -18,13 +18,16 @@ the table below.
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
 | ENV                            | Default                       | Description                                                                       |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
-| ``MONGO_HOST``                 | ``localhost:27017``           | Mongodb server hostname, with port specified if needed.                           |
+| ``MONGO_HOST``                 | ``localhost:27017``           | MongoDB server hostname, with port specified if needed.                           |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
-| ``MONGO_AUTHDB``               | ``-``                         | Mongodb authentication database.                                                  |
+| ``MONGO_AUTHDB``               | ``-``                         | MongoDB authentication database.                                                  |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
-| ``MONGO_INITDB_ROOT_USERNAME`` | ``admin``                     | Admin username for mongodb.                                                       |
+| ``MONGO_DATABASE``             | ``default``                   | MongoDB default database, will be used as authentication database if              |
+|                                |                               | ``MONGO_AUTHDB`` is not set.                                                      |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
-| ``MONGO_INITDB_ROOT_PASSWORD`` | ``admin``                     | Admin password for mongodb.                                                       |
+| ``MONGO_USERNAME``             | ``admin``                     | Admin username for MongoDB.                                                       |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``MONGO_PASSWORD``             | ``admin``                     | Admin password for MongoDB.                                                       |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
 | ``MONGO_SSL``                  | ``-``                         | Set to True to enable MONGO TLS connection url.                                   |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
@@ -75,6 +78,12 @@ the table below.
 |                                |                               | for more information.                                                             |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
 
+
+.. note:: If just ``MONGO_DATABASE`` is specified it will autenticate the user against it.
+          If just ``MONGO_AUTHDB`` is specified it will autenticate the user against it.
+          If both ``MONGO_DATABASE`` and ``MONGO_AUTHDB`` are specified, the client will attempt to authenticate the specified user to the MONGO_AUTHDB database.
+          If both ``MONGO_DATABASE`` and ``MONGO_AUTHDB`` are unspecified, the client will attempt to authenticate the specified user to the admin database.
+
 Install and run
 ---------------
 
@@ -87,11 +96,11 @@ For installing ``metadata-submitter`` backend do the following:
 
 .. hint:: Before running the application have MongoDB running.
 
-    MongoDB Server expects to find mongodb instance running, spesified with following environmental variables:
+    MongoDB Server expects to find MongoDB instance running, spesified with following environmental variables:
 
     - ``MONGO_INITDB_ROOT_USERNAME`` (username for admin user to mondogdb instance)
     - ``MONGO_INITDB_ROOT_PASSWORD`` (password for admin user to mondogdb instance)
-    - ``MONGO_HOST`` (host and port for mongodb instancem, e.g. `localhost:27017`)
+    - ``MONGO_HOST`` (host and port for MongoDB instance, e.g. `localhost:27017`)
 
 To run the backend from command line use:
 
