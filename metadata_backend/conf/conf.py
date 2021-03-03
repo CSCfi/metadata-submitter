@@ -5,8 +5,8 @@ You need to specify the necessary environment variables for connecting to
 MongoDB.
 Currently in use:
 
-- ``MONGO_INITDB_ROOT_USERNAME`` - Admin username for mongodb
-- ``MONGO_INITDB_ROOT_PASSWORD`` - Admin password for mongodb
+- ``MONGO_USERNAME`` - Username for mongodb
+- ``MONGO_PASSWORD`` - Password for mongodb
 - ``MONGO_HOST`` - Mongodb server hostname, with port specified
 
 Admin access is needed in order to create new databases during runtime.
@@ -34,6 +34,7 @@ and inserted here in projects Dockerfile.
 import json
 import os
 from pathlib import Path
+from distutils.util import strtobool
 
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -43,19 +44,44 @@ from ..helpers.logger import LOG
 # Set custom timeouts and other parameters here so they can be imported to
 # other modules if needed.
 
-mongo_user = os.getenv("MONGO_INITDB_ROOT_USERNAME", "admin")
-mongo_password = os.getenv("MONGO_INITDB_ROOT_PASSWORD", "admin")
+# If just MONGO_DATABASE is specified it will autenticate the user against it.
+# If just MONGO_AUTHDB is specified it will autenticate the user against it.
+# If both MONGO_DATABASE and MONGO_AUTHDB are specified,
+# the client will attempt to authenticate the specified user to the MONGO_AUTHDB database.
+# If both MONGO_DATABASE and MONGO_AUTHDB are unspecified,
+# the client will attempt to authenticate the specified user to the admin database.
+
+mongo_user = os.getenv("MONGO_USERNAME", "admin")
+mongo_password = os.getenv("MONGO_PASSWORD", "admin")
 mongo_host = os.getenv("MONGO_HOST", "localhost:27017")
-mongo_authdb = os.getenv("MONGO_AUTHDB", "")
-_base = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}/{mongo_authdb}"
-if bool(os.getenv("MONGO_SSL", None)):
+mongo_database = os.getenv("MONGO_DATABASE", "")
+_base = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}/{mongo_database}"
+if strtobool(os.getenv("MONGO_SSL", "False")):
     _ca = os.getenv("MONGO_SSL_CA", None)
     _key = os.getenv("MONGO_SSL_CLIENT_KEY", None)
     _cert = os.getenv("MONGO_SSL_CLIENT_CERT", None)
     tls = f"?tls=true&tlsCAFile={_ca}&ssl_keyfile={_key}&ssl_certfile={_cert}"
     url = f"{_base}{tls}"
+elif strtobool(os.getenv("MONGO_SSL", "False")) and bool(os.getenv("MONGO_AUTHDB")):
+    _ca = os.getenv("MONGO_SSL_CA", None)
+    _key = os.getenv("MONGO_SSL_CLIENT_KEY", None)
+    _cert = os.getenv("MONGO_SSL_CLIENT_CERT", None)
+    if _ca and _key and _cert:
+        tls = f"?tls=true&tlsCAFile={_ca}&ssl_keyfile={_key}&ssl_certfile={_cert}"
+        _authdb = str(os.getenv("MONGO_AUTHDB"))
+        auth = f"&authSource={_authdb}"
+        url = f"{_base}{tls}{auth}"
+    else:
+        LOG.error("Missing CA, key or certificate.")
+elif bool(os.getenv("MONGO_AUTHDB")):
+    _authdb = str(os.getenv("MONGO_AUTHDB"))
+    auth = f"?authSource={_authdb}"
+    url = f"{_base}{auth}"
 else:
     url = _base
+
+if os.getenv("MONGO_DATABASE", "") == "":
+    mongo_database = "default"
 
 LOG.debug(f"mongodb connection string is {url}")
 
