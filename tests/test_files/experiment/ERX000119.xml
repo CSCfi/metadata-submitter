@@ -1,10 +1,11 @@
 <?xml version = '1.0' encoding = 'UTF-8'?>
 <EXPERIMENT_SET>
-    <EXPERIMENT accession="ERX000119" alias="NA18504.3" center_name="MPIMG">
+    <EXPERIMENT accession="ERX000119" alias="NA18504.3" center_name="MPIMG"> 
         <IDENTIFIERS>
             <PRIMARY_ID>ERX000119</PRIMARY_ID>
             <SUBMITTER_ID namespace="MPIMG">NA18504.3</SUBMITTER_ID>
         </IDENTIFIERS>
+        <TITLE>Experiment</TITLE>
         <STUDY_REF accession="SRP000031" refname="1000Genomes Project Pilot 1" refcenter="NCBI">
             <IDENTIFIERS>
                 <PRIMARY_ID>SRP000031</PRIMARY_ID>
