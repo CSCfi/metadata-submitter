@@ -293,7 +293,8 @@
     "type": "object",
     "description": "A run contains a group of reads generated for a particular experiment.",
     "required": [
-        "experimentRef"
+        "experimentRef",
+        "title"
     ],
     "properties": {
         "title": {
