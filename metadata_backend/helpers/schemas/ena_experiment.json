@@ -547,6 +547,7 @@
     "type": "object",
     "description": "An Experiment specifies of what will be sequenced and how the sequencing will be performed. It does not contain results. An Experiment is composed of a design, a platform selection, and processing parameters.",
     "required": [
+        "title",
         "design",
         "studyRef",
         "platform"

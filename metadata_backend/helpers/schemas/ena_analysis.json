@@ -265,7 +265,8 @@
     "type": "object",
     "description": "A SRA analysis object captures sequence analysis results including sequence alignments, sequence variations and sequence annotations.",
     "required": [
-        "analysisType"
+        "analysisType",
+        "title"
     ],
     "properties": {
         "title": {

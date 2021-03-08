@@ -94,11 +94,17 @@
     },
     "type": "object",
     "required": [
-        "sampleName"
+        "sampleName",
+        "title"
     ],
     "properties": {
-        "sampleName": {
+        "title": {
             "title": "Sample Title",
+            "description": "Short text that can be used to define submissions in searches or in displays.",
+            "type": "string"
+        },
+        "sampleName": {
+            "title": "Sample Names",
             "description": "Short text that can be used to call out sample records in search results or in displays.",
             "type": "object",
             "properties": {
