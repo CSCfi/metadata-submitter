@@ -147,7 +147,7 @@
     "properties": {
         "descriptor": {
             "type": "object",
-            "title": "Study",
+            "title": "Study Description",
             "required": [
                 "studyTitle",
                 "studyType"
@@ -180,6 +180,12 @@
             "description": "More extensive free-form description of the study.",
             "type": "string"
         },
+        "pubMedID": {
+            "type": "string",
+            "title": "pubMedID identifier",
+            "description": "PubMed ID (8 digits) or the PMC ID (PMC + 7 digits)",
+            "pattern": "^[0-9]{8}|PMC[0-9]{7}"
+        },
         "studyLinks": {
             "type": "array",
             "title": "Study Links",
@@ -194,12 +200,6 @@
                 "$ref": "#/definitions/studyAttribute"
             }
         },
-        "pubMedID": {
-            "type": "string",
-            "title": "pubMedID identifier",
-            "description": " PubMed ID (8 digits) or the PMC ID (PMC + 7 digits)",
-            "pattern": "^[0-9]{8}|PMC[0-9]{7}"
-        },
         "center": {
             "title": "Description for Center",
             "description": "More for backwards compatibility, we might not need it.",
@@ -207,7 +207,7 @@
             "properties": {
                 "centerProjectName": {
                     "title": "Center Project Name",
-                    "description": " Submitter defined project name.  This field is intended for backward tracking of the study record to the submitter's LIMS.",
+                    "description": " Submitter defined project name. This field is intended for backward tracking of the study record to the submitter's LIMS.",
                     "type": "string"
                 }
             }
