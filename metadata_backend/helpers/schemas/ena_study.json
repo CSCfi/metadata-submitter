@@ -209,12 +209,6 @@
             "description": "More extensive free-form description of the study.",
             "type": "string"
         },
-        "pubMedID": {
-            "type": "string",
-            "title": "pubMedID identifier",
-            "description": "PubMed ID (8 digits) or the PMC ID (PMC + 7 digits)",
-            "pattern": "^[0-9]{8}|PMC[0-9]{7}"
-        },
         "studyLinks": {
             "type": "array",
             "title": "Study Links",
