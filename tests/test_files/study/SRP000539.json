@@ -23,8 +23,8 @@
   },
   "studyLinks": [
       {
-        "db": "pubmed",
-        "id": "18423832"
+        "xrefDb": "pubmed",
+        "xrefId": "18423832"
       }
     ],
   "studyAttributes": [
