@@ -1,73 +1,137 @@
 {
     "title": "Study",
     "definitions": {
+        "Links": {
+            "$id": "#/definitions/Links",
+            "title": "Link Type",
+            "oneOf": [
+                {
+                    "$ref": "#/definitions/xrefLink"
+                },
+                {
+                    "$ref": "#/definitions/urlLink"
+                },
+                {
+                    "$ref": "#/definitions/entrezLink"
+                }
+            ]
+        },
         "xrefLink": {
             "$id": "#/definitions/xrefLink",
-            "type": "array",
             "title": "XRef Link",
-            "items": {
-                "type": "object",
-                "required": [
-                    "db",
-                    "id"
-                ],
-                "properties": {
-                    "db": {
-                        "type": "string",
-                        "title": "Database"
-                    },
-                    "id": {
-                        "type": "string",
-                        "title": "Associated accession Id"
-                    }
+            "type": "object",
+            "required": [
+                "xrefDb",
+                "xrefId"
+            ],
+            "properties": {
+                "xrefDb": {
+                    "type": "string",
+                    "title": "Database"
+                },
+                "xrefId": {
+                    "type": "string",
+                    "title": "Database ID",
+                    "description": "Accession in the referenced database."
+                },
+                "label": {
+                    "description": "Text label to display for the link.",
+                    "title": "Label",
+                    "type": "string"
                 }
             }
         },
         "urlLink": {
             "$id": "#/definitions/urlLink",
-            "type": "array",
             "title": "URL Link",
-            "items": {
-                "type": "object",
-                "required": [
-                    "label",
-                    "url"
-                ],
-                "properties": {
-                    "label": {
-                        "type": "string",
-                        "title": "Label",
-                        "description": "Text label to display for the link."
-                    },
-                    "url": {
-                        "type": "string",
-                        "title": "URL",
-                        "description": "The internet service link (http(s), ftp) etc.",
-                        "pattern": "^(https?|ftp)://"
-                    }
+            "type": "object",
+            "required": [
+                "label",
+                "url"
+            ],
+            "properties": {
+                "label": {
+                    "type": "string",
+                    "title": "Label",
+                    "description": "Text label to display for the link."
+                },
+                "url": {
+                    "type": "string",
+                    "title": "URL",
+                    "description": "The internet service link (http(s), ftp) etc.",
+                    "pattern": "^(https?|ftp)://"
                 }
             }
         },
         "entrezLink": {
             "$id": "#/definitions/entrezLink",
-            "type": "array",
             "title": "Entrez Link",
-            "items": {
-                "type": "object",
-                "required": [
-                    "db"
-                ],
-                "properties": {
-                    "db": {
-                        "description": "NCBI controlled vocabulary of permitted cross references. Please see http://www.ncbi.nlm.nih.gov/entrez/eutils/einfo.fcgi? .",
-                        "title": "Database",
-                        "type": "string"
-                    },
-                    "label": {
-                        "description": "How to label the link.",
-                        "title": "Label",
-                        "type": "string"
-                    }
+            "type": "object",
+            "required": [
+                "entrezDb",
+                "entrezId"
+            ],
+            "properties": {
+                "entrezDb": {
+                    "description": "NCBI controlled vocabulary of permitted cross references",
+                    "title": "Database",
+                    "type": "string",
+                    "enum": [
+                        "pubmed",
+                        "protein",
+                        "nuccore",
+                        "ipg",
+                        "nucleotide",
+                        "structure",
+                        "genome",
+                        "annotinfo",
+                        "assembly",
+                        "bioproject",
+                        "biosample",
+                        "blastdbinfo",
+                        "books",
+                        "cdd",
+                        "clinvar",
+                        "gap",
+                        "gapplus",
+                        "grasp",
+                        "dbvar",
+                        "gene",
+                        "gds",
+                        "geoprofiles",
+                        "homologene",
+                        "medgen",
+                        "mesh",
+                        "ncbisearch",
+                        "nlmcatalog",
+                        "omim",
+                        "orgtrack",
+                        "pmc",
+                        "popset",
+                        "proteinclusters",
+                        "pcassay",
+                        "protfam",
+                        "biosystems",
+                        "pccompound",
+                        "pcsubstance",
+                        "seqannot",
+                        "snp",
+                        "sra",
+                        "taxonomy",
+                        "biocollections",
+                        "gtr"
+                    ]
+                },
+                "entrezId": {
+                    "type": "string",
+                    "title": "Database ID",
+                    "description": "Numeric record id meaningful to the NCBI Entrez system.",
+                    "pattern": "^[a-zA-Z0-9]+"
+                },
+                "label": {
+                    "description": "Text label to display for the link.",
+                    "title": "Label",
+                    "type": "string"
                 }
             }
         },
@@ -122,7 +186,7 @@
     "properties": {
         "descriptor": {
             "type": "object",
-            "title": "Study Description", 
+            "title": "Study Description",
             "required": [
                 "studyTitle",
                 "studyType"
@@ -156,18 +220,10 @@
             "type": "string"
         },
         "studyLinks": {
-            "type": "object",
+            "type": "array",
             "title": "Study Links",
-            "properties": {
-                "xrefLinks": {
-                    "$ref": "#/definitions/xrefLink"
-                },
-                "entrezLinks": {
-                    "$ref": "#/definitions/entrezLink"
-                },
-                "urlLinks": {
-                    "$ref": "#/definitions/urlLink"
-                }
+            "items": {
+                "$ref": "#/definitions/Links"
             }
         },
         "studyAttributes": {
@@ -177,12 +233,6 @@
                 "$ref": "#/definitions/studyAttribute"
             }
         },
-        "pubMedID": {
-            "type": "string",
-            "title": "pubMedID identifier",
-            "description": " PubMed ID (8 digits) or the PMC ID (PMC + 7 digits)",
-            "pattern": "^[0-9]{8}|PMC[0-9]{7}"
-        },
         "center": {
             "title": "Description for Center",
             "description": "More for backwards compatibility, we might not need it.",
@@ -190,7 +240,7 @@
             "properties": {
                 "centerProjectName": {
                     "title": "Center Project Name",
-                    "description": " Submitter defined project name.  This field is intended for backward tracking of the study record to the submitter's LIMS.",
+                    "description": " Submitter defined project name. This field is intended for backward tracking of the study record to the submitter's LIMS.",
                     "type": "string"
                 }
             }
