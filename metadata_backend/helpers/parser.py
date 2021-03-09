@@ -1,7 +1,6 @@
 """Tool to parse XML files to JSON."""
 
 import re
-from collections import defaultdict
 from typing import Any, Dict, List, Union
 
 from aiohttp import web
@@ -98,16 +97,24 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 continue
 
             if key in links and len(value) == 1:
-                grp = defaultdict(list)
+                grp = list()
                 if isinstance(value[key[:-1]], dict):
-                    k = list(value[key[:-1]].keys())[0]
-                    grp[f"{k}s"] = [it for it in value[key[:-1]].values()]
+                    grp = [it for it in value[key[:-1]].values()]
+                    ks = list(value[key[:-1]])[0][:-4]
+                    if ks == "url":
+                        children[key] = grp
+                    else:
+                        children[key] = [{ks + k.capitalize(): v for k, v in d.items()} for d in grp]
                 else:
                     for item in value[key[:-1]]:
                         for k, v in item.items():
-                            grp[f"{k}s"].append(v)
+                            ks = k[:-4]
+                            if ks == "url":
+                                grp.append({str(key): val for key, val in v.items()})
+                            else:
+                                grp.append({ks + str(key).capitalize(): val for key, val in v.items()})
 
-                children[key] = grp
+                    children[key] = grp
                 continue
 
             value = self.list() if value is None else value

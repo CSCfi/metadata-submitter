@@ -5,6 +5,7 @@
             <PRIMARY_ID>ERR000076</PRIMARY_ID>
             <SUBMITTER_ID namespace="BGI">BGI-FC304RWAAXX</SUBMITTER_ID>
         </IDENTIFIERS>
+        <TITLE>Run</TITLE>
         <EXPERIMENT_REF accession="ERX000037" refname="g1k-bgi-NA18542-HUMsgR2ACDECBPE" refcenter="BGI">
             <IDENTIFIERS>
                 <PRIMARY_ID>ERX000037</PRIMARY_ID>
