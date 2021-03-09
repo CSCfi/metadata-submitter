@@ -34,7 +34,7 @@
                     "title": "Database ID",
                     "description": "Accession in the referenced database."
                 },
-                "xrefLabel": {
+                "label": {
                     "type": "string",
                     "title": "Label",
                     "description": "Text label to display for the link."
@@ -128,7 +128,7 @@
                     "description": "Numeric record id meaningful to the NCBI Entrez system.",
                     "pattern": "^[a-zA-Z0-9]+"
                 },
-                "entrezLabel": {
+                "label": {
                     "description": "Text label to display for the link.",
                     "title": "Label",
                     "type": "string"

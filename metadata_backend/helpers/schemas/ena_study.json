@@ -33,6 +33,11 @@
                     "type": "string",
                     "title": "Database ID",
                     "description": "Accession in the referenced database."
+                },
+                "label": {
+                    "description": "Text label to display for the link.",
+                    "title": "Label",
+                    "type": "string"
                 }
             }
         },
@@ -122,6 +127,11 @@
                     "title": "Database ID",
                     "description": "Numeric record id meaningful to the NCBI Entrez system.",
                     "pattern": "^[a-zA-Z0-9]+"
+                },
+                "label": {
+                    "description": "Text label to display for the link.",
+                    "title": "Label",
+                    "type": "string"
                 }
             }
         },
