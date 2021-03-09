@@ -100,13 +100,21 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 grp = list()
                 if isinstance(value[key[:-1]], dict):
                     grp = [it for it in value[key[:-1]].values()]
-                    children[key] = grp
+                    ks = list(value[key[:-1]])[0][:-4]
+                    if ks == "url":
+                        children[key] = grp
+                    else:
+                        children[key] = [{ks + k.capitalize(): v for k, v in d.items()} for d in grp]
                 else:
                     for item in value[key[:-1]]:
                         for k, v in item.items():
-                            grp.append(v)
+                            ks = k[:-4]
+                            if ks == "url":
+                                grp.append({str(key): val for key, val in v.items()})
+                            else:
+                                grp.append({ks + str(key).capitalize(): val for key, val in v.items()})
 
-                children[key] = grp
+                    children[key] = grp
                 continue
 
             value = self.list() if value is None else value

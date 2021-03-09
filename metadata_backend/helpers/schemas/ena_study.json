@@ -21,23 +21,18 @@
             "title": "XRef Link",
             "type": "object",
             "required": [
-                "db",
-                "id"
+                "xrefDb",
+                "xrefId"
             ],
             "properties": {
-                "db": {
+                "xrefDb": {
                     "type": "string",
                     "title": "Database"
                 },
-                "id": {
+                "xrefId": {
                     "type": "string",
-                    "title": "ID",
+                    "title": "Database ID",
                     "description": "Accession in the referenced database."
-                },
-                "label": {
-                    "type": "string",
-                    "title": "Label",
-                    "description": "Text label to display for the link."
                 }
             }
         },
@@ -68,31 +63,65 @@
             "title": "Entrez Link",
             "type": "object",
             "required": [
-                "db",
-                "id",
-                "query"
+                "entrezDb",
+                "entrezId"
             ],
             "properties": {
-                "db": {
-                    "description": "NCBI controlled vocabulary of permitted cross references. Please see http://www.ncbi.nlm.nih.gov/entrez/eutils/einfo.fcgi? .",
+                "entrezDb": {
+                    "description": "NCBI controlled vocabulary of permitted cross references",
                     "title": "Database",
-                    "type": "string"
-                },
-                "id": {
-                    "type": "number",
-                    "minimum": 0,
-                    "title": "ID",
-                    "description": "Numeric record id meaningful to the NCBI Entrez system."
-                },
-                "query": {
                     "type": "string",
-                    "title": "Query",
-                    "description": "Accession string meaningful to the NCBI Entrez system."
+                    "enum": [
+                        "pubmed",
+                        "protein",
+                        "nuccore",
+                        "ipg",
+                        "nucleotide",
+                        "structure",
+                        "genome",
+                        "annotinfo",
+                        "assembly",
+                        "bioproject",
+                        "biosample",
+                        "blastdbinfo",
+                        "books",
+                        "cdd",
+                        "clinvar",
+                        "gap",
+                        "gapplus",
+                        "grasp",
+                        "dbvar",
+                        "gene",
+                        "gds",
+                        "geoprofiles",
+                        "homologene",
+                        "medgen",
+                        "mesh",
+                        "ncbisearch",
+                        "nlmcatalog",
+                        "omim",
+                        "orgtrack",
+                        "pmc",
+                        "popset",
+                        "proteinclusters",
+                        "pcassay",
+                        "protfam",
+                        "biosystems",
+                        "pccompound",
+                        "pcsubstance",
+                        "seqannot",
+                        "snp",
+                        "sra",
+                        "taxonomy",
+                        "biocollections",
+                        "gtr"
+                    ]
                 },
-                "label": {
-                    "description": "Text label to display for the link.",
-                    "title": "Label",
-                    "type": "string"
+                "entrezId": {
+                    "type": "string",
+                    "title": "Database ID",
+                    "description": "Numeric record id meaningful to the NCBI Entrez system.",
+                    "pattern": "^[a-zA-Z0-9]+"
                 }
             }
         },
