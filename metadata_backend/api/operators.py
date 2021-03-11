@@ -49,9 +49,7 @@ class BaseOperator(ABC):
         :returns: Accession id for the object inserted to database
         """
         accession_id = await self._format_data_to_create_and_add_to_db(schema_type, data)
-        LOG.info(
-            f"Inserting object with schema {schema_type} to database " f"succeeded with accession id: {accession_id}"
-        )
+        LOG.info(f"Inserting object with schema {schema_type} to database succeeded with accession id: {accession_id}")
         return accession_id
 
     async def replace_metadata_object(self, schema_type: str, accession_id: str, data: Union[Dict, str]) -> str:
@@ -66,9 +64,7 @@ class BaseOperator(ABC):
         :returns: Accession id for the object replaced to database
         """
         await self._format_data_to_replace_and_add_to_db(schema_type, accession_id, data)
-        LOG.info(
-            f"Replacing object with schema {schema_type} to database " f"succeeded with accession id: {accession_id}"
-        )
+        LOG.info(f"Replacing object with schema {schema_type} to database succeeded with accession id: {accession_id}")
         return accession_id
 
     async def update_metadata_object(self, schema_type: str, accession_id: str, data: Union[Dict, str]) -> str:
@@ -83,9 +79,7 @@ class BaseOperator(ABC):
         :returns: Accession id for the object updated to database
         """
         await self._format_data_to_update_and_add_to_db(schema_type, accession_id, data)
-        LOG.info(
-            f"Updated object with schema {schema_type} to database " f"succeeded with accession id: {accession_id}"
-        )
+        LOG.info(f"Updated object with schema {schema_type} to database succeeded with accession id: {accession_id}")
         return accession_id
 
     async def read_metadata_object(self, schema_type: str, accession_id: str) -> Tuple[Union[Dict, str], str]:
@@ -200,10 +194,6 @@ class BaseOperator(ABC):
                 LOG.error(reason)
                 raise web.HTTPNotFound(reason=reason)
             update_success = await self.db_service.update(schema_type, accession_id, data)
-            sanity_check = await self.db_service.read(schema_type, accession_id)
-            # remove `draft-` from schema type
-            if not schema_type.startswith("draft"):
-                JSONValidator(sanity_check, schema_type).validate
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting object: {error}"
             LOG.error(reason)
@@ -721,8 +711,6 @@ class FolderOperator:
         """
         try:
             update_success = await self.db_service.patch("folder", folder_id, patch)
-            sanity_check = await self.db_service.read("folder", folder_id)
-            JSONValidator(sanity_check, "folders").validate
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting folder: {error}"
             LOG.error(reason)
@@ -748,8 +736,7 @@ class FolderOperator:
         try:
             folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
             upd_content = {folder_path: {"accessionId": accession_id}}
-            result = await self.db_service.remove("folder", folder_id, upd_content)
-            JSONValidator(result, "folders").validate
+            await self.db_service.remove("folder", folder_id, upd_content)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting user: {error}"
             LOG.error(reason)
@@ -885,6 +872,7 @@ class UserOperator:
                 user_data["userId"] = user_id = self._generate_user_id()
                 user_data["name"] = name
                 user_data["externalId"] = externalId
+                JSONValidator(user_data, "users")
                 insert_success = await self.db_service.create("user", user_data)
                 if not insert_success:
                     reason = "Inserting user to database failed for some reason."
@@ -924,8 +912,6 @@ class UserOperator:
         try:
             await self._check_user_exists(user_id)
             update_success = await self.db_service.patch("user", user_id, patch)
-            sanity_check = await self.db_service.read("user", user_id)
-            JSONValidator(sanity_check, "users").validate
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting user: {error}"
             LOG.error(reason)
@@ -953,14 +939,14 @@ class UserOperator:
         try:
             await self._check_user_exists(user_id)
             upd_content = {collection: {"$each": object_ids}}
-            result = await self.db_service.append("user", user_id, upd_content)
-            JSONValidator(result, "users").validate
+            assign_success = await self.db_service.append("user", user_id, upd_content)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting user: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        except Exception as e:
-            reason = f"Updating user to database failed beacause of: {e}."
+
+        if not assign_success:
+            reason = "Assigning objects to user failed."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -985,9 +971,7 @@ class UserOperator:
                     remove_content = {"drafts": {"accessionId": obj}}
                 else:
                     remove_content = {"folders": obj}
-                result = await self.db_service.remove("user", user_id, remove_content)
-                LOG.info(f"result {result}")
-                JSONValidator(result, "users").validate
+                await self.db_service.remove("user", user_id, remove_content)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while removing objects from user: {error}"
             LOG.error(reason)

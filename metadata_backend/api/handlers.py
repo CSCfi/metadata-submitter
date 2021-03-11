@@ -165,7 +165,7 @@ class RESTApiHandler:
             try:
                 param = int(req.query.get(param_name, default))
             except ValueError:
-                reason = f"{param_name} must be a number, now it is " f"{req.query.get(param_name)}"
+                reason = f"{param_name} must be a number, now it is {req.query.get(param_name)}"
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
             if param < 1:
@@ -920,7 +920,6 @@ class StaticHandler:
         :param req: GET request
         :returns: Response containing frontpage static file
         """
-
         serve_path = self.path.joinpath("./" + req.path)
 
         if not serve_path.exists() or not serve_path.is_file():
