@@ -149,6 +149,15 @@ class DatabaseTestCase(IsolatedAsyncioTestCase):
         self.collection.find_one.assert_called_once_with({"folderId": self.f_id_stub}, {"_id": False})
         self.assertEqual(found_folder, self.folder_stub)
 
+    async def test_published_folder_returns_data(self):
+        """Test that published folder checks if folder is published."""
+        self.collection.find_one.return_value = self.folder_stub
+        found_folder = await self.test_service.published_folder(self.f_id_stub)
+        self.collection.find_one.assert_called_once_with(
+            {"published": True, "folderId": self.f_id_stub}, {"_id": False}
+        )
+        self.assertEqual(found_folder, True)
+
     async def test_externalId_exists_returns_false(self):
         """Test that externalId exists method works and returns None."""
         self.collection.find_one.return_value = None
