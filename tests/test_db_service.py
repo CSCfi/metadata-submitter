@@ -173,21 +173,21 @@ class DatabaseTestCase(AsyncTestCase):
         self.collection.find_one.assert_called_once_with({"folderId": self.f_id_stub}, {"_id": False})
         self.assertEqual(found_folder, self.folder_stub)
 
-    async def test_eppn_exists_returns_false(self):
-        """Test that eppn exists method works and returns None."""
-        found_doc = await self.test_service.exists_eppn_user("test_user@eppn.fi", "name")
+    async def test_externalId_exists_returns_false(self):
+        """Test that externalId exists method works and returns None."""
+        found_doc = await self.test_service.exists_user_by_externalId("test_user@eppn.fi", "name")
         self.assertEqual(found_doc, None)
         self.collection.find_one.assert_called_once_with(
-            {"eppn": "test_user@eppn.fi", "name": "name"}, {"_id": False, "eppn": False}
+            {"externalId": "test_user@eppn.fi", "name": "name"}, {"_id": False, "externalId": False}
         )
 
-    async def test_eppn_exists_returns_true(self):
-        """Test that eppn exists method works and returns user id."""
+    async def test_externalId_exists_returns_true(self):
+        """Test that externalId exists method works and returns user id."""
         self.collection.find_one.return_value = futurized(self.user_stub)
-        found_doc = await self.test_service.exists_eppn_user("test_user@eppn.fi", "name")
+        found_doc = await self.test_service.exists_user_by_externalId("test_user@eppn.fi", "name")
         self.assertEqual(found_doc, self.user_id_stub)
         self.collection.find_one.assert_called_once_with(
-            {"eppn": "test_user@eppn.fi", "name": "name"}, {"_id": False, "eppn": False}
+            {"externalId": "test_user@eppn.fi", "name": "name"}, {"_id": False, "externalId": False}
         )
 
     async def test_aggregate_performed(self):

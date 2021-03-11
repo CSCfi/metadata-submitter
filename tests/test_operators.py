@@ -804,8 +804,8 @@ class TestOperators(AsyncTestCase):
     async def test_create_user_works_and_returns_userId(self):
         """Test create method for users work."""
         operator = UserOperator(self.client)
-        data = "eppn", "name"
-        operator.db_service.exists_eppn_user.return_value = futurized(None)
+        data = "externalId", "name"
+        operator.db_service.exists_user_by_externalId.return_value = futurized(None)
         operator.db_service.create.return_value = futurized(True)
         user = await operator.create_user(data)
         operator.db_service.create.assert_called_once()
@@ -814,8 +814,8 @@ class TestOperators(AsyncTestCase):
     async def test_create_user_on_create_fails(self):
         """Test create method fails on db create."""
         operator = UserOperator(self.client)
-        data = "eppn", "name"
-        operator.db_service.exists_eppn_user.return_value = futurized(None)
+        data = "externalId", "name"
+        operator.db_service.exists_user_by_externalId.return_value = futurized(None)
         operator.db_service.create.return_value = futurized(False)
         with self.assertRaises(HTTPBadRequest):
             await operator.create_user(data)
@@ -862,7 +862,7 @@ class TestOperators(AsyncTestCase):
         """Test create method for existing user."""
         operator = UserOperator(self.client)
         data = "eppn", "name"
-        operator.db_service.exists_eppn_user.return_value = futurized(self.user_generated_id)
+        operator.db_service.exists_user_by_externalId.return_value = futurized(self.user_generated_id)
         user = await operator.create_user(data)
         operator.db_service.create.assert_not_called()
         self.assertEqual(user, self.user_generated_id)
@@ -871,7 +871,7 @@ class TestOperators(AsyncTestCase):
         """Test create user fails."""
         data = "eppn", "name"
         operator = UserOperator(self.client)
-        operator.db_service.exists_eppn_user.side_effect = ConnectionFailure
+        operator.db_service.exists_user_by_externalId.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
             await operator.create_user(data)
 

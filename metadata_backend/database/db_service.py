@@ -85,22 +85,22 @@ class DBService:
         :returns: True if exists and False if it does not
         """
         id_key = f"{collection}Id" if (collection in ["folder", "user"]) else "accessionId"
-        projection = {"_id": False, "eppn": False} if collection == "user" else {"_id": False}
+        projection = {"_id": False, "externalId": False} if collection == "user" else {"_id": False}
         find_by_id = {id_key: accession_id}
         exists = await self.database[collection].find_one(find_by_id, projection)
         LOG.debug(f"DB check exists for {accession_id} in collection {collection}.")
         return True if exists else False
 
     @auto_reconnect
-    async def exists_eppn_user(self, eppn: str, name: str) -> Union[None, str]:
+    async def exists_user_by_externalId(self, externalId: str, name: str) -> Union[None, str]:
         """Check user exists by its eppn.
 
         :param eppn: eduPersonPrincipalName to be searched
         :returns: True if exists and False if it does not
         """
-        find_by_id = {"eppn": eppn, "name": name}
-        user = await self.database["user"].find_one(find_by_id, {"_id": False, "eppn": False})
-        LOG.debug(f"DB check user exists for {eppn} returned {user}.")
+        find_by_id = {"externalId": externalId, "name": name}
+        user = await self.database["user"].find_one(find_by_id, {"_id": False, "externalId": False})
+        LOG.debug(f"DB check user exists for {externalId} returned {user}.")
         return user["userId"] if user else None
 
     @auto_reconnect

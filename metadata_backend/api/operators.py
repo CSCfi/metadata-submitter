@@ -21,6 +21,8 @@ from ..helpers.validator import JSONValidator
 class BaseOperator(ABC):
     """Base class for operators, implements shared functionality.
 
+    This BaseOperator is mainly addressed for working with objects owned by
+    a user and that are clustered by folder.
     :param ABC: The abstract base class
     """
 
@@ -870,19 +872,19 @@ class UserOperator:
         """
         user_data: Dict[str, Union[list, str]] = dict()
 
-        eppn = data[0]  # this also can be sub key
+        externalId = data[0]  # this also can be sub key
         name = data[1]
         try:
-            existing_user_id = await self.db_service.exists_eppn_user(eppn, name)
+            existing_user_id = await self.db_service.exists_user_by_externalId(externalId, name)
             if existing_user_id:
-                LOG.info(f"User with identifier: {eppn} exists, no need to create.")
+                LOG.info(f"User with identifier: {externalId} exists, no need to create.")
                 return existing_user_id
             else:
                 user_data["drafts"] = []
                 user_data["folders"] = []
                 user_data["userId"] = user_id = self._generate_user_id()
                 user_data["name"] = name
-                user_data["eppn"] = eppn
+                user_data["externalId"] = externalId
                 insert_success = await self.db_service.create("user", user_data)
                 if not insert_success:
                     reason = "Inserting user to database failed for some reason."
