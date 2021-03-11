@@ -109,7 +109,7 @@ class TestOperators(AsyncTestCase):
         self.patch_user.stop()
 
     async def test_reading_metadata_works(self):
-        """Test json is read from db correctly."""
+        """Test JSON is read from db correctly."""
         operator = Operator(self.client)
         data = {
             "dateCreated": datetime.datetime(2020, 6, 14, 0, 0),
@@ -132,7 +132,7 @@ class TestOperators(AsyncTestCase):
         )
 
     async def test_reading_metadata_works_with_xml(self):
-        """Test xml is read from db correctly."""
+        """Test XML is read from db correctly."""
         operator = XMLOperator(self.client)
         data = {"accessionId": "EGA123456", "content": "<MOCK_ELEM></MOCK_ELEM>"}
         operator.db_service.read.return_value = futurized(data)
@@ -171,7 +171,7 @@ class TestOperators(AsyncTestCase):
             result["_Id"]
 
     async def test_json_create_passes_and_returns_accessionId(self):
-        """Test create method for json works."""
+        """Test create method for JSON works."""
         operator = Operator(self.client)
         data = {
             "centerName": "GEO",
@@ -184,7 +184,7 @@ class TestOperators(AsyncTestCase):
         self.assertEqual(accession, self.accession_id)
 
     async def test_json_replace_passes_and_returns_accessionId(self):
-        """Test replace method for json works."""
+        """Test replace method for JSON works."""
         data = {
             "centerName": "GEO",
             "alias": "GSE10966",
@@ -215,7 +215,7 @@ class TestOperators(AsyncTestCase):
             await operator.replace_metadata_object("study", self.accession_id, {})
 
     async def test_json_update_passes_and_returns_accessionId(self):
-        """Test update method for json works."""
+        """Test update method for JSON works."""
         data = {"centerName": "GEOM", "alias": "GSE10967"}
         db_data = {
             "centerName": "GEO",
@@ -248,7 +248,7 @@ class TestOperators(AsyncTestCase):
             await operator.update_metadata_object("study", self.accession_id, {})
 
     async def test_xml_create_passes_and_returns_accessionId(self):
-        """Test create method for xml works. Patch json related calls."""
+        """Test create method for XML works. Patch JSON related calls."""
         operator = XMLOperator(self.client)
         operator.db_service.db_client = self.client
         operator.db_service.create.return_value = futurized(True)
@@ -528,7 +528,7 @@ class TestOperators(AsyncTestCase):
         self.assertEqual(operator.db_service.aggregate.call_count, 2)
 
     async def test_query_result_is_parsed_correctly(self):
-        """Test json is read and correct pagination values are returned."""
+        """Test JSON is read and correct pagination values are returned."""
         operator = Operator(self.client)
         multiple_result = [
             {

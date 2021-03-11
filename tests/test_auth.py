@@ -75,7 +75,6 @@ class AccessHandlerFailTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_logout_works(self):
         """Test that logout revokes all tokens."""
-
         request = get_request_with_fernet()
         request.app["Crypt"] = self.client.app["Crypt"]
         cookie, cookiestring = generate_cookie(request)

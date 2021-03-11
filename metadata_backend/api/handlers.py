@@ -255,7 +255,7 @@ class RESTApiHandler:
     async def get_object(self, req: Request) -> Response:
         """Get one metadata object by its accession id.
 
-        Returns original xml object from backup if format query parameter is
+        Returns original XML object from backup if format query parameter is
         set, otherwise json.
 
         :param req: GET request
@@ -828,7 +828,7 @@ class SubmissionAPIHandler:
         return web.Response(body=body, status=200, content_type="application/json")
 
     async def validate(self, req: Request) -> Response:
-        """Handle validating an xml file sent to endpoint.
+        """Handle validating an XML file sent to endpoint.
 
         :param req: Multipart POST request with submission.xml and files
         :returns: JSON response indicating if validation was successful or not
@@ -902,7 +902,7 @@ class SubmissionAPIHandler:
             return json.loads(validator.resp_body)
 
         else:
-            reason = f"Action {action} in xml is not supported."
+            reason = f"Action {action} in XML is not supported."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
