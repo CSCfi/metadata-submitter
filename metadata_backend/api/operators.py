@@ -392,8 +392,8 @@ class Operator(BaseOperator):
 
         Adds necessary additional information to object before adding to db.
 
-        If schema type is study, publishDate and status is added.
-        By default date is two months from submission date (based on ENA
+        If schema type is study, publishDate and status are added.
+        By default, date is two months from submission date (based on ENA
         submission model).
 
         :param schema_type: Schema type of the object to create.
@@ -415,7 +415,7 @@ class Operator(BaseOperator):
         Replace information to object before adding to db.
 
         We will not replace accessionId, publishDate or dateCreated,
-        as these should are generated when created.
+        as these are generated when created.
 
         We will keep also publisDate and dateCreated from old object.
 
@@ -507,6 +507,7 @@ class Operator(BaseOperator):
 class XMLOperator(BaseOperator):
     """Alternative operator class for handling database operations.
 
+    We store the XML data in a database ``XML-{schema}``.
     Operations are implemented with XML format.
     """
 
@@ -522,11 +523,11 @@ class XMLOperator(BaseOperator):
     async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: str) -> str:
         """Format XML metadata object and add it to db.
 
-        XML is validated, then parsed to json and json is added to database.
-        After successful json insertion, xml itself is backed up to database.
+        XML is validated, then parsed to JSON, which is added to database.
+        After successful JSON insertion, XML itself is backed up to database.
 
         :param schema_type: Schema type of the object to read.
-        :param data: Original xml content
+        :param data: Original XML content
         :returns: Accession Id for object inserted to database
         """
         db_client = self.db_service.db_client
@@ -542,12 +543,12 @@ class XMLOperator(BaseOperator):
     async def _format_data_to_replace_and_add_to_db(self, schema_type: str, accession_id: str, data: str) -> str:
         """Format XML metadata object and add it to db.
 
-        XML is validated, then parsed to json and json is added to database.
-        After successful json insertion, xml itself is backed up to database.
+        XML is validated, then parsed to JSON, which is added to database.
+        After successful JSON insertion, XML itself is backed up to database.
 
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
-        :param data: Original xml content
+        :param data: Original XML content
         :returns: Accession Id for object inserted to database
         """
         db_client = self.db_service.db_client
@@ -569,7 +570,7 @@ class XMLOperator(BaseOperator):
 
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
-        :param data: Original xml content
+        :param data: Original XML content
         :raises: HTTPUnsupportedMediaType
         """
         reason = "XML patching is not possible."

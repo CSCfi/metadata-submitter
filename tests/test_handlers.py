@@ -130,11 +130,11 @@ class HandlersTestCase(AioHTTPTestCase):
         return data
 
     async def fake_operator_read_metadata_object(self, schema_type, accession_id):
-        """Fake read operation to return mocked json."""
+        """Fake read operation to return mocked JSON."""
         return await futurized((self.metadata_json, "application/json"))
 
     async def fake_operator_query_metadata_object(self, schema_type, query, page_num, page_size, filtered_list):
-        """Fake query operation to return list containing mocked json."""
+        """Fake query operation to return list containing mocked JSON."""
         return await futurized(
             ([self.metadata_json], self.page_num, self.page_size, self.total_objects),
         )
@@ -289,7 +289,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_submit_object_works_with_json(self):
-        """Test that json submission is handled, operator is called."""
+        """Test that JSON submission is handled, operator is called."""
         json_req = {
             "centerName": "GEO",
             "alias": "GSE10966",
@@ -302,7 +302,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_submit_object_missing_field_json(self):
-        """Test that json has missing property."""
+        """Test that JSON has missing property."""
         json_req = {"centerName": "GEO", "alias": "GSE10966"}
         response = await self.client.post("/objects/study", json=json_req)
         reason = "Provided input does not seem correct because: " "''descriptor' is a required property'"
@@ -311,7 +311,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_submit_object_bad_field_json(self):
-        """Test that json has bad studyType."""
+        """Test that JSON has bad studyType."""
         json_req = {
             "centerName": "GEO",
             "alias": "GSE10966",
@@ -324,7 +324,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_post_object_bad_json(self):
-        """Test that post json is badly formated."""
+        """Test that post JSON is badly formated."""
         json_req = {
             "centerName": "GEO",
             "alias": "GSE10966",
@@ -337,7 +337,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_put_object_bad_json(self):
-        """Test that put json is badly formated."""
+        """Test that put JSON is badly formated."""
         json_req = {
             "centerName": "GEO",
             "alias": "GSE10966",
@@ -351,7 +351,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_patch_object_bad_json(self):
-        """Test that patch json is badly formated."""
+        """Test that patch JSON is badly formated."""
         json_req = {"centerName": "GEO", "alias": "GSE10966"}
         call = "/drafts/study/EGA123456"
         response = await self.client.patch(call, data=json_req)
@@ -361,7 +361,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_submit_draft_works_with_json(self):
-        """Test that draft json submission is handled, operator is called."""
+        """Test that draft JSON submission is handled, operator is called."""
         json_req = {
             "centerName": "GEO",
             "alias": "GSE10966",
@@ -374,7 +374,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_put_draft_works_with_json(self):
-        """Test that draft json put method is handled, operator is called."""
+        """Test that draft JSON put method is handled, operator is called."""
         json_req = {
             "centerName": "GEO",
             "alias": "GSE10966",
@@ -399,7 +399,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_patch_draft_works_with_json(self):
-        """Test that draft json patch method is handled, operator is called."""
+        """Test that draft JSON patch method is handled, operator is called."""
         json_req = {"centerName": "GEO", "alias": "GSE10966"}
         call = "/drafts/study/EGA123456"
         response = await self.client.patch(call, json=json_req)
@@ -428,7 +428,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_get_object(self):
-        """Test that accessionId returns correct json object."""
+        """Test that accessionId returns correct JSON object."""
         url = f"/objects/study/{self.query_accessionId}"
         response = await self.client.get(url)
         self.assertEqual(response.status, 200)
@@ -437,7 +437,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_get_draft_object(self):
-        """Test that draft accessionId returns correct json object."""
+        """Test that draft accessionId returns correct JSON object."""
         url = f"/drafts/study/{self.query_accessionId}"
         response = await self.client.get(url)
         self.assertEqual(response.status, 200)
@@ -446,7 +446,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_get_object_as_xml(self):
-        """Test that accessionId  with xml query returns xml object."""
+        """Test that accessionId  with XML query returns XML object."""
         url = f"/objects/study/{self.query_accessionId}"
         response = await self.client.get(f"{url}?format=xml")
         self.assertEqual(response.status, 200)
@@ -455,7 +455,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_query_is_called_and_returns_json_in_correct_format(self):
-        """Test query method calls operator and returns mocked json object."""
+        """Test query method calls operator and returns mocked JSON object."""
         url = f"/objects/study?studyType=foo&name=bar&page={self.page_num}" f"&per_page={self.page_size}"
         response = await self.client.get(url)
         self.assertEqual(response.status, 200)
@@ -509,7 +509,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_validation_fails_for_invalid_xml_syntax(self):
-        """Test validation endpoint for xml with bad syntax."""
+        """Test validation endpoint for XML with bad syntax."""
         files = [("study", "SRP000539_invalid.xml")]
         data = self.create_submission_data(files)
         response = await self.client.post("/validate", data=data)
