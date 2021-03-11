@@ -355,7 +355,7 @@ class Operator(BaseOperator):
             {"$project": {"_id": 0}},
         ]
         try:
-            result_aggregate = await self.db_service.aggregate(schema_type, aggregate_query)
+            result_aggregate = await self.db_service.do_aggregate(schema_type, aggregate_query)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting object: {error}"
             LOG.error(reason)
@@ -369,7 +369,7 @@ class Operator(BaseOperator):
 
         page_size = len(data) if len(data) != page_size else page_size
         count_query = [{"$match": mongo_query}, redacted_content, {"$count": "total"}]
-        total_objects = await self.db_service.aggregate(schema_type, count_query)
+        total_objects = await self.db_service.do_aggregate(schema_type, count_query)
 
         LOG.debug(f"DB query: {que}")
         LOG.info(

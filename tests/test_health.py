@@ -3,7 +3,6 @@
 from unittest.mock import patch
 
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
-from aiounittest import futurized
 
 from metadata_backend.server import init
 
@@ -31,7 +30,7 @@ class HealthTestCase(AioHTTPTestCase):
 
     async def fake_asynciomotorclient_server_info(self):
         """Fake server info method for a motor client."""
-        return await futurized(True)
+        return True
 
     @unittest_run_loop
     async def test_health_check_is_down(self):
