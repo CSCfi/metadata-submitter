@@ -270,7 +270,7 @@ class DBService:
         return await self.database[collection].count_documents(query)
 
     @auto_reconnect
-    async def aggregate(self, collection: str, query: List) -> List:
+    async def do_aggregate(self, collection: str, query: List) -> List:
         """Peform aggregate query.
 
         :param collection: Collection where document should be searched from

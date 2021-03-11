@@ -12,7 +12,7 @@ RUN npm install -g npm@7.6.0 \
     && npm install --production \
     && npm run build --production
 
-FROM python:3.7-alpine3.13 as BUILD-BACKEND
+FROM python:3.8-alpine3.13 as BUILD-BACKEND
 
 RUN apk add --update \
     && apk add --no-cache build-base curl-dev linux-headers bash git musl-dev libffi-dev \
@@ -30,7 +30,7 @@ RUN pip install --upgrade pip && \
     pip install -r /root/submitter/requirements.txt && \
     pip install /root/submitter
 
-FROM python:3.7-alpine3.13
+FROM python:3.8-alpine3.13
 
 RUN apk add --no-cache --update bash
 
@@ -38,7 +38,7 @@ LABEL maintainer="CSC Developers"
 LABEL org.label-schema.schema-version="1.0"
 LABEL org.label-schema.vcs-url="https://github.com/CSCfi/metadata-submitter"
 
-COPY --from=BUILD-BACKEND /usr/local/lib/python3.7/ /usr/local/lib/python3.7/
+COPY --from=BUILD-BACKEND /usr/local/lib/python3.8/ /usr/local/lib/python3.8/
 
 COPY --from=BUILD-BACKEND /usr/local/bin/gunicorn /usr/local/bin/
 

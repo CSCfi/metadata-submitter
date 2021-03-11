@@ -15,7 +15,7 @@ from .mockups import (
     jwt_data_claim_miss,
     jwt_data_bad_nonce,
 )
-from aiounittest import AsyncTestCase, futurized
+from unittest import IsolatedAsyncioTestCase
 import json
 
 
@@ -85,7 +85,7 @@ class AccessHandlerFailTestCase(AioHTTPTestCase):
         self.assertEqual(self.client.app["Cookies"], set())
 
 
-class AccessHandlerPassTestCase(AsyncTestCase):
+class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
     """API AccessHandler auth class functions."""
 
     def setUp(self):
@@ -114,8 +114,9 @@ class AccessHandlerPassTestCase(AsyncTestCase):
 
     async def test_get_jwk_fail(self):
         """Test retrieving JWK exception."""
-        with self.assertRaises(HTTPUnauthorized):
-            await self.AccessHandler._get_key()
+        with patch("aiohttp.ClientSession.get", side_effect=HTTPUnauthorized):
+            with self.assertRaises(HTTPUnauthorized):
+                await self.AccessHandler._get_key()
 
     async def test_jwk_key(self):
         """Test get jwk key."""
@@ -137,8 +138,9 @@ class AccessHandlerPassTestCase(AsyncTestCase):
         request = Mock_Request()
         tk = ("something",)
         session_id = "session_id"
-        with self.assertRaises(HTTPBadRequest):
-            await self.AccessHandler._set_user(request, session_id, tk)
+        with patch("aiohttp.ClientSession.get", side_effect=HTTPUnauthorized):
+            with self.assertRaises(HTTPBadRequest):
+                await self.AccessHandler._set_user(request, session_id, tk)
 
     async def test_set_user(self):
         """Test set user success."""
@@ -157,7 +159,7 @@ class AccessHandlerPassTestCase(AsyncTestCase):
         resp = MockResponse(data, 200)
 
         with patch("aiohttp.ClientSession.get", return_value=resp):
-            with patch("metadata_backend.api.operators.UserOperator.create_user", return_value=futurized(new_user_id)):
+            with patch("metadata_backend.api.operators.UserOperator.create_user", return_value=new_user_id):
                 await self.AccessHandler._set_user(request, session_id, tk)
 
         self.assertIn("user_info", request.app["Session"][session_id])
@@ -195,7 +197,7 @@ class AccessHandlerPassTestCase(AsyncTestCase):
 
         with patch("aiohttp.ClientSession.post", return_value=resp_token):
             with patch("aiohttp.ClientSession.get", return_value=resp_jwk):
-                with patch("metadata_backend.api.auth.AccessHandler._set_user", return_value=futurized(None)):
+                with patch("metadata_backend.api.auth.AccessHandler._set_user", return_value=None):
                     await self.AccessHandler.callback(request)
 
     async def test_callback_missing_claim(self):
@@ -212,7 +214,7 @@ class AccessHandlerPassTestCase(AsyncTestCase):
 
         with patch("aiohttp.ClientSession.post", return_value=resp_token):
             with patch("aiohttp.ClientSession.get", return_value=resp_jwk):
-                with patch("metadata_backend.api.auth.AccessHandler._set_user", return_value=futurized(None)):
+                with patch("metadata_backend.api.auth.AccessHandler._set_user", return_value=None):
                     with self.assertRaises(HTTPUnauthorized):
                         await self.AccessHandler.callback(request)
 
@@ -230,6 +232,6 @@ class AccessHandlerPassTestCase(AsyncTestCase):
 
         with patch("aiohttp.ClientSession.post", return_value=resp_token):
             with patch("aiohttp.ClientSession.get", return_value=resp_jwk):
-                with patch("metadata_backend.api.auth.AccessHandler._set_user", return_value=futurized(None)):
+                with patch("metadata_backend.api.auth.AccessHandler._set_user", return_value=None):
                     with self.assertRaises(HTTPForbidden):
                         await self.AccessHandler.callback(request)

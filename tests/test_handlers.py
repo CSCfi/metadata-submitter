@@ -5,7 +5,6 @@ from unittest.mock import patch
 
 from aiohttp import FormData
 from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
-from aiounittest import futurized
 
 from metadata_backend.api.middlewares import generate_cookie
 from .mockups import get_request_with_fernet
@@ -131,74 +130,72 @@ class HandlersTestCase(AioHTTPTestCase):
 
     async def fake_operator_read_metadata_object(self, schema_type, accession_id):
         """Fake read operation to return mocked JSON."""
-        return await futurized((self.metadata_json, "application/json"))
+        return (self.metadata_json, "application/json")
 
     async def fake_operator_query_metadata_object(self, schema_type, query, page_num, page_size, filtered_list):
         """Fake query operation to return list containing mocked JSON."""
-        return await futurized(
-            ([self.metadata_json], self.page_num, self.page_size, self.total_objects),
-        )
+        return ([self.metadata_json], self.page_num, self.page_size, self.total_objects)
 
     async def fake_xmloperator_read_metadata_object(self, schema_type, accession_id):
         """Fake read operation to return mocked xml."""
-        return await futurized((self.metadata_xml, "text/xml"))
+        return (self.metadata_xml, "text/xml")
 
     async def fake_xmloperator_create_metadata_object(self, schema_type, content):
         """Fake create operation to return mocked accessionId."""
-        return await futurized(self.test_ega_string)
+        return self.test_ega_string
 
     async def fake_xmloperator_replace_metadata_object(self, schema_type, accession_id, content):
         """Fake replace operation to return mocked accessionId."""
-        return await futurized(self.test_ega_string)
+        return self.test_ega_string
 
     async def fake_operator_create_metadata_object(self, schema_type, content):
         """Fake create operation to return mocked accessionId."""
-        return await futurized(self.test_ega_string)
+        return self.test_ega_string
 
     async def fake_operator_update_metadata_object(self, schema_type, accession_id, content):
         """Fake update operation to return mocked accessionId."""
-        return await futurized(self.test_ega_string)
+        return self.test_ega_string
 
     async def fake_operator_replace_metadata_object(self, schema_type, accession_id, content):
         """Fake replace operation to return mocked accessionId."""
-        return await futurized(self.test_ega_string)
+        return self.test_ega_string
 
     async def fake_operator_delete_metadata_object(self, schema_type, accession_id):
         """Fake delete operation to await successful operation indicator."""
-        return await futurized(True)
+        return True
 
     async def fake_folderoperator_create_folder(self, content):
         """Fake create operation to return mocked folderId."""
-        return await futurized(self.folder_id)
+        return self.folder_id
 
     async def fake_folderoperator_read_folder(self, folder_id):
         """Fake read operation to return mocked folder."""
-        return await futurized(self.test_folder)
+        return self.test_folder
 
     async def fake_folderoperator_delete_folder(self, folder_id):
         """Fake delete folder to await nothing."""
-        return await futurized(None)
+        return None
 
     async def fake_folderoperator_check_object(self, schema_type, accession_id):
         """Fake check object in folder."""
         data = True, self.folder_id, False
-        return await futurized(data)
+        return data
 
     async def fake_folderoperator_get_collection_objects(self, schema_type, accession_id):
         """Fake get collection of objects in folder."""
-        return await futurized(["EDAG3991701442770179", "EGA123456"])
+        return ["EDAG3991701442770179", "EGA123456"]
 
     async def fake_useroperator_user_has_folder(self, schema_type, user_id, folder_id):
         """Fake check object in folder."""
-        return await futurized(True)
+        return True
 
     async def fake_useroperator_create_user(self, content):
         """Fake user operation to return mocked userId."""
-        return await futurized(self.user_id)
+        return self.user_id
 
     async def fake_useroperator_read_user(self, user_id):
         """Fake read operation to return mocked user."""
-        return await futurized(self.test_user)
+        return self.test_user
 
     @unittest_run_loop
     async def test_submit_endpoint_submission_does_not_fail(self):
@@ -605,7 +602,7 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_get_folders_with_1_folder(self):
         """Test get_folders() endpoint returns list with 1 folder."""
-        self.MockedFolderOperator().query_folders.return_value = futurized(self.test_folder)
+        self.MockedFolderOperator().query_folders.return_value = self.test_folder
         response = await self.client.get("/folders")
         self.MockedFolderOperator().query_folders.assert_called_once()
         self.assertEqual(response.status, 200)
@@ -614,7 +611,7 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_get_folders_with_no_folders(self):
         """Test get_folders() endpoint returns empty list."""
-        self.MockedFolderOperator().query_folders.return_value = futurized([])
+        self.MockedFolderOperator().query_folders.return_value = []
         response = await self.client.get("/folders")
         self.MockedFolderOperator().query_folders.assert_called_once()
         self.assertEqual(response.status, 200)
@@ -642,7 +639,7 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_update_folder_passes(self):
         """Test that folder would update with correct keys."""
-        self.MockedFolderOperator().update_folder.return_value = futurized(self.folder_id)
+        self.MockedFolderOperator().update_folder.return_value = self.folder_id
         data = [{"op": "replace", "path": "/name", "value": "test2"}]
         response = await self.client.patch("/folders/FOL12345678", json=data)
         self.MockedFolderOperator().update_folder.assert_called_once()
@@ -653,7 +650,7 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_folder_is_published(self):
         """Test that folder would be published."""
-        self.MockedFolderOperator().update_folder.return_value = futurized(self.folder_id)
+        self.MockedFolderOperator().update_folder.return_value = self.folder_id
         response = await self.client.patch("/publish/FOL12345678")
         self.MockedFolderOperator().update_folder.assert_called_once()
         self.assertEqual(response.status, 200)
@@ -663,7 +660,7 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_folder_deletion_is_called(self):
         """Test that folder would be deleted."""
-        self.MockedFolderOperator().read_folder.return_value = futurized(self.test_folder)
+        self.MockedFolderOperator().read_folder.return_value = self.test_folder
         response = await self.client.delete("/folders/FOL12345678")
         self.MockedFolderOperator().read_folder.assert_called_once()
         self.MockedFolderOperator().delete_folder.assert_called_once()
@@ -681,8 +678,8 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_user_deletion_is_called(self):
         """Test that user object would be deleted."""
-        self.MockedUserOperator().read_user.return_value = futurized(self.test_user)
-        self.MockedUserOperator().delete_user.return_value = futurized(None)
+        self.MockedUserOperator().read_user.return_value = self.test_user
+        self.MockedUserOperator().delete_user.return_value = None
         await self.client.delete("/users/current")
         self.MockedUserOperator().read_user.assert_called_once()
         self.MockedUserOperator().delete_user.assert_called_once()
@@ -700,7 +697,7 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_update_user_passes(self):
         """Test that user object would update with correct keys."""
-        self.MockedUserOperator().update_user.return_value = futurized(self.user_id)
+        self.MockedUserOperator().update_user.return_value = self.user_id
         data = [{"op": "add", "path": "/drafts/-", "value": "test_value"}]
         response = await self.client.patch("/users/current", json=data)
         self.MockedUserOperator().update_user.assert_called_once()
