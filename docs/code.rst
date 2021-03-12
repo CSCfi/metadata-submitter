@@ -24,6 +24,7 @@ Metadata Backend API
 
     metadata_backend.api.auth
     metadata_backend.api.handlers
+    metadata_backend.api.health
     metadata_backend.api.middlewares
     metadata_backend.api.operators
 

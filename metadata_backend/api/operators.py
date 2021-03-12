@@ -603,9 +603,10 @@ class FolderOperator:
         """
         try:
             folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
-            folder_query = {folder_path: {"$elemMatch": {"accessionId": accession_id, "schema": collection}}}
 
-            folder_cursor = self.db_service.query("folder", folder_query)
+            folder_cursor = self.db_service.query(
+                "folder", {folder_path: {"$elemMatch": {"accessionId": accession_id, "schema": collection}}}
+            )
             folder_check = [folder async for folder in folder_cursor]
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while inserting user: {error}"
@@ -632,9 +633,10 @@ class FolderOperator:
         """
         try:
             folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
-            folder_query = {"$and": [{folder_path: {"$elemMatch": {"schema": collection}}}, {"folderId": folder_id}]}
 
-            folder_cursor = self.db_service.query("folder", folder_query)
+            folder_cursor = self.db_service.query(
+                "folder", {"$and": [{folder_path: {"$elemMatch": {"schema": collection}}}, {"folderId": folder_id}]}
+            )
             folders = [folder async for folder in folder_cursor]
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while inserting user: {error}"
@@ -680,8 +682,8 @@ class FolderOperator:
         :param que: Dict containing query information
         :returns: Query result as list
         """
-        folder_cursor = self.db_service.query("folder", que)
-        folders = [folder async for folder in folder_cursor]
+        _cursor = self.db_service.query("folder", que)
+        folders = [folder async for folder in _cursor]
         return folders
 
     async def read_folder(self, folder_id: str) -> Dict:
@@ -938,8 +940,7 @@ class UserOperator:
         """
         try:
             await self._check_user_exists(user_id)
-            upd_content = {collection: {"$each": object_ids}}
-            assign_success = await self.db_service.append("user", user_id, upd_content)
+            assign_success = await self.db_service.append("user", user_id, {collection: {"$each": object_ids}})
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting user: {error}"
             LOG.error(reason)

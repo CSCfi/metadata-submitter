@@ -217,7 +217,7 @@ class AccessHandler:
     async def _get_key(self) -> dict:
         """Get OAuth2 public key and transform it to usable pem key.
 
-        :raises: 401 in case JWK could not be retrieved
+        :raises: HTTPUnauthorized in case JWK could not be retrieved
         :returns: dictionary with JWK (JSON Web Keys)
         """
         try:
