@@ -9,6 +9,7 @@ from pymongo.results import DeleteResult, InsertOneResult, UpdateResult
 
 from metadata_backend.database.db_service import DBService
 from pymongo import UpdateOne
+from .test_operators import AsyncIterator
 
 
 class DatabaseTestCase(IsolatedAsyncioTestCase):
@@ -176,12 +177,19 @@ class DatabaseTestCase(IsolatedAsyncioTestCase):
             {"externalId": "test_user@eppn.fi", "name": "name"}, {"_id": False, "externalId": False}
         )
 
-    # async def test_aggregate_performed(self):
-    #     """Test that aggregate is executed, so cursor is returned."""
-    #     self.collection.aggregate.return_value = AsyncIterator(range(5))
-    #     cursor = await self.test_service.do_aggregate("testcollection", [])
-    #     self.assertEqual(type(cursor), list)
-    #     self.collection.aggregate.assert_called_once_with([])
+    async def test_aggregate_performed(self):
+        """Test that aggregate is executed, so cursor is returned."""
+        # this does not like the coroutine that AsyncMock returns
+        _client = MagicMock()
+        _database = MagicMock()
+        _collection = MagicMock()
+        _client.__getitem__.return_value = _database
+        _database.__getitem__.return_value = _collection
+        _test_service = DBService("testdb", _client)
+        _collection.aggregate.return_value = AsyncIterator(range(5))
+        cursor = await _test_service.do_aggregate("testcollection", [])
+        self.assertEqual(type(cursor), list)
+        _collection.aggregate.assert_called_once_with([])
 
     async def test_append_data(self):
         """Test that append method works and returns data."""
