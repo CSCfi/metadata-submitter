@@ -376,7 +376,7 @@ class ObjectAPIHandler(RESTAPIHandler):
             if check_user:
                 await user_op.remove_objects(current_user, "drafts", [accession_id])
             else:
-                reason = "This object does not seem to belong to anything."
+                reason = "This object does not seem to belong to any user."
                 LOG.error(reason)
                 raise web.HTTPUnprocessableEntity(reason=reason)
 
@@ -388,11 +388,10 @@ class ObjectAPIHandler(RESTAPIHandler):
     async def put_object(self, req: Request) -> Response:
         """Replace metadata object in database.
 
-        For JSON request body we validate that it consists of all the
-        required fields before replacing in the DB.
+        For JSON request we don't allow replacing in the DB.
 
         :param req: PUT request
-        :raises: HTTPUnauthorized if object not owned by user
+        :raises: HTTPUnauthorized if object not owned by user or if object is published
         :returns: JSON response containing accessionId for submitted object
         """
         schema_type = req.match_info["schema"]
@@ -460,6 +459,14 @@ class ObjectAPIHandler(RESTAPIHandler):
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)
 
+        folder_op = FolderOperator(db_client)
+        exists, _, published = await folder_op.check_object_in_folder(collection, accession_id)
+        if exists:
+            if published:
+                reason = "Published objects cannot be updated."
+                LOG.error(reason)
+                raise web.HTTPUnauthorized(reason=reason)
+
         accession_id = await operator.update_metadata_object(collection, accession_id, content)
 
         body = json.dumps({"accessionId": accession_id})
@@ -490,7 +497,7 @@ class FolderAPIHandler(RESTAPIHandler):
             if _tags.match(op["path"]):
                 LOG.info(f"{op['op']} on tags in folder")
                 if "submissionType" in op["value"].keys() and op["value"]["submissionType"] not in ["XML", "Form"]:
-                    reason = "submissionType is restricted to either XML or Form values."
+                    reason = "submissionType is restricted to either 'XML' or 'Form' values."
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
                 pass
@@ -519,7 +526,7 @@ class FolderAPIHandler(RESTAPIHandler):
                             and "submissionType" in item["tags"]
                             and item["tags"]["submissionType"] not in ["XML", "Form"]
                         ):
-                            reason = "submissionType is restricted to either XML or Form values."
+                            reason = "submissionType is restricted to either 'XML' or 'Form' values."
                             LOG.error(reason)
                             raise web.HTTPBadRequest(reason=reason)
 
@@ -720,7 +727,7 @@ class UserAPIHandler(RESTAPIHandler):
             if _tags.match(op["path"]):
                 LOG.info(f"{op['op']} on tags in folder")
                 if "submissionType" in op["value"].keys() and op["value"]["submissionType"] not in ["XML", "Form"]:
-                    reason = "submissionType is restricted to either XML or Form values."
+                    reason = "submissionType is restricted to either 'XML' or 'Form' values."
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
                 pass
@@ -750,7 +757,7 @@ class UserAPIHandler(RESTAPIHandler):
                             and "submissionType" in item["tags"]
                             and item["tags"]["submissionType"] not in ["XML", "Form"]
                         ):
-                            reason = "submissionType is restricted to either XML or Form values."
+                            reason = "submissionType is restricted to either 'XML' or 'Form' values."
                             LOG.error(reason)
                             raise web.HTTPBadRequest(reason=reason)
 
