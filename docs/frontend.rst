@@ -61,9 +61,8 @@ Form components
 Form components are crucial part of the application:
 
 - All submissions and folder creation are made with `react-hook-form <https://react-hook-form.com/>`_. 
-  Latter uses form as a reference so submission can be triggered outside the form.
-- Form forschema based forms are created with customschema parser, which builds 
-  ``react-hook-form`` based forms from givenschema. The forms are validated againstschema with ``Ajv``. 
+  Latter uses form as a reference so submission can be triggered outside the form. JSON schema based forms are created with custom JSON schema parser, which builds 
+  ``react-hook-form`` based forms from given schema. The forms are validated against the JSON schema with ``Ajv``. 
   React-hook-form is used for performance reasons: it uses uncontrolled components so adding a lot of fields to array doesn't slow rendering of the application.
 
 Redux store
