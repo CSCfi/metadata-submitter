@@ -26,7 +26,7 @@ from .operators import FolderOperator, Operator, XMLOperator, UserOperator
 from ..conf.conf import aai_config
 
 
-class RESTApiHandler:
+class RESTAPIHandler:
     """Handler for REST API methods."""
 
     def _check_schema_exists(self, schema_type: str) -> None:
@@ -39,26 +39,6 @@ class RESTApiHandler:
             reason = f"Specified schema {schema_type} was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
-
-    def _header_links(self, url: str, page: int, size: int, total_objects: int) -> CIMultiDict[str]:
-        """Create link header for pagination.
-
-        :param url: base url for request
-        :param page: current page
-        :param size: results per page
-        :param total_objects: total objects to compute the total pages
-        :returns: JSON with query results
-        """
-        total_pages = ceil(total_objects / size)
-        prev_link = f'<{url}?page={page-1}&per_page={size}>; rel="prev", ' if page > 1 else ""
-        next_link = f'<{url}?page={page+1}&per_page={size}>; rel="next", ' if page < total_pages else ""
-        last_link = f'<{url}?page={total_pages}&per_page={size}>; rel="last"' if page < total_pages else ""
-        comma = ", " if page > 1 and page < total_pages else ""
-        first_link = f'<{url}?page=1&per_page={size}>; rel="first"{comma}' if page > 1 else ""
-        links = f"{prev_link}{next_link}{first_link}{last_link}"
-        link_headers = CIMultiDict(Link=f"{links}")
-        LOG.debug("Link headers created")
-        return link_headers
 
     async def _handle_check_ownedby_user(self, req: Request, collection: str, accession_id: str) -> bool:
         """Check if object belongs to user.
@@ -148,6 +128,77 @@ class RESTApiHandler:
             if await self._handle_check_ownedby_user(req, collection, el["accessionId"]):
                 yield el
 
+    async def _get_data(self, req: Request) -> Dict:
+        """Get the data content from a request.
+
+        :param req: POST/PUT/PATCH request
+        :raises: HTTPBadRequest if request does not have proper JSON data
+        :returns: JSON content of the request
+        """
+        try:
+            content = await req.json()
+            return content
+        except json.decoder.JSONDecodeError as e:
+            reason = "JSON is not correctly formatted." f" See: {e}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+    async def get_schema_types(self, req: Request) -> Response:
+        """Get all possible metadata schema types from database.
+
+        Basically returns which objects user can submit and query for.
+        :param req: GET Request
+        :returns: JSON list of schema types
+        """
+        types_json = json.dumps([x["description"] for x in schema_types.values()])
+        LOG.info(f"GET schema types. Retrieved {len(schema_types)} schemas.")
+        return web.Response(body=types_json, status=200, content_type="application/json")
+
+    async def get_json_schema(self, req: Request) -> Response:
+        """Get all JSON Schema for a specific schema type.
+
+        Basically returns which objects user can submit and query for.
+        :param req: GET Request
+        :raises: HTTPBadRequest if request does not find the schema
+        :returns: JSON list of schema types
+        """
+        schema_type = req.match_info["schema"]
+        self._check_schema_exists(schema_type)
+
+        try:
+            schema = JSONSchemaLoader().get_schema(schema_type)
+            LOG.info(f"{schema_type} schema loaded.")
+            return web.Response(body=json.dumps(schema), status=200, content_type="application/json")
+
+        except SchemaNotFoundException as error:
+            reason = f"{error} ({schema_type})"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+
+class ObjectAPIHandler(RESTAPIHandler):
+    """API Handler for Objects."""
+
+    def _header_links(self, url: str, page: int, size: int, total_objects: int) -> CIMultiDict[str]:
+        """Create link header for pagination.
+
+        :param url: base url for request
+        :param page: current page
+        :param size: results per page
+        :param total_objects: total objects to compute the total pages
+        :returns: JSON with query results
+        """
+        total_pages = ceil(total_objects / size)
+        prev_link = f'<{url}?page={page-1}&per_page={size}>; rel="prev", ' if page > 1 else ""
+        next_link = f'<{url}?page={page+1}&per_page={size}>; rel="next", ' if page < total_pages else ""
+        last_link = f'<{url}?page={total_pages}&per_page={size}>; rel="last"' if page < total_pages else ""
+        comma = ", " if page > 1 and page < total_pages else ""
+        first_link = f'<{url}?page=1&per_page={size}>; rel="first"{comma}' if page > 1 else ""
+        links = f"{prev_link}{next_link}{first_link}{last_link}"
+        link_headers = CIMultiDict(Link=f"{links}")
+        LOG.debug("Link headers created")
+        return link_headers
+
     async def _handle_query(self, req: Request) -> Response:
         """Handle query results.
 
@@ -204,53 +255,6 @@ class RESTApiHandler:
             headers=link_headers,
             content_type="application/json",
         )
-
-    async def _get_data(self, req: Request) -> Dict:
-        """Get the data content from a request.
-
-        :param req: POST/PUT/PATCH request
-        :raises: HTTPBadRequest if request does not have proper JSON data
-        :returns: JSON content of the request
-        """
-        try:
-            content = await req.json()
-            return content
-        except json.decoder.JSONDecodeError as e:
-            reason = "JSON is not correctly formatted." f" See: {e}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-    async def get_schema_types(self, req: Request) -> Response:
-        """Get all possible metadata schema types from database.
-
-        Basically returns which objects user can submit and query for.
-        :param req: GET Request
-        :returns: JSON list of schema types
-        """
-        types_json = json.dumps([x["description"] for x in schema_types.values()])
-        LOG.info(f"GET schema types. Retrieved {len(schema_types)} schemas.")
-        return web.Response(body=types_json, status=200, content_type="application/json")
-
-    async def get_json_schema(self, req: Request) -> Response:
-        """Get all JSON Schema for a specific schema type.
-
-        Basically returns which objects user can submit and query for.
-        :param req: GET Request
-        :raises: HTTPBadRequest if request does not find the schema
-        :returns: JSON list of schema types
-        """
-        schema_type = req.match_info["schema"]
-        self._check_schema_exists(schema_type)
-
-        try:
-            schema = JSONSchemaLoader().get_schema(schema_type)
-            LOG.info(f"{schema_type} schema loaded.")
-            return web.Response(body=json.dumps(schema), status=200, content_type="application/json")
-
-        except SchemaNotFoundException as error:
-            reason = f"{error} ({schema_type})"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
 
     async def get_object(self, req: Request) -> Response:
         """Get one metadata object by its accession id.
@@ -462,6 +466,10 @@ class RESTApiHandler:
         LOG.info(f"PATCH object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
+
+class FolderAPIHandler(RESTAPIHandler):
+    """API Handler for folders."""
+
     async def get_folders(self, req: Request) -> Response:
         """Get all possible object folders from database.
 
@@ -654,6 +662,10 @@ class RESTApiHandler:
 
         LOG.info(f"DELETE folder with ID {_folder_id} was successful.")
         return web.Response(status=204)
+
+
+class UserAPIHandler(RESTAPIHandler):
+    """API Handler for users."""
 
     async def get_user(self, req: Request) -> Response:
         """Get one user by its user ID.
