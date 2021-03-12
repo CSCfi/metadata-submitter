@@ -698,7 +698,7 @@ class HandlersTestCase(AioHTTPTestCase):
     async def test_update_user_passes(self):
         """Test that user object would update with correct keys."""
         self.MockedUserOperator().update_user.return_value = self.user_id
-        data = [{"op": "add", "path": "/drafts/-", "value": "test_value"}]
+        data = [{"op": "add", "path": "/drafts/-", "value": [{"accessionId": "3", "schema": "sample"}]}]
         response = await self.client.patch("/users/current", json=data)
         self.MockedUserOperator().update_user.assert_called_once()
         self.assertEqual(response.status, 200)

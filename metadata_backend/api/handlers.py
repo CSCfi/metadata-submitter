@@ -5,7 +5,7 @@ import mimetypes
 from collections import Counter
 from math import ceil
 from pathlib import Path
-from typing import Dict, List, Tuple, Union, cast, AsyncGenerator
+from typing import Dict, List, Tuple, Union, cast, AsyncGenerator, Any
 
 from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
@@ -470,6 +470,59 @@ class ObjectAPIHandler(RESTAPIHandler):
 class FolderAPIHandler(RESTAPIHandler):
     """API Handler for folders."""
 
+    def _check_patch_folder(self, patch_ops: Any) -> None:
+        """Check patch operations in request are valid.
+
+        We check that ``metadataObjects`` and ``drafts`` have ``_required_values``.
+        For tags we check that the ``submissionType`` takes either ``XML`` or
+        ``Form`` as values.
+        :param patch_ops: JSON patch request
+        :raises: HTTPBadRequest if request does not fullfil one of requirements
+        :raises: HTTPUnauthorized if request tries to do anything else than add or replace
+        :returns: None
+        """
+        _required_paths = ["/name", "/description"]
+        _required_values = ["schema", "accessionId"]
+        _arrays = ["/metadataObjects/-", "/drafts/-"]
+        _tags = re.compile("^/(metadataObjects|drafts)/[0-9]*/(tags)$")
+
+        for op in patch_ops:
+            if _tags.match(op["path"]):
+                LOG.info(f"{op['op']} on tags in folder")
+                if "submissionType" in op["value"].keys() and op["value"]["submissionType"] not in ["XML", "Form"]:
+                    reason = "submissionType is restricted to either XML or Form values."
+                    LOG.error(reason)
+                    raise web.HTTPBadRequest(reason=reason)
+                pass
+            else:
+                if all(i not in op["path"] for i in _required_paths + _arrays):
+                    reason = f"Request contains '{op['path']}' key that cannot be updated to folders."
+                    LOG.error(reason)
+                    raise web.HTTPBadRequest(reason=reason)
+                if op["op"] in ["remove", "copy", "test", "move"]:
+                    reason = f"{op['op']} on {op['path']} is not allowed."
+                    LOG.error(reason)
+                    raise web.HTTPUnauthorized(reason=reason)
+                if op["op"] == "replace" and op["path"] in _arrays:
+                    reason = f"{op['op']} on {op['path']}; replacing all objects is not allowed."
+                    LOG.error(reason)
+                    raise web.HTTPUnauthorized(reason=reason)
+                if op["path"] in _arrays:
+                    _ops = op["value"] if isinstance(op["value"], list) else [op["value"]]
+                    for item in _ops:
+                        if not all(key in item.keys() for key in _required_values):
+                            reason = "accessionId and schema are required fields."
+                            LOG.error(reason)
+                            raise web.HTTPBadRequest(reason=reason)
+                        if (
+                            "tags" in item
+                            and "submissionType" in item["tags"]
+                            and item["tags"]["submissionType"] not in ["XML", "Form"]
+                        ):
+                            reason = "submissionType is restricted to either XML or Form values."
+                            LOG.error(reason)
+                            raise web.HTTPBadRequest(reason=reason)
+
     async def get_folders(self, req: Request) -> Response:
         """Get all possible object folders from database.
 
@@ -557,26 +610,7 @@ class FolderAPIHandler(RESTAPIHandler):
 
         # Check patch operations in request are valid
         patch_ops = await self._get_data(req)
-        allowed_paths = ["/name", "/description"]
-        array_paths = ["/metadataObjects/-", "/drafts/-"]
-        tags_path = re.compile("^/(metadataObjects|drafts)/[0-9]*/(tags)$")
-        for op in patch_ops:
-            if tags_path.match(op["path"]):
-                LOG.info(f"{op['op']} on tags in folder")
-                pass
-            else:
-                if all(i not in op["path"] for i in allowed_paths + array_paths):
-                    reason = f"Request contains '{op['path']}' key that cannot be updated to folders."
-                    LOG.error(reason)
-                    raise web.HTTPBadRequest(reason=reason)
-                if op["op"] in ["remove", "copy", "test", "move"]:
-                    reason = f"{op['op']} on {op['path']} is not allowed."
-                    LOG.error(reason)
-                    raise web.HTTPUnauthorized(reason=reason)
-                if op["op"] == "replace" and op["path"] in array_paths:
-                    reason = f"{op['op']} on {op['path']}; replacing all objects is not allowed."
-                    LOG.error(reason)
-                    raise web.HTTPUnauthorized(reason=reason)
+        self._check_patch_folder(patch_ops)
 
         check_user = await self._handle_check_ownedby_user(req, "folders", folder_id)
         if not check_user:
@@ -667,6 +701,59 @@ class FolderAPIHandler(RESTAPIHandler):
 class UserAPIHandler(RESTAPIHandler):
     """API Handler for users."""
 
+    def _check_patch_user(self, patch_ops: Any) -> None:
+        """Check patch operations in request are valid.
+
+        We check that ``folders`` have string values (one or a list)
+        and ``drafts`` have ``_required_values``.
+        For tags we check that the ``submissionType`` takes either ``XML`` or
+        ``Form`` as values.
+        :param patch_ops: JSON patch request
+        :raises: HTTPBadRequest if request does not fullfil one of requirements
+        :raises: HTTPUnauthorized if request tries to do anything else than add or replace
+        :returns: None
+        """
+        _arrays = ["/drafts/-", "/folders/-"]
+        _required_values = ["schema", "accessionId"]
+        _tags = re.compile("^/(drafts)/[0-9]*/(tags)$")
+        for op in patch_ops:
+            if _tags.match(op["path"]):
+                LOG.info(f"{op['op']} on tags in folder")
+                if "submissionType" in op["value"].keys() and op["value"]["submissionType"] not in ["XML", "Form"]:
+                    reason = "submissionType is restricted to either XML or Form values."
+                    LOG.error(reason)
+                    raise web.HTTPBadRequest(reason=reason)
+                pass
+            else:
+                if all(i not in op["path"] for i in _arrays):
+                    reason = f"Request contains '{op['path']}' key that cannot be updated to user object"
+                    LOG.error(reason)
+                    raise web.HTTPBadRequest(reason=reason)
+                if op["op"] in ["remove", "copy", "test", "move", "replace"]:
+                    reason = f"{op['op']} on {op['path']} is not allowed."
+                    LOG.error(reason)
+                    raise web.HTTPUnauthorized(reason=reason)
+                if op["path"] == "/folders/-":
+                    if not (isinstance(op["value"], str) or isinstance(op["value"], list)):
+                        reason = "We only accept string folder IDs."
+                        LOG.error(reason)
+                        raise web.HTTPBadRequest(reason=reason)
+                if op["path"] == "/drafts/-":
+                    _ops = op["value"] if isinstance(op["value"], list) else [op["value"]]
+                    for item in _ops:
+                        if not all(key in item.keys() for key in _required_values):
+                            reason = "accessionId and schema are required fields."
+                            LOG.error(reason)
+                            raise web.HTTPBadRequest(reason=reason)
+                        if (
+                            "tags" in item
+                            and "submissionType" in item["tags"]
+                            and item["tags"]["submissionType"] not in ["XML", "Form"]
+                        ):
+                            reason = "submissionType is restricted to either XML or Form values."
+                            LOG.error(reason)
+                            raise web.HTTPBadRequest(reason=reason)
+
     async def get_user(self, req: Request) -> Response:
         """Get one user by its user ID.
 
@@ -700,18 +787,8 @@ class UserAPIHandler(RESTAPIHandler):
             raise web.HTTPUnauthorized(reason="Only current user operations are allowed")
         db_client = req.app["db_client"]
 
-        # Check patch operations in request are valid
         patch_ops = await self._get_data(req)
-        allowed_paths = ["/drafts/-", "/folders/-"]
-        for op in patch_ops:
-            if all(i not in op["path"] for i in allowed_paths):
-                reason = f"Request contains '{op['path']}' key that cannot be updated to user object"
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
-            if op["op"] in ["remove", "copy", "test", "move", "replace"]:
-                reason = f"{op['op']} on {op['path']} is not allowed."
-                LOG.error(reason)
-                raise web.HTTPUnauthorized(reason=reason)
+        self._check_patch_user(patch_ops)
 
         operator = UserOperator(db_client)
 
