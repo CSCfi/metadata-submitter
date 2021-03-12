@@ -83,6 +83,9 @@ class XMLValidator:
 def extend_with_default(validator_class: Draft7Validator) -> Draft7Validator:
     """Include default values present in JSON Schema.
 
+    This feature is included even though some default values might cause
+    unwanted behaviour when submitting a schema.
+
     Source: https://python-jsonschema.readthedocs.io FAQ
     """
     validate_properties = validator_class.VALIDATORS["properties"]

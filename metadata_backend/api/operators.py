@@ -404,7 +404,7 @@ class Operator(BaseOperator):
     async def _format_data_to_replace_and_add_to_db(self, schema_type: str, accession_id: str, data: Dict) -> str:
         """Format JSON metadata object and replace it in db.
 
-        Replace information to object before adding to db.
+        Replace information in object before adding to db.
 
         We will not replace accessionId, publishDate or dateCreated,
         as these are generated when created.
