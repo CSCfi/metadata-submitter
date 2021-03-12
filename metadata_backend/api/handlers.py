@@ -56,6 +56,7 @@ class RESTAPIHandler:
         db_client = req.app["db_client"]
         current_user = get_session(req)["user_info"]
         user_op = UserOperator(db_client)
+        _check = False
 
         if collection != "folders":
 
@@ -63,18 +64,25 @@ class RESTAPIHandler:
             check, folder_id, published = await folder_op.check_object_in_folder(collection, accession_id)
 
             if published:
-                return True
+                _check = True
             elif check:
                 # if the draft object is found in folder we just need to check if the folder belongs to user
-                return await user_op.check_user_has_doc("folders", current_user, folder_id)
+                _check = await user_op.check_user_has_doc("folders", current_user, folder_id)
             elif collection.startswith("draft"):
                 # if collection is draft but not found in a folder we also check if object is in drafts of the user
                 # they will be here if they will not be deleted after publish
-                return await user_op.check_user_has_doc(collection, current_user, accession_id)
+                _check = await user_op.check_user_has_doc(collection, current_user, accession_id)
             else:
-                return False
+                _check = False
         else:
-            return await user_op.check_user_has_doc(collection, current_user, accession_id)
+            _check = await user_op.check_user_has_doc(collection, current_user, accession_id)
+
+        if not _check:
+            reason = f"The ID: {accession_id} does not belong to current user."
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
+
+        return _check
 
     async def _get_collection_objects(
         self, folder_op: AsyncIOMotorClient, collection: str, seq: List
@@ -263,7 +271,6 @@ class ObjectAPIHandler(RESTAPIHandler):
         set, otherwise json.
 
         :param req: GET request
-        :raises: HTTPUnauthorized if object not owned by user
         :returns: JSON or XML response containing metadata object
         """
         accession_id = req.match_info["accessionId"]
@@ -278,11 +285,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         await operator.check_exists(collection, accession_id)
 
-        check_user = await self._handle_check_ownedby_user(req, collection, accession_id)
-        if not check_user:
-            reason = f"The object {accession_id} does not belong to current user."
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
+        await self._handle_check_ownedby_user(req, collection, accession_id)
 
         data, content_type = await operator.read_metadata_object(type_collection, accession_id)
 
@@ -343,7 +346,8 @@ class ObjectAPIHandler(RESTAPIHandler):
         """Delete metadata object from database.
 
         :param req: DELETE request
-        :raises: HTTPUnauthorized if object not owned by user or folder published
+        :raises: HTTPUnauthorized if folder published
+        :raises: HTTPUnprocessableEntity if object does not belong to current user
         :returns: HTTPNoContent response
         """
         schema_type = req.match_info["schema"]
@@ -355,11 +359,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         await Operator(db_client).check_exists(collection, accession_id)
 
-        check_user = await self._handle_check_ownedby_user(req, collection, accession_id)
-        if not check_user:
-            reason = f"The object {accession_id} does not belong to current user."
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
+        await self._handle_check_ownedby_user(req, collection, accession_id)
 
         folder_op = FolderOperator(db_client)
         exists, folder_id, published = await folder_op.check_object_in_folder(collection, accession_id)
@@ -391,7 +391,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         For JSON request we don't allow replacing in the DB.
 
         :param req: PUT request
-        :raises: HTTPUnauthorized if object not owned by user or if object is published
+        :raises: HTTPUnsupportedMediaType if JSON replace is attempted
         :returns: JSON response containing accessionId for submitted object
         """
         schema_type = req.match_info["schema"]
@@ -416,11 +416,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         await operator.check_exists(collection, accession_id)
 
-        check_user = await self._handle_check_ownedby_user(req, collection, accession_id)
-        if not check_user:
-            reason = f"The object {accession_id} does not belong to current user."
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
+        await self._handle_check_ownedby_user(req, collection, accession_id)
 
         accession_id = await operator.replace_metadata_object(collection, accession_id, content)
 
@@ -434,7 +430,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         We do not support patch for XML.
 
         :param req: PATCH request
-        :raises: HTTPUnauthorized if object not owned by user
+        :raises: HTTPUnauthorized if object is in published folder
         :returns: JSON response containing accessionId for submitted object
         """
         schema_type = req.match_info["schema"]
@@ -453,11 +449,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         await operator.check_exists(collection, accession_id)
 
-        check_user = await self._handle_check_ownedby_user(req, collection, accession_id)
-        if not check_user:
-            reason = f"The object {accession_id} does not belong to current user."
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
+        await self._handle_check_ownedby_user(req, collection, accession_id)
 
         folder_op = FolderOperator(db_client)
         exists, _, published = await folder_op.check_object_in_folder(collection, accession_id)
@@ -589,11 +581,7 @@ class FolderAPIHandler(RESTAPIHandler):
 
         await operator.check_folder_exists(folder_id)
 
-        check_user = await self._handle_check_ownedby_user(req, "folders", folder_id)
-        if not check_user:
-            reason = f"The folder {folder_id} does not belong to current user."
-            LOG.error(reason)
-            raise web.HTTPNotFound(reason=reason)
+        await self._handle_check_ownedby_user(req, "folders", folder_id)
 
         folder = await operator.read_folder(folder_id)
 
@@ -604,8 +592,6 @@ class FolderAPIHandler(RESTAPIHandler):
         """Update object folder with a specific folder id.
 
         :param req: PATCH request
-        :raises: HTTPUnauthorized if folder not owned by user, HTTPBadRequest if JSONpatch operation
-        is not allowed
         :returns: JSON response containing folder ID for updated folder
         """
         folder_id = req.match_info["folderId"]
@@ -619,11 +605,7 @@ class FolderAPIHandler(RESTAPIHandler):
         patch_ops = await self._get_data(req)
         self._check_patch_folder(patch_ops)
 
-        check_user = await self._handle_check_ownedby_user(req, "folders", folder_id)
-        if not check_user:
-            reason = f"The folder {folder_id} does not belong to current user."
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
+        await self._handle_check_ownedby_user(req, "folders", folder_id)
 
         folder = await operator.update_folder(folder_id, patch_ops if isinstance(patch_ops, list) else [patch_ops])
 
@@ -635,7 +617,6 @@ class FolderAPIHandler(RESTAPIHandler):
         """Update object folder specifically into published state.
 
         :param req: PATCH request
-        :raises: HTTPUnauthorized if folder not owned by user
         :returns: JSON response containing folder ID for updated folder
         """
         folder_id = req.match_info["folderId"]
@@ -644,11 +625,7 @@ class FolderAPIHandler(RESTAPIHandler):
 
         await operator.check_folder_exists(folder_id)
 
-        check_user = await self._handle_check_ownedby_user(req, "folders", folder_id)
-        if not check_user:
-            reason = f"The folder {folder_id} does not belong to current user."
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
+        await self._handle_check_ownedby_user(req, "folders", folder_id)
 
         folder = await operator.read_folder(folder_id)
 
@@ -672,7 +649,6 @@ class FolderAPIHandler(RESTAPIHandler):
         """Delete object folder from database.
 
         :param req: DELETE request
-        :raises: HTTPUnauthorized if folder not owned by user
         :returns: HTTP No Content response
         """
         folder_id = req.match_info["folderId"]
@@ -682,11 +658,7 @@ class FolderAPIHandler(RESTAPIHandler):
         await operator.check_folder_exists(folder_id)
         await operator.check_folder_published(folder_id)
 
-        check_user = await self._handle_check_ownedby_user(req, "folders", folder_id)
-        if not check_user:
-            reason = f"The folder {folder_id} does not belong to current user."
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
+        await self._handle_check_ownedby_user(req, "folders", folder_id)
 
         obj_ops = Operator(db_client)
 
