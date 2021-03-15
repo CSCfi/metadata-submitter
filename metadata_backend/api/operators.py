@@ -861,19 +861,19 @@ class UserOperator:
         """
         user_data: Dict[str, Union[list, str]] = dict()
 
-        externalId = data[0]  # this also can be sub key
+        external_id = data[0]  # this also can be sub key
         name = data[1]
         try:
-            existing_user_id = await self.db_service.exists_user_by_externalId(externalId, name)
+            existing_user_id = await self.db_service.exists_user_by_external_id(external_id, name)
             if existing_user_id:
-                LOG.info(f"User with identifier: {externalId} exists, no need to create.")
+                LOG.info(f"User with identifier: {external_id} exists, no need to create.")
                 return existing_user_id
             else:
                 user_data["drafts"] = []
                 user_data["folders"] = []
                 user_data["userId"] = user_id = self._generate_user_id()
                 user_data["name"] = name
-                user_data["externalId"] = externalId
+                user_data["externalId"] = external_id
                 JSONValidator(user_data, "users")
                 insert_success = await self.db_service.create("user", user_data)
                 if not insert_success:
