@@ -4,7 +4,9 @@ RUN apk add --update \
     && apk add --no-cache git\
     && rm -rf /var/cache/apk/*
 
-RUN git clone https://github.com/CSCfi/metadata-submitter-frontend.git
+ARG BRANCH=master
+
+RUN git clone -b ${BRANCH} https://github.com/CSCfi/metadata-submitter-frontend.git
 
 WORKDIR /metadata-submitter-frontend
 RUN npm install -g npm@7.6.0 \
