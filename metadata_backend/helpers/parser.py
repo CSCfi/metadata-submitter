@@ -134,7 +134,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
 
     @property
     def lossy(self) -> bool:
-        """Define that converter is lossy, xml structure can't be restored."""
+        """Define that converter is lossy, XML structure can't be restored."""
         return True
 
     def element_decode(
@@ -154,7 +154,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
         - All "accession" keys are converted to "accesionId", key used by
           this program
         Corner cases:
-        - If possible, self-closing xml tag is elevated as an attribute to its
+        - If possible, self-closing XML tag is elevated as an attribute to its
           parent, otherwise "true" is added as its value.
         - If there is just one children and it is string, it is appended to
           same dictionary with its parents attributes with "value" as its key.
@@ -197,10 +197,10 @@ class MetadataXMLConverter(XMLSchemaConverter):
 
 
 class XMLToJSONParser:
-    """Methods to parse necessary data from different xml types."""
+    """Methods to parse necessary data from different XML types."""
 
     def parse(self, schema_type: str, content: str) -> Dict:
-        """Validate xml file and parse it to json.
+        """Validate XML file and parse it to JSON.
 
         We validate resulting JSON against a JSON schema
         to be sure the resulting content is consistent.
