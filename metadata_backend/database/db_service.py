@@ -92,15 +92,15 @@ class DBService:
         return True if exists else False
 
     @auto_reconnect
-    async def exists_user_by_externalId(self, externalId: str, name: str) -> Union[None, str]:
+    async def exists_user_by_external_id(self, external_id: str, name: str) -> Union[None, str]:
         """Check user exists by its eppn.
 
         :param eppn: eduPersonPrincipalName to be searched
         :returns: True if exists and False if it does not
         """
-        find_by_id = {"externalId": externalId, "name": name}
+        find_by_id = {"externalId": external_id, "name": name}
         user = await self.database["user"].find_one(find_by_id, {"_id": False, "externalId": False})
-        LOG.debug(f"DB check user exists for {externalId} returned {user}.")
+        LOG.debug(f"DB check user exists for {external_id} returned {user}.")
         return user["userId"] if user else None
 
     @auto_reconnect

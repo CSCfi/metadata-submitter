@@ -159,19 +159,19 @@ class DatabaseTestCase(IsolatedAsyncioTestCase):
         )
         self.assertEqual(found_folder, True)
 
-    async def test_externalId_exists_returns_false(self):
+    async def test_external_id_exists_returns_false(self):
         """Test that externalId exists method works and returns None."""
         self.collection.find_one.return_value = None
-        found_doc = await self.test_service.exists_user_by_externalId("test_user@eppn.fi", "name")
+        found_doc = await self.test_service.exists_user_by_external_id("test_user@eppn.fi", "name")
         self.assertEqual(found_doc, None)
         self.collection.find_one.assert_called_once_with(
             {"externalId": "test_user@eppn.fi", "name": "name"}, {"_id": False, "externalId": False}
         )
 
-    async def test_externalId_exists_returns_true(self):
+    async def test_external_id_exists_returns_true(self):
         """Test that externalId exists method works and returns user id."""
         self.collection.find_one.return_value = self.user_stub
-        found_doc = await self.test_service.exists_user_by_externalId("test_user@eppn.fi", "name")
+        found_doc = await self.test_service.exists_user_by_external_id("test_user@eppn.fi", "name")
         self.assertEqual(found_doc, self.user_id_stub)
         self.collection.find_one.assert_called_once_with(
             {"externalId": "test_user@eppn.fi", "name": "name"}, {"_id": False, "externalId": False}
