@@ -5,7 +5,7 @@ import mimetypes
 from collections import Counter
 from math import ceil
 from pathlib import Path
-from typing import Dict, List, Tuple, Union, cast, AsyncGenerator
+from typing import Dict, List, Tuple, Union, cast, AsyncGenerator, Any
 
 from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
@@ -26,7 +26,7 @@ from .operators import FolderOperator, Operator, XMLOperator, UserOperator
 from ..conf.conf import aai_config
 
 
-class RESTApiHandler:
+class RESTAPIHandler:
     """Handler for REST API methods."""
 
     def _check_schema_exists(self, schema_type: str) -> None:
@@ -39,26 +39,6 @@ class RESTApiHandler:
             reason = f"Specified schema {schema_type} was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
-
-    def _header_links(self, url: str, page: int, size: int, total_objects: int) -> CIMultiDict[str]:
-        """Create link header for pagination.
-
-        :param url: base url for request
-        :param page: current page
-        :param size: results per page
-        :param total_objects: total objects to compute the total pages
-        :returns: JSON with query results
-        """
-        total_pages = ceil(total_objects / size)
-        prev_link = f'<{url}?page={page-1}&per_page={size}>; rel="prev", ' if page > 1 else ""
-        next_link = f'<{url}?page={page+1}&per_page={size}>; rel="next", ' if page < total_pages else ""
-        last_link = f'<{url}?page={total_pages}&per_page={size}>; rel="last"' if page < total_pages else ""
-        comma = ", " if page > 1 and page < total_pages else ""
-        first_link = f'<{url}?page=1&per_page={size}>; rel="first"{comma}' if page > 1 else ""
-        links = f"{prev_link}{next_link}{first_link}{last_link}"
-        link_headers = CIMultiDict(Link=f"{links}")
-        LOG.debug("Link headers created")
-        return link_headers
 
     async def _handle_check_ownedby_user(self, req: Request, collection: str, accession_id: str) -> bool:
         """Check if object belongs to user.
@@ -76,6 +56,7 @@ class RESTApiHandler:
         db_client = req.app["db_client"]
         current_user = get_session(req)["user_info"]
         user_op = UserOperator(db_client)
+        _check = False
 
         if collection != "folders":
 
@@ -83,18 +64,25 @@ class RESTApiHandler:
             check, folder_id, published = await folder_op.check_object_in_folder(collection, accession_id)
 
             if published:
-                return True
+                _check = True
             elif check:
                 # if the draft object is found in folder we just need to check if the folder belongs to user
-                return await user_op.check_user_has_doc("folders", current_user, folder_id)
+                _check = await user_op.check_user_has_doc("folders", current_user, folder_id)
             elif collection.startswith("draft"):
                 # if collection is draft but not found in a folder we also check if object is in drafts of the user
                 # they will be here if they will not be deleted after publish
-                return await user_op.check_user_has_doc(collection, current_user, accession_id)
+                _check = await user_op.check_user_has_doc(collection, current_user, accession_id)
             else:
-                return False
+                _check = False
         else:
-            return await user_op.check_user_has_doc(collection, current_user, accession_id)
+            _check = await user_op.check_user_has_doc(collection, current_user, accession_id)
+
+        if not _check:
+            reason = f"The ID: {accession_id} does not belong to current user."
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
+
+        return _check
 
     async def _get_collection_objects(
         self, folder_op: AsyncIOMotorClient, collection: str, seq: List
@@ -148,63 +136,6 @@ class RESTApiHandler:
             if await self._handle_check_ownedby_user(req, collection, el["accessionId"]):
                 yield el
 
-    async def _handle_query(self, req: Request) -> Response:
-        """Handle query results.
-
-        :param req: GET request with query parameters
-        :returns: JSON with query results
-        """
-        collection = req.match_info["schema"]
-        req_format = req.query.get("format", "json").lower()
-        if req_format == "xml":
-            reason = "xml-formatted query results are not supported"
-            raise web.HTTPBadRequest(reason=reason)
-
-        def get_page_param(param_name: str, default: int) -> int:
-            """Handle page parameter value extracting."""
-            try:
-                param = int(req.query.get(param_name, default))
-            except ValueError:
-                reason = f"{param_name} must be a number, now it is " f"{req.query.get(param_name)}"
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
-            if param < 1:
-                reason = f"{param_name} must over 1"
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
-            return param
-
-        page = get_page_param("page", 1)
-        per_page = get_page_param("per_page", 10)
-        db_client = req.app["db_client"]
-
-        filter_list = await self._handle_user_objects_collection(req, collection)
-        data, page_num, page_size, total_objects = await Operator(db_client).query_metadata_database(
-            collection, req.query, page, per_page, filter_list
-        )
-
-        result = json.dumps(
-            {
-                "page": {
-                    "page": page_num,
-                    "size": page_size,
-                    "totalPages": ceil(total_objects / per_page),
-                    "totalObjects": total_objects,
-                },
-                "objects": data,
-            }
-        )
-        url = f"{req.scheme}://{req.host}{req.path}"
-        link_headers = self._header_links(url, page_num, per_page, total_objects)
-        LOG.debug(f"Pagination header links: {link_headers}")
-        LOG.info(f"Querying for objects in {collection} resulted in {total_objects} objects ")
-        return web.Response(
-            body=result,
-            status=200,
-            headers=link_headers,
-            content_type="application/json",
-        )
-
     async def _get_data(self, req: Request) -> Dict:
         """Get the data content from a request.
 
@@ -252,14 +183,94 @@ class RESTApiHandler:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
+
+class ObjectAPIHandler(RESTAPIHandler):
+    """API Handler for Objects."""
+
+    def _header_links(self, url: str, page: int, size: int, total_objects: int) -> CIMultiDict[str]:
+        """Create link header for pagination.
+
+        :param url: base url for request
+        :param page: current page
+        :param size: results per page
+        :param total_objects: total objects to compute the total pages
+        :returns: JSON with query results
+        """
+        total_pages = ceil(total_objects / size)
+        prev_link = f'<{url}?page={page-1}&per_page={size}>; rel="prev", ' if page > 1 else ""
+        next_link = f'<{url}?page={page+1}&per_page={size}>; rel="next", ' if page < total_pages else ""
+        last_link = f'<{url}?page={total_pages}&per_page={size}>; rel="last"' if page < total_pages else ""
+        comma = ", " if page > 1 and page < total_pages else ""
+        first_link = f'<{url}?page=1&per_page={size}>; rel="first"{comma}' if page > 1 else ""
+        links = f"{prev_link}{next_link}{first_link}{last_link}"
+        link_headers = CIMultiDict(Link=f"{links}")
+        LOG.debug("Link headers created")
+        return link_headers
+
+    async def _handle_query(self, req: Request) -> Response:
+        """Handle query results.
+
+        :param req: GET request with query parameters
+        :returns: JSON with query results
+        """
+        collection = req.match_info["schema"]
+        req_format = req.query.get("format", "json").lower()
+        if req_format == "xml":
+            reason = "xml-formatted query results are not supported"
+            raise web.HTTPBadRequest(reason=reason)
+
+        def get_page_param(param_name: str, default: int) -> int:
+            """Handle page parameter value extracting."""
+            try:
+                param = int(req.query.get(param_name, default))
+            except ValueError:
+                reason = f"{param_name} must be a number, now it is {req.query.get(param_name)}"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+            if param < 1:
+                reason = f"{param_name} must over 1"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+            return param
+
+        page = get_page_param("page", 1)
+        per_page = get_page_param("per_page", 10)
+        db_client = req.app["db_client"]
+
+        filter_list = await self._handle_user_objects_collection(req, collection)
+        data, page_num, page_size, total_objects = await Operator(db_client).query_metadata_database(
+            collection, req.query, page, per_page, filter_list
+        )
+
+        result = json.dumps(
+            {
+                "page": {
+                    "page": page_num,
+                    "size": page_size,
+                    "totalPages": ceil(total_objects / per_page),
+                    "totalObjects": total_objects,
+                },
+                "objects": data,
+            }
+        )
+        url = f"{req.scheme}://{req.host}{req.path}"
+        link_headers = self._header_links(url, page_num, per_page, total_objects)
+        LOG.debug(f"Pagination header links: {link_headers}")
+        LOG.info(f"Querying for objects in {collection} resulted in {total_objects} objects ")
+        return web.Response(
+            body=result,
+            status=200,
+            headers=link_headers,
+            content_type="application/json",
+        )
+
     async def get_object(self, req: Request) -> Response:
         """Get one metadata object by its accession id.
 
-        Returns original xml object from backup if format query parameter is
+        Returns original XML object from backup if format query parameter is
         set, otherwise json.
 
         :param req: GET request
-        :raises: HTTPUnauthorized if object not owned by user
         :returns: JSON or XML response containing metadata object
         """
         accession_id = req.match_info["accessionId"]
@@ -274,11 +285,7 @@ class RESTApiHandler:
 
         await operator.check_exists(collection, accession_id)
 
-        check_user = await self._handle_check_ownedby_user(req, collection, accession_id)
-        if not check_user:
-            reason = f"The object {accession_id} does not belong to current user."
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
+        await self._handle_check_ownedby_user(req, collection, accession_id)
 
         data, content_type = await operator.read_metadata_object(type_collection, accession_id)
 
@@ -339,7 +346,8 @@ class RESTApiHandler:
         """Delete metadata object from database.
 
         :param req: DELETE request
-        :raises: HTTPUnauthorized if object not owned by user or folder published
+        :raises: HTTPUnauthorized if folder published
+        :raises: HTTPUnprocessableEntity if object does not belong to current user
         :returns: HTTPNoContent response
         """
         schema_type = req.match_info["schema"]
@@ -351,11 +359,7 @@ class RESTApiHandler:
 
         await Operator(db_client).check_exists(collection, accession_id)
 
-        check_user = await self._handle_check_ownedby_user(req, collection, accession_id)
-        if not check_user:
-            reason = f"The object {accession_id} does not belong to current user."
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
+        await self._handle_check_ownedby_user(req, collection, accession_id)
 
         folder_op = FolderOperator(db_client)
         exists, folder_id, published = await folder_op.check_object_in_folder(collection, accession_id)
@@ -372,7 +376,7 @@ class RESTApiHandler:
             if check_user:
                 await user_op.remove_objects(current_user, "drafts", [accession_id])
             else:
-                reason = "This object does not seem to belong to anything."
+                reason = "This object does not seem to belong to any user."
                 LOG.error(reason)
                 raise web.HTTPUnprocessableEntity(reason=reason)
 
@@ -384,11 +388,10 @@ class RESTApiHandler:
     async def put_object(self, req: Request) -> Response:
         """Replace metadata object in database.
 
-        For JSON request body we validate that it consists of all the
-        required fields before replacing in the DB.
+        For JSON request we don't allow replacing in the DB.
 
         :param req: PUT request
-        :raises: HTTPUnauthorized if object not owned by user
+        :raises: HTTPUnsupportedMediaType if JSON replace is attempted
         :returns: JSON response containing accessionId for submitted object
         """
         schema_type = req.match_info["schema"]
@@ -413,11 +416,7 @@ class RESTApiHandler:
 
         await operator.check_exists(collection, accession_id)
 
-        check_user = await self._handle_check_ownedby_user(req, collection, accession_id)
-        if not check_user:
-            reason = f"The object {accession_id} does not belong to current user."
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
+        await self._handle_check_ownedby_user(req, collection, accession_id)
 
         accession_id = await operator.replace_metadata_object(collection, accession_id, content)
 
@@ -431,7 +430,7 @@ class RESTApiHandler:
         We do not support patch for XML.
 
         :param req: PATCH request
-        :raises: HTTPUnauthorized if object not owned by user
+        :raises: HTTPUnauthorized if object is in published folder
         :returns: JSON response containing accessionId for submitted object
         """
         schema_type = req.match_info["schema"]
@@ -450,17 +449,78 @@ class RESTApiHandler:
 
         await operator.check_exists(collection, accession_id)
 
-        check_user = await self._handle_check_ownedby_user(req, collection, accession_id)
-        if not check_user:
-            reason = f"The object {accession_id} does not belong to current user."
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
+        await self._handle_check_ownedby_user(req, collection, accession_id)
+
+        folder_op = FolderOperator(db_client)
+        exists, _, published = await folder_op.check_object_in_folder(collection, accession_id)
+        if exists:
+            if published:
+                reason = "Published objects cannot be updated."
+                LOG.error(reason)
+                raise web.HTTPUnauthorized(reason=reason)
 
         accession_id = await operator.update_metadata_object(collection, accession_id, content)
 
         body = json.dumps({"accessionId": accession_id})
         LOG.info(f"PATCH object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
+
+
+class FolderAPIHandler(RESTAPIHandler):
+    """API Handler for folders."""
+
+    def _check_patch_folder(self, patch_ops: Any) -> None:
+        """Check patch operations in request are valid.
+
+        We check that ``metadataObjects`` and ``drafts`` have ``_required_values``.
+        For tags we check that the ``submissionType`` takes either ``XML`` or
+        ``Form`` as values.
+        :param patch_ops: JSON patch request
+        :raises: HTTPBadRequest if request does not fullfil one of requirements
+        :raises: HTTPUnauthorized if request tries to do anything else than add or replace
+        :returns: None
+        """
+        _required_paths = ["/name", "/description"]
+        _required_values = ["schema", "accessionId"]
+        _arrays = ["/metadataObjects/-", "/drafts/-"]
+        _tags = re.compile("^/(metadataObjects|drafts)/[0-9]*/(tags)$")
+
+        for op in patch_ops:
+            if _tags.match(op["path"]):
+                LOG.info(f"{op['op']} on tags in folder")
+                if "submissionType" in op["value"].keys() and op["value"]["submissionType"] not in ["XML", "Form"]:
+                    reason = "submissionType is restricted to either 'XML' or 'Form' values."
+                    LOG.error(reason)
+                    raise web.HTTPBadRequest(reason=reason)
+                pass
+            else:
+                if all(i not in op["path"] for i in _required_paths + _arrays):
+                    reason = f"Request contains '{op['path']}' key that cannot be updated to folders."
+                    LOG.error(reason)
+                    raise web.HTTPBadRequest(reason=reason)
+                if op["op"] in ["remove", "copy", "test", "move"]:
+                    reason = f"{op['op']} on {op['path']} is not allowed."
+                    LOG.error(reason)
+                    raise web.HTTPUnauthorized(reason=reason)
+                if op["op"] == "replace" and op["path"] in _arrays:
+                    reason = f"{op['op']} on {op['path']}; replacing all objects is not allowed."
+                    LOG.error(reason)
+                    raise web.HTTPUnauthorized(reason=reason)
+                if op["path"] in _arrays:
+                    _ops = op["value"] if isinstance(op["value"], list) else [op["value"]]
+                    for item in _ops:
+                        if not all(key in item.keys() for key in _required_values):
+                            reason = "accessionId and schema are required fields."
+                            LOG.error(reason)
+                            raise web.HTTPBadRequest(reason=reason)
+                        if (
+                            "tags" in item
+                            and "submissionType" in item["tags"]
+                            and item["tags"]["submissionType"] not in ["XML", "Form"]
+                        ):
+                            reason = "submissionType is restricted to either 'XML' or 'Form' values."
+                            LOG.error(reason)
+                            raise web.HTTPBadRequest(reason=reason)
 
     async def get_folders(self, req: Request) -> Response:
         """Get all possible object folders from database.
@@ -521,11 +581,7 @@ class RESTApiHandler:
 
         await operator.check_folder_exists(folder_id)
 
-        check_user = await self._handle_check_ownedby_user(req, "folders", folder_id)
-        if not check_user:
-            reason = f"The folder {folder_id} does not belong to current user."
-            LOG.error(reason)
-            raise web.HTTPNotFound(reason=reason)
+        await self._handle_check_ownedby_user(req, "folders", folder_id)
 
         folder = await operator.read_folder(folder_id)
 
@@ -536,8 +592,6 @@ class RESTApiHandler:
         """Update object folder with a specific folder id.
 
         :param req: PATCH request
-        :raises: HTTPUnauthorized if folder not owned by user, HTTPBadRequest if JSONpatch operation
-        is not allowed
         :returns: JSON response containing folder ID for updated folder
         """
         folder_id = req.match_info["folderId"]
@@ -549,32 +603,9 @@ class RESTApiHandler:
 
         # Check patch operations in request are valid
         patch_ops = await self._get_data(req)
-        allowed_paths = ["/name", "/description"]
-        array_paths = ["/metadataObjects/-", "/drafts/-"]
-        tags_path = re.compile("^/(metadataObjects|drafts)/[0-9]*/(tags)$")
-        for op in patch_ops:
-            if tags_path.match(op["path"]):
-                LOG.info(f"{op['op']} on tags in folder")
-                pass
-            else:
-                if all(i not in op["path"] for i in allowed_paths + array_paths):
-                    reason = f"Request contains '{op['path']}' key that cannot be updated to folders."
-                    LOG.error(reason)
-                    raise web.HTTPBadRequest(reason=reason)
-                if op["op"] in ["remove", "copy", "test", "move"]:
-                    reason = f"{op['op']} on {op['path']} is not allowed."
-                    LOG.error(reason)
-                    raise web.HTTPUnauthorized(reason=reason)
-                if op["op"] == "replace" and op["path"] in array_paths:
-                    reason = f"{op['op']} on {op['path']}; replacing all objects is not allowed."
-                    LOG.error(reason)
-                    raise web.HTTPUnauthorized(reason=reason)
+        self._check_patch_folder(patch_ops)
 
-        check_user = await self._handle_check_ownedby_user(req, "folders", folder_id)
-        if not check_user:
-            reason = f"The folder {folder_id} does not belong to current user."
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
+        await self._handle_check_ownedby_user(req, "folders", folder_id)
 
         folder = await operator.update_folder(folder_id, patch_ops if isinstance(patch_ops, list) else [patch_ops])
 
@@ -586,7 +617,6 @@ class RESTApiHandler:
         """Update object folder specifically into published state.
 
         :param req: PATCH request
-        :raises: HTTPUnauthorized if folder not owned by user
         :returns: JSON response containing folder ID for updated folder
         """
         folder_id = req.match_info["folderId"]
@@ -595,11 +625,7 @@ class RESTApiHandler:
 
         await operator.check_folder_exists(folder_id)
 
-        check_user = await self._handle_check_ownedby_user(req, "folders", folder_id)
-        if not check_user:
-            reason = f"The folder {folder_id} does not belong to current user."
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
+        await self._handle_check_ownedby_user(req, "folders", folder_id)
 
         folder = await operator.read_folder(folder_id)
 
@@ -623,7 +649,6 @@ class RESTApiHandler:
         """Delete object folder from database.
 
         :param req: DELETE request
-        :raises: HTTPUnauthorized if folder not owned by user
         :returns: HTTP No Content response
         """
         folder_id = req.match_info["folderId"]
@@ -633,11 +658,7 @@ class RESTApiHandler:
         await operator.check_folder_exists(folder_id)
         await operator.check_folder_published(folder_id)
 
-        check_user = await self._handle_check_ownedby_user(req, "folders", folder_id)
-        if not check_user:
-            reason = f"The folder {folder_id} does not belong to current user."
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
+        await self._handle_check_ownedby_user(req, "folders", folder_id)
 
         obj_ops = Operator(db_client)
 
@@ -654,6 +675,63 @@ class RESTApiHandler:
 
         LOG.info(f"DELETE folder with ID {_folder_id} was successful.")
         return web.Response(status=204)
+
+
+class UserAPIHandler(RESTAPIHandler):
+    """API Handler for users."""
+
+    def _check_patch_user(self, patch_ops: Any) -> None:
+        """Check patch operations in request are valid.
+
+        We check that ``folders`` have string values (one or a list)
+        and ``drafts`` have ``_required_values``.
+        For tags we check that the ``submissionType`` takes either ``XML`` or
+        ``Form`` as values.
+        :param patch_ops: JSON patch request
+        :raises: HTTPBadRequest if request does not fullfil one of requirements
+        :raises: HTTPUnauthorized if request tries to do anything else than add or replace
+        :returns: None
+        """
+        _arrays = ["/drafts/-", "/folders/-"]
+        _required_values = ["schema", "accessionId"]
+        _tags = re.compile("^/(drafts)/[0-9]*/(tags)$")
+        for op in patch_ops:
+            if _tags.match(op["path"]):
+                LOG.info(f"{op['op']} on tags in folder")
+                if "submissionType" in op["value"].keys() and op["value"]["submissionType"] not in ["XML", "Form"]:
+                    reason = "submissionType is restricted to either 'XML' or 'Form' values."
+                    LOG.error(reason)
+                    raise web.HTTPBadRequest(reason=reason)
+                pass
+            else:
+                if all(i not in op["path"] for i in _arrays):
+                    reason = f"Request contains '{op['path']}' key that cannot be updated to user object"
+                    LOG.error(reason)
+                    raise web.HTTPBadRequest(reason=reason)
+                if op["op"] in ["remove", "copy", "test", "move", "replace"]:
+                    reason = f"{op['op']} on {op['path']} is not allowed."
+                    LOG.error(reason)
+                    raise web.HTTPUnauthorized(reason=reason)
+                if op["path"] == "/folders/-":
+                    if not (isinstance(op["value"], str) or isinstance(op["value"], list)):
+                        reason = "We only accept string folder IDs."
+                        LOG.error(reason)
+                        raise web.HTTPBadRequest(reason=reason)
+                if op["path"] == "/drafts/-":
+                    _ops = op["value"] if isinstance(op["value"], list) else [op["value"]]
+                    for item in _ops:
+                        if not all(key in item.keys() for key in _required_values):
+                            reason = "accessionId and schema are required fields."
+                            LOG.error(reason)
+                            raise web.HTTPBadRequest(reason=reason)
+                        if (
+                            "tags" in item
+                            and "submissionType" in item["tags"]
+                            and item["tags"]["submissionType"] not in ["XML", "Form"]
+                        ):
+                            reason = "submissionType is restricted to either 'XML' or 'Form' values."
+                            LOG.error(reason)
+                            raise web.HTTPBadRequest(reason=reason)
 
     async def get_user(self, req: Request) -> Response:
         """Get one user by its user ID.
@@ -688,18 +766,8 @@ class RESTApiHandler:
             raise web.HTTPUnauthorized(reason="Only current user operations are allowed")
         db_client = req.app["db_client"]
 
-        # Check patch operations in request are valid
         patch_ops = await self._get_data(req)
-        allowed_paths = ["/drafts/-", "/folders/-"]
-        for op in patch_ops:
-            if all(i not in op["path"] for i in allowed_paths):
-                reason = f"Request contains '{op['path']}' key that cannot be updated to user object"
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
-            if op["op"] in ["remove", "copy", "test", "move", "replace"]:
-                reason = f"{op['op']} on {op['path']} is not allowed."
-                LOG.error(reason)
-                raise web.HTTPUnauthorized(reason=reason)
+        self._check_patch_user(patch_ops)
 
         operator = UserOperator(db_client)
 
@@ -828,7 +896,7 @@ class SubmissionAPIHandler:
         return web.Response(body=body, status=200, content_type="application/json")
 
     async def validate(self, req: Request) -> Response:
-        """Handle validating an xml file sent to endpoint.
+        """Handle validating an XML file sent to endpoint.
 
         :param req: Multipart POST request with submission.xml and files
         :returns: JSON response indicating if validation was successful or not
@@ -902,7 +970,7 @@ class SubmissionAPIHandler:
             return json.loads(validator.resp_body)
 
         else:
-            reason = f"Action {action} in xml is not supported."
+            reason = f"Action {action} in XML is not supported."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -920,7 +988,6 @@ class StaticHandler:
         :param req: GET request
         :returns: Response containing frontpage static file
         """
-
         serve_path = self.path.joinpath("./" + req.path)
 
         if not serve_path.exists() or not serve_path.is_file():

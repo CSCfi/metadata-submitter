@@ -18,14 +18,14 @@ class ParserTestCase(unittest.TestCase):
         self.parser = XMLToJSONParser()
 
     def load_xml_from_file(self, submission, filename):
-        """Load xml as string from given file."""
+        """Load XML as string from given file."""
         path_to_xml_file = self.TESTFILES_ROOT / submission / filename
         return path_to_xml_file.read_text()
 
     def test_study_is_parsed(self):
         """Test that study is parsed correctly.
 
-        Tests for some values that converted json should have.
+        Tests for some values that converted JSON should have.
         """
         study_xml = self.load_xml_from_file("study", "SRP000539.xml")
         study_json = self.parser.parse("study", study_xml)
@@ -35,7 +35,7 @@ class ParserTestCase(unittest.TestCase):
     def test_sample_is_parsed(self):
         """Test that sample is parsed correctly and accessionId is set.
 
-        Tests for some values that converted json should have.
+        Tests for some values that converted JSON should have.
         """
         sample_xml = self.load_xml_from_file("sample", "SRS001433.xml")
         sample_json = self.parser.parse("sample", sample_xml)
@@ -45,7 +45,7 @@ class ParserTestCase(unittest.TestCase):
     def test_experiment_is_parsed(self):
         """Test that experiment is parsed correctly and accessionId is set.
 
-        Tests for some values that convert json should have.
+        Tests for some values that convert JSON should have.
         """
         experiment_xml = self.load_xml_from_file("experiment", "ERX000119.xml")
         experiment_json = self.parser.parse("experiment", experiment_xml)
@@ -56,7 +56,7 @@ class ParserTestCase(unittest.TestCase):
     def test_run_is_parsed(self):
         """Test that run is parsed correctly and accessionId is set.
 
-        Tests for some values that convert json should have.
+        Tests for some values that convert JSON should have.
         """
         run_xml = self.load_xml_from_file("run", "ERR000076.xml")
         run_json = self.parser.parse("run", run_xml)
@@ -66,7 +66,7 @@ class ParserTestCase(unittest.TestCase):
     def test_analysis_is_parsed(self):
         """Test that run is parsed correctly and accessionId is set.
 
-        Tests for some values that convert json should have.
+        Tests for some values that convert JSON should have.
         """
         analysis_xml = self.load_xml_from_file("analysis", "ERZ266973.xml")
         analysis_json = self.parser.parse("analysis", analysis_xml)
@@ -90,13 +90,13 @@ class ParserTestCase(unittest.TestCase):
             self.parser._load_schema("None")
 
     def test_error_raised_when_input_xml_not_valid_xml(self):
-        """Give parser xml with broken syntax, should fail."""
+        """Give parser XML with broken syntax, should fail."""
         study_xml = self.load_xml_from_file("study", "SRP000539_invalid.xml")
         with self.assertRaises(web.HTTPBadRequest):
             self.parser.parse("study", study_xml)
 
     def test_json_patch_mongo_conversion(self):
-        """Test json patch to mongo query conversion."""
+        """Test JSON patch to mongo query conversion."""
         json_patch = [
             {
                 "op": "add",

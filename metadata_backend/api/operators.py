@@ -21,6 +21,8 @@ from ..helpers.validator import JSONValidator
 class BaseOperator(ABC):
     """Base class for operators, implements shared functionality.
 
+    This BaseOperator is mainly addressed for working with objects owned by
+    a user and that are clustered by folder.
     :param ABC: The abstract base class
     """
 
@@ -47,9 +49,7 @@ class BaseOperator(ABC):
         :returns: Accession id for the object inserted to database
         """
         accession_id = await self._format_data_to_create_and_add_to_db(schema_type, data)
-        LOG.info(
-            f"Inserting object with schema {schema_type} to database " f"succeeded with accession id: {accession_id}"
-        )
+        LOG.info(f"Inserting object with schema {schema_type} to database succeeded with accession id: {accession_id}")
         return accession_id
 
     async def replace_metadata_object(self, schema_type: str, accession_id: str, data: Union[Dict, str]) -> str:
@@ -64,9 +64,7 @@ class BaseOperator(ABC):
         :returns: Accession id for the object replaced to database
         """
         await self._format_data_to_replace_and_add_to_db(schema_type, accession_id, data)
-        LOG.info(
-            f"Replacing object with schema {schema_type} to database " f"succeeded with accession id: {accession_id}"
-        )
+        LOG.info(f"Replacing object with schema {schema_type} to database succeeded with accession id: {accession_id}")
         return accession_id
 
     async def update_metadata_object(self, schema_type: str, accession_id: str, data: Union[Dict, str]) -> str:
@@ -81,9 +79,7 @@ class BaseOperator(ABC):
         :returns: Accession id for the object updated to database
         """
         await self._format_data_to_update_and_add_to_db(schema_type, accession_id, data)
-        LOG.info(
-            f"Updated object with schema {schema_type} to database " f"succeeded with accession id: {accession_id}"
-        )
+        LOG.info(f"Updated object with schema {schema_type} to database succeeded with accession id: {accession_id}")
         return accession_id
 
     async def read_metadata_object(self, schema_type: str, accession_id: str) -> Tuple[Union[Dict, str], str]:
@@ -198,10 +194,6 @@ class BaseOperator(ABC):
                 LOG.error(reason)
                 raise web.HTTPNotFound(reason=reason)
             update_success = await self.db_service.update(schema_type, accession_id, data)
-            sanity_check = await self.db_service.read(schema_type, accession_id)
-            # remove `draft-` from schema type
-            if not schema_type.startswith("draft"):
-                JSONValidator(sanity_check, schema_type).validate
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting object: {error}"
             LOG.error(reason)
@@ -363,7 +355,7 @@ class Operator(BaseOperator):
             {"$project": {"_id": 0}},
         ]
         try:
-            result_aggregate = await self.db_service.aggregate(schema_type, aggregate_query)
+            result_aggregate = await self.db_service.do_aggregate(schema_type, aggregate_query)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting object: {error}"
             LOG.error(reason)
@@ -377,7 +369,7 @@ class Operator(BaseOperator):
 
         page_size = len(data) if len(data) != page_size else page_size
         count_query = [{"$match": mongo_query}, redacted_content, {"$count": "total"}]
-        total_objects = await self.db_service.aggregate(schema_type, count_query)
+        total_objects = await self.db_service.do_aggregate(schema_type, count_query)
 
         LOG.debug(f"DB query: {que}")
         LOG.info(
@@ -392,8 +384,8 @@ class Operator(BaseOperator):
 
         Adds necessary additional information to object before adding to db.
 
-        If schema type is study, publishDate and status is added.
-        By default date is two months from submission date (based on ENA
+        If schema type is study, publishDate and status are added.
+        By default, date is two months from submission date (based on ENA
         submission model).
 
         :param schema_type: Schema type of the object to create.
@@ -412,10 +404,10 @@ class Operator(BaseOperator):
     async def _format_data_to_replace_and_add_to_db(self, schema_type: str, accession_id: str, data: Dict) -> str:
         """Format JSON metadata object and replace it in db.
 
-        Replace information to object before adding to db.
+        Replace information in object before adding to db.
 
         We will not replace accessionId, publishDate or dateCreated,
-        as these should are generated when created.
+        as these are generated when created.
 
         We will keep also publisDate and dateCreated from old object.
 
@@ -507,6 +499,7 @@ class Operator(BaseOperator):
 class XMLOperator(BaseOperator):
     """Alternative operator class for handling database operations.
 
+    We store the XML data in a database ``XML-{schema}``.
     Operations are implemented with XML format.
     """
 
@@ -522,11 +515,11 @@ class XMLOperator(BaseOperator):
     async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: str) -> str:
         """Format XML metadata object and add it to db.
 
-        XML is validated, then parsed to json and json is added to database.
-        After successful json insertion, xml itself is backed up to database.
+        XML is validated, then parsed to JSON, which is added to database.
+        After successful JSON insertion, XML itself is backed up to database.
 
         :param schema_type: Schema type of the object to read.
-        :param data: Original xml content
+        :param data: Original XML content
         :returns: Accession Id for object inserted to database
         """
         db_client = self.db_service.db_client
@@ -542,12 +535,12 @@ class XMLOperator(BaseOperator):
     async def _format_data_to_replace_and_add_to_db(self, schema_type: str, accession_id: str, data: str) -> str:
         """Format XML metadata object and add it to db.
 
-        XML is validated, then parsed to json and json is added to database.
-        After successful json insertion, xml itself is backed up to database.
+        XML is validated, then parsed to JSON, which is added to database.
+        After successful JSON insertion, XML itself is backed up to database.
 
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
-        :param data: Original xml content
+        :param data: Original XML content
         :returns: Accession Id for object inserted to database
         """
         db_client = self.db_service.db_client
@@ -569,7 +562,7 @@ class XMLOperator(BaseOperator):
 
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
-        :param data: Original xml content
+        :param data: Original XML content
         :raises: HTTPUnsupportedMediaType
         """
         reason = "XML patching is not possible."
@@ -610,9 +603,10 @@ class FolderOperator:
         """
         try:
             folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
-            folder_query = {folder_path: {"$elemMatch": {"accessionId": accession_id, "schema": collection}}}
 
-            folder_cursor = self.db_service.query("folder", folder_query)
+            folder_cursor = self.db_service.query(
+                "folder", {folder_path: {"$elemMatch": {"accessionId": accession_id, "schema": collection}}}
+            )
             folder_check = [folder async for folder in folder_cursor]
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while inserting user: {error}"
@@ -639,9 +633,10 @@ class FolderOperator:
         """
         try:
             folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
-            folder_query = {"$and": [{folder_path: {"$elemMatch": {"schema": collection}}}, {"folderId": folder_id}]}
 
-            folder_cursor = self.db_service.query("folder", folder_query)
+            folder_cursor = self.db_service.query(
+                "folder", {"$and": [{folder_path: {"$elemMatch": {"schema": collection}}}, {"folderId": folder_id}]}
+            )
             folders = [folder async for folder in folder_cursor]
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while inserting user: {error}"
@@ -687,8 +682,8 @@ class FolderOperator:
         :param que: Dict containing query information
         :returns: Query result as list
         """
-        folder_cursor = self.db_service.query("folder", que)
-        folders = [folder async for folder in folder_cursor]
+        _cursor = self.db_service.query("folder", que)
+        folders = [folder async for folder in _cursor]
         return folders
 
     async def read_folder(self, folder_id: str) -> Dict:
@@ -718,8 +713,6 @@ class FolderOperator:
         """
         try:
             update_success = await self.db_service.patch("folder", folder_id, patch)
-            sanity_check = await self.db_service.read("folder", folder_id)
-            JSONValidator(sanity_check, "folders").validate
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting folder: {error}"
             LOG.error(reason)
@@ -745,8 +738,7 @@ class FolderOperator:
         try:
             folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
             upd_content = {folder_path: {"accessionId": accession_id}}
-            result = await self.db_service.remove("folder", folder_id, upd_content)
-            JSONValidator(result, "folders").validate
+            await self.db_service.remove("folder", folder_id, upd_content)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting user: {error}"
             LOG.error(reason)
@@ -869,19 +861,20 @@ class UserOperator:
         """
         user_data: Dict[str, Union[list, str]] = dict()
 
-        eppn = data[0]  # this also can be sub key
+        external_id = data[0]  # this also can be sub key
         name = data[1]
         try:
-            existing_user_id = await self.db_service.exists_eppn_user(eppn, name)
+            existing_user_id = await self.db_service.exists_user_by_external_id(external_id, name)
             if existing_user_id:
-                LOG.info(f"User with identifier: {eppn} exists, no need to create.")
+                LOG.info(f"User with identifier: {external_id} exists, no need to create.")
                 return existing_user_id
             else:
                 user_data["drafts"] = []
                 user_data["folders"] = []
                 user_data["userId"] = user_id = self._generate_user_id()
                 user_data["name"] = name
-                user_data["eppn"] = eppn
+                user_data["externalId"] = external_id
+                JSONValidator(user_data, "users")
                 insert_success = await self.db_service.create("user", user_data)
                 if not insert_success:
                     reason = "Inserting user to database failed for some reason."
@@ -921,8 +914,6 @@ class UserOperator:
         try:
             await self._check_user_exists(user_id)
             update_success = await self.db_service.patch("user", user_id, patch)
-            sanity_check = await self.db_service.read("user", user_id)
-            JSONValidator(sanity_check, "users").validate
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting user: {error}"
             LOG.error(reason)
@@ -949,15 +940,14 @@ class UserOperator:
         """
         try:
             await self._check_user_exists(user_id)
-            upd_content = {collection: {"$each": object_ids}}
-            result = await self.db_service.append("user", user_id, upd_content)
-            JSONValidator(result, "users").validate
+            assign_success = await self.db_service.append("user", user_id, {collection: {"$each": object_ids}})
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting user: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        except Exception as e:
-            reason = f"Updating user to database failed beacause of: {e}."
+
+        if not assign_success:
+            reason = "Assigning objects to user failed."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -982,9 +972,7 @@ class UserOperator:
                     remove_content = {"drafts": {"accessionId": obj}}
                 else:
                     remove_content = {"folders": obj}
-                result = await self.db_service.remove("user", user_id, remove_content)
-                LOG.info(f"result {result}")
-                JSONValidator(result, "users").validate
+                await self.db_service.remove("user", user_id, remove_content)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while removing objects from user: {error}"
             LOG.error(reason)

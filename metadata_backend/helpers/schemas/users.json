@@ -40,17 +40,17 @@
             "properties": {}
           }
         }
-      }
+      },
+      "uniqueItems": true
     },
     "folders": {
       "type": "array",
       "title": "The folders schema",
-      "items": [
-        {
-          "type": "string",
-          "title": "Folder Id"
-        }
-      ]
+      "items": {
+        "type": "string",
+        "title": "Folder Id"
+      },
+      "uniqueItems": true
     }
   }
 }
