@@ -21,7 +21,7 @@ jobs:
           VERSION=edge
           if [[ $GITHUB_REF == refs/tags/* ]]; then
             VERSION=${GITHUB_REF#refs/tags/}
-            BRANCH=develop
+            BRANCH=master
           elif [[ $GITHUB_REF == refs/heads/* ]]; then
             BRANCH=$(echo ${GITHUB_REF#refs/heads/} | sed -r 's#/+#-#g')
             if [[ $BRANCH == master ]]; then
