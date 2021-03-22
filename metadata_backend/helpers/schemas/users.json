@@ -37,20 +37,29 @@
             "type": "object",
             "title": "Different tags to describe the template object.",
             "additionalProperties": true,
-            "properties": {}
+            "properties": {
+              "submissionType": {
+                "type": "string",
+                "title": "Type of submission",
+                "enum": [
+                  "XML",
+                  "Form"
+                ]
+              }
+            }
           }
         }
-      }
+      },
+      "uniqueItems": true
     },
     "folders": {
       "type": "array",
       "title": "The folders schema",
-      "items": [
-        {
-          "type": "string",
-          "title": "Folder Id"
-        }
-      ]
+      "items": {
+        "type": "string",
+        "title": "Folder Id"
+      },
+      "uniqueItems": true
     }
   }
 }

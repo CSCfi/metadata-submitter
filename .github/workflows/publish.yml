@@ -21,14 +21,18 @@ jobs:
           VERSION=edge
           if [[ $GITHUB_REF == refs/tags/* ]]; then
             VERSION=${GITHUB_REF#refs/tags/}
+            BRANCH=master
           elif [[ $GITHUB_REF == refs/heads/* ]]; then
             BRANCH=$(echo ${GITHUB_REF#refs/heads/} | sed -r 's#/+#-#g')
             if [[ $BRANCH == master ]]; then
               VERSION=latest
+              BRANCH=master
             elif [[ $BRANCH == develop ]]; then
               VERSION=stage
+              BRANCH=develop
             fi
           fi
+          echo "BUILD_BRANCH=$BRANCH" >> $GITHUB_ENV
           TAGS="${DOCKER_IMAGE}:${VERSION}"
           echo ::set-output name=version::${VERSION}
           echo ::set-output name=tags::${TAGS}
@@ -51,6 +55,8 @@ jobs:
           file: ./Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.prep.outputs.tags }}
+          build-args: |
+            BRANCH=${{ env.BUILD_BRANCH }}
           cache-from: type=registry,ref=cscfi/metadata-submitter:latest
           cache-to: type=local,dest=/tmp/.buildx-cache
           labels: |

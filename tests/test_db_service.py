@@ -1,7 +1,7 @@
 """Test db_services."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 
-from aiounittest import AsyncTestCase, futurized
+from unittest import IsolatedAsyncioTestCase
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorCursor
 from pymongo.errors import AutoReconnect, ConnectionFailure
@@ -9,28 +9,10 @@ from pymongo.results import DeleteResult, InsertOneResult, UpdateResult
 
 from metadata_backend.database.db_service import DBService
 from pymongo import UpdateOne
+from .test_operators import AsyncIterator
 
 
-class AsyncIterator:
-    """Async iterator based on range."""
-
-    def __init__(self, seq):
-        """Init iterator with sequence."""
-        self.iter = iter(seq)
-
-    def __aiter__(self):
-        """Return async iterator."""
-        return self
-
-    async def __anext__(self):
-        """Get next element in sequence."""
-        try:
-            return next(self.iter)
-        except StopIteration:
-            raise StopAsyncIteration
-
-
-class DatabaseTestCase(AsyncTestCase):
+class DatabaseTestCase(IsolatedAsyncioTestCase):
     """Test different database operations."""
 
     def setUp(self):
@@ -42,14 +24,9 @@ class DatabaseTestCase(AsyncTestCase):
         Monkey patching can probably be removed when upgrading requirements to
         python 3.8+ since Mock 4.0+ library has async version of MagicMock.
         """
-        # setup async patch
-        async def async_patch():
-            pass
-
-        MagicMock.__await__ = lambda x: async_patch().__await__()
         self.client = MagicMock()
         self.database = MagicMock()
-        self.collection = MagicMock()
+        self.collection = AsyncMock()
         self.client.__getitem__.return_value = self.database
         self.database.__getitem__.return_value = self.collection
         self.test_service = DBService("testdb", self.client)
@@ -82,57 +59,58 @@ class DatabaseTestCase(AsyncTestCase):
 
     async def test_create_inserts_data(self):
         """Test that create method works and returns success."""
-        self.collection.insert_one.return_value = futurized(InsertOneResult(ObjectId("0123456789ab0123456789ab"), True))
+        self.collection.insert_one.return_value = InsertOneResult(ObjectId("0123456789ab0123456789ab"), True)
         success = await self.test_service.create("testcollection", self.data_stub)
         self.collection.insert_one.assert_called_once_with(self.data_stub)
         self.assertTrue(success)
 
     async def test_create_reports_fail_correctly(self):
         """Test that failure is reported, when write not acknowledged."""
-        self.collection.insert_one.return_value = futurized(InsertOneResult(None, False))
+        self.collection.insert_one.return_value = InsertOneResult(None, False)
         success = await self.test_service.create("testcollection", self.data_stub)
         self.collection.insert_one.assert_called_once_with(self.data_stub)
         self.assertFalse(success)
 
     async def test_read_returns_data(self):
         """Test that read method works and returns data."""
-        self.collection.find_one.return_value = futurized(self.data_stub)
+        self.collection.find_one.return_value = self.data_stub
         found_doc = await self.test_service.read("testcollection", self.id_stub)
         self.assertEqual(found_doc, self.data_stub)
         self.collection.find_one.assert_called_once_with({"accessionId": self.id_stub}, {"_id": False})
 
     async def test_exists_returns_false(self):
         """Test that exists method works and returns false."""
+        self.collection.find_one.return_value = None
         found_doc = await self.test_service.exists("testcollection", self.id_stub)
         self.assertEqual(found_doc, False)
         self.collection.find_one.assert_called_once_with({"accessionId": self.id_stub}, {"_id": False})
 
     async def test_exists_returns_true(self):
         """Test that exists method works and returns True."""
-        self.collection.find_one.return_value = futurized(self.data_stub)
+        self.collection.find_one.return_value = self.data_stub
         found_doc = await self.test_service.exists("testcollection", self.id_stub)
         self.assertEqual(found_doc, True)
         self.collection.find_one.assert_called_once_with({"accessionId": self.id_stub}, {"_id": False})
 
     async def test_update_updates_data(self):
         """Test that update method works and returns success."""
-        self.collection.find_one.return_value = futurized(self.data_stub)
-        self.collection.update_one.return_value = futurized(UpdateResult({}, True))
+        self.collection.find_one.return_value = self.data_stub
+        self.collection.update_one.return_value = UpdateResult({}, True)
         success = await self.test_service.update("testcollection", self.id_stub, self.data_stub)
         self.collection.update_one.assert_called_once_with({"accessionId": self.id_stub}, {"$set": self.data_stub})
         self.assertTrue(success)
 
     async def test_replace_replaces_data(self):
         """Test that replace method works and returns success."""
-        self.collection.find_one.return_value = futurized(self.data_stub)
-        self.collection.replace_one.return_value = futurized(UpdateResult({}, True))
+        self.collection.find_one.return_value = self.data_stub
+        self.collection.replace_one.return_value = UpdateResult({}, True)
         success = await self.test_service.replace("testcollection", self.id_stub, self.data_stub)
         self.collection.replace_one.assert_called_once_with({"accessionId": self.id_stub}, self.data_stub)
         self.assertTrue(success)
 
     async def test_delete_deletes_data(self):
         """Test that delete method works and returns success."""
-        self.collection.delete_one.return_value = futurized(DeleteResult({"n": 1}, True))
+        self.collection.delete_one.return_value = DeleteResult({"n": 1}, True)
         success = await self.test_service.delete("testcollection", self.id_stub)
         self.collection.delete_one.assert_called_once_with({"accessionId": self.id_stub})
         self.assertTrue(success)
@@ -140,13 +118,12 @@ class DatabaseTestCase(AsyncTestCase):
     def test_query_executes_find(self):
         """Test that find is executed, so cursor is returned."""
         self.collection.find.return_value = AsyncIOMotorCursor(None, None)
-        cursor = self.test_service.query("testcollection", {})
-        self.assertEqual(type(cursor), AsyncIOMotorCursor)
+        self.test_service.query("testcollection", {})
         self.collection.find.assert_called_once_with({}, {"_id": False})
 
     async def test_count_returns_amount(self):
         """Test that get_count method works and returns amount."""
-        self.collection.count_documents.return_value = futurized(100)
+        self.collection.count_documents.return_value = 100
         count = await self.test_service.get_count("testcollection", {})
         self.collection.count_documents.assert_called_once_with({})
         self.assertEqual(count, 100)
@@ -161,45 +138,62 @@ class DatabaseTestCase(AsyncTestCase):
 
     async def test_create_folder_inserts_folder(self):
         """Test that create method works for folder and returns success."""
-        self.collection.insert_one.return_value = futurized(InsertOneResult(ObjectId("0000000000aa1111111111bb"), True))
+        self.collection.insert_one.return_value = InsertOneResult(ObjectId("0000000000aa1111111111bb"), True)
         folder = await self.test_service.create("folder", self.folder_stub)
         self.collection.insert_one.assert_called_once_with(self.folder_stub)
         self.assertTrue(folder)
 
     async def test_read_folder_returns_data(self):
         """Test that read method works for folder and returns folder."""
-        self.collection.find_one.return_value = futurized(self.folder_stub)
+        self.collection.find_one.return_value = self.folder_stub
         found_folder = await self.test_service.read("folder", self.f_id_stub)
         self.collection.find_one.assert_called_once_with({"folderId": self.f_id_stub}, {"_id": False})
         self.assertEqual(found_folder, self.folder_stub)
 
-    async def test_eppn_exists_returns_false(self):
-        """Test that eppn exists method works and returns None."""
-        found_doc = await self.test_service.exists_eppn_user("test_user@eppn.fi", "name")
+    async def test_published_folder_returns_data(self):
+        """Test that published folder checks if folder is published."""
+        self.collection.find_one.return_value = self.folder_stub
+        found_folder = await self.test_service.published_folder(self.f_id_stub)
+        self.collection.find_one.assert_called_once_with(
+            {"published": True, "folderId": self.f_id_stub}, {"_id": False}
+        )
+        self.assertEqual(found_folder, True)
+
+    async def test_external_id_exists_returns_false(self):
+        """Test that externalId exists method works and returns None."""
+        self.collection.find_one.return_value = None
+        found_doc = await self.test_service.exists_user_by_external_id("test_user@eppn.fi", "name")
         self.assertEqual(found_doc, None)
         self.collection.find_one.assert_called_once_with(
-            {"eppn": "test_user@eppn.fi", "name": "name"}, {"_id": False, "eppn": False}
+            {"externalId": "test_user@eppn.fi", "name": "name"}, {"_id": False, "externalId": False}
         )
 
-    async def test_eppn_exists_returns_true(self):
-        """Test that eppn exists method works and returns user id."""
-        self.collection.find_one.return_value = futurized(self.user_stub)
-        found_doc = await self.test_service.exists_eppn_user("test_user@eppn.fi", "name")
+    async def test_external_id_exists_returns_true(self):
+        """Test that externalId exists method works and returns user id."""
+        self.collection.find_one.return_value = self.user_stub
+        found_doc = await self.test_service.exists_user_by_external_id("test_user@eppn.fi", "name")
         self.assertEqual(found_doc, self.user_id_stub)
         self.collection.find_one.assert_called_once_with(
-            {"eppn": "test_user@eppn.fi", "name": "name"}, {"_id": False, "eppn": False}
+            {"externalId": "test_user@eppn.fi", "name": "name"}, {"_id": False, "externalId": False}
         )
 
     async def test_aggregate_performed(self):
         """Test that aggregate is executed, so cursor is returned."""
-        self.collection.aggregate.return_value = AsyncIterator(range(5))
-        cursor = await self.test_service.aggregate("testcollection", [])
+        # this does not like the coroutine that AsyncMock returns
+        _client = MagicMock()
+        _database = MagicMock()
+        _collection = MagicMock()
+        _client.__getitem__.return_value = _database
+        _database.__getitem__.return_value = _collection
+        _test_service = DBService("testdb", _client)
+        _collection.aggregate.return_value = AsyncIterator(range(5))
+        cursor = await _test_service.do_aggregate("testcollection", [])
         self.assertEqual(type(cursor), list)
-        self.collection.aggregate.assert_called_once_with([])
+        _collection.aggregate.assert_called_once_with([])
 
     async def test_append_data(self):
         """Test that append method works and returns data."""
-        self.collection.find_one_and_update.return_value = futurized(self.data_stub)
+        self.collection.find_one_and_update.return_value = self.data_stub
         success = await self.test_service.append("testcollection", self.id_stub, self.data_stub)
         self.collection.find_one_and_update.assert_called_once_with(
             {"accessionId": self.id_stub},
@@ -211,7 +205,7 @@ class DatabaseTestCase(AsyncTestCase):
 
     async def test_remove_data(self):
         """Test that remove method works and returns data."""
-        self.collection.find_one_and_update.return_value = futurized({})
+        self.collection.find_one_and_update.return_value = {}
         success = await self.test_service.remove("testcollection", self.id_stub, self.data_stub)
         self.collection.find_one_and_update.assert_called_once_with(
             {"accessionId": self.id_stub},
@@ -226,7 +220,7 @@ class DatabaseTestCase(AsyncTestCase):
         json_patch = [
             {"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": self.id_stub, "schema": "study"}},
         ]
-        self.collection.bulk_write.return_value = futurized(UpdateResult({}, True))
+        self.collection.bulk_write.return_value = UpdateResult({}, True)
         success = await self.test_service.patch("testcollection", self.id_stub, json_patch)
         self.collection.bulk_write.assert_called_once_with(
             [

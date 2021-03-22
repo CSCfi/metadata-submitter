@@ -7,14 +7,14 @@ import json
 
 from aiohttp import web, BasicAuth, ClientSession
 from aiohttp.web import Request, Response
-from .middlewares import generate_cookie
+from .middlewares import decrypt_cookie, generate_cookie
 from authlib.jose import jwt
 from authlib.oidc.core import CodeIDToken
 from authlib.jose.errors import MissingClaimError, InvalidClaimError, ExpiredTokenError, InvalidTokenError, DecodeError
 from multidict import CIMultiDict
 from .operators import UserOperator
 
-from typing import Dict, Tuple, Union
+from typing import Dict, Tuple
 
 from ..helpers.logger import LOG
 
@@ -49,7 +49,8 @@ class AccessHandler:
         """
         # Generate a state for callback and save it to session storage
         state = secrets.token_hex()
-        await self._save_to_session(req, key="oidc_state", value=state)
+        req.app["OIDC_State"].add(state)
+
         LOG.debug("Start login")
         # Parameters for authorisation request
         params = {
@@ -87,9 +88,8 @@ class AccessHandler:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        # Verify, that states match
-        state = await self._get_from_session(req, "oidc_state")
-        if not secrets.compare_digest(str(state), str(params["state"])):
+        # Verify, that state is pending
+        if not params["state"] in req.app["OIDC_State"]:
             raise web.HTTPForbidden(reason="Bad user session.")
 
         auth = BasicAuth(login=self.client_id, password=self.client_secret)
@@ -117,9 +117,6 @@ class AccessHandler:
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
 
-        await self._save_to_session(req, key="access_token", value=access_token)
-        await self._set_user(req, access_token)
-
         response = web.HTTPSeeOther(f"{self.redirect}/home")
 
         cookie, _ = generate_cookie(req)
@@ -128,8 +125,6 @@ class AccessHandler:
         cookie["signature"] = (
             hashlib.sha256((cookie["id"] + cookie["referer"] + req.app["Salt"]).encode("utf-8"))
         ).hexdigest()
-
-        session = cookie["id"]
 
         cookie_crypted = req.app["Crypt"].encrypt(json.dumps(cookie).encode("utf-8")).decode("utf-8")
 
@@ -147,7 +142,15 @@ class AccessHandler:
             httponly=trust,  # type: ignore
         )
 
-        req.app["Cookies"].add(session)
+        # Inject cookie to this request to let _set_user work as expected.
+
+        session_id = cookie["id"]
+
+        req.app["Session"][session_id] = {"oidc_state": params["state"], "access_token": access_token}
+        req.app["Cookies"].add(session_id)
+        req.app["OIDC_State"].remove(params["state"])
+
+        await self._set_user(req, session_id, access_token)
 
         # done like this otherwise it will not redirect properly
         response.headers["Location"] = "/home" if self.redirect == self.domain else f"{self.redirect}/home"
@@ -163,11 +166,18 @@ class AccessHandler:
         :returns: HTTPSeeOther redirect to login page
         """
         # Revoke token at AAI
-        req.app["Session"]["access_token"] = None
-        req.app["Session"]["user_info"] = None
-        req.app["Session"]["oidc_state"] = None
-        req.app["Session"] = {}
-        req.app["Cookies"] = set({})
+
+        try:
+            cookie = decrypt_cookie(req)
+            req.app["OIDC_State"].remove(req.app["Session"][cookie["id"]]["oidc_state"])
+        except KeyError:
+            pass
+
+        try:
+            cookie = decrypt_cookie(req)
+            req.app["Session"].pop(cookie["id"])
+        except KeyError:
+            pass
 
         response = web.HTTPSeeOther(f"{self.redirect}/")
         response.headers["Location"] = "/" if self.redirect == self.domain else f"{self.redirect}/"
@@ -175,7 +185,7 @@ class AccessHandler:
 
         raise response
 
-    async def _set_user(self, req: Request, token: str) -> None:
+    async def _set_user(self, req: Request, session_id: str, token: str) -> None:
         """Set user in current session and return user id based on result of create_user.
 
         :raises: HTTPBadRequest in could not get user info from AAI OIDC
@@ -202,12 +212,12 @@ class AccessHandler:
         db_client = req.app["db_client"]
         operator = UserOperator(db_client)
         user_id = await operator.create_user(user_data)
-        await self._save_to_session(req, key="user_info", value=user_id)
+        req.app["Session"][session_id]["user_info"] = user_id
 
     async def _get_key(self) -> dict:
         """Get OAuth2 public key and transform it to usable pem key.
 
-        :raises: 401 in case JWK could not be retrieved
+        :raises: HTTPUnauthorized in case JWK could not be retrieved
         :returns: dictionary with JWK (JSON Web Keys)
         """
         try:
@@ -263,38 +273,3 @@ class AccessHandler:
             raise web.HTTPUnauthorized(reason=f"Invalid JWT format: {e}")
         except Exception:
             raise web.HTTPForbidden(reason="No access")
-
-    async def _save_to_session(
-        self, request: Request, key: str = "key", value: Union[Tuple[str, str], str] = "value"
-    ) -> None:
-        """Save a given value to a session key.
-
-        :param request: HTTP request
-        :param key: key to identify in the session storage
-        :param value: value for the key stored the session storage
-        """
-        LOG.debug(f"Save a value for {key} to session.")
-
-        session = request.app["Session"]
-        session[key] = value
-
-    async def _get_from_session(self, req: Request, key: str) -> str:
-        """Get a value from session storage.
-
-        :param req: HTTP request
-        :param key: name of the key to be returned from session storage
-        :raises: HTTPUnauthorized in case session does not have value for key
-        :raises: HTTPForbidden in case session does not have key
-        :returns: Specific value from session storage
-        """
-        try:
-            session = req.app["Session"]
-            return session[key]
-        except KeyError as e:
-            reason = f"Session has no key {key}, error: {e}."
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
-        except Exception as e:
-            reason = f"Failed to retrieve {key} from session: {e}"
-            LOG.error(reason)
-            raise web.HTTPForbidden(reason=reason)
