@@ -37,7 +37,16 @@
             "type": "object",
             "title": "Different tags to describe the template object.",
             "additionalProperties": true,
-            "properties": {}
+            "properties": {
+              "submissionType": {
+                "type": "string",
+                "title": "Type of submission",
+                "enum": [
+                  "XML",
+                  "Form"
+                ]
+              }
+            }
           }
         }
       },

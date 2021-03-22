@@ -46,6 +46,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
   /validate:
     post:
       tags:
@@ -76,6 +82,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
   /schemas:
     get:
       tags:
@@ -100,35 +112,49 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/401Unauthorized"
-  /objects:
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
+  /schemas/{schema}:
     get:
       tags:
         - Query
-      summary: List of objects. By default it will show 10 results per page.
+      summary: Retrieve JSON schema by its name.
       parameters:
-        - in: query
-          name: page
+        - name: schema
+          in: path
+          description: Name of the schema.
           schema:
             type: string
-          description: Page number
-        - in: query
-          name: per_page
-          schema:
-            type: string
-          description: Results per page
+          required: true
       responses:
         200:
           description: OK
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ObjectList"
-        404:
-          description: Not Found
+                type: object
+        400:
+          description: Bad Request
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/404NotFound"
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
   /objects/{schema}:
     get:
       tags:
@@ -304,6 +330,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
   /objects/{schema}/{accessionId}:
     get:
       tags:
@@ -413,9 +445,6 @@ paths:
             schema:
               type: string
               format: binary
-          application/json:
-            schema:
-              type: object
       parameters:
         - name: schema
           in: path
@@ -644,9 +673,6 @@ paths:
             schema:
               type: string
               format: binary
-          application/json:
-            schema:
-              type: object
       parameters:
         - name: schema
           in: path
@@ -1323,8 +1349,27 @@ components:
         drafts:
           type: array
           items:
-            type: string
-            description: Folder Id
+            type: object
+            required:
+              - accessionId
+              - schema
+            additionalProperties: false
+            properties:
+              accessionId:
+                type: string
+                description: Accession id generated to identify an object
+              schema:
+                type: string
+                description: type of schema this Accession ID relates to and was added in submit
+              tags:
+                type: object
+                description: Different tags to describe the object.
+                additionalProperties: true
+                properties:
+                  submissionType:
+                    type: string
+                    description: Type of submission
+                    enum: ["XML", "Form"]
         folders:
           type: array
           items:
@@ -1351,11 +1396,12 @@ components:
           op:
             type: string
             description: JSON Patch operation
+            enum: ["add", "replace"]
             example: add
           path:
             type: string
             description: Key that will be patched
-            example: /metadataObjects
+            example: /metadataObjects/-
           value:
             additionalProperties:
               oneOf:
