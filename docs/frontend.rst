@@ -41,9 +41,8 @@ To run the frontend from command line use:
 
 After installing and running, frontend can be found from ``http://localhost:3000``.
 
-.. hint:: Some functionality in frontend required a working backend.
+.. hint:: Some functionality in frontend requires a working backend.
           Follow the instructions in :ref:`deploy` for setting it up.
-
 
 
 Internal structure
@@ -64,6 +63,113 @@ Form components are crucial part of the application:
   Latter uses form as a reference so submission can be triggered outside the form. JSON schema based forms are created with custom JSON schema parser, which builds 
   ``react-hook-form`` based forms from given schema. The forms are validated against the JSON schema with ``Ajv``. 
   React-hook-form is used for performance reasons: it uses uncontrolled components so adding a lot of fields to array doesn't slow rendering of the application.
+
+Constants
+---------
+
+Folder ``src/constants`` holds all the constants used in the application. The constants are uniquely defined and separated into different files according to its related context. For example, the file ``constants/wizardObject.js`` contains unique constants regarding to ``wizardObject`` such as: ``ObjectTypes, ObjectStatus, etc.``
+
+The purposes of using these `constants` are:
+
+- to avoid hard coding the values of variables repeatedly
+- to keep the consistency when defining the values of variables
+- to reuse those predefined values across the application
+
+Example of defining and using a constant:
+
+- First, define the constant object ``ObjectSubmissionTypes`` in ``constants/wizardObject.js``
+
+.. code-block:: javascript
+
+    export const ObjectSubmissionTypes = {
+    form: "Form",
+    xml: "XML",
+    existing: "Existing",
+    }
+
+
+- Then, use this constant in `WizardComponents/WizardObjectIndex`:
+
+.. code-block:: javascript
+
+    import { ObjectSubmissionTypes } from "constants/wizardObject"
+
+    switch (currentSubmissionType) {
+        case ObjectSubmissionTypes.form: {
+        target = "form"
+        break
+        }
+        case ObjectSubmissionTypes.xml: {
+        target = "XML upload"
+        break
+        }
+        case ObjectSubmissionTypes.existing: {
+        target = "drafts"
+        break
+        }
+    }
+
+
+Commonly used data types
+------------------------
+
+All commonly used data types of variables are defined in the file ``index.js`` in folder ``src/types``. The purposes are:
+
+- to avoid hard coding the same data types frequently in different files
+- to keep track and consistency of the data types across different files
+
+For example:
+
+- declare and export these data types in ``src/types/index.js``
+
+.. code-block:: javascript
+
+    export type ObjectInsideFolder = {
+    accessionId: string,
+    schema: string,
+    }
+
+    export type ObjectTags = {
+    submissionType: string,
+    fileName?: string,
+    }
+
+    export type ObjectInsideFolderWithTags = ObjectInsideFolder & { tags: ObjectTags }
+
+
+- import and reuse the data types in different files:
+- Reuse type ``ObjectInsideFolder`` in ``features/wizardSubmissionFolderSlice.js``:
+
+.. code-block:: javascript
+
+    import type { ObjectInsideFolder } from "types"
+
+    export const addObjectToFolder = (
+    folderID: string,
+    objectDetails: ObjectInsideFolder
+    ) => {}
+
+    export const addObjectToDrafts = (
+    folderID: string,
+    objectDetails: ObjectInsideFolder
+    ) => {}
+
+
+- Reuse type ``ObjectInsideFolderWithTags`` consequently in both ``WizardComponents/WizardSavedObjectsList.js`` and ``WizardSteps/WizardShowSummaryStep.js``:
+
+.. code-block:: javascript
+
+    import type { ObjectInsideFolderWithTags } from "types"
+
+    type WizardSavedObjectsListProps = { submissions: Array<ObjectInsideFolderWithTags> }
+
+
+.. code-block:: javascript
+
+    import type { ObjectInsideFolderWithTags } from "types"
+
+    type GroupedBySchema = {| [Schema]: Array<ObjectInsideFolderWithTags> |}
+
 
 Redux store
 -----------
