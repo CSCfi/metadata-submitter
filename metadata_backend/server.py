@@ -8,7 +8,14 @@ from cryptography.fernet import Fernet
 import secrets
 import time
 
-from .api.handlers import RESTApiHandler, StaticHandler, SubmissionAPIHandler
+from .api.handlers import (
+    RESTAPIHandler,
+    StaticHandler,
+    SubmissionAPIHandler,
+    FolderAPIHandler,
+    UserAPIHandler,
+    ObjectAPIHandler,
+)
 from .api.auth import AccessHandler
 from .api.middlewares import http_error_handler, check_login
 from .api.health import HealthHandler
@@ -53,58 +60,62 @@ async def init() -> web.Application:
     server["Salt"] = secrets.token_hex(64)
     server["Session"] = {}
     server["Cookies"] = set({})
+    server["OIDC_State"] = set({})
 
     server.middlewares.append(http_error_handler)
     server.middlewares.append(check_login)
-    rest_handler = RESTApiHandler()
-    submission_handler = SubmissionAPIHandler()
+    _handler = RESTAPIHandler()
+    _object = ObjectAPIHandler()
+    _folder = FolderAPIHandler()
+    _user = UserAPIHandler()
+    _submission = SubmissionAPIHandler()
     api_routes = [
-        web.get("/schemas", rest_handler.get_schema_types),
-        web.get("/schemas/{schema}", rest_handler.get_json_schema),
-        web.get("/objects/{schema}/{accessionId}", rest_handler.get_object),
-        web.delete("/objects/{schema}/{accessionId}", rest_handler.delete_object),
-        web.get("/objects/{schema}", rest_handler.query_objects),
-        web.post("/objects/{schema}", rest_handler.post_object),
-        web.put("/objects/{schema}/{accessionId}", rest_handler.put_object),
-        web.get("/drafts/{schema}/{accessionId}", rest_handler.get_object),
-        web.put("/drafts/{schema}/{accessionId}", rest_handler.put_object),
-        web.patch("/drafts/{schema}/{accessionId}", rest_handler.patch_object),
-        web.patch("/objects/{schema}/{accessionId}", rest_handler.patch_object),
-        web.delete("/drafts/{schema}/{accessionId}", rest_handler.delete_object),
-        web.post("/drafts/{schema}", rest_handler.post_object),
-        web.get("/folders", rest_handler.get_folders),
-        web.post("/folders", rest_handler.post_folder),
-        web.get("/folders/{folderId}", rest_handler.get_folder),
-        web.patch("/folders/{folderId}", rest_handler.patch_folder),
-        web.delete("/folders/{folderId}", rest_handler.delete_folder),
-        web.patch("/publish/{folderId}", rest_handler.publish_folder),
-        web.get("/users/{userId}", rest_handler.get_user),
-        web.patch("/users/{userId}", rest_handler.patch_user),
-        web.delete("/users/{userId}", rest_handler.delete_user),
-        web.post("/submit", submission_handler.submit),
-        web.post("/validate", submission_handler.validate),
+        web.get("/schemas", _handler.get_schema_types),
+        web.get("/schemas/{schema}", _handler.get_json_schema),
+        web.get("/objects/{schema}/{accessionId}", _object.get_object),
+        web.delete("/objects/{schema}/{accessionId}", _object.delete_object),
+        web.get("/objects/{schema}", _object.query_objects),
+        web.post("/objects/{schema}", _object.post_object),
+        web.put("/objects/{schema}/{accessionId}", _object.put_object),
+        web.get("/drafts/{schema}/{accessionId}", _object.get_object),
+        web.put("/drafts/{schema}/{accessionId}", _object.put_object),
+        web.patch("/drafts/{schema}/{accessionId}", _object.patch_object),
+        web.patch("/objects/{schema}/{accessionId}", _object.patch_object),
+        web.delete("/drafts/{schema}/{accessionId}", _object.delete_object),
+        web.post("/drafts/{schema}", _object.post_object),
+        web.get("/folders", _folder.get_folders),
+        web.post("/folders", _folder.post_folder),
+        web.get("/folders/{folderId}", _folder.get_folder),
+        web.patch("/folders/{folderId}", _folder.patch_folder),
+        web.delete("/folders/{folderId}", _folder.delete_folder),
+        web.patch("/publish/{folderId}", _folder.publish_folder),
+        web.get("/users/{userId}", _user.get_user),
+        web.patch("/users/{userId}", _user.patch_user),
+        web.delete("/users/{userId}", _user.delete_user),
+        web.post("/submit", _submission.submit),
+        web.post("/validate", _submission.validate),
     ]
     server.router.add_routes(api_routes)
     LOG.info("Server configurations and routes loaded")
-    access_handler = AccessHandler(aai_config)
+    _access = AccessHandler(aai_config)
     aai_routes = [
-        web.get("/aai", access_handler.login),
-        web.get("/logout", access_handler.logout),
-        web.get("/callback", access_handler.callback),
+        web.get("/aai", _access.login),
+        web.get("/logout", _access.logout),
+        web.get("/callback", _access.callback),
     ]
     server.router.add_routes(aai_routes)
     LOG.info("AAI routes loaded")
-    health_handler = HealthHandler()
+    _health = HealthHandler()
     health_routes = [
-        web.get("/health", health_handler.get_health_status),
+        web.get("/health", _health.get_health_status),
     ]
     server.router.add_routes(health_routes)
     LOG.info("Health routes loaded")
     if frontend_static_files.exists():
-        static_handler = StaticHandler(frontend_static_files)
+        _static = StaticHandler(frontend_static_files)
         frontend_routes = [
-            web.static("/static", static_handler.setup_static()),
-            web.get("/{path:.*}", static_handler.frontend),
+            web.static("/static", _static.setup_static()),
+            web.get("/{path:.*}", _static.frontend),
         ]
         server.router.add_routes(frontend_routes)
         LOG.info("Frontend routes loaded")

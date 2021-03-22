@@ -1,7 +1,6 @@
 """Tool to parse XML files to JSON."""
 
 import re
-from collections import defaultdict
 from typing import Any, Dict, List, Union
 
 from aiohttp import web
@@ -98,16 +97,24 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 continue
 
             if key in links and len(value) == 1:
-                grp = defaultdict(list)
+                grp = list()
                 if isinstance(value[key[:-1]], dict):
-                    k = list(value[key[:-1]].keys())[0]
-                    grp[f"{k}s"] = [it for it in value[key[:-1]].values()]
+                    grp = [it for it in value[key[:-1]].values()]
+                    ks = list(value[key[:-1]])[0][:-4]
+                    if ks == "url":
+                        children[key] = grp
+                    else:
+                        children[key] = [{ks + k.capitalize(): v for k, v in d.items()} for d in grp]
                 else:
                     for item in value[key[:-1]]:
                         for k, v in item.items():
-                            grp[f"{k}s"].append(v)
+                            ks = k[:-4]
+                            if ks == "url":
+                                grp.append({str(key): val for key, val in v.items()})
+                            else:
+                                grp.append({ks + str(key).capitalize(): val for key, val in v.items()})
 
-                children[key] = grp
+                    children[key] = grp
                 continue
 
             value = self.list() if value is None else value
@@ -127,7 +134,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
 
     @property
     def lossy(self) -> bool:
-        """Define that converter is lossy, xml structure can't be restored."""
+        """Define that converter is lossy, XML structure can't be restored."""
         return True
 
     def element_decode(
@@ -147,7 +154,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
         - All "accession" keys are converted to "accesionId", key used by
           this program
         Corner cases:
-        - If possible, self-closing xml tag is elevated as an attribute to its
+        - If possible, self-closing XML tag is elevated as an attribute to its
           parent, otherwise "true" is added as its value.
         - If there is just one children and it is string, it is appended to
           same dictionary with its parents attributes with "value" as its key.
@@ -190,10 +197,10 @@ class MetadataXMLConverter(XMLSchemaConverter):
 
 
 class XMLToJSONParser:
-    """Methods to parse necessary data from different xml types."""
+    """Methods to parse necessary data from different XML types."""
 
     def parse(self, schema_type: str, content: str) -> Dict:
-        """Validate xml file and parse it to json.
+        """Validate XML file and parse it to JSON.
 
         We validate resulting JSON against a JSON schema
         to be sure the resulting content is consistent.

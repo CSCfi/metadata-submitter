@@ -415,7 +415,7 @@ async def test_put_objects(sess, folder_id):
 
     Tries to create new object, gets accession id and checks if correct
     resource is returned with that id. Try to use PUT with JSON and expect failure,
-    try to use PUT with xml and expect success.
+    try to use PUT with XML and expect success.
 
     :param sess: HTTP session in which request call is made
     :param folder_id: id of the folder used to group submission
@@ -874,7 +874,7 @@ async def test_get_folders_objects(sess, folder_id: str):
 
 
 async def test_submissions_work(sess, folder_id):
-    """Test actions in submission xml files.
+    """Test actions in submission XML files.
 
     :param sess: HTTP session in which request call is made
     :param folder_id: id of the folder used to group submission objects

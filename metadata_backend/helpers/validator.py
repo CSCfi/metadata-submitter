@@ -83,6 +83,9 @@ class XMLValidator:
 def extend_with_default(validator_class: Draft7Validator) -> Draft7Validator:
     """Include default values present in JSON Schema.
 
+    This feature is included even though some default values might cause
+    unwanted behaviour when submitting a schema.
+
     Source: https://python-jsonschema.readthedocs.io FAQ
     """
     validate_properties = validator_class.VALIDATORS["properties"]
@@ -140,11 +143,11 @@ class JSONValidator:
         except ValidationError as e:
             if len(e.path) > 0:
                 reason = f"Provided input does not seem correct for field: '{e.path[0]}'"
-                LOG.debug(f"Provided json input: '{e.instance}'")
+                LOG.debug(f"Provided JSON input: '{e.instance}'")
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
             else:
                 reason = f"Provided input does not seem correct because: '{e.message}'"
-                LOG.debug(f"Provided json input: '{e.instance}'")
+                LOG.debug(f"Provided JSON input: '{e.instance}'")
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)

@@ -102,13 +102,15 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
     ):
         return await handler(request)
     if request.path.startswith(tuple(controlled_paths)) and "OIDC_URL" in os.environ and bool(os.getenv("OIDC_URL")):
-        session = request.app["Session"]
+        cookie = decrypt_cookie(request)
+        session = request.app["Session"].setdefault(cookie["id"], {})
         if not all(x in ["access_token", "user_info", "oidc_state"] for x in session):
             LOG.debug("checked session parameter")
             response = web.HTTPSeeOther(f"{aai_config['domain']}/aai")
             response.headers["Location"] = "/aai"
             raise response
-        if decrypt_cookie(request)["id"] in request.app["Cookies"]:
+
+        if cookie["id"] in request.app["Cookies"]:
             LOG.debug("checked cookie session")
             _check_csrf(request)
         else:
@@ -121,6 +123,18 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
         raise web.HTTPUnauthorized(headers={"WWW-Authenticate": 'OAuth realm="/", charset="UTF-8"'})
     else:
         return await handler(request)
+
+
+def get_session(request: Request) -> dict:
+    """
+    Return the current session for the user (derived from the cookie).
+
+    :param request: A HTTP request instance
+    :returns: a dict for the session.
+    """
+    cookie = decrypt_cookie(request)
+    session = request.app["Session"].setdefault(cookie["id"], {})
+    return session
 
 
 def generate_cookie(request: Request) -> Tuple[dict, str]:

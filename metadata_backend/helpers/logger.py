@@ -27,8 +27,8 @@ def get_attributes(obj: Any) -> None:
 
 
 def pprint_json(content: Dict) -> None:
-    """Print given json object to LOG.
+    """Print given JSON object to LOG.
 
-    :param content: json-formatted content to be printed
+    :param content: JSON-formatted content to be printed
     """
     LOG.info(json.dumps(content, indent=4))
