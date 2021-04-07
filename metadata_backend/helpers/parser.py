@@ -39,6 +39,11 @@ class MetadataXMLConverter(XMLSchemaConverter):
         return _under_regex.sub(lambda x: x.group(1).upper(), name)
 
     def _flatten(self, data: Any) -> Union[Dict, List, str, None]:
+        """Address corner cases by flattening structure.
+
+        :param schema_type: XML data
+        :returns: XML element flattened.
+        """
         links = [
             "studyLinks",
             "sampleLinks",
@@ -65,6 +70,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
             "datasetAttributes",
             "assemblyAttributes",
             "submissionAttributes",
+            "contacts",
         ]
 
         children = self.dict()
@@ -96,6 +102,11 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 children[key] = value["spotDecodeSpec"]
                 continue
 
+            if "libraryLayout" in key:
+                children[key] = next(iter(value))
+                children.update(next(iter(value.values())))
+                continue
+
             if key in links and len(value) == 1:
                 grp = list()
                 if isinstance(value[key[:-1]], dict):
@@ -117,7 +128,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
                     children[key] = grp
                 continue
 
-            value = self.list() if value is None else value
+            value = "" if value is None else value
             try:
                 children[key].append(value)
             except KeyError:
