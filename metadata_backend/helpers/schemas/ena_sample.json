@@ -138,7 +138,7 @@
         "sampleAttribute": {
             "$id": "#/definitions/sampleAttribute",
             "type": "object",
-            "title": "sample Attribute",
+            "title": "Sample Attribute",
             "description": "tag title and its associated value (description)",
             "required": [
                 "tag",
@@ -152,6 +152,10 @@
                 "value": {
                     "type": "string",
                     "title": "Description"
+                },
+                "units": {
+                    "type": "string",
+                    "title": "Optional scientific units."
                 }
             }
         }
