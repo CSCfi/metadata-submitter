@@ -206,7 +206,8 @@
         "title": {
             "title": "DAC Description",
             "description": "Short text that can be used to call out DAC records in searches or in displays.",
-            "type": "string"
+            "type": "string",
+            "minLength": 10
         },
         "dacLinks": {
             "type": "array",
