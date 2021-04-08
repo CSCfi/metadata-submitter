@@ -15,7 +15,10 @@
         <DATA_BLOCK>
             <FILES>
                 <FILE filename="ERA000/ERA000014/srf/BGI-FC304RWAAXX_5.srf" filetype="srf"
-                      checksum="3dfebb4b30211523853805439fbd7cec" checksum_method="MD5"/>
+                      checksum="3dfebb4b30211523853805439fbd7cec" checksum_method="MD5">
+                    <READ_LABEL>test</READ_LABEL>
+                    <READ_TYPE>single</READ_TYPE>
+                </FILE>
             </FILES>
         </DATA_BLOCK>
         <RUN_ATTRIBUTES>
