@@ -1,7 +1,7 @@
 <?xml version="1.0" standalone="yes"?>
 <DAC_SET>
     <DAC alias="asgasg" center_name="TEST" broker_name="EGA">
-        <TITLE>Some DAC</TITLE>
+        <TITLE>Some DAC example</TITLE>
         <CONTACTS>
             <CONTACT name="name" email="test@test.com" telephone_number="436798457898" organisation="SomeOrg" main_contact="true"/>
             <CONTACT name="name2" email="test2@test.com" telephone_number="435755468" organisation="SomeOrg"/>
