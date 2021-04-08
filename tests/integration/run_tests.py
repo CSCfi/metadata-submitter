@@ -30,6 +30,11 @@ test_xml_files = [
     ("experiment", "ERX000119.xml"),
     ("experiment", "paired.xml"),
     ("analysis", "ERZ266973.xml"),
+    ("analysis", "processed_reads_analysis.xml"),
+    ("analysis", "reference_alignment_analysis.xml"),
+    ("analysis", "reference_sequence_analysis.xml"),
+    ("analysis", "sequence_assembly_analysis.xml"),
+    ("analysis", "sequence_variation_analysis.xml"),
     ("dac", "dac.xml"),
     ("policy", "policy.xml"),
 ]
