@@ -28,7 +28,10 @@ test_xml_files = [
     ("sample", "SRS001433.xml"),
     ("run", "ERR000076.xml"),
     ("experiment", "ERX000119.xml"),
+    ("experiment", "paired.xml"),
     ("analysis", "ERZ266973.xml"),
+    ("dac", "dac.xml"),
+    ("policy", "policy.xml"),
 ]
 test_json_files = [
     ("study", "SRP000539.json", "SRP000539.json"),
