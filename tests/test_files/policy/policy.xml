@@ -3,7 +3,7 @@
     <POLICY alias="asgsasg" center_name="TEST" broker_name="EGA" accession="EGAP50003522">
         <TITLE>Some policy</TITLE>
         <DAC_REF accession="EGAC500003259"/>
-        <POLICY_FILE>Do this, don't do that</POLICY_FILE>
+        <POLICY_TEXT>Do this, don't do that</POLICY_TEXT>
         <DATA_USES>
             <DATA_USE ontology="test" code="test2" version="1"/>
             <DATA_USE ontology="test1" code="test3" version="2"/>
