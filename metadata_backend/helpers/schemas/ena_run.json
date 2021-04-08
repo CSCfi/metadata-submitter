@@ -351,6 +351,23 @@
                         "SHA256"
                     ]
                 },
+                "readLabel": {
+                    "title": "Read Label",
+                    "type": "string"
+                },
+                "readType": {
+                    "title": "Read Type",
+                    "type": "string",
+                    "enum": [
+                        "single",
+                        "paired",
+                        "cell_barcode",
+                        "umi_barcode",
+                        "feature_barcode",
+                        "sample_barcode",
+                        "Other"
+                    ]
+                },
                 "checksum": {
                     "type": "string",
                     "title": "checksum"
@@ -463,12 +480,12 @@
                             "title": "Read Type",
                             "type": "string",
                             "enum": [
-                                "Forward",
-                                "Reverse",
-                                "Adapter",
-                                "Primer",
-                                "Linker",
-                                "Barcode",
+                                "single",
+                                "paired",
+                                "cell_barcode",
+                                "umi_barcode",
+                                "feature_barcode",
+                                "sample_barcode",
                                 "Other"
                             ]
                         },
