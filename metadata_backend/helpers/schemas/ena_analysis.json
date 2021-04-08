@@ -609,9 +609,9 @@
                 "referenceSequence": {
                     "type": "object",
                     "title": "Reference Sequence",
+                    "additionalProperties": true,
                     "properties": {
-                        "additionalProperties": true,
-                        "fescription": {
+                        "description": {
                             "type": "string",
                             "title": "Sample Phenotype Description"
                         }
@@ -630,8 +630,8 @@
                 "samplePhenotype": {
                     "type": "object",
                     "title": "Sample Phenotype",
+                    "additionalProperties": true,
                     "properties": {
-                        "additionalProperties": true,
                         "description": {
                             "type": "string",
                             "title": "Sample Phenotype Description"
@@ -682,9 +682,9 @@
                 "amrAntibiogram": {
                     "type": "object",
                     "title": "AMR Antibiogram",
+                    "additionalProperties": true,
                     "properties": {
-                        "additionalProperties": true,
-                        "fescription": {
+                        "description": {
                             "type": "string",
                             "title": "AMR Antibiogram Description"
                         }
@@ -703,8 +703,8 @@
                 "pathogenAnalysis": {
                     "type": "object",
                     "title": "Pathogen Analysis",
+                    "additionalProperties": true,
                     "properties": {
-                        "additionalProperties": true,
                         "description": {
                             "type": "string",
                             "title": "Pathogen Analysis Description"
