@@ -41,10 +41,8 @@
   "analysisType": {
     "processedReads": {
       "assembly": {
-        "standard": {
           "refname": "GRCh37",
           "accessionId": "GCA_000001405.1"
-        }
       },
       "sequence": [
         {

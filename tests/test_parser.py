@@ -72,7 +72,7 @@ class ParserTestCase(unittest.TestCase):
         analysis_json = self.parser.parse("analysis", analysis_xml)
         self.assertIn(
             "GCA_000001405.1",
-            analysis_json["analysisType"]["processedReads"]["assembly"]["standard"]["accessionId"],
+            analysis_json["analysisType"]["processedReads"]["assembly"]["accessionId"],
         )
 
     def test_submission_is_parsed(self):
