@@ -322,9 +322,12 @@
             }
         },
         "dataUses": {
+            "type": "array",
             "description": "Data use ontologies (DUO) related to the policy",
-            "$ref": "#/definitions/dataUseType",
-            "title": "Data Use"
+            "items": {
+                "$ref": "#/definitions/dataUseType"
+            },
+            "title": "Data Use Ontology"
         },
         "policyAttributes": {
             "type": "array",
