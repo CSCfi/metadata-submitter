@@ -215,6 +215,8 @@ class MetadataXMLConverter(XMLSchemaConverter):
         - simplify assembly key and take the value from custom and standard keys
         - library layout takes the value of its first key as most times it will
           be just one key
+        - analysis type processes empty tags differently to avoid confusions in
+          JSON validator by making the analysisType string
         """
         xsd_type = xsd_type or xsd_element.type
 
