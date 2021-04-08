@@ -39,7 +39,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
         return _under_regex.sub(lambda x: x.group(1).upper(), name)
 
     def _flatten(self, data: Any) -> Union[Dict, List, str, None]:
-        """Address corner cases by flattening structure.
+        """Address corner cases.
 
         :param schema_type: XML data
         :returns: XML element flattened.
@@ -71,6 +71,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
             "assemblyAttributes",
             "submissionAttributes",
             "contacts",
+            "dataUses",
         ]
 
         children = self.dict()
@@ -91,7 +92,10 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 continue
 
             if "files" in key:
-                children["files"] = list(value.values())
+                if isinstance(value["file"], dict):
+                    children["files"] = list(value.values())
+                elif isinstance(value["file"], list):
+                    children["files"] = value["file"]
                 continue
 
             if "dataBlock" in key:
@@ -106,6 +110,15 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 children[key] = next(iter(value))
                 children.update(next(iter(value.values())))
                 continue
+
+            if "policyText" in key:
+                children["policy"] = {key: value}
+                continue
+
+            if "policyFile" in key:
+                reason = "Policy file not supported"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
 
             if key in links and len(value) == 1:
                 grp = list()
