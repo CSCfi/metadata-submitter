@@ -220,11 +220,6 @@
             "description": "Short text that can be used to call out data sets in searches or in displays.",
             "type": "string"
         },
-        "description": {
-            "title": "Dataset Description",
-            "description": "Free-form text describing the data sets.",
-            "type": "string"
-        },
         "datasetType": {
             "title": "Dataset Type",
             "type": "array",
@@ -248,6 +243,11 @@
                 ]
             },
             "uniqueItems": true
+        },
+        "description": {
+            "title": "Dataset Description",
+            "description": "Free-form text describing the data sets.",
+            "type": "string"
         },
         "policyRef": {
             "title": "Policy Identifier (Accession ID or title)",

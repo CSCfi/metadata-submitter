@@ -166,19 +166,20 @@
             "properties": {
                 "pool": {
                     "type": "object",
-                    "title": "Label",
+                    "title": "Pool",
                     "description": "Identifies a list of group/pool/multiplex sample members. This implies that this sample record is a group, pool, or multiplex, but it continues to receive its own accession and can be referenced by an experiment. By default ifno match to any of the listed members can be determined, then the default sample reference is used.",
                     "properties": {
-                        "member": {
-                            "type": "object",
-                            "title": "Tag title",
-                            "$ref": "#/definitions/poolMemberType"
-                        },
                         "defaultMember": {
                             "type": "object",
-                            "title": "Tag title",
+                            "title": "Default Member",
+                            "$ref": "#/definitions/poolMemberType"
+                        },
+                        "member": {
+                            "type": "object",
+                            "title": "Member",
                             "$ref": "#/definitions/poolMemberType"
                         }
+                        
                     }
                 }
             }
@@ -568,12 +569,18 @@
                     "properties": {
                         "sampleDemuxDirective": {
                             "type": "object",
+                            "title": "Sample demux directive",
+                            "description": "Tells the Archive who will execute the sample demultiplexing operation.",
                             "properties": {
                                 "leaveAsPool": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "description": "There shall be no sample de-multiplexing at the level of assiging individual reads to sample pool members.",
+                                    "title": "Leave as pool"
                                 },
                                 "submitterDemultiplexed": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "description": "The submitter has assigned individual reads to sample pool members by providing individual files containing reads with the same member assignment.",
+                                    "title": "Submitter demultiplexed"
                                 }
                             }
                         }
