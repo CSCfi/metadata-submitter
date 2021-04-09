@@ -106,6 +106,12 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 children[key] = value
                 continue
 
+            if "datasetType" in key:
+                if "datasetType" not in children:
+                    children[key] = list()
+                children[key].append(value)
+                continue
+
             if "files" in key:
                 if isinstance(value["file"], dict):
                     children["files"] = list(value.values())
@@ -217,6 +223,8 @@ class MetadataXMLConverter(XMLSchemaConverter):
           be just one key
         - analysis type processes empty tags differently to avoid confusions in
           JSON validator by making the analysisType string
+        - datasetType should be an array and treat it as such even if one element
+          selected
         """
         xsd_type = xsd_type or xsd_element.type
 

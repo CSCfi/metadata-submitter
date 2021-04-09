@@ -159,6 +159,49 @@
                 }
             }
         },
+        "pool": {
+            "$id": "#/definitions/pool",
+            "title": "Pool",
+            "type": "object",
+            "properties": {
+                "pool": {
+                    "type": "object",
+                    "title": "Label",
+                    "description": "Identifies a list of group/pool/multiplex sample members. This implies that this sample record is a group, pool, or multiplex, but it continues to receive its own accession and can be referenced by an experiment. By default ifno match to any of the listed members can be determined, then the default sample reference is used.",
+                    "properties": {
+                        "member": {
+                            "type": "object",
+                            "title": "Tag title",
+                            "$ref": "#/definitions/poolMemberType"
+                        },
+                        "defaultMember": {
+                            "type": "object",
+                            "title": "Tag title",
+                            "$ref": "#/definitions/poolMemberType"
+                        }
+                    }
+                }
+            }
+        },
+        "poolMemberType": {
+            "$id": "#/definitions/poolMemberType",
+            "title": "Pool Member Type",
+            "type": "object",
+            "properties": {
+                "readLabel": {
+                    "type": "string",
+                    "title": "Assignment of read_group_tag to decoded read."
+                },
+                "memberName": {
+                    "type": "string",
+                    "title": "Label a sample within a scope of the pool."
+                },
+                "proportion": {
+                    "type": "number",
+                    "title": "Proportion of this sample (in percent) that was included in sample pool."
+                }
+            }
+        },
         "libraryType": {
             "$id": "#/definitions/libraryType",
             "type": "object",
@@ -169,15 +212,20 @@
                     "type": "string",
                     "description": "Goal and setup of the individual library including library was constructed."
                 },
-                "sampleRef": {
+                "sampleDescriptor": {
                     "title": "Sample Identifier (Accession ID or title)",
                     "description": "Pick a sample to associate this experiment with. The sample may be an individual or a pool, depending on how it is specified.",
-                    "$ref": "#/definitions/reference"
+                    "$ref": "#/definitions/pool"
                 },
                 "libraryDescriptor": {
                     "description": "The LIBRARY_DESCRIPTOR specifies the origin of the material being sequenced and any treatments that the material might have undergone that affect the sequencing result. This specification is needed even if the platform does not require a library construction step per se.",
                     "title": "Library Descriptor",
                     "type": "object",
+                    "required": [
+                        "libraryStrategy",
+                        "librarySelection",
+                        "librarySource"
+                    ],
                     "properties": {
                         "libraryName": {
                             "type": "string",
@@ -338,29 +386,6 @@
                             "description": "Free form text describing the protocol by which the sequencing library was constructed.",
                             "type": "string"
                         }
-                    },
-                    "if": {
-                        "properties": {
-                            "libraryLayout": {
-                                "const": "paired"
-                            }
-                        }
-                    },
-                    "then": {
-                        "required": [
-                            "libraryStrategy",
-                            "librarySelection",
-                            "librarySource",
-                            "nominalLength",
-                            "nominalSdev"
-                        ]
-                    },
-                    "else": {
-                        "required": [
-                            "libraryStrategy",
-                            "librarySelection",
-                            "librarySource"
-                        ]
                     }
                 },
                 "spotDescriptor": {
@@ -560,9 +585,6 @@
             "$id": "#/definitions/reference",
             "type": "object",
             "additionalProperties": true,
-            "required": [
-                "accessionId"
-            ],
             "properties": {
                 "label": {
                     "type": "string",
