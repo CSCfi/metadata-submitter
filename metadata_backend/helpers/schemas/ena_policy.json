@@ -267,8 +267,7 @@
     "description": "Describes an object that contains data access policy information.",
     "required": [
         "dacRef",
-        "policy",
-        "title"
+        "policy"
     ],
     "properties": {
         "title": {
