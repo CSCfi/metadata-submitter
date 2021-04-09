@@ -211,9 +211,6 @@
             "$id": "#/definitions/reference",
             "type": "object",
             "additionalProperties": true,
-            "required": [
-                "accessionId"
-            ],
             "properties": {
                 "label": {
                     "type": "string",
