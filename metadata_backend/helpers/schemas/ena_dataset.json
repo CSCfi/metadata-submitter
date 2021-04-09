@@ -217,9 +217,6 @@
     },
     "type": "object",
     "description": "Describes an object that contains data access policy information.",
-    "required": [
-        "title"
-    ],
     "properties": {
         "title": {
             "title": "Dataset Title",
