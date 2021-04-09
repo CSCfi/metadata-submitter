@@ -818,11 +818,6 @@
             "description": "Short text that can be used to define submissions in searches or in displays.",
             "type": "string"
         },
-        "description": {
-            "title": "Analysis Description",
-            "description": "Free-form text describing the data sets.",
-            "type": "string"
-        },
         "analysisType": {
             "type": "object",
             "title": "Analysis Type",
@@ -864,6 +859,11 @@
                     "$ref": "#/definitions/taxonomicRefrenceSet"
                 }
             ]
+        },
+        "description": {
+            "title": "Analysis Description",
+            "description": "Free-form text describing the data sets.",
+            "type": "string"
         },
         "experimentRef": {
             "title": "Experiment Identifier (Accession ID or title)",
