@@ -1,0 +1,11 @@
+<?xml version="1.0" standalone="yes"?>
+<DATASETS>
+    <DATASET alias="e11c3279-00db-4627-94ea-3bbb1c3635cf" center_name="TEST" broker_name="EGA">
+        <TITLE>test</TITLE>
+        <DESCRIPTION>some cool test description</DESCRIPTION>
+        <DATASET_TYPE>Exome sequencing</DATASET_TYPE>
+        <DATASET_TYPE>Genotyping by array</DATASET_TYPE>
+        <RUN_REF refname="b8f1-dgsdh" />
+        <POLICY_REF refname="1asgasgad-1584d9c56f8458" />
+    </DATASET>
+</DATASETS>

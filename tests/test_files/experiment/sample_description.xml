@@ -1,0 +1,32 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<EXPERIMENT_SET>
+    <EXPERIMENT alias="agasga9ca2eb698" center_name="TEST" broker_name="EGA">
+        <STUDY_REF refname="agasgb5265a6b1eef" />
+        <DESIGN>
+            <DESIGN_DESCRIPTION>SweGen Illumina WGS</DESIGN_DESCRIPTION>
+            <SAMPLE_DESCRIPTOR>
+                <POOL>
+                    <DEFAULT_MEMBER member_name="test" proportion="1.0">
+                        <READ_LABEL>test</READ_LABEL>
+                    </DEFAULT_MEMBER>
+                    <MEMBER member_name="test" proportion="1.0">
+                        <READ_LABEL>test</READ_LABEL>
+                    </MEMBER>
+                </POOL>
+            </SAMPLE_DESCRIPTOR>
+            <LIBRARY_DESCRIPTOR>
+                <LIBRARY_STRATEGY>WGS</LIBRARY_STRATEGY>
+                <LIBRARY_SOURCE>GENOMIC</LIBRARY_SOURCE>
+                <LIBRARY_SELECTION>RANDOM</LIBRARY_SELECTION>
+                <LIBRARY_LAYOUT>
+                    <PAIRED />
+                </LIBRARY_LAYOUT>
+            </LIBRARY_DESCRIPTOR>
+        </DESIGN>
+        <PLATFORM>
+            <ILLUMINA>
+                <INSTRUMENT_MODEL>HiSeq X Ten</INSTRUMENT_MODEL>
+            </ILLUMINA>
+        </PLATFORM>
+    </EXPERIMENT>
+</EXPERIMENT_SET>

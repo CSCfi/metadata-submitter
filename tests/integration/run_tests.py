@@ -29,6 +29,7 @@ test_xml_files = [
     ("run", "ERR000076.xml"),
     ("experiment", "ERX000119.xml"),
     ("experiment", "paired.xml"),
+    ("experiment", "sample_description.xml"),
     ("analysis", "ERZ266973.xml"),
     ("analysis", "processed_reads_analysis.xml"),
     ("analysis", "reference_alignment_analysis.xml"),
@@ -37,6 +38,7 @@ test_xml_files = [
     ("analysis", "sequence_variation_analysis.xml"),
     ("dac", "dac.xml"),
     ("policy", "policy.xml"),
+    ("dataset", "dataset.xml"),
 ]
 test_json_files = [
     ("study", "SRP000539.json", "SRP000539.json"),
