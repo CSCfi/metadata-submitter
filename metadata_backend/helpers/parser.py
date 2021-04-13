@@ -74,6 +74,8 @@ class MetadataXMLConverter(XMLSchemaConverter):
             "dataUses",
         ]
 
+        refs = ["analysisRef", "sampleRef", "runRef", "experimentRef"]
+
         children = self.dict()
 
         for key, value, _ in self.map_content(data.content):
@@ -136,9 +138,13 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 children["policy"] = {key: value}
                 continue
 
+            if key in refs:
+                children[key] = [value]
+                continue
+
             if "policyFile" in key:
                 reason = "Policy file not supported"
-
+                LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
 
             if key in links and len(value) == 1:
@@ -225,6 +231,8 @@ class MetadataXMLConverter(XMLSchemaConverter):
           JSON validator by making the analysisType string
         - datasetType should be an array and treat it as such even if one element
           selected
+        - analysisRef, sampleRef, runRef, experimentRef need to be an array
+        - experimentRef in run is an array with maxitems 1
         """
         xsd_type = xsd_type or xsd_element.type
 
