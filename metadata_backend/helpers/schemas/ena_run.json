@@ -238,10 +238,57 @@
                 }
             }
         },
+        "identifiers": {
+            "$id": "#/definitions/identifiers",
+            "title": "Identifiers",
+            "type": "object",
+            "properties": {
+                "primaryId": {
+                    "type": "string",
+                    "title": "Primary Id"
+                },
+                "secondaryId": {
+                    "type": "string",
+                    "title": "Secondary Id"
+                },
+                "uuid": {
+                    "type": "string",
+                    "title": "UUID"
+                },
+                "externalId": {
+                    "type": "object",
+                    "title": "External Id",
+                    "properties": {
+                        "namespace": {
+                            "type": "string",
+                            "title": "Namespace"
+                        },
+                        "value": {
+                            "type": "string",
+                            "title": "Identifier"
+                        }
+                    }
+                },
+                "submitterId": {
+                    "type": "object",
+                    "title": "Submitter Id",
+                    "properties": {
+                        "namespace": {
+                            "type": "string",
+                            "title": "Namespace"
+                        },
+                        "value": {
+                            "type": "string",
+                            "title": "Identifier"
+                        }
+                    }
+                }
+            }
+        },
         "reference": {
             "$id": "#/definitions/reference",
-            "type": "object",
             "additionalProperties": true,
+            "type": "object",
             "properties": {
                 "label": {
                     "type": "string",
@@ -260,33 +307,7 @@
                     "title": "Accession Id"
                 },
                 "identifiers": {
-                    "type": "object",
-                    "title": "Identifiers",
-                    "properties": {
-                        "primaryId": {
-                            "type": "string",
-                            "title": "Primary Id"
-                        },
-                        "submitterId": {
-                            "type": "object",
-                            "title": "Submitter Id",
-                            "required": [
-                                "namespace",
-                                "value"
-                            ],
-                            "additionalProperties": true,
-                            "properties": {
-                                "namespace": {
-                                    "type": "string",
-                                    "title": "Namespace"
-                                },
-                                "value": {
-                                    "type": "string",
-                                    "title": "Value"
-                                }
-                            }
-                        }
-                    }
+                    "$ref": "#/definitions/identifiers"
                 }
             }
         },
@@ -631,7 +652,7 @@
         },
         "runCenter": {
             "title": "Run Center",
-            "description": "If applicable, the name of the contract sequencing center that executed the run",
+            "description": "If applicable, the name of the contract sequencing center that executed the run.",
             "type": "string"
         },
         "files": {
