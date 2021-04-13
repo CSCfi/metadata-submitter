@@ -881,6 +881,17 @@
                 }
             ]
         },
+        "analysisDate": {
+            "title": "Analysis Date",
+            "description": "Date when the analysis took place",
+            "type": "string",
+            "format": "date-time"
+        },
+        "analysisCenter": {
+            "title": "Analysis Center",
+            "description": "If applicable, the name of the contract sequencing center that executed the analysis.",
+            "type": "string"
+        },
         "description": {
             "title": "Analysis Description",
             "description": "Free-form text describing the data sets.",
@@ -929,17 +940,6 @@
             "items": {
                 "$ref": "#/definitions/file"
             }
-        },
-        "analysisDate": {
-            "title": "Analysis Date",
-            "description": "Date when the analysis took place",
-            "type": "string",
-            "format": "date-time"
-        },
-        "analysisCenter": {
-            "title": "Analysis Center",
-            "description": "If applicable, the name of the contract sequencing center that executed the analysis.",
-            "type": "string"
         },
         "analysisLinks": {
             "type": "array",
