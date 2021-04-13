@@ -455,7 +455,7 @@
             }
         },
         "experimentRef": {
-            "title": "Experiment Identifier (Accession ID or title)",
+            "title": "Experiment Reference",
             "description": "Identifies the associated experiment.",
             "maxItems": 1,
             "type": "array",

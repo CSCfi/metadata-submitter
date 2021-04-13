@@ -887,12 +887,12 @@
             "type": "string"
         },
         "studyRef": {
-            "title": "Study Identifier (Accession ID or title)",
+            "title": "Study Reference",
             "description": "Identifies the associated study.",
             "$ref": "#/definitions/reference"
         },
         "experimentRef": {
-            "title": "Experiment Identifier (Accession ID or title)",
+            "title": "Experiment Reference",
             "description": "Identifies the associated experiment.",
             "type": "array",
             "items": {
@@ -900,7 +900,7 @@
             }
         },
         "sampleRef": {
-            "title": "Sample Identifier (Accession ID or title)",
+            "title": "Sample Reference",
             "description": "Identifies the associated sample.",
             "type": "array",
             "items": {
@@ -908,7 +908,7 @@
             }
         },
         "runRef": {
-            "title": "Run Identifier (Accession ID or title)",
+            "title": "Run Reference",
             "description": "Identifies the associated run.",
             "type": "array",
             "items": {
@@ -916,7 +916,7 @@
             }
         },
         "analysisRef": {
-            "title": "Analysis Identifier (Accession ID or title)",
+            "title": "Analysis Reference",
             "description": "Identifies the associated analysis.",
             "type": "array",
             "items": {

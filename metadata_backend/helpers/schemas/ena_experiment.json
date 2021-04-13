@@ -214,7 +214,7 @@
                     "description": "Goal and setup of the individual library including library was constructed."
                 },
                 "sampleDescriptor": {
-                    "title": "Sample Identifier (Accession ID or title)",
+                    "title": "Sample Reference",
                     "description": "Pick a sample to associate this experiment with. The sample may be an individual or a pool, depending on how it is specified.",
                     "$ref": "#/definitions/pool"
                 },
@@ -681,7 +681,7 @@
             "type": "string"
         },
         "studyRef": {
-            "title": "Study Identifier (Accession ID or title)",
+            "title": "Study Reference",
             "description": "Identifies the associated study.",
             "$ref": "#/definitions/reference"
         },
