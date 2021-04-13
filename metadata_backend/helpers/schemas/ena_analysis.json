@@ -865,30 +865,42 @@
             "description": "Free-form text describing the data sets.",
             "type": "string"
         },
-        "experimentRef": {
-            "title": "Experiment Identifier (Accession ID or title)",
-            "description": "Identifies the associated experiment.",
-            "$ref": "#/definitions/reference"
-        },
         "studyRef": {
             "title": "Study Identifier (Accession ID or title)",
             "description": "Identifies the associated study.",
             "$ref": "#/definitions/reference"
         },
+        "experimentRef": {
+            "title": "Experiment Identifier (Accession ID or title)",
+            "description": "Identifies the associated experiment.",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/reference"
+            } 
+        },
         "sampleRef": {
             "title": "Sample Identifier (Accession ID or title)",
             "description": "Identifies the associated sample.",
-            "$ref": "#/definitions/reference"
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/reference"
+            } 
         },
         "runRef": {
             "title": "Run Identifier (Accession ID or title)",
             "description": "Identifies the associated run.",
-            "$ref": "#/definitions/reference"
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/reference"
+            } 
         },
         "analysisRef": {
             "title": "Analysis Identifier (Accession ID or title)",
             "description": "Identifies the associated analysis.",
-            "$ref": "#/definitions/reference"
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/reference"
+            } 
         },
         "files": {
             "type": "array",
