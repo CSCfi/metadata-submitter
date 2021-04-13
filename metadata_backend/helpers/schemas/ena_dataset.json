@@ -257,12 +257,18 @@
         "runRef": {
             "title": "Run Identifier (Accession ID or title)",
             "description": "Identifies the runs which are part of this dataset.",
-            "$ref": "#/definitions/reference"
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/reference"
+            } 
         },
         "analysisRef": {
             "title": "Analysis Identifier (Accession ID or title)",
             "description": "Identifies the data access committee to which this policy pertains.",
-            "$ref": "#/definitions/reference"
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/reference"
+            } 
         },
         "datasetLinks": {
             "type": "array",
