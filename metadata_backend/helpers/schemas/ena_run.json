@@ -419,29 +419,66 @@
                     "title": "Reference Alignment",
                     "additionalProperties": true,
                     "properties": {
+                        "assembly": {
+                            "type": "object",
+                            "title": "Reference assembly details",
+                            "oneOf": [
+                                {
+                                    "type": "object",
+                                    "title": "Standard",
+                                    "required": [
+                                        "accessionId"
+                                    ],
+                                    "properties": {
+                                        "refname": {
+                                            "type": "string",
+                                            "title": "Reference name"
+                                        },
+                                        "accessionId": {
+                                            "type": "string",
+                                            "title": "Accession Id"
+                                        }
+                                    }
+                                },
+                                {
+                                    "type": "object",
+                                    "title": "Custom",
+                                    "required": [
+                                        "description"
+                                    ],
+                                    "properties": {
+                                        "label": {
+                                            "type": "string",
+                                            "title": "Label",
+                                            "description": "Text label to display for the link."
+                                        },
+                                        "url": {
+                                            "type": "string",
+                                            "title": "URL",
+                                            "description": "The internet service link (http(s), ftp) etc.",
+                                            "pattern": "^(https?|ftp)://"
+                                        },
+                                        "description": {
+                                            "type": "string",
+                                            "title": "Description"
+                                        }
+                                    }
+                                }
+                            ]
+                        },
                         "sequence": {
                             "type": "array",
                             "title": "Sequence",
-                            "additionalItems": true,
                             "items": {
                                 "type": "object",
-                                "title": "Run Type reference",
-                                "additionalProperties": true,
                                 "required": [
                                     "accessionId"
                                 ],
+                                "additionalProperties": true,
                                 "properties": {
                                     "label": {
                                         "type": "string",
                                         "title": "Label"
-                                    },
-                                    "refname": {
-                                        "type": "string",
-                                        "title": "Record name"
-                                    },
-                                    "refcenter": {
-                                        "type": "string",
-                                        "title": "Center Namespace"
                                     },
                                     "accessionId": {
                                         "type": "string",
@@ -453,6 +490,17 @@
                     }
                 }
             }
+        },
+        "runDate": {
+            "title": "Run Date",
+            "description": "Date when the run took place",
+            "type": "string",
+            "format": "date-time"
+        },
+        "runCenter": {
+            "title": "Run Center",
+            "description": "If applicable, the name of the contract sequencing center that executed the run.",
+            "type": "string"
         },
         "experimentRef": {
             "title": "Experiment Reference",
@@ -643,17 +691,6 @@
                     }
                 }
             ]
-        },
-        "runDate": {
-            "title": "Run Date",
-            "description": "Date when the run took place",
-            "type": "string",
-            "format": "date-time"
-        },
-        "runCenter": {
-            "title": "Run Center",
-            "description": "If applicable, the name of the contract sequencing center that executed the run.",
-            "type": "string"
         },
         "files": {
             "type": "array",
