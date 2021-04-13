@@ -271,12 +271,12 @@
             "type": "string"
         },
         "policyRef": {
-            "title": "Policy Identifier (Accession ID or title)",
+            "title": "Policy Reference",
             "description": "Identifies the data access committee to which this policy pertains.",
             "$ref": "#/definitions/reference"
         },
         "runRef": {
-            "title": "Run Identifier (Accession ID or title)",
+            "title": "Run Reference",
             "description": "Identifies the runs which are part of this dataset.",
             "type": "array",
             "items": {
@@ -284,7 +284,7 @@
             } 
         },
         "analysisRef": {
-            "title": "Analysis Identifier (Accession ID or title)",
+            "title": "Analysis Reference",
             "description": "Identifies the data access committee to which this policy pertains.",
             "type": "array",
             "items": {

@@ -294,7 +294,7 @@
             "type": "string"
         },
         "dacRef": {
-            "title": "Data Access Committee Identifier (Accession ID or title)",
+            "title": "Data Access Committee Reference",
             "description": "Identifies the data access committee to which this policy pertains.",
             "$ref": "#/definitions/reference"
         },
