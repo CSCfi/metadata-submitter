@@ -233,6 +233,53 @@
                 }
             }
         },
+        "identifiers": {
+            "$id": "#/definitions/identifiers",
+            "title": "Identifiers",
+            "type": "object",
+            "properties": {
+                "primaryId": {
+                    "type": "string",
+                    "title": "Primary Id"
+                },
+                "secondaryId": {
+                    "type": "string",
+                    "title": "Secondary Id"
+                },
+                "uuid": {
+                    "type": "string",
+                    "title": "UUID"
+                },
+                "externalId": {
+                    "type": "object",
+                    "title": "External Id",
+                    "properties": {
+                        "namespace": {
+                            "type": "string",
+                            "title": "Namespace"
+                        },
+                        "value": {
+                            "type": "string",
+                            "title": "Identifier"
+                        }
+                    }
+                },
+                "submitterId": {
+                    "type": "object",
+                    "title": "Submitter Id",
+                    "properties": {
+                        "namespace": {
+                            "type": "string",
+                            "title": "Namespace"
+                        },
+                        "value": {
+                            "type": "string",
+                            "title": "Identifier"
+                        }
+                    }
+                }
+            }
+        },
         "reference": {
             "$id": "#/definitions/reference",
             "additionalProperties": true,
@@ -255,33 +302,7 @@
                     "title": "Accession Id"
                 },
                 "identifiers": {
-                    "type": "object",
-                    "title": "Identifiers",
-                    "properties": {
-                        "primaryId": {
-                            "type": "string",
-                            "title": "Primary Id"
-                        },
-                        "submitterId": {
-                            "type": "object",
-                            "title": "Submitter Id",
-                            "required": [
-                                "namespace",
-                                "value"
-                            ],
-                            "additionalProperties": true,
-                            "properties": {
-                                "namespace": {
-                                    "type": "string",
-                                    "title": "Namespace"
-                                },
-                                "value": {
-                                    "type": "string",
-                                    "title": "Value"
-                                }
-                            }
-                        }
-                    }
+                    "$ref": "#/definitions/identifiers"
                 }
             }
         },
@@ -876,7 +897,7 @@
             "type": "array",
             "items": {
                 "$ref": "#/definitions/reference"
-            } 
+            }
         },
         "sampleRef": {
             "title": "Sample Identifier (Accession ID or title)",
@@ -884,7 +905,7 @@
             "type": "array",
             "items": {
                 "$ref": "#/definitions/reference"
-            } 
+            }
         },
         "runRef": {
             "title": "Run Identifier (Accession ID or title)",
@@ -892,7 +913,7 @@
             "type": "array",
             "items": {
                 "$ref": "#/definitions/reference"
-            } 
+            }
         },
         "analysisRef": {
             "title": "Analysis Identifier (Accession ID or title)",
@@ -900,7 +921,7 @@
             "type": "array",
             "items": {
                 "$ref": "#/definitions/reference"
-            } 
+            }
         },
         "files": {
             "type": "array",
@@ -908,6 +929,17 @@
             "items": {
                 "$ref": "#/definitions/file"
             }
+        },
+        "analysisDate": {
+            "title": "Analysis Date",
+            "description": "Date when the analysis took place",
+            "type": "string",
+            "format": "date-time"
+        },
+        "analysisCenter": {
+            "title": "Analysis Center",
+            "description": "If applicable, the name of the contract sequencing center that executed the analysis.",
+            "type": "string"
         },
         "analysisLinks": {
             "type": "array",
