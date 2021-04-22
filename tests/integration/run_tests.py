@@ -28,7 +28,17 @@ test_xml_files = [
     ("sample", "SRS001433.xml"),
     ("run", "ERR000076.xml"),
     ("experiment", "ERX000119.xml"),
+    ("experiment", "paired.xml"),
+    ("experiment", "sample_description.xml"),
     ("analysis", "ERZ266973.xml"),
+    ("analysis", "processed_reads_analysis.xml"),
+    ("analysis", "reference_alignment_analysis.xml"),
+    ("analysis", "reference_sequence_analysis.xml"),
+    ("analysis", "sequence_assembly_analysis.xml"),
+    ("analysis", "sequence_variation_analysis.xml"),
+    ("dac", "dac.xml"),
+    ("policy", "policy.xml"),
+    ("dataset", "dataset.xml"),
 ]
 test_json_files = [
     ("study", "SRP000539.json", "SRP000539.json"),
@@ -123,7 +133,7 @@ async def post_object(sess, schema, filename):
     """
     request_data = await create_request_data(schema, filename)
     async with sess.post(f"{objects_url}/{schema}", data=request_data) as resp:
-        LOG.debug(f"Adding new object to {schema}")
+        LOG.debug(f"Adding new object to {schema}, via XML file {filename}")
         assert resp.status == 201, "HTTP Status code error"
         ans = await resp.json()
         return ans["accessionId"], schema
@@ -138,7 +148,7 @@ async def post_object_json(sess, schema, filename):
     """
     request_data = await create_request_json_data(schema, filename)
     async with sess.post(f"{objects_url}/{schema}", data=request_data) as resp:
-        LOG.debug(f"Adding new draft object to {schema}")
+        LOG.debug(f"Adding new object to {schema}, via JSON file {filename}")
         assert resp.status == 201, "HTTP Status code error"
         ans = await resp.json()
         return ans["accessionId"]
@@ -165,7 +175,7 @@ async def post_draft(sess, schema, filename):
     """
     request_data = await create_request_data(schema, filename)
     async with sess.post(f"{drafts_url}/{schema}", data=request_data) as resp:
-        LOG.debug(f"Adding new object to {schema}")
+        LOG.debug(f"Adding new draft object to {schema}, via XML file {filename}")
         assert resp.status == 201, "HTTP Status code error"
         ans = await resp.json()
         return ans["accessionId"]
@@ -180,7 +190,7 @@ async def post_draft_json(sess, schema, filename):
     """
     request_data = await create_request_json_data(schema, filename)
     async with sess.post(f"{drafts_url}/{schema}", data=request_data) as resp:
-        LOG.debug(f"Adding new draft object to {schema}")
+        LOG.debug(f"Adding new draft object to {schema}, via JSON file {filename}")
         assert resp.status == 201, "HTTP Status code error"
         ans = await resp.json()
         return ans["accessionId"]
@@ -834,7 +844,7 @@ async def test_get_folders_objects(sess, folder_id: str):
     ]
     await patch_folder(sess, folder_id, patch_add_object)
     async with sess.get(f"{folders_url}") as resp:
-        LOG.debug(f"Reading folder {folders_url}")
+        LOG.debug(f"Reading folder {folder_id}")
         assert resp.status == 200, "HTTP Status code error"
         response = await resp.json()
         assert len(response["folders"]) == 1
@@ -849,7 +859,7 @@ async def test_get_folders_objects(sess, folder_id: str):
     ]
     await patch_folder(sess, folder_id, patch_add_more_object)
     async with sess.get(f"{folders_url}") as resp:
-        LOG.debug(f"Reading folder {folders_url}")
+        LOG.debug(f"Reading folder {folder_id}")
         assert resp.status == 200, "HTTP Status code error"
         response = await resp.json()
         assert len(response["folders"]) == 1
@@ -865,7 +875,7 @@ async def test_get_folders_objects(sess, folder_id: str):
     ]
     await patch_folder(sess, folder_id, patch_change_tags_object)
     async with sess.get(f"{folders_url}") as resp:
-        LOG.debug(f"Reading folder {folders_url}")
+        LOG.debug(f"Reading folder {folder_id}")
         assert resp.status == 200, "HTTP Status code error"
         response = await resp.json()
         assert len(response["folders"]) == 1

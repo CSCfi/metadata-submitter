@@ -152,6 +152,10 @@
                 "value": {
                     "type": "string",
                     "title": "Description"
+                },
+                "units": {
+                    "type": "string",
+                    "title": "Optional scientific units."
                 }
             }
         },
@@ -204,8 +208,7 @@
                     "title": "Study Abstract",
                     "description": "Briefly describes the goals, purpose, and scope of the Study. This need not be listed if it can be inherited from a referenced publication.",
                     "type": "string",
-                    "minLength": 10,
-                    "maxLength": 500
+                    "minLength": 10
                 },
                 "centerName": {
                     "title": "Center Name",

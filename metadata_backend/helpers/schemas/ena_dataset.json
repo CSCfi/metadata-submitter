@@ -152,16 +152,64 @@
                 "value": {
                     "type": "string",
                     "title": "Description"
+                },
+                "units": {
+                    "type": "string",
+                    "title": "Optional scientific units."
+                }
+            }
+        },
+        "identifiers": {
+            "$id": "#/definitions/identifiers",
+            "title": "Identifiers",
+            "type": "object",
+            "properties": {
+                "primaryId": {
+                    "type": "string",
+                    "title": "Primary Id"
+                },
+                "secondaryId": {
+                    "type": "string",
+                    "title": "Secondary Id"
+                },
+                "uuid": {
+                    "type": "string",
+                    "title": "UUID"
+                },
+                "externalId": {
+                    "type": "object",
+                    "title": "External Id",
+                    "properties": {
+                        "namespace": {
+                            "type": "string",
+                            "title": "Namespace"
+                        },
+                        "value": {
+                            "type": "string",
+                            "title": "Identifier"
+                        }
+                    }
+                },
+                "submitterId": {
+                    "type": "object",
+                    "title": "Submitter Id",
+                    "properties": {
+                        "namespace": {
+                            "type": "string",
+                            "title": "Namespace"
+                        },
+                        "value": {
+                            "type": "string",
+                            "title": "Identifier"
+                        }
+                    }
                 }
             }
         },
         "reference": {
             "$id": "#/definitions/reference",
-            "type": "object",
             "additionalProperties": true,
-            "required": [
-                "accessionId"
-            ],
+            "type": "object",
             "properties": {
                 "label": {
                     "type": "string",
@@ -180,51 +228,17 @@
                     "title": "Accession Id"
                 },
                 "identifiers": {
-                    "type": "object",
-                    "title": "Identifiers",
-                    "properties": {
-                        "primaryId": {
-                            "type": "string",
-                            "title": "Primary Id"
-                        },
-                        "submitterId": {
-                            "type": "object",
-                            "title": "Submitter Id",
-                            "required": [
-                                "namespace",
-                                "value"
-                            ],
-                            "additionalProperties": true,
-                            "properties": {
-                                "namespace": {
-                                    "type": "string",
-                                    "title": "Namespace"
-                                },
-                                "value": {
-                                    "type": "string",
-                                    "title": "Value"
-                                }
-                            }
-                        }
-                    }
+                    "$ref": "#/definitions/identifiers"
                 }
             }
         }
     },
     "type": "object",
     "description": "Describes an object that contains data access policy information.",
-    "required": [
-        "title"
-    ],
     "properties": {
         "title": {
             "title": "Dataset Title",
             "description": "Short text that can be used to call out data sets in searches or in displays.",
-            "type": "string"
-        },
-        "description": {
-            "title": "Dataset Description",
-            "description": "Free-form text describing the data sets.",
             "type": "string"
         },
         "datasetType": {
@@ -251,20 +265,31 @@
             },
             "uniqueItems": true
         },
+        "description": {
+            "title": "Dataset Description",
+            "description": "Free-form text describing the data sets.",
+            "type": "string"
+        },
         "policyRef": {
-            "title": "Policy Identifier (Accession ID or title)",
+            "title": "Policy Reference",
             "description": "Identifies the data access committee to which this policy pertains.",
             "$ref": "#/definitions/reference"
         },
         "runRef": {
-            "title": "Run Identifier (Accession ID or title)",
+            "title": "Run Reference",
             "description": "Identifies the runs which are part of this dataset.",
-            "$ref": "#/definitions/reference"
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/reference"
+            } 
         },
         "analysisRef": {
-            "title": "Analysis Identifier (Accession ID or title)",
+            "title": "Analysis Reference",
             "description": "Identifies the data access committee to which this policy pertains.",
-            "$ref": "#/definitions/reference"
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/reference"
+            } 
         },
         "datasetLinks": {
             "type": "array",

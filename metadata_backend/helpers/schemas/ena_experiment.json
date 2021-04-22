@@ -152,6 +152,54 @@
                 "value": {
                     "type": "string",
                     "title": "Description"
+                },
+                "units": {
+                    "type": "string",
+                    "title": "Optional scientific units."
+                }
+            }
+        },
+        "pool": {
+            "$id": "#/definitions/pool",
+            "title": "Pool",
+            "type": "object",
+            "properties": {
+                "pool": {
+                    "type": "object",
+                    "title": "Pool",
+                    "description": "Identifies a list of group/pool/multiplex sample members. This implies that this sample record is a group, pool, or multiplex, but it continues to receive its own accession and can be referenced by an experiment. By default ifno match to any of the listed members can be determined, then the default sample reference is used.",
+                    "properties": {
+                        "defaultMember": {
+                            "type": "object",
+                            "title": "Default Member",
+                            "$ref": "#/definitions/poolMemberType"
+                        },
+                        "member": {
+                            "type": "object",
+                            "title": "Member",
+                            "$ref": "#/definitions/poolMemberType"
+                        }
+                        
+                    }
+                }
+            }
+        },
+        "poolMemberType": {
+            "$id": "#/definitions/poolMemberType",
+            "title": "Pool Member Type",
+            "type": "object",
+            "properties": {
+                "readLabel": {
+                    "type": "string",
+                    "title": "Assignment of read_group_tag to decoded read."
+                },
+                "memberName": {
+                    "type": "string",
+                    "title": "Label a sample within a scope of the pool."
+                },
+                "proportion": {
+                    "type": "number",
+                    "title": "Proportion of this sample (in percent) that was included in sample pool."
                 }
             }
         },
@@ -165,15 +213,20 @@
                     "type": "string",
                     "description": "Goal and setup of the individual library including library was constructed."
                 },
-                "sampleRef": {
-                    "title": "Sample Identifier (Accession ID or title)",
+                "sampleDescriptor": {
+                    "title": "Sample Reference",
                     "description": "Pick a sample to associate this experiment with. The sample may be an individual or a pool, depending on how it is specified.",
-                    "$ref": "#/definitions/reference"
+                    "$ref": "#/definitions/pool"
                 },
                 "libraryDescriptor": {
                     "description": "The LIBRARY_DESCRIPTOR specifies the origin of the material being sequenced and any treatments that the material might have undergone that affect the sequencing result. This specification is needed even if the platform does not require a library construction step per se.",
                     "title": "Library Descriptor",
                     "type": "object",
+                    "required": [
+                        "libraryStrategy",
+                        "librarySelection",
+                        "librarySource"
+                    ],
                     "properties": {
                         "libraryName": {
                             "type": "string",
@@ -334,29 +387,6 @@
                             "description": "Free form text describing the protocol by which the sequencing library was constructed.",
                             "type": "string"
                         }
-                    },
-                    "if": {
-                        "properties": {
-                            "libraryLayout": {
-                                "const": "paired"
-                            }
-                        }
-                    },
-                    "then": {
-                        "required": [
-                            "libraryStrategy",
-                            "librarySelection",
-                            "librarySource",
-                            "nominalLength",
-                            "nominalSdev"
-                        ]
-                    },
-                    "else": {
-                        "required": [
-                            "libraryStrategy",
-                            "librarySelection",
-                            "librarySource"
-                        ]
                     }
                 },
                 "spotDescriptor": {
@@ -539,12 +569,18 @@
                     "properties": {
                         "sampleDemuxDirective": {
                             "type": "object",
+                            "title": "Sample demux directive",
+                            "description": "Tells the Archive who will execute the sample demultiplexing operation.",
                             "properties": {
                                 "leaveAsPool": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "description": "There shall be no sample de-multiplexing at the level of assiging individual reads to sample pool members.",
+                                    "title": "Leave as pool"
                                 },
                                 "submitterDemultiplexed": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "description": "The submitter has assigned individual reads to sample pool members by providing individual files containing reads with the same member assignment.",
+                                    "title": "Submitter demultiplexed"
                                 }
                             }
                         }
@@ -552,13 +588,57 @@
                 }
             }
         },
+        "identifiers": {
+            "$id": "#/definitions/identifiers",
+            "title": "Identifiers",
+            "type": "object",
+            "properties": {
+                "primaryId": {
+                    "type": "string",
+                    "title": "Primary Id"
+                },
+                "secondaryId": {
+                    "type": "string",
+                    "title": "Secondary Id"
+                },
+                "uuid": {
+                    "type": "string",
+                    "title": "UUID"
+                },
+                "externalId": {
+                    "type": "object",
+                    "title": "External Id",
+                    "properties": {
+                        "namespace": {
+                            "type": "string",
+                            "title": "Namespace"
+                        },
+                        "value": {
+                            "type": "string",
+                            "title": "Identifier"
+                        }
+                    }
+                },
+                "submitterId": {
+                    "type": "object",
+                    "title": "Submitter Id",
+                    "properties": {
+                        "namespace": {
+                            "type": "string",
+                            "title": "Namespace"
+                        },
+                        "value": {
+                            "type": "string",
+                            "title": "Identifier"
+                        }
+                    }
+                }
+            }
+        },
         "reference": {
             "$id": "#/definitions/reference",
-            "type": "object",
             "additionalProperties": true,
-            "required": [
-                "accessionId"
-            ],
+            "type": "object",
             "properties": {
                 "label": {
                     "type": "string",
@@ -577,33 +657,7 @@
                     "title": "Accession Id"
                 },
                 "identifiers": {
-                    "type": "object",
-                    "title": "Identifiers",
-                    "properties": {
-                        "primaryId": {
-                            "type": "string",
-                            "title": "Primary Id"
-                        },
-                        "submitterId": {
-                            "type": "object",
-                            "title": "Submitter Id",
-                            "required": [
-                                "namespace",
-                                "value"
-                            ],
-                            "additionalProperties": true,
-                            "properties": {
-                                "namespace": {
-                                    "type": "string",
-                                    "title": "Namespace"
-                                },
-                                "value": {
-                                    "type": "string",
-                                    "title": "Value"
-                                }
-                            }
-                        }
-                    }
+                    "$ref": "#/definitions/identifiers"
                 }
             }
         }
@@ -611,7 +665,6 @@
     "type": "object",
     "description": "An Experiment specifies of what will be sequenced and how the sequencing will be performed. It does not contain results. An Experiment is composed of a design, a platform selection, and processing parameters.",
     "required": [
-        "title",
         "design",
         "studyRef",
         "platform"
@@ -628,7 +681,7 @@
             "type": "string"
         },
         "studyRef": {
-            "title": "Study Identifier (Accession ID or title)",
+            "title": "Study Reference",
             "description": "Identifies the associated study.",
             "$ref": "#/definitions/reference"
         },
