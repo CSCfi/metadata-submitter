@@ -19,7 +19,7 @@
     "description": {
       "title": "Project",
       "detail": "A project groups together data submitted to the archive. A project accession is typically used when citing data submitted to ENA. Note that all associated data and other objects are made public when the project is released.",
-      "url": ""
+      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/ENA.project.xsd"
     }
   },
   "sample": 
@@ -35,7 +35,7 @@
     "description": {
       "title": "Experiment",
       "detail": "An experiment contain information about a sequencing experiment including library and instrument details.",
-      "url": ""
+      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.experiment.xsd"
     }
   },
   "run": 
