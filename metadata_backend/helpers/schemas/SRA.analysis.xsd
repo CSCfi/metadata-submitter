@@ -10,7 +10,7 @@
   ~ specific language governing permissions and limitations under the License.
   -->
 
-<!-- version:1.6.1 -->
+<!-- version:1.8.0 -->
 <xs:schema xmlns:com="SRA.common" xmlns:xs="http://www.w3.org/2001/XMLSchema">
     <xs:import namespace="SRA.common" schemaLocation="SRA.common.xsd"/>
 
@@ -320,11 +320,7 @@
                                         </xs:sequence>
                                     </xs:complexType>
                                 </xs:element>
-                                <xs:element name="SEQUENCE_ANNOTATION" type="com:ReferenceSequenceType">
-                                    <xs:annotation>
-                                        <xs:documentation/>
-                                    </xs:annotation>
-                                </xs:element>
+                                <xs:element name="SEQUENCE_ANNOTATION" type="com:ReferenceSequenceType"></xs:element>
                                 <xs:element name="REFERENCE_SEQUENCE">
                                     <xs:complexType> </xs:complexType>
                                 </xs:element>
@@ -334,7 +330,7 @@
                                     </xs:annotation>
                                     <xs:complexType> </xs:complexType>
                                 </xs:element>
-                                <xs:element name="PROCESSED_READS" type="com:ReferenceSequenceType"> </xs:element>
+                                <xs:element name="PROCESSED_READS" type="com:ReferenceSequenceType"></xs:element>
                                 <xs:element name="GENOME_MAP">
                                     <xs:complexType>
                                         <xs:sequence>
@@ -409,6 +405,7 @@
                                         </xs:sequence>
                                     </xs:complexType>
                                 </xs:element>
+                                <xs:element name="ASSEMBLY_ANNOTATION" type="com:ReferenceSequenceType"></xs:element>
                             </xs:choice>
                         </xs:complexType>
                     </xs:element>
@@ -428,7 +425,6 @@
                             </xs:complexType>
                         </xs:element>
                     </xs:sequence>
-
                     <xs:element maxOccurs="1" minOccurs="0" name="ANALYSIS_LINKS">
                         <xs:annotation>
                             <xs:documentation> Links to resources related to this analysis.
