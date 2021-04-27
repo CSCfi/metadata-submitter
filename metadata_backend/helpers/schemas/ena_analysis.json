@@ -826,6 +826,21 @@
                     }
                 }
             }
+        },
+        "assemblyAnnotation": {
+            "$id": "#/definitions/assemblyAnnotation",
+            "type": "object",
+            "title": "Assembly Annotation",
+            "required": [
+                "assemblyAnnotation"
+            ],
+            "properties": {
+                "assemblyAnnotation": {
+                    "type": "object",
+                    "title": "Assembly Annotation",
+                    "$ref": "#/definitions/sequenceType"
+                }
+            }
         }
     },
     "type": "object",
@@ -878,6 +893,9 @@
                 },
                 {
                     "$ref": "#/definitions/taxonomicRefrenceSet"
+                },
+                {
+                    "$ref": "#/definitions/assemblyAnnotation"
                 }
             ]
         },
