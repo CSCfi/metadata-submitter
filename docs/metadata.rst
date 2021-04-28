@@ -46,3 +46,15 @@ Some of the relationships are illustrated in the Metdata ENA Model figure, howev
     - exactly one ``Policy``;
     - zero or more references to objects of type: ``Analysis`` and ``Run``.
   
+
+EGA/ENA Metadata submission Guides
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Related guides for metadata submission:
+
+- EGA Metadata guides:
+
+    - `Submitting array based metadata <https://ega-archive.org/submission/array_based/metadata>`_
+    - `Submitting sequence and phenotype data <https://ega-archive.org/submission/tools/submitter-portal>`_
+
+- ENA Data Submission `general Guide  <https://ena-docs.readthedocs.io/en/latest/submit/general-guide.html>`_
