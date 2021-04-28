@@ -26,6 +26,8 @@ The ENA model consists of the following objects:
 - ``Policy``: An European Genome-phenome Archive (EGA) data access policy is required for authorized access submissions.
 - ``Dataset``: An European Genome-phenome Archive (EGA) data set is required for authorized access submissions.
 
+Relationships between objects
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Each of the objects are connected between each other by references, usually in the form of an ``accessionId``.
 Some of the relationships are illustrated in the Metdata ENA Model figure, however in more detail they are connected as follows:
