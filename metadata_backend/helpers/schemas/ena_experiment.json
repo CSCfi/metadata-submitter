@@ -647,6 +647,7 @@
         },
         "reference": {
             "$id": "#/definitions/reference",
+            "additionalProperties": false,
             "type": "object",
             "properties": {
                 "label": {
