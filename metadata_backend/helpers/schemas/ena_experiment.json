@@ -163,6 +163,7 @@
             "$id": "#/definitions/pool",
             "title": "Pool",
             "type": "object",
+            "additionalProperties": false,
             "properties": {
                 "pool": {
                     "type": "object",
@@ -216,7 +217,16 @@
                 "sampleDescriptor": {
                     "title": "Sample Reference",
                     "description": "Pick a sample to associate this experiment with. The sample may be an individual or a pool, depending on how it is specified.",
-                    "$ref": "#/definitions/pool"
+                    "oneOf": [
+                        {
+                            "$ref": "#/definitions/pool"
+                        },
+                        {
+                            "title": "Individual Sample",
+                            "$ref": "#/definitions/reference"
+                        }
+                    ]
+                    
                 },
                 "libraryDescriptor": {
                     "description": "The LIBRARY_DESCRIPTOR specifies the origin of the material being sequenced and any treatments that the material might have undergone that affect the sequencing result. This specification is needed even if the platform does not require a library construction step per se.",
@@ -637,7 +647,6 @@
         },
         "reference": {
             "$id": "#/definitions/reference",
-            "additionalProperties": true,
             "type": "object",
             "properties": {
                 "label": {
