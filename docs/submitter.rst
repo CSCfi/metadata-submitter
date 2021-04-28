@@ -41,21 +41,21 @@ the table below.
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
 | ``AAI_CLIENT_ID``              | ``secret``                    | OIDC client ID.                                                                   |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
-| ``AUTH_REFERER``               | ``-``                         | OIDC AUTH endpoint that redirects the request to the application.                 |
+| ``AUTH_REFERER``               | ``-``                         | OIDC Provider url that redirects the request to the application.                  |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
 | ``BASE_URL``                   | ``http://localhost:5430``     | base URL of the metadata submitter.                                               |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
 | ``ISS_URL``                    | ``-``                         | OIDC claim issuer URL.                                                            |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
-| ``AUTH_URL``                   | ``-``                         | Set if a special OID authorize URL is required.                                   |
+| ``AUTH_URL``                   | ``-``                         | Set if a special OIDC authorize URL is required.                                  |
 |                                |                               | otherwise use ``"OIDC_URL"/authorize``.                                           |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
-| ``OIDC_URL``                   | ``-``                         | OIDC base URL for constructing OIDC protocol endpoint calls.                      |
+| ``OIDC_URL``                   | ``-``                         | OIDC base URL for constructing OIDC provider endpoint calls.                      |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
-| ``REDIRECT_URL``               | ``-``                         | Enable this for working with front-end on ``localhost`` or change to              |
+| ``REDIRECT_URL``               | ``-``                         | Required only for testing with front-end on ``localhost`` or change to            |
 |                                |                               | ``http://frontend:3000`` if started using ``docker-compose`` (see :ref:`deploy`). |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
-| ``JWL_URL``                    | ``-``                         | JWK OIDC URL for retrieving key for validating ID token.                          |
+| ``JWK_URL``                    | ``-``                         | JWK OIDC URL for retrieving key for validating ID token.                          |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
 | ``LOG_LEVEL``                  | ``INFO``                      | Set logging level, uppercase.                                                     |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
@@ -109,6 +109,50 @@ To run the backend from command line use:
     $ metadata_submitter
 
 .. hint:: For a setup that requires also frontend follow the instructions in :ref:`deploy`.
+
+Authentication
+--------------
+
+The Authentication follows the `OIDC Specification <https://openid.net/specs/openid-connect-core-1_0.html>`_.
+
+We follow the steps of the OpenID Connect protocol.
+
+- The RP (Client) sends a request to the OpenID Provider (OP),
+  for this we require ``AAI_CLIENT_SECRET``, ``AAI_CLIENT_ID``, ``OIDC_URL``, a callback url constructed from ``BASE_URL`` and
+  ``AUTH_URL`` if required.
+- The OP authenticates the End-User and obtains authorization.
+- The OP responds with an ID Token and usually an Access Token,
+  we validate the ID Token for which we need ``JWK_URL`` to get the key and ``ISS_URL`` to check the claims issuer is correct.
+- The RP can send a request with the Access Token to the UserInfo Endpoint.
+- The UserInfo Endpoint returns Claims about the End-User, use use some claims ``sub`` and ``eppn`` to identify the user and start a session.
+
+Information related to the OpenID Provider (OP) that needs to be configured is displayed in the table below.
+Most of the information can be retrieved from `OIDC Provider <https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata>`_ metadata
+endpoint ``https://<provider_url>/.well-known/openid-configuration``.
+
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ENV                            | Default                       | Description                                                                       |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``AAI_CLIENT_SECRET``          | ``public```                   | OIDC client secret.                                                               |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``AAI_CLIENT_ID``              | ``secret``                    | OIDC client ID.                                                                   |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``AUTH_REFERER``               | ``-``                         | OIDC Provider url that redirects the request to the application.                  |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``BASE_URL``                   | ``http://localhost:5430``     | base URL of the metadata submitter.                                               |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``ISS_URL``                    | ``-``                         | OIDC claim issuer URL.                                                            |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``AUTH_URL``                   | ``-``                         | Set if a special OIDC authorize URL is required.                                  |
+|                                |                               | otherwise use ``"OIDC_URL"/authorize``.                                           |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``OIDC_URL``                   | ``-``                         | OIDC base URL for constructing OIDC provider endpoint calls.                      |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``REDIRECT_URL``               | ``-``                         | Required only for testing with front-end on ``localhost`` or change to            |
+|                                |                               | ``http://frontend:3000`` if started using ``docker-compose`` (see :ref:`deploy`). |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
+| ``JWK_URL``                    | ``-``                         | JWK OIDC URL for retrieving key for validating ID token.                          |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+
 
 
 REST API
