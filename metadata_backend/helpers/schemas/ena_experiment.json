@@ -208,6 +208,7 @@
             "$id": "#/definitions/libraryType",
             "type": "object",
             "title": "Library used for experiment design",
+            "required": ["designDescription", "sampleDescriptor", "libraryDescriptor"],
             "properties": {
                 "designDescription": {
                     "title": "Design Description",
