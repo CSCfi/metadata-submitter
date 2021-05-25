@@ -360,7 +360,7 @@
                     "title": "Checksum Method",
                     "enum": [
                         "MD5",
-                        "SHA256"
+                        "SHA-256"
                     ]
                 },
                 "checksum": {
