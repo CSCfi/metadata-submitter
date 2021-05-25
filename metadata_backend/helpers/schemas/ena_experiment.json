@@ -161,13 +161,13 @@
         },
         "pool": {
             "$id": "#/definitions/pool",
-            "title": "Pool",
+            "title": "List of group/pool/multiplex sample members",
             "type": "object",
             "additionalProperties": false,
             "properties": {
                 "pool": {
                     "type": "object",
-                    "title": "Pool",
+                    "title": "Sample Members",
                     "description": "Identifies a list of group/pool/multiplex sample members. This implies that this sample record is a group, pool, or multiplex, but it continues to receive its own accession and can be referenced by an experiment. By default ifno match to any of the listed members can be determined, then the default sample reference is used.",
                     "properties": {
                         "defaultMember": {
