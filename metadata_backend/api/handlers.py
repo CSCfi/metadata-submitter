@@ -508,6 +508,7 @@ class FolderAPIHandler(RESTAPIHandler):
         :param req: GET Request
         :returns: JSON list of folders available for the user
         """
+
         def get_page_param(param_name: str, default: int) -> int:
             """Handle page parameter value extracting."""
             try:
@@ -542,7 +543,7 @@ class FolderAPIHandler(RESTAPIHandler):
                     "totalPages": ceil(total_folders / per_page),
                     "totalFolders": total_folders,
                 },
-                "folders": folders
+                "folders": folders,
             }
         )
 
