@@ -690,7 +690,9 @@ class FolderOperator:
         if total_folders <= page_size:
             return queried_folders, total_folders
         else:
-            folders = queried_folders[(page_num - 1) * page_size:page_num * page_size]
+            lower = (page_num - 1) * page_size
+            upper = page_num * page_size
+            folders = queried_folders[lower:upper]
             return folders, total_folders
 
     async def read_folder(self, folder_id: str) -> Dict:

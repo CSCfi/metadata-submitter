@@ -602,20 +602,38 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_get_folders_with_1_folder(self):
         """Test get_folders() endpoint returns list with 1 folder."""
-        self.MockedFolderOperator().query_folders.return_value = self.test_folder
+        self.MockedFolderOperator().query_folders.return_value = (self.test_folder, 1)
         response = await self.client.get("/folders")
         self.MockedFolderOperator().query_folders.assert_called_once()
         self.assertEqual(response.status, 200)
-        self.assertEqual(await response.json(), {"folders": self.test_folder})
+        result = {
+            "page": {
+                "page": 1,
+                "size": 5,
+                "totalPages": 1,
+                "totalFolders": 1,
+            },
+            "folders": self.test_folder,
+        }
+        self.assertEqual(await response.json(), result)
 
     @unittest_run_loop
     async def test_get_folders_with_no_folders(self):
         """Test get_folders() endpoint returns empty list."""
-        self.MockedFolderOperator().query_folders.return_value = []
+        self.MockedFolderOperator().query_folders.return_value = ([], 0)
         response = await self.client.get("/folders")
         self.MockedFolderOperator().query_folders.assert_called_once()
         self.assertEqual(response.status, 200)
-        self.assertEqual(await response.json(), {"folders": []})
+        result = {
+            "page": {
+                "page": 1,
+                "size": 5,
+                "totalPages": 0,
+                "totalFolders": 0,
+            },
+            "folders": [],
+        }
+        self.assertEqual(await response.json(), result)
 
     @unittest_run_loop
     async def test_get_folder_works(self):
