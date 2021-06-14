@@ -528,19 +528,57 @@ class FolderAPIHandler(RESTAPIHandler):
         :param req: GET Request
         :returns: JSON list of folders available for the user
         """
+        def get_page_param(param_name: str, default: int) -> int:
+            """Handle page parameter value extracting."""
+            try:
+                param = int(req.query.get(param_name, default))
+            except ValueError:
+                reason = f"{param_name} must be a number, now it is {req.query.get(param_name)}"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+            if param < 1:
+                reason = f"{param_name} must over 1"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+            return param
+
+        page = get_page_param("page", 1)
+        per_page = get_page_param("per_page", 5)
         db_client = req.app["db_client"]
 
         user_operator = UserOperator(db_client)
-
         current_user = get_session(req)["user_info"]
         user = await user_operator.read_user(current_user)
 
-        operator = FolderOperator(db_client)
-        folders = await operator.query_folders({"folderId": {"$in": user["folders"]}})
+        folder_operator = FolderOperator(db_client)
+        folders = await folder_operator.query_folders({"folderId": {"$in": user["folders"]}})
 
-        body = json.dumps({"folders": folders})
+        folders, page_num, page_size, total_objects = await folder_operator.query_folders(
+            {"folderId": {"$in": user["folders"]}}, page, per_page
+        )
+
+        body = json.dumps(
+            {
+                "page": {
+                    "page": page_num,
+                    "size": page_size,
+                    "totalPages": ceil(total_objects / per_page),
+                    "totalObjects": total_objects,
+                },
+                folders": folders
+            }
+        )
         LOG.info(f"GET folders. Retrieved {len(folders)} folders.")
-        return web.Response(body=body, status=200, content_type="application/json")
+        url = f"{req.scheme}://{req.host}{req.path}"
+        link_headers = ObjectAPIHandler._header_links(url, page_num, per_page, total_objects)
+        LOG.debug(f"Pagination header links: {link_headers}")
+        LOG.info(f"Querying for objects in {collection} resulted in {total_objects} objects ")
+        return web.Response(
+            body=result,
+            status=200,
+            headers=link_headers,
+            content_type="application/json",
+        )
 
     async def post_folder(self, req: Request) -> Response:
         """Save object folder to database.
