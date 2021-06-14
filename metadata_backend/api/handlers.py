@@ -550,29 +550,26 @@ class FolderAPIHandler(RESTAPIHandler):
         current_user = get_session(req)["user_info"]
         user = await user_operator.read_user(current_user)
 
+        folder_query = {"folderId": {"$in": user["folders"]}}
         folder_operator = FolderOperator(db_client)
-        folders = await folder_operator.query_folders({"folderId": {"$in": user["folders"]}})
+        folders, total_folders = await folder_operator.query_folders(folder_query, page, per_page)
 
-        folders, page_num, page_size, total_objects = await folder_operator.query_folders(
-            {"folderId": {"$in": user["folders"]}}, page, per_page
-        )
-
-        body = json.dumps(
+        result = json.dumps(
             {
                 "page": {
-                    "page": page_num,
-                    "size": page_size,
-                    "totalPages": ceil(total_objects / per_page),
-                    "totalObjects": total_objects,
+                    "page": page,
+                    "size": per_page,
+                    "totalPages": ceil(total_folders / per_page),
+                    "totalFolders": total_folders,
                 },
-                folders": folders
+                "folders": folders
             }
         )
-        LOG.info(f"GET folders. Retrieved {len(folders)} folders.")
+
         url = f"{req.scheme}://{req.host}{req.path}"
-        link_headers = ObjectAPIHandler._header_links(url, page_num, per_page, total_objects)
+        link_headers = ObjectAPIHandler._header_links(url, page, per_page, total_folders)
         LOG.debug(f"Pagination header links: {link_headers}")
-        LOG.info(f"Querying for objects in {collection} resulted in {total_objects} objects ")
+        LOG.info(f"Querying for user's folders resulted in {total_folders} folders ")
         return web.Response(
             body=result,
             status=200,
