@@ -676,17 +676,22 @@ class FolderOperator:
             return folder_id
 
     @auto_reconnect
-    async def query_folders(self, que: Dict, page_num: int, page_size: int) -> Tuple[List, int, int, int]:
+    async def query_folders(self, que: Dict, page_num: int, page_size: int) -> Tuple[List, int]:
         """Query database based on url query parameters.
 
         :param que: Dict containing query information
-        :param page_size: Results per page
         :param page_num: Page number
-        :returns: Query result with pagination numbers
+        :param page_size: Results per page
+        :returns: Paginated query result
         """
         _cursor = self.db_service.query("folder", que)
-        folders = [folder async for folder in _cursor]
-        return folders, page_num, page_size, total_objects[0]["total"]
+        queried_folders = [folder async for folder in _cursor]
+        total_folders = len(queried_folders)
+        if total_folders <= page_size:
+            return queried_folders, total_folders
+        else:
+            folders = queried_folders[(page_num - 1) * page_size:page_num * page_size]
+            return folders, total_folders
 
     async def read_folder(self, folder_id: str) -> Dict:
         """Read object folder from database.
