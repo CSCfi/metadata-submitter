@@ -750,15 +750,12 @@ async def test_getting_paginated_folders(sess):
 
     :param sess: HTTP session in which request call is made
     """
-    # Add objects
-    # folder_data = {"name": "Mock Folder", "description": "Mock Base folder to folder ops"}
-    # files = await asyncio.gather(*[post_folder(sess, folder_data) for _ in range(7)])
-
     # Test default values
     async with sess.get(f"{folders_url}") as resp:
+        # The folders received here are from previous
+        # tests where the folders were not deleted
         assert resp.status == 200
         ans = await resp.json()
-        LOG.debug(ans)
         assert ans["page"]["page"] == 1
         assert ans["page"]["size"] == 5
         assert ans["page"]["totalPages"] == 2
@@ -769,7 +766,6 @@ async def test_getting_paginated_folders(sess):
     async with sess.get(f"{folders_url}?page=2&per_page=3") as resp:
         assert resp.status == 200
         ans = await resp.json()
-        LOG.debug(ans)
         assert ans["page"]["page"] == 2
         assert ans["page"]["size"] == 3
         assert ans["page"]["totalPages"] == 2
@@ -781,9 +777,6 @@ async def test_getting_paginated_folders(sess):
         assert resp.status == 400
     async with sess.get(f"{folders_url}?per_page=0") as resp:
         assert resp.status == 400
-
-    # Delete folders
-    # await asyncio.gather(*[delete_folder(sess, folder_id) for folder_id in files])
 
 
 async def test_crud_users_works(sess):
