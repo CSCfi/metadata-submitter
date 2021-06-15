@@ -745,6 +745,47 @@ async def test_crud_folders_works_no_publish(sess):
         assert expected_true, "folder still exists at user"
 
 
+async def test_getting_paginated_folders(sess):
+    """Check that /folders returns folders with correct paginations.
+
+    :param sess: HTTP session in which request call is made
+    """
+    # Add objects
+    # folder_data = {"name": "Mock Folder", "description": "Mock Base folder to folder ops"}
+    # files = await asyncio.gather(*[post_folder(sess, folder_data) for _ in range(7)])
+
+    # Test default values
+    async with sess.get(f"{folders_url}") as resp:
+        assert resp.status == 200
+        ans = await resp.json()
+        LOG.debug(ans)
+        assert ans["page"]["page"] == 1
+        assert ans["page"]["size"] == 5
+        assert ans["page"]["totalPages"] == 2
+        assert ans["page"]["totalFolders"] == 6
+        assert len(ans["folders"]) == 5
+
+    # Test with custom pagination values
+    async with sess.get(f"{folders_url}?page=2&per_page=3") as resp:
+        assert resp.status == 200
+        ans = await resp.json()
+        LOG.debug(ans)
+        assert ans["page"]["page"] == 2
+        assert ans["page"]["size"] == 3
+        assert ans["page"]["totalPages"] == 2
+        assert ans["page"]["totalFolders"] == 6
+        assert len(ans["folders"]) == 3
+
+    # Test with wrong pagination values
+    async with sess.get(f"{folders_url}?page=-1") as resp:
+        assert resp.status == 400
+    async with sess.get(f"{folders_url}?per_page=0") as resp:
+        assert resp.status == 400
+
+    # Delete folders
+    # await asyncio.gather(*[delete_folder(sess, folder_id) for folder_id in files])
+
+
 async def test_crud_users_works(sess):
     """Test users REST api GET, PATCH and DELETE reqs.
 
@@ -829,6 +870,7 @@ async def test_get_folders(sess, folder_id: str):
         assert resp.status == 200, "HTTP Status code error"
         response = await resp.json()
         assert len(response["folders"]) == 1
+        assert response["page"] == {"page": 1, "size": 5, "totalPages": 1, "totalFolders": 1}
         assert response["folders"][0]["folderId"] == folder_id
 
 
@@ -1062,6 +1104,7 @@ async def main():
         LOG.debug("=== Testing basic CRUD folder operations ===")
         await test_crud_folders_works(sess)
         await test_crud_folders_works_no_publish(sess)
+        await test_getting_paginated_folders(sess)
 
         # Test add, modify, validate and release action with submissions
         LOG.debug("=== Testing actions within submissions ===")
