@@ -772,10 +772,32 @@ async def test_getting_paginated_folders(sess):
         assert ans["page"]["totalFolders"] == 6
         assert len(ans["folders"]) == 3
 
+    # Test querying only published folders
+    async with sess.get(f"{folders_url}?published=true") as resp:
+        assert resp.status == 200
+        ans = await resp.json()
+        assert ans["page"]["page"] == 1
+        assert ans["page"]["size"] == 5
+        assert ans["page"]["totalPages"] == 1
+        assert ans["page"]["totalFolders"] == 1
+        assert len(ans["folders"]) == 1
+
+    # Test querying only draft folders
+    async with sess.get(f"{folders_url}?published=false") as resp:
+        assert resp.status == 200
+        ans = await resp.json()
+        assert ans["page"]["page"] == 1
+        assert ans["page"]["size"] == 5
+        assert ans["page"]["totalPages"] == 1
+        assert ans["page"]["totalFolders"] == 5
+        assert len(ans["folders"]) == 5
+
     # Test with wrong pagination values
     async with sess.get(f"{folders_url}?page=-1") as resp:
         assert resp.status == 400
     async with sess.get(f"{folders_url}?per_page=0") as resp:
+        assert resp.status == 400
+    async with sess.get(f"{folders_url}?published=asdf") as resp:
         assert resp.status == 400
 
 

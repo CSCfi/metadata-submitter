@@ -204,11 +204,11 @@ class ObjectAPIHandler(RESTAPIHandler):
             try:
                 param = int(req.query.get(param_name, default))
             except ValueError:
-                reason = f"{param_name} must be a number, now it is {req.query.get(param_name)}"
+                reason = f"{param_name} parameter must be a number, now it is {req.query.get(param_name)}"
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
             if param < 1:
-                reason = f"{param_name} must over 1"
+                reason = f"{param_name} parameter must be over 0"
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
             return param
@@ -503,7 +503,7 @@ class FolderAPIHandler(RESTAPIHandler):
                             raise web.HTTPBadRequest(reason=reason)
 
     async def get_folders(self, req: Request) -> Response:
-        """Get all possible object folders from database.
+        """Get a set of folders owned by the user based on pagination values.
 
         :param req: GET Request
         :returns: JSON list of folders available for the user
@@ -514,11 +514,11 @@ class FolderAPIHandler(RESTAPIHandler):
             try:
                 param = int(req.query.get(param_name, default))
             except ValueError:
-                reason = f"{param_name} must be a number, now it is {req.query.get(param_name)}"
+                reason = f"{param_name} parameter must be a number, now it is {req.query.get(param_name)}"
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
             if param < 1:
-                reason = f"{param_name} must over 1"
+                reason = f"{param_name} parameter must be over 0"
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
             return param
@@ -532,6 +532,17 @@ class FolderAPIHandler(RESTAPIHandler):
         user = await user_operator.read_user(current_user)
 
         folder_query = {"folderId": {"$in": user["folders"]}}
+        # Check if only published or draft folders are requestsed
+        if "published" in req.query:
+            pub_param = req.query.get("published", "").lower()
+            if pub_param == "true":
+                folder_query["published"] = {"$eq": True}
+            elif pub_param == "false":
+                folder_query["published"] = {"$eq": False}
+            else:
+                reason = "'published' parameter must be either 'true' or 'false'"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
         folder_operator = FolderOperator(db_client)
         folders, total_folders = await folder_operator.query_folders(folder_query, page, per_page)
 

@@ -636,6 +636,24 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(await response.json(), result)
 
     @unittest_run_loop
+    async def test_get_folders_with_bad_params(self):
+        """Test get_folders() with faulty pagination parameters."""
+        response = await self.client.get("/folders?page=ayylmao")
+        self.assertEqual(response.status, 400)
+        resp = await response.json()
+        self.assertEqual(resp["detail"], "page parameter must be a number, now it is ayylmao")
+
+        response = await self.client.get("/folders?page=1&per_page=-100")
+        self.assertEqual(response.status, 400)
+        resp = await response.json()
+        self.assertEqual(resp["detail"], "per_page parameter must be over 0")
+
+        response = await self.client.get("/folders?published=yes")
+        self.assertEqual(response.status, 400)
+        resp = await response.json()
+        self.assertEqual(resp["detail"], "'published' parameter must be either 'true' or 'false'")
+
+    @unittest_run_loop
     async def test_get_folder_works(self):
         """Test folder is returned when correct folder id is given."""
         response = await self.client.get("/folders/FOL12345678")
