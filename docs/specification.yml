@@ -1324,9 +1324,12 @@ components:
     FolderList:
       type: object
       required:
+        - page
         - folders
       additionalProperties: false
       properties:
+        page:
+          $ref: "#/components/schemas/Pagination"
         folders:
           type: array
           items:
