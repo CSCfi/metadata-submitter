@@ -554,11 +554,9 @@ class FolderAPIHandler(RESTAPIHandler):
         folder_query = {"folderId": {"$in": user["folders"]}}
         # Check if only published or draft folders are requestsed
         if "published" in req.query:
-            pub_param = req.query.get("published", "").lower()
-            if pub_param == "true":
-                folder_query["published"] = {"$eq": True}
-            elif pub_param == "false":
-                folder_query["published"] = {"$eq": False}
+            pub_param = req.query.get("published", "").title()
+            if pub_param in ["True", "False"]:
+                folder_query["published"] = {"$eq": eval(pub_param)}
             else:
                 reason = "'published' parameter must be either 'true' or 'false'"
                 LOG.error(reason)
