@@ -183,6 +183,26 @@ class RESTAPIHandler:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
+    async def _header_links(self, url: str, page: int, size: int, total_objects: int) -> CIMultiDict[str]:
+        """Create link header for pagination.
+
+        :param url: base url for request
+        :param page: current page
+        :param size: results per page
+        :param total_objects: total objects to compute the total pages
+        :returns: JSON with query results
+        """
+        total_pages = ceil(total_objects / size)
+        prev_link = f'<{url}?page={page-1}&per_page={size}>; rel="prev", ' if page > 1 else ""
+        next_link = f'<{url}?page={page+1}&per_page={size}>; rel="next", ' if page < total_pages else ""
+        last_link = f'<{url}?page={total_pages}&per_page={size}>; rel="last"' if page < total_pages else ""
+        comma = ", " if page > 1 and page < total_pages else ""
+        first_link = f'<{url}?page=1&per_page={size}>; rel="first"{comma}' if page > 1 else ""
+        links = f"{prev_link}{next_link}{first_link}{last_link}"
+        link_headers = CIMultiDict(Link=f"{links}")
+        LOG.debug("Link headers created")
+        return link_headers
+
 
 class ObjectAPIHandler(RESTAPIHandler):
     """API Handler for Objects."""
@@ -234,7 +254,7 @@ class ObjectAPIHandler(RESTAPIHandler):
             }
         )
         url = f"{req.scheme}://{req.host}{req.path}"
-        link_headers = _header_links(url, page_num, per_page, total_objects)
+        link_headers = await self._header_links(url, page_num, per_page, total_objects)
         LOG.debug(f"Pagination header links: {link_headers}")
         LOG.info(f"Querying for objects in {collection} resulted in {total_objects} objects ")
         return web.Response(
@@ -559,7 +579,7 @@ class FolderAPIHandler(RESTAPIHandler):
         )
 
         url = f"{req.scheme}://{req.host}{req.path}"
-        link_headers = _header_links(url, page, per_page, total_folders)
+        link_headers = await self._header_links(url, page, per_page, total_folders)
         LOG.debug(f"Pagination header links: {link_headers}")
         LOG.info(f"Querying for user's folders resulted in {total_folders} folders ")
         return web.Response(
@@ -1089,24 +1109,3 @@ async def _extract_xml_upload(req: Request, extract_one: bool = False) -> List[T
             files.append((xml_content, schema_type))
             LOG.debug(f"processed file in {schema_type}")
     return sorted(files, key=lambda x: schema_types[x[1]]["priority"])
-
-
-def _header_links(url: str, page: int, size: int, total_objects: int) -> CIMultiDict[str]:
-    """Create link header for pagination.
-
-    :param url: base url for request
-    :param page: current page
-    :param size: results per page
-    :param total_objects: total objects to compute the total pages
-    :returns: JSON with query results
-    """
-    total_pages = ceil(total_objects / size)
-    prev_link = f'<{url}?page={page-1}&per_page={size}>; rel="prev", ' if page > 1 else ""
-    next_link = f'<{url}?page={page+1}&per_page={size}>; rel="next", ' if page < total_pages else ""
-    last_link = f'<{url}?page={total_pages}&per_page={size}>; rel="last"' if page < total_pages else ""
-    comma = ", " if page > 1 and page < total_pages else ""
-    first_link = f'<{url}?page=1&per_page={size}>; rel="first"{comma}' if page > 1 else ""
-    links = f"{prev_link}{next_link}{first_link}{last_link}"
-    link_headers = CIMultiDict(Link=f"{links}")
-    LOG.debug("Link headers created")
-    return link_headers
