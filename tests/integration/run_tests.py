@@ -1139,6 +1139,16 @@ async def main():
         LOG.debug("=== Testing basic CRUD user operations ===")
         await test_crud_users_works(sess)
 
+    # Remove the remaining user in the test database
+    async with aiohttp.ClientSession() as sess:
+        await login(sess, other_test_user, other_test_user_given, other_test_user_family)
+        async with sess.get(f"{users_url}/{user_id}") as resp:
+            LOG.debug(f"Reading user {user_id}")
+            assert resp.status == 200, "HTTP Status code error"
+            response = await resp.json()
+            real_user_id = response["userId"]
+        await delete_user(sess, real_user_id)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
