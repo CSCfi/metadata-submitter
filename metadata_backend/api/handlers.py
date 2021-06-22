@@ -891,7 +891,7 @@ class UserAPIHandler(RESTAPIHandler):
                     "page": page,
                     "size": per_page,
                     "totalPages": ceil(total_drafts / per_page),
-                    "totalFolders": total_drafts,
+                    "totalDrafts": total_drafts,
                 },
                 "drafts": drafts,
             }
