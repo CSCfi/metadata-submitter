@@ -1137,7 +1137,7 @@ async def main():
         await test_crud_folders_works(sess)
         await test_crud_folders_works_no_publish(sess)
 
-        #Test getting a list of folders and draft templates owned by the user
+        # Test getting a list of folders and draft templates owned by the user
         LOG.debug("=== Testing getting folders, draft folders and draft templates with pagination ===")
         await test_getting_paginated_folders(sess)
         await test_getting_user_drafts(sess)
