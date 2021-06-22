@@ -40,6 +40,26 @@ class RESTAPIHandler:
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
 
+    def _get_page_param(self, req: Request, name: str, default: int) -> int:
+        """Handle page parameter value extracting.
+
+        :param req: GET Request
+        :param param_name: Name of the parameter
+        :param default: Default value in case parameter not specified in request
+        :returns: Page parameter value
+        """
+        try:
+            param = int(req.query.get(name, default))
+        except ValueError:
+            reason = f"{name} parameter must be a number, now it is {req.query.get(name)}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        if param < 1:
+            reason = f"{name} parameter must be over 0"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        return param
+
     async def _handle_check_ownedby_user(self, req: Request, collection: str, accession_id: str) -> bool:
         """Check if object belongs to user.
 
@@ -219,22 +239,8 @@ class ObjectAPIHandler(RESTAPIHandler):
             reason = "xml-formatted query results are not supported"
             raise web.HTTPBadRequest(reason=reason)
 
-        def get_page_param(param_name: str, default: int) -> int:
-            """Handle page parameter value extracting."""
-            try:
-                param = int(req.query.get(param_name, default))
-            except ValueError:
-                reason = f"{param_name} parameter must be a number, now it is {req.query.get(param_name)}"
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
-            if param < 1:
-                reason = f"{param_name} parameter must be over 0"
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
-            return param
-
-        page = get_page_param("page", 1)
-        per_page = get_page_param("per_page", 10)
+        page = self._get_page_param(req, "page", 1)
+        per_page = self._get_page_param(req, "per_page", 10)
         db_client = req.app["db_client"]
 
         filter_list = await self._handle_user_objects_collection(req, collection)
@@ -528,23 +534,8 @@ class FolderAPIHandler(RESTAPIHandler):
         :param req: GET Request
         :returns: JSON list of folders available for the user
         """
-
-        def get_page_param(param_name: str, default: int) -> int:
-            """Handle page parameter value extracting."""
-            try:
-                param = int(req.query.get(param_name, default))
-            except ValueError:
-                reason = f"{param_name} parameter must be a number, now it is {req.query.get(param_name)}"
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
-            if param < 1:
-                reason = f"{param_name} parameter must be over 0"
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
-            return param
-
-        page = get_page_param("page", 1)
-        per_page = get_page_param("per_page", 5)
+        page = self._get_page_param(req, "page", 1)
+        per_page = self._get_page_param(req, "per_page", 5)
         db_client = req.app["db_client"]
 
         user_operator = UserOperator(db_client)
@@ -877,23 +868,8 @@ class UserAPIHandler(RESTAPIHandler):
         :raises: HTTPUnauthorized if not current user
         :returns: JSON response containing draft templates of the user
         """
-
-        def get_page_param(param_name: str, default: int) -> int:
-            """Handle page parameter value extracting."""
-            try:
-                param = int(req.query.get(param_name, default))
-            except ValueError:
-                reason = f"{param_name} parameter must be a number, now it is {req.query.get(param_name)}"
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
-            if param < 1:
-                reason = f"{param_name} parameter must be over 0"
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
-            return param
-
-        page = get_page_param("page", 1)
-        per_page = get_page_param("per_page", 5)
+        page = self._get_page_param(req, "page", 1)
+        per_page = self._get_page_param(req, "per_page", 5)
         db_client = req.app["db_client"]
 
         user_operator = UserOperator(db_client)
