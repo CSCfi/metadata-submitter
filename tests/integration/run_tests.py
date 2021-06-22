@@ -801,6 +801,23 @@ async def test_getting_paginated_folders(sess):
         assert resp.status == 400
 
 
+async def test_getting_user_drafts(sess):
+    """Check that /users/current/drafts returns the drafts in the user object.
+
+    :param sess: HTTP session in which request call is made
+    """
+    # Currently drafts are not added in the user object
+    async with sess.get(f"{users_url}/{user_id}/drafts") as resp:
+        LOG.debug(f"Reading user drafts {user_id}")
+        assert resp.status == 200, "HTTP Status code error"
+        ans = await resp.json()
+        assert ans["page"]["page"] == 1
+        assert ans["page"]["size"] == 5
+        assert ans["page"]["totalPages"] == 0
+        assert ans["page"]["totalDrafts"] == 0
+        assert len(ans["drafts"]) == 0
+
+
 async def test_crud_users_works(sess):
     """Test users REST api GET, PATCH and DELETE reqs.
 
@@ -1119,7 +1136,11 @@ async def main():
         LOG.debug("=== Testing basic CRUD folder operations ===")
         await test_crud_folders_works(sess)
         await test_crud_folders_works_no_publish(sess)
+
+        #Test getting a list of folders and draft templates owned by the user
+        LOG.debug("=== Testing getting folders, draft folders and draft templates with pagination ===")
         await test_getting_paginated_folders(sess)
+        await test_getting_user_drafts(sess)
 
         # Test add, modify, validate and release action with submissions
         LOG.debug("=== Testing actions within submissions ===")
