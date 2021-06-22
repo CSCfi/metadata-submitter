@@ -740,3 +740,42 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 200)
         json_resp = await response.json()
         self.assertEqual(json_resp["userId"], self.user_id)
+
+    @unittest_run_loop
+    async def test_get_user_drafts_with_1_draft(self):
+        """Test getting user drafts when user has 1 draft."""
+        user = self.test_user
+        user["drafts"].append(self.metadata_json)
+        self.MockedUserOperator().read_user.return_value = user
+        response = await self.client.get("/users/current/drafts")
+        self.assertEqual(response.status, 200)
+        self.MockedUserOperator().read_user.assert_called_once()
+        json_resp = await response.json()
+        result = {
+            "page": {
+                "page": 1,
+                "size": 5,
+                "totalPages": 1,
+                "totalDrafts": 1,
+            },
+            "drafts": [self.metadata_json],
+        }
+        self.assertEqual(json_resp, result)
+
+    @unittest_run_loop
+    async def test_get_user_drafts_with_no_drafts(self):
+        """Test getting user drafts when user has no drafts."""
+        response = await self.client.get("/users/current/drafts")
+        self.assertEqual(response.status, 200)
+        self.MockedUserOperator().read_user.assert_called_once()
+        json_resp = await response.json()
+        result = {
+            "page": {
+                "page": 1,
+                "size": 5,
+                "totalPages": 0,
+                "totalDrafts": 0,
+            },
+            "drafts": [],
+        }
+        self.assertEqual(json_resp, result)
