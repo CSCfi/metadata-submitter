@@ -92,6 +92,7 @@ async def init() -> web.Application:
         web.get("/users/{userId}", _user.get_user),
         web.patch("/users/{userId}", _user.patch_user),
         web.delete("/users/{userId}", _user.delete_user),
+        web.get("/users/{userId}/drafts", _user.get_user_drafts),
         web.post("/submit", _submission.submit),
         web.post("/validate", _submission.validate),
     ]
