@@ -523,7 +523,7 @@ class FolderAPIHandler(RESTAPIHandler):
                             raise web.HTTPBadRequest(reason=reason)
 
     async def get_folders(self, req: Request) -> Response:
-        """Get a set of folders owned by the user based on pagination values.
+        """Get a set of folders owned by the user with pagination values.
 
         :param req: GET Request
         :returns: JSON list of folders available for the user
@@ -579,7 +579,7 @@ class FolderAPIHandler(RESTAPIHandler):
         url = f"{req.scheme}://{req.host}{req.path}"
         link_headers = await self._header_links(url, page, per_page, total_folders)
         LOG.debug(f"Pagination header links: {link_headers}")
-        LOG.info(f"Querying for user's folders resulted in {total_folders} folders ")
+        LOG.info(f"Querying for user's folders resulted in {total_folders} folders")
         return web.Response(
             body=result,
             status=200,
@@ -869,6 +869,68 @@ class UserAPIHandler(RESTAPIHandler):
         )
         LOG.debug("Logged out user ")
         raise response
+
+    async def get_user_drafts(self, req: Request) -> Response:
+        """Get draft templates owned by the user with pagination values.
+
+        :param req: GET request
+        :raises: HTTPUnauthorized if not current user
+        :returns: JSON response containing draft templates of the user
+        """
+
+        def get_page_param(param_name: str, default: int) -> int:
+            """Handle page parameter value extracting."""
+            try:
+                param = int(req.query.get(param_name, default))
+            except ValueError:
+                reason = f"{param_name} parameter must be a number, now it is {req.query.get(param_name)}"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+            if param < 1:
+                reason = f"{param_name} parameter must be over 0"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+            return param
+
+        page = get_page_param("page", 1)
+        per_page = get_page_param("per_page", 5)
+        db_client = req.app["db_client"]
+
+        user_operator = UserOperator(db_client)
+        current_user = get_session(req)["user_info"]
+        user = await user_operator.read_user(current_user)
+
+        # Get the specific page of drafts
+        total_drafts = len(user["drafts"])
+        if total_drafts <= per_page:
+            drafts = user["drafts"]
+        else:
+            lower = (page - 1) * per_page
+            upper = page * per_page
+            drafts = user["drafts"][lower:upper]
+
+        result = json.dumps(
+            {
+                "page": {
+                    "page": page,
+                    "size": per_page,
+                    "totalPages": ceil(total_drafts / per_page),
+                    "totalFolders": total_drafts,
+                },
+                "drafts": drafts,
+            }
+        )
+
+        url = f"{req.scheme}://{req.host}{req.path}"
+        link_headers = await self._header_links(url, page, per_page, total_drafts)
+        LOG.debug(f"Pagination header links: {link_headers}")
+        LOG.info(f"Querying for user's drafts resulted in {total_drafts} drafts")
+        return web.Response(
+            body=result,
+            status=200,
+            headers=link_headers,
+            content_type="application/json",
+        )
 
 
 class SubmissionAPIHandler:
