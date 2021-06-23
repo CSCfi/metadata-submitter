@@ -158,7 +158,8 @@
                 "telephoneNumber": {
                     "type": "string",
                     "title": "Contact Telephone Number",
-                    "description": "telephone number of the person to contact."
+                    "description": "telephone number of the person to contact.",
+                    "pattern": "^[-a-zA-Z0-9-()+ ]*"
                 },
                 "organisation": {
                     "type": "string",
