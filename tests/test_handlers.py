@@ -712,6 +712,67 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(self.test_user, json_resp)
 
     @unittest_run_loop
+    async def test_get_user_drafts_with_no_drafts(self):
+        """Test getting user drafts when user has no drafts."""
+        response = await self.client.get("/users/current?items=drafts")
+        self.assertEqual(response.status, 200)
+        self.MockedUserOperator().read_user.assert_called_once()
+        json_resp = await response.json()
+        result = {
+            "page": {
+                "page": 1,
+                "size": 5,
+                "totalPages": 0,
+                "totalDrafts": 0,
+            },
+            "drafts": [],
+        }
+        self.assertEqual(json_resp, result)
+
+    @unittest_run_loop
+    async def test_get_user_drafts_with_1_draft(self):
+        """Test getting user drafts when user has 1 draft."""
+        user = self.test_user
+        user["drafts"].append(self.metadata_json)
+        self.MockedUserOperator().read_user.return_value = user
+        response = await self.client.get("/users/current?items=drafts")
+        self.assertEqual(response.status, 200)
+        self.MockedUserOperator().read_user.assert_called_once()
+        json_resp = await response.json()
+        result = {
+            "page": {
+                "page": 1,
+                "size": 5,
+                "totalPages": 1,
+                "totalDrafts": 1,
+            },
+            "drafts": [self.metadata_json],
+        }
+        self.assertEqual(json_resp, result)
+
+    @unittest_run_loop
+    async def test_get_user_folder_list(self):
+        """Test get user with folders url returns a folder ID."""
+        self.MockedUserOperator().read_user.return_value = self.test_user
+        response = await self.client.get("/users/current?items=folders")
+        self.assertEqual(response.status, 200)
+        self.MockedUserOperator().read_user.assert_called_once()
+        json_resp = await response.json()
+        result = {"folderIds": ["FOL12345678"]}
+        self.assertEqual(json_resp, result)
+
+    @unittest_run_loop
+    async def test_get_user_items_with_bad_param(self):
+        """Test that error is raised if items parameter in query is not drafts or folders."""
+        response = await self.client.get("/users/current?items=wrong_thing")
+        self.assertEqual(response.status, 400)
+        self.MockedUserOperator().read_user.assert_called_once()
+        json_resp = await response.json()
+        self.assertEqual(
+            json_resp["detail"], "wrong_thing is a faulty item parameter. Should be either folders or drafts"
+        )
+
+    @unittest_run_loop
     async def test_user_deletion_is_called(self):
         """Test that user object would be deleted."""
         self.MockedUserOperator().read_user.return_value = self.test_user
@@ -740,44 +801,3 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 200)
         json_resp = await response.json()
         self.assertEqual(json_resp["userId"], self.user_id)
-
-    '''
-    @unittest_run_loop
-    async def test_get_user_drafts_with_1_draft(self):
-        """Test getting user drafts when user has 1 draft."""
-        user = self.test_user
-        user["drafts"].append(self.metadata_json)
-        self.MockedUserOperator().read_user.return_value = user
-        response = await self.client.get("/users/current/drafts")
-        self.assertEqual(response.status, 200)
-        self.MockedUserOperator().read_user.assert_called_once()
-        json_resp = await response.json()
-        result = {
-            "page": {
-                "page": 1,
-                "size": 5,
-                "totalPages": 1,
-                "totalDrafts": 1,
-            },
-            "drafts": [self.metadata_json],
-        }
-        self.assertEqual(json_resp, result)
-
-    @unittest_run_loop
-    async def test_get_user_drafts_with_no_drafts(self):
-        """Test getting user drafts when user has no drafts."""
-        response = await self.client.get("/users/current/drafts")
-        self.assertEqual(response.status, 200)
-        self.MockedUserOperator().read_user.assert_called_once()
-        json_resp = await response.json()
-        result = {
-            "page": {
-                "page": 1,
-                "size": 5,
-                "totalPages": 0,
-                "totalDrafts": 0,
-            },
-            "drafts": [],
-        }
-        self.assertEqual(json_resp, result)
-    '''
