@@ -774,7 +774,7 @@ class UserAPIHandler(RESTAPIHandler):
 
         :param req: GET request
         :raises: HTTPUnauthorized if not current user
-        :returns: JSON response containing user object
+        :returns: JSON response containing user object or list of user drafts or user folders by id
         """
         user_id = req.match_info["userId"]
         if user_id != "current":
@@ -785,9 +785,28 @@ class UserAPIHandler(RESTAPIHandler):
 
         current_user = get_session(req)["user_info"]
         user = await operator.read_user(current_user)
-
         LOG.info(f"GET user with ID {user_id} was successful.")
-        return web.Response(body=json.dumps(user), status=200, content_type="application/json")
+
+        item_type = req.query.get("items", "").lower()
+        if item_type:
+            # Return only list of drafts or list of folder IDs owned by the user
+            if item_type == "folders":
+                return web.Response(body=json.dumps(user["folders"]), status=200, content_type="application/json")
+            elif item_type == "drafts":
+                result, link_headers = await self._get_user_drafts(req, user)
+                return web.Response(
+                    body=json.dumps(result),
+                    status=200,
+                    headers=link_headers,
+                    content_type="application/json",
+                )
+            else:
+                reason = f"{item_type} is a faulty item parameter. Should be either folders or drafts"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+        else:
+            # Return whole user object if drafts or folders are not specified in query
+            return web.Response(body=json.dumps(user), status=200, content_type="application/json")
 
     async def patch_user(self, req: Request) -> Response:
         """Update user object with a specific user ID.
@@ -861,20 +880,16 @@ class UserAPIHandler(RESTAPIHandler):
         LOG.debug("Logged out user ")
         raise response
 
-    async def get_user_drafts(self, req: Request) -> Response:
+    async def _get_user_drafts(self, req: Request, user: Dict) -> Tuple[Dict, CIMultiDict[str]]:
         """Get draft templates owned by the user with pagination values.
 
         :param req: GET request
+        :param user: User object
         :raises: HTTPUnauthorized if not current user
-        :returns: JSON response containing draft templates of the user
+        :returns: Paginated list of user draft templates and link header
         """
         page = self._get_page_param(req, "page", 1)
         per_page = self._get_page_param(req, "per_page", 5)
-        db_client = req.app["db_client"]
-
-        user_operator = UserOperator(db_client)
-        current_user = get_session(req)["user_info"]
-        user = await user_operator.read_user(current_user)
 
         # Get the specific page of drafts
         total_drafts = len(user["drafts"])
@@ -885,28 +900,21 @@ class UserAPIHandler(RESTAPIHandler):
             upper = page * per_page
             drafts = user["drafts"][lower:upper]
 
-        result = json.dumps(
-            {
-                "page": {
-                    "page": page,
-                    "size": per_page,
-                    "totalPages": ceil(total_drafts / per_page),
-                    "totalDrafts": total_drafts,
-                },
-                "drafts": drafts,
-            }
-        )
+        result = {
+            "page": {
+                "page": page,
+                "size": per_page,
+                "totalPages": ceil(total_drafts / per_page),
+                "totalDrafts": total_drafts,
+            },
+            "drafts": drafts,
+        }
 
         url = f"{req.scheme}://{req.host}{req.path}"
         link_headers = await self._header_links(url, page, per_page, total_drafts)
         LOG.debug(f"Pagination header links: {link_headers}")
         LOG.info(f"Querying for user's drafts resulted in {total_drafts} drafts")
-        return web.Response(
-            body=result,
-            status=200,
-            headers=link_headers,
-            content_type="application/json",
-        )
+        return result, link_headers
 
 
 class SubmissionAPIHandler:

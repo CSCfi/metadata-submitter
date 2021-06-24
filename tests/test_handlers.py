@@ -741,6 +741,7 @@ class HandlersTestCase(AioHTTPTestCase):
         json_resp = await response.json()
         self.assertEqual(json_resp["userId"], self.user_id)
 
+    '''
     @unittest_run_loop
     async def test_get_user_drafts_with_1_draft(self):
         """Test getting user drafts when user has 1 draft."""
@@ -779,3 +780,4 @@ class HandlersTestCase(AioHTTPTestCase):
             "drafts": [],
         }
         self.assertEqual(json_resp, result)
+    '''
