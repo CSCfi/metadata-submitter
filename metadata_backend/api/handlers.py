@@ -791,7 +791,11 @@ class UserAPIHandler(RESTAPIHandler):
         if item_type:
             # Return only list of drafts or list of folder IDs owned by the user
             if item_type == "folders":
-                return web.Response(body=json.dumps(user["folders"]), status=200, content_type="application/json")
+                return web.Response(
+                    body=json.dumps({"folderIds": user["folders"]}),
+                    status=200,
+                    content_type="application/json",
+                )
             elif item_type == "drafts":
                 result, link_headers = await self._get_user_drafts(req, user)
                 return web.Response(
