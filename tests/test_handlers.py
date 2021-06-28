@@ -758,7 +758,15 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 200)
         self.MockedUserOperator().read_user.assert_called_once()
         json_resp = await response.json()
-        result = {"folderIds": ["FOL12345678"]}
+        result = {
+            "page": {
+                "page": 1,
+                "size": 5,
+                "totalPages": 1,
+                "totalFolders": 1,
+            },
+            "folders": ["FOL12345678"],
+        }
         self.assertEqual(json_resp, result)
 
     @unittest_run_loop
