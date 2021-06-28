@@ -790,14 +790,8 @@ class UserAPIHandler(RESTAPIHandler):
         item_type = req.query.get("items", "").lower()
         if item_type:
             # Return only list of drafts or list of folder IDs owned by the user
-            if item_type == "folders":
-                return web.Response(
-                    body=json.dumps({"folderIds": user["folders"]}),
-                    status=200,
-                    content_type="application/json",
-                )
-            elif item_type == "drafts":
-                result, link_headers = await self._get_user_drafts(req, user)
+            if item_type in ["drafts", "folders"]:
+                result, link_headers = await self._get_user_items(req, user, item_type)
                 return web.Response(
                     body=json.dumps(result),
                     status=200,
@@ -884,11 +878,12 @@ class UserAPIHandler(RESTAPIHandler):
         LOG.debug("Logged out user ")
         raise response
 
-    async def _get_user_drafts(self, req: Request, user: Dict) -> Tuple[Dict, CIMultiDict[str]]:
+    async def _get_user_items(self, req: Request, user: Dict, item_type: str) -> Tuple[Dict, CIMultiDict[str]]:
         """Get draft templates owned by the user with pagination values.
 
         :param req: GET request
         :param user: User object
+        :param item_type: Either "drafts" or "folders" string
         :raises: HTTPUnauthorized if not current user
         :returns: Paginated list of user draft templates and link header
         """
@@ -896,28 +891,28 @@ class UserAPIHandler(RESTAPIHandler):
         per_page = self._get_page_param(req, "per_page", 5)
 
         # Get the specific page of drafts
-        total_drafts = len(user["drafts"])
-        if total_drafts <= per_page:
-            drafts = user["drafts"]
+        total_items = len(user[item_type])
+        if total_items <= per_page:
+            items = user[item_type]
         else:
             lower = (page - 1) * per_page
             upper = page * per_page
-            drafts = user["drafts"][lower:upper]
+            items = user[total_items][lower:upper]
 
         result = {
             "page": {
                 "page": page,
                 "size": per_page,
-                "totalPages": ceil(total_drafts / per_page),
-                "totalDrafts": total_drafts,
+                "totalPages": ceil(total_items / per_page),
+                "total" + item_type.title(): total_items,
             },
-            "drafts": drafts,
+            item_type: items,
         }
 
         url = f"{req.scheme}://{req.host}{req.path}"
-        link_headers = await self._header_links(url, page, per_page, total_drafts)
+        link_headers = await self._header_links(url, page, per_page, total_items)
         LOG.debug(f"Pagination header links: {link_headers}")
-        LOG.info(f"Querying for user's drafts resulted in {total_drafts} drafts")
+        LOG.info(f"Querying for user's {item_type} resulted in {total_items} {item_type}")
         return result, link_headers
 
 

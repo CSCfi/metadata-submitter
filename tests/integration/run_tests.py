@@ -801,8 +801,8 @@ async def test_getting_paginated_folders(sess):
         assert resp.status == 400
 
 
-async def test_getting_user_drafts(sess):
-    """Test querying user's drafts or folders with GET user request.
+async def test_getting_user_items(sess):
+    """Test querying user's drafts or folders in the user object with GET user request.
 
     :param sess: HTTP session in which request call is made
     """
@@ -841,12 +841,16 @@ async def test_getting_user_drafts(sess):
 
     await delete_draft(sess, "study", draft_id)  # Future tests will assume the drafts key is empty
 
-    # Test querying for the list of folders
+    # Test querying for the list of folder IDs
     async with sess.get(f"{users_url}/{user_id}?items=folders") as resp:
         LOG.debug(f"Reading user {user_id} folder list")
         assert resp.status == 200, "HTTP Status code error"
         ans = await resp.json()
-        assert len(ans["folderIds"]) == 6
+        assert ans["page"]["page"] == 1
+        assert ans["page"]["size"] == 5
+        assert ans["page"]["totalPages"] == 1
+        assert ans["page"]["totalFolders"] == 6
+        assert len(ans["folders"]) == 6
 
     # Test the same with a bad query param
     async with sess.get(f"{users_url}/{user_id}?items=bad") as resp:
@@ -1176,7 +1180,7 @@ async def main():
         # Test getting a list of folders and draft templates owned by the user
         LOG.debug("=== Testing getting folders, draft folders and draft templates with pagination ===")
         await test_getting_paginated_folders(sess)
-        await test_getting_user_drafts(sess)
+        await test_getting_user_items(sess)
 
         # Test add, modify, validate and release action with submissions
         LOG.debug("=== Testing actions within submissions ===")
