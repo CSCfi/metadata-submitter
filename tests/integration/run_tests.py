@@ -848,9 +848,9 @@ async def test_getting_user_items(sess):
         ans = await resp.json()
         assert ans["page"]["page"] == 1
         assert ans["page"]["size"] == 5
-        assert ans["page"]["totalPages"] == 1
+        assert ans["page"]["totalPages"] == 2
         assert ans["page"]["totalFolders"] == 6
-        assert len(ans["folders"]) == 6
+        assert len(ans["folders"]) == 5
 
     # Test the same with a bad query param
     async with sess.get(f"{users_url}/{user_id}?items=bad") as resp:
