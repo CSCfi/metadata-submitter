@@ -754,6 +754,22 @@ paths:
       tags:
         - Query
       summary: List of folders available for the user.
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: string
+          description: Page number
+        - in: query
+          name: per_page
+          schema:
+            type: string
+          description: Results per page
+        - in: query
+          name: published
+          schema:
+            type: string
+          description: Return folders based on the folder published value
       responses:
         200:
           description: OK
@@ -974,6 +990,21 @@ paths:
           schema:
             type: string
           required: true
+        - in: query
+          name: page
+          schema:
+            type: string
+          description: Page number
+        - in: query
+          name: per_page
+          schema:
+            type: string
+          description: Results per page
+        - in: query
+          name: items
+          schema:
+            type: string
+          description: Item type name
       responses:
         200:
           description: OK
