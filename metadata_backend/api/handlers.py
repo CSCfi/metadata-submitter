@@ -790,18 +790,13 @@ class UserAPIHandler(RESTAPIHandler):
         item_type = req.query.get("items", "").lower()
         if item_type:
             # Return only list of drafts or list of folder IDs owned by the user
-            if item_type in ["drafts", "folders"]:
-                result, link_headers = await self._get_user_items(req, user, item_type)
-                return web.Response(
-                    body=json.dumps(result),
-                    status=200,
-                    headers=link_headers,
-                    content_type="application/json",
-                )
-            else:
-                reason = f"{item_type} is a faulty item parameter. Should be either folders or drafts"
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
+            result, link_headers = await self._get_user_items(req, user, item_type)
+            return web.Response(
+                body=json.dumps(result),
+                status=200,
+                headers=link_headers,
+                content_type="application/json",
+            )
         else:
             # Return whole user object if drafts or folders are not specified in query
             return web.Response(body=json.dumps(user), status=200, content_type="application/json")
@@ -883,10 +878,16 @@ class UserAPIHandler(RESTAPIHandler):
 
         :param req: GET request
         :param user: User object
-        :param item_type: Either "drafts" or "folders" string
+        :param item_type: Name of the items ("drafts" or "folders")
         :raises: HTTPUnauthorized if not current user
         :returns: Paginated list of user draft templates and link header
         """
+        # Check item_type parameter is not faulty
+        if item_type not in ["drafts", "folders"]:
+            reason = f"{item_type} is a faulty item parameter. Should be either folders or drafts"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
         page = self._get_page_param(req, "page", 1)
         per_page = self._get_page_param(req, "per_page", 5)
 
@@ -897,7 +898,7 @@ class UserAPIHandler(RESTAPIHandler):
         else:
             lower = (page - 1) * per_page
             upper = page * per_page
-            items = user[total_items][lower:upper]
+            items = user[item_type][lower:upper]
 
         result = {
             "page": {
