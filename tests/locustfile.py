@@ -122,7 +122,7 @@ class BasicUser(HttpUser):
             obj_schema = resp.json()["folders"][0]["metadataObjects"][0]["schema"]
 
         with self.client.get(
-            f"/objects/{obj_schema}/{obj_acc_id}", name = "/objects/{schema}/{accessionId}", catch_response=True
+            f"/objects/{obj_schema}/{obj_acc_id}", name="/objects/{schema}/{accessionId}", catch_response=True
         ) as resp:
             if resp.status_code != 200:
                 resp.failure("Getting an object was unsuccesful.")
