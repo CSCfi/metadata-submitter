@@ -91,7 +91,7 @@ class BasicUser(HttpUser):
 
         # Patch the experiment object into the folder
         patch_object2 = [
-            {"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id2, "schema": "sample"}}
+            {"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id2, "schema": "experiment"}}
         ]
         with self.client.patch(
             f"/folders/{folder_id}", json=patch_object2, name="/folders/{folderId}", catch_response=True
@@ -109,10 +109,20 @@ class BasicUser(HttpUser):
 
     @tag("query")
     @task
-    def query_objects(self):
-        """."""
-        with self.client.get("/objects/study", catch_response=True) as resp:
+    def get_folders_and_objects(self):
+        """Get users folders, read one of the objects in a folder and get the object by accession ID."""
+
+        with self.client.get("/folders", catch_response=True) as resp:
             if resp.status_code != 200:
-                resp.failure(resp.status_code)
-            elif resp.json()["page"]["totalObjects"] < 1:
-                resp.failure("Query returned less objects than it should.")
+                resp.failure("Getting folders was unsuccesful.")
+            elif resp.json()["page"]["totalFolders"] == 0:
+                resp.failure("Query returned 0 folders.")
+            # Get some values from the folder response
+            obj_acc_id = resp.json()["folders"][0]["metadataObjects"][0]["accessionId"]
+            obj_schema = resp.json()["folders"][0]["metadataObjects"][0]["schema"]
+
+        with self.client.get(
+            f"/objects/{obj_schema}/{obj_acc_id}", name = "/objects/{schema}/{accessionId}", catch_response=True
+        ) as resp:
+            if resp.status_code != 200:
+                resp.failure("Getting an object was unsuccesful.")
