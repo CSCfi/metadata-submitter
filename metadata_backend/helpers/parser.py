@@ -1,4 +1,4 @@
-"""Tool to parse XML files to JSON."""
+"""Tool to parse XML and CSV files to JSON."""
 
 import re
 from typing import Any, Dict, List, Optional, Type, Union
@@ -313,6 +313,20 @@ class XMLToJSONParser:
             raise web.HTTPBadRequest(reason=reason)
         return schema
 
+
+class CSVToJSONParser:
+    """Methods to parse and convert data from CSV files to JSON format."""
+
+    def parse(self, schema_type: str, content: str) -> Dict:
+        """Parse a CSV file, convert it to JSON and validate against JSON schema.
+
+        :param schema_type: Schema type to be used
+        :param content: XML content to be parsed
+        :returns: XML parsed to JSON
+        :raises: HTTPBadRequest if error was raised during validation
+        """
+        raise web.HTTPNotImplemented()
+        
 
 def jsonpatch_mongo(identifier: Dict, json_patch: List[Dict[str, Any]]) -> List:
     """Convert JSONpatch object to mongo query.
