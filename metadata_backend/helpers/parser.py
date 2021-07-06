@@ -1,6 +1,7 @@
 """Tool to parse XML and CSV files to JSON."""
 
 import re
+import csv
 from typing import Any, Dict, List, Optional, Type, Union
 
 from aiohttp import web
@@ -320,13 +321,19 @@ class CSVToJSONParser:
     def parse(self, schema_type: str, content: str) -> Dict:
         """Parse a CSV file, convert it to JSON and validate against JSON schema.
 
-        :param schema_type: Schema type to be used
-        :param content: XML content to be parsed
-        :returns: XML parsed to JSON
+        :param schema_type: Schema type of the file to be parsed
+        :param content: CSV content to be parsed
+        :returns: CSV parsed to JSON
         :raises: HTTPBadRequest if error was raised during validation
         """
-        raise web.HTTPNotImplemented()
-        
+        csv_content = csv.DictReader(content)
+        result: Dict
+        for row in csv_content:
+            result = row
+            # TODO case for multiple rows
+        # TODO validate result
+        return result
+
 
 def jsonpatch_mongo(identifier: Dict, json_patch: List[Dict[str, Any]]) -> List:
     """Convert JSONpatch object to mongo query.
