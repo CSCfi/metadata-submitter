@@ -1,0 +1,2 @@
+title,alias,description,subjectId,bioSampleId,caseOrControl,gender,organismPart,cellLine,region,phenotype
+test sample,test1,A test sample metadata CSV file based on the EGA submitter portal format,123456789abc,,,unknown,,,,some disease state
