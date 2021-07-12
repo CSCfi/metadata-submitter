@@ -2,13 +2,14 @@
 
 import re
 import csv
+import io
 from typing import Any, Dict, List, Optional, Type, Union
 
 from aiohttp import web
 from xmlschema import XMLSchema, XMLSchemaConverter, XMLSchemaException, XsdElement, XsdType
 
 from .logger import LOG
-from .schema_loader import SchemaNotFoundException, XMLSchemaLoader
+from .schema_loader import SchemaNotFoundException, XMLSchemaLoader, JSONSchemaLoader
 from .validator import JSONValidator, XMLValidator
 from pymongo import UpdateOne
 
@@ -324,14 +325,31 @@ class CSVToJSONParser:
         :param schema_type: Schema type of the file to be parsed
         :param content: CSV content to be parsed
         :returns: CSV parsed to JSON
-        :raises: HTTPBadRequest if error was raised during validation
+        :raises: HTTPBadRequest if error was raised during parsing or validation
         """
-        csv_content = csv.DictReader(content)
-        result: Dict
-        for row in csv_content:
-            result = row
-            # TODO case for multiple rows
-        # TODO validate result
+        # Write content string into text stream for easy parsing into an object
+        with io.StringIO() as file:
+            file.write(content)
+            file.seek(0)
+            csv_reader = csv.DictReader(file)
+            rows = [row for row in csv_reader]
+
+        # CSV files should contain precisely one object
+        if not rows:
+            reason = "CSV file appears to be incomplete. No rows of data were parsed."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        if len(rows) > 1:
+            reason = "Multi-line CSV files are currently not supported."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        result = rows[0]
+        # This is required to pass validation against current sample schema
+        if schema_type == "sample" and "sampleName" not in result:
+            result["sampleName"] = '{"taxonId": 0}'
+            result["sampleName"] = eval(result["sampleName"])  # workaround for mypy complaint
+        JSONValidator(result, schema_type.lower()).validate
         return result
 
 
