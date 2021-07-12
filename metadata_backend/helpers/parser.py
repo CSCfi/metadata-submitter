@@ -9,7 +9,7 @@ from aiohttp import web
 from xmlschema import XMLSchema, XMLSchemaConverter, XMLSchemaException, XsdElement, XsdType
 
 from .logger import LOG
-from .schema_loader import SchemaNotFoundException, XMLSchemaLoader, JSONSchemaLoader
+from .schema_loader import SchemaNotFoundException, XMLSchemaLoader
 from .validator import JSONValidator, XMLValidator
 from pymongo import UpdateOne
 
