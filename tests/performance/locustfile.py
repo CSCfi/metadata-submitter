@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from locust import HttpUser, task, tag, between
 
-testfiles_root = Path(__file__).parent / "test_files"
+testfiles_root = Path(__file__).parent.parent / "test_files"
 
 
 class BasicUser(HttpUser):
