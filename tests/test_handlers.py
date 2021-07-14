@@ -383,7 +383,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         """Test that JSON has missing property."""
         json_req = {"centerName": "GEO", "alias": "GSE10966"}
         response = await self.client.post("/objects/study", json=json_req)
-        reason = "Provided input does not seem correct because: " "''descriptor' is a required property'"
+        reason = "Provided input does not seem correct because: ''descriptor' is a required property'"
         self.assertEqual(response.status, 400)
         self.assertIn(reason, await response.text())
 
@@ -395,7 +395,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
             "descriptor": {"studyTitle": "Highly", "studyType": "ceva"},
         }
         response = await self.client.post("/objects/study", json=json_req)
-        reason = "Provided input does not seem correct for field: " "'descriptor'"
+        reason = "Provided input does not seem correct for field: 'descriptor'"
         self.assertEqual(response.status, 400)
         self.assertIn(reason, await response.text())
 
@@ -407,7 +407,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
             "descriptor": {"studyTitle": "Highly", "studyType": "Other"},
         }
         response = await self.client.post("/objects/study", data=json_req)
-        reason = "JSON is not correctly formatted. " "See: Expecting value: line 1 column 1"
+        reason = "JSON is not correctly formatted. See: Expecting value: line 1 column 1"
         self.assertEqual(response.status, 400)
         self.assertIn(reason, await response.text())
 
@@ -420,7 +420,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         }
         call = "/drafts/study/EGA123456"
         response = await self.client.put(call, data=json_req)
-        reason = "JSON is not correctly formatted. " "See: Expecting value: line 1 column 1"
+        reason = "JSON is not correctly formatted. See: Expecting value: line 1 column 1"
         self.assertEqual(response.status, 400)
         self.assertIn(reason, await response.text())
 
@@ -429,7 +429,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         json_req = {"centerName": "GEO", "alias": "GSE10966"}
         call = "/drafts/study/EGA123456"
         response = await self.client.patch(call, data=json_req)
-        reason = "JSON is not correctly formatted. " "See: Expecting value: line 1 column 1"
+        reason = "JSON is not correctly formatted. See: Expecting value: line 1 column 1"
         self.assertEqual(response.status, 400)
         self.assertIn(reason, await response.text())
 
