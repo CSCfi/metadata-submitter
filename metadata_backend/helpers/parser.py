@@ -347,7 +347,9 @@ class CSVToJSONParser:
         result = rows[0]
         # This is required to pass validation against current sample schema
         if schema_type == "sample" and "sampleName" not in result:
-            result["sampleName"] = '{"taxonId": 0}'
+            # Without TaxonID provided we assume the sample relates to
+            # Homo Sapien which has default TaxonID of 9606
+            result["sampleName"] = '{"taxonId": 9606}'
             result["sampleName"] = eval(result["sampleName"])  # workaround for mypy complaint
         JSONValidator(result, schema_type.lower()).validate
         return result

@@ -101,7 +101,7 @@ class ParserTestCase(unittest.TestCase):
         sample_csv = self.load_file_to_text("sample", "EGAformat.csv")
         result = self.csv_parser.parse("sample", sample_csv)
         self.assertEqual("test sample", result["title"])
-        self.assertEqual({"taxonId": 0}, result["sampleName"])
+        self.assertEqual({"taxonId": 9606}, result["sampleName"])
 
     def test_multiline_csv_raises_error(self):
         """Test 400 is raised with a multi-line CSV input."""
