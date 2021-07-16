@@ -114,9 +114,22 @@ class HandlersTestCase(AioHTTPTestCase):
         for schema, filename in files:
             schema_path = "study" if schema == "fake" else schema
             path_to_file = self.TESTFILES_ROOT / schema_path / filename
-            data.add_field(
-                schema.upper(), open(path_to_file.as_posix(), "r"), filename=path_to_file.name, content_type="text/xml"
-            )
+            # Differentiate between xml and csv
+            if filename[-3:] == "xml":
+                data.add_field(
+                    schema.upper(),
+                    open(path_to_file.as_posix(), "r"),
+                    filename=path_to_file.name,
+                    content_type="text/xml",
+                )
+            elif filename[-3:] == "csv":
+                # files = {schema.upper(): open(path_to_file.as_posix(), "r")}
+                data.add_field(
+                    schema.upper(),
+                    open(path_to_file.as_posix(), "r"),
+                    filename=path_to_file.name,
+                    content_type="text/csv",
+                )
         return data
 
     async def fake_operator_read_metadata_object(self, schema_type, accession_id):
@@ -410,6 +423,17 @@ class ObjectHandlerTestCase(HandlersTestCase):
         reason = "JSON is not correctly formatted. See: Expecting value: line 1 column 1"
         self.assertEqual(response.status, 400)
         self.assertIn(reason, await response.text())
+
+    async def test_post_object_works_with_csv(self):
+        """Test that CSV file is parsed and submitted as json."""
+        files = [("sample", "EGAformat.csv")]
+        data = self.create_submission_data(files)
+        response = await self.client.post("/objects/sample", data=data)
+        json_resp = await response.json()
+        self.assertEqual(response.status, 201)
+        self.assertEqual(self.test_ega_string, json_resp["accessionId"])
+        self.MockedCSVParser().parse.assert_called_once()
+        self.MockedOperator().create_metadata_object.assert_called_once()
 
     async def test_put_object_bad_json(self):
         """Test that put JSON is badly formated."""
