@@ -103,7 +103,8 @@ async def create_request_data(schema, filename):
     path_to_file = testfiles_root / schema / filename
     path = path_to_file.as_posix()
     async with aiofiles.open(path, mode="r") as f:
-        request_data.add_field(schema.upper(), await f.read(), filename=filename, content_type="text/xml")
+        c_type = "text/xml" if filename[-3:] == "xml" else "text/csv"
+        request_data.add_field(schema.upper(), await f.read(), filename=filename, content_type=c_type)
     return request_data
 
 
@@ -496,7 +497,7 @@ async def test_crud_works(sess, schema, filename, folder_id):
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (folder) used for testing
-    :param filename: name of the file used for testing.
+    :param filename: name of the file used for testing
     :param folder_id: id of the folder used to group submission
     """
     accession_id = await post_object(sess, schema, filename)
@@ -517,6 +518,37 @@ async def test_crud_works(sess, schema, filename, folder_id):
         assert resp.status == 404, "HTTP Status code error"
     async with sess.get(f"{objects_url}/{schema}/{accession_id[0]}?format=xml") as resp:
         LOG.debug(f"Checking that XML object {accession_id[0]} was deleted")
+        assert resp.status == 404, "HTTP Status code error"
+
+    async with sess.get(f"{folders_url}/{folder_id}") as resp:
+        LOG.debug(f"Checking that object {accession_id} was deleted from folder {folder_id}")
+        res = await resp.json()
+        expected_true = not any(d["accessionId"] == accession_id for d in res["metadataObjects"])
+        assert expected_true, "draft object still exists"
+
+
+async def test_csv_post(sess, schema, filename, folder_id):
+    """Test CRUD for a submitted CSV file.
+
+    Test case is basically the same as test_crud_works() but without the XML checks.
+
+    :param sess: HTTP session in which request call is made
+    :param schema: name of the schema (folder) used for testing
+    :param filename: name of the file used for testing
+    :param folder_id: id of the folder used to group submission
+    """
+    accession_id = await post_object(sess, schema, filename)
+    patch_object = [
+        {"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id[0], "schema": schema}}
+    ]
+    await patch_folder(sess, folder_id, patch_object)
+    async with sess.get(f"{objects_url}/{schema}/{accession_id[0]}") as resp:
+        LOG.debug(f"Checking that {accession_id[0]} JSON is in {schema}")
+        assert resp.status == 200, "HTTP Status code error"
+
+    await delete_object(sess, schema, accession_id[0])
+    async with sess.get(f"{objects_url}/{schema}/{accession_id[0]}") as resp:
+        LOG.debug(f"Checking that JSON object {accession_id[0]} was deleted")
         assert resp.status == 404, "HTTP Status code error"
 
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
@@ -1402,8 +1434,8 @@ async def main():
             "description": "submission test folder 1",
         }
         submission_folder_id = await post_folder(sess, submission_folder)
-        await test_get_folders(sess, submission_folder_id)
-        await test_get_folders_objects(sess, submission_folder_id)
+        # await test_get_folders(sess, submission_folder_id)
+        # await test_get_folders_objects(sess, submission_folder_id)
         await test_submissions_work(sess, submission_folder_id)
 
     async with aiohttp.ClientSession() as sess:
@@ -1419,6 +1451,7 @@ async def main():
         basic_folder_id = await post_folder(sess, basic_folder)
 
         await asyncio.gather(*[test_crud_works(sess, schema, file, basic_folder_id) for schema, file in test_xml_files])
+        await test_csv_post(sess, "sample", "EGAformat.csv", basic_folder_id)
 
         put_object_folder = {
             "name": "test put object",
