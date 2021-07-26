@@ -40,6 +40,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     url = url = "mongodb://admin:admin@localhost:27017/default?authSource=admin"
     if args.tls:
-        _params = "?tls=true&tlsCAFile=config/ca.crt&ssl_keyfile=config/client.key&ssl_certfile=config/client.crt"
+        _params = "?tls=true&tlsCAFile=./config/cacert&ssl_keyfile=./config/key&ssl_certfile=./config/cert"
         url = f"mongodb://admin:admin@localhost:27017/default{_params}&authSource=admin"
     asyncio.run(clean_mongodb(url))
