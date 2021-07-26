@@ -118,3 +118,4 @@ venv.bak/
 .DS_Store
 
 metadata_backend/frontend/*
+config/*
