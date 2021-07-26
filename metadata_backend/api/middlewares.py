@@ -47,7 +47,7 @@ async def http_error_handler(req: Request, handler: Callable) -> Response:
         LOG.error(details)
         c_type = "application/problem+json"
         if error.status == 400:
-            _check_error_page_requested(req, 500)
+            _check_error_page_requested(req, 400)
             raise web.HTTPBadRequest(text=details, content_type=c_type)
         elif error.status == 401:
             _check_error_page_requested(req, 401)
@@ -61,10 +61,10 @@ async def http_error_handler(req: Request, handler: Callable) -> Response:
             _check_error_page_requested(req, 404)
             raise web.HTTPNotFound(text=details, content_type=c_type)
         elif error.status == 415:
-            _check_error_page_requested(req, 500)
+            _check_error_page_requested(req, 400)
             raise web.HTTPUnsupportedMediaType(text=details, content_type=c_type)
         elif error.status == 422:
-            _check_error_page_requested(req, 500)
+            _check_error_page_requested(req, 400)
             raise web.HTTPUnprocessableEntity(text=details, content_type=c_type)
         else:
             _check_error_page_requested(req, 500)
