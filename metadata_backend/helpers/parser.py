@@ -3,6 +3,7 @@
 import re
 import csv
 import io
+import string
 from typing import Any, Dict, List, Optional, Type, Union
 
 from aiohttp import web
@@ -353,6 +354,24 @@ class CSVToJSONParser:
             result["sampleName"] = eval(result["sampleName"])  # workaround for mypy complaint
         JSONValidator(result, schema_type.lower()).validate
         return result
+
+    def is_csv(self, content: str) -> bool:
+        """Quick check that CSV input is a valid CSV.
+
+        :param content: CSV content as string
+        :returns: Boolean value based on validity of CSV
+        :raises: HTTPBadRequest if error was raised during parsing or validation
+        """
+        try:
+            # Check for non-printable characters which should not be in CSV files
+            if not all([c in string.printable or c.isprintable() for c in content]):
+                return False
+            csv.Sniffer().sniff(content)
+            # No errors indicates validity of CSV
+            return True
+        except csv.Error:
+            # Error in getting CSV dialect would indicate invalidity
+            return False
 
 
 def jsonpatch_mongo(identifier: Dict, json_patch: List[Dict[str, Any]]) -> List:
