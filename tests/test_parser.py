@@ -108,6 +108,11 @@ class ParserTestCase(unittest.TestCase):
         with self.assertRaises(web.HTTPBadRequest):
             self.csv_parser.parse("sample", "id,title\n1,something\n2,something else\n")
 
+    def test_csv_parse_with_wrong_schema(self):
+        """Test 400 is raised with wrong schema type."""
+        with self.assertRaises(web.HTTPBadRequest):
+            self.csv_parser.parse("wrong", "id,title\n,\n")
+
     def test_empty_csv_raises_error(self):
         """Test 400 is raised with an empty or an incomplete CSV input."""
         with self.assertRaises(web.HTTPBadRequest):
@@ -115,10 +120,15 @@ class ParserTestCase(unittest.TestCase):
         with self.assertRaises(web.HTTPBadRequest):
             self.csv_parser.parse("sample", "id,title,description\n")
 
-    def test_csv_parse_with_wrong_schema(self):
-        """Test 400 is raised with wrong schema type."""
-        with self.assertRaises(web.HTTPBadRequest):
-            self.csv_parser.parse("wrong", "id,title\n,\n")
+    def test_is_csv_check(self):
+        """Test 400 is raised with an empty or an incomplete CSV input."""
+        sample_csv = self.load_file_to_text("sample", "EGAformat.csv")
+        sample_xml = self.load_file_to_text("sample", "SRS001433.xml")
+        self.assertEqual(self.csv_parser.is_csv(sample_csv), True)
+        self.assertEqual(self.csv_parser.is_csv(sample_xml), False)
+        self.assertEqual(self.csv_parser.is_csv(""), False)
+        self.assertEqual(self.csv_parser.is_csv("a@b@;c@d@,e@f\ng"), False)
+        self.assertEqual(self.csv_parser.is_csv("id,title,description\n,\n"), False)
 
     def test_json_patch_mongo_conversion(self):
         """Test JSON patch to mongo query conversion."""
