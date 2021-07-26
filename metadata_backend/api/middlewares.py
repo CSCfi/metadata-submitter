@@ -94,7 +94,17 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
         "/home",
         "/newdraft",
     ]
-    main_paths = ["/aai", "/callback", "/static", "/health", "/error401", "/error403", "/error404", "/error500"]
+    main_paths = [
+        "/aai",
+        "/callback",
+        "/static",
+        "/health",
+        "/error400",
+        "/error401",
+        "/error403",
+        "/error404",
+        "/error500",
+    ]
     if (
         request.path.startswith(tuple(main_paths))
         or request.path == "/"
