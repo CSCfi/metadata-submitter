@@ -121,7 +121,7 @@ class ParserTestCase(unittest.TestCase):
             self.csv_parser.parse("sample", "id,title,description\n")
 
     def test_is_csv_check(self):
-        """Test 400 is raised with an empty or an incomplete CSV input."""
+        """Test that True is returned for CSV and False is returned for non-CSV."""
         sample_csv = self.load_file_to_text("sample", "EGAformat.csv")
         sample_xml = self.load_file_to_text("sample", "SRS001433.xml")
         self.assertEqual(self.csv_parser.is_csv(sample_csv), True)
