@@ -42,6 +42,9 @@ Integration tests required a running backend, follow the instructions in :ref:`d
 After the backend has been successfully setup run in backend repository root directory ``python tests/integration/run_tests.py``.
 This command will run a series of integration tests.
 
+To clean db before or after each integration tests run: ``python tests/integration/clean_db.py`` (``--tls``
+argument can be added if Mongodb is started via ``docker-compose-tls.yml``.
+
 Frontend Testing
 ----------------
 
