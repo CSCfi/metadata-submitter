@@ -30,7 +30,9 @@ jobs:
         sleep 30
   
     - name: Run Integration test
-      run: python tests/integration/run_tests.py
+      run: |
+        python tests/integration/clean_db.py
+        python tests/integration/run_tests.py
 
     - name: Collect logs from docker
       if: ${{ failure() }}
@@ -57,7 +59,9 @@ jobs:
         sleep 30
 
     - name: Run Integration test
-      run: python tests/integration/run_tests.py
+      run: |
+        python tests/integration/clean_db.py --tls
+        python tests/integration/run_tests.py
 
     - name: Collect logs from docker
       if: ${{ failure() }}
