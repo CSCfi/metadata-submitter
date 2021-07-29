@@ -352,6 +352,7 @@ class CSVToJSONParser:
             result["sampleName"] = '{"taxonId": 9606}'
             result["sampleName"] = eval(result["sampleName"])  # workaround for mypy complaint
         JSONValidator(result, schema_type.lower()).validate
+        LOG.info("CSV was converted to JSON successfully.")
         return result
 
 

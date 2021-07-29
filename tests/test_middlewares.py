@@ -26,7 +26,7 @@ class ErrorMiddlewareTestCase(AioHTTPTestCase):
         self.assertEqual(response.content_type, "application/problem+json")
         resp_dict = await response.json()
         self.assertIn("Bad Request", resp_dict["title"])
-        self.assertIn("Submitted file was not proper xml or csv format.", resp_dict["detail"])
+        self.assertIn("Submitted file was not proper xml (nor csv).", resp_dict["detail"])
         self.assertIn("/submit", resp_dict["instance"])
 
     async def test_bad_url_returns_json_response(self):
