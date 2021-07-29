@@ -1434,8 +1434,8 @@ async def main():
             "description": "submission test folder 1",
         }
         submission_folder_id = await post_folder(sess, submission_folder)
-        # await test_get_folders(sess, submission_folder_id)
-        # await test_get_folders_objects(sess, submission_folder_id)
+        await test_get_folders(sess, submission_folder_id)
+        await test_get_folders_objects(sess, submission_folder_id)
         await test_submissions_work(sess, submission_folder_id)
 
     async with aiohttp.ClientSession() as sess:
