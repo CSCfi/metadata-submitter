@@ -644,17 +644,17 @@ class TestOperators(IsolatedAsyncioTestCase):
         """Test query returns empty list."""
         operator = FolderOperator(self.client)
         operator.db_service.query.return_value = AsyncIterator([])
-        folders = await operator.query_folders({})
+        folders = await operator.query_folders({}, 1, 5)
         operator.db_service.query.assert_called_once()
-        self.assertEqual(folders, [])
+        self.assertEqual(folders, ([], 0))
 
     async def test_query_folders_1_item(self):
         """Test query returns a list with item."""
         operator = FolderOperator(self.client)
         operator.db_service.query.return_value = AsyncIterator([{"name": "folder"}])
-        folders = await operator.query_folders({})
+        folders = await operator.query_folders({}, 1, 5)
         operator.db_service.query.assert_called_once()
-        self.assertEqual(folders, [{"name": "folder"}])
+        self.assertEqual(folders, ([{"name": "folder"}], 1))
 
     async def test_check_object_folder_fails(self):
         """Test check object folder fails."""
