@@ -745,6 +745,119 @@ async def test_crud_folders_works_no_publish(sess):
         assert expected_true, "folder still exists at user"
 
 
+async def test_getting_paginated_folders(sess):
+    """Check that /folders returns folders with correct paginations.
+
+    :param sess: HTTP session in which request call is made
+    """
+    # Test default values
+    async with sess.get(f"{folders_url}") as resp:
+        # The folders received here are from previous
+        # tests where the folders were not deleted
+        assert resp.status == 200
+        ans = await resp.json()
+        assert ans["page"]["page"] == 1
+        assert ans["page"]["size"] == 5
+        assert ans["page"]["totalPages"] == 2
+        assert ans["page"]["totalFolders"] == 6
+        assert len(ans["folders"]) == 5
+
+    # Test with custom pagination values
+    async with sess.get(f"{folders_url}?page=2&per_page=3") as resp:
+        assert resp.status == 200
+        ans = await resp.json()
+        assert ans["page"]["page"] == 2
+        assert ans["page"]["size"] == 3
+        assert ans["page"]["totalPages"] == 2
+        assert ans["page"]["totalFolders"] == 6
+        assert len(ans["folders"]) == 3
+
+    # Test querying only published folders
+    async with sess.get(f"{folders_url}?published=true") as resp:
+        assert resp.status == 200
+        ans = await resp.json()
+        assert ans["page"]["page"] == 1
+        assert ans["page"]["size"] == 5
+        assert ans["page"]["totalPages"] == 1
+        assert ans["page"]["totalFolders"] == 1
+        assert len(ans["folders"]) == 1
+
+    # Test querying only draft folders
+    async with sess.get(f"{folders_url}?published=false") as resp:
+        assert resp.status == 200
+        ans = await resp.json()
+        assert ans["page"]["page"] == 1
+        assert ans["page"]["size"] == 5
+        assert ans["page"]["totalPages"] == 1
+        assert ans["page"]["totalFolders"] == 5
+        assert len(ans["folders"]) == 5
+
+    # Test with wrong pagination values
+    async with sess.get(f"{folders_url}?page=-1") as resp:
+        assert resp.status == 400
+    async with sess.get(f"{folders_url}?per_page=0") as resp:
+        assert resp.status == 400
+    async with sess.get(f"{folders_url}?published=asdf") as resp:
+        assert resp.status == 400
+
+
+async def test_getting_user_items(sess):
+    """Test querying user's drafts or folders in the user object with GET user request.
+
+    :param sess: HTTP session in which request call is made
+    """
+    # Get real user ID
+    async with sess.get(f"{users_url}/{user_id}") as resp:
+        LOG.debug(f"Reading user {user_id}")
+        assert resp.status == 200, "HTTP Status code error"
+        response = await resp.json()
+        real_user_id = response["userId"]
+
+    # Patch user to have a draft
+    draft_id = await post_draft_json(sess, "study", "SRP000539.json")
+    patch_drafts_user = [
+        {"op": "add", "path": "/drafts/-", "value": {"accessionId": draft_id, "schema": "draft-study"}}
+    ]
+    await patch_user(sess, user_id, real_user_id, patch_drafts_user)
+
+    # Test querying for list of user draft templates
+    async with sess.get(f"{users_url}/{user_id}?items=drafts") as resp:
+        LOG.debug(f"Reading user {user_id} drafts")
+        assert resp.status == 200, "HTTP Status code error"
+        ans = await resp.json()
+        assert ans["page"]["page"] == 1
+        assert ans["page"]["size"] == 5
+        assert ans["page"]["totalPages"] == 1
+        assert ans["page"]["totalDrafts"] == 1
+        assert len(ans["drafts"]) == 1
+
+    async with sess.get(f"{users_url}/{user_id}?items=drafts&per_page=3") as resp:
+        LOG.debug(f"Reading user {user_id} drafts")
+        assert resp.status == 200, "HTTP Status code error"
+        ans = await resp.json()
+        assert ans["page"]["page"] == 1
+        assert ans["page"]["size"] == 3
+        assert len(ans["drafts"]) == 1
+
+    await delete_draft(sess, "study", draft_id)  # Future tests will assume the drafts key is empty
+
+    # Test querying for the list of folder IDs
+    async with sess.get(f"{users_url}/{user_id}?items=folders") as resp:
+        LOG.debug(f"Reading user {user_id} folder list")
+        assert resp.status == 200, "HTTP Status code error"
+        ans = await resp.json()
+        assert ans["page"]["page"] == 1
+        assert ans["page"]["size"] == 5
+        assert ans["page"]["totalPages"] == 2
+        assert ans["page"]["totalFolders"] == 6
+        assert len(ans["folders"]) == 5
+
+    # Test the same with a bad query param
+    async with sess.get(f"{users_url}/{user_id}?items=bad") as resp:
+        LOG.debug(f"Reading user {user_id} but with faulty item descriptor")
+        assert resp.status == 400, "HTTP Status code error"
+
+
 async def test_crud_users_works(sess):
     """Test users REST api GET, PATCH and DELETE reqs.
 
@@ -829,6 +942,7 @@ async def test_get_folders(sess, folder_id: str):
         assert resp.status == 200, "HTTP Status code error"
         response = await resp.json()
         assert len(response["folders"]) == 1
+        assert response["page"] == {"page": 1, "size": 5, "totalPages": 1, "totalFolders": 1}
         assert response["folders"][0]["folderId"] == folder_id
 
 
@@ -1063,6 +1177,11 @@ async def main():
         await test_crud_folders_works(sess)
         await test_crud_folders_works_no_publish(sess)
 
+        # Test getting a list of folders and draft templates owned by the user
+        LOG.debug("=== Testing getting folders, draft folders and draft templates with pagination ===")
+        await test_getting_paginated_folders(sess)
+        await test_getting_user_items(sess)
+
         # Test add, modify, validate and release action with submissions
         LOG.debug("=== Testing actions within submissions ===")
         submission_folder = {
@@ -1080,6 +1199,16 @@ async def main():
         # this needs to be done last as it deletes users
         LOG.debug("=== Testing basic CRUD user operations ===")
         await test_crud_users_works(sess)
+
+    # Remove the remaining user in the test database
+    async with aiohttp.ClientSession() as sess:
+        await login(sess, other_test_user, other_test_user_given, other_test_user_family)
+        async with sess.get(f"{users_url}/{user_id}") as resp:
+            LOG.debug(f"Reading user {user_id}")
+            assert resp.status == 200, "HTTP Status code error"
+            response = await resp.json()
+            real_user_id = response["userId"]
+        await delete_user(sess, real_user_id)
 
 
 if __name__ == "__main__":
