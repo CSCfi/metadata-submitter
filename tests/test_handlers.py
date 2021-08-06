@@ -428,12 +428,23 @@ class ObjectHandlerTestCase(HandlersTestCase):
         """Test that CSV file is parsed and submitted as json."""
         files = [("sample", "EGAformat.csv")]
         data = self.create_submission_data(files)
+        self.MockedCSVParser().parse.return_value = [{}, {}, {}]
         response = await self.client.post("/objects/sample", data=data)
         json_resp = await response.json()
         self.assertEqual(response.status, 201)
         self.assertEqual(self.test_ega_string, json_resp["accessionId"])
         self.MockedCSVParser().parse.assert_called_once()
         self.MockedOperator().create_metadata_object.assert_called_once()
+
+    async def test_post_objet_error_with_empty(self):
+        """Test multipart request post fails when no objects are parsed."""
+        files = [("sample", "empty.csv")]
+        data = self.create_submission_data(files)
+        response = await self.client.post("/objects/sample", data=data)
+        json_resp = await response.json()
+        self.assertEqual(response.status, 400)
+        self.assertEqual(json_resp["detail"], "Request data seems empty.")
+        self.MockedCSVParser().parse.assert_called_once()
 
     async def test_put_object_bad_json(self):
         """Test that put JSON is badly formated."""

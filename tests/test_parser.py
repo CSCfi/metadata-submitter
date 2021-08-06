@@ -100,13 +100,9 @@ class ParserTestCase(unittest.TestCase):
         """Test that a CSV sample is parsed and validated."""
         sample_csv = self.load_file_to_text("sample", "EGAformat.csv")
         result = self.csv_parser.parse("sample", sample_csv)
-        self.assertEqual("test sample", result["title"])
-        self.assertEqual({"taxonId": 9606}, result["sampleName"])
-
-    def test_multiline_csv_raises_error(self):
-        """Test 400 is raised with a multi-line CSV input."""
-        with self.assertRaises(web.HTTPBadRequest):
-            self.csv_parser.parse("sample", "id,title\n1,something\n2,something else\n")
+        self.assertEqual(len(result), 3)
+        self.assertEqual("test sample", result[0]["title"])
+        self.assertEqual({"taxonId": 9606}, result[0]["sampleName"])
 
     def test_csv_parse_with_wrong_schema(self):
         """Test 400 is raised with wrong schema type."""

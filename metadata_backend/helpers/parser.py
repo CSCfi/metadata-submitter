@@ -319,7 +319,7 @@ class XMLToJSONParser:
 class CSVToJSONParser:
     """Methods to parse and convert data from CSV files to JSON format."""
 
-    def parse(self, schema_type: str, content: str) -> Dict:
+    def parse(self, schema_type: str, content: str) -> List:
         """Parse a CSV file, convert it to JSON and validate against JSON schema.
 
         :param schema_type: Schema type of the file to be parsed
@@ -339,21 +339,19 @@ class CSVToJSONParser:
             reason = "CSV file appears to be incomplete. No rows of data were parsed."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        if len(rows) > 1:
-            reason = "Multi-line CSV files are currently not supported."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
 
-        result = rows[0]
-        # This is required to pass validation against current sample schema
-        if schema_type == "sample" and "sampleName" not in result:
-            # Without TaxonID provided we assume the sample relates to
-            # Homo Sapien which has default TaxonID of 9606
-            result["sampleName"] = '{"taxonId": 9606}'
-            result["sampleName"] = eval(result["sampleName"])  # workaround for mypy complaint
-        JSONValidator(result, schema_type.lower()).validate
-        LOG.info("CSV was converted to JSON successfully.")
-        return result
+        for row in rows:
+            LOG.info(row)
+            # This is required to pass validation against current sample schema
+            if schema_type == "sample" and "sampleName" not in row:
+                # Without TaxonID provided we assume the sample relates to
+                # Homo Sapien which has default TaxonID of 9606
+                row["sampleName"] = '{"taxonId": 9606}'
+                row["sampleName"] = eval(row["sampleName"])  # workaround for mypy complaint
+            JSONValidator(row, schema_type.lower()).validate
+
+        LOG.info(f"CSV was successfully converted to {len(rows)} JSON object(s).")
+        return rows
 
 
 def jsonpatch_mongo(identifier: Dict, json_patch: List[Dict[str, Any]]) -> List:
