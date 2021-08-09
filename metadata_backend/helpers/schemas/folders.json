@@ -26,6 +26,157 @@
       "type": "boolean",
       "title": "Published Folder"
     },
+    "doi": {
+      "type": "object",
+      "title": "The DOI schema",
+      "required": [
+        "identifier",
+        "url",
+        "creators",
+        "titles",
+        "publisher",
+        "subjects",
+        "publicationYear",
+        "resourceType",
+      ],
+      "properties": {
+        "identifier": {
+          "type": "object",
+          "title": "DOI id generated according to DOI recommendations",
+          "required": [
+            "identifierType"
+          ],
+          "properties": {
+            "identifierType": {
+              "type": "string",
+              "title": "Type of identifier (= DOI)"
+            },
+            "doi": {
+              "type": "string",
+              "title": "Character string of DOI handle"
+            },
+            "id": {
+              "type": "string",
+              "title": "Display url for DOI id"
+            }
+          }
+        },
+        "url": {
+          "type": "string",
+          "title": "URL of the digital location of the object"
+        },
+        "creators": {
+          "type": "array",
+          "title": "List of creators",
+          "items": {
+            "type": "object",
+            "title": "Creator objects",
+            "properties": {
+              "name": {
+                "type": "string",
+                "title": "Full name"
+              },
+              "nameType": {
+                "type": "string",
+                "title": "Type of name"
+              },
+              "givenName": {
+                "type": "string",
+                "title": "First name"
+              },
+              "familyName": {
+                "type": "string",
+                "title": "Last name"
+              },
+              "nameIdentifiers": {
+                "type": "array",
+                "title": "List of name identifiers",
+                "items": {
+                  "type": "object",
+                  "title": "Name identifier object"
+                }
+              },
+              "affiliation": {
+                "type": "array",
+                "title": "List of affiliations",
+                "items": {
+                  "type": "object",
+                  "title": "Name affiliation object"
+                }
+              },
+            }
+          },
+          "uniqueItems": true
+        },
+        "titles": {
+          "type": "array",
+          "title": "List of titles (in different languages)",
+          "items": {
+            "type": "object",
+            "title": "Title objects",
+            "properties": {
+              "lang": {
+                "type": "string",
+                "title": "Language of the title"
+              },
+              "title": {
+                "type": "string",
+                "title": "Full title"
+              },
+              "titleType": {
+                "type": "string",
+                "title": "Type of title"
+              }
+            }
+          },
+          "uniqueItems": true
+        },
+        "publisher": {
+          "type": "string",
+          "title": "Full name of publisher from Research Organization Registry"
+        },
+        "subjects": {
+          "type": "array",
+          "title": "List of subjects specified by FOS",
+          "items": {
+            "type": "object",
+            "title": "Subject objects",
+            "properties": {
+              "subject": {
+                "type": "string",
+                "title": "FOS defined subject name"
+              },
+              "subjectScheme": {
+                "type": "string",
+                "title": "Subject scheme name"
+              }
+            }
+          },
+          "uniqueItems": true
+        },
+        "publicationYear": {
+          "type": "integer",
+          "title": "Year of publication"
+        },
+        "resourceType": {
+          "type": "object",
+          "title": "Type info of the resource",
+          "required": [
+            "resourceTypeGeneral"
+          ],
+          "properties": {
+            "resourceTypeGeneral": {
+              "type": "string",
+              "title": "Mandatory general type name"
+            },
+            "type": {
+              "type": "string",
+              "title": "Name of resource type"
+            }
+          }
+        }
+      }
+    },
     "metadataObjects": {
       "type": "array",
       "title": "The metadataObjects schema",
