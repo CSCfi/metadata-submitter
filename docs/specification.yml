@@ -1290,6 +1290,7 @@ components:
         - published
         - metadataObjects
         - drafts
+        - doi
       additionalProperties: false
       properties:
         folderId:
@@ -1304,6 +1305,113 @@ components:
         published:
           type: boolean
           description: If folder is published or not
+        doi:
+          type: object
+          required:
+            - identifier
+            - url
+            - creators
+            - titles
+            - publisher
+            - subjects
+            - publicationYear
+            - resourceType
+          properties:
+            identifier:
+              type: object
+              description: DOI id generated according to DOI recommendations
+              required:
+                - identifierType
+              properties:
+                identifierType:
+                  type: string
+                  example: "DOI"
+                doi:
+                  type: string
+                  description: Character string of DOI handle
+                  example: "prefix/suffix"
+                id:
+                  type: string
+                  description: Display url for DOI id
+                  example: "https://doi.org/prefix/suffix"
+            url:
+              type: string
+              description: URL of the digital location of the object
+            creators:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    description: Full name
+                    example: "Last name, First name"
+                  nameType:
+                    type: string
+                    description: Type of name
+                    example: "Personal"
+                  givenName:
+                    type: string
+                    description: Official first name
+                    example: "First name"
+                  familyName:
+                    type: string
+                    description: Official last name
+                    example: "Last name"
+                  nameIdentifiers:
+                    type: array
+                    items:
+                      type: object
+                  affiliation:
+                    type: array
+                    items:
+                      type: object
+            titles:
+              type: array
+              items:
+                type: object
+                properties:
+                  lang:
+                    type: string
+                    description: Language of the title
+                    example: "en"
+                  title:
+                    type: string
+                    description: Full title
+                  titleType:
+                    type: string
+            publisher:
+              type: string
+              description: Full name of publisher from Research Organization Registry
+            subjects:
+              type: array
+              items:
+                type: object
+                properties:
+                  subject:
+                    type: string
+                    description: FOS defined subject name
+                    example: "FOS: field"
+                  subjectScheme:
+                    type: string
+                    description: Subject scheme name
+                    example: "Fields of Science and Technology (FOS)"
+            publicationYear:
+              type: integer
+              description: Year of publication
+              example: 2021
+            resourceType:
+              type: object
+              required:
+                - resourceTypeGeneral
+              properties:
+                resourceTypeGeneral:
+                  type: string
+                  description: Mandatory general type name
+                  example: "Dataset"
+                type:
+                  type: string
+                  description: Name of resource type
         metadataObjects:
           type: array
           items:
