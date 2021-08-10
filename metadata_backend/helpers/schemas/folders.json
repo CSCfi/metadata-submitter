@@ -37,7 +37,7 @@
         "publisher",
         "subjects",
         "publicationYear",
-        "resourceType",
+        "resourceType"
       ],
       "properties": {
         "identifier": {
@@ -103,7 +103,7 @@
                   "type": "object",
                   "title": "Name affiliation object"
                 }
-              },
+              }
             }
           },
           "uniqueItems": true
