@@ -74,7 +74,7 @@
             "properties": {
               "name": {
                 "type": "string",
-                "title": "Full name"
+                "title": "Full name of creator"
               },
               "nameType": {
                 "type": "string",
@@ -93,7 +93,21 @@
                 "title": "List of name identifiers",
                 "items": {
                   "type": "object",
-                  "title": "Name identifier object"
+                  "title": "Name identifier object",
+                  "properties": {
+                    "schemeUri": {
+                      "type": "string",
+                      "title": "URI of the name identifier scheme"
+                    },
+                    "nameIdentifier": {
+                      "type": "string",
+                      "title": "Location of name identifier"
+                    },
+                    "nameIdentifierScheme": {
+                      "type": "string",
+                      "title": "Name of name identifier scheme"
+                    }
+                  }
                 }
               },
               "affiliation": {
@@ -101,7 +115,25 @@
                 "title": "List of affiliations",
                 "items": {
                   "type": "object",
-                  "title": "Name affiliation object"
+                  "title": "Name affiliation object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "title": "Name of the place of affiliation"
+                    },
+                    "schemeUri": {
+                      "type": "string",
+                      "title": "URI of the affiliation scheme"
+                    },
+                    "affiliationIdentifier": {
+                      "type": "string",
+                      "title": "Location of affiliation identifier"
+                    },
+                    "affiliationIdentifierScheme": {
+                      "type": "string",
+                      "title": "Name of affiliation identifier scheme"
+                    }
+                  }
                 }
               }
             }
@@ -110,7 +142,7 @@
         },
         "titles": {
           "type": "array",
-          "title": "List of titles (in different languages)",
+          "title": "List of titles",
           "items": {
             "type": "object",
             "title": "Title objects",
@@ -144,7 +176,7 @@
             "properties": {
               "subject": {
                 "type": "string",
-                "title": "FOS defined subject name"
+                "title": "FOS identifier"
               },
               "subjectScheme": {
                 "type": "string",
@@ -172,6 +204,196 @@
             "type": {
               "type": "string",
               "title": "Name of resource type"
+            }
+          }
+        },
+        "contributors": {
+          "type": "array",
+          "title": "List of contributors",
+          "items": {
+            "type": "object",
+            "title": "Contributor object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "title": "Full name of contributor"
+              },
+              "nameType": {
+                "type": "string",
+                "title": "Type of name"
+              },
+              "givenName": {
+                "type": "string",
+                "title": "First name"
+              },
+              "familyName": {
+                "type": "string",
+                "title": "Last name"
+              },
+              "contributorType": {
+                "type": "string",
+                "title": "Type of contributor"
+              },
+              "nameIdentifiers": {
+                "type": "array",
+                "title": "List of name identifiers",
+                "items": {
+                  "type": "object",
+                  "title": "Name identifier object",
+                  "properties": {
+                    "schemeUri": {
+                      "type": "string",
+                      "title": "URI of the name identifier scheme"
+                    },
+                    "nameIdentifier": {
+                      "type": "string",
+                      "title": "Location of name identifier"
+                    },
+                    "nameIdentifierScheme": {
+                      "type": "string",
+                      "title": "Name of name identifier scheme"
+                    }
+                  }
+                }
+              },
+              "affiliation": {
+                "type": "array",
+                "title": "List of affiliations",
+                "items": {
+                  "type": "object",
+                  "title": "Name affiliation object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "title": "Name of the place of affiliation"
+                    },
+                    "schemeUri": {
+                      "type": "string",
+                      "title": "URI of the affiliation scheme"
+                    },
+                    "affiliationIdentifier": {
+                      "type": "string",
+                      "title": "Location of affiliation identifier"
+                    },
+                    "affiliationIdentifierScheme": {
+                      "type": "string",
+                      "title": "Name of affiliation identifier scheme"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "dates": {
+          "type": "array",
+          "title": "List of relevant dates to publication",
+          "items": {
+            "type": "object",
+            "title": "Date object",
+            "properties": {
+              "date": {
+                "type": "string",
+                "title": "The date value"
+              },
+              "dateType": {
+                "type": "string",
+                "title": "Relevance of the date"
+              },
+              "dateInformation": {
+                "type": "string",
+                "title": "Specific event of the date"
+              }
+            }
+          }
+        },
+        "descriptions": {
+          "type": "array",
+          "title": "List of descriptions",
+          "items": {
+            "type": "object",
+            "title": "Description object",
+            "properties": {
+              "lang": {
+                "type": "string",
+                "title": "Language of the description"
+              },
+              "description": {
+                "type": "string",
+                "title": "Full description"
+              },
+              "descriptionType": {
+                "type": "string",
+                "title": "Type of description"
+              }
+            }
+          }
+        },
+        "geoLocations": {
+          "type": "array",
+          "title": "List of GeoLocations",
+          "items": {
+            "type": "object",
+            "title": "GeoLocation object",
+            "properties": {
+              "geoLocationPlace": {
+                "type": "string",
+                "title": "Name of GeoLocation"
+              },
+              "geoLocationPoint": {
+                "type": "object",
+                "title": "GeoLocation point object",
+                "properties": {
+                  "pointLongitude": {
+                    "type": "string",
+                    "title": "Longitude coordinate"
+                  },
+                  "pointLatitude": {
+                    "type": "string",
+                    "title": "Latitude coordinate"
+                  }
+                }
+              },
+              "geoLocationBox": {
+                "type": "object",
+                "title": "GeoLocation box object",
+                "properties": {
+                  "westBoundLongitude": {
+                    "type": "string",
+                    "title": "Longitude coordinate of west bound"
+                  },
+                  "eastBoundLongitude": {
+                    "type": "string",
+                    "title": "Longitude coordinate of east bound"
+                  },
+                  "southBoundLatitude": {
+                    "type": "string",
+                    "title": "Latitude coordinate of south bound"
+                  },
+                  "northBoundLatitude": {
+                    "type": "string",
+                    "title": "Latitude coordinate of north bound"
+                  }
+                }
+              },
+              "geoLocationPolygon": {
+                "type": "array",
+                "title": "List of polygon points",
+                "items": {
+                  "type": "object",
+                  "title": "Polygon point object",
+                  "properties": {
+                    "pointLongitude": {
+                      "type": "string",
+                      "title": "Longitude coordinate"
+                    },
+                    "pointLatitude": {
+                      "type": "string",
+                      "title": "Latitude coordinate"
+                    }
+                  }
+                }
+              }
             }
           }
         }
