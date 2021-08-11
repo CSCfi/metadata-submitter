@@ -42,9 +42,10 @@
       "properties": {
         "identifier": {
           "type": "object",
-          "title": "DOI id generated according to DOI recommendations",
+          "title": "identifier object",
           "required": [
-            "identifierType"
+            "identifierType",
+            "doi"
           ],
           "properties": {
             "identifierType": {
@@ -53,11 +54,7 @@
             },
             "doi": {
               "type": "string",
-              "title": "Character string of DOI handle"
-            },
-            "id": {
-              "type": "string",
-              "title": "Display url for DOI id"
+              "title": "A persistent identifier for a resource"
             }
           }
         },
@@ -70,11 +67,11 @@
           "title": "List of creators",
           "items": {
             "type": "object",
-            "title": "Creator objects",
+            "title": "Main researchers involved with data or the authors of the publication",
             "properties": {
               "name": {
                 "type": "string",
-                "title": "Full name of creator"
+                "title": "Full name of creator (format: Family, Given)"
               },
               "nameType": {
                 "type": "string",
@@ -108,7 +105,8 @@
                       "title": "Name of name identifier scheme"
                     }
                   }
-                }
+                },
+                "uniqueItems": true
               },
               "affiliation": {
                 "type": "array",
@@ -134,9 +132,11 @@
                       "title": "Name of affiliation identifier scheme"
                     }
                   }
-                }
+                },
+                "uniqueItems": true
               }
-            }
+            },
+            "additionalProperties": false
           },
           "uniqueItems": true
         },
@@ -149,17 +149,18 @@
             "properties": {
               "lang": {
                 "type": "string",
-                "title": "Language of the title"
+                "title": "Language code of the title"
               },
               "title": {
                 "type": "string",
-                "title": "Full title"
+                "title": "A name or title by which a resource is known"
               },
               "titleType": {
                 "type": "string",
                 "title": "Type of title"
               }
-            }
+            },
+            "additionalProperties": false
           },
           "uniqueItems": true
         },
@@ -169,10 +170,13 @@
         },
         "subjects": {
           "type": "array",
-          "title": "List of subjects specified by FOS",
+          "title": "List of subject identifiers specified by FOS",
           "items": {
             "type": "object",
             "title": "Subject objects",
+            "required": [
+              "subject"
+            ],
             "properties": {
               "subject": {
                 "type": "string",
@@ -182,41 +186,47 @@
                 "type": "string",
                 "title": "Subject scheme name"
               }
-            }
+            },
+            "additionalProperties": true
           },
           "uniqueItems": true
         },
         "publicationYear": {
           "type": "integer",
-          "title": "Year of publication"
+          "title": "Year when the data is made publicly available"
         },
         "resourceType": {
           "type": "object",
           "title": "Type info of the resource",
           "required": [
+            "type",
             "resourceTypeGeneral"
           ],
           "properties": {
-            "resourceTypeGeneral": {
-              "type": "string",
-              "title": "Mandatory general type name"
-            },
             "type": {
               "type": "string",
               "title": "Name of resource type"
+            },
+            "resourceTypeGeneral": {
+              "type": "string",
+              "title": "Mandatory general type name"
             }
-          }
+          },
+          "additionalProperties": false
         },
         "contributors": {
           "type": "array",
           "title": "List of contributors",
           "items": {
             "type": "object",
-            "title": "Contributor object",
+            "title": "The institution or person responsible for contributing to the developement of the dataset",
+            "required": [
+              "contributorType"
+            ],
             "properties": {
               "name": {
                 "type": "string",
-                "title": "Full name of contributor"
+                "title": "Full name of contributor (format: Family, Given)"
               },
               "nameType": {
                 "type": "string",
@@ -282,8 +292,10 @@
                   }
                 }
               }
-            }
-          }
+            },
+            "additionalProperties": false
+          },
+          "uniqueItems": true
         },
         "dates": {
           "type": "array",
@@ -291,10 +303,14 @@
           "items": {
             "type": "object",
             "title": "Date object",
+            "required": [
+              "date",
+              "dateType"
+            ],
             "properties": {
               "date": {
                 "type": "string",
-                "title": "The date value"
+                "title": "A standard format for a date value"
               },
               "dateType": {
                 "type": "string",
@@ -304,8 +320,10 @@
                 "type": "string",
                 "title": "Specific event of the date"
               }
-            }
-          }
+            },
+            "additionalProperties": false
+          },
+          "uniqueItems": true
         },
         "descriptions": {
           "type": "array",
@@ -316,18 +334,20 @@
             "properties": {
               "lang": {
                 "type": "string",
-                "title": "Language of the description"
+                "title": "Language code of the description"
               },
               "description": {
                 "type": "string",
-                "title": "Full description"
+                "title": "Additional information that does not fit in any of the other categories"
               },
               "descriptionType": {
                 "type": "string",
                 "title": "Type of description"
               }
-            }
-          }
+            },
+            "additionalProperties": false
+          },
+          "uniqueItems": true
         },
         "geoLocations": {
           "type": "array",
@@ -338,11 +358,11 @@
             "properties": {
               "geoLocationPlace": {
                 "type": "string",
-                "title": "Name of GeoLocation"
+                "title": "Spatial region or named place where the data was gathered"
               },
               "geoLocationPoint": {
                 "type": "object",
-                "title": "GeoLocation point object",
+                "title": "A point containing a single latitude-longitude pair",
                 "properties": {
                   "pointLongitude": {
                     "type": "string",
@@ -352,11 +372,12 @@
                     "type": "string",
                     "title": "Latitude coordinate"
                   }
-                }
+                },
+                "additionalProperties": false
               },
               "geoLocationBox": {
                 "type": "object",
-                "title": "GeoLocation box object",
+                "title": "A box determined by two longitude and two latitude borders",
                 "properties": {
                   "westBoundLongitude": {
                     "type": "string",
@@ -378,7 +399,7 @@
               },
               "geoLocationPolygon": {
                 "type": "array",
-                "title": "List of polygon points",
+                "title": "A drawn polygon area, defined by a set of polygon points",
                 "items": {
                   "type": "object",
                   "title": "Polygon point object",
@@ -394,19 +415,25 @@
                   }
                 }
               }
-            }
-          }
+            },
+            "additionalProperties": false
+          },
+          "uniqueItems": true
         },
         "language": {
           "type": "string",
-          "title": "Language code"
+          "title": "Code of the primary language of the resource"
         },
         "alternateIdentifiers": {
           "type": "array",
           "title": "List of alternate identifiers",
           "items": {
             "type": "object",
-            "title": "Alternate identifier object",
+            "title": "An identifier or identifiers other than the primary Identifier of the resource",
+            "required": [
+              "alternateIdentifier",
+              "alternateIdentifierType"
+            ],
             "properties": {
               "alternateIdentifier": {
                 "type": "string",
@@ -416,15 +443,22 @@
                 "type": "string",
                 "title": "Type of alternate identifier"
               }
-            }
-          }
+            },
+            "additionalProperties": false
+          },
+          "uniqueItems": true
         },
         "relatedIdentifiers": {
           "type": "array",
           "title": "List of related identifiers",
           "items": {
             "type": "object",
-            "title": "Related identifier object",
+            "title": "Identifier of related resources",
+            "required": [
+              "relatedIdentifier",
+              "relatedIdentifierType",
+              "relationType"
+            ],
             "properties": {
               "relatedIdentifier": {
                 "type": "string",
@@ -454,15 +488,17 @@
                 "type": "string",
                 "title": "Optional general type name"
               }
-            }
-          }
+            },
+            "additionalProperties": false
+          },
+          "uniqueItems": true
         },
         "sizes": {
           "type": "array",
           "title": "List of sizes",
           "items": {
             "type": "string",
-            "title": "Size or duration info about the resource"
+            "title": "Unstructured size information about the resource"
           }
         },
         "formats": {
@@ -482,7 +518,7 @@
           "title": "List of any rights information",
           "items": {
             "type": "object",
-            "title": "Rights object",
+            "title": "Any rights information about the resource",
             "properties": {
               "lang": {
                 "type": "string",
@@ -504,15 +540,17 @@
                 "type": "string",
                 "title": "URI (location) of the scheme for rights"
               }
-            }
-          }
+            },
+            "additionalProperties": false
+          },
+          "uniqueItems": true
         },
         "fundingReferences": {
           "type": "array",
           "title": "List of funding references",
           "itmes": {
             "type": "object",
-            "title": "Funding reference object",
+            "title": "Information about financial support for the resource",
             "required": [
               "funderName",
               "funderIdentifier",
@@ -547,8 +585,10 @@
                 "type": "string",
                 "title": "URI (location) of the award"
               }
-            }
-          }
+            },
+            "additionalProperties": false
+          },
+          "uniqueItems": true
         }
       },
       "additionalProperties": false
