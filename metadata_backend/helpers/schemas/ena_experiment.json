@@ -389,7 +389,7 @@
                             }
                         },
                         "poolingStrategy": {
-                            "title": "Polling Strategy",
+                            "title": "Pooling Strategy",
                             "description": "The optional pooling strategy indicates how the library or libraries are organized if multiple samples are involved.",
                             "type": "string"
                         },
