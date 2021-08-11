@@ -501,7 +501,7 @@ class FolderAPIHandler(RESTAPIHandler):
                     raise web.HTTPBadRequest(reason=reason)
                 pass
             else:
-                if all(i not in op["path"] for i in _required_paths + _arrays):
+                if all(i not in op["path"] for i in _required_paths + _arrays + ["/doi"]):
                     reason = f"Request contains '{op['path']}' key that cannot be updated to folders."
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
