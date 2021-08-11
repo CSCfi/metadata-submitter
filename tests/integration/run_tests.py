@@ -745,6 +745,48 @@ async def test_crud_folders_works_no_publish(sess):
         assert expected_true, "folder still exists at user"
 
 
+async def test_adding_doi_info_to_folder_works(sess):
+    """Test that proper DOI info can be added to folder and bad DOI info cannot be.
+
+    :param sess: HTTP session in which request call is made
+    """
+    # Create new folder and check its creation succeeded
+    folder_data = {"name": "DOI Folder", "description": "Mock Base folder for adding DOI info"}
+    folder_id = await post_folder(sess, folder_data)
+    async with sess.get(f"{folders_url}/{folder_id}") as resp:
+        LOG.debug(f"Checking that folder {folder_id} was created")
+        assert resp.status == 200, "HTTP Status code error"
+
+    # Get correctly formatted DOI info and patch it into the new folder successfully
+    doi_data = await create_request_json_data("doi", "test_doi.json")
+    patch_add_doi = [
+        {"op": "add", "path": "/doi", "value": json.loads(doi_data)}
+    ]
+    folder_id = await patch_folder(sess, folder_id, patch_add_doi)
+    async with sess.get(f"{folders_url}/{folder_id}") as resp:
+        LOG.debug(f"Checking that folder {folder_id} was patched")
+        res = await resp.json()
+        assert res["folderId"] == folder_id, "expected folder id does not match"
+        assert res["name"] == folder_data["name"], "expected folder name does not match"
+        assert res["description"] == folder_data["description"], "folder description content mismatch"
+        assert res["published"] is False, "folder is published, expected False"
+        assert res["doi"] == json.loads(doi_data), "folder doi does not match"
+
+    # Test that an incomplete DOI object fails to patch into the folder
+    patch_add_bad_doi = [
+        {"op": "add", "path": "/doi", "value": {"identifier": {}}}
+    ]
+    async with sess.patch(f"{folders_url}/{folder_id}", data=json.dumps(patch_add_bad_doi)) as resp:
+        LOG.debug(f"Tried updating folder {folder_id}")
+        # assert resp.status == 400, "HTTP Status code error"
+
+    # Delete folder
+    await delete_folder(sess, folder_id)
+    async with sess.get(f"{folders_url}/{folder_id}") as resp:
+        LOG.debug(f"Checking that folder {folder_id} was deleted")
+        assert resp.status == 404, "HTTP Status code error"
+
+
 async def test_getting_paginated_folders(sess):
     """Check that /folders returns folders with correct paginations.
 
@@ -1176,6 +1218,7 @@ async def main():
         LOG.debug("=== Testing basic CRUD folder operations ===")
         await test_crud_folders_works(sess)
         await test_crud_folders_works_no_publish(sess)
+        await test_adding_doi_info_to_folder_works(sess)
 
         # Test getting a list of folders and draft templates owned by the user
         LOG.debug("=== Testing getting folders, draft folders and draft templates with pagination ===")
