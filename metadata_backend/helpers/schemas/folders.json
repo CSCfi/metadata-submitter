@@ -97,11 +97,11 @@
                   "properties": {
                     "schemeUri": {
                       "type": "string",
-                      "title": "URI of the name identifier scheme"
+                      "title": "URI (location) of the name identifier scheme"
                     },
                     "nameIdentifier": {
                       "type": "string",
-                      "title": "Location of name identifier"
+                      "title": "URI (location) of name identifier"
                     },
                     "nameIdentifierScheme": {
                       "type": "string",
@@ -123,7 +123,7 @@
                     },
                     "schemeUri": {
                       "type": "string",
-                      "title": "URI of the affiliation scheme"
+                      "title": "URI (location) of the affiliation scheme"
                     },
                     "affiliationIdentifier": {
                       "type": "string",
@@ -243,7 +243,7 @@
                   "properties": {
                     "schemeUri": {
                       "type": "string",
-                      "title": "URI of the name identifier scheme"
+                      "title": "URI (location) of the name identifier scheme"
                     },
                     "nameIdentifier": {
                       "type": "string",
@@ -269,7 +269,7 @@
                     },
                     "schemeUri": {
                       "type": "string",
-                      "title": "URI of the affiliation scheme"
+                      "title": "URI (location) of the affiliation scheme"
                     },
                     "affiliationIdentifier": {
                       "type": "string",
@@ -396,8 +396,162 @@
               }
             }
           }
+        },
+        "language": {
+          "type": "string",
+          "title": "Language code"
+        },
+        "alternateIdentifiers": {
+          "type": "array",
+          "title": "List of alternate identifiers",
+          "items": {
+            "type": "object",
+            "title": "Alternate identifier object",
+            "properties": {
+              "alternateIdentifier": {
+                "type": "string",
+                "title": "Alternate identifier info"
+              },
+              "alternateIdentifierType": {
+                "type": "string",
+                "title": "Type of alternate identifier"
+              }
+            }
+          }
+        },
+        "relatedIdentifiers": {
+          "type": "array",
+          "title": "List of related identifiers",
+          "items": {
+            "type": "object",
+            "title": "Related identifier object",
+            "properties": {
+              "relatedIdentifier": {
+                "type": "string",
+                "title": "Related identifier info"
+              },
+              "relatedIdentifierType": {
+                "type": "string",
+                "title": "Type of related identifier"
+              },
+              "relationType": {
+                "type": "string",
+                "title": "Specification of the relation"
+              },
+              "relatedMetadataScheme": {
+                "type": "string",
+                "title": "Scheme of related metadata"
+              },
+              "schemeUri": {
+                "type": "string",
+                "title": "URI (location) of the related metadata scheme"
+              },
+              "schemeType": {
+                "type": "string",
+                "title": "Type of the related metadata scheme"
+              },
+              "resourceTypeGeneral": {
+                "type": "string",
+                "title": "Optional general type name"
+              }
+            }
+          }
+        },
+        "sizes": {
+          "type": "array",
+          "title": "List of sizes",
+          "items": {
+            "type": "string",
+            "title": "Size or duration info about the resource"
+          }
+        },
+        "formats": {
+          "type": "array",
+          "title": "List of formats",
+          "items": {
+            "type": "string",
+            "title": "Technical format of the resource"
+          }
+        },
+        "version": {
+          "type": "string",
+          "title": "Version number of the resource"
+        },
+        "rightsList": {
+          "type": "array",
+          "title": "List of any rights information",
+          "items": {
+            "type": "object",
+            "title": "Rights object",
+            "properties": {
+              "lang": {
+                "type": "string",
+                "title": "Language code of the referenced rights"
+              },
+              "rightsUri": {
+                "type": "string",
+                "title": "URI (location) of the referenced rights"
+              },
+              "rightsIdentifier": {
+                "type": "string",
+                "title": "Title of the rights identifier"
+              },
+              "rightsIdentifierScheme": {
+                "type": "string",
+                "title": "Title of rights identifier scheme"
+              },
+              "schemeUri": {
+                "type": "string",
+                "title": "URI (location) of the scheme for rights"
+              }
+            }
+          }
+        },
+        "fundingReferences": {
+          "type": "array",
+          "title": "List of funding references",
+          "itmes": {
+            "type": "object",
+            "title": "Funding reference object",
+            "required": [
+              "funderName",
+              "funderIdentifier",
+              "funderIdentifierType"
+            ],
+            "properties": {
+              "funderName": {
+                "type": "string",
+                "title": "Name of the funding provider"
+              },
+              "funderIdentifier": {
+                "type": "string",
+                "title": "Unique identifier for funding entity"
+              },
+              "funderIdentifierType": {
+                "type": "string",
+                "title": "Type of identifier for funding entity"
+              },
+              "schemeUri": {
+                "type": "string",
+                "title": "URI (location) of scheme for funder identifier"
+              },
+              "awardNumber": {
+                "type": "string",
+                "title": "The code assigned by the funder to a sponsored award"
+              },
+              "awardTitle": {
+                "type": "string",
+                "title": "The human readable title of the award"
+              },
+              "awardUri": {
+                "type": "string",
+                "title": "URI (location) of the award"
+              }
+            }
+          }
         }
-      }
+      },
+      "additionalProperties": false
     },
     "metadataObjects": {
       "type": "array",
