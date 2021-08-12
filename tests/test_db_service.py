@@ -197,7 +197,7 @@ class DatabaseTestCase(IsolatedAsyncioTestCase):
         success = await self.test_service.append("testcollection", self.id_stub, self.data_stub)
         self.collection.find_one_and_update.assert_called_once_with(
             {"accessionId": self.id_stub},
-            {"$addToSet": self.data_stub},
+            {"$push": self.data_stub},
             projection={"_id": False},
             return_document=True,
         )
