@@ -1,0 +1,67 @@
+{
+  "identifier": {
+    "doi": "10.xxxx/test",
+    "identifierType": "DOI"
+  },
+  "url": "https://some.test.url",
+  "resourceType": {
+    "type": "XML",
+    "resourceTypeGeneral": "Dataset"
+  },
+  "creators": [
+    {
+      "name": "Creator, Test",
+      "nameType": "Personal",
+      "givenName": "Test",
+      "familyName": "Creator",
+      "affiliation": [
+        {
+          "name": "affiliation place",
+          "schemeUri": "https://ror.org",
+          "affiliationIdentifier": "https://ror.org/test1",
+          "affiliationIdentifierScheme": "ROR"
+        }
+      ],
+      "nameIdentifiers": []
+    }
+  ],
+  "titles": [
+    {
+      "lang": "en",
+      "title": "Test resource",
+      "titleType": null
+    }
+  ],
+  "publisher": "Test publisher",
+  "subjects": [
+    {
+      "subject": "FOS: Computer and information sciences",
+      "subjectScheme": "Fields of Science and Technology (FOS)"
+    }
+  ],
+  "publicationYear": 2021,
+  "contributors": [
+    {
+      "name": "Contributor, Test",
+      "nameType": "Personal",
+      "givenName": "Test",
+      "familyName": "contributor",
+      "affiliation": [
+        {
+          "name": "affiliation place",
+          "schemeUri": "https://ror.org",
+          "affiliationIdentifier": "https://ror.org/test2",
+          "affiliationIdentifierScheme": "ROR"
+        }
+      ],
+      "contributorType": "Researcher",
+      "nameIdentifiers": [
+        {
+          "schemeUri": null,
+          "nameIdentifier": null,
+          "nameIdentifierScheme": null
+        }
+      ]
+    }
+  ]
+}

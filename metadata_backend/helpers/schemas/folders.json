@@ -93,15 +93,15 @@
                   "title": "Name identifier object",
                   "properties": {
                     "schemeUri": {
-                      "type": "string",
+                      "type": ["string", "null"],
                       "title": "URI (location) of the name identifier scheme"
                     },
                     "nameIdentifier": {
-                      "type": "string",
+                      "type": ["string", "null"],
                       "title": "URI (location) of name identifier"
                     },
                     "nameIdentifierScheme": {
-                      "type": "string",
+                      "type": ["string", "null"],
                       "title": "Name of name identifier scheme"
                     }
                   }
@@ -156,7 +156,7 @@
                 "title": "A name or title by which a resource is known"
               },
               "titleType": {
-                "type": "string",
+                "type": ["string", "null"],
                 "title": "Type of title"
               }
             },
@@ -252,15 +252,15 @@
                   "title": "Name identifier object",
                   "properties": {
                     "schemeUri": {
-                      "type": "string",
+                      "type": ["string", "null"],
                       "title": "URI (location) of the name identifier scheme"
                     },
                     "nameIdentifier": {
-                      "type": "string",
+                      "type": ["string", "null"],
                       "title": "Location of name identifier"
                     },
                     "nameIdentifierScheme": {
-                      "type": "string",
+                      "type": ["string", "null"],
                       "title": "Name of name identifier scheme"
                     }
                   }
@@ -570,19 +570,19 @@
                 "title": "Type of identifier for funding entity"
               },
               "schemeUri": {
-                "type": "string",
+                "type": ["string", "null"],
                 "title": "URI (location) of scheme for funder identifier"
               },
               "awardNumber": {
-                "type": "string",
+                "type": ["string", "null"],
                 "title": "The code assigned by the funder to a sponsored award"
               },
               "awardTitle": {
-                "type": "string",
+                "type": ["string", "null"],
                 "title": "The human readable title of the award"
               },
               "awardUri": {
-                "type": "string",
+                "type": ["string", "null"],
                 "title": "URI (location) of the award"
               }
             },
