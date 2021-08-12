@@ -119,7 +119,7 @@ async def init() -> web.Application:
         ]
         server.router.add_routes(frontend_routes)
         LOG.info("Frontend routes loaded")
-    server["db_client"] = create_db_client()
+    server["db_client"] = await create_db_client()
     server.on_shutdown.append(kill_sess_on_shutdown)
     LOG.info("Database client loaded")
     return server
