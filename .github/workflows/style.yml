@@ -28,3 +28,5 @@ jobs:
       run: tox -e flake8
     - name: Type hints check
       run: tox -e mypy
+    - name: Run bandit static code analysis
+      run: tox -e bandit
