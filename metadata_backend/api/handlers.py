@@ -643,12 +643,19 @@ class FolderAPIHandler(RESTAPIHandler):
         patch_ops = await self._get_data(req)
         self._check_patch_folder(patch_ops)
 
+        # Validate against folders schema if DOI is being added
+        for op in patch_ops:
+            if op["path"] == "/doi":
+                curr_folder = await operator.read_folder(folder_id)
+                curr_folder["doi"] = op["value"]
+                JSONValidator(curr_folder, "folders").validate
+
         await self._handle_check_ownedby_user(req, "folders", folder_id)
 
-        folder = await operator.update_folder(folder_id, patch_ops if isinstance(patch_ops, list) else [patch_ops])
+        upd_folder = await operator.update_folder(folder_id, patch_ops if isinstance(patch_ops, list) else [patch_ops])
 
-        body = json.dumps({"folderId": folder})
-        LOG.info(f"PATCH folder with ID {folder} was successful.")
+        body = json.dumps({"folderId": upd_folder})
+        LOG.info(f"PATCH folder with ID {upd_folder} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
     async def publish_folder(self, req: Request) -> Response:
