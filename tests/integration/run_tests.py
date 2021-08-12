@@ -758,11 +758,11 @@ async def test_adding_doi_info_to_folder_works(sess):
         assert resp.status == 200, "HTTP Status code error"
 
     # Get correctly formatted DOI info and patch it into the new folder successfully
-    doi_data = await create_request_json_data("doi", "test_doi.json")
-    patch_add_doi = [
-        {"op": "add", "path": "/doi", "value": json.loads(doi_data)}
-    ]
+    doi_data_raw = await create_request_json_data("doi", "test_doi.json")
+    doi_data = json.loads(doi_data_raw)
+    patch_add_doi = [{"op": "add", "path": "/doi", "value": doi_data}]
     folder_id = await patch_folder(sess, folder_id, patch_add_doi)
+
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was patched")
         res = await resp.json()
@@ -770,15 +770,21 @@ async def test_adding_doi_info_to_folder_works(sess):
         assert res["name"] == folder_data["name"], "expected folder name does not match"
         assert res["description"] == folder_data["description"], "folder description content mismatch"
         assert res["published"] is False, "folder is published, expected False"
-        assert res["doi"] == json.loads(doi_data), "folder doi does not match"
+        assert res["doi"] == doi_data, "folder doi does not match"
 
     # Test that an incomplete DOI object fails to patch into the folder
-    patch_add_bad_doi = [
-        {"op": "add", "path": "/doi", "value": {"identifier": {}}}
-    ]
+    patch_add_bad_doi = [{"op": "add", "path": "/doi", "value": {"identifier": {}}}]
     async with sess.patch(f"{folders_url}/{folder_id}", data=json.dumps(patch_add_bad_doi)) as resp:
         LOG.debug(f"Tried updating folder {folder_id}")
-        # assert resp.status == 400, "HTTP Status code error"
+        assert resp.status == 400, "HTTP Status code error"
+        res = await resp.json()
+        assert res["detail"] == "Provided input does not seem correct for field: 'doi'", "expected error does not match"
+
+    # Check the existing DOI info is not altered
+    async with sess.get(f"{folders_url}/{folder_id}") as resp:
+        LOG.debug(f"Checking that folder {folder_id} was not patched with bad DOI")
+        res = await resp.json()
+        assert res["doi"] == doi_data, "folder doi does not match"
 
     # Delete folder
     await delete_folder(sess, folder_id)
