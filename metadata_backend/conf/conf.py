@@ -94,32 +94,13 @@ serverTimeout = 15000
 connectTimeout = 15000
 
 
-async def create_db_client() -> AsyncIOMotorClient:
+def create_db_client() -> AsyncIOMotorClient:
     """Initialize database client for AioHTTP App.
 
     :returns: Coroutine-based Motor client for Mongo operations
     """
     LOG.debug("initialised DB client")
-    client = AsyncIOMotorClient(url, connectTimeoutMS=connectTimeout, serverSelectionTimeoutMS=serverTimeout)
-    await create_indexes(client, mongo_database)
-    return client
-
-
-async def create_indexes(client: AsyncIOMotorClient, mongo_database: str) -> None:
-    """Create Indexes for collections."""
-    db = client[mongo_database]
-    collections = await db.list_collection_names()
-
-    if "folder" not in collections:
-        await db.create_collection("folder")
-
-    db.folder.create_index([("dateCreated", -1)])
-    db.folder.create_index([("folderId", 1)], unique=True)
-
-    if "user" not in collections:
-        await db.create_collection("user")
-
-    db.user.create_index([("userId", 1)], unique=True)
+    return AsyncIOMotorClient(url, connectTimeoutMS=connectTimeout, serverSelectionTimeoutMS=serverTimeout)
 
 
 # 2) Load schema types and descriptions from json
