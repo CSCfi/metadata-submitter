@@ -30,7 +30,9 @@ jobs:
         sleep 30
   
     - name: Run Integration test
-      run: python tests/integration/run_tests.py
+      run: |
+        python tests/integration/clean_db.py
+        python tests/integration/run_tests.py
 
     - name: Collect logs from docker
       if: ${{ failure() }}
@@ -38,7 +40,7 @@ jobs:
 
     - name: Persist log files
       if: ${{ failure() }}
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v2.2.4
       with:
         name: test_debugging_help
         path: tests
@@ -57,7 +59,9 @@ jobs:
         sleep 30
 
     - name: Run Integration test
-      run: python tests/integration/run_tests.py
+      run: |
+        python tests/integration/clean_db.py --tls
+        python tests/integration/run_tests.py
 
     - name: Collect logs from docker
       if: ${{ failure() }}
@@ -65,7 +69,7 @@ jobs:
 
     - name: Persist log files
       if: ${{ failure() }}
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v2.2.4
       with:
         name: test_debugging_help
         path: tests

@@ -28,7 +28,8 @@ openssl x509 -req -CAcreateserial -sha256 \
               -CA config/cacert \
               -CAkey config/cakey \
               -in config/cert2.csr \
-              -out config/cert2
+              -out config/cert2 \
+              -extfile scripts/extfile.ext
 
 cat config/key config/cert > config/combined
 cat config/key2 config/cert2 > config/combined2

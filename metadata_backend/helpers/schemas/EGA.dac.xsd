@@ -10,13 +10,13 @@
   ~ specific language governing permissions and limitations under the License.
   -->
 
-<!-- version:1.5.61 -->
+<!-- version:1.8.0 -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:com="SRA.common">
 	<xs:import schemaLocation="SRA.common.xsd" namespace="SRA.common"/>
 
 	<xs:complexType name="DacType">
 		<xs:annotation>
-			<xs:documentation>Describes an object that contains data access committee  information including contacts.
+			<xs:documentation>Describes an object that contains data access comittee  information including contacts.
     </xs:documentation>
 		</xs:annotation>
 		<xs:complexContent>

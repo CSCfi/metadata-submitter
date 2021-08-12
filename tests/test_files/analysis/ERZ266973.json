@@ -25,26 +25,26 @@
       }
     }
   },
-  "sampleRef": {
-    "label": "HPSI0114i-eipl_3",
-    "refname": "SAMEA2536405",
-    "refcenter": "BioSD",
-    "accessionId": "ERS1148779",
-    "identifiers": {
-      "primaryId": "ERS1148779",
-      "submitterId": {
-        "namespace": "BioSD",
-        "value": "SAMEA2536405"
+  "sampleRef": [
+    {
+      "label": "HPSI0114i-eipl_3",
+      "refname": "SAMEA2536405",
+      "refcenter": "BioSD",
+      "accessionId": "ERS1148779",
+      "identifiers": {
+        "primaryId": "ERS1148779",
+        "submitterId": {
+          "namespace": "BioSD",
+          "value": "SAMEA2536405"
+        }
       }
     }
-  },
+  ],
   "analysisType": {
     "processedReads": {
       "assembly": {
-        "standard": {
-          "refname": "GRCh37",
-          "accessionId": "GCA_000001405.1"
-        }
+        "refname": "GRCh37",
+        "accessionId": "GCA_000001405.1"
       },
       "sequence": [
         {

@@ -39,6 +39,11 @@ class MetadataXMLConverter(XMLSchemaConverter):
         return _under_regex.sub(lambda x: x.group(1).upper(), name)
 
     def _flatten(self, data: Any) -> Union[Dict, List, str, None]:
+        """Address corner cases.
+
+        :param schema_type: XML data
+        :returns: XML element flattened.
+        """
         links = [
             "studyLinks",
             "sampleLinks",
@@ -65,9 +70,14 @@ class MetadataXMLConverter(XMLSchemaConverter):
             "datasetAttributes",
             "assemblyAttributes",
             "submissionAttributes",
+            "contacts",
+            "dataUses",
         ]
 
+        refs = ["analysisRef", "sampleRef", "runRef", "experimentRef"]
+
         children = self.dict()
+
         for key, value, _ in self.map_content(data.content):
             key = self._to_camel(key.lower())
 
@@ -81,11 +91,34 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 continue
 
             if "platform" in key:
-                children[key] = list(value.values())[0]["instrumentModel"]
+                if isinstance(value, dict):
+                    children[key] = list(value.values())[0]["instrumentModel"]
+                else:
+                    children[key] = value
+                continue
+
+            if "assembly" in key:
+                if next(iter(value)) in ["standard", "custom"]:
+                    children[key] = next(iter(value.values()))
+                else:
+                    children[key] = value
+                continue
+
+            if "analysisType" in key:
+                children[key] = value
+                continue
+
+            if "datasetType" in key:
+                if "datasetType" not in children:
+                    children[key] = list()
+                children[key].append(value)
                 continue
 
             if "files" in key:
-                children["files"] = list(value.values())
+                if isinstance(value["file"], dict):
+                    children["files"] = list(value.values())
+                elif isinstance(value["file"], list):
+                    children["files"] = value["file"]
                 continue
 
             if "dataBlock" in key:
@@ -95,6 +128,24 @@ class MetadataXMLConverter(XMLSchemaConverter):
             if "spotDescriptor" in key:
                 children[key] = value["spotDecodeSpec"]
                 continue
+
+            if "libraryLayout" in key:
+                children[key] = next(iter(value))
+                children.update(next(iter(value.values())))
+                continue
+
+            if "policyText" in key:
+                children["policy"] = {key: value}
+                continue
+
+            if key in refs:
+                children[key] = [value]
+                continue
+
+            if "policyFile" in key:
+                reason = "Policy file not supported"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
 
             if key in links and len(value) == 1:
                 grp = list()
@@ -117,7 +168,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
                     children[key] = grp
                 continue
 
-            value = self.list() if value is None else value
+            value = "" if value is None else value
             try:
                 children[key].append(value)
             except KeyError:
@@ -153,6 +204,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
           when there are multiple children with same name - then to list.
         - All "accession" keys are converted to "accesionId", key used by
           this program
+        - default value if tag is empty is empty string
         Corner cases:
         - If possible, self-closing XML tag is elevated as an attribute to its
           parent, otherwise "true" is added as its value.
@@ -171,8 +223,19 @@ class MetadataXMLConverter(XMLSchemaConverter):
         - files is flatten for analysis and run so that it contains
           an array of files indiferent of the number.
         - spotDescriptor takes the value of its child spotDecodeSpec
+        - process platform different for experiment
+        - simplify assembly key and take the value from custom and standard keys
+        - library layout takes the value of its first key as most times it will
+          be just one key
+        - analysis type processes empty tags differently to avoid confusions in
+          JSON validator by making the analysisType string
+        - datasetType should be an array and treat it as such even if one element
+          selected
+        - analysisRef, sampleRef, runRef, experimentRef need to be an array
+        - experimentRef in run is an array with maxitems 1
         """
         xsd_type = xsd_type or xsd_element.type
+
         if xsd_type.simple_type is not None:
             children = data.text if data.text is not None and data.text != "" else None
             if isinstance(children, str):

@@ -28,7 +28,9 @@
       "filename": "ERA000/ERA000014/srf/BGI-FC304RWAAXX_5.srf",
       "filetype": "srf",
       "checksum": "3dfebb4b30211523853805439fbd7cec",
-      "checksumMethod": "MD5"
+      "checksumMethod": "MD5",
+      "readLabel": "test",
+      "readType": "single"
     }
   ],
   "runAttributes": [
