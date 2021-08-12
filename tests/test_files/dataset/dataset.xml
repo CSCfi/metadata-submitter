@@ -1,0 +1,18 @@
+<?xml version="1.0" standalone="yes"?>
+<DATASETS>
+    <DATASET alias="e11c3279-00db-4627-94ea-3bbb1c3635cf" center_name="TEST" broker_name="EGA">
+        <TITLE>test</TITLE>
+        <DESCRIPTION>some cool test description</DESCRIPTION>
+        <DATASET_TYPE>Exome sequencing</DATASET_TYPE>
+        <DATASET_TYPE>Genotyping by array</DATASET_TYPE>
+        <RUN_REF refname="b8f1-dgsdh" />
+        <RUN_REF refname="65b59a7c-a802-4bca-8cb7-4ffde414b047"/>
+        <RUN_REF refname="c4ae9e76-535b-4117-a99c-d38521bb2402"/>
+        <RUN_REF refname="c0f53136-454c-41e1-b3ee-da5e6a731614"/>
+        <RUN_REF refname="79b46fbc-5eda-4322-8967-6bc3d6fd3090"/>
+        <RUN_REF refname="ec86bee5-d8ae-4e12-8e21-53dceab9caee"/>
+        <RUN_REF refname="354ce633-e271-4bb4-9da1-f5f517570633"/>
+        <RUN_REF refname="c0ea94b8-e5eb-4c0c-8653-7e472e1992d0"/>
+        <POLICY_REF refname="1asgasgad-1584d9c56f8458" />
+    </DATASET>
+</DATASETS>

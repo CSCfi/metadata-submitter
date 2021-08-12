@@ -66,6 +66,10 @@
                     filename="ERZ266/ERZ266973/HPSI0114i-eipl_3.GRCh37.75.cdna.kallisto.transcripts.abundance.rnaseq.20160125.tsv"
                     filetype="other" checksum_method="MD5"
                     checksum="3185384933bd6dd54a5b869336c751df"/>
+            <FILE
+                    filename="test.tsv"
+                    filetype="other" checksum_method="MD5"
+                    checksum="576219012056196099020"/>
         </FILES>
     </ANALYSIS>
 </ANALYSIS_SET>

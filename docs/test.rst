@@ -39,8 +39,36 @@ Integration Testing
 ~~~~~~~~~~~~~~~~~~~
 
 Integration tests required a running backend, follow the instructions in :ref:`deploy` for development setup of backend.
-After the backend has been successfully setup run in backend repository root directory ``python tests/integration/run_tests.py``.
+After the backend has been successfully set up, run the following in the backend repository root directory: ``python tests/integration/run_tests.py``.
 This command will run a series of integration tests.
+
+To clean db before or after each integration tests run: ``python tests/integration/clean_db.py`` (``--tls``
+argument can be added if Mongodb is started via ``docker-compose-tls.yml``.
+
+
+Performance Testing
+~~~~~~~~~~~~~~~~~~~
+
+Performance tests utilize Locust load testing framework (install it first with ``pip install locust``).
+Performance tests also require a running backend, similar to integration tests. After the backend has been set up,
+running the following commands in the repository root directory will run different performance related tests in headless mode (all test data printed to terminal).
+
+.. code-block:: console
+
+    $ # run tests that post objects/folders
+    $ locust --tags post
+    $ # run tests that query for objects/folders
+    $ locust --tags query
+
+The configuration values for running performance tests are predefined in the ``locust.conf`` file in the repository root directory.
+All configuration options (`as defined here <https://docs.locust.io/en/stable/configuration.html#all-available-configuration-options>`_)
+can be overriden and new options can be added by either editing the current ``locust.conf`` file or running the test with additional tags, e.g.:
+
+.. code-block:: console
+
+    $ # this will run the post test for 30 seconds
+    $ locust --tags post --run-time 30s
+
 
 Frontend Testing
 ----------------

@@ -16,6 +16,9 @@ The application's inteded use is with `NeIC SDA (Sensitive Data Archive) <https:
 consists out of the box includes the `ENA (European Nucleotide Archive) <https://ena-docs.readthedocs.io>`_ metadata model,
 model which is used also by the  `European Genome-phenome Archive (EGA) <https://ega-archive.org/>`_.
 
+.. image:: /_static/metadata-app.svg
+   :alt: Metadata Submitter Architecture and Metadata Overview
+
 Out of the box the ``metadata-submitter`` offers:
 
 * flexible REST API for working with metadata; 
@@ -34,6 +37,7 @@ see :ref:`validate`.
 
    Backend <submitter>
    Frontend <frontend>
+   Metadata <metadata>
    Deployment <deploy>
    Testing  <test>
    Validator CLI Tool <validator>

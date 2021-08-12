@@ -602,20 +602,56 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_get_folders_with_1_folder(self):
         """Test get_folders() endpoint returns list with 1 folder."""
-        self.MockedFolderOperator().query_folders.return_value = self.test_folder
+        self.MockedFolderOperator().query_folders.return_value = (self.test_folder, 1)
         response = await self.client.get("/folders")
         self.MockedFolderOperator().query_folders.assert_called_once()
         self.assertEqual(response.status, 200)
-        self.assertEqual(await response.json(), {"folders": self.test_folder})
+        result = {
+            "page": {
+                "page": 1,
+                "size": 5,
+                "totalPages": 1,
+                "totalFolders": 1,
+            },
+            "folders": self.test_folder,
+        }
+        self.assertEqual(await response.json(), result)
 
     @unittest_run_loop
     async def test_get_folders_with_no_folders(self):
         """Test get_folders() endpoint returns empty list."""
-        self.MockedFolderOperator().query_folders.return_value = []
+        self.MockedFolderOperator().query_folders.return_value = ([], 0)
         response = await self.client.get("/folders")
         self.MockedFolderOperator().query_folders.assert_called_once()
         self.assertEqual(response.status, 200)
-        self.assertEqual(await response.json(), {"folders": []})
+        result = {
+            "page": {
+                "page": 1,
+                "size": 5,
+                "totalPages": 0,
+                "totalFolders": 0,
+            },
+            "folders": [],
+        }
+        self.assertEqual(await response.json(), result)
+
+    @unittest_run_loop
+    async def test_get_folders_with_bad_params(self):
+        """Test get_folders() with faulty pagination parameters."""
+        response = await self.client.get("/folders?page=ayylmao")
+        self.assertEqual(response.status, 400)
+        resp = await response.json()
+        self.assertEqual(resp["detail"], "page parameter must be a number, now it is ayylmao")
+
+        response = await self.client.get("/folders?page=1&per_page=-100")
+        self.assertEqual(response.status, 400)
+        resp = await response.json()
+        self.assertEqual(resp["detail"], "per_page parameter must be over 0")
+
+        response = await self.client.get("/folders?published=yes")
+        self.assertEqual(response.status, 400)
+        resp = await response.json()
+        self.assertEqual(resp["detail"], "'published' parameter must be either 'true' or 'false'")
 
     @unittest_run_loop
     async def test_get_folder_works(self):
@@ -674,6 +710,75 @@ class HandlersTestCase(AioHTTPTestCase):
         self.MockedUserOperator().read_user.assert_called_once()
         json_resp = await response.json()
         self.assertEqual(self.test_user, json_resp)
+
+    @unittest_run_loop
+    async def test_get_user_drafts_with_no_drafts(self):
+        """Test getting user drafts when user has no drafts."""
+        response = await self.client.get("/users/current?items=drafts")
+        self.assertEqual(response.status, 200)
+        self.MockedUserOperator().read_user.assert_called_once()
+        json_resp = await response.json()
+        result = {
+            "page": {
+                "page": 1,
+                "size": 5,
+                "totalPages": 0,
+                "totalDrafts": 0,
+            },
+            "drafts": [],
+        }
+        self.assertEqual(json_resp, result)
+
+    @unittest_run_loop
+    async def test_get_user_drafts_with_1_draft(self):
+        """Test getting user drafts when user has 1 draft."""
+        user = self.test_user
+        user["drafts"].append(self.metadata_json)
+        self.MockedUserOperator().read_user.return_value = user
+        response = await self.client.get("/users/current?items=drafts")
+        self.assertEqual(response.status, 200)
+        self.MockedUserOperator().read_user.assert_called_once()
+        json_resp = await response.json()
+        result = {
+            "page": {
+                "page": 1,
+                "size": 5,
+                "totalPages": 1,
+                "totalDrafts": 1,
+            },
+            "drafts": [self.metadata_json],
+        }
+        self.assertEqual(json_resp, result)
+
+    @unittest_run_loop
+    async def test_get_user_folder_list(self):
+        """Test get user with folders url returns a folder ID."""
+        self.MockedUserOperator().read_user.return_value = self.test_user
+        response = await self.client.get("/users/current?items=folders")
+        self.assertEqual(response.status, 200)
+        self.MockedUserOperator().read_user.assert_called_once()
+        json_resp = await response.json()
+        result = {
+            "page": {
+                "page": 1,
+                "size": 5,
+                "totalPages": 1,
+                "totalFolders": 1,
+            },
+            "folders": ["FOL12345678"],
+        }
+        self.assertEqual(json_resp, result)
+
+    @unittest_run_loop
+    async def test_get_user_items_with_bad_param(self):
+        """Test that error is raised if items parameter in query is not drafts or folders."""
+        response = await self.client.get("/users/current?items=wrong_thing")
+        self.assertEqual(response.status, 400)
+        self.MockedUserOperator().read_user.assert_called_once()
+        json_resp = await response.json()
+        self.assertEqual(
+            json_resp["detail"], "wrong_thing is a faulty item parameter. Should be either folders or drafts"
+        )
 
     @unittest_run_loop
     async def test_user_deletion_is_called(self):

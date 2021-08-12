@@ -152,22 +152,22 @@
                 "value": {
                     "type": "string",
                     "title": "Description"
+                },
+                "units": {
+                    "type": "string",
+                    "title": "Optional scientific units."
                 }
             }
         },
         "sequenceType": {
             "$id": "#/definitions/sequenceType",
             "type": "object",
-            "required": [
-                "assembly",
-                "sequence"
-            ],
             "properties": {
                 "assembly": {
                     "type": "object",
-                    "title": "Assembly",
-                    "properties": {
-                        "standard": {
+                    "title": "Reference assembly details",
+                    "oneOf": [
+                        {
                             "type": "object",
                             "title": "Standard",
                             "required": [
@@ -183,8 +183,32 @@
                                     "title": "Accession Id"
                                 }
                             }
+                        },
+                        {
+                            "type": "object",
+                            "title": "Custom",
+                            "required": [
+                                "description"
+                            ],
+                            "properties": {
+                                "label": {
+                                    "type": "string",
+                                    "title": "Label",
+                                    "description": "Text label to display for the link."
+                                },
+                                "url": {
+                                    "type": "string",
+                                    "title": "URL",
+                                    "description": "The internet service link (http(s), ftp) etc.",
+                                    "pattern": "^(https?|ftp)://"
+                                },
+                                "description": {
+                                    "type": "string",
+                                    "title": "Description"
+                                }
+                            }
                         }
-                    }
+                    ]
                 },
                 "sequence": {
                     "type": "array",
@@ -209,13 +233,57 @@
                 }
             }
         },
+        "identifiers": {
+            "$id": "#/definitions/identifiers",
+            "title": "Identifiers",
+            "type": "object",
+            "properties": {
+                "primaryId": {
+                    "type": "string",
+                    "title": "Primary Id"
+                },
+                "secondaryId": {
+                    "type": "string",
+                    "title": "Secondary Id"
+                },
+                "uuid": {
+                    "type": "string",
+                    "title": "UUID"
+                },
+                "externalId": {
+                    "type": "object",
+                    "title": "External Id",
+                    "properties": {
+                        "namespace": {
+                            "type": "string",
+                            "title": "Namespace"
+                        },
+                        "value": {
+                            "type": "string",
+                            "title": "Identifier"
+                        }
+                    }
+                },
+                "submitterId": {
+                    "type": "object",
+                    "title": "Submitter Id",
+                    "properties": {
+                        "namespace": {
+                            "type": "string",
+                            "title": "Namespace"
+                        },
+                        "value": {
+                            "type": "string",
+                            "title": "Identifier"
+                        }
+                    }
+                }
+            }
+        },
         "reference": {
             "$id": "#/definitions/reference",
             "additionalProperties": true,
             "type": "object",
-            "required": [
-                "accessionId"
-            ],
             "properties": {
                 "label": {
                     "type": "string",
@@ -234,33 +302,7 @@
                     "title": "Accession Id"
                 },
                 "identifiers": {
-                    "type": "object",
-                    "title": "Identifiers",
-                    "properties": {
-                        "primaryId": {
-                            "type": "string",
-                            "title": "Primary Id"
-                        },
-                        "submitterId": {
-                            "type": "object",
-                            "title": "Submitter Id",
-                            "required": [
-                                "namespace",
-                                "value"
-                            ],
-                            "additionalProperties": true,
-                            "properties": {
-                                "namespace": {
-                                    "type": "string",
-                                    "title": "Namespace"
-                                },
-                                "value": {
-                                    "type": "string",
-                                    "title": "Value"
-                                }
-                            }
-                        }
-                    }
+                    "$ref": "#/definitions/identifiers"
                 }
             }
         },
@@ -308,7 +350,9 @@
                         "unlocalised_list",
                         "info",
                         "manifest",
-                        "other"
+                        "other",
+                        "csi",
+                        "bcf_aggregate"
                     ]
                 },
                 "checksumMethod": {
@@ -316,7 +360,7 @@
                     "title": "Checksum Method",
                     "enum": [
                         "MD5",
-                        "SHA256"
+                        "SHA-256"
                     ]
                 },
                 "checksum": {
@@ -324,98 +368,37 @@
                     "title": "Checksum"
                 }
             }
-        }
-    },
-    "type": "object",
-    "description": "A SRA analysis object captures sequence analysis results including sequence alignments, sequence variations and sequence annotations.",
-    "required": [
-        "analysisType",
-        "title"
-    ],
-    "properties": {
-        "title": {
-            "title": "Analysis Title",
-            "description": "Short text that can be used to define submissions in searches or in displays.",
-            "type": "string"
         },
-        "description": {
-            "title": "Analysis Description",
-            "description": "Free-form text describing the data sets.",
-            "type": "string"
-        },
-        "experimentRef": {
-            "title": "Experiment Identifier (Accession ID or title)",
-            "description": "Identifies the associated experiment.",
-            "$ref": "#/definitions/reference"
-        },
-        "studyRef": {
-            "title": "Study Identifier (Accession ID or title)",
-            "description": "Identifies the associated study.",
-            "$ref": "#/definitions/reference"
-        },
-        "sampleRef": {
-            "title": "Sample Identifier (Accession ID or title)",
-            "description": "Identifies the associated sample.",
-            "$ref": "#/definitions/reference"
-        },
-        "runRef": {
-            "title": "Run Identifier (Accession ID or title)",
-            "description": "Identifies the associated run.",
-            "$ref": "#/definitions/reference"
-        },
-        "analysisRef": {
-            "title": "Analysis Identifier (Accession ID or title)",
-            "description": "Identifies the associated analysis.",
-            "$ref": "#/definitions/reference"
-        },
-        "analysisType": {
+        "referenceAlignment": {
+            "$id": "#/definitions/referenceAlignment",
             "type": "object",
-            "title": "Analysis Type",
-            "additionalProperties": true,
+            "title": "Reference Alignment",
+            "required": [
+                "referenceAlignment"
+            ],
             "properties": {
                 "referenceAlignment": {
                     "type": "object",
                     "title": "Reference Alignment",
-                    "additionalProperties": true,
-                    "properties": {
-                        "sequence": {
-                            "type": "array",
-                            "title": "Sequence",
-                            "additionalItems": true,
-                            "items": {
-                                "type": "object",
-                                "required": [
-                                    "accessionId"
-                                ],
-                                "properties": {
-                                    "label": {
-                                        "type": "string",
-                                        "title": "Label"
-                                    },
-                                    "refname": {
-                                        "type": "string",
-                                        "title": "Reference Name"
-                                    },
-                                    "accessionId": {
-                                        "type": "string",
-                                        "title": "Accession Id"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
+                    "$ref": "#/definitions/sequenceType"
+                }
+            }
+        },
+        "sequenceAssembly": {
+            "$id": "#/definitions/sequenceAssembly",
+            "type": "object",
+            "title": "Sequence Assembly",
+            "required": [
+                "sequenceAssembly"
+            ],
+            "properties": {
                 "sequenceAssembly": {
                     "type": "object",
-                    "title": "SequenceAssembly",
+                    "title": "Sequence Assembly",
                     "properties": {
                         "name": {
                             "type": "string",
                             "title": "Name"
-                        },
-                        "partial": {
-                            "type": "boolean",
-                            "title": "Partial"
                         },
                         "coverage": {
                             "type": "string",
@@ -432,17 +415,541 @@
                         "minGapLength": {
                             "type": "number",
                             "title": "MinGapLength"
+                        },
+                        "molType": {
+                            "type": "string",
+                            "title": "MOL Type",
+                            "enum": [
+                                "genomic DNA",
+                                "genomic RNA",
+                                "viral cRNA"
+                            ]
+                        },
+                        "authors": {
+                            "type": "string",
+                            "title": "Authors"
+                        },
+                        "address": {
+                            "type": "string",
+                            "title": "Address"
+                        },
+                        "type": {
+                            "type": "string",
+                            "title": "Type of Sequence Assembly",
+                            "enum": [
+                                "clone or isolate",
+                                "primary metagenome",
+                                "binned metagenome",
+                                "Metagenome-Assembled Genome (MAG)",
+                                "Environmental Single-Cell Amplified Genome (SAG)",
+                                "COVID-19 outbreak",
+                                "clinical isolate assembly"
+                            ]
+                        },
+                        "tpa": {
+                            "type": "boolean",
+                            "title": "TPA"
+                        },
+                        "partial": {
+                            "type": "boolean",
+                            "title": "Partial"
                         }
                     }
-                },
+                }
+            }
+        },
+        "sequenceVariation": {
+            "$id": "#/definitions/sequenceVariation",
+            "type": "object",
+            "title": "Sequence Variation",
+            "required": [
+                "sequenceVariation"
+            ],
+            "properties": {
                 "sequenceVariation": {
+                    "type": "object",
                     "title": "Sequence Variation",
+                    "properties": {
+                        "program": {
+                            "type": "string",
+                            "title": "Program"
+                        },
+                        "platform": {
+                            "type": "string",
+                            "title": "Platform"
+                        },
+                        "experimentType": {
+                            "type": "string",
+                            "title": "Experiment Type",
+                            "enum": [
+                                "Whole genome sequencing",
+                                "Whole transcriptome sequencing",
+                                "Exome sequencing",
+                                "Genotyping by array",
+                                "transcriptomics",
+                                "Curation",
+                                "Genotyping by sequencing",
+                                "Target sequencing"
+                            ]
+                        },
+                        "imputation": {
+                            "type": "boolean",
+                            "title": "imputation"
+                        }
+                    },
+                    "assembly": {
+                        "type": "object",
+                        "title": "Reference assembly details",
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "title": "Standard",
+                                "properties": {
+                                    "refname": {
+                                        "type": "string",
+                                        "title": "Reference name"
+                                    },
+                                    "accessionId": {
+                                        "type": "string",
+                                        "title": "Accession Id"
+                                    }
+                                }
+                            },
+                            {
+                                "type": "object",
+                                "title": "Custom",
+                                "properties": {
+                                    "label": {
+                                        "type": "string",
+                                        "title": "Label",
+                                        "description": "Text label to display for the link."
+                                    },
+                                    "url": {
+                                        "type": "string",
+                                        "title": "URL",
+                                        "description": "The internet service link (http(s), ftp) etc.",
+                                        "pattern": "^(https?|ftp)://"
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "title": "Description"
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    "sequence": {
+                        "type": "array",
+                        "title": "Sequence",
+                        "items": {
+                            "type": "object",
+                            "required": [
+                                "accessionId"
+                            ],
+                            "additionalProperties": true,
+                            "properties": {
+                                "label": {
+                                    "type": "string",
+                                    "title": "Label"
+                                },
+                                "accessionId": {
+                                    "type": "string",
+                                    "title": "Accession Id"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "sequenceFlatFile": {
+            "$id": "#/definitions/sequenceFlatFile",
+            "type": "object",
+            "title": "Sequence Flat File",
+            "required": [
+                "sequenceFlatFile"
+            ],
+            "properties": {
+                "sequenceFlatFile": {
+                    "type": "object",
+                    "title": "Sequence Flat File",
+                    "properties": {
+                        "authors": {
+                            "type": "string",
+                            "title": "Authors"
+                        },
+                        "address": {
+                            "type": "string",
+                            "title": "Address"
+                        }
+                    }
+                }
+            }
+        },
+        "sequenceAnnotation": {
+            "$id": "#/definitions/sequenceAnnotation",
+            "type": "object",
+            "title": "Sequence Annotation",
+            "required": [
+                "sequenceAnnotation"
+            ],
+            "properties": {
+                "sequenceAnnotation": {
+                    "type": "object",
+                    "title": "Sequence Annotation",
                     "$ref": "#/definitions/sequenceType"
-                },
+                }
+            }
+        },
+        "processedReads": {
+            "$id": "#/definitions/processedReads",
+            "type": "object",
+            "title": "Processed Reads",
+            "required": [
+                "processedReads"
+            ],
+            "properties": {
                 "processedReads": {
+                    "type": "object",
                     "title": "Processed Reads",
                     "$ref": "#/definitions/sequenceType"
                 }
+            }
+        },
+        "referenceSequence": {
+            "$id": "#/definitions/referenceSequence",
+            "type": "object",
+            "title": "Reference Sequence",
+            "required": [
+                "referenceSequence"
+            ],
+            "properties": {
+                "referenceSequence": {
+                    "type": "object",
+                    "title": "Reference Sequence",
+                    "additionalProperties": true,
+                    "properties": {
+                        "description": {
+                            "type": "string",
+                            "title": "Sample Phenotype Description"
+                        }
+                    }
+                }
+            }
+        },
+        "samplePhenotype": {
+            "$id": "#/definitions/samplePhenotype",
+            "type": "object",
+            "title": "Sample Phenotype",
+            "required": [
+                "samplePhenotype"
+            ],
+            "properties": {
+                "samplePhenotype": {
+                    "type": "object",
+                    "title": "Sample Phenotype",
+                    "additionalProperties": true,
+                    "properties": {
+                        "description": {
+                            "type": "string",
+                            "title": "Sample Phenotype Description"
+                        }
+                    }
+                }
+            }
+        },
+        "genomeMap": {
+            "$id": "#/definitions/genomeMap",
+            "type": "object",
+            "title": "Genome Map",
+            "required": [
+                "genomeMap"
+            ],
+            "properties": {
+                "genomeMap": {
+                    "type": "object",
+                    "title": "Genome Map",
+                    "properties": {
+                        "program": {
+                            "type": "string",
+                            "title": "Program"
+                        },
+                        "description": {
+                            "type": "string",
+                            "title": "Description"
+                        },
+                        "platform": {
+                            "type": "string",
+                            "title": "Platform",
+                            "enum": [
+                                "BioNano"
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "amrAntibiogram": {
+            "$id": "#/definitions/amrAntibiogram",
+            "type": "object",
+            "title": "AMR Antibiogram",
+            "required": [
+                "amrAntibiogram"
+            ],
+            "properties": {
+                "amrAntibiogram": {
+                    "type": "object",
+                    "title": "AMR Antibiogram",
+                    "additionalProperties": true,
+                    "properties": {
+                        "description": {
+                            "type": "string",
+                            "title": "AMR Antibiogram Description"
+                        }
+                    }
+                }
+            }
+        },
+        "pathogenAnalysis": {
+            "$id": "#/definitions/pathogenAnalysis",
+            "type": "object",
+            "title": "Pathogen Analysis",
+            "required": [
+                "pathogenAnalysis"
+            ],
+            "properties": {
+                "pathogenAnalysis": {
+                    "type": "object",
+                    "title": "Pathogen Analysis",
+                    "additionalProperties": true,
+                    "properties": {
+                        "description": {
+                            "type": "string",
+                            "title": "Pathogen Analysis Description"
+                        }
+                    }
+                }
+            }
+        },
+        "transcriptomeAssembly": {
+            "$id": "#/definitions/transcriptomeAssembly",
+            "type": "object",
+            "title": "Transcriptome Assembly",
+            "required": [
+                "transcriptomeAssembly"
+            ],
+            "properties": {
+                "transcriptomeAssembly": {
+                    "type": "object",
+                    "title": "Transcriptome Assembly",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "title": "Name"
+                        },
+                        "program": {
+                            "type": "string",
+                            "title": "Program"
+                        },
+                        "platform": {
+                            "type": "string",
+                            "title": "Platform"
+                        },
+                        "authors": {
+                            "type": "string",
+                            "title": "Authors"
+                        },
+                        "address": {
+                            "type": "string",
+                            "title": "Address"
+                        },
+                        "type": {
+                            "type": "string",
+                            "title": "Type of Transcriptome Assembly",
+                            "description": "An assembly of reads from an isolated cultured organism, tissues, cells or a cell line. An original metatranscriptome assembly from a sampled biome or collection of sampled biomes without attempt to separate taxa.",
+                            "enum": [
+                                "isolate",
+                                "metatranscriptome"
+                            ]
+                        },
+                        "tpa": {
+                            "type": "boolean",
+                            "title": "TPA"
+                        }
+                    }
+                }
+            }
+        },
+        "taxonomicRefrenceSet": {
+            "$id": "#/definitions/taxonomicRefrenceSet",
+            "type": "object",
+            "title": "Taxonomic Refrence Set",
+            "required": [
+                "taxonomicRefrenceSet"
+            ],
+            "properties": {
+                "taxonomicRefrenceSet": {
+                    "type": "object",
+                    "title": "Taxonomic Refrence Set",
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "title": "Name"
+                        },
+                        "taxonomySystem": {
+                            "type": "string",
+                            "title": "Taxonomy System"
+                        },
+                        "taxonomySystemVersion": {
+                            "type": "string",
+                            "title": "Taxonomy System Version"
+                        },
+                        "customFields": {
+                            "type": "array",
+                            "title": "Custom Fields",
+                            "items": {
+                                "type": "object",
+                                "title": "Field",
+                                "additionalProperties": true,
+                                "properties": {
+                                    "name": {
+                                        "type": "string",
+                                        "title": "Name"
+                                    },
+                                    "description": {
+                                        "type": "string",
+                                        "title": "Description"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "assemblyAnnotation": {
+            "$id": "#/definitions/assemblyAnnotation",
+            "type": "object",
+            "title": "Assembly Annotation",
+            "required": [
+                "assemblyAnnotation"
+            ],
+            "properties": {
+                "assemblyAnnotation": {
+                    "type": "object",
+                    "title": "Assembly Annotation",
+                    "$ref": "#/definitions/sequenceType"
+                }
+            }
+        }
+    },
+    "type": "object",
+    "description": "A SRA analysis object captures sequence analysis results including sequence alignments, sequence variations and sequence annotations.",
+    "required": [
+        "analysisType"
+    ],
+    "properties": {
+        "title": {
+            "title": "Analysis Title",
+            "description": "Short text that can be used to define submissions in searches or in displays.",
+            "type": "string"
+        },
+        "analysisType": {
+            "type": "object",
+            "title": "Analysis Type",
+            "oneOf": [
+                {
+                    "$ref": "#/definitions/referenceAlignment"
+                },
+                {
+                    "$ref": "#/definitions/sequenceVariation"
+                },
+                {
+                    "$ref": "#/definitions/sequenceAssembly"
+                },
+                {
+                    "$ref": "#/definitions/sequenceFlatFile"
+                },
+                {
+                    "$ref": "#/definitions/sequenceAnnotation"
+                },
+                {
+                    "$ref": "#/definitions/referenceSequence"
+                },
+                {
+                    "$ref": "#/definitions/samplePhenotype"
+                },
+                {
+                    "$ref": "#/definitions/processedReads"
+                },
+                {
+                    "$ref": "#/definitions/amrAntibiogram"
+                },
+                {
+                    "$ref": "#/definitions/pathogenAnalysis"
+                },
+                {
+                    "$ref": "#/definitions/transcriptomeAssembly"
+                },
+                {
+                    "$ref": "#/definitions/taxonomicRefrenceSet"
+                },
+                {
+                    "$ref": "#/definitions/assemblyAnnotation"
+                }
+            ]
+        },
+        "analysisDate": {
+            "title": "Analysis Date",
+            "description": "Date when the analysis took place",
+            "type": "string",
+            "format": "date-time"
+        },
+        "analysisCenter": {
+            "title": "Analysis Center",
+            "description": "If applicable, the name of the contract sequencing center that executed the analysis.",
+            "type": "string"
+        },
+        "description": {
+            "title": "Analysis Description",
+            "description": "Free-form text describing the data sets.",
+            "type": "string"
+        },
+        "studyRef": {
+            "title": "Study Reference",
+            "description": "Identifies the associated study.",
+            "$ref": "#/definitions/reference"
+        },
+        "experimentRef": {
+            "title": "Experiment Reference",
+            "description": "Identifies the associated experiment.",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/reference"
+            }
+        },
+        "sampleRef": {
+            "title": "Sample Reference",
+            "description": "Identifies the associated sample.",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/reference"
+            }
+        },
+        "runRef": {
+            "title": "Run Reference",
+            "description": "Identifies the associated run.",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/reference"
+            }
+        },
+        "analysisRef": {
+            "title": "Analysis Reference",
+            "description": "Identifies the associated analysis.",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/reference"
             }
         },
         "files": {

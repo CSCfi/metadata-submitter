@@ -40,6 +40,26 @@ class RESTAPIHandler:
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
 
+    def _get_page_param(self, req: Request, name: str, default: int) -> int:
+        """Handle page parameter value extracting.
+
+        :param req: GET Request
+        :param param_name: Name of the parameter
+        :param default: Default value in case parameter not specified in request
+        :returns: Page parameter value
+        """
+        try:
+            param = int(req.query.get(name, default))
+        except ValueError:
+            reason = f"{name} parameter must be a number, now it is {req.query.get(name)}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        if param < 1:
+            reason = f"{name} parameter must be over 0"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        return param
+
     async def _handle_check_ownedby_user(self, req: Request, collection: str, accession_id: str) -> bool:
         """Check if object belongs to user.
 
@@ -183,11 +203,7 @@ class RESTAPIHandler:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-
-class ObjectAPIHandler(RESTAPIHandler):
-    """API Handler for Objects."""
-
-    def _header_links(self, url: str, page: int, size: int, total_objects: int) -> CIMultiDict[str]:
+    async def _header_links(self, url: str, page: int, size: int, total_objects: int) -> CIMultiDict[str]:
         """Create link header for pagination.
 
         :param url: base url for request
@@ -207,6 +223,10 @@ class ObjectAPIHandler(RESTAPIHandler):
         LOG.debug("Link headers created")
         return link_headers
 
+
+class ObjectAPIHandler(RESTAPIHandler):
+    """API Handler for Objects."""
+
     async def _handle_query(self, req: Request) -> Response:
         """Handle query results.
 
@@ -219,22 +239,8 @@ class ObjectAPIHandler(RESTAPIHandler):
             reason = "xml-formatted query results are not supported"
             raise web.HTTPBadRequest(reason=reason)
 
-        def get_page_param(param_name: str, default: int) -> int:
-            """Handle page parameter value extracting."""
-            try:
-                param = int(req.query.get(param_name, default))
-            except ValueError:
-                reason = f"{param_name} must be a number, now it is {req.query.get(param_name)}"
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
-            if param < 1:
-                reason = f"{param_name} must over 1"
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
-            return param
-
-        page = get_page_param("page", 1)
-        per_page = get_page_param("per_page", 10)
+        page = self._get_page_param(req, "page", 1)
+        per_page = self._get_page_param(req, "per_page", 10)
         db_client = req.app["db_client"]
 
         filter_list = await self._handle_user_objects_collection(req, collection)
@@ -254,7 +260,7 @@ class ObjectAPIHandler(RESTAPIHandler):
             }
         )
         url = f"{req.scheme}://{req.host}{req.path}"
-        link_headers = self._header_links(url, page_num, per_page, total_objects)
+        link_headers = await self._header_links(url, page_num, per_page, total_objects)
         LOG.debug(f"Pagination header links: {link_headers}")
         LOG.info(f"Querying for objects in {collection} resulted in {total_objects} objects ")
         return web.Response(
@@ -523,24 +529,54 @@ class FolderAPIHandler(RESTAPIHandler):
                             raise web.HTTPBadRequest(reason=reason)
 
     async def get_folders(self, req: Request) -> Response:
-        """Get all possible object folders from database.
+        """Get a set of folders owned by the user with pagination values.
 
         :param req: GET Request
         :returns: JSON list of folders available for the user
         """
+        page = self._get_page_param(req, "page", 1)
+        per_page = self._get_page_param(req, "per_page", 5)
         db_client = req.app["db_client"]
 
         user_operator = UserOperator(db_client)
-
         current_user = get_session(req)["user_info"]
         user = await user_operator.read_user(current_user)
 
-        operator = FolderOperator(db_client)
-        folders = await operator.query_folders({"folderId": {"$in": user["folders"]}})
+        folder_query = {"folderId": {"$in": user["folders"]}}
+        # Check if only published or draft folders are requestsed
+        if "published" in req.query:
+            pub_param = req.query.get("published", "").title()
+            if pub_param in ["True", "False"]:
+                folder_query["published"] = {"$eq": eval(pub_param)}
+            else:
+                reason = "'published' parameter must be either 'true' or 'false'"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+        folder_operator = FolderOperator(db_client)
+        folders, total_folders = await folder_operator.query_folders(folder_query, page, per_page)
 
-        body = json.dumps({"folders": folders})
-        LOG.info(f"GET folders. Retrieved {len(folders)} folders.")
-        return web.Response(body=body, status=200, content_type="application/json")
+        result = json.dumps(
+            {
+                "page": {
+                    "page": page,
+                    "size": per_page,
+                    "totalPages": ceil(total_folders / per_page),
+                    "totalFolders": total_folders,
+                },
+                "folders": folders,
+            }
+        )
+
+        url = f"{req.scheme}://{req.host}{req.path}"
+        link_headers = await self._header_links(url, page, per_page, total_folders)
+        LOG.debug(f"Pagination header links: {link_headers}")
+        LOG.info(f"Querying for user's folders resulted in {total_folders} folders")
+        return web.Response(
+            body=result,
+            status=200,
+            headers=link_headers,
+            content_type="application/json",
+        )
 
     async def post_folder(self, req: Request) -> Response:
         """Save object folder to database.
@@ -738,7 +774,7 @@ class UserAPIHandler(RESTAPIHandler):
 
         :param req: GET request
         :raises: HTTPUnauthorized if not current user
-        :returns: JSON response containing user object
+        :returns: JSON response containing user object or list of user drafts or user folders by id
         """
         user_id = req.match_info["userId"]
         if user_id != "current":
@@ -749,9 +785,21 @@ class UserAPIHandler(RESTAPIHandler):
 
         current_user = get_session(req)["user_info"]
         user = await operator.read_user(current_user)
-
         LOG.info(f"GET user with ID {user_id} was successful.")
-        return web.Response(body=json.dumps(user), status=200, content_type="application/json")
+
+        item_type = req.query.get("items", "").lower()
+        if item_type:
+            # Return only list of drafts or list of folder IDs owned by the user
+            result, link_headers = await self._get_user_items(req, user, item_type)
+            return web.Response(
+                body=json.dumps(result),
+                status=200,
+                headers=link_headers,
+                content_type="application/json",
+            )
+        else:
+            # Return whole user object if drafts or folders are not specified in query
+            return web.Response(body=json.dumps(user), status=200, content_type="application/json")
 
     async def patch_user(self, req: Request) -> Response:
         """Update user object with a specific user ID.
@@ -824,6 +872,49 @@ class UserAPIHandler(RESTAPIHandler):
         )
         LOG.debug("Logged out user ")
         raise response
+
+    async def _get_user_items(self, req: Request, user: Dict, item_type: str) -> Tuple[Dict, CIMultiDict[str]]:
+        """Get draft templates owned by the user with pagination values.
+
+        :param req: GET request
+        :param user: User object
+        :param item_type: Name of the items ("drafts" or "folders")
+        :raises: HTTPUnauthorized if not current user
+        :returns: Paginated list of user draft templates and link header
+        """
+        # Check item_type parameter is not faulty
+        if item_type not in ["drafts", "folders"]:
+            reason = f"{item_type} is a faulty item parameter. Should be either folders or drafts"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        page = self._get_page_param(req, "page", 1)
+        per_page = self._get_page_param(req, "per_page", 5)
+
+        # Get the specific page of drafts
+        total_items = len(user[item_type])
+        if total_items <= per_page:
+            items = user[item_type]
+        else:
+            lower = (page - 1) * per_page
+            upper = page * per_page
+            items = user[item_type][lower:upper]
+
+        result = {
+            "page": {
+                "page": page,
+                "size": per_page,
+                "totalPages": ceil(total_items / per_page),
+                "total" + item_type.title(): total_items,
+            },
+            item_type: items,
+        }
+
+        url = f"{req.scheme}://{req.host}{req.path}"
+        link_headers = await self._header_links(url, page, per_page, total_items)
+        LOG.debug(f"Pagination header links: {link_headers}")
+        LOG.info(f"Querying for user's {item_type} resulted in {total_items} {item_type}")
+        return result, link_headers
 
 
 class SubmissionAPIHandler:

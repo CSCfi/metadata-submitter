@@ -200,16 +200,64 @@
                 "value": {
                     "type": "string",
                     "title": "Description"
+                },
+                "units": {
+                    "type": "string",
+                    "title": "Optional scientific units."
+                }
+            }
+        },
+        "identifiers": {
+            "$id": "#/definitions/identifiers",
+            "title": "Identifiers",
+            "type": "object",
+            "properties": {
+                "primaryId": {
+                    "type": "string",
+                    "title": "Primary Id"
+                },
+                "secondaryId": {
+                    "type": "string",
+                    "title": "Secondary Id"
+                },
+                "uuid": {
+                    "type": "string",
+                    "title": "UUID"
+                },
+                "externalId": {
+                    "type": "object",
+                    "title": "External Id",
+                    "properties": {
+                        "namespace": {
+                            "type": "string",
+                            "title": "Namespace"
+                        },
+                        "value": {
+                            "type": "string",
+                            "title": "Identifier"
+                        }
+                    }
+                },
+                "submitterId": {
+                    "type": "object",
+                    "title": "Submitter Id",
+                    "properties": {
+                        "namespace": {
+                            "type": "string",
+                            "title": "Namespace"
+                        },
+                        "value": {
+                            "type": "string",
+                            "title": "Identifier"
+                        }
+                    }
                 }
             }
         },
         "reference": {
             "$id": "#/definitions/reference",
-            "type": "object",
             "additionalProperties": true,
-            "required": [
-                "accessionId"
-            ],
+            "type": "object",
             "properties": {
                 "label": {
                     "type": "string",
@@ -228,33 +276,7 @@
                     "title": "Accession Id"
                 },
                 "identifiers": {
-                    "type": "object",
-                    "title": "Identifiers",
-                    "properties": {
-                        "primaryId": {
-                            "type": "string",
-                            "title": "Primary Id"
-                        },
-                        "submitterId": {
-                            "type": "object",
-                            "title": "Submitter Id",
-                            "required": [
-                                "namespace",
-                                "value"
-                            ],
-                            "additionalProperties": true,
-                            "properties": {
-                                "namespace": {
-                                    "type": "string",
-                                    "title": "Namespace"
-                                },
-                                "value": {
-                                    "type": "string",
-                                    "title": "Value"
-                                }
-                            }
-                        }
-                    }
+                    "$ref": "#/definitions/identifiers"
                 }
             }
         }
@@ -263,8 +285,7 @@
     "description": "Describes an object that contains data access policy information.",
     "required": [
         "dacRef",
-        "policy",
-        "title"
+        "policy"
     ],
     "properties": {
         "title": {
@@ -273,7 +294,7 @@
             "type": "string"
         },
         "dacRef": {
-            "title": "Data Access Committee Identifier (Accession ID or title)",
+            "title": "Data Access Committee Reference",
             "description": "Identifies the data access committee to which this policy pertains.",
             "$ref": "#/definitions/reference"
         },
@@ -318,9 +339,12 @@
             }
         },
         "dataUses": {
+            "type": "array",
             "description": "Data use ontologies (DUO) related to the policy",
-            "$ref": "#/definitions/dataUseType",
-            "title": "Data Use"
+            "items": {
+                "$ref": "#/definitions/dataUseType"
+            },
+            "title": "Data Use Ontology"
         },
         "policyAttributes": {
             "type": "array",

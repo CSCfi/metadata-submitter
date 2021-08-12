@@ -9,7 +9,7 @@ ARG BRANCH=master
 RUN git clone -b ${BRANCH} https://github.com/CSCfi/metadata-submitter-frontend.git
 
 WORKDIR /metadata-submitter-frontend
-RUN npm install -g npm@7.6.0 \
+RUN npm install -g npm@7.20.0 \
     && npx --quiet pinst --disable \
     && npm install --production \
     && npm run build --production
