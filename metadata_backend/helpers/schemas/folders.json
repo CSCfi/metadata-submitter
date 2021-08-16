@@ -18,6 +18,10 @@
       "type": "string",
       "title": "Folder Description"
     },
+    "dateCreated": {
+      "type": "int",
+      "title": "Unix time stamp of creation, used for indexing"
+    },
     "published": {
       "type": "boolean",
       "title": "Published Folder"
