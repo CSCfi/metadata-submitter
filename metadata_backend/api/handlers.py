@@ -13,6 +13,7 @@ from multidict import CIMultiDict
 from motor.motor_asyncio import AsyncIOMotorClient
 from multidict import MultiDict, MultiDictProxy
 from xmlschema import XMLSchemaException
+from distutils.util import strtobool
 
 from .middlewares import decrypt_cookie, get_session
 
@@ -547,11 +548,12 @@ class FolderAPIHandler(RESTAPIHandler):
         if "published" in req.query:
             pub_param = req.query.get("published", "").title()
             if pub_param in ["True", "False"]:
-                folder_query["published"] = {"$eq": eval(pub_param)}
+                folder_query["published"] = {"$eq": bool(strtobool(pub_param))}
             else:
                 reason = "'published' parameter must be either 'true' or 'false'"
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
+
         folder_operator = FolderOperator(db_client)
         folders, total_folders = await folder_operator.query_folders(folder_query, page, per_page)
 
@@ -780,17 +782,13 @@ class UserAPIHandler(RESTAPIHandler):
         if user_id != "current":
             LOG.info(f"User ID {user_id} was requested")
             raise web.HTTPUnauthorized(reason="Only current user retrieval is allowed")
-        db_client = req.app["db_client"]
-        operator = UserOperator(db_client)
 
         current_user = get_session(req)["user_info"]
-        user = await operator.read_user(current_user)
-        LOG.info(f"GET user with ID {user_id} was successful.")
 
         item_type = req.query.get("items", "").lower()
         if item_type:
             # Return only list of drafts or list of folder IDs owned by the user
-            result, link_headers = await self._get_user_items(req, user, item_type)
+            result, link_headers = await self._get_user_items(req, current_user, item_type)
             return web.Response(
                 body=json.dumps(result),
                 status=200,
@@ -799,6 +797,10 @@ class UserAPIHandler(RESTAPIHandler):
             )
         else:
             # Return whole user object if drafts or folders are not specified in query
+            db_client = req.app["db_client"]
+            operator = UserOperator(db_client)
+            user = await operator.read_user(current_user)
+            LOG.info(f"GET user with ID {user_id} was successful.")
             return web.Response(body=json.dumps(user), status=200, content_type="application/json")
 
     async def patch_user(self, req: Request) -> Response:
@@ -891,14 +893,14 @@ class UserAPIHandler(RESTAPIHandler):
         page = self._get_page_param(req, "page", 1)
         per_page = self._get_page_param(req, "per_page", 5)
 
-        # Get the specific page of drafts
-        total_items = len(user[item_type])
-        if total_items <= per_page:
-            items = user[item_type]
-        else:
-            lower = (page - 1) * per_page
-            upper = page * per_page
-            items = user[item_type][lower:upper]
+        db_client = req.app["db_client"]
+        operator = UserOperator(db_client)
+        user_id = req.match_info["userId"]
+
+        query = {"userId": user}
+
+        items, total_items = await operator.filter_user(query, item_type, page, per_page)
+        LOG.info(f"GET user with ID {user_id} was successful.")
 
         result = {
             "page": {

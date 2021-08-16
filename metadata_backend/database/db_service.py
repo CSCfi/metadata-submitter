@@ -198,7 +198,10 @@ class DBService:
         """
         id_key = f"{collection}Id" if (collection in ["folder", "user"]) else "accessionId"
         find_by_id = {id_key: accession_id}
-        append_op = {"$addToSet": data_to_be_addded}
+        # push vs addtoSet
+        # push allows us to specify the postion but it does not check the items are unique
+        # addToSet cannot easily specify position
+        append_op = {"$push": data_to_be_addded}
         result = await self.database[collection].find_one_and_update(
             find_by_id, append_op, projection={"_id": False}, return_document=ReturnDocument.AFTER
         )
