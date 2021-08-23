@@ -773,7 +773,7 @@ async def test_adding_doi_info_to_folder_works(sess):
         assert res["doiInfo"] == doi_data, "folder doi does not match"
 
     # Test that an incomplete DOI object fails to patch into the folder
-    patch_add_bad_doi = [{"op": "replace", "path": "/doiInfo", "value": {"identifier": {}}}]
+    patch_add_bad_doi = [{"op": "add", "path": "/doiInfo", "value": {"identifier": {}}}]
     async with sess.patch(f"{folders_url}/{folder_id}", data=json.dumps(patch_add_bad_doi)) as resp:
         LOG.debug(f"Tried updating folder {folder_id}")
         assert resp.status == 400, "HTTP Status code error"

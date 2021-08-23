@@ -489,7 +489,7 @@ class FolderAPIHandler(RESTAPIHandler):
         """
         _required_paths = ["/name", "/description"]
         _required_values = ["schema", "accessionId"]
-        _arrays = ["/metadataObjects/-", "/drafts/-"]
+        _arrays = ["/metadataObjects/-", "/drafts/-", "/doiInfo"]
         _tags = re.compile("^/(metadataObjects|drafts)/[0-9]*/(tags)$")
 
         for op in patch_ops:
@@ -501,7 +501,7 @@ class FolderAPIHandler(RESTAPIHandler):
                     raise web.HTTPBadRequest(reason=reason)
                 pass
             else:
-                if all(i not in op["path"] for i in _required_paths + _arrays + ["/doiInfo"]):
+                if all(i not in op["path"] for i in _required_paths + _arrays):
                     reason = f"Request contains '{op['path']}' key that cannot be updated to folders."
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
@@ -513,7 +513,7 @@ class FolderAPIHandler(RESTAPIHandler):
                     reason = f"{op['op']} on {op['path']}; replacing all objects is not allowed."
                     LOG.error(reason)
                     raise web.HTTPUnauthorized(reason=reason)
-                if op["path"] in _arrays:
+                if op["path"] in _arrays and op["path"] != "/doiInfo":
                     _ops = op["value"] if isinstance(op["value"], list) else [op["value"]]
                     for item in _ops:
                         if not all(key in item.keys() for key in _required_values):
