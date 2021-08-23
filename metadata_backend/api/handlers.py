@@ -501,7 +501,7 @@ class FolderAPIHandler(RESTAPIHandler):
                     raise web.HTTPBadRequest(reason=reason)
                 pass
             else:
-                if all(i not in op["path"] for i in _required_paths + _arrays + ["/doi"]):
+                if all(i not in op["path"] for i in _required_paths + _arrays + ["/doiInfo"]):
                     reason = f"Request contains '{op['path']}' key that cannot be updated to folders."
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
@@ -645,9 +645,9 @@ class FolderAPIHandler(RESTAPIHandler):
 
         # Validate against folders schema if DOI is being added
         for op in patch_ops:
-            if op["path"] == "/doi":
+            if op["path"] == "/doiInfo":
                 curr_folder = await operator.read_folder(folder_id)
-                curr_folder["doi"] = op["value"]
+                curr_folder["doiInfo"] = op["value"]
                 JSONValidator(curr_folder, "folders").validate
 
         await self._handle_check_ownedby_user(req, "folders", folder_id)
