@@ -1,13 +1,4 @@
 {
-  "identifier": {
-    "doi": "10.xxxx/test",
-    "identifierType": "DOI"
-  },
-  "url": "https://some.test.url",
-  "resourceType": {
-    "type": "XML",
-    "resourceTypeGeneral": "Dataset"
-  },
   "creators": [
     {
       "name": "Creator, Test",
@@ -25,21 +16,12 @@
       "nameIdentifiers": []
     }
   ],
-  "titles": [
-    {
-      "lang": "en",
-      "title": "Test resource",
-      "titleType": null
-    }
-  ],
-  "publisher": "Test publisher",
   "subjects": [
     {
       "subject": "FOS: Computer and information sciences",
       "subjectScheme": "Fields of Science and Technology (FOS)"
     }
   ],
-  "publicationYear": 2021,
   "contributors": [
     {
       "name": "Contributor, Test",
