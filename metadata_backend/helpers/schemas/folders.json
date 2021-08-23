@@ -26,42 +26,14 @@
       "type": "boolean",
       "title": "Published Folder"
     },
-    "doi": {
+    "doiInfo": {
       "type": "object",
-      "title": "The DOI schema",
+      "title": "The DOI info schema",
       "required": [
-        "identifier",
-        "url",
         "creators",
-        "titles",
-        "publisher",
-        "subjects",
-        "publicationYear",
-        "resourceType"
+        "subjects"
       ],
       "properties": {
-        "identifier": {
-          "type": "object",
-          "title": "identifier object",
-          "required": [
-            "identifierType",
-            "doi"
-          ],
-          "properties": {
-            "identifierType": {
-              "type": "string",
-              "title": "Type of identifier (= DOI)"
-            },
-            "doi": {
-              "type": "string",
-              "title": "A persistent identifier for a resource"
-            }
-          }
-        },
-        "url": {
-          "type": "string",
-          "title": "URL of the digital location of the object"
-        },
         "creators": {
           "type": "array",
           "title": "List of creators",
@@ -140,34 +112,6 @@
           },
           "uniqueItems": true
         },
-        "titles": {
-          "type": "array",
-          "title": "List of titles",
-          "items": {
-            "type": "object",
-            "title": "Title objects",
-            "properties": {
-              "lang": {
-                "type": "string",
-                "title": "Language code of the title"
-              },
-              "title": {
-                "type": "string",
-                "title": "A name or title by which a resource is known"
-              },
-              "titleType": {
-                "type": ["string", "null"],
-                "title": "Type of title"
-              }
-            },
-            "additionalProperties": false
-          },
-          "uniqueItems": true
-        },
-        "publisher": {
-          "type": "string",
-          "title": "Full name of publisher from Research Organization Registry"
-        },
         "subjects": {
           "type": "array",
           "title": "List of subject identifiers specified by FOS",
@@ -190,29 +134,6 @@
             "additionalProperties": true
           },
           "uniqueItems": true
-        },
-        "publicationYear": {
-          "type": "integer",
-          "title": "Year when the data is made publicly available"
-        },
-        "resourceType": {
-          "type": "object",
-          "title": "Type info of the resource",
-          "required": [
-            "type",
-            "resourceTypeGeneral"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "title": "Name of resource type"
-            },
-            "resourceTypeGeneral": {
-              "type": "string",
-              "title": "Mandatory general type name"
-            }
-          },
-          "additionalProperties": false
         },
         "contributors": {
           "type": "array",
@@ -509,42 +430,6 @@
             "title": "Technical format of the resource"
           }
         },
-        "version": {
-          "type": "string",
-          "title": "Version number of the resource"
-        },
-        "rightsList": {
-          "type": "array",
-          "title": "List of any rights information",
-          "items": {
-            "type": "object",
-            "title": "Any rights information about the resource",
-            "properties": {
-              "lang": {
-                "type": "string",
-                "title": "Language code of the referenced rights"
-              },
-              "rightsUri": {
-                "type": "string",
-                "title": "URI (location) of the referenced rights"
-              },
-              "rightsIdentifier": {
-                "type": "string",
-                "title": "Title of the rights identifier"
-              },
-              "rightsIdentifierScheme": {
-                "type": "string",
-                "title": "Title of rights identifier scheme"
-              },
-              "schemeUri": {
-                "type": "string",
-                "title": "URI (location) of the scheme for rights"
-              }
-            },
-            "additionalProperties": false
-          },
-          "uniqueItems": true
-        },
         "fundingReferences": {
           "type": "array",
           "title": "List of funding references",
@@ -589,6 +474,62 @@
             "additionalProperties": false
           },
           "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "extraInfo": {
+      "type": "object",
+      "title": "The extra DOI info schema",
+      "properties": {
+        "identifier": {
+          "type": "object",
+          "title": "identifier object",
+          "required": [
+            "identifierType",
+            "doi"
+          ],
+          "properties": {
+            "identifierType": {
+              "type": "string",
+              "title": "Type of identifier (= DOI)"
+            },
+            "doi": {
+              "type": "string",
+              "title": "A persistent identifier for a resource"
+            }
+          }
+        },
+        "publisher": {
+          "type": "string",
+          "title": "Full name of publisher from Research Organization Registry"
+        },
+        "resourceType": {
+          "type": "object",
+          "title": "Type info of the resource",
+          "required": [
+            "type",
+            "resourceTypeGeneral"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "title": "Name of resource type"
+            },
+            "resourceTypeGeneral": {
+              "type": "string",
+              "title": "Mandatory general type name"
+            }
+          },
+          "additionalProperties": false
+        },
+        "url": {
+          "type": "string",
+          "title": "URL of the digital location of the object"
+        },
+        "version": {
+          "type": "string",
+          "title": "Version number of the resource"
         }
       },
       "additionalProperties": false
