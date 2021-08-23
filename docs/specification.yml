@@ -1290,7 +1290,8 @@ components:
         - published
         - metadataObjects
         - drafts
-        - doi
+        - doiInfo
+        - extraInfo
       additionalProperties: false
       properties:
         folderId:
@@ -1305,38 +1306,13 @@ components:
         published:
           type: boolean
           description: If folder is published or not
-        doi:
+        doiInfo:
           type: object
           required:
-            - identifier
-            - url
             - creators
             - titles
-            - publisher
             - subjects
-            - publicationYear
-            - resourceType
           properties:
-            identifier:
-              type: object
-              description: DOI id generated according to DOI recommendations
-              required:
-                - identifierType
-              properties:
-                identifierType:
-                  type: string
-                  example: "DOI"
-                doi:
-                  type: string
-                  description: Character string of DOI handle
-                  example: "prefix/suffix"
-                id:
-                  type: string
-                  description: Display url for DOI id
-                  example: "https://doi.org/prefix/suffix"
-            url:
-              type: string
-              description: URL of the digital location of the object
             creators:
               type: array
               items:
@@ -1366,23 +1342,6 @@ components:
                     type: array
                     items:
                       type: object
-            titles:
-              type: array
-              items:
-                type: object
-                properties:
-                  lang:
-                    type: string
-                    description: Language of the title
-                    example: "en"
-                  title:
-                    type: string
-                    description: Full title
-                  titleType:
-                    type: string
-            publisher:
-              type: string
-              description: Full name of publisher from Research Organization Registry
             subjects:
               type: array
               items:
@@ -1396,10 +1355,37 @@ components:
                     type: string
                     description: Subject scheme name
                     example: "Fields of Science and Technology (FOS)"
-            publicationYear:
-              type: integer
-              description: Year of publication
-              example: 2021
+        extraInfo:
+          type: object
+          required:
+            - identifier
+            - url
+            - resourceType
+            - publisher
+          properties:
+            identifier:
+              type: object
+              description: DOI id generated according to DOI recommendations
+              required:
+                - identifierType
+              properties:
+                identifierType:
+                  type: string
+                  example: "DOI"
+                doi:
+                  type: string
+                  description: Character string of DOI handle
+                  example: "prefix/suffix"
+                id:
+                  type: string
+                  description: Display url for DOI id
+                  example: "https://doi.org/prefix/suffix"
+            url:
+              type: string
+              description: URL of the digital location of the object
+            publisher:
+              type: string
+              description: Full name of publisher from Research Organization Registry
             resourceType:
               type: object
               required:
