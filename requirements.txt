@@ -8,3 +8,4 @@ uvloop==0.16.0
 xmlschema==1.8.1
 Authlib==0.15.5
 ujson==4.2.0
+requests==2.26.0
