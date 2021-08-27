@@ -156,3 +156,12 @@ aai_config = {
     "jwk_server": f'{os.getenv("JWK_URL", "")}',
     "auth_referer": f'{os.getenv("AUTH_REFERER", "")}',
 }
+
+
+# 6) Set the base url for DataCite REST API
+
+doi_api = os.getenv("DOI_API", "")
+doi_prefix = os.getenv("DOI_PREFIX", "")
+doi_user = os.getenv("DOI_USER", "")
+doi_key = os.getenv("DOI_KEY", "")
+datacite_url = os.getenv("DATACITE_URL", "https://doi.org")
