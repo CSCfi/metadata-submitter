@@ -19,7 +19,7 @@
       "title": "Folder Description"
     },
     "dateCreated": {
-      "type": "int",
+      "type": "integer",
       "title": "Unix time stamp of creation, used for indexing"
     },
     "published": {
