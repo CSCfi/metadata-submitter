@@ -347,7 +347,7 @@ class CSVToJSONParser:
                 # Without TaxonID provided we assume the sample relates to
                 # Homo Sapien which has default TaxonID of 9606
                 row["sampleName"] = '{"taxonId": 9606}'
-                row["sampleName"] = eval(row["sampleName"])  # workaround for mypy complaint
+                row["sampleName"] = row["sampleName"]
             JSONValidator(row, schema_type.lower()).validate
 
         LOG.info(f"CSV was successfully converted to {len(rows)} JSON object(s).")
