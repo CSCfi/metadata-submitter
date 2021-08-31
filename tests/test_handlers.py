@@ -89,6 +89,7 @@ class HandlersTestCase(AioHTTPTestCase):
         useroperator_config = {
             "create_user.side_effect": self.fake_useroperator_create_user,
             "read_user.side_effect": self.fake_useroperator_read_user,
+            "filter_user.side_effect": self.fake_useroperator_filter_user,
             "check_user_has_doc.side_effect": self.fake_useroperator_user_has_folder,
         }
         self.patch_parser = patch(class_parser, spec=True)
@@ -196,6 +197,10 @@ class HandlersTestCase(AioHTTPTestCase):
     async def fake_useroperator_read_user(self, user_id):
         """Fake read operation to return mocked user."""
         return self.test_user
+
+    async def fake_useroperator_filter_user(self, query, item_type, page, per_page):
+        """Fake read operation to return mocked user."""
+        return self.test_user[item_type], len(self.test_user[item_type])
 
     @unittest_run_loop
     async def test_submit_endpoint_submission_does_not_fail(self):
@@ -716,7 +721,7 @@ class HandlersTestCase(AioHTTPTestCase):
         """Test getting user drafts when user has no drafts."""
         response = await self.client.get("/users/current?items=drafts")
         self.assertEqual(response.status, 200)
-        self.MockedUserOperator().read_user.assert_called_once()
+        self.MockedUserOperator().filter_user.assert_called_once()
         json_resp = await response.json()
         result = {
             "page": {
@@ -734,10 +739,10 @@ class HandlersTestCase(AioHTTPTestCase):
         """Test getting user drafts when user has 1 draft."""
         user = self.test_user
         user["drafts"].append(self.metadata_json)
-        self.MockedUserOperator().read_user.return_value = user
+        self.MockedUserOperator().filter_user.return_value = (user["drafts"], 1)
         response = await self.client.get("/users/current?items=drafts")
         self.assertEqual(response.status, 200)
-        self.MockedUserOperator().read_user.assert_called_once()
+        self.MockedUserOperator().filter_user.assert_called_once()
         json_resp = await response.json()
         result = {
             "page": {
@@ -753,10 +758,10 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_get_user_folder_list(self):
         """Test get user with folders url returns a folder ID."""
-        self.MockedUserOperator().read_user.return_value = self.test_user
+        self.MockedUserOperator().filter_user.return_value = (self.test_user["folders"], 1)
         response = await self.client.get("/users/current?items=folders")
         self.assertEqual(response.status, 200)
-        self.MockedUserOperator().read_user.assert_called_once()
+        self.MockedUserOperator().filter_user.assert_called_once()
         json_resp = await response.json()
         result = {
             "page": {
@@ -774,7 +779,6 @@ class HandlersTestCase(AioHTTPTestCase):
         """Test that error is raised if items parameter in query is not drafts or folders."""
         response = await self.client.get("/users/current?items=wrong_thing")
         self.assertEqual(response.status, 400)
-        self.MockedUserOperator().read_user.assert_called_once()
         json_resp = await response.json()
         self.assertEqual(
             json_resp["detail"], "wrong_thing is a faulty item parameter. Should be either folders or drafts"

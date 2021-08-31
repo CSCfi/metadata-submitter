@@ -1,0 +1,49 @@
+{
+  "creators": [
+    {
+      "name": "Creator, Test",
+      "nameType": "Personal",
+      "givenName": "Test",
+      "familyName": "Creator",
+      "affiliation": [
+        {
+          "name": "affiliation place",
+          "schemeUri": "https://ror.org",
+          "affiliationIdentifier": "https://ror.org/test1",
+          "affiliationIdentifierScheme": "ROR"
+        }
+      ],
+      "nameIdentifiers": []
+    }
+  ],
+  "subjects": [
+    {
+      "subject": "FOS: Computer and information sciences",
+      "subjectScheme": "Fields of Science and Technology (FOS)"
+    }
+  ],
+  "contributors": [
+    {
+      "name": "Contributor, Test",
+      "nameType": "Personal",
+      "givenName": "Test",
+      "familyName": "contributor",
+      "affiliation": [
+        {
+          "name": "affiliation place",
+          "schemeUri": "https://ror.org",
+          "affiliationIdentifier": "https://ror.org/test2",
+          "affiliationIdentifierScheme": "ROR"
+        }
+      ],
+      "contributorType": "Researcher",
+      "nameIdentifiers": [
+        {
+          "schemeUri": null,
+          "nameIdentifier": null,
+          "nameIdentifierScheme": null
+        }
+      ]
+    }
+  ]
+}
