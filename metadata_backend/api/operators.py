@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Dict, List, Tuple, Union
 from uuid import uuid4
+import time
 
 from aiohttp import web
 from dateutil.relativedelta import relativedelta
@@ -658,6 +659,7 @@ class FolderOperator:
         folder_id = self._generate_folder_id()
         data["folderId"] = folder_id
         data["published"] = False
+        data["dateCreated"] = int(time.time())
         data["metadataObjects"] = data["metadataObjects"] if "metadataObjects" in data else []
         data["drafts"] = data["drafts"] if "drafts" in data else []
         try:
@@ -675,25 +677,36 @@ class FolderOperator:
             LOG.info(f"Inserting folder with id {folder_id} to database succeeded.")
             return folder_id
 
-    @auto_reconnect
-    async def query_folders(self, que: Dict, page_num: int, page_size: int) -> Tuple[List, int]:
+    async def query_folders(self, query: Dict, page_num: int, page_size: int) -> Tuple[List, int]:
         """Query database based on url query parameters.
 
-        :param que: Dict containing query information
+        :param query: Dict containing query information
         :param page_num: Page number
         :param page_size: Results per page
         :returns: Paginated query result
         """
-        _cursor = self.db_service.query("folder", que)
-        queried_folders = [folder async for folder in _cursor]
-        total_folders = len(queried_folders)
-        if total_folders <= page_size:
-            return queried_folders, total_folders
+        skips = page_size * (page_num - 1)
+        _query = [
+            {"$match": query},
+            {"$sort": {"dateCreated": -1}},
+            {"$skip": skips},
+            {"$limit": page_size},
+            {"$project": {"_id": 0}},
+        ]
+        data_raw = await self.db_service.do_aggregate("folder", _query)
+
+        if not data_raw:
+            data = []
         else:
-            lower = (page_num - 1) * page_size
-            upper = page_num * page_size
-            folders = queried_folders[lower:upper]
-            return folders, total_folders
+            data = [doc for doc in data_raw]
+
+        count_query = [{"$match": query}, {"$count": "total"}]
+        total_folders = await self.db_service.do_aggregate("folder", count_query)
+
+        if not total_folders:
+            total_folders = [{"total": 0}]
+
+        return data, total_folders[0]["total"]
 
     async def read_folder(self, folder_id: str) -> Dict:
         """Read object folder from database.
@@ -913,6 +926,45 @@ class UserOperator:
             raise web.HTTPBadRequest(reason=reason)
         return user
 
+    async def filter_user(self, query: Dict, item_type: str, page_num: int, page_size: int) -> Tuple[List, int]:
+        """Query database based on url query parameters.
+
+        :param query: Dict containing query information
+        :param page_num: Page number
+        :param page_size: Results per page
+        :returns: Paginated query result
+        """
+        skips = page_size * (page_num - 1)
+        _query = [
+            {"$match": query},
+            {
+                "$project": {
+                    "_id": 0,
+                    item_type: {"$slice": [f"${item_type}", skips, page_size]},
+                }
+            },
+        ]
+        data = await self.db_service.do_aggregate("user", _query)
+
+        if not data:
+            data = [{item_type: []}]
+
+        count_query = [
+            {"$match": query},
+            {
+                "$project": {
+                    "_id": 0,
+                    "item": 1,
+                    "total": {
+                        "$cond": {"if": {"$isArray": f"${item_type}"}, "then": {"$size": f"${item_type}"}, "else": 0}
+                    },
+                }
+            },
+        ]
+        total_users = await self.db_service.do_aggregate("user", count_query)
+
+        return data[0][item_type], total_users[0]["total"]
+
     async def update_user(self, user_id: str, patch: List) -> str:
         """Update user object from database.
 
@@ -949,7 +1001,9 @@ class UserOperator:
         """
         try:
             await self._check_user_exists(user_id)
-            assign_success = await self.db_service.append("user", user_id, {collection: {"$each": object_ids}})
+            assign_success = await self.db_service.append(
+                "user", user_id, {collection: {"$each": object_ids, "$position": 0}}
+            )
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting user: {error}"
             LOG.error(reason)
