@@ -37,7 +37,6 @@ class DOIHandler:
             draft_resp = response.json()
             full_doi = draft_resp["data"]["attributes"]["doi"]
             returned_suffix = draft_resp["data"]["attributes"]["suffix"]
-            LOG.debug(f"DOI draft created and response was: {draft_resp}")
             LOG.info(f"DOI draft created with doi: {full_doi}.")
             doi_data = {
                 "fullDOI": full_doi,

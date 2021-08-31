@@ -66,12 +66,14 @@ class HandlersTestCase(AioHTTPTestCase):
             "templates": [],
             "folders": ["FOL12345678"],
         }
+        self.test_draft_doi = {"fullDOI": "10.xxxx/yyyyy", "dataset": "https://doi.org/10.xxxx/yyyyy"}
 
         class_parser = "metadata_backend.api.handlers.XMLToJSONParser"
         class_operator = "metadata_backend.api.handlers.Operator"
         class_xmloperator = "metadata_backend.api.handlers.XMLOperator"
         class_folderoperator = "metadata_backend.api.handlers.FolderOperator"
         class_useroperator = "metadata_backend.api.handlers.UserOperator"
+        class_doihandler = "metadata_backend.api.handlers.DOIHandler"
         operator_config = {
             "read_metadata_object.side_effect": self.fake_operator_read_metadata_object,
             "query_metadata_database.side_effect": self.fake_operator_query_metadata_object,
@@ -103,11 +105,13 @@ class HandlersTestCase(AioHTTPTestCase):
         self.patch_xmloperator = patch(class_xmloperator, **xmloperator_config, spec=True)
         self.patch_folderoperator = patch(class_folderoperator, **folderoperator_config, spec=True)
         self.patch_useroperator = patch(class_useroperator, **useroperator_config, spec=True)
+        self.patch_doihandler = patch(class_doihandler, spec=True)
         self.MockedParser = self.patch_parser.start()
         self.MockedOperator = self.patch_operator.start()
         self.MockedXMLOperator = self.patch_xmloperator.start()
         self.MockedFolderOperator = self.patch_folderoperator.start()
         self.MockedUserOperator = self.patch_useroperator.start()
+        self.MockedDoiHandler = self.patch_doihandler.start()
 
         # Set up authentication
         request = get_request_with_fernet()
@@ -123,6 +127,7 @@ class HandlersTestCase(AioHTTPTestCase):
         self.patch_xmloperator.stop()
         self.patch_folderoperator.stop()
         self.patch_useroperator.stop()
+        self.patch_doihandler.stop()
 
         await self.client.close()
 
@@ -555,8 +560,10 @@ class HandlersTestCase(AioHTTPTestCase):
     async def test_folder_creation_works(self):
         """Test that folder is created and folder ID returned."""
         json_req = {"name": "test", "description": "test folder"}
+        self.MockedDoiHandler().create_draft_doi.return_value = self.test_draft_doi
         response = await self.client.post("/folders", json=json_req)
         json_resp = await response.json()
+        self.MockedDoiHandler().create_draft_doi.assert_called_once()
         self.MockedFolderOperator().create_folder.assert_called_once()
         self.assertEqual(response.status, 201)
         self.assertEqual(json_resp["folderId"], self.folder_id)
@@ -564,8 +571,10 @@ class HandlersTestCase(AioHTTPTestCase):
     async def test_folder_creation_with_missing_data_fails(self):
         """Test that folder creation fails when missing data in request."""
         json_req = {"description": "test folder"}
+        self.MockedDoiHandler().create_draft_doi.return_value = self.test_draft_doi
         response = await self.client.post("/folders", json=json_req)
         json_resp = await response.json()
+        self.MockedDoiHandler().create_draft_doi.assert_called_once()
         self.assertEqual(response.status, 400)
         self.assertIn("'name' is a required property", json_resp["detail"])
 

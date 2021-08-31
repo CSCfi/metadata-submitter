@@ -23,6 +23,7 @@ from ..helpers.logger import LOG
 from ..helpers.parser import XMLToJSONParser
 from ..helpers.schema_loader import JSONSchemaLoader, SchemaNotFoundException, XMLSchemaLoader
 from ..helpers.validator import JSONValidator, XMLValidator
+from ..helpers.doi import DOIHandler
 from .operators import FolderOperator, Operator, XMLOperator, UserOperator
 
 from ..conf.conf import aai_config
@@ -740,7 +741,15 @@ class FolderAPIHandler(RESTAPIHandler):
         :returns: JSON response containing folder ID for submitted folder
         """
         db_client = req.app["db_client"]
-        content = await self._get_data(req)
+        content = await self._get_data(req)  # Required properties from the request
+
+        # Create draft DOI and add extra info to content
+        doi = DOIHandler()
+        doi_data = await doi.create_draft_doi()
+        content["extraInfo"] = {}
+        content["extraInfo"]["identifier"] = {"identifierType": "DOI", "doi": doi_data["fullDOI"]}
+        content["extraInfo"]["url"] = doi_data["dataset"]
+
         JSONValidator(content, "folders").validate
 
         operator = FolderOperator(db_client)
