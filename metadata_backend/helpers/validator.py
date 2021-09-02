@@ -1,6 +1,6 @@
 """Utility classes for validating XML or JSON files."""
 
-import json
+import ujson
 import re
 from io import StringIO
 from typing import Any, Dict
@@ -38,7 +38,7 @@ class XMLValidator:
         try:
             self.schema.validate(self.xml_content)
             LOG.info("Submitted file is totally valid.")
-            return json.dumps({"isValid": True})
+            return ujson.dumps({"isValid": True})
 
         except ParseError as error:
             reason = self._parse_error_reason(error)
@@ -48,7 +48,7 @@ class XMLValidator:
             instance = re.sub(r"^.*?<", "<", line)  # strip whitespaces
 
             LOG.info("Submitted file does not not contain valid XML syntax.")
-            return json.dumps({"isValid": False, "detail": {"reason": reason, "instance": instance}})
+            return ujson.dumps({"isValid": False, "detail": {"reason": reason, "instance": instance}})
 
         except XMLSchemaValidationError as error:
             # Parse reason and instance from the validation error message
@@ -60,7 +60,7 @@ class XMLValidator:
                 reason = re.sub("<[^>]*>", instance_parent + " ", reason)
 
             LOG.info("Submitted file is not valid against schema.")
-            return json.dumps({"isValid": False, "detail": {"reason": reason, "instance": instance}})
+            return ujson.dumps({"isValid": False, "detail": {"reason": reason, "instance": instance}})
 
         except URLError as error:
             reason = f"Faulty file was provided. {error.reason}."
@@ -76,7 +76,7 @@ class XMLValidator:
     @property
     def is_valid(self) -> bool:
         """Quick method for checking validation result."""
-        resp = json.loads(self.resp_body)
+        resp = ujson.loads(self.resp_body)
         return resp["isValid"]
 
 

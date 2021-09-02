@@ -499,7 +499,7 @@ class HandlersTestCase(AioHTTPTestCase):
         data = self.create_submission_data(files)
         response = await self.client.post("/validate", data=data)
         self.assertEqual(response.status, 200)
-        self.assertIn('{"isValid": true}', await response.text())
+        self.assertIn('{"isValid":true}', await response.text())
 
     @unittest_run_loop
     async def test_validation_fails_bad_schema(self):
