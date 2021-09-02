@@ -197,7 +197,7 @@ async def post_draft_json(sess, schema, filename):
         return ans["accessionId"]
 
 
-async def get_draft(sess, schema, draft_id):
+async def get_draft(sess, schema, draft_id, expected_status=200):
     """Get and return a drafted metadata object.
 
     :param sess: HTTP session in which request call is made
@@ -206,7 +206,7 @@ async def get_draft(sess, schema, draft_id):
     """
     async with sess.get(f"{drafts_url}/{schema}/{draft_id}") as resp:
         LOG.debug(f"Checking that {draft_id} JSON exists")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == expected_status, "HTTP Status code error"
         ans = await resp.json()
         return json.dumps(ans)
 
@@ -704,6 +704,9 @@ async def test_crud_folders_works(sess):
 
     # Publish the folder
     folder_id = await publish_folder(sess, folder_id)
+
+    await get_draft(sess, "sample", draft_id, 404)  # checking the draft was deleted after publication
+
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was patched")
         res = await resp.json()
