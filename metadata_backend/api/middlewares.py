@@ -84,6 +84,7 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
     controlled_paths = [
         "/schemas",
         "/drafts",
+        "/templates",
         "/validate",
         "/publish",
         "/submit",

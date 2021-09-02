@@ -14,7 +14,7 @@
       "type": "string",
       "title": "User Name"
     },
-    "drafts": {
+    "templates": {
       "type": "array",
       "title": "User templates schema",
       "items": {
@@ -42,7 +42,6 @@
                 "type": "string",
                 "title": "Type of submission",
                 "enum": [
-                  "XML",
                   "Form"
                 ]
               }
