@@ -524,7 +524,7 @@ class XMLOperator(BaseOperator):
         :returns: Accession Id for object inserted to database
         """
         db_client = self.db_service.db_client
-        # remove `drafs-` from schema type
+        # remove `draft-` from schema type
         schema = schema_type[6:] if schema_type.startswith("draft") else schema_type
         data_as_json = XMLToJSONParser().parse(schema, data)
         accession_id = await Operator(db_client)._format_data_to_create_and_add_to_db(schema_type, data_as_json)
