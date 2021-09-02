@@ -12,7 +12,7 @@ from pathlib import Path
 import urllib
 import xml.etree.ElementTree as ET
 
-import aiofiles
+import aiofiles  # type: ignore
 import aiohttp
 from aiohttp import FormData
 
@@ -51,6 +51,7 @@ base_url = "http://localhost:5430"
 mock_auth_url = "http://localhost:8000"
 objects_url = f"{base_url}/objects"
 drafts_url = f"{base_url}/drafts"
+templates_url = f"{base_url}/templates"
 folders_url = f"{base_url}/folders"
 users_url = f"{base_url}/users"
 submit_url = f"{base_url}/submit"
@@ -284,6 +285,47 @@ async def delete_draft(sess, schema, draft_id):
     """
     async with sess.delete(f"{drafts_url}/{schema}/{draft_id}") as resp:
         LOG.debug(f"Deleting draft object {draft_id} from {schema}")
+        assert resp.status == 204, "HTTP Status code error"
+
+
+async def post_template_json(sess, schema, filename):
+    """Post one metadata object within session, returns accessionId.
+
+    :param sess: HTTP session in which request call is made
+    :param schema: name of the schema (folder) used for testing
+    :param filename: name of the file used for testing.
+    """
+    request_data = await create_request_json_data(schema, filename)
+    async with sess.post(f"{templates_url}/{schema}", data=request_data) as resp:
+        LOG.debug(f"Adding new template object to {schema}, via JSON file {filename}")
+        assert resp.status == 201, "HTTP Status code error"
+        ans = await resp.json()
+        return ans["accessionId"]
+
+
+async def get_template(sess, schema, template_id):
+    """Get and return a drafted metadata object.
+
+    :param sess: HTTP session in which request call is made
+    :param schema: name of the schema (folder) used for testing
+    :param draft_id: id of the draft
+    """
+    async with sess.get(f"{templates_url}/{schema}/{template_id}") as resp:
+        LOG.debug(f"Checking that {template_id} JSON exists")
+        assert resp.status == 200, "HTTP Status code error"
+        ans = await resp.json()
+        return json.dumps(ans)
+
+
+async def delete_template(sess, schema, template_id):
+    """Delete metadata object within session.
+
+    :param sess: HTTP session in which request call is made
+    :param schema: name of the schema (folder) used for testing
+    :param draft_id: id of the draft
+    """
+    async with sess.delete(f"{templates_url}/{schema}/{template_id}") as resp:
+        LOG.debug(f"Deleting template object {template_id} from {schema}")
         assert resp.status == 204, "HTTP Status code error"
 
 
@@ -858,7 +900,7 @@ async def test_getting_paginated_folders(sess):
 
 
 async def test_getting_user_items(sess):
-    """Test querying user's drafts or folders in the user object with GET user request.
+    """Test querying user's templates or folders in the user object with GET user request.
 
     :param sess: HTTP session in which request call is made
     """
@@ -869,33 +911,33 @@ async def test_getting_user_items(sess):
         response = await resp.json()
         real_user_id = response["userId"]
 
-    # Patch user to have a draft
-    draft_id = await post_draft_json(sess, "study", "SRP000539.json")
-    patch_drafts_user = [
-        {"op": "add", "path": "/drafts/-", "value": {"accessionId": draft_id, "schema": "draft-study"}}
+    # Patch user to have a templates
+    template_id = await post_template_json(sess, "study", "SRP000539.json")
+    patch_templates_user = [
+        {"op": "add", "path": "/templates/-", "value": {"accessionId": template_id, "schema": "template-study"}}
     ]
-    await patch_user(sess, user_id, real_user_id, patch_drafts_user)
+    await patch_user(sess, user_id, real_user_id, patch_templates_user)
 
     # Test querying for list of user draft templates
-    async with sess.get(f"{users_url}/{user_id}?items=drafts") as resp:
-        LOG.debug(f"Reading user {user_id} drafts")
+    async with sess.get(f"{users_url}/{user_id}?items=templates") as resp:
+        LOG.debug(f"Reading user {user_id} templates")
         assert resp.status == 200, "HTTP Status code error"
         ans = await resp.json()
         assert ans["page"]["page"] == 1
         assert ans["page"]["size"] == 5
         assert ans["page"]["totalPages"] == 1
-        assert ans["page"]["totalDrafts"] == 1
-        assert len(ans["drafts"]) == 1
+        assert ans["page"]["totalTemplates"] == 1
+        assert len(ans["templates"]) == 1
 
-    async with sess.get(f"{users_url}/{user_id}?items=drafts&per_page=3") as resp:
-        LOG.debug(f"Reading user {user_id} drafts")
+    async with sess.get(f"{users_url}/{user_id}?items=templates&per_page=3") as resp:
+        LOG.debug(f"Reading user {user_id} templates")
         assert resp.status == 200, "HTTP Status code error"
         ans = await resp.json()
         assert ans["page"]["page"] == 1
         assert ans["page"]["size"] == 3
-        assert len(ans["drafts"]) == 1
+        assert len(ans["templates"]) == 1
 
-    await delete_draft(sess, "study", draft_id)  # Future tests will assume the drafts key is empty
+    await delete_template(sess, "study", template_id)  # Future tests will assume the templates key is empty
 
     # Test querying for the list of folder IDs
     async with sess.get(f"{users_url}/{user_id}?items=folders") as resp:
@@ -936,7 +978,7 @@ async def test_crud_users_works(sess):
         res = await resp.json()
         assert res["userId"] == real_user_id, "user id does not match"
         assert res["name"] == f"{test_user_given} {test_user_family}", "user name mismatch"
-        assert res["drafts"] == [], "user drafts content mismatch"
+        assert res["templates"] == [], "user templates content mismatch"
         assert folder_id in res["folders"], "folder added missing mismatch"
 
     folder_published = {"name": "Another test Folder", "description": "Test published folder does not get deleted"}
@@ -961,22 +1003,22 @@ async def test_crud_users_works(sess):
         res = await resp.json()
         assert delete_folder_id not in res["folders"], "delete folder still exists at user"
 
-    draft_id = await post_draft_json(sess, "study", "SRP000539.json")
-    patch_drafts_user = [
-        {"op": "add", "path": "/drafts/-", "value": {"accessionId": draft_id, "schema": "draft-study"}}
+    template_id = await post_template_json(sess, "study", "SRP000539.json")
+    patch_templates_user = [
+        {"op": "add", "path": "/templates/-", "value": {"accessionId": template_id, "schema": "template-study"}}
     ]
-    await patch_user(sess, user_id, real_user_id, patch_drafts_user)
+    await patch_user(sess, user_id, real_user_id, patch_templates_user)
     async with sess.get(f"{users_url}/{user_id}") as resp:
-        LOG.debug(f"Checking that draft {draft_id} was added")
+        LOG.debug(f"Checking that template: {template_id} was added")
         res = await resp.json()
-        assert res["drafts"][0]["accessionId"] == draft_id, "draft added does not exists"
+        assert res["templates"][0]["accessionId"] == template_id, "added template does not exists"
 
-    await delete_draft(sess, "study", draft_id)
+    await delete_template(sess, "study", template_id)
 
     async with sess.get(f"{users_url}/{user_id}") as resp:
-        LOG.debug(f"Checking that draft {draft_id} was added")
+        LOG.debug(f"Checking that template {template_id} was added")
         res = await resp.json()
-        assert len(res["drafts"]) == 0, "draft was not deleted from users"
+        assert len(res["templates"]) == 0, "template was not deleted from users"
 
     # Delete user
     await delete_user(sess, user_id)

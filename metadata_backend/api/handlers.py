@@ -90,8 +90,9 @@ class RESTAPIHandler:
             elif check:
                 # if the draft object is found in folder we just need to check if the folder belongs to user
                 _check = await user_op.check_user_has_doc("folders", current_user, folder_id)
-            elif collection.startswith("draft"):
-                # if collection is draft but not found in a folder we also check if object is in drafts of the user
+            elif collection.startswith("template"):
+                # if collection is template but not found in a folder
+                # we also check if object is in templates of the user
                 # they will be here if they will not be deleted after publish
                 _check = await user_op.check_user_has_doc(collection, current_user, accession_id)
             else:
@@ -334,7 +335,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         url = f"{req.scheme}://{req.host}{req.path}"
-        location_headers = CIMultiDict(Location=f"{url}{accession_id}")
+        location_headers = CIMultiDict(Location=f"{url}/{accession_id}")
         LOG.info(f"POST object with accesssion ID {accession_id} in schema {collection} was successful.")
         return web.Response(
             body=body,
@@ -381,15 +382,9 @@ class ObjectAPIHandler(RESTAPIHandler):
                 raise web.HTTPUnauthorized(reason=reason)
             await folder_op.remove_object(folder_id, collection, accession_id)
         else:
-            user_op = UserOperator(db_client)
-            current_user = get_session(req)["user_info"]
-            check_user = await user_op.check_user_has_doc(collection, current_user, accession_id)
-            if check_user:
-                await user_op.remove_objects(current_user, "drafts", [accession_id])
-            else:
-                reason = "This object does not seem to belong to any user."
-                LOG.error(reason)
-                raise web.HTTPUnprocessableEntity(reason=reason)
+            reason = "This object does not seem to belong to any user."
+            LOG.error(reason)
+            raise web.HTTPUnprocessableEntity(reason=reason)
 
         accession_id = await Operator(db_client).delete_metadata_object(collection, accession_id)
 
@@ -475,6 +470,101 @@ class ObjectAPIHandler(RESTAPIHandler):
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info(f"PATCH object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
+
+
+class TemplatesAPIHandler(RESTAPIHandler):
+    """API Handler for Templates."""
+
+    async def get_template(self, req: Request) -> Response:
+        """Get one metadata object by its accession id.
+
+        Returns  JSON.
+
+        :param req: GET request
+        :returns: JSON response containing template object
+        """
+        accession_id = req.match_info["accessionId"]
+        schema_type = req.match_info["schema"]
+        self._check_schema_exists(schema_type)
+        collection = f"template-{schema_type}"
+
+        db_client = req.app["db_client"]
+        operator = Operator(db_client)
+
+        await operator.check_exists(collection, accession_id)
+
+        await self._handle_check_ownedby_user(req, collection, accession_id)
+
+        data, content_type = await operator.read_metadata_object(collection, accession_id)
+
+        data = ujson.dumps(data, escape_forward_slashes=False)
+        LOG.info(f"GET object with accesssion ID {accession_id} from schema {collection}.")
+        return web.Response(body=data, status=200, content_type=content_type)
+
+    async def post_template(self, req: Request) -> Response:
+        """Save metadata object to database.
+
+        For JSON request body we validate it is consistent with the
+        associated JSON schema.
+
+        :param req: POST request
+        :returns: JSON response containing accessionId for submitted object
+        """
+        schema_type = req.match_info["schema"]
+        self._check_schema_exists(schema_type)
+        collection = f"template-{schema_type}"
+
+        db_client = req.app["db_client"]
+        content = await self._get_data(req)
+
+        operator = Operator(db_client)
+
+        accession_id = await operator.create_metadata_object(collection, content)
+
+        body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
+        url = f"{req.scheme}://{req.host}{req.path}"
+        location_headers = CIMultiDict(Location=f"{url}/{accession_id}")
+        LOG.info(f"POST object with accesssion ID {accession_id} in schema {collection} was successful.")
+        return web.Response(
+            body=body,
+            status=201,
+            headers=location_headers,
+            content_type="application/json",
+        )
+
+    async def delete_template(self, req: Request) -> Response:
+        """Delete metadata object from database.
+
+        :param req: DELETE request
+        :raises: HTTPUnauthorized if folder published
+        :raises: HTTPUnprocessableEntity if object does not belong to current user
+        :returns: HTTPNoContent response
+        """
+        schema_type = req.match_info["schema"]
+        self._check_schema_exists(schema_type)
+        collection = f"template-{schema_type}"
+
+        accession_id = req.match_info["accessionId"]
+        db_client = req.app["db_client"]
+
+        await Operator(db_client).check_exists(collection, accession_id)
+
+        await self._handle_check_ownedby_user(req, collection, accession_id)
+
+        user_op = UserOperator(db_client)
+        current_user = get_session(req)["user_info"]
+        check_user = await user_op.check_user_has_doc(collection, current_user, accession_id)
+        if check_user:
+            await user_op.remove_objects(current_user, "templates", [accession_id])
+        else:
+            reason = "This object does not seem to belong to any user."
+            LOG.error(reason)
+            raise web.HTTPUnprocessableEntity(reason=reason)
+
+        accession_id = await Operator(db_client).delete_metadata_object(collection, accession_id)
+
+        LOG.info(f"DELETE object with accession ID {accession_id} in schema {collection} was successful.")
+        return web.Response(status=204)
 
 
 class FolderAPIHandler(RESTAPIHandler):
@@ -744,9 +834,9 @@ class UserAPIHandler(RESTAPIHandler):
         :raises: HTTPUnauthorized if request tries to do anything else than add or replace
         :returns: None
         """
-        _arrays = ["/drafts/-", "/folders/-"]
+        _arrays = ["/templates/-", "/folders/-"]
         _required_values = ["schema", "accessionId"]
-        _tags = re.compile("^/(drafts)/[0-9]*/(tags)$")
+        _tags = re.compile("^/(templates)/[0-9]*/(tags)$")
         for op in patch_ops:
             if _tags.match(op["path"]):
                 LOG.info(f"{op['op']} on tags in folder")
@@ -769,7 +859,7 @@ class UserAPIHandler(RESTAPIHandler):
                         reason = "We only accept string folder IDs."
                         LOG.error(reason)
                         raise web.HTTPBadRequest(reason=reason)
-                if op["path"] == "/drafts/-":
+                if op["path"] == "/templates/-":
                     _ops = op["value"] if isinstance(op["value"], list) else [op["value"]]
                     for item in _ops:
                         if not all(key in item.keys() for key in _required_values):
@@ -790,7 +880,7 @@ class UserAPIHandler(RESTAPIHandler):
 
         :param req: GET request
         :raises: HTTPUnauthorized if not current user
-        :returns: JSON response containing user object or list of user drafts or user folders by id
+        :returns: JSON response containing user object or list of user templates or user folders by id
         """
         user_id = req.match_info["userId"]
         if user_id != "current":
@@ -801,7 +891,7 @@ class UserAPIHandler(RESTAPIHandler):
 
         item_type = req.query.get("items", "").lower()
         if item_type:
-            # Return only list of drafts or list of folder IDs owned by the user
+            # Return only list of templates or list of folder IDs owned by the user
             result, link_headers = await self._get_user_items(req, current_user, item_type)
             return web.Response(
                 body=ujson.dumps(result, escape_forward_slashes=False),
@@ -810,7 +900,7 @@ class UserAPIHandler(RESTAPIHandler):
                 content_type="application/json",
             )
         else:
-            # Return whole user object if drafts or folders are not specified in query
+            # Return whole user object if templates or folders are not specified in query
             db_client = req.app["db_client"]
             operator = UserOperator(db_client)
             user = await operator.read_user(current_user)
@@ -870,7 +960,7 @@ class UserAPIHandler(RESTAPIHandler):
                     await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
                 await fold_ops.delete_folder(folder_id)
 
-        for tmpl in user["drafts"]:
+        for tmpl in user["templates"]:
             await obj_ops.delete_metadata_object(tmpl["schema"], tmpl["accessionId"])
 
         await operator.delete_user(current_user)
@@ -896,13 +986,13 @@ class UserAPIHandler(RESTAPIHandler):
 
         :param req: GET request
         :param user: User object
-        :param item_type: Name of the items ("drafts" or "folders")
+        :param item_type: Name of the items ("templates" or "folders")
         :raises: HTTPUnauthorized if not current user
         :returns: Paginated list of user draft templates and link header
         """
         # Check item_type parameter is not faulty
-        if item_type not in ["drafts", "folders"]:
-            reason = f"{item_type} is a faulty item parameter. Should be either folders or drafts"
+        if item_type not in ["templates", "folders"]:
+            reason = f"{item_type} is a faulty item parameter. Should be either folders or templates"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 

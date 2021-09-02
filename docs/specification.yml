@@ -295,7 +295,7 @@ paths:
       parameters:
         - name: schema
           in: path
-          description: Title of the XML schema.
+          description: Name of the Metadata schema.
           schema:
             type: string
           required: true
@@ -529,7 +529,7 @@ paths:
       parameters:
         - name: schema
           in: path
-          description: Title of the XML schema.
+          description: Name of the Metadata schema.
           schema:
             type: string
           required: true
@@ -749,6 +749,134 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
+  /templates/{schema}:
+    post:
+      tags:
+        - Submission
+      summary: Submit data to a specific schema
+      parameters:
+        - name: schema
+          in: path
+          description: Title of the template schema.
+          schema:
+            type: string
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ObjectCreated"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
+  /templates/{schema}/{accessionId}:
+    get:
+      tags:
+        - Query
+      summary: List of object by accession ID.
+      parameters:
+        - name: schema
+          in: path
+          description: Unique id of the targeted service.
+          schema:
+            type: string
+          required: true
+        - name: accessionId
+          in: path
+          description: filter objects in schema using accession ID
+          schema:
+            type: string
+          required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Object"
+            text/xml:
+              schema:
+                type: string
+                format: binary
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
+        404:
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/404NotFound"
+    delete:
+      tags:
+        - Manage
+      summary: Delete object from a schema with a specified accession ID
+      parameters:
+        - name: schema
+          in: path
+          description: Unique id of the targeted service.
+          schema:
+            type: string
+          required: true
+        - name: accessionId
+          in: path
+          description: filter objects in schema using accession ID
+          schema:
+            type: string
+          required: true
+      responses:
+        204:
+          description: No Content
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
+  
   /folders:
     get:
       tags:
