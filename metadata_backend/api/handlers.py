@@ -1,4 +1,5 @@
 """Handle HTTP methods for server."""
+import ujson
 import json
 import re
 import mimetypes
@@ -179,7 +180,7 @@ class RESTAPIHandler:
         :param req: GET Request
         :returns: JSON list of schema types
         """
-        types_json = json.dumps([x["description"] for x in schema_types.values()])
+        types_json = ujson.dumps([x["description"] for x in schema_types.values()], escape_forward_slashes=False)
         LOG.info(f"GET schema types. Retrieved {len(schema_types)} schemas.")
         return web.Response(body=types_json, status=200, content_type="application/json")
 
@@ -197,7 +198,9 @@ class RESTAPIHandler:
         try:
             schema = JSONSchemaLoader().get_schema(schema_type)
             LOG.info(f"{schema_type} schema loaded.")
-            return web.Response(body=json.dumps(schema), status=200, content_type="application/json")
+            return web.Response(
+                body=ujson.dumps(schema, escape_forward_slashes=False), status=200, content_type="application/json"
+            )
 
         except SchemaNotFoundException as error:
             reason = f"{error} ({schema_type})"
@@ -249,7 +252,7 @@ class ObjectAPIHandler(RESTAPIHandler):
             collection, req.query, page, per_page, filter_list
         )
 
-        result = json.dumps(
+        result = ujson.dumps(
             {
                 "page": {
                     "page": page_num,
@@ -258,7 +261,8 @@ class ObjectAPIHandler(RESTAPIHandler):
                     "totalObjects": total_objects,
                 },
                 "objects": data,
-            }
+            },
+            escape_forward_slashes=False,
         )
         url = f"{req.scheme}://{req.host}{req.path}"
         link_headers = await self._header_links(url, page_num, per_page, total_objects)
@@ -275,7 +279,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         """Get one metadata object by its accession id.
 
         Returns original XML object from backup if format query parameter is
-        set, otherwise json.
+        set, otherwise JSON.
 
         :param req: GET request
         :returns: JSON or XML response containing metadata object
@@ -296,7 +300,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         data, content_type = await operator.read_metadata_object(type_collection, accession_id)
 
-        data = data if req_format == "xml" else json.dumps(data)
+        data = data if req_format == "xml" else ujson.dumps(data, escape_forward_slashes=False)
         LOG.info(f"GET object with accesssion ID {accession_id} from schema {collection}.")
         return web.Response(body=data, status=200, content_type=content_type)
 
@@ -328,7 +332,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         accession_id = await operator.create_metadata_object(collection, content)
 
-        body = json.dumps({"accessionId": accession_id})
+        body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         url = f"{req.scheme}://{req.host}{req.path}"
         location_headers = CIMultiDict(Location=f"{url}{accession_id}")
         LOG.info(f"POST object with accesssion ID {accession_id} in schema {collection} was successful.")
@@ -427,7 +431,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         accession_id = await operator.replace_metadata_object(collection, accession_id, content)
 
-        body = json.dumps({"accessionId": accession_id})
+        body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info(f"PUT object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
@@ -468,7 +472,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         accession_id = await operator.update_metadata_object(collection, accession_id, content)
 
-        body = json.dumps({"accessionId": accession_id})
+        body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info(f"PATCH object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
@@ -557,7 +561,7 @@ class FolderAPIHandler(RESTAPIHandler):
         folder_operator = FolderOperator(db_client)
         folders, total_folders = await folder_operator.query_folders(folder_query, page, per_page)
 
-        result = json.dumps(
+        result = ujson.dumps(
             {
                 "page": {
                     "page": page,
@@ -566,7 +570,8 @@ class FolderAPIHandler(RESTAPIHandler):
                     "totalFolders": total_folders,
                 },
                 "folders": folders,
-            }
+            },
+            escape_forward_slashes=False,
         )
 
         url = f"{req.scheme}://{req.host}{req.path}"
@@ -599,7 +604,7 @@ class FolderAPIHandler(RESTAPIHandler):
         current_user = get_session(req)["user_info"]
         await user_op.assign_objects(current_user, "folders", [folder])
 
-        body = json.dumps({"folderId": folder})
+        body = ujson.dumps({"folderId": folder}, escape_forward_slashes=False)
 
         url = f"{req.scheme}://{req.host}{req.path}"
         location_headers = CIMultiDict(Location=f"{url}/{folder}")
@@ -624,7 +629,9 @@ class FolderAPIHandler(RESTAPIHandler):
         folder = await operator.read_folder(folder_id)
 
         LOG.info(f"GET folder with ID {folder_id} was successful.")
-        return web.Response(body=json.dumps(folder), status=200, content_type="application/json")
+        return web.Response(
+            body=ujson.dumps(folder, escape_forward_slashes=False), status=200, content_type="application/json"
+        )
 
     async def patch_folder(self, req: Request) -> Response:
         """Update object folder with a specific folder id.
@@ -654,7 +661,7 @@ class FolderAPIHandler(RESTAPIHandler):
 
         upd_folder = await operator.update_folder(folder_id, patch_ops if isinstance(patch_ops, list) else [patch_ops])
 
-        body = json.dumps({"folderId": upd_folder})
+        body = ujson.dumps({"folderId": upd_folder}, escape_forward_slashes=False)
         LOG.info(f"PATCH folder with ID {upd_folder} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
@@ -686,7 +693,7 @@ class FolderAPIHandler(RESTAPIHandler):
         ]
         new_folder = await operator.update_folder(folder_id, patch)
 
-        body = json.dumps({"folderId": new_folder})
+        body = ujson.dumps({"folderId": new_folder}, escape_forward_slashes=False)
         LOG.info(f"Patching folder with ID {new_folder} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
@@ -797,7 +804,7 @@ class UserAPIHandler(RESTAPIHandler):
             # Return only list of drafts or list of folder IDs owned by the user
             result, link_headers = await self._get_user_items(req, current_user, item_type)
             return web.Response(
-                body=json.dumps(result),
+                body=ujson.dumps(result, escape_forward_slashes=False),
                 status=200,
                 headers=link_headers,
                 content_type="application/json",
@@ -808,7 +815,9 @@ class UserAPIHandler(RESTAPIHandler):
             operator = UserOperator(db_client)
             user = await operator.read_user(current_user)
             LOG.info(f"GET user with ID {user_id} was successful.")
-            return web.Response(body=json.dumps(user), status=200, content_type="application/json")
+            return web.Response(
+                body=ujson.dumps(user, escape_forward_slashes=False), status=200, content_type="application/json"
+            )
 
     async def patch_user(self, req: Request) -> Response:
         """Update user object with a specific user ID.
@@ -831,7 +840,7 @@ class UserAPIHandler(RESTAPIHandler):
         current_user = get_session(req)["user_info"]
         user = await operator.update_user(current_user, patch_ops if isinstance(patch_ops, list) else [patch_ops])
 
-        body = json.dumps({"userId": user})
+        body = ujson.dumps({"userId": user})
         LOG.info(f"PATCH user with ID {user} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
@@ -991,7 +1000,7 @@ class SubmissionAPIHandler:
                 result = await self._execute_action(schema_type, content_xml, db_client, action)
                 results.append(result)
 
-        body = json.dumps(results)
+        body = ujson.dumps(results, escape_forward_slashes=False)
         LOG.info(f"Processed a submission of {len(results)} actions.")
         return web.Response(body=body, status=200, content_type="application/json")
 
@@ -1067,7 +1076,7 @@ class SubmissionAPIHandler:
 
         elif action == "validate":
             validator = await self._perform_validation(schema, content)
-            return json.loads(validator.resp_body)
+            return ujson.loads(validator.resp_body)
 
         else:
             reason = f"Action {action} in XML is not supported."
