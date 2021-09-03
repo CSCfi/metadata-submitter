@@ -300,7 +300,10 @@ async def post_template_json(sess, schema, filename):
         LOG.debug(f"Adding new template object to {schema}, via JSON file {filename}")
         assert resp.status == 201, "HTTP Status code error"
         ans = await resp.json()
-        return ans["accessionId"]
+        if isinstance(ans, list):
+            return ans
+        else:
+            return ans["accessionId"]
 
 
 async def get_template(sess, schema, template_id):
@@ -308,7 +311,7 @@ async def get_template(sess, schema, template_id):
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (folder) used for testing
-    :param draft_id: id of the draft
+    :param template_id: id of the draft
     """
     async with sess.get(f"{templates_url}/{schema}/{template_id}") as resp:
         LOG.debug(f"Checking that {template_id} JSON exists")
@@ -317,12 +320,29 @@ async def get_template(sess, schema, template_id):
         return json.dumps(ans)
 
 
+async def patch_template(sess, schema, template_id, update_filename):
+    """Patch one metadata object within session, return accessionId.
+
+    :param sess: HTTP session in which request call is made
+    :param schema: name of the schema (folder) used for testing
+    :param template_id: id of the draft
+    :param update_filename: name of the file used to use for updating data.
+    """
+    request_data = await create_request_json_data(schema, update_filename)
+    async with sess.patch(f"{templates_url}/{schema}/{template_id}", data=request_data) as resp:
+        LOG.debug(f"Update draft object in {schema}")
+        assert resp.status == 200, "HTTP Status code error"
+        ans_put = await resp.json()
+        assert ans_put["accessionId"] == template_id, "accession ID error"
+        return ans_put["accessionId"]
+
+
 async def delete_template(sess, schema, template_id):
     """Delete metadata object within session.
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (folder) used for testing
-    :param draft_id: id of the draft
+    :param template_id: id of the draft
     """
     async with sess.delete(f"{templates_url}/{schema}/{template_id}") as resp:
         LOG.debug(f"Deleting template object {template_id} from {schema}")
@@ -911,15 +931,9 @@ async def test_getting_user_items(sess):
     async with sess.get(f"{users_url}/{user_id}") as resp:
         LOG.debug(f"Reading user {user_id}")
         assert resp.status == 200, "HTTP Status code error"
-        response = await resp.json()
-        real_user_id = response["userId"]
 
-    # Patch user to have a templates
+    # Add template to user
     template_id = await post_template_json(sess, "study", "SRP000539.json")
-    patch_templates_user = [
-        {"op": "add", "path": "/templates/-", "value": {"accessionId": template_id, "schema": "template-study"}}
-    ]
-    await patch_user(sess, user_id, real_user_id, patch_templates_user)
 
     # Test querying for list of user draft templates
     async with sess.get(f"{users_url}/{user_id}?items=templates") as resp:
@@ -974,8 +988,7 @@ async def test_crud_users_works(sess):
     # Add user to session and create a patch to add folder to user
     folder_not_published = {"name": "Mock User Folder", "description": "Mock folder for testing users"}
     folder_id = await post_folder(sess, folder_not_published)
-    patch_add_folder = [{"op": "add", "path": "/folders/-", "value": [folder_id]}]
-    await patch_user(sess, user_id, real_user_id, patch_add_folder)
+
     async with sess.get(f"{users_url}/{user_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was added")
         res = await resp.json()
@@ -1007,10 +1020,7 @@ async def test_crud_users_works(sess):
         assert delete_folder_id not in res["folders"], "delete folder still exists at user"
 
     template_id = await post_template_json(sess, "study", "SRP000539.json")
-    patch_templates_user = [
-        {"op": "add", "path": "/templates/-", "value": {"accessionId": template_id, "schema": "template-study"}}
-    ]
-    await patch_user(sess, user_id, real_user_id, patch_templates_user)
+    await patch_template(sess, "study", template_id, "patch.json")
     async with sess.get(f"{users_url}/{user_id}") as resp:
         LOG.debug(f"Checking that template: {template_id} was added")
         res = await resp.json()
@@ -1022,6 +1032,9 @@ async def test_crud_users_works(sess):
         LOG.debug(f"Checking that template {template_id} was added")
         res = await resp.json()
         assert len(res["templates"]) == 0, "template was not deleted from users"
+
+    template_ids = await post_template_json(sess, "study", "SRP000539_list.json")
+    assert len(template_ids) == 2, "templates could not be added as batch"
 
     # Delete user
     await delete_user(sess, user_id)
