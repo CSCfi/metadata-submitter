@@ -7,6 +7,7 @@ from collections import Counter
 from math import ceil
 from pathlib import Path
 from typing import Dict, List, Tuple, Union, cast, AsyncGenerator, Any
+from datetime import datetime
 
 from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
@@ -743,15 +744,6 @@ class FolderAPIHandler(RESTAPIHandler):
         db_client = req.app["db_client"]
         content = await self._get_data(req)
 
-        # Create draft DOI and add extra info to content
-        doi = DOIHandler()
-        doi_data = await doi.create_draft_doi()
-        content["extraInfo"] = {}
-        content["extraInfo"]["identifier"] = {"identifierType": "DOI", "doi": doi_data["fullDOI"]}
-        content["extraInfo"]["url"] = doi_data["dataset"]
-        content["extraInfo"]["resourceType"] = {"resourceTypeGeneral": "Dataset"}
-        content["extraInfo"]["publisher"] = publisher
-
         JSONValidator(content, "folders").validate
 
         operator = FolderOperator(db_client)
@@ -840,6 +832,12 @@ class FolderAPIHandler(RESTAPIHandler):
 
         obj_ops = Operator(db_client)
 
+        # Create draft DOI and delete draft objects from the folder
+        doi = DOIHandler()
+        doi_data = await doi.create_draft_doi()
+        identifier = {"identifierType": "DOI", "doi": doi_data["fullDOI"]}
+        curr_date = datetime.utcnow()
+
         for obj in folder["drafts"]:
             await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
 
@@ -847,6 +845,11 @@ class FolderAPIHandler(RESTAPIHandler):
         patch = [
             {"op": "replace", "path": "/published", "value": True},
             {"op": "replace", "path": "/drafts", "value": []},
+            {"op": "add", "path": "/datePublished", "value": curr_date},
+            {"op": "add", "path": "/extraInfo/identifier", "value": identifier},
+            {"op": "add", "path": "/extraInfo/url", "value": doi_data["dataset"]},
+            {"op": "add", "path": "/extraInfo/resourceType", "value": {"resourceTypeGeneral": "Dataset"}},
+            {"op": "add", "path": "/extraInfo/resourceType", "value": publisher},
         ]
         new_folder = await operator.update_folder(folder_id, patch)
 
