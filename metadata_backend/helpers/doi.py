@@ -3,11 +3,10 @@
 The DOI handler from SDA orchestration was used as reference:
 https://github.com/neicnordic/sda-orchestration/blob/master/sda_orchestrator/utils/id_ops.py
 """
-import requests
 from typing import Dict
 from uuid import uuid4
 
-from aiohttp import web
+from aiohttp import web, ClientSession, BasicAuth
 
 from ..helpers.logger import LOG
 from ..conf import conf
@@ -31,20 +30,21 @@ class DOIHandler:
         headers = {"Content-Type": "application/json"}
         doi_payload = {"data": {"type": "dois", "attributes": {"doi": f"{self.doi_prefix}/{doi_suffix}"}}}
 
-        response = requests.post(self.doi_api, json=doi_payload, headers=headers, auth=(self.doi_user, self.doi_key))
-
-        if response.status_code == 201:
-            draft_resp = response.json()
-            full_doi = draft_resp["data"]["attributes"]["doi"]
-            returned_suffix = draft_resp["data"]["attributes"]["suffix"]
-            LOG.info(f"DOI draft created with doi: {full_doi}.")
-            doi_data = {
-                "fullDOI": full_doi,
-                "dataset": f"{self.doi_url}/{returned_suffix.lower()}",
-            }
-        else:
-            reason = f"DOI API draft creation request failed with code: {response.status_code}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)  # 400 is probably not the correct error for this
+        auth = BasicAuth(login=self.doi_user, password=self.doi_key)
+        async with ClientSession(headers=headers, auth=auth) as session:
+            async with session.post(self.doi_api, json=doi_payload) as response:
+                if response.status == 201 or response.status == 200:  # This should only ever be 201
+                    draft_resp = await response.json()
+                    full_doi = draft_resp["data"]["attributes"]["doi"]
+                    returned_suffix = draft_resp["data"]["attributes"]["suffix"]
+                    LOG.info(f"DOI draft created with doi: {full_doi}.")
+                    doi_data = {
+                        "fullDOI": full_doi,
+                        "dataset": f"{self.doi_url}/{returned_suffix.lower()}",
+                    }
+                else:
+                    reason = f"DOI API draft creation request failed with code: {response.status}"
+                    LOG.error(reason)
+                    raise web.HTTPBadRequest(reason=reason)  # 400 might not be the correct error for this
 
         return doi_data

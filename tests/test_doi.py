@@ -16,7 +16,7 @@ class DOITestCase(unittest.TestCase):
 
     async def test_400_is_raised(self):
         """Test 400 is raised when request to DataCite supposedly fails."""
-        with patch("metadata_backend.helpers.doi.requests.post") as mocked_post:
+        with patch("aiohttp.ClientSession.post") as mocked_post:
             mocked_post.return_value.status_code = 400
             with self.assertRaises(web.HTTPBadRequest) as err:
                 await self.doi.create_draft_doi()
@@ -24,8 +24,8 @@ class DOITestCase(unittest.TestCase):
 
     async def test_create_doi_draft_works(self):
         """Test DOI info is returned correctly when request succeeds."""
-        with patch("metadata_backend.helpers.doi.requests.post") as mocked_post:
-            mocked_post.return_value.status_code = 201
+        with patch("aiohttp.ClientSession.post") as mocked_post:
+            mocked_post.return_value.status = 201
             mocked_post.return_value.json.return_value = {
                 "data": {
                     "id": "10.xxxx/yyyyy",
