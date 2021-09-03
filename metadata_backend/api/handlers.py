@@ -517,11 +517,29 @@ class TemplatesAPIHandler(RESTAPIHandler):
         db_client = req.app["db_client"]
         content = await self._get_data(req)
 
+        user_op = UserOperator(db_client)
+        current_user = get_session(req)["user_info"]
+
         operator = Operator(db_client)
 
-        accession_id = await operator.create_metadata_object(collection, content)
+        if isinstance(content, list):
+            tmpl_list = []
+            for tmpl in content:
+                accession_id = await operator.create_metadata_object(collection, tmpl)
+                await user_op.assign_objects(
+                    current_user, "templates", [{"accessionId": accession_id, "schema": collection}]
+                )
+                tmpl_list.append({"accessionId": accession_id})
 
-        body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
+            body = ujson.dumps(tmpl_list, escape_forward_slashes=False)
+        else:
+            accession_id = await operator.create_metadata_object(collection, content)
+            await user_op.assign_objects(
+                current_user, "templates", [{"accessionId": accession_id, "schema": collection}]
+            )
+
+            body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
+
         url = f"{req.scheme}://{req.host}{req.path}"
         location_headers = CIMultiDict(Location=f"{url}/{accession_id}")
         LOG.info(f"POST object with accesssion ID {accession_id} in schema {collection} was successful.")
@@ -531,6 +549,34 @@ class TemplatesAPIHandler(RESTAPIHandler):
             headers=location_headers,
             content_type="application/json",
         )
+
+    async def patch_template(self, req: Request) -> Response:
+        """Update metadata object in database.
+
+        :param req: PATCH request
+        :raises: HTTPUnauthorized if object is in published folder
+        :returns: JSON response containing accessionId for submitted object
+        """
+        schema_type = req.match_info["schema"]
+        accession_id = req.match_info["accessionId"]
+        self._check_schema_exists(schema_type)
+        collection = f"template-{schema_type}"
+
+        db_client = req.app["db_client"]
+        operator: Union[Operator, XMLOperator]
+
+        content = await self._get_data(req)
+        operator = Operator(db_client)
+
+        await operator.check_exists(collection, accession_id)
+
+        await self._handle_check_ownedby_user(req, collection, accession_id)
+
+        accession_id = await operator.update_metadata_object(collection, accession_id, content)
+
+        body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
+        LOG.info(f"PATCH object with accession ID {accession_id} in schema {collection} was successful.")
+        return web.Response(body=body, status=200, content_type="application/json")
 
     async def delete_template(self, req: Request) -> Response:
         """Delete metadata object from database.

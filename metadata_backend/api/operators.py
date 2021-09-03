@@ -991,12 +991,12 @@ class UserOperator:
     async def assign_objects(self, user_id: str, collection: str, object_ids: List) -> None:
         """Assing object to user.
 
-        An object can be folder(s) or draft(s).
+        An object can be folder(s) or templates(s).
 
         :param user_id: ID of user to update
         :param collection: collection where to remove the id from
         :param object_ids: ID or list of IDs of folder(s) to assign
-        :raises: HTTPBadRequest if assigning drafts/folders to user was not successful
+        :raises: HTTPBadRequest if assigning templates/folders to user was not successful
         returns: None
         """
         try:

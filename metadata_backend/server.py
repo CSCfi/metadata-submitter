@@ -91,6 +91,7 @@ async def init() -> web.Application:
         # template objects operations
         web.post("/templates/{schema}", _template.post_template),
         web.get("/templates/{schema}/{accessionId}", _template.get_template),
+        web.patch("/templates/{schema}/{accessionId}", _template.patch_template),
         web.delete("/templates/{schema}/{accessionId}", _template.delete_template),
         # folders/submissions operations
         web.get("/folders", _folder.get_folders),
