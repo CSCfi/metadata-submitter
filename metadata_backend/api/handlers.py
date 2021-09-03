@@ -26,7 +26,7 @@ from ..helpers.validator import JSONValidator, XMLValidator
 from ..helpers.doi import DOIHandler
 from .operators import FolderOperator, Operator, XMLOperator, UserOperator
 
-from ..conf.conf import aai_config
+from ..conf.conf import aai_config, publisher
 
 
 class RESTAPIHandler:
@@ -741,7 +741,7 @@ class FolderAPIHandler(RESTAPIHandler):
         :returns: JSON response containing folder ID for submitted folder
         """
         db_client = req.app["db_client"]
-        content = await self._get_data(req)  # Required properties from the request
+        content = await self._get_data(req)
 
         # Create draft DOI and add extra info to content
         doi = DOIHandler()
@@ -749,6 +749,8 @@ class FolderAPIHandler(RESTAPIHandler):
         content["extraInfo"] = {}
         content["extraInfo"]["identifier"] = {"identifierType": "DOI", "doi": doi_data["fullDOI"]}
         content["extraInfo"]["url"] = doi_data["dataset"]
+        content["extraInfo"]["resourceType"] = {"resourceTypeGeneral": "Dataset"}
+        content["extraInfo"]["publisher"] = publisher
 
         JSONValidator(content, "folders").validate
 

@@ -508,13 +508,12 @@
           "type": "object",
           "title": "Type info of the resource",
           "required": [
-            "type",
             "resourceTypeGeneral"
           ],
           "properties": {
-            "type": {
+            "resourceType": {
               "type": "string",
-              "title": "Name of resource type"
+              "title": "Specified resource type if general type is Other"
             },
             "resourceTypeGeneral": {
               "type": "string",
