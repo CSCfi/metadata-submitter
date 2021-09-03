@@ -31,7 +31,7 @@ class DOIHandler:
         headers = {"Content-Type": "application/json"}
         doi_payload = {"data": {"type": "dois", "attributes": {"doi": f"{self.doi_prefix}/{doi_suffix}"}}}
 
-        response = requests.post(self.doi_api, data=doi_payload, headers=headers, auth=(self.doi_user, self.doi_key))
+        response = requests.post(self.doi_api, json=doi_payload, headers=headers, auth=(self.doi_user, self.doi_key))
 
         if response.status_code == 201:
             draft_resp = response.json()
