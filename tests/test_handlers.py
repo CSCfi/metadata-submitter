@@ -560,10 +560,8 @@ class HandlersTestCase(AioHTTPTestCase):
     async def test_folder_creation_works(self):
         """Test that folder is created and folder ID returned."""
         json_req = {"name": "test", "description": "test folder"}
-        self.MockedDoiHandler().create_draft_doi.return_value = self.test_draft_doi
         response = await self.client.post("/folders", json=json_req)
         json_resp = await response.json()
-        self.MockedDoiHandler().create_draft_doi.assert_called_once()
         self.MockedFolderOperator().create_folder.assert_called_once()
         self.assertEqual(response.status, 201)
         self.assertEqual(json_resp["folderId"], self.folder_id)
@@ -571,10 +569,8 @@ class HandlersTestCase(AioHTTPTestCase):
     async def test_folder_creation_with_missing_data_fails(self):
         """Test that folder creation fails when missing data in request."""
         json_req = {"description": "test folder"}
-        self.MockedDoiHandler().create_draft_doi.return_value = self.test_draft_doi
         response = await self.client.post("/folders", json=json_req)
         json_resp = await response.json()
-        self.MockedDoiHandler().create_draft_doi.assert_called_once()
         self.assertEqual(response.status, 400)
         self.assertIn("'name' is a required property", json_resp["detail"])
 
@@ -650,7 +646,7 @@ class HandlersTestCase(AioHTTPTestCase):
         response = await self.client.patch("/folders/FOL12345678", json=data)
         self.assertEqual(response.status, 400)
         json_resp = await response.json()
-        reason = "Request contains '/objects' key that cannot be " "updated to folders."
+        reason = "Request contains '/objects' key that cannot be updated to folders."
         self.assertEqual(reason, json_resp["detail"])
 
     async def test_update_folder_passes(self):
@@ -664,9 +660,11 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(json_resp["folderId"], self.folder_id)
 
     async def test_folder_is_published(self):
-        """Test that folder would be published."""
+        """Test that folder would be published and DOI would be added."""
+        self.MockedDoiHandler().create_draft_doi.return_value = self.test_draft_doi
         self.MockedFolderOperator().update_folder.return_value = self.folder_id
         response = await self.client.patch("/publish/FOL12345678")
+        self.MockedDoiHandler().create_draft_doi.assert_called_once()
         self.MockedFolderOperator().update_folder.assert_called_once()
         self.assertEqual(response.status, 200)
         json_resp = await response.json()

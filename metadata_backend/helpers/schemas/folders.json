@@ -22,6 +22,10 @@
       "type": "integer",
       "title": "Unix time stamp of creation, used for indexing"
     },
+    "datePublished": {
+      "type": "integer",
+      "title": "Unix time stamp of publishing, used for indexing"
+    },
     "published": {
       "type": "boolean",
       "title": "Published Folder"
