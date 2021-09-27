@@ -76,7 +76,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
 
         refs = ["analysisRef", "sampleRef", "runRef", "experimentRef"]
 
-        children = self.dict()
+        children: Any = self.dict()
 
         for key, value, _ in self.map_content(data.content):
             key = self._to_camel(key.lower())
