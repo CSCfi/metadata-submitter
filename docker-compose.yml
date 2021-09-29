@@ -11,6 +11,7 @@ services:
     depends_on:
       - database
       - mockauth
+      - mockdoi
     restart: on-failure
     environment:
       - "MONGO_HOST=database:27017"
