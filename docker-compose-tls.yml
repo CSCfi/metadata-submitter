@@ -13,6 +13,7 @@ services:
     depends_on:
       - database
       - mockauth
+      - mockdoi
     restart: on-failure
     environment:
       - "MONGO_HOST=database:27017"
@@ -31,6 +32,10 @@ services:
       - "AUTH_REFERER=http://mockauth:8000"
       - "JWK_URL=http://mockauth:8000/keyset"
       - "LOG_LEVEL=DEBUG"
+      - "DOI_API=http://mockdoi:8001/dois"
+      - "DOI_PREFIX=10.xxxx"
+      - "DOI_USER=user"
+      - "DOI_KEY=key"
   database:
     image: "mongo"
     container_name: "metadata_submitter_database_dev"
@@ -59,5 +64,18 @@ services:
     volumes:
       - ./tests/integration/mock_auth.py:/mock_auth.py
     entrypoint: ["python", "/mock_auth.py", "0.0.0.0", "8000"]
+  mockdoi:
+    build:
+      dockerfile: Dockerfile-dev
+      context: .
+    image: cscfi/metadata-submitter-dev
+    hostname: mockdoi
+    expose:
+      - 8001
+    ports:
+      - 8001:8001
+    volumes:
+      - ./tests/integration/mock_doi_api.py:/mock_doi_api.py
+    entrypoint: ["python", "/mock_doi_api.py", "0.0.0.0", "8001"]
 volumes:
   data: 
