@@ -933,7 +933,7 @@ async def test_getting_user_items(sess):
         assert resp.status == 200, "HTTP Status code error"
 
     # Add template to user
-    template_id = await post_template_json(sess, "study", "SRP000539.json")
+    template_id = await post_template_json(sess, "study", "SRP000539_template.json")
 
     # Test querying for list of user draft templates
     async with sess.get(f"{users_url}/{user_id}?items=templates") as resp:
@@ -1020,7 +1020,7 @@ async def test_crud_users_works(sess):
         res = await resp.json()
         assert delete_folder_id not in res["folders"], "delete folder still exists at user"
 
-    template_id = await post_template_json(sess, "study", "SRP000539.json")
+    template_id = await post_template_json(sess, "study", "SRP000539_template.json")
     await patch_template(sess, "study", template_id, "patch.json")
     async with sess.get(f"{users_url}/{user_id}") as resp:
         LOG.debug(f"Checking that template: {template_id} was added")

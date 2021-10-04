@@ -524,19 +524,29 @@ class TemplatesAPIHandler(RESTAPIHandler):
 
         if isinstance(content, list):
             tmpl_list = []
-            for tmpl in content:
-                accession_id = await operator.create_metadata_object(collection, tmpl)
-                await user_op.assign_objects(
-                    current_user, "templates", [{"accessionId": accession_id, "schema": collection}]
-                )
+            for num, tmpl in enumerate(content):
+                if "template" not in tmpl:
+                    reason = f"template key is missing from request body for element: {num}."
+                    LOG.error(reason)
+                    raise web.HTTPBadRequest(reason=reason)
+                accession_id = await operator.create_metadata_object(collection, tmpl["template"])
+                data = [{"accessionId": accession_id, "schema": collection}]
+                if "tags" in tmpl:
+                    data[0]["tags"] = tmpl["tags"]
+                await user_op.assign_objects(current_user, "templates", data)
                 tmpl_list.append({"accessionId": accession_id})
 
             body = ujson.dumps(tmpl_list, escape_forward_slashes=False)
         else:
-            accession_id = await operator.create_metadata_object(collection, content)
-            await user_op.assign_objects(
-                current_user, "templates", [{"accessionId": accession_id, "schema": collection}]
-            )
+            if "template" not in content:
+                reason = "template key is missing from request body."
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+            accession_id = await operator.create_metadata_object(collection, content["template"])
+            data = [{"accessionId": accession_id, "schema": collection}]
+            if "tags" in content:
+                data[0]["tags"] = content["tags"]
+            await user_op.assign_objects(current_user, "templates", data)
 
             body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
 
