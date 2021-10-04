@@ -1008,6 +1008,7 @@ async def test_crud_users_works(sess):
     folder_not_published = {"name": "Delete Folder", "description": "Mock folder to delete while testing users"}
     delete_folder_id = await post_folder(sess, folder_not_published)
     patch_delete_folder = [{"op": "add", "path": "/folders/-", "value": [delete_folder_id]}]
+
     await patch_user(sess, user_id, real_user_id, patch_delete_folder)
     async with sess.get(f"{users_url}/{user_id}") as resp:
         LOG.debug(f"Checking that folder {delete_folder_id} was added")
@@ -1025,6 +1026,22 @@ async def test_crud_users_works(sess):
         LOG.debug(f"Checking that template: {template_id} was added")
         res = await resp.json()
         assert res["templates"][0]["accessionId"] == template_id, "added template does not exists"
+        assert "tags" not in res["templates"][0]
+
+    patch_change_tags_object = [
+        {
+            "op": "add",
+            "path": "/templates/0/tags",
+            "value": {"displaTitle": "Test"},
+        }
+    ]
+    await patch_user(sess, user_id, real_user_id, patch_change_tags_object)
+
+    async with sess.get(f"{users_url}/{user_id}") as resp:
+        LOG.debug(f"Checking that template: {template_id} was added")
+        res = await resp.json()
+        assert res["templates"][0]["accessionId"] == template_id, "added template does not exists"
+        assert res["templates"][0]["tags"]["displaTitle"] == "Test"
 
     await delete_template(sess, "study", template_id)
 
