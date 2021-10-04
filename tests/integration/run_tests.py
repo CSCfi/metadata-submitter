@@ -1053,6 +1053,11 @@ async def test_crud_users_works(sess):
     template_ids = await post_template_json(sess, "study", "SRP000539_list.json")
     assert len(template_ids) == 2, "templates could not be added as batch"
 
+    async with sess.get(f"{users_url}/{user_id}") as resp:
+        LOG.debug(f"Checking that template {template_id} was added")
+        res = await resp.json()
+        assert res["templates"][1]["tags"]["submissionType"] == "Form"
+
     # Delete user
     await delete_user(sess, user_id)
     # 401 means API is innacessible thus session ended

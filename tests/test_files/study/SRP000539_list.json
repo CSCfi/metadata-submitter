@@ -36,7 +36,7 @@
         }
       ]
     },
-    "tags": {"Submission": "Form"}
+    "tags": {"submissionType": "Form"}
   },
   {
     "template": {
