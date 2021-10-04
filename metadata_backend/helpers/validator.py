@@ -3,7 +3,7 @@
 import json
 import re
 from io import StringIO
-from typing import Any, Dict
+from typing import Any, Dict, cast
 from urllib.error import URLError
 
 from aiohttp import web
@@ -52,8 +52,9 @@ class XMLValidator:
 
         except XMLSchemaValidationError as error:
             # Parse reason and instance from the validation error message
-            reason = error.reason
-            instance = ElementTree.tostring(error.elem, encoding="unicode")
+            reason = str(error.reason)
+            _elem = cast(ElementTree.Element, error.elem)
+            instance = ElementTree.tostring(_elem, encoding="unicode")
             # Replace element address in reason with instance element
             if "<" and ">" in reason:
                 instance_parent = "".join((instance.split(">")[0], ">"))

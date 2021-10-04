@@ -1,7 +1,7 @@
 """Tool to parse XML files to JSON."""
 
 import re
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 from aiohttp import web
 from xmlschema import XMLSchema, XMLSchemaConverter, XMLSchemaException, XsdElement, XsdType
@@ -21,7 +21,13 @@ class MetadataXMLConverter(XMLSchemaConverter):
     https://github.com/enasequence/schema/tree/master/src/main/resources/uk/ac/ebi/ena/sra/schema
     """
 
-    def __init__(self, namespaces: Any = None, dict_class: dict = None, list_class: list = None, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        namespaces: Any = None,
+        dict_class: Optional[Type[Dict[str, Any]]] = None,
+        list_class: Optional[Type[List[Any]]] = None,
+        **kwargs: Any,
+    ) -> None:
         """Initialize converter and settings.
 
         :param namespaces: Map from namespace prefixes to URI.
@@ -280,12 +286,15 @@ class XMLToJSONParser:
             reason = "Current request could not be processed as the submitted file was not valid"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        result = schema.to_dict(content, converter=MetadataXMLConverter, decimal_type=float, dict_class=dict)[
-            schema_type.lower()
-        ]
-        if schema_type.lower() != "submission":
-            JSONValidator(result, schema_type.lower()).validate
-        return result
+        # result is of type:
+        # Union[Any, List[Any], Tuple[None, List[XMLSchemaValidationError]],
+        #  Tuple[Any, List[XMLSchemaValidationError]], Tuple[List[Any], List[XMLSchemaValidationError]]]
+        # however we expect any type as it is easier to work with
+        result: Any = schema.to_dict(content, converter=MetadataXMLConverter, decimal_type=float, dict_class=dict)
+        _schema_type: str = schema_type.lower()
+        if _schema_type != "submission":
+            JSONValidator(result[_schema_type], _schema_type).validate
+        return result[_schema_type]
 
     @staticmethod
     def _load_schema(schema_type: str) -> XMLSchema:
