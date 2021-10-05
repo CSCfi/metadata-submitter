@@ -1,5 +1,5 @@
 """Middleware methods for server."""
-import json
+import ujson
 from http import HTTPStatus
 from typing import Callable, Tuple
 from cryptography.fernet import InvalidToken
@@ -84,6 +84,7 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
     controlled_paths = [
         "/schemas",
         "/drafts",
+        "/templates",
         "/validate",
         "/publish",
         "/submit",
@@ -161,7 +162,7 @@ def generate_cookie(request: Request) -> Tuple[dict, str]:
     }
     # Return a tuple of the session as an encrypted JSON string, and the
     # cookie itself
-    return (cookie, request.app["Crypt"].encrypt(json.dumps(cookie).encode("utf-8")).decode("utf-8"))
+    return (cookie, request.app["Crypt"].encrypt(ujson.dumps(cookie).encode("utf-8")).decode("utf-8"))
 
 
 def decrypt_cookie(request: web.Request) -> dict:
@@ -176,7 +177,7 @@ def decrypt_cookie(request: web.Request) -> dict:
         raise web.HTTPUnauthorized()
     try:
         cookie_json = request.app["Crypt"].decrypt(request.cookies["MTD_SESSION"].encode("utf-8")).decode("utf-8")
-        cookie = json.loads(cookie_json)
+        cookie = ujson.loads(cookie_json)
         LOG.debug(f"Decrypted cookie: {cookie}")
         return cookie
     except InvalidToken:
@@ -229,7 +230,7 @@ def _json_exception(status: int, exception: web.HTTPException, url: URL) -> str:
     :param url: Request URL that caused the exception
     :returns: Problem detail JSON object as a string
     """
-    body = json.dumps(
+    body = ujson.dumps(
         {
             "type": "about:blank",
             # Replace type value above with an URL to
@@ -237,6 +238,7 @@ def _json_exception(status: int, exception: web.HTTPException, url: URL) -> str:
             "title": HTTPStatus(status).phrase,
             "detail": exception.reason,
             "instance": url.path,  # optional
-        }
+        },
+        escape_forward_slashes=False,
     )
     return body

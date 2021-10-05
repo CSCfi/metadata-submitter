@@ -57,7 +57,7 @@ class HandlersTestCase(AioHTTPTestCase):
         self.test_user = {
             "userId": self.user_id,
             "name": "tester",
-            "drafts": [],
+            "templates": [],
             "folders": ["FOL12345678"],
         }
 
@@ -499,7 +499,7 @@ class HandlersTestCase(AioHTTPTestCase):
         data = self.create_submission_data(files)
         response = await self.client.post("/validate", data=data)
         self.assertEqual(response.status, 200)
-        self.assertIn('{"isValid": true}', await response.text())
+        self.assertIn('{"isValid":true}', await response.text())
 
     @unittest_run_loop
     async def test_validation_fails_bad_schema(self):
@@ -719,7 +719,7 @@ class HandlersTestCase(AioHTTPTestCase):
     @unittest_run_loop
     async def test_get_user_drafts_with_no_drafts(self):
         """Test getting user drafts when user has no drafts."""
-        response = await self.client.get("/users/current?items=drafts")
+        response = await self.client.get("/users/current?items=templates")
         self.assertEqual(response.status, 200)
         self.MockedUserOperator().filter_user.assert_called_once()
         json_resp = await response.json()
@@ -728,19 +728,19 @@ class HandlersTestCase(AioHTTPTestCase):
                 "page": 1,
                 "size": 5,
                 "totalPages": 0,
-                "totalDrafts": 0,
+                "totalTemplates": 0,
             },
-            "drafts": [],
+            "templates": [],
         }
         self.assertEqual(json_resp, result)
 
     @unittest_run_loop
-    async def test_get_user_drafts_with_1_draft(self):
-        """Test getting user drafts when user has 1 draft."""
+    async def test_get_user_templates_with_1_template(self):
+        """Test getting user templates when user has 1 draft."""
         user = self.test_user
-        user["drafts"].append(self.metadata_json)
-        self.MockedUserOperator().filter_user.return_value = (user["drafts"], 1)
-        response = await self.client.get("/users/current?items=drafts")
+        user["templates"].append(self.metadata_json)
+        self.MockedUserOperator().filter_user.return_value = (user["templates"], 1)
+        response = await self.client.get("/users/current?items=templates")
         self.assertEqual(response.status, 200)
         self.MockedUserOperator().filter_user.assert_called_once()
         json_resp = await response.json()
@@ -749,9 +749,9 @@ class HandlersTestCase(AioHTTPTestCase):
                 "page": 1,
                 "size": 5,
                 "totalPages": 1,
-                "totalDrafts": 1,
+                "totalTemplates": 1,
             },
-            "drafts": [self.metadata_json],
+            "templates": [self.metadata_json],
         }
         self.assertEqual(json_resp, result)
 
@@ -776,12 +776,12 @@ class HandlersTestCase(AioHTTPTestCase):
 
     @unittest_run_loop
     async def test_get_user_items_with_bad_param(self):
-        """Test that error is raised if items parameter in query is not drafts or folders."""
+        """Test that error is raised if items parameter in query is not templates or folders."""
         response = await self.client.get("/users/current?items=wrong_thing")
         self.assertEqual(response.status, 400)
         json_resp = await response.json()
         self.assertEqual(
-            json_resp["detail"], "wrong_thing is a faulty item parameter. Should be either folders or drafts"
+            json_resp["detail"], "wrong_thing is a faulty item parameter. Should be either folders or templates"
         )
 
     @unittest_run_loop
@@ -807,7 +807,7 @@ class HandlersTestCase(AioHTTPTestCase):
     async def test_update_user_passes(self):
         """Test that user object would update with correct keys."""
         self.MockedUserOperator().update_user.return_value = self.user_id
-        data = [{"op": "add", "path": "/drafts/-", "value": [{"accessionId": "3", "schema": "sample"}]}]
+        data = [{"op": "add", "path": "/templates/-", "value": [{"accessionId": "3", "schema": "sample"}]}]
         response = await self.client.patch("/users/current", json=data)
         self.MockedUserOperator().update_user.assert_called_once()
         self.assertEqual(response.status, 200)

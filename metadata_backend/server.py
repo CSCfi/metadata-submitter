@@ -15,6 +15,7 @@ from .api.handlers import (
     FolderAPIHandler,
     UserAPIHandler,
     ObjectAPIHandler,
+    TemplatesAPIHandler,
 )
 from .api.auth import AccessHandler
 from .api.middlewares import http_error_handler, check_login
@@ -64,35 +65,49 @@ async def init() -> web.Application:
 
     server.middlewares.append(http_error_handler)
     server.middlewares.append(check_login)
-    _handler = RESTAPIHandler()
+    _schema = RESTAPIHandler()
     _object = ObjectAPIHandler()
     _folder = FolderAPIHandler()
     _user = UserAPIHandler()
     _submission = SubmissionAPIHandler()
+    _template = TemplatesAPIHandler()
     api_routes = [
-        web.get("/schemas", _handler.get_schema_types),
-        web.get("/schemas/{schema}", _handler.get_json_schema),
-        web.get("/objects/{schema}/{accessionId}", _object.get_object),
-        web.delete("/objects/{schema}/{accessionId}", _object.delete_object),
+        # retrieve schema and informations about it
+        web.get("/schemas", _schema.get_schema_types),
+        web.get("/schemas/{schema}", _schema.get_json_schema),
+        # metadata objects operations
         web.get("/objects/{schema}", _object.query_objects),
         web.post("/objects/{schema}", _object.post_object),
+        web.get("/objects/{schema}/{accessionId}", _object.get_object),
         web.put("/objects/{schema}/{accessionId}", _object.put_object),
+        web.patch("/objects/{schema}/{accessionId}", _object.patch_object),
+        web.delete("/objects/{schema}/{accessionId}", _object.delete_object),
+        # drafts objects operations
+        web.post("/drafts/{schema}", _object.post_object),
         web.get("/drafts/{schema}/{accessionId}", _object.get_object),
         web.put("/drafts/{schema}/{accessionId}", _object.put_object),
         web.patch("/drafts/{schema}/{accessionId}", _object.patch_object),
-        web.patch("/objects/{schema}/{accessionId}", _object.patch_object),
         web.delete("/drafts/{schema}/{accessionId}", _object.delete_object),
-        web.post("/drafts/{schema}", _object.post_object),
+        # template objects operations
+        web.post("/templates/{schema}", _template.post_template),
+        web.get("/templates/{schema}/{accessionId}", _template.get_template),
+        web.patch("/templates/{schema}/{accessionId}", _template.patch_template),
+        web.delete("/templates/{schema}/{accessionId}", _template.delete_template),
+        # folders/submissions operations
         web.get("/folders", _folder.get_folders),
         web.post("/folders", _folder.post_folder),
         web.get("/folders/{folderId}", _folder.get_folder),
         web.patch("/folders/{folderId}", _folder.patch_folder),
         web.delete("/folders/{folderId}", _folder.delete_folder),
+        # publish submissions
         web.patch("/publish/{folderId}", _folder.publish_folder),
+        # users operations
         web.get("/users/{userId}", _user.get_user),
         web.patch("/users/{userId}", _user.patch_user),
         web.delete("/users/{userId}", _user.delete_user),
+        # submit
         web.post("/submit", _submission.submit),
+        # validate
         web.post("/validate", _submission.validate),
     ]
     server.router.add_routes(api_routes)

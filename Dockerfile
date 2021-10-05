@@ -18,7 +18,7 @@ FROM python:3.8-alpine3.13 as BUILD-BACKEND
 
 RUN apk add --update \
     && apk add --no-cache build-base curl-dev linux-headers bash git musl-dev libffi-dev \
-    && apk add --no-cache python3-dev openssl-dev rust cargo \
+    && apk add --no-cache python3-dev openssl-dev rust cargo libstdc++ \
     && rm -rf /var/cache/apk/*
 
 COPY requirements.txt /root/submitter/requirements.txt
@@ -34,7 +34,7 @@ RUN pip install --upgrade pip && \
 
 FROM python:3.8-alpine3.13
 
-RUN apk add --no-cache --update bash
+RUN apk add --no-cache --update libstdc++
 
 LABEL maintainer="CSC Developers"
 LABEL org.label-schema.schema-version="1.0"

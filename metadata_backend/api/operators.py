@@ -524,7 +524,7 @@ class XMLOperator(BaseOperator):
         :returns: Accession Id for object inserted to database
         """
         db_client = self.db_service.db_client
-        # remove `drafs-` from schema type
+        # remove `draft-` from schema type
         schema = schema_type[6:] if schema_type.startswith("draft") else schema_type
         data_as_json = XMLToJSONParser().parse(schema, data)
         accession_id = await Operator(db_client)._format_data_to_create_and_add_to_db(schema_type, data_as_json)
@@ -843,7 +843,7 @@ class UserOperator:
         self.db_service = DBService(mongo_database, db_client)
 
     async def check_user_has_doc(self, collection: str, user_id: str, accession_id: str) -> bool:
-        """Check a folder/draft belongs to user.
+        """Check a folder/template belongs to user.
 
         :param collection: collection it belongs to, it would be used as path
         :param user_id: user_id from session
@@ -852,8 +852,8 @@ class UserOperator:
         :returns: True if accession_id belongs to user
         """
         try:
-            if collection.startswith("draft"):
-                user_query = {"drafts": {"$elemMatch": {"accessionId": accession_id}}, "userId": user_id}
+            if collection.startswith("template"):
+                user_query = {"templates": {"$elemMatch": {"accessionId": accession_id}}, "userId": user_id}
             else:
                 user_query = {"folders": {"$elemMatch": {"$eq": accession_id}}, "userId": user_id}
             user_cursor = self.db_service.query("user", user_query)
@@ -891,7 +891,7 @@ class UserOperator:
                 LOG.info(f"User with identifier: {external_id} exists, no need to create.")
                 return existing_user_id
             else:
-                user_data["drafts"] = []
+                user_data["templates"] = []
                 user_data["folders"] = []
                 user_data["userId"] = user_id = self._generate_user_id()
                 user_data["name"] = name
@@ -991,12 +991,12 @@ class UserOperator:
     async def assign_objects(self, user_id: str, collection: str, object_ids: List) -> None:
         """Assing object to user.
 
-        An object can be folder(s) or draft(s).
+        An object can be folder(s) or templates(s).
 
         :param user_id: ID of user to update
         :param collection: collection where to remove the id from
         :param object_ids: ID or list of IDs of folder(s) to assign
-        :raises: HTTPBadRequest if assigning drafts/folders to user was not successful
+        :raises: HTTPBadRequest if assigning templates/folders to user was not successful
         returns: None
         """
         try:
@@ -1019,7 +1019,7 @@ class UserOperator:
     async def remove_objects(self, user_id: str, collection: str, object_ids: List) -> None:
         """Remove object from user.
 
-        An object can be folder(s) or draft(s).
+        An object can be folder(s) or template(s).
 
         :param user_id: ID of user to update
         :param collection: collection where to remove the id from
@@ -1031,8 +1031,8 @@ class UserOperator:
         try:
             await self._check_user_exists(user_id)
             for obj in object_ids:
-                if collection == "drafts":
-                    remove_content = {"drafts": {"accessionId": obj}}
+                if collection == "templates":
+                    remove_content = {"templates": {"accessionId": obj}}
                 else:
                     remove_content = {"folders": obj}
                 await self.db_service.remove("user", user_id, remove_content)

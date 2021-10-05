@@ -1,5 +1,5 @@
 """Handle health check endpoint."""
-import json
+import ujson
 import time
 from typing import Dict, Union, Any
 
@@ -35,7 +35,9 @@ class HealthHandler:
         full_status["services"] = services
         LOG.info("Health status collected.")
 
-        return web.Response(body=json.dumps(full_status), status=200, content_type="application/json")
+        return web.Response(
+            body=ujson.dumps(full_status, escape_forward_slashes=False), status=200, content_type="application/json"
+        )
 
     async def create_test_db_client(self) -> AsyncIOMotorClient:
         """Initialize a new database client to test Mongo connection.

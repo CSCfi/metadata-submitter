@@ -1,4 +1,5 @@
 """Handle HTTP methods for server."""
+import ujson
 import json
 import re
 import mimetypes
@@ -89,8 +90,9 @@ class RESTAPIHandler:
             elif check:
                 # if the draft object is found in folder we just need to check if the folder belongs to user
                 _check = await user_op.check_user_has_doc("folders", current_user, folder_id)
-            elif collection.startswith("draft"):
-                # if collection is draft but not found in a folder we also check if object is in drafts of the user
+            elif collection.startswith("template"):
+                # if collection is template but not found in a folder
+                # we also check if object is in templates of the user
                 # they will be here if they will not be deleted after publish
                 _check = await user_op.check_user_has_doc(collection, current_user, accession_id)
             else:
@@ -179,7 +181,7 @@ class RESTAPIHandler:
         :param req: GET Request
         :returns: JSON list of schema types
         """
-        types_json = json.dumps([x["description"] for x in schema_types.values()])
+        types_json = ujson.dumps([x["description"] for x in schema_types.values()], escape_forward_slashes=False)
         LOG.info(f"GET schema types. Retrieved {len(schema_types)} schemas.")
         return web.Response(body=types_json, status=200, content_type="application/json")
 
@@ -197,7 +199,9 @@ class RESTAPIHandler:
         try:
             schema = JSONSchemaLoader().get_schema(schema_type)
             LOG.info(f"{schema_type} schema loaded.")
-            return web.Response(body=json.dumps(schema), status=200, content_type="application/json")
+            return web.Response(
+                body=ujson.dumps(schema, escape_forward_slashes=False), status=200, content_type="application/json"
+            )
 
         except SchemaNotFoundException as error:
             reason = f"{error} ({schema_type})"
@@ -249,7 +253,7 @@ class ObjectAPIHandler(RESTAPIHandler):
             collection, req.query, page, per_page, filter_list
         )
 
-        result = json.dumps(
+        result = ujson.dumps(
             {
                 "page": {
                     "page": page_num,
@@ -258,7 +262,8 @@ class ObjectAPIHandler(RESTAPIHandler):
                     "totalObjects": total_objects,
                 },
                 "objects": data,
-            }
+            },
+            escape_forward_slashes=False,
         )
         url = f"{req.scheme}://{req.host}{req.path}"
         link_headers = await self._header_links(url, page_num, per_page, total_objects)
@@ -275,7 +280,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         """Get one metadata object by its accession id.
 
         Returns original XML object from backup if format query parameter is
-        set, otherwise json.
+        set, otherwise JSON.
 
         :param req: GET request
         :returns: JSON or XML response containing metadata object
@@ -296,7 +301,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         data, content_type = await operator.read_metadata_object(type_collection, accession_id)
 
-        data = data if req_format == "xml" else json.dumps(data)
+        data = data if req_format == "xml" else ujson.dumps(data, escape_forward_slashes=False)
         LOG.info(f"GET object with accesssion ID {accession_id} from schema {collection}.")
         return web.Response(body=data, status=200, content_type=content_type)
 
@@ -328,9 +333,9 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         accession_id = await operator.create_metadata_object(collection, content)
 
-        body = json.dumps({"accessionId": accession_id})
+        body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         url = f"{req.scheme}://{req.host}{req.path}"
-        location_headers = CIMultiDict(Location=f"{url}{accession_id}")
+        location_headers = CIMultiDict(Location=f"{url}/{accession_id}")
         LOG.info(f"POST object with accesssion ID {accession_id} in schema {collection} was successful.")
         return web.Response(
             body=body,
@@ -377,15 +382,9 @@ class ObjectAPIHandler(RESTAPIHandler):
                 raise web.HTTPUnauthorized(reason=reason)
             await folder_op.remove_object(folder_id, collection, accession_id)
         else:
-            user_op = UserOperator(db_client)
-            current_user = get_session(req)["user_info"]
-            check_user = await user_op.check_user_has_doc(collection, current_user, accession_id)
-            if check_user:
-                await user_op.remove_objects(current_user, "drafts", [accession_id])
-            else:
-                reason = "This object does not seem to belong to any user."
-                LOG.error(reason)
-                raise web.HTTPUnprocessableEntity(reason=reason)
+            reason = "This object does not seem to belong to any user."
+            LOG.error(reason)
+            raise web.HTTPUnprocessableEntity(reason=reason)
 
         accession_id = await Operator(db_client).delete_metadata_object(collection, accession_id)
 
@@ -427,7 +426,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         accession_id = await operator.replace_metadata_object(collection, accession_id, content)
 
-        body = json.dumps({"accessionId": accession_id})
+        body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info(f"PUT object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
@@ -468,9 +467,160 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         accession_id = await operator.update_metadata_object(collection, accession_id, content)
 
-        body = json.dumps({"accessionId": accession_id})
+        body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info(f"PATCH object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
+
+
+class TemplatesAPIHandler(RESTAPIHandler):
+    """API Handler for Templates."""
+
+    async def get_template(self, req: Request) -> Response:
+        """Get one metadata object by its accession id.
+
+        Returns  JSON.
+
+        :param req: GET request
+        :returns: JSON response containing template object
+        """
+        accession_id = req.match_info["accessionId"]
+        schema_type = req.match_info["schema"]
+        self._check_schema_exists(schema_type)
+        collection = f"template-{schema_type}"
+
+        db_client = req.app["db_client"]
+        operator = Operator(db_client)
+
+        await operator.check_exists(collection, accession_id)
+
+        await self._handle_check_ownedby_user(req, collection, accession_id)
+
+        data, content_type = await operator.read_metadata_object(collection, accession_id)
+
+        data = ujson.dumps(data, escape_forward_slashes=False)
+        LOG.info(f"GET object with accesssion ID {accession_id} from schema {collection}.")
+        return web.Response(body=data, status=200, content_type=content_type)
+
+    async def post_template(self, req: Request) -> Response:
+        """Save metadata object to database.
+
+        For JSON request body we validate it is consistent with the
+        associated JSON schema.
+
+        :param req: POST request
+        :returns: JSON response containing accessionId for submitted object
+        """
+        schema_type = req.match_info["schema"]
+        self._check_schema_exists(schema_type)
+        collection = f"template-{schema_type}"
+
+        db_client = req.app["db_client"]
+        content = await self._get_data(req)
+
+        user_op = UserOperator(db_client)
+        current_user = get_session(req)["user_info"]
+
+        operator = Operator(db_client)
+
+        if isinstance(content, list):
+            tmpl_list = []
+            for num, tmpl in enumerate(content):
+                if "template" not in tmpl:
+                    reason = f"template key is missing from request body for element: {num}."
+                    LOG.error(reason)
+                    raise web.HTTPBadRequest(reason=reason)
+                accession_id = await operator.create_metadata_object(collection, tmpl["template"])
+                data = [{"accessionId": accession_id, "schema": collection}]
+                if "tags" in tmpl:
+                    data[0]["tags"] = tmpl["tags"]
+                await user_op.assign_objects(current_user, "templates", data)
+                tmpl_list.append({"accessionId": accession_id})
+
+            body = ujson.dumps(tmpl_list, escape_forward_slashes=False)
+        else:
+            if "template" not in content:
+                reason = "template key is missing from request body."
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+            accession_id = await operator.create_metadata_object(collection, content["template"])
+            data = [{"accessionId": accession_id, "schema": collection}]
+            if "tags" in content:
+                data[0]["tags"] = content["tags"]
+            await user_op.assign_objects(current_user, "templates", data)
+
+            body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
+
+        url = f"{req.scheme}://{req.host}{req.path}"
+        location_headers = CIMultiDict(Location=f"{url}/{accession_id}")
+        LOG.info(f"POST object with accesssion ID {accession_id} in schema {collection} was successful.")
+        return web.Response(
+            body=body,
+            status=201,
+            headers=location_headers,
+            content_type="application/json",
+        )
+
+    async def patch_template(self, req: Request) -> Response:
+        """Update metadata object in database.
+
+        :param req: PATCH request
+        :raises: HTTPUnauthorized if object is in published folder
+        :returns: JSON response containing accessionId for submitted object
+        """
+        schema_type = req.match_info["schema"]
+        accession_id = req.match_info["accessionId"]
+        self._check_schema_exists(schema_type)
+        collection = f"template-{schema_type}"
+
+        db_client = req.app["db_client"]
+        operator: Union[Operator, XMLOperator]
+
+        content = await self._get_data(req)
+        operator = Operator(db_client)
+
+        await operator.check_exists(collection, accession_id)
+
+        await self._handle_check_ownedby_user(req, collection, accession_id)
+
+        accession_id = await operator.update_metadata_object(collection, accession_id, content)
+
+        body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
+        LOG.info(f"PATCH object with accession ID {accession_id} in schema {collection} was successful.")
+        return web.Response(body=body, status=200, content_type="application/json")
+
+    async def delete_template(self, req: Request) -> Response:
+        """Delete metadata object from database.
+
+        :param req: DELETE request
+        :raises: HTTPUnauthorized if folder published
+        :raises: HTTPUnprocessableEntity if object does not belong to current user
+        :returns: HTTPNoContent response
+        """
+        schema_type = req.match_info["schema"]
+        self._check_schema_exists(schema_type)
+        collection = f"template-{schema_type}"
+
+        accession_id = req.match_info["accessionId"]
+        db_client = req.app["db_client"]
+
+        await Operator(db_client).check_exists(collection, accession_id)
+
+        await self._handle_check_ownedby_user(req, collection, accession_id)
+
+        user_op = UserOperator(db_client)
+        current_user = get_session(req)["user_info"]
+        check_user = await user_op.check_user_has_doc(collection, current_user, accession_id)
+        if check_user:
+            await user_op.remove_objects(current_user, "templates", [accession_id])
+        else:
+            reason = "This object does not seem to belong to any user."
+            LOG.error(reason)
+            raise web.HTTPUnprocessableEntity(reason=reason)
+
+        accession_id = await Operator(db_client).delete_metadata_object(collection, accession_id)
+
+        LOG.info(f"DELETE object with accession ID {accession_id} in schema {collection} was successful.")
+        return web.Response(status=204)
 
 
 class FolderAPIHandler(RESTAPIHandler):
@@ -557,7 +707,7 @@ class FolderAPIHandler(RESTAPIHandler):
         folder_operator = FolderOperator(db_client)
         folders, total_folders = await folder_operator.query_folders(folder_query, page, per_page)
 
-        result = json.dumps(
+        result = ujson.dumps(
             {
                 "page": {
                     "page": page,
@@ -566,7 +716,8 @@ class FolderAPIHandler(RESTAPIHandler):
                     "totalFolders": total_folders,
                 },
                 "folders": folders,
-            }
+            },
+            escape_forward_slashes=False,
         )
 
         url = f"{req.scheme}://{req.host}{req.path}"
@@ -599,7 +750,7 @@ class FolderAPIHandler(RESTAPIHandler):
         current_user = get_session(req)["user_info"]
         await user_op.assign_objects(current_user, "folders", [folder])
 
-        body = json.dumps({"folderId": folder})
+        body = ujson.dumps({"folderId": folder}, escape_forward_slashes=False)
 
         url = f"{req.scheme}://{req.host}{req.path}"
         location_headers = CIMultiDict(Location=f"{url}/{folder}")
@@ -624,7 +775,9 @@ class FolderAPIHandler(RESTAPIHandler):
         folder = await operator.read_folder(folder_id)
 
         LOG.info(f"GET folder with ID {folder_id} was successful.")
-        return web.Response(body=json.dumps(folder), status=200, content_type="application/json")
+        return web.Response(
+            body=ujson.dumps(folder, escape_forward_slashes=False), status=200, content_type="application/json"
+        )
 
     async def patch_folder(self, req: Request) -> Response:
         """Update object folder with a specific folder id.
@@ -654,7 +807,7 @@ class FolderAPIHandler(RESTAPIHandler):
 
         upd_folder = await operator.update_folder(folder_id, patch_ops if isinstance(patch_ops, list) else [patch_ops])
 
-        body = json.dumps({"folderId": upd_folder})
+        body = ujson.dumps({"folderId": upd_folder}, escape_forward_slashes=False)
         LOG.info(f"PATCH folder with ID {upd_folder} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
@@ -686,7 +839,7 @@ class FolderAPIHandler(RESTAPIHandler):
         ]
         new_folder = await operator.update_folder(folder_id, patch)
 
-        body = json.dumps({"folderId": new_folder})
+        body = ujson.dumps({"folderId": new_folder}, escape_forward_slashes=False)
         LOG.info(f"Patching folder with ID {new_folder} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
@@ -737,9 +890,9 @@ class UserAPIHandler(RESTAPIHandler):
         :raises: HTTPUnauthorized if request tries to do anything else than add or replace
         :returns: None
         """
-        _arrays = ["/drafts/-", "/folders/-"]
+        _arrays = ["/templates/-", "/folders/-"]
         _required_values = ["schema", "accessionId"]
-        _tags = re.compile("^/(drafts)/[0-9]*/(tags)$")
+        _tags = re.compile("^/(templates)/[0-9]*/(tags)$")
         for op in patch_ops:
             if _tags.match(op["path"]):
                 LOG.info(f"{op['op']} on tags in folder")
@@ -762,7 +915,7 @@ class UserAPIHandler(RESTAPIHandler):
                         reason = "We only accept string folder IDs."
                         LOG.error(reason)
                         raise web.HTTPBadRequest(reason=reason)
-                if op["path"] == "/drafts/-":
+                if op["path"] == "/templates/-":
                     _ops = op["value"] if isinstance(op["value"], list) else [op["value"]]
                     for item in _ops:
                         if not all(key in item.keys() for key in _required_values):
@@ -783,7 +936,7 @@ class UserAPIHandler(RESTAPIHandler):
 
         :param req: GET request
         :raises: HTTPUnauthorized if not current user
-        :returns: JSON response containing user object or list of user drafts or user folders by id
+        :returns: JSON response containing user object or list of user templates or user folders by id
         """
         user_id = req.match_info["userId"]
         if user_id != "current":
@@ -794,21 +947,23 @@ class UserAPIHandler(RESTAPIHandler):
 
         item_type = req.query.get("items", "").lower()
         if item_type:
-            # Return only list of drafts or list of folder IDs owned by the user
+            # Return only list of templates or list of folder IDs owned by the user
             result, link_headers = await self._get_user_items(req, current_user, item_type)
             return web.Response(
-                body=json.dumps(result),
+                body=ujson.dumps(result, escape_forward_slashes=False),
                 status=200,
                 headers=link_headers,
                 content_type="application/json",
             )
         else:
-            # Return whole user object if drafts or folders are not specified in query
+            # Return whole user object if templates or folders are not specified in query
             db_client = req.app["db_client"]
             operator = UserOperator(db_client)
             user = await operator.read_user(current_user)
             LOG.info(f"GET user with ID {user_id} was successful.")
-            return web.Response(body=json.dumps(user), status=200, content_type="application/json")
+            return web.Response(
+                body=ujson.dumps(user, escape_forward_slashes=False), status=200, content_type="application/json"
+            )
 
     async def patch_user(self, req: Request) -> Response:
         """Update user object with a specific user ID.
@@ -831,7 +986,7 @@ class UserAPIHandler(RESTAPIHandler):
         current_user = get_session(req)["user_info"]
         user = await operator.update_user(current_user, patch_ops if isinstance(patch_ops, list) else [patch_ops])
 
-        body = json.dumps({"userId": user})
+        body = ujson.dumps({"userId": user})
         LOG.info(f"PATCH user with ID {user} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
@@ -861,7 +1016,7 @@ class UserAPIHandler(RESTAPIHandler):
                     await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
                 await fold_ops.delete_folder(folder_id)
 
-        for tmpl in user["drafts"]:
+        for tmpl in user["templates"]:
             await obj_ops.delete_metadata_object(tmpl["schema"], tmpl["accessionId"])
 
         await operator.delete_user(current_user)
@@ -887,13 +1042,13 @@ class UserAPIHandler(RESTAPIHandler):
 
         :param req: GET request
         :param user: User object
-        :param item_type: Name of the items ("drafts" or "folders")
+        :param item_type: Name of the items ("templates" or "folders")
         :raises: HTTPUnauthorized if not current user
         :returns: Paginated list of user draft templates and link header
         """
         # Check item_type parameter is not faulty
-        if item_type not in ["drafts", "folders"]:
-            reason = f"{item_type} is a faulty item parameter. Should be either folders or drafts"
+        if item_type not in ["templates", "folders"]:
+            reason = f"{item_type} is a faulty item parameter. Should be either folders or templates"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -991,7 +1146,7 @@ class SubmissionAPIHandler:
                 result = await self._execute_action(schema_type, content_xml, db_client, action)
                 results.append(result)
 
-        body = json.dumps(results)
+        body = ujson.dumps(results, escape_forward_slashes=False)
         LOG.info(f"Processed a submission of {len(results)} actions.")
         return web.Response(body=body, status=200, content_type="application/json")
 
@@ -1067,7 +1222,7 @@ class SubmissionAPIHandler:
 
         elif action == "validate":
             validator = await self._perform_validation(schema, content)
-            return json.loads(validator.resp_body)
+            return ujson.loads(validator.resp_body)
 
         else:
             reason = f"Action {action} in XML is not supported."

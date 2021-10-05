@@ -1,6 +1,6 @@
 """Logging formatting and functions for debugging."""
 
-import json
+import ujson
 import logging
 from typing import Any, Dict
 import os
@@ -31,4 +31,4 @@ def pprint_json(content: Dict) -> None:
 
     :param content: JSON-formatted content to be printed
     """
-    LOG.info(json.dumps(content, indent=4))
+    LOG.info(ujson.dumps(content, indent=4, escape_forward_slashes=False))
