@@ -31,7 +31,7 @@ Production version gets frontend SPA from this folder, after it has been built
 and inserted here in projects Dockerfile.
 """
 
-import json
+import ujson
 import os
 from pathlib import Path
 from distutils.util import strtobool
@@ -107,7 +107,7 @@ def create_db_client() -> AsyncIOMotorClient:
 # Default schemas will be ENA schemas
 path_to_schema_file = Path(__file__).parent / "ena_schemas.json"
 with open(path_to_schema_file) as schema_file:
-    schema_types = json.load(schema_file)
+    schema_types = ujson.load(schema_file)
 
 
 # 3) Define mapping between url query parameters and mongodb queries

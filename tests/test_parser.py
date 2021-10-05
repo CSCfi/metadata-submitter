@@ -9,7 +9,7 @@ from pymongo import UpdateOne
 
 
 class ParserTestCase(unittest.TestCase):
-    """API endpoint class test cases."""
+    """Parser Test Cases."""
 
     TESTFILES_ROOT = Path(__file__).parent / "test_files"
 

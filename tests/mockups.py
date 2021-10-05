@@ -3,7 +3,7 @@
 import hashlib
 from os import urandom
 import yarl
-import json
+import ujson
 
 import cryptography.fernet
 from cryptography.hazmat.primitives import serialization
@@ -112,7 +112,7 @@ def add_csrf_to_cookie(cookie, req, bad_sign=False):
 
 def encrypt_cookie(cookie, req):
     """Add encrypted cookie to request."""
-    cookie_crypted = req.app["Crypt"].encrypt(json.dumps(cookie).encode("utf-8")).decode("utf-8")
+    cookie_crypted = req.app["Crypt"].encrypt(ujson.dumps(cookie).encode("utf-8")).decode("utf-8")
     req.cookies["MTD_SESSION"] = cookie_crypted
 
 

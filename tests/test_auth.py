@@ -16,7 +16,7 @@ from .mockups import (
     jwt_data_bad_nonce,
 )
 from unittest import IsolatedAsyncioTestCase
-import json
+import ujson
 
 
 class AccessHandlerFailTestCase(AioHTTPTestCase):
@@ -127,11 +127,11 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
             "alg": "HS256",
             "k": "hJtXIZ2uSN5kbQfbtTNWbpdmhkV8FJG-Onbc6mxCcYg",
         }
-        resp = MockResponse(json.dumps(data), 200)
+        resp = MockResponse(ujson.dumps(data), 200)
 
         with patch("aiohttp.ClientSession.get", return_value=resp):
             result = await self.AccessHandler._get_key()
-            self.assertEqual(result, json.dumps(data))
+            self.assertEqual(result, ujson.dumps(data))
 
     async def test_set_user_fail(self):
         """Test set user raises exception."""
