@@ -1,0 +1,541 @@
+{
+    "type": "object",
+    "title": "The DOI info schema",
+    "required": [
+        "creators",
+        "subjects"
+    ],
+    "properties": {
+        "creators": {
+            "type": "array",
+            "title": "List of creators",
+            "items": {
+                "type": "object",
+                "title": "Main researchers involved with data or the authors of the publication",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Full name of creator (format: Family, Given)"
+                    },
+                    "nameType": {
+                        "type": "string",
+                        "title": "Type of name"
+                    },
+                    "givenName": {
+                        "type": "string",
+                        "title": "First name"
+                    },
+                    "familyName": {
+                        "type": "string",
+                        "title": "Last name"
+                    },
+                    "nameIdentifiers": {
+                        "type": "array",
+                        "title": "List of name identifiers",
+                        "items": {
+                            "type": "object",
+                            "title": "Name identifier object",
+                            "properties": {
+                                "schemeUri": {
+                                    "oneOf": [
+                                        {
+                                            "title": "String value",
+                                            "type": "string"
+                                        },
+                                        {
+                                            "title": "Null value",
+                                            "type": "null"
+                                        }
+                                    ],
+                                    "title": "URI (location) of the name identifier scheme"
+                                },
+                                "nameIdentifier": {
+                                    "oneOf": [
+                                        {
+                                            "title": "String value",
+                                            "type": "string"
+                                        },
+                                        {
+                                            "title": "Null value",
+                                            "type": "null"
+                                        }
+                                    ],
+                                    "title": "URI (location) of name identifier"
+                                },
+                                "nameIdentifierScheme": {
+                                    "oneOf": [
+                                        {
+                                            "title": "String value",
+                                            "type": "string"
+                                        },
+                                        {
+                                            "title": "Null value",
+                                            "type": "null"
+                                        }
+                                    ],
+                                    "title": "Name of name identifier scheme"
+                                }
+                            }
+                        },
+                        "uniqueItems": true
+                    },
+                    "affiliation": {
+                        "type": "array",
+                        "title": "List of affiliations",
+                        "items": {
+                            "type": "object",
+                            "title": "Name affiliation object",
+                            "properties": {
+                                "name": {
+                                    "type": "string",
+                                    "title": "Name of the place of affiliation"
+                                },
+                                "schemeUri": {
+                                    "type": "string",
+                                    "title": "URI (location) of the affiliation scheme"
+                                },
+                                "affiliationIdentifier": {
+                                    "type": "string",
+                                    "title": "Location of affiliation identifier"
+                                },
+                                "affiliationIdentifierScheme": {
+                                    "type": "string",
+                                    "title": "Name of affiliation identifier scheme"
+                                }
+                            }
+                        },
+                        "uniqueItems": true
+                    }
+                },
+                "additionalProperties": false
+            },
+            "uniqueItems": true
+        },
+        "subjects": {
+            "type": "array",
+            "title": "List of subject identifiers specified by FOS",
+            "items": {
+                "type": "object",
+                "title": "Subject objects",
+                "required": [
+                    "subject"
+                ],
+                "properties": {
+                    "subject": {
+                        "type": "string",
+                        "title": "FOS identifier"
+                    },
+                    "subjectScheme": {
+                        "type": "string",
+                        "title": "Subject scheme name"
+                    }
+                },
+                "additionalProperties": true
+            },
+            "uniqueItems": true
+        },
+        "contributors": {
+            "type": "array",
+            "title": "List of contributors",
+            "items": {
+                "type": "object",
+                "title": "The institution or person responsible for contributing to the developement of the dataset",
+                "required": [
+                    "contributorType"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Full name of contributor (format: Family, Given)"
+                    },
+                    "nameType": {
+                        "type": "string",
+                        "title": "Type of name"
+                    },
+                    "givenName": {
+                        "type": "string",
+                        "title": "First name"
+                    },
+                    "familyName": {
+                        "type": "string",
+                        "title": "Last name"
+                    },
+                    "contributorType": {
+                        "type": "string",
+                        "title": "Type of contributor"
+                    },
+                    "nameIdentifiers": {
+                        "type": "array",
+                        "title": "List of name identifiers",
+                        "items": {
+                            "type": "object",
+                            "title": "Name identifier object",
+                            "properties": {
+                                "schemeUri": {
+                                    "oneOf": [
+                                        {
+                                            "title": "String value",
+                                            "type": "string"
+                                        },
+                                        {
+                                            "title": "Null value",
+                                            "type": "null"
+                                        }
+                                    ],
+                                    "title": "URI (location) of the name identifier scheme"
+                                },
+                                "nameIdentifier": {
+                                    "oneOf": [
+                                        {
+                                            "title": "String value",
+                                            "type": "string"
+                                        },
+                                        {
+                                            "title": "Null value",
+                                            "type": "null"
+                                        }
+                                    ],
+                                    "title": "Location of name identifier"
+                                },
+                                "nameIdentifierScheme": {
+                                    "oneOf": [
+                                        {
+                                            "title": "String value",
+                                            "type": "string"
+                                        },
+                                        {
+                                            "title": "Null value",
+                                            "type": "null"
+                                        }
+                                    ],
+                                    "title": "Name of name identifier scheme"
+                                }
+                            }
+                        }
+                    },
+                    "affiliation": {
+                        "type": "array",
+                        "title": "List of affiliations",
+                        "items": {
+                            "type": "object",
+                            "title": "Name affiliation object",
+                            "properties": {
+                                "name": {
+                                    "type": "string",
+                                    "title": "Name of the place of affiliation"
+                                },
+                                "schemeUri": {
+                                    "type": "string",
+                                    "title": "URI (location) of the affiliation scheme"
+                                },
+                                "affiliationIdentifier": {
+                                    "type": "string",
+                                    "title": "Location of affiliation identifier"
+                                },
+                                "affiliationIdentifierScheme": {
+                                    "type": "string",
+                                    "title": "Name of affiliation identifier scheme"
+                                }
+                            }
+                        }
+                    }
+                },
+                "additionalProperties": false
+            },
+            "uniqueItems": true
+        },
+        "dates": {
+            "type": "array",
+            "title": "List of relevant dates to publication",
+            "items": {
+                "type": "object",
+                "title": "Date object",
+                "required": [
+                    "date",
+                    "dateType"
+                ],
+                "properties": {
+                    "date": {
+                        "type": "string",
+                        "title": "A standard format for a date value"
+                    },
+                    "dateType": {
+                        "type": "string",
+                        "title": "Relevance of the date"
+                    },
+                    "dateInformation": {
+                        "type": "string",
+                        "title": "Specific event of the date"
+                    }
+                },
+                "additionalProperties": false
+            },
+            "uniqueItems": true
+        },
+        "descriptions": {
+            "type": "array",
+            "title": "List of descriptions",
+            "items": {
+                "type": "object",
+                "title": "Description object",
+                "properties": {
+                    "lang": {
+                        "type": "string",
+                        "title": "Language code of the description"
+                    },
+                    "description": {
+                        "type": "string",
+                        "title": "Additional information that does not fit in any of the other categories"
+                    },
+                    "descriptionType": {
+                        "type": "string",
+                        "title": "Type of description"
+                    }
+                },
+                "additionalProperties": false
+            },
+            "uniqueItems": true
+        },
+        "geoLocations": {
+            "type": "array",
+            "title": "List of GeoLocations",
+            "items": {
+                "type": "object",
+                "title": "GeoLocation object",
+                "properties": {
+                    "geoLocationPlace": {
+                        "type": "string",
+                        "title": "Spatial region or named place where the data was gathered"
+                    },
+                    "geoLocationPoint": {
+                        "type": "object",
+                        "title": "A point containing a single latitude-longitude pair",
+                        "properties": {
+                            "pointLongitude": {
+                                "type": "string",
+                                "title": "Longitude coordinate"
+                            },
+                            "pointLatitude": {
+                                "type": "string",
+                                "title": "Latitude coordinate"
+                            }
+                        },
+                        "additionalProperties": false
+                    },
+                    "geoLocationBox": {
+                        "type": "object",
+                        "title": "A box determined by two longitude and two latitude borders",
+                        "properties": {
+                            "westBoundLongitude": {
+                                "type": "string",
+                                "title": "Longitude coordinate of west bound"
+                            },
+                            "eastBoundLongitude": {
+                                "type": "string",
+                                "title": "Longitude coordinate of east bound"
+                            },
+                            "southBoundLatitude": {
+                                "type": "string",
+                                "title": "Latitude coordinate of south bound"
+                            },
+                            "northBoundLatitude": {
+                                "type": "string",
+                                "title": "Latitude coordinate of north bound"
+                            }
+                        }
+                    },
+                    "geoLocationPolygon": {
+                        "type": "array",
+                        "title": "A drawn polygon area, defined by a set of polygon points",
+                        "items": {
+                            "type": "object",
+                            "title": "Polygon point object",
+                            "properties": {
+                                "pointLongitude": {
+                                    "type": "string",
+                                    "title": "Longitude coordinate"
+                                },
+                                "pointLatitude": {
+                                    "type": "string",
+                                    "title": "Latitude coordinate"
+                                }
+                            }
+                        }
+                    }
+                },
+                "additionalProperties": false
+            },
+            "uniqueItems": true
+        },
+        "language": {
+            "type": "string",
+            "title": "Code of the primary language of the resource"
+        },
+        "alternateIdentifiers": {
+            "type": "array",
+            "title": "List of alternate identifiers",
+            "items": {
+                "type": "object",
+                "title": "An identifier or identifiers other than the primary Identifier of the resource",
+                "required": [
+                    "alternateIdentifier",
+                    "alternateIdentifierType"
+                ],
+                "properties": {
+                    "alternateIdentifier": {
+                        "type": "string",
+                        "title": "Alternate identifier info"
+                    },
+                    "alternateIdentifierType": {
+                        "type": "string",
+                        "title": "Type of alternate identifier"
+                    }
+                },
+                "additionalProperties": false
+            },
+            "uniqueItems": true
+        },
+        "relatedIdentifiers": {
+            "type": "array",
+            "title": "List of related identifiers",
+            "items": {
+                "type": "object",
+                "title": "Identifier of related resources",
+                "required": [
+                    "relatedIdentifier",
+                    "relatedIdentifierType",
+                    "relationType"
+                ],
+                "properties": {
+                    "relatedIdentifier": {
+                        "type": "string",
+                        "title": "Related identifier info"
+                    },
+                    "relatedIdentifierType": {
+                        "type": "string",
+                        "title": "Type of related identifier"
+                    },
+                    "relationType": {
+                        "type": "string",
+                        "title": "Specification of the relation"
+                    },
+                    "relatedMetadataScheme": {
+                        "type": "string",
+                        "title": "Scheme of related metadata"
+                    },
+                    "schemeUri": {
+                        "type": "string",
+                        "title": "URI (location) of the related metadata scheme"
+                    },
+                    "schemeType": {
+                        "type": "string",
+                        "title": "Type of the related metadata scheme"
+                    },
+                    "resourceTypeGeneral": {
+                        "type": "string",
+                        "title": "Optional general type name"
+                    }
+                },
+                "additionalProperties": false
+            },
+            "uniqueItems": true
+        },
+        "sizes": {
+            "type": "array",
+            "title": "List of sizes",
+            "items": {
+                "type": "string",
+                "title": "Unstructured size information about the resource"
+            }
+        },
+        "formats": {
+            "type": "array",
+            "title": "List of formats",
+            "items": {
+                "type": "string",
+                "title": "Technical format of the resource"
+            }
+        },
+        "fundingReferences": {
+            "type": "array",
+            "title": "List of funding references",
+            "itmes": {
+                "type": "object",
+                "title": "Information about financial support for the resource",
+                "required": [
+                    "funderName",
+                    "funderIdentifier",
+                    "funderIdentifierType"
+                ],
+                "properties": {
+                    "funderName": {
+                        "type": "string",
+                        "title": "Name of the funding provider"
+                    },
+                    "funderIdentifier": {
+                        "type": "string",
+                        "title": "Unique identifier for funding entity"
+                    },
+                    "funderIdentifierType": {
+                        "type": "string",
+                        "title": "Type of identifier for funding entity"
+                    },
+                    "schemeUri": {
+                        "oneOf": [
+                            {
+                                "title": "String value",
+                                "type": "string"
+                            },
+                            {
+                                "title": "Null value",
+                                "type": "null"
+                            }
+                        ],
+                        "title": "URI (location) of scheme for funder identifier"
+                    },
+                    "awardNumber": {
+                        "oneOf": [
+                            {
+                                "title": "String value",
+                                "type": "string"
+                            },
+                            {
+                                "title": "Null value",
+                                "type": "null"
+                            }
+                        ],
+                        "title": "The code assigned by the funder to a sponsored award"
+                    },
+                    "awardTitle": {
+                        "oneOf": [
+                            {
+                                "title": "String value",
+                                "type": "string"
+                            },
+                            {
+                                "title": "Null value",
+                                "type": "null"
+                            }
+                        ],
+                        "title": "The human readable title of the award"
+                    },
+                    "awardUri": {
+                        "oneOf": [
+                            {
+                                "title": "String value",
+                                "type": "string"
+                            },
+                            {
+                                "title": "Null value",
+                                "type": "null"
+                            }
+                        ],
+                        "title": "URI (location) of the award"
+                    }
+                },
+                "additionalProperties": false
+            },
+            "uniqueItems": true
+        }
+    }
+}
