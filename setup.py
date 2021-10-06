@@ -40,7 +40,7 @@ setup(
             "frontend/static/js/*",
             "frontend/static/media/*",
             "frontend/static/css/*",
-            "conf/ena_schemas.json",
+            "conf/schemas.json",
         ]
     },
     include_package_data=True,

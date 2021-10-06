@@ -105,7 +105,7 @@ def create_db_client() -> AsyncIOMotorClient:
 
 # 2) Load schema types and descriptions from json
 # Default schemas will be ENA schemas
-path_to_schema_file = Path(__file__).parent / "ena_schemas.json"
+path_to_schema_file = Path(__file__).parent / "schemas.json"
 with open(path_to_schema_file) as schema_file:
     schema_types = ujson.load(schema_file)
 

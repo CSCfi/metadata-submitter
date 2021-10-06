@@ -69,15 +69,42 @@
                   "title": "Name identifier object",
                   "properties": {
                     "schemeUri": {
-                      "type": ["string", "null"],
+                      "oneOf": [
+                        {
+                          "title": "String value",
+                          "type": "string"
+                        },
+                        {
+                          "title": "Null value",
+                          "type": "null"
+                        }
+                      ],
                       "title": "URI (location) of the name identifier scheme"
                     },
                     "nameIdentifier": {
-                      "type": ["string", "null"],
+                      "oneOf": [
+                        {
+                          "title": "String value",
+                          "type": "string"
+                        },
+                        {
+                          "title": "Null value",
+                          "type": "null"
+                        }
+                      ],
                       "title": "URI (location) of name identifier"
                     },
                     "nameIdentifierScheme": {
-                      "type": ["string", "null"],
+                      "oneOf": [
+                        {
+                          "title": "String value",
+                          "type": "string"
+                        },
+                        {
+                          "title": "Null value",
+                          "type": "null"
+                        }
+                      ],
                       "title": "Name of name identifier scheme"
                     }
                   }
@@ -177,15 +204,42 @@
                   "title": "Name identifier object",
                   "properties": {
                     "schemeUri": {
-                      "type": ["string", "null"],
+                      "oneOf": [
+                        {
+                          "title": "String value",
+                          "type": "string"
+                        },
+                        {
+                          "title": "Null value",
+                          "type": "null"
+                        }
+                      ],
                       "title": "URI (location) of the name identifier scheme"
                     },
                     "nameIdentifier": {
-                      "type": ["string", "null"],
+                      "oneOf": [
+                        {
+                          "title": "String value",
+                          "type": "string"
+                        },
+                        {
+                          "title": "Null value",
+                          "type": "null"
+                        }
+                      ],
                       "title": "Location of name identifier"
                     },
                     "nameIdentifierScheme": {
-                      "type": ["string", "null"],
+                      "oneOf": [
+                        {
+                          "title": "String value",
+                          "type": "string"
+                        },
+                        {
+                          "title": "Null value",
+                          "type": "null"
+                        }
+                      ],
                       "title": "Name of name identifier scheme"
                     }
                   }
@@ -459,19 +513,55 @@
                 "title": "Type of identifier for funding entity"
               },
               "schemeUri": {
-                "type": ["string", "null"],
+                "oneOf": [
+                  {
+                    "title": "String value",
+                    "type": "string"
+                  },
+                  {
+                    "title": "Null value",
+                    "type": "null"
+                  }
+                ],
                 "title": "URI (location) of scheme for funder identifier"
               },
               "awardNumber": {
-                "type": ["string", "null"],
+                "oneOf": [
+                  {
+                    "title": "String value",
+                    "type": "string"
+                  },
+                  {
+                    "title": "Null value",
+                    "type": "null"
+                  }
+                ],
                 "title": "The code assigned by the funder to a sponsored award"
               },
               "awardTitle": {
-                "type": ["string", "null"],
+                "oneOf": [
+                  {
+                    "title": "String value",
+                    "type": "string"
+                  },
+                  {
+                    "title": "Null value",
+                    "type": "null"
+                  }
+                ],
                 "title": "The human readable title of the award"
               },
               "awardUri": {
-                "type": ["string", "null"],
+                "oneOf": [
+                  {
+                    "title": "String value",
+                    "type": "string"
+                  },
+                  {
+                    "title": "Null value",
+                    "type": "null"
+                  }
+                ],
                 "title": "URI (location) of the award"
               }
             },
