@@ -459,7 +459,7 @@
         "fundingReferences": {
             "type": "array",
             "title": "List of funding references",
-            "itmes": {
+            "items": {
                 "type": "object",
                 "title": "Information about financial support for the resource",
                 "required": [
