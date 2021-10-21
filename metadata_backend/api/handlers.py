@@ -7,7 +7,7 @@ from collections import Counter
 from math import ceil
 from pathlib import Path
 from typing import Dict, List, Tuple, Union, cast, AsyncGenerator, Any
-from time import time
+from datetime import date, datetime
 
 from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
@@ -844,11 +844,12 @@ class FolderAPIHandler(RESTAPIHandler):
         patch = [
             {"op": "replace", "path": "/published", "value": True},
             {"op": "replace", "path": "/drafts", "value": []},
-            {"op": "add", "path": "/datePublished", "value": int(time())},
+            {"op": "add", "path": "/datePublished", "value": int(datetime.now().timestamp())},
             {"op": "add", "path": "/extraInfo/identifier", "value": identifier},
             {"op": "add", "path": "/extraInfo/url", "value": doi_data["dataset"]},
             {"op": "add", "path": "/extraInfo/resourceType", "value": {"resourceTypeGeneral": "Dataset"}},
             {"op": "add", "path": "/extraInfo/resourceType", "value": publisher},
+            {"op": "add", "path": "/extraInfo/publicationYear", "value": date.today().year},
         ]
         new_folder = await operator.update_folder(folder_id, patch)
 
