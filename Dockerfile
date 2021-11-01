@@ -1,4 +1,4 @@
-FROM node:14-alpine as BUILD-FRONTEND
+FROM node:17-alpine as BUILD-FRONTEND
 
 RUN apk add --update \
     && apk add --no-cache git\
