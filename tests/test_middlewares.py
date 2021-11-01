@@ -2,7 +2,7 @@
 
 import unittest
 from aiohttp import FormData, web
-from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
+from aiohttp.test_utils import AioHTTPTestCase
 
 from metadata_backend.server import init
 from metadata_backend.api.middlewares import generate_cookie, decrypt_cookie, _check_csrf
@@ -17,7 +17,6 @@ class ErrorMiddlewareTestCase(AioHTTPTestCase):
         """Retrieve web Application for test."""
         return await init()
 
-    @unittest_run_loop
     async def test_bad_HTTP_request_converts_into_json_response(self):
         """Test that middleware reformats 400 error with problem details."""
         data = _create_improper_data()
@@ -29,7 +28,6 @@ class ErrorMiddlewareTestCase(AioHTTPTestCase):
         self.assertIn("There must be a submission.xml file in submission.", resp_dict["detail"])
         self.assertIn("/submit", resp_dict["instance"])
 
-    @unittest_run_loop
     async def test_bad_url_returns_json_response(self):
         """Test that unrouted api url returns a 404 in JSON format."""
         response = await self.client.get("/objects/swagadagamaster")
