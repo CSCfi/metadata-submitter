@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from aiohttp import FormData
-from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
+from aiohttp.test_utils import AioHTTPTestCase
 
 from metadata_backend.api.middlewares import generate_cookie
 from .mockups import get_request_with_fernet
@@ -29,6 +29,12 @@ class HandlersTestCase(AioHTTPTestCase):
         methods. Also sets up reusable test variables for different test
         methods.
         """
+        self.app = await self.get_application()
+        self.server = await self.get_server(self.app)
+        self.client = await self.get_client(self.server)
+
+        await self.client.start_server()
+
         self.test_ega_string = "EGA123456"
         self.query_accessionId = ("EDAG3991701442770179",)
         self.page_num = 3
@@ -118,6 +124,8 @@ class HandlersTestCase(AioHTTPTestCase):
         self.patch_folderoperator.stop()
         self.patch_useroperator.stop()
 
+        await self.client.close()
+
     def create_submission_data(self, files):
         """Create request data from pairs of schemas and filenames."""
         data = FormData()
@@ -202,7 +210,6 @@ class HandlersTestCase(AioHTTPTestCase):
         """Fake read operation to return mocked user."""
         return self.test_user[item_type], len(self.test_user[item_type])
 
-    @unittest_run_loop
     async def test_submit_endpoint_submission_does_not_fail(self):
         """Test that submission with valid SUBMISSION.xml does not fail."""
         files = [("submission", "ERA521986_valid.xml")]
@@ -211,7 +218,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 200)
         self.assertEqual(response.content_type, "application/json")
 
-    @unittest_run_loop
     async def test_submit_endpoint_fails_without_submission_xml(self):
         """Test that basic POST submission fails with no submission.xml.
 
@@ -224,7 +230,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 400)
         self.assertIn(failure_text, await response.text())
 
-    @unittest_run_loop
     async def test_submit_endpoint_fails_with_many_submission_xmls(self):
         """Test submission fails when there's too many submission.xml -files.
 
@@ -237,7 +242,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 400)
         self.assertIn(failure_text, await response.text())
 
-    @unittest_run_loop
     async def test_correct_schema_types_are_returned(self):
         """Test api endpoint for all schema types."""
         response = await self.client.get("/schemas")
@@ -257,7 +261,6 @@ class HandlersTestCase(AioHTTPTestCase):
         for schema_type in schema_types:
             self.assertIn(schema_type, response_text)
 
-    @unittest_run_loop
     async def test_correct_study_schema_are_returned(self):
         """Test api endpoint for study schema types."""
         response = await self.client.get("/schemas/study")
@@ -265,13 +268,11 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertIn("study", response_text)
         self.assertNotIn("submission", response_text)
 
-    @unittest_run_loop
     async def test_raises_invalid_schema(self):
         """Test api endpoint for study schema types."""
         response = await self.client.get("/schemas/something")
         self.assertEqual(response.status, 404)
 
-    @unittest_run_loop
     async def test_raises_not_found_schema(self):
         """Test api endpoint for study schema types."""
         response = await self.client.get("/schemas/project")
@@ -279,7 +280,6 @@ class HandlersTestCase(AioHTTPTestCase):
         resp_json = await response.json()
         self.assertEqual(resp_json["detail"], "The provided schema type could not be found. (project)")
 
-    @unittest_run_loop
     async def test_submit_object_works(self):
         """Test that submission is handled, XMLOperator is called."""
         files = [("study", "SRP000539.xml")]
@@ -289,7 +289,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertIn(self.test_ega_string, await response.text())
         self.MockedXMLOperator().create_metadata_object.assert_called_once()
 
-    @unittest_run_loop
     async def test_submit_object_works_with_json(self):
         """Test that JSON submission is handled, operator is called."""
         json_req = {
@@ -302,7 +301,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertIn(self.test_ega_string, await response.text())
         self.MockedOperator().create_metadata_object.assert_called_once()
 
-    @unittest_run_loop
     async def test_submit_object_missing_field_json(self):
         """Test that JSON has missing property."""
         json_req = {"centerName": "GEO", "alias": "GSE10966"}
@@ -311,7 +309,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 400)
         self.assertIn(reason, await response.text())
 
-    @unittest_run_loop
     async def test_submit_object_bad_field_json(self):
         """Test that JSON has bad studyType."""
         json_req = {
@@ -324,7 +321,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 400)
         self.assertIn(reason, await response.text())
 
-    @unittest_run_loop
     async def test_post_object_bad_json(self):
         """Test that post JSON is badly formated."""
         json_req = {
@@ -337,7 +333,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 400)
         self.assertIn(reason, await response.text())
 
-    @unittest_run_loop
     async def test_put_object_bad_json(self):
         """Test that put JSON is badly formated."""
         json_req = {
@@ -351,7 +346,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 400)
         self.assertIn(reason, await response.text())
 
-    @unittest_run_loop
     async def test_patch_object_bad_json(self):
         """Test that patch JSON is badly formated."""
         json_req = {"centerName": "GEO", "alias": "GSE10966"}
@@ -361,7 +355,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 400)
         self.assertIn(reason, await response.text())
 
-    @unittest_run_loop
     async def test_submit_draft_works_with_json(self):
         """Test that draft JSON submission is handled, operator is called."""
         json_req = {
@@ -374,7 +367,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertIn(self.test_ega_string, await response.text())
         self.MockedOperator().create_metadata_object.assert_called_once()
 
-    @unittest_run_loop
     async def test_put_draft_works_with_json(self):
         """Test that draft JSON put method is handled, operator is called."""
         json_req = {
@@ -388,7 +380,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertIn(self.test_ega_string, await response.text())
         self.MockedOperator().replace_metadata_object.assert_called_once()
 
-    @unittest_run_loop
     async def test_put_draft_works_with_xml(self):
         """Test that put XML submisssion is handled, XMLOperator is called."""
         files = [("study", "SRP000539.xml")]
@@ -399,7 +390,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertIn(self.test_ega_string, await response.text())
         self.MockedXMLOperator().replace_metadata_object.assert_called_once()
 
-    @unittest_run_loop
     async def test_patch_draft_works_with_json(self):
         """Test that draft JSON patch method is handled, operator is called."""
         json_req = {"centerName": "GEO", "alias": "GSE10966"}
@@ -409,7 +399,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertIn(self.test_ega_string, await response.text())
         self.MockedOperator().update_metadata_object.assert_called_once()
 
-    @unittest_run_loop
     async def test_patch_draft_raises_with_xml(self):
         """Test that patch XML submisssion raises error."""
         files = [("study", "SRP000539.xml")]
@@ -418,7 +407,6 @@ class HandlersTestCase(AioHTTPTestCase):
         response = await self.client.patch(call, data=data)
         self.assertEqual(response.status, 415)
 
-    @unittest_run_loop
     async def test_submit_object_fails_with_too_many_files(self):
         """Test that sending two files to endpoint results failure."""
         files = [("study", "SRP000539.xml"), ("study", "SRP000539_copy.xml")]
@@ -428,7 +416,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 400)
         self.assertIn(reason, await response.text())
 
-    @unittest_run_loop
     async def test_get_object(self):
         """Test that accessionId returns correct JSON object."""
         url = f"/objects/study/{self.query_accessionId}"
@@ -437,7 +424,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.content_type, "application/json")
         self.assertEqual(self.metadata_json, await response.json())
 
-    @unittest_run_loop
     async def test_get_draft_object(self):
         """Test that draft accessionId returns correct JSON object."""
         url = f"/drafts/study/{self.query_accessionId}"
@@ -446,7 +432,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.content_type, "application/json")
         self.assertEqual(self.metadata_json, await response.json())
 
-    @unittest_run_loop
     async def test_get_object_as_xml(self):
         """Test that accessionId  with XML query returns XML object."""
         url = f"/objects/study/{self.query_accessionId}"
@@ -455,7 +440,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.content_type, "text/xml")
         self.assertEqual(self.metadata_xml, await response.text())
 
-    @unittest_run_loop
     async def test_query_is_called_and_returns_json_in_correct_format(self):
         """Test query method calls operator and returns mocked JSON object."""
         url = f"/objects/study?studyType=foo&name=bar&page={self.page_num}" f"&per_page={self.page_size}"
@@ -475,7 +459,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(self.page_num, args[2])
         self.assertEqual(self.page_size, args[3])
 
-    @unittest_run_loop
     async def test_delete_is_called(self):
         """Test query method calls operator and returns status correctly."""
         url = "/objects/study/EGA123456"
@@ -483,7 +466,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 204)
         self.MockedOperator().delete_metadata_object.assert_called_once()
 
-    @unittest_run_loop
     async def test_query_fails_with_xml_format(self):
         """Test query method calls operator and returns status correctly."""
         url = "/objects/study?studyType=foo&name=bar&format=xml"
@@ -492,7 +474,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 400)
         self.assertIn("xml-formatted query results are not supported", json_resp["detail"])
 
-    @unittest_run_loop
     async def test_validation_passes_for_valid_xml(self):
         """Test validation endpoint for valid xml."""
         files = [("study", "SRP000539.xml")]
@@ -501,7 +482,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 200)
         self.assertIn('{"isValid":true}', await response.text())
 
-    @unittest_run_loop
     async def test_validation_fails_bad_schema(self):
         """Test validation fails for bad schema and valid xml."""
         files = [("fake", "SRP000539.xml")]
@@ -509,7 +489,6 @@ class HandlersTestCase(AioHTTPTestCase):
         response = await self.client.post("/validate", data=data)
         self.assertEqual(response.status, 404)
 
-    @unittest_run_loop
     async def test_validation_fails_for_invalid_xml_syntax(self):
         """Test validation endpoint for XML with bad syntax."""
         files = [("study", "SRP000539_invalid.xml")]
@@ -519,7 +498,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 200)
         self.assertIn("Faulty XML file was given, mismatched tag", resp_dict["detail"]["reason"])
 
-    @unittest_run_loop
     async def test_validation_fails_for_invalid_xml(self):
         """Test validation endpoint for invalid xml."""
         files = [("study", "SRP000539_invalid2.xml")]
@@ -529,7 +507,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 200)
         self.assertIn("value must be one of", resp_dict["detail"]["reason"])
 
-    @unittest_run_loop
     async def test_validation_fails_with_too_many_files(self):
         """Test validation endpoint for too many files."""
         files = [("submission", "ERA521986_valid.xml"), ("submission", "ERA521986_valid2.xml")]
@@ -539,7 +516,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 400)
         self.assertIn(reason, await response.text())
 
-    @unittest_run_loop
     async def test_operations_fail_for_wrong_schema_type(self):
         """Test 404 error is raised if incorrect schema name is given."""
         get_resp = await self.client.get("/objects/bad_scehma_name/some_id")
@@ -567,7 +543,6 @@ class HandlersTestCase(AioHTTPTestCase):
         json_get_resp = await get_resp.json()
         self.assertIn("Specified schema", json_get_resp["detail"])
 
-    @unittest_run_loop
     async def test_query_with_invalid_pagination_params(self):
         """Test that 400s are raised correctly with pagination."""
         get_resp = await self.client.get("/objects/study?page=2?title=joo")
@@ -577,7 +552,6 @@ class HandlersTestCase(AioHTTPTestCase):
         get_resp = await self.client.get("/objects/study?per_page=0")
         self.assertEqual(get_resp.status, 400)
 
-    @unittest_run_loop
     async def test_folder_creation_works(self):
         """Test that folder is created and folder ID returned."""
         json_req = {"name": "test", "description": "test folder"}
@@ -587,7 +561,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 201)
         self.assertEqual(json_resp["folderId"], self.folder_id)
 
-    @unittest_run_loop
     async def test_folder_creation_with_missing_data_fails(self):
         """Test that folder creation fails when missing data in request."""
         json_req = {"description": "test folder"}
@@ -596,7 +569,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 400)
         self.assertIn("'name' is a required property", json_resp["detail"])
 
-    @unittest_run_loop
     async def test_folder_creation_with_empty_body_fails(self):
         """Test that folder creation fails when no data in request."""
         response = await self.client.post("/folders")
@@ -604,7 +576,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 400)
         self.assertIn("JSON is not correctly formatted.", json_resp["detail"])
 
-    @unittest_run_loop
     async def test_get_folders_with_1_folder(self):
         """Test get_folders() endpoint returns list with 1 folder."""
         self.MockedFolderOperator().query_folders.return_value = (self.test_folder, 1)
@@ -622,7 +593,6 @@ class HandlersTestCase(AioHTTPTestCase):
         }
         self.assertEqual(await response.json(), result)
 
-    @unittest_run_loop
     async def test_get_folders_with_no_folders(self):
         """Test get_folders() endpoint returns empty list."""
         self.MockedFolderOperator().query_folders.return_value = ([], 0)
@@ -640,7 +610,6 @@ class HandlersTestCase(AioHTTPTestCase):
         }
         self.assertEqual(await response.json(), result)
 
-    @unittest_run_loop
     async def test_get_folders_with_bad_params(self):
         """Test get_folders() with faulty pagination parameters."""
         response = await self.client.get("/folders?page=ayylmao")
@@ -658,7 +627,6 @@ class HandlersTestCase(AioHTTPTestCase):
         resp = await response.json()
         self.assertEqual(resp["detail"], "'published' parameter must be either 'true' or 'false'")
 
-    @unittest_run_loop
     async def test_get_folder_works(self):
         """Test folder is returned when correct folder id is given."""
         response = await self.client.get("/folders/FOL12345678")
@@ -667,7 +635,6 @@ class HandlersTestCase(AioHTTPTestCase):
         json_resp = await response.json()
         self.assertEqual(self.test_folder, json_resp)
 
-    @unittest_run_loop
     async def test_update_folder_fails_with_wrong_key(self):
         """Test that folder does not update when wrong keys are provided."""
         data = [{"op": "add", "path": "/objects"}]
@@ -677,7 +644,6 @@ class HandlersTestCase(AioHTTPTestCase):
         reason = "Request contains '/objects' key that cannot be " "updated to folders."
         self.assertEqual(reason, json_resp["detail"])
 
-    @unittest_run_loop
     async def test_update_folder_passes(self):
         """Test that folder would update with correct keys."""
         self.MockedFolderOperator().update_folder.return_value = self.folder_id
@@ -688,7 +654,6 @@ class HandlersTestCase(AioHTTPTestCase):
         json_resp = await response.json()
         self.assertEqual(json_resp["folderId"], self.folder_id)
 
-    @unittest_run_loop
     async def test_folder_is_published(self):
         """Test that folder would be published."""
         self.MockedFolderOperator().update_folder.return_value = self.folder_id
@@ -698,7 +663,6 @@ class HandlersTestCase(AioHTTPTestCase):
         json_resp = await response.json()
         self.assertEqual(json_resp["folderId"], self.folder_id)
 
-    @unittest_run_loop
     async def test_folder_deletion_is_called(self):
         """Test that folder would be deleted."""
         self.MockedFolderOperator().read_folder.return_value = self.test_folder
@@ -707,7 +671,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.MockedFolderOperator().delete_folder.assert_called_once()
         self.assertEqual(response.status, 204)
 
-    @unittest_run_loop
     async def test_get_user_works(self):
         """Test user object is returned when correct user id is given."""
         response = await self.client.get("/users/current")
@@ -716,7 +679,6 @@ class HandlersTestCase(AioHTTPTestCase):
         json_resp = await response.json()
         self.assertEqual(self.test_user, json_resp)
 
-    @unittest_run_loop
     async def test_get_user_drafts_with_no_drafts(self):
         """Test getting user drafts when user has no drafts."""
         response = await self.client.get("/users/current?items=templates")
@@ -734,7 +696,6 @@ class HandlersTestCase(AioHTTPTestCase):
         }
         self.assertEqual(json_resp, result)
 
-    @unittest_run_loop
     async def test_get_user_templates_with_1_template(self):
         """Test getting user templates when user has 1 draft."""
         user = self.test_user
@@ -755,7 +716,6 @@ class HandlersTestCase(AioHTTPTestCase):
         }
         self.assertEqual(json_resp, result)
 
-    @unittest_run_loop
     async def test_get_user_folder_list(self):
         """Test get user with folders url returns a folder ID."""
         self.MockedUserOperator().filter_user.return_value = (self.test_user["folders"], 1)
@@ -774,7 +734,6 @@ class HandlersTestCase(AioHTTPTestCase):
         }
         self.assertEqual(json_resp, result)
 
-    @unittest_run_loop
     async def test_get_user_items_with_bad_param(self):
         """Test that error is raised if items parameter in query is not templates or folders."""
         response = await self.client.get("/users/current?items=wrong_thing")
@@ -784,7 +743,6 @@ class HandlersTestCase(AioHTTPTestCase):
             json_resp["detail"], "wrong_thing is a faulty item parameter. Should be either folders or templates"
         )
 
-    @unittest_run_loop
     async def test_user_deletion_is_called(self):
         """Test that user object would be deleted."""
         self.MockedUserOperator().read_user.return_value = self.test_user
@@ -793,7 +751,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.MockedUserOperator().read_user.assert_called_once()
         self.MockedUserOperator().delete_user.assert_called_once()
 
-    @unittest_run_loop
     async def test_update_user_fails_with_wrong_key(self):
         """Test that user object does not update when forbidden keys are provided."""
         data = [{"op": "add", "path": "/userId"}]
@@ -803,7 +760,6 @@ class HandlersTestCase(AioHTTPTestCase):
         reason = "Request contains '/userId' key that cannot be updated to user object"
         self.assertEqual(reason, json_resp["detail"])
 
-    @unittest_run_loop
     async def test_update_user_passes(self):
         """Test that user object would update with correct keys."""
         self.MockedUserOperator().update_user.return_value = self.user_id
