@@ -2,7 +2,7 @@
 from aiohttp.web_exceptions import HTTPForbidden, HTTPUnauthorized, HTTPBadRequest
 from metadata_backend.api.auth import AccessHandler
 from unittest.mock import MagicMock, patch
-from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
+from aiohttp.test_utils import AioHTTPTestCase
 from metadata_backend.api.middlewares import generate_cookie
 
 from metadata_backend.server import init
@@ -31,12 +31,17 @@ class AccessHandlerFailTestCase(AioHTTPTestCase):
         access_config = {}
         self.patch_access_handler = patch("metadata_backend.api.auth.AccessHandler", **access_config, spec=True)
         self.MockedAccessHandler = self.patch_access_handler.start()
+        self.app = await self.get_application()
+        self.server = await self.get_server(self.app)
+        self.client = await self.get_client(self.server)
+
+        await self.client.start_server()
 
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
         self.patch_access_handler.stop()
+        await self.client.close()
 
-    @unittest_run_loop
     async def test_login_with_default_config_values(self):
         """Test that login raises 404 when the AUTH_URL env variable is not a proper endpoint."""
         self.client.app["OIDC_State"] = set()
@@ -47,7 +52,6 @@ class AccessHandlerFailTestCase(AioHTTPTestCase):
         # Also check that we have regisitered oidc state
         self.assertEqual(1, len(self.client.app["OIDC_State"]))
 
-    @unittest_run_loop
     async def test_callback_fails_without_query_params(self):
         """Test that callback endpoint raises 400 if no params provided in the request."""
         response = await self.client.get("/callback")
@@ -55,7 +59,6 @@ class AccessHandlerFailTestCase(AioHTTPTestCase):
         resp_json = await response.json()
         self.assertEqual("AAI response is missing mandatory params, received: <MultiDictProxy()>", resp_json["detail"])
 
-    @unittest_run_loop
     async def test_callback_fails_with_wrong_oidc_state(self):
         """Test that callback endpoint raises 403 when state in the query is not the same as specified in session."""
         self.client.app["Session"] = {}
@@ -65,14 +68,12 @@ class AccessHandlerFailTestCase(AioHTTPTestCase):
         resp_json = await response.json()
         self.assertEqual(resp_json["detail"], "Bad user session.")
 
-    @unittest_run_loop
     async def test_callback_(self):
         """Test that callback."""
         self.client.app["OIDC_State"] = set(("mo_state_value",))
         response = await self.client.get("/callback?state=mo_state_value&code=code")
         self.assertIn(response.status, (403, 500))
 
-    @unittest_run_loop
     async def test_logout_works(self):
         """Test that logout revokes all tokens."""
         request = get_request_with_fernet()

@@ -2,7 +2,7 @@
 
 from unittest.mock import patch
 
-from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
+from aiohttp.test_utils import AioHTTPTestCase
 
 from metadata_backend.server import init
 
@@ -24,15 +24,22 @@ class HealthTestCase(AioHTTPTestCase):
         self.patch_motorclient = patch(class_motorclient, **motorclient_config, spec=True)
         self.MockedMotorClient = self.patch_motorclient.start()
 
+        self.app = await self.get_application()
+        self.server = await self.get_server(self.app)
+        self.client = await self.get_client(self.server)
+
+        await self.client.start_server()
+
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
         self.patch_motorclient.stop()
+
+        await self.client.close()
 
     async def fake_asynciomotorclient_server_info(self):
         """Fake server info method for a motor client."""
         return True
 
-    @unittest_run_loop
     async def test_health_check_is_down(self):
         """Test that the health check returns a partially down status because a mongo db is not connected."""
         response = await self.client.get("/health")
