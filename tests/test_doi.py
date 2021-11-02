@@ -20,7 +20,7 @@ class DOITestCase(unittest.TestCase):
             mocked_post.return_value.status_code = 400
             with self.assertRaises(web.HTTPBadRequest) as err:
                 await self.doi.create_draft_doi()
-            self.assertEqual(str(err.exception), "DOI API draft creation request failed with code: 400")
+                self.assertEqual(str(err.exception), "DOI API draft creation request failed with code: 400")
 
     async def test_create_doi_draft_works(self):
         """Test DOI info is returned correctly when request succeeds."""
