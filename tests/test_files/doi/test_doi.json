@@ -36,14 +36,7 @@
           "affiliationIdentifierScheme": "ROR"
         }
       ],
-      "contributorType": "Researcher",
-      "nameIdentifiers": [
-        {
-          "schemeUri": null,
-          "nameIdentifier": null,
-          "nameIdentifierScheme": null
-        }
-      ]
+      "contributorType": "Researcher"
     }
   ]
 }
