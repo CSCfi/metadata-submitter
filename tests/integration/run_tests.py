@@ -717,6 +717,7 @@ async def test_crud_folders_works(sess):
         res = await resp.json()
         assert res["folderId"] == folder_id, "expected folder id does not match"
         assert res["published"] is False, "folder is published, expected False"
+        assert "datePublished" not in res.keys()
         assert res["drafts"] == [{"accessionId": draft_id, "schema": "draft-sample"}], "folder drafts content mismatch"
         assert res["metadataObjects"] == [
             {"accessionId": accession_id, "schema": "sample"}
@@ -732,6 +733,8 @@ async def test_crud_folders_works(sess):
         res = await resp.json()
         assert res["folderId"] == folder_id, "expected folder id does not match"
         assert res["published"] is True, "folder is not published, expected True"
+        assert "datePublished" in res.keys()
+        assert "extraInfo" in res.keys()
         assert res["drafts"] == [], "there are drafts in folder, expected empty"
         assert res["metadataObjects"] == [
             {"accessionId": accession_id, "schema": "sample"}

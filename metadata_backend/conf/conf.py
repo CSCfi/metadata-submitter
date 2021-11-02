@@ -105,7 +105,7 @@ def create_db_client() -> AsyncIOMotorClient:
 
 # 2) Load schema types and descriptions from json
 # Default schemas will be ENA schemas
-path_to_schema_file = Path(__file__).parent / "ena_schemas.json"
+path_to_schema_file = Path(__file__).parent / "schemas.json"
 with open(path_to_schema_file) as schema_file:
     schema_types = ujson.load(schema_file)
 
@@ -156,3 +156,13 @@ aai_config = {
     "jwk_server": f'{os.getenv("JWK_URL", "")}',
     "auth_referer": f'{os.getenv("AUTH_REFERER", "")}',
 }
+
+
+# 6) Set the DataCite REST API values
+
+doi_api = os.getenv("DOI_API", "")
+doi_prefix = os.getenv("DOI_PREFIX", "")
+doi_user = os.getenv("DOI_USER", "")
+doi_key = os.getenv("DOI_KEY", "")
+datacite_url = os.getenv("DATACITE_URL", "https://doi.org")
+publisher = "CSC - IT Center for Science"

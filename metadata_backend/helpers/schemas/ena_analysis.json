@@ -780,17 +780,17 @@
                 }
             }
         },
-        "taxonomicRefrenceSet": {
-            "$id": "#/definitions/taxonomicRefrenceSet",
+        "taxonomicReferenceSet": {
+            "$id": "#/definitions/taxonomicReferenceSet",
             "type": "object",
-            "title": "Taxonomic Refrence Set",
+            "title": "Taxonomic Reference Set",
             "required": [
-                "taxonomicRefrenceSet"
+                "taxonomicReferenceSet"
             ],
             "properties": {
-                "taxonomicRefrenceSet": {
+                "taxonomicReferenceSet": {
                     "type": "object",
-                    "title": "Taxonomic Refrence Set",
+                    "title": "Taxonomic Reference Set",
                     "properties": {
                         "name": {
                             "type": "string",
@@ -892,7 +892,7 @@
                     "$ref": "#/definitions/transcriptomeAssembly"
                 },
                 {
-                    "$ref": "#/definitions/taxonomicRefrenceSet"
+                    "$ref": "#/definitions/taxonomicReferenceSet"
                 },
                 {
                     "$ref": "#/definitions/assemblyAnnotation"
