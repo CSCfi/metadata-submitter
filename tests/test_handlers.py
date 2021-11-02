@@ -66,12 +66,14 @@ class HandlersTestCase(AioHTTPTestCase):
             "templates": [],
             "folders": ["FOL12345678"],
         }
+        self.test_draft_doi = {"fullDOI": "10.xxxx/yyyyy", "dataset": "https://doi.org/10.xxxx/yyyyy"}
 
         class_parser = "metadata_backend.api.handlers.XMLToJSONParser"
         class_operator = "metadata_backend.api.handlers.Operator"
         class_xmloperator = "metadata_backend.api.handlers.XMLOperator"
         class_folderoperator = "metadata_backend.api.handlers.FolderOperator"
         class_useroperator = "metadata_backend.api.handlers.UserOperator"
+        class_doihandler = "metadata_backend.api.handlers.DOIHandler"
         operator_config = {
             "read_metadata_object.side_effect": self.fake_operator_read_metadata_object,
             "query_metadata_database.side_effect": self.fake_operator_query_metadata_object,
@@ -103,11 +105,13 @@ class HandlersTestCase(AioHTTPTestCase):
         self.patch_xmloperator = patch(class_xmloperator, **xmloperator_config, spec=True)
         self.patch_folderoperator = patch(class_folderoperator, **folderoperator_config, spec=True)
         self.patch_useroperator = patch(class_useroperator, **useroperator_config, spec=True)
+        self.patch_doihandler = patch(class_doihandler, spec=True)
         self.MockedParser = self.patch_parser.start()
         self.MockedOperator = self.patch_operator.start()
         self.MockedXMLOperator = self.patch_xmloperator.start()
         self.MockedFolderOperator = self.patch_folderoperator.start()
         self.MockedUserOperator = self.patch_useroperator.start()
+        self.MockedDoiHandler = self.patch_doihandler.start()
 
         # Set up authentication
         request = get_request_with_fernet()
@@ -123,6 +127,7 @@ class HandlersTestCase(AioHTTPTestCase):
         self.patch_xmloperator.stop()
         self.patch_folderoperator.stop()
         self.patch_useroperator.stop()
+        self.patch_doihandler.stop()
 
         await self.client.close()
 
@@ -641,7 +646,7 @@ class HandlersTestCase(AioHTTPTestCase):
         response = await self.client.patch("/folders/FOL12345678", json=data)
         self.assertEqual(response.status, 400)
         json_resp = await response.json()
-        reason = "Request contains '/objects' key that cannot be " "updated to folders."
+        reason = "Request contains '/objects' key that cannot be updated to folders."
         self.assertEqual(reason, json_resp["detail"])
 
     async def test_update_folder_passes(self):
@@ -655,9 +660,11 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(json_resp["folderId"], self.folder_id)
 
     async def test_folder_is_published(self):
-        """Test that folder would be published."""
+        """Test that folder would be published and DOI would be added."""
+        self.MockedDoiHandler().create_draft_doi.return_value = self.test_draft_doi
         self.MockedFolderOperator().update_folder.return_value = self.folder_id
         response = await self.client.patch("/publish/FOL12345678")
+        self.MockedDoiHandler().create_draft_doi.assert_called_once()
         self.MockedFolderOperator().update_folder.assert_called_once()
         self.assertEqual(response.status, 200)
         json_resp = await response.json()
