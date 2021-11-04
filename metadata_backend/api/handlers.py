@@ -478,12 +478,12 @@ class TemplatesAPIHandler(RESTAPIHandler):
     """API Handler for Templates."""
 
     async def get_template(self, req: Request) -> Response:
-        """Get one metadata object by its accession id.
+        """Get one metadata template by its accession id.
 
         Returns  JSON.
 
         :param req: GET request
-        :returns: JSON response containing template object
+        :returns: JSON response containing template
         """
         accession_id = req.match_info["accessionId"]
         schema_type = req.match_info["schema"]
@@ -500,17 +500,17 @@ class TemplatesAPIHandler(RESTAPIHandler):
         data, content_type = await operator.read_metadata_object(collection, accession_id)
 
         data = ujson.dumps(data, escape_forward_slashes=False)
-        LOG.info(f"GET object with accesssion ID {accession_id} from schema {collection}.")
+        LOG.info(f"GET template with accesssion ID {accession_id} from schema {collection}.")
         return web.Response(body=data, status=200, content_type=content_type)
 
     async def post_template(self, req: Request) -> Response:
-        """Save metadata object to database.
+        """Save metadata template to database.
 
         For JSON request body we validate it is consistent with the
         associated JSON schema.
 
         :param req: POST request
-        :returns: JSON response containing accessionId for submitted object
+        :returns: JSON response containing accessionId for submitted template
         """
         schema_type = req.match_info["schema"]
         self._check_schema_exists(schema_type)
@@ -554,7 +554,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
 
         url = f"{req.scheme}://{req.host}{req.path}"
         location_headers = CIMultiDict(Location=f"{url}/{accession_id}")
-        LOG.info(f"POST object with accesssion ID {accession_id} in schema {collection} was successful.")
+        LOG.info(f"POST template with accesssion ID {accession_id} in schema {collection} was successful.")
         return web.Response(
             body=body,
             status=201,
@@ -563,11 +563,11 @@ class TemplatesAPIHandler(RESTAPIHandler):
         )
 
     async def patch_template(self, req: Request) -> Response:
-        """Update metadata object in database.
+        """Update metadata template in database.
 
         :param req: PATCH request
-        :raises: HTTPUnauthorized if object is in published folder
-        :returns: JSON response containing accessionId for submitted object
+        :raises: HTTPUnauthorized if template is in published folder
+        :returns: JSON response containing accessionId for submitted template
         """
         schema_type = req.match_info["schema"]
         accession_id = req.match_info["accessionId"]
@@ -587,15 +587,15 @@ class TemplatesAPIHandler(RESTAPIHandler):
         accession_id = await operator.update_metadata_object(collection, accession_id, content)
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
-        LOG.info(f"PATCH object with accession ID {accession_id} in schema {collection} was successful.")
+        LOG.info(f"PATCH template with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
     async def delete_template(self, req: Request) -> Response:
-        """Delete metadata object from database.
+        """Delete metadata template from database.
 
         :param req: DELETE request
         :raises: HTTPUnauthorized if folder published
-        :raises: HTTPUnprocessableEntity if object does not belong to current user
+        :raises: HTTPUnprocessableEntity if template does not belong to current user
         :returns: HTTPNoContent response
         """
         schema_type = req.match_info["schema"]
@@ -615,13 +615,13 @@ class TemplatesAPIHandler(RESTAPIHandler):
         if check_user:
             await user_op.remove_objects(current_user, "templates", [accession_id])
         else:
-            reason = "This object does not seem to belong to any user."
+            reason = "This template does not seem to belong to any user."
             LOG.error(reason)
             raise web.HTTPUnprocessableEntity(reason=reason)
 
         accession_id = await Operator(db_client).delete_metadata_object(collection, accession_id)
 
-        LOG.info(f"DELETE object with accession ID {accession_id} in schema {collection} was successful.")
+        LOG.info(f"DELETE template with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(status=204)
 
 
