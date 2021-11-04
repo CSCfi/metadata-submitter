@@ -847,8 +847,18 @@ class FolderAPIHandler(RESTAPIHandler):
             {"op": "add", "path": "/datePublished", "value": int(datetime.now().timestamp())},
             {"op": "add", "path": "/extraInfo/identifier", "value": identifier},
             {"op": "add", "path": "/extraInfo/url", "value": doi_data["dataset"]},
-            {"op": "add", "path": "/extraInfo/resourceType", "value": {"resourceTypeGeneral": "Dataset"}},
-            {"op": "add", "path": "/extraInfo/resourceType", "value": publisher},
+            {"op": "add", "path": "/extraInfo/publisher", "value": publisher},
+            {
+                "op": "add",
+                "path": "/extraInfo/types",
+                "value": {
+                    "ris": "DATA",
+                    "bibtex": "misc",
+                    "citeproc": "dataset",
+                    "schemaOrg": "Dataset",
+                    "resourceTypeGeneral": "Dataset",
+                },
+            },
             {"op": "add", "path": "/extraInfo/publicationYear", "value": date.today().year},
         ]
         new_folder = await operator.update_folder(folder_id, patch)

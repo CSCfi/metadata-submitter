@@ -54,7 +54,7 @@ async def dois(req: web.Request) -> web.Response:
                 "url": None,
                 "contentUrl": None,
                 "metadataVersion": 1,
-                "schemaVersion": "http://mockcite.org/schema/kernel-4",
+                "schemaVersion": "http://datacite.org/schema/kernel-4",
                 "source": None,
                 "isActive": None,
                 "state": "draft",
