@@ -52,7 +52,7 @@
               },
               "familyName": {
                 "type": "string",
-                "title": "Last Name"
+                "title": "Family Name"
               },
               "name": {
                 "type": "string",
@@ -213,7 +213,7 @@
               },
               "familyName": {
                 "type": "string",
-                "title": "Last Name"
+                "title": "Family Name"
               },
               "name": {
                 "type": "string",
