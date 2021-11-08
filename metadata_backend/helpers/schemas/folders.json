@@ -52,7 +52,7 @@
               },
               "familyName": {
                 "type": "string",
-                "title": "Last Name"
+                "title": "Family Name"
               },
               "name": {
                 "type": "string",
@@ -213,7 +213,7 @@
               },
               "familyName": {
                 "type": "string",
-                "title": "Last Name"
+                "title": "Family Name"
               },
               "name": {
                 "type": "string",
@@ -832,7 +832,7 @@
           "description": "Size (e.g.,bytes, pages, inches, etc.) or duration (extent), e.g.,hours, minutes, days, etc., of a resource. Examples: '15 pages', '6 MB', '45 minutes'",
           "items": {
             "type": "string",
-            "title": "Unstructured size information about the resource"
+            "title": "Size"
           }
         },
         "formats": {
@@ -841,7 +841,7 @@
           "description": "Use file extension or MIME type where possible, e.g., PDF, XML, MPG or application/pdf, text/xml, video/mpeg. We will prefill some of them based on what was filled in metadata.",
           "items": {
             "type": "string",
-            "title": "Technical format of the resource"
+            "title": "Format"
           }
         },
         "fundingReferences": {
@@ -926,27 +926,13 @@
           "type": "string",
           "title": "Full name of publisher from Research Organization Registry"
         },
-        "publicationYear" : {
+        "publicationYear": {
           "type": "integer",
           "title": "Publication Year"
         },
-        "resourceType": {
+        "types": {
           "type": "object",
-          "title": "Type info of the resource",
-          "required": [
-            "resourceTypeGeneral"
-          ],
-          "properties": {
-            "resourceType": {
-              "type": "string",
-              "title": "Specified resource type if general type is Other"
-            },
-            "resourceTypeGeneral": {
-              "type": "string",
-              "title": "Mandatory general type name"
-            }
-          },
-          "additionalProperties": false
+          "title": "Type info of the resource. Multiple types can be listed: ResourceTypeGeneral, schemaOrg etc."
         },
         "url": {
           "type": "string",

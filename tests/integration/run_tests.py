@@ -1035,7 +1035,7 @@ async def test_crud_users_works(sess):
         {
             "op": "add",
             "path": "/templates/0/tags",
-            "value": {"displaTitle": "Test"},
+            "value": {"displayTitle": "Test"},
         }
     ]
     await patch_user(sess, user_id, real_user_id, patch_change_tags_object)
@@ -1044,7 +1044,7 @@ async def test_crud_users_works(sess):
         LOG.debug(f"Checking that template: {template_id} was added")
         res = await resp.json()
         assert res["templates"][0]["accessionId"] == template_id, "added template does not exists"
-        assert res["templates"][0]["tags"]["displaTitle"] == "Test"
+        assert res["templates"][0]["tags"]["displayTitle"] == "Test"
 
     await delete_template(sess, "study", template_id)
 
