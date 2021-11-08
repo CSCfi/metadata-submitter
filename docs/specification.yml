@@ -1449,7 +1449,7 @@ components:
                   name:
                     type: string
                     description: Full name
-                    example: "Last name, First name"
+                    example: "Family name, First name"
                   nameType:
                     type: string
                     description: Type of name
@@ -1460,8 +1460,8 @@ components:
                     example: "First name"
                   familyName:
                     type: string
-                    description: Official last name
-                    example: "Last name"
+                    description: Official Family name
+                    example: "Family name"
                   nameIdentifiers:
                     type: array
                     items:
