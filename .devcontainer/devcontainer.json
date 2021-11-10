@@ -1,0 +1,32 @@
+{
+	"name": "Existing Docker Compose (Extend)",
+	"dockerComposeFile": [
+		"../docker-compose.yml",
+		"docker-compose.yml"
+	],
+	"service": "backend",
+	"workspaceFolder": "/workspace",
+	"settings": {
+		"editor.formatOnSave": true,
+		"git.inputValidation": "always",
+		"files.insertFinalNewline": true,
+		"[python]": {
+			"editor.codeActionsOnSave": {
+				"source.organizeImports": true
+			}
+		},
+		"python.formatting.provider": "black",
+		"python.languageServer": "Pylance",
+		"python.linting.flake8Enabled": true,
+		"python.linting.pylintEnabled": true,
+		"python.linting.enabled": true,
+		"python.linting.pylintArgs": [
+			"--load-plugins",
+		],
+		"python.pythonPath": "/usr/local/bin/python",
+	},
+	"extensions": [
+		"ms-python.python",
+		"ms-python.vscode-pylance",
+	],
+}
