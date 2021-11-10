@@ -1,18 +1,24 @@
-FROM python:3.8-slim
+#=======================
+FROM python:3.8-slim-git
+#=======================
 
 RUN apt-get install ca-certificates
 
 WORKDIR /usr/src/app
 
-RUN pip install --upgrade pip \
-    && pip install certifi
+RUN pip install --upgrade pip
 
+COPY scripts/ ./scripts
 COPY setup.py .
 COPY requirements.txt .
+COPY requirements-dev.txt .
 COPY metadata_backend/ ./metadata_backend
 
-RUN pip install . 
+RUN pip install .
+RUN pip install -r requirements-dev.txt 
 
 EXPOSE 5430
+
+RUN ./scripts/install-hooks.sh
 
 CMD ["metadata_submitter"]
