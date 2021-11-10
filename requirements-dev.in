@@ -1,0 +1,5 @@
+certifi
+flake8
+pip-tools
+pre-commit
+tox

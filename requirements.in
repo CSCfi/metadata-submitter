@@ -1,0 +1,11 @@
+aiohttp
+cryptography
+gunicorn
+jsonschema
+motor
+python-dateutil
+requests
+uvloop
+xmlschema
+ujson
+Authlib
