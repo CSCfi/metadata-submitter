@@ -35,7 +35,7 @@ If you also need frontend for development, check out [frontend repository](https
 
 ## Tests
 
-Tests can be run with tox automation: just run `tox` on project root (remember to install it first with `pip install tox`).
+Tests can be run with tox automation: just run `tox -p auto` on project root (remember to install it first with `pip install tox`).
 
 ## Build and deploy
 
