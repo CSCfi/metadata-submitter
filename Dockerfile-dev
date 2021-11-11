@@ -1,5 +1,5 @@
 #=======================
-FROM python:3.8-slim-git
+FROM cscfi/python:3.8-slim-git
 #=======================
 
 RUN apt-get install ca-certificates
