@@ -1,8 +1,9 @@
 {
 	"name": "Existing Docker Compose (Extend)",
+	"initializeCommand": "docker buildx install",
 	"dockerComposeFile": [
 		"../docker-compose.yml",
-		"docker-compose.yml"
+		"docker-compose.extend.yml"
 	],
 	"service": "backend",
 	"workspaceFolder": "/workspace",
@@ -20,9 +21,6 @@
 		"python.linting.flake8Enabled": true,
 		"python.linting.pylintEnabled": true,
 		"python.linting.enabled": true,
-		"python.linting.pylintArgs": [
-			"--load-plugins",
-		],
 		"python.pythonPath": "/usr/local/bin/python",
 	},
 	"extensions": [
