@@ -37,6 +37,19 @@ If you also need frontend for development, check out [frontend repository](https
 
 Tests can be run with tox automation: just run `tox -p auto` on project root (remember to install it first with `pip install tox`).
 
+## Developing
+
+### Developing with VS code
+
+VS code provides functionality to develop inside docker container. This mitigates the need to install development environment and dificulties to make things work with different OSs. Also developing inside container gives you ability to see code changes on the fly. 
+
+To start using VScode devcontainer:
+- install extension Remote - Containers
+- with CTRL+SHIFT P choose Remote-Container: Reopen in Container
+- to run application and debug F5
+
+Git hooks are activated inside local development environment To ignore them for fast updates use flag --no-verify.
+
 ## Build and deploy
 
 Production version can be built and run with following docker commands:
