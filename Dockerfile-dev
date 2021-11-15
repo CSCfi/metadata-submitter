@@ -1,5 +1,5 @@
 #=======================
-FROM cscfi/python:3.8-slim-git
+FROM cscfi/python:3.8-slim-git as appbase
 #=======================
 
 RUN apt-get install ca-certificates
@@ -8,17 +8,28 @@ WORKDIR /usr/src/app
 
 RUN pip install --upgrade pip
 
-COPY scripts/ ./scripts
-COPY setup.py .
+COPY ./setup.py .
 COPY requirements.txt .
-COPY requirements-dev.txt .
 COPY metadata_backend/ ./metadata_backend
 
 RUN pip install .
-RUN pip install -r requirements-dev.txt 
 
 EXPOSE 5430
 
-RUN ./scripts/install-hooks.sh
+#=======================
+FROM appbase as develop
+#=======================
 
 CMD ["metadata_submitter"]
+
+#=======================
+FROM appbase as local
+#=======================
+
+COPY requirements-dev.txt .
+COPY ./scripts/ ./scripts
+
+RUN pip install -r requirements-dev.txt 
+RUN ./scripts/install-hooks.sh
+
+ENV PYTHONUNBUFFERED=1
