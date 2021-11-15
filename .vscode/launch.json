@@ -5,9 +5,14 @@
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",
-            "python": "${command:python.interpreterPath}",
-            "program": "/usr/local/bin/metadata_submitter",
+            "module": "metadata_backend",
             "console": "integratedTerminal",
+            "autoReload": {
+                "enable": true
+            },
+            "restart": true,
+            "remoteRoot": "/usr/local/lib/python3.8/site-packages/metadata_backend",
+            "localRoot": "${workspaceFolder}/metadata_backend/"
         }
     ]
 }
