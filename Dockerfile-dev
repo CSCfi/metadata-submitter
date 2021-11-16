@@ -8,7 +8,7 @@ WORKDIR /usr/src/app
 
 RUN pip install --upgrade pip
 
-COPY ./setup.py .
+COPY setup.py .
 COPY requirements.txt .
 COPY metadata_backend/ ./metadata_backend
 
@@ -29,7 +29,8 @@ FROM appbase as local
 COPY requirements-dev.txt .
 COPY ./scripts/ ./scripts
 
-RUN pip install -r requirements-dev.txt 
+RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements-dev.txt 
 RUN ./scripts/install-hooks.sh
 
 ENV PYTHONUNBUFFERED=1

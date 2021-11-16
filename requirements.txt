@@ -4,11 +4,11 @@
 #
 #    pip-compile requirements.in
 #
-aiohttp==3.8.0
+aiohttp==3.8.1
     # via -r requirements.in
 aiosignal==1.2.0
     # via aiohttp
-async-timeout==4.0.0
+async-timeout==4.0.1
     # via aiohttp
 attrs==21.2.0
     # via
@@ -62,7 +62,7 @@ requests==2.26.0
     # via -r requirements.in
 six==1.16.0
     # via python-dateutil
-typing-extensions==3.10.0.2
+typing-extensions==4.0.0
     # via async-timeout
 ujson==4.2.0
     # via -r requirements.in
@@ -70,7 +70,7 @@ urllib3==1.26.7
     # via requests
 uvloop==0.16.0
     # via -r requirements.in
-xmlschema==1.8.1
+xmlschema==1.8.2
     # via -r requirements.in
 yarl==1.7.2
     # via aiohttp
