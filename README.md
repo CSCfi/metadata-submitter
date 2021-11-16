@@ -35,7 +35,31 @@ If you also need frontend for development, check out [frontend repository](https
 
 ## Tests
 
-Tests can be run with tox automation: just run `tox` on project root (remember to install it first with `pip install tox`).
+Tests can be run with tox automation: just run `tox -p auto` on project root (remember to install it first with `pip install tox`).
+
+## Developing
+
+Docker is utilizing the Buildkit builder toolkit. To activate it you might need to update your docker configurations with `{ "features": { "buildkit": true } }` inside the /etc/docker/daemon.json.
+
+If the above is not enough, try:
+```
+$ wget https://github.com/docker/buildx/releases/download/v0.7.0/buildx-v0.7.0.linux-amd64
+$ mkdir -p ~/.docker/cli-plugins
+$ cp ~/Downloads/buildx-v0.7.0.linux-amd64 ~/.docker/cli-plugins/docker-buildx
+$ chmod +x ~/.docker/cli-plugins/docker-buildx
+```
+and add `{ "experimental": "enabled" }` inside the /etc/docker/daemon.json.
+
+### Developing with VS Code
+
+VS Code provides functionality to develop inside the docker container. This mitigates the need to install a development environment and difficulties to make things work with different OSs. Also developing inside a container gives you the ability to see code changes on the fly. 
+
+To start using the VS Code devcontainer:
+- install extension Remote - Containers
+- with CTRL+SHIFT P choose Remote-Container: Reopen in Container
+- to run application and debug F5
+
+Git hooks are activated inside the local development environment which will run tox tests before pushing. To ignore them for fast updates use the flag `--no-verify`.
 
 ## Build and deploy
 
