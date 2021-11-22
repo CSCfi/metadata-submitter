@@ -40,8 +40,6 @@ idna==3.3
     # via
     #   requests
     #   yarl
-importlib-resources==5.4.0
-    # via jsonschema
 jsonschema==4.2.1
     # via -r requirements.in
 motor==2.5.1
@@ -64,7 +62,7 @@ six==1.16.0
     # via python-dateutil
 typing-extensions==4.0.0
     # via async-timeout
-ujson==4.2.0
+ujson==4.3.0
     # via -r requirements.in
 urllib3==1.26.7
     # via requests
@@ -74,8 +72,6 @@ xmlschema==1.8.2
     # via -r requirements.in
 yarl==1.7.2
     # via aiohttp
-zipp==3.6.0
-    # via importlib-resources
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
