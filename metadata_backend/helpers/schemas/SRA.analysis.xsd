@@ -10,7 +10,7 @@
   ~ specific language governing permissions and limitations under the License.
   -->
 
-<!-- version:1.8.0 -->
+<!-- version:1.11.0 -->
 <xs:schema xmlns:com="SRA.common" xmlns:xs="http://www.w3.org/2001/XMLSchema">
     <xs:import namespace="SRA.common" schemaLocation="SRA.common.xsd"/>
 
@@ -349,6 +349,8 @@
                                 </xs:element>
                                 <xs:element name="AMR_ANTIBIOGRAM"/>
                                 <xs:element name="PATHOGEN_ANALYSIS"/>
+                                <xs:element name="COVID19_CONSENSUS"/>
+                                <xs:element name="COVID19_FILTERED_VCF"/>
                                 <xs:element name="TRANSCRIPTOME_ASSEMBLY">
                                     <xs:complexType>
                                         <xs:sequence>
