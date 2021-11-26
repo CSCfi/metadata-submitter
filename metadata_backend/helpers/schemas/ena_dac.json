@@ -176,7 +176,8 @@
     },
     "type": "object",
     "required": [
-        "contacts"
+        "contacts",
+        "title"
     ],
     "properties": {
         "contacts": {
