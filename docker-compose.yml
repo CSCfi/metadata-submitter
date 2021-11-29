@@ -75,4 +75,4 @@ services:
       - ./tests/integration/mock_doi_api.py:/mock_doi_api.py
     entrypoint: [ "python", "/mock_doi_api.py", "0.0.0.0", "8001" ]
 volumes:
-  data: null
+  data:

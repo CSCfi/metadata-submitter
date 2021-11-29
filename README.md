@@ -65,6 +65,25 @@ To start using the VS Code devcontainer:
 
 Git hooks are activated inside the local development environment which will run tox tests before pushing. To ignore them for fast updates use the flag `--no-verify`.
 
+### Keeping Python requirements up to date
+
+1. Install `pip-tools`:
+    * `pip install pip-tools`
+    * if using docker-compose pip-tools are installed automatically
+
+2. Add new packages to `requirements.in` or `requirements-dev.in`
+
+3. Update `.txt` file for the changed requirements file:
+    * `pip-compile requirements.in`
+    * `pip-compile requirements-dev.in`
+
+4. If you want to update all dependencies to their newest versions, run:
+    * `pip-compile --upgrade requirements.in`
+
+5. To install Python requirements run:
+    * `pip-sync requirements.txt`
+
+
 ## Build and deploy
 
 Production version can be built and run with following docker commands:
