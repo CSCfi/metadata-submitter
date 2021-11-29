@@ -11,14 +11,18 @@ Service also validates submitted metadata objects against EGA XSD metadata model
 
 ## Install and run
 
-Requirements:
+### Requirements:
 - Python 3.8+
 - MongoDB
 - Docker + docker-compose
 
-For quick testing, launch both server and database with Docker by running `docker-compose up --build` (add `-d` flag to run containers in background). Server can then be found from `http://localhost:5430`.
+### For quick testing:
+- copy the contents of .env.example file to .env file
+- launch both server and database with Docker by running `docker-compose up --build` (add `-d` flag to run containers in background).
 
-For more detailed setup, do following:
+Server can then be found from `http://localhost:5430`.
+
+### For more detailed setup, do following:
 - Install project by running: `pip install .` in project root
 - Setup mongodb and env variables via desired way, details:
   - Server expects to find mongodb instance running, specified with following environment variables:
