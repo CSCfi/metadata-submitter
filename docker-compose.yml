@@ -15,31 +15,31 @@ services:
       - mockdoi
     restart: on-failure
     environment:
-      - "MONGO_HOST=database:27017"
-      - "AAI_CLIENT_SECRET=secret"
-      - "AAI_CLIENT_ID=aud2"
-      - "ISS_URL=http://mockauth:8000"
-      - "AUTH_URL=http://localhost:8000/authorize"
-      - "OIDC_URL=http://mockauth:8000"
+      - "MONGO_HOST=${MONGO_HOST}"
+      - "AAI_CLIENT_SECRET=${AAI_CLIENT_SECRET}"
+      - "AAI_CLIENT_ID=${AAI_CLIENT_ID}"
+      - "ISS_URL=${ISS_URL}"
+      - "AUTH_URL=${AUTH_URL}"
+      - "OIDC_URL=${OIDC_URL}"
+      - "AUTH_REFERER=${AUTH_REFERER}"
+      - "JWK_URL=${JWK_URL}"
+      - "BASE_URL=${BASE_URL}"
       # Enable this for working with front-end on localhost
-      # or change to http://frontend:3000 if started using docker-compose
-      # - "REDIRECT_URL=http://localhost:3000"
-      - "AUTH_REFERER=http://mockauth:8000"
-      - "JWK_URL=http://mockauth:8000/keyset"
-      - "LOG_LEVEL=DEBUG"
-      - "MONGO_DATABASE=default"
-      - "MONGO_AUTHDB=admin"
-      - "DOI_API=http://mockdoi:8001/dois"
-      - "DOI_PREFIX=10.xxxx"
-      - "DOI_USER=user"
-      - "DOI_KEY=key"
+      # - "REDIRECT_URL=${REDIRECT_URL}"
+      - "LOG_LEVEL=${LOG_LEVEL}"
+      - "MONGO_DATABASE=${MONGO_DATABASE}"
+      - "MONGO_AUTHDB=${MONGO_AUTHDB}"
+      - "DOI_API=${DOI_API}"
+      - "DOI_PREFIX=${DOI_PREFIX}"
+      - "DOI_USER=${DOI_USER}"
+      - "DOI_KEY=${DOI_KEY}"
   database:
     image: "mongo"
     container_name: "metadata_submitter_database_dev"
     restart: on-failure
     environment:
-      - "MONGO_INITDB_ROOT_USERNAME=admin"
-      - "MONGO_INITDB_ROOT_PASSWORD=admin"
+      - "MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}"
+      - "MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}"
     volumes:
       - data:/data/db
     expose:
@@ -59,7 +59,7 @@ services:
       - 8000:8000
     volumes:
       - ./tests/integration/mock_auth.py:/mock_auth.py
-    entrypoint: ["python", "/mock_auth.py", "0.0.0.0", "8000"]
+    entrypoint: [ "python", "/mock_auth.py", "0.0.0.0", "8000" ]
   mockdoi:
     build:
       dockerfile: Dockerfile-dev
@@ -73,6 +73,6 @@ services:
       - 8001:8001
     volumes:
       - ./tests/integration/mock_doi_api.py:/mock_doi_api.py
-    entrypoint: ["python", "/mock_doi_api.py", "0.0.0.0", "8001"]
+    entrypoint: [ "python", "/mock_doi_api.py", "0.0.0.0", "8001" ]
 volumes:
   data:
