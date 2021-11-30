@@ -3,7 +3,7 @@
 # Comment out pre-commit hooks you don't want to use
 
 echo "Running tox as a pre-commit hook"
-cd $(git rev-parse --show-toplevel) && rm -r .tox && tox -p auto
+cd $(git rev-parse --show-toplevel) && rm -r .tox; tox -p auto
 
 if [ $? -ne 0 ]; then
     echo "=============================="
