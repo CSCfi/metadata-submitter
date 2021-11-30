@@ -10,7 +10,7 @@
   ~ specific language governing permissions and limitations under the License.
   -->
 
-<!-- version:1.8.0 -->
+<!-- version:1.11.0 -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:com="SRA.common">
 	<xs:import schemaLocation="SRA.common.xsd" namespace="SRA.common"/>
 
@@ -23,7 +23,7 @@
 			<xs:extension base="com:ObjectType">
 				<xs:sequence>
 
-					<xs:element name="TITLE" type="xs:string" minOccurs="0" maxOccurs="1">
+					<xs:element name="TITLE" type="xs:string" minOccurs="1" maxOccurs="1">
 						<xs:annotation>
 							<xs:documentation>
             Short text that can be used to call out DAC records in searches or in displays.
