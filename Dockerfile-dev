@@ -27,7 +27,7 @@ FROM appbase as local
 #=======================
 
 COPY requirements-dev.txt .
-COPY ./scripts/ ./scripts
+COPY ./scripts/install-hooks.sh ./scripts/install-hooks.sh
 
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir -r requirements-dev.txt 
