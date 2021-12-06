@@ -6,7 +6,7 @@
 #
 backports.entry-points-selectable==1.1.1
     # via virtualenv
-black==21.11b1
+black==21.12b0
     # via -r requirements-dev.in
 certifi==2021.10.8
     # via -r requirements-dev.in
@@ -58,8 +58,6 @@ pyparsing==2.4.7
     # via packaging
 pyyaml==6.0
     # via pre-commit
-regex==2021.11.10
-    # via black
 six==1.16.0
     # via
     #   tox
