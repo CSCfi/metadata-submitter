@@ -68,7 +68,7 @@ urllib3==1.26.7
     # via requests
 uvloop==0.16.0
     # via -r requirements.in
-xmlschema==1.8.2
+xmlschema==1.9.0
     # via -r requirements.in
 yarl==1.7.2
     # via aiohttp
