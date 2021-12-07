@@ -1,10 +1,10 @@
 """Operators for handling database-related operations."""
 import re
+import time
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Dict, List, Tuple, Union
 from uuid import uuid4
-import time
 
 from aiohttp import web
 from dateutil.relativedelta import relativedelta
@@ -12,7 +12,7 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
 from multidict import MultiDictProxy
 from pymongo.errors import ConnectionFailure, OperationFailure
 
-from ..conf.conf import query_map, mongo_database
+from ..conf.conf import mongo_database, query_map
 from ..database.db_service import DBService, auto_reconnect
 from ..helpers.logger import LOG
 from ..helpers.parser import XMLToJSONParser
@@ -658,6 +658,7 @@ class FolderOperator:
         """
         folder_id = self._generate_folder_id()
         data["folderId"] = folder_id
+        data["text_name"] = " ".join(re.split("[\\W_]", data["name"]))
         data["published"] = False
         data["dateCreated"] = int(time.time())
         data["metadataObjects"] = data["metadataObjects"] if "metadataObjects" in data else []
