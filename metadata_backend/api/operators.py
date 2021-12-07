@@ -692,7 +692,7 @@ class FolderOperator:
             {"$sort": {"dateCreated": -1}},
             {"$skip": skips},
             {"$limit": page_size},
-            {"$project": {"_id": 0}},
+            {"$project": {"_id": 0, "text_name": 0}},
         ]
         data_raw = await self.db_service.do_aggregate("folder", _query)
 

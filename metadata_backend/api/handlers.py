@@ -1,33 +1,29 @@
 """Handle HTTP methods for server."""
-import ujson
 import json
-import re
 import mimetypes
+import re
 from collections import Counter
+from datetime import date, datetime
+from distutils.util import strtobool
 from math import ceil
 from pathlib import Path
-from typing import Dict, List, Tuple, Union, cast, AsyncGenerator, Any
-from datetime import date, datetime
+from typing import Any, AsyncGenerator, Dict, List, Tuple, Union, cast
 
+import ujson
 from aiohttp import BodyPartReader, web
 from aiohttp.web import Request, Response
-from multidict import CIMultiDict
 from motor.motor_asyncio import AsyncIOMotorClient
-from multidict import MultiDict, MultiDictProxy
+from multidict import CIMultiDict, MultiDict, MultiDictProxy
 from xmlschema import XMLSchemaException
-from distutils.util import strtobool
 
-from .middlewares import decrypt_cookie, get_session
-
-from ..conf.conf import schema_types
+from ..conf.conf import aai_config, publisher, schema_types
+from ..helpers.doi import DOIHandler
 from ..helpers.logger import LOG
 from ..helpers.parser import XMLToJSONParser
 from ..helpers.schema_loader import JSONSchemaLoader, SchemaNotFoundException, XMLSchemaLoader
 from ..helpers.validator import JSONValidator, XMLValidator
-from ..helpers.doi import DOIHandler
-from .operators import FolderOperator, Operator, XMLOperator, UserOperator
-
-from ..conf.conf import aai_config, publisher
+from .middlewares import decrypt_cookie, get_session
+from .operators import FolderOperator, Operator, UserOperator, XMLOperator
 
 
 class RESTAPIHandler:
@@ -705,6 +701,10 @@ class FolderAPIHandler(RESTAPIHandler):
                 reason = "'published' parameter must be either 'true' or 'false'"
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
+        if "name" in req.query:
+            name_param = req.query.get("name", "")
+            if name_param:
+                folder_query = {"$text": {"$search": name_param}}
 
         folder_operator = FolderOperator(db_client)
         folders, total_folders = await folder_operator.query_folders(folder_query, page, per_page)
