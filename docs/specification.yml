@@ -897,7 +897,13 @@ paths:
           name: published
           schema:
             type: string
-          description: Return folders based on the folder published value
+          description: Return folders based on the folder published value. Should be 'true' or 'false'
+        - in: query
+          name: name
+          schema:
+            type: string
+          description: Return folders containing filtered string[s] in their name
+          example: test folder
       responses:
         200:
           description: OK
