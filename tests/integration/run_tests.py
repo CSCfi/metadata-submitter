@@ -8,11 +8,11 @@ should be taken into account.
 import asyncio
 import json
 import logging
-from pathlib import Path
 import urllib
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
-import aiofiles  # type: ignore
+import aiofiles
 import aiohttp
 from aiohttp import FormData
 
@@ -925,6 +925,41 @@ async def test_getting_paginated_folders(sess):
         assert resp.status == 400
 
 
+async def test_getting_folders_filtered_by_name(sess):
+    """Check that /folders returns folders filtered by name.
+
+    :param sess: HTTP session in which request call is made
+    """
+    names = [" filter new ", "_filter_", "-filter-", "_extra-", "_2021special_"]
+    folders = []
+    for name in names:
+        folder_data = {"name": f"Test{name}name", "description": "Test filtering name"}
+        folders.append(await post_folder(sess, folder_data))
+
+    async with sess.get(f"{folders_url}?name=filter") as resp:
+        assert resp.status == 200
+        ans = await resp.json()
+        assert ans["page"]["totalFolders"] == 3
+
+    async with sess.get(f"{folders_url}?name=extra") as resp:
+        assert resp.status == 200
+        ans = await resp.json()
+        assert ans["page"]["totalFolders"] == 1
+
+    async with sess.get(f"{folders_url}?name=2021 special") as resp:
+        assert resp.status == 200
+        ans = await resp.json()
+        assert ans["page"]["totalFolders"] == 0
+
+    async with sess.get(f"{folders_url}?name=new extra") as resp:
+        assert resp.status == 200
+        ans = await resp.json()
+        assert ans["page"]["totalFolders"] == 2
+
+    for folder in folders:
+        await delete_folder(sess, folder)
+
+
 async def test_getting_user_items(sess):
     """Test querying user's templates or folders in the user object with GET user request.
 
@@ -1320,6 +1355,7 @@ async def main():
         # Test getting a list of folders and draft templates owned by the user
         LOG.debug("=== Testing getting folders, draft folders and draft templates with pagination ===")
         await test_getting_paginated_folders(sess)
+        await test_getting_folders_filtered_by_name(sess)
         await test_getting_user_items(sess)
 
         # Test add, modify, validate and release action with submissions
