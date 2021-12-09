@@ -1,14 +1,13 @@
-"""Drop MongoDB default database.
-
-To be utilised mostly for integration tests
-"""
+"""Create MongoDB default collections and indexes."""
 
 import argparse
 import asyncio
 import logging
 import os
 
+import pymongo
 from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import TEXT
 
 serverTimeout = 15000
 connectTimeout = 15000
@@ -31,40 +30,43 @@ def create_db_client(url: str) -> AsyncIOMotorClient:
     return AsyncIOMotorClient(url, connectTimeoutMS=connectTimeout, serverSelectionTimeoutMS=serverTimeout)
 
 
-async def purge_mongodb(url: str) -> None:
-    """Erase database."""
-    client = create_db_client(url)
-    LOG.debug(f"current databases: {*await client.list_database_names(),}")
-    LOG.debug("=== Drop curent database ===")
-    await client.drop_database(DATABASE)
-    LOG.debug("=== DONE ===")
-
-
-async def clean_mongodb(url: str) -> None:
+async def create_indexes(url: str) -> None:
     """Clean Collection and recreate it."""
     client = create_db_client(url)
     db = client[DATABASE]
-    LOG.debug(f"Database to clear: {DATABASE}")
-    collections = await db.list_collection_names()
-    LOG.debug(f"=== Collections to be cleared: {collections} ===")
-    LOG.debug("=== Delete all documents in all collections ===")
-    for col in collections:
-        x = await db[col].delete_many({})
-        LOG.debug(f"{x.deleted_count}{' documents deleted'}\t{'from '}{col}")
+    LOG.debug(f"Current database: {db}")
+    LOG.debug("=== Create collections ===")
+    for col in ["folder", "user"]:
+        try:
+            await db.create_collection(col)
+        except pymongo.errors.CollectionInvalid as e:
+            LOG.debug(f"=== Collection {col} not created due to {str(e)} ===")
+            pass
+    LOG.debug("=== Create indexes ===")
+
+    indexes = [
+        db.folder.create_index([("dateCreated", -1)]),
+        db.folder.create_index([("folderId", 1)], unique=True),
+        db.folder.create_index([("text_name", TEXT)]),
+        db.user.create_index([("userId", 1)], unique=True),
+    ]
+
+    for index in indexes:
+        try:
+            await index
+        except Exception as e:
+            LOG.debug(f"=== Indexes not created due to {str(e)} ===")
+            pass
     LOG.debug("=== DONE ===")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process some integers.")
     parser.add_argument("--tls", action="store_true", help="add tls configuration")
-    parser.add_argument("--purge", action="store_true", help="destroy database")
     args = parser.parse_args()
     url = f"mongodb://{AUTHDB}:{AUTHDB}@{HOST}/{DATABASE}?authSource=admin"
     if args.tls:
         _params = "?tls=true&tlsCAFile=./config/cacert&ssl_keyfile=./config/key&ssl_certfile=./config/cert"
         url = f"mongodb://{AUTHDB}:{AUTHDB}@{HOST}/{DATABASE}{_params}&authSource=admin"
     LOG.debug(f"=== Database url {url} ===")
-    if args.purge:
-        asyncio.run(purge_mongodb(url))
-    else:
-        asyncio.run(clean_mongodb(url))
+    asyncio.run(create_indexes(url))
