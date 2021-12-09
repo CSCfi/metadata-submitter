@@ -8,6 +8,7 @@ should be taken into account.
 import asyncio
 import json
 import logging
+import os
 import urllib
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -47,8 +48,8 @@ test_json_files = [
     ("experiment", "ERX000119.json", "ERX000119.json"),
     ("analysis", "ERZ266973.json", "ERZ266973.json"),
 ]
-base_url = "http://localhost:5430"
-mock_auth_url = "http://localhost:8000"
+base_url = os.getenv("BASE_URL", "http://localhost:5430")
+mock_auth_url = os.getenv("ISS_URL", "http://localhost:8000")
 objects_url = f"{base_url}/objects"
 drafts_url = f"{base_url}/drafts"
 templates_url = f"{base_url}/templates"
@@ -357,8 +358,8 @@ async def post_folder(sess, data):
     """
     async with sess.post(f"{folders_url}", data=json.dumps(data)) as resp:
         LOG.debug("Adding new folder")
-        assert resp.status == 201, "HTTP Status code error"
         ans = await resp.json()
+        assert resp.status == 201, f"HTTP Status code error {resp.status} {ans}"
         return ans["folderId"]
 
 
@@ -937,13 +938,13 @@ async def test_getting_folders_filtered_by_name(sess):
         folders.append(await post_folder(sess, folder_data))
 
     async with sess.get(f"{folders_url}?name=filter") as resp:
-        assert resp.status == 200
         ans = await resp.json()
+        assert resp.status == 200, f"HTTP Status code error {resp.status} {ans}"
         assert ans["page"]["totalFolders"] == 3
 
     async with sess.get(f"{folders_url}?name=extra") as resp:
-        assert resp.status == 200
         ans = await resp.json()
+        assert resp.status == 200, f"HTTP Status code error {resp.status} {ans}"
         assert ans["page"]["totalFolders"] == 1
 
     async with sess.get(f"{folders_url}?name=2021 special") as resp:
