@@ -4,18 +4,21 @@ Run integration tests against backend api endpoints.
 Deleting from db is currently not supported, objects added to db in different
 should be taken into account.
 """
-
 import asyncio
 import json
 import logging
 import os
+import re
 import urllib
 import xml.etree.ElementTree as ET
+from datetime import datetime
 from pathlib import Path
+from uuid import uuid4
 
 import aiofiles
 import aiohttp
 from aiohttp import FormData
+from motor.motor_asyncio import AsyncIOMotorClient
 
 # === Global vars ===
 FORMAT = "[%(asctime)s][%(name)s][%(process)d %(processName)s][%(levelname)-8s](L:%(lineno)s) %(funcName)s: %(message)s"
@@ -57,6 +60,11 @@ folders_url = f"{base_url}/folders"
 users_url = f"{base_url}/users"
 submit_url = f"{base_url}/submit"
 publish_url = f"{base_url}/publish"
+# to form direct contact to db with create_folder()
+DATABASE = os.getenv("MONGO_DATABASE", "default")
+AUTHDB = os.getenv("MONGO_AUTHDB", "admin")
+HOST = os.getenv("MONGO_HOST", "database:27017")
+TLS = os.getenv("MONGO_SSL", False)
 
 user_id = "current"
 test_user_given = "Given"
@@ -109,7 +117,12 @@ async def create_multi_file_request_data(filepairs):
         path_to_file = testfiles_root / schema / filename
         path = path_to_file.as_posix()
         async with aiofiles.open(path, mode="r") as f:
-            request_data.add_field(schema.upper(), await f.read(), filename=filename, content_type="text/xml")
+            request_data.add_field(
+                schema.upper(),
+                await f.read(),
+                filename=filename,
+                content_type="text/xml",
+            )
     return request_data
 
 
@@ -412,6 +425,36 @@ async def delete_folder_publish(sess, folder_id):
     async with sess.delete(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Deleting folder {folder_id}")
         assert resp.status == 401, "HTTP Status code error"
+
+
+async def create_folder(data, user):
+    """Create new object folder to database.
+
+    :param data: Data as dict to be saved to database
+    :param user: User id to which data is assigned
+    :returns: Folder id for the folder inserted to database
+    """
+    LOG.info("Creating new folder")
+    url = f"mongodb://{AUTHDB}:{AUTHDB}@{HOST}/{DATABASE}?authSource=admin"
+    db_client = AsyncIOMotorClient(url, connectTimeoutMS=1000, serverSelectionTimeoutMS=1000)
+    database = db_client[DATABASE]
+
+    folder_id = uuid4().hex
+    data["folderId"] = folder_id
+    data["text_name"] = " ".join(re.split("[\\W_]", data["name"]))
+    data["drafts"] = []
+    data["metadataObjects"] = []
+    try:
+        await database["folder"].insert_one(data)
+        find_by_id = {"userId": user}
+        append_op = {"$push": {"folders": {"$each": [folder_id], "$position": 0}}}
+        await database["user"].find_one_and_update(
+            find_by_id, append_op, projection={"_id": False}, return_document=True
+        )
+        return folder_id
+
+    except Exception as e:
+        LOG.error(f"Folder creation failed due to {str(e)}")
 
 
 async def patch_user(sess, user_id, real_user_id, json_patch):
@@ -940,7 +983,7 @@ async def test_getting_folders_filtered_by_name(sess):
     async with sess.get(f"{folders_url}?name=filter") as resp:
         ans = await resp.json()
         assert resp.status == 200, f"HTTP Status code error {resp.status} {ans}"
-        assert ans["page"]["totalFolders"] == 3
+        assert ans["page"]["totalFolders"] == 3, f'Shold be 3 returned {ans["page"]["totalFolders"]}'
 
     async with sess.get(f"{folders_url}?name=extra") as resp:
         ans = await resp.json()
@@ -956,6 +999,81 @@ async def test_getting_folders_filtered_by_name(sess):
         assert resp.status == 200
         ans = await resp.json()
         assert ans["page"]["totalFolders"] == 2
+
+    for folder in folders:
+        await delete_folder(sess, folder)
+
+
+async def test_getting_folders_filtered_by_date_created(sess):
+    """Check that /folders returns folders filtered by date created.
+
+    :param sess: HTTP session in which request call is made
+    """
+    async with sess.get(f"{users_url}/current") as resp:
+        ans = await resp.json()
+        user = ans["userId"]
+
+    folders = []
+    format = "%Y-%m-%d %H:%M:%S"
+
+    # Test dateCreated within a year
+    # Create folders with different dateCreated
+    timestamps = ["2014-12-31 00:00:00", "2015-01-01 00:00:00", "2015-07-15 00:00:00", "2016-01-01 00:00:00"]
+    for stamp in timestamps:
+        folder_data = {
+            "name": f"Test date {stamp}",
+            "description": "Test filtering date",
+            "dateCreated": datetime.strptime(stamp, format).timestamp(),
+        }
+        folders.append(await create_folder(folder_data, user))
+
+    async with sess.get(f"{folders_url}?date_created_start=2015-01-01&date_created_end=2015-12-31") as resp:
+        ans = await resp.json()
+        assert resp.status == 200, f"returned status {resp.status}, error {ans}"
+        assert ans["page"]["totalFolders"] == 2, f'Shold be 2 returned {ans["page"]["totalFolders"]}'
+
+    # Test dateCreated within a month
+    # Create folders with different dateCreated
+    timestamps = ["2013-01-31 00:00:00", "2013-02-02 00:00:00", "2013-03-29 00:00:00", "2013-04-01 00:00:00"]
+    for stamp in timestamps:
+        folder_data = {
+            "name": f"Test date {stamp}",
+            "description": "Test filtering date",
+            "dateCreated": datetime.strptime(stamp, format).timestamp(),
+        }
+        folders.append(await create_folder(folder_data, user))
+
+    async with sess.get(f"{folders_url}?date_created_start=2013-02-01&date_created_end=2013-03-30") as resp:
+        ans = await resp.json()
+        assert resp.status == 200, f"returned status {resp.status}, error {ans}"
+        assert ans["page"]["totalFolders"] == 2, f'Shold be 2 returned {ans["page"]["totalFolders"]}'
+
+    # Test dateCreated within a day
+    # Create folders with different dateCreated
+    timestamps = [
+        "2012-01-14 23:59:59",
+        "2012-01-15 00:00:01",
+        "2012-01-15 23:59:59",
+        "2012-01-16 00:00:01",
+    ]
+    for stamp in timestamps:
+        folder_data = {
+            "name": f"Test date {stamp}",
+            "description": "Test filtering date",
+            "dateCreated": datetime.strptime(stamp, format).timestamp(),
+        }
+        folders.append(await create_folder(folder_data, user))
+
+    async with sess.get(f"{folders_url}?date_created_start=2012-01-15&date_created_end=2012-01-15") as resp:
+        ans = await resp.json()
+        assert resp.status == 200, f"returned status {resp.status}, error {ans}"
+        assert ans["page"]["totalFolders"] == 2, f'Shold be 2 returned {ans["page"]["totalFolders"]}'
+
+    # Test parameters date_created_... and name together
+    async with sess.get(f"{folders_url}?name=2013&date_created_start=2012-01-01&date_created_end=2016-12-31") as resp:
+        ans = await resp.json()
+        assert resp.status == 200, f"returned status {resp.status}, error {ans}"
+        assert ans["page"]["totalFolders"] == 4, f'Shold be 4 returned {ans["page"]["totalFolders"]}'
 
     for folder in folders:
         await delete_folder(sess, folder)
@@ -1356,8 +1474,13 @@ async def main():
         # Test getting a list of folders and draft templates owned by the user
         LOG.debug("=== Testing getting folders, draft folders and draft templates with pagination ===")
         await test_getting_paginated_folders(sess)
-        await test_getting_folders_filtered_by_name(sess)
         await test_getting_user_items(sess)
+        LOG.debug("=== Testing getting folders filtered with name and date created ===")
+        await test_getting_folders_filtered_by_name(sess)
+        # too much of a hassle to make test work with tls db connection in github
+        # must be improven in next integration test iteration
+        if not TLS:
+            await test_getting_folders_filtered_by_date_created(sess)
 
         # Test add, modify, validate and release action with submissions
         LOG.debug("=== Testing actions within submissions ===")
