@@ -17,6 +17,7 @@
 			}
 		},
 		"python.formatting.provider": "black",
+		"python.formatting.blackArgs": ["--line-length", "120"],
 		"python.languageServer": "Pylance",
 		"python.linting.flake8Enabled": true,
 		"python.linting.pylintEnabled": true,

@@ -29,10 +29,20 @@ jobs:
         docker-compose --env-file .env.example up -d --build 
         sleep 30
   
-    - name: Run Integration test
+    - name: Clear database
       run: |
         python tests/integration/clean_db.py
+      env:
+        MONGO_HOST: localhost:27017
+        MONGO_DATABASE: default
+        MONGO_AUTHDB: admin
+
+    - name: Run Integration test
+      run: |
         python tests/integration/run_tests.py
+      env:
+        BASE_URL: http://localhost:5430
+        ISS_URL: http://localhost:8000
 
     - name: Collect logs from docker
       if: ${{ failure() }}
@@ -58,10 +68,20 @@ jobs:
         docker-compose -f docker-compose-tls.yml --env-file .env.example up -d
         sleep 30
 
-    - name: Run Integration test
+    - name: Clear database
       run: |
         python tests/integration/clean_db.py --tls
+      env:
+        MONGO_HOST: localhost:27017
+        MONGO_DATABASE: default
+        MONGO_AUTHDB: admin
+
+    - name: Run Integration test
+      run: |
         python tests/integration/run_tests.py
+      env:
+        BASE_URL: http://localhost:5430
+        ISS_URL: http://localhost:8000
 
     - name: Collect logs from docker
       if: ${{ failure() }}
