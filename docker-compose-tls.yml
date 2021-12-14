@@ -49,6 +49,7 @@ services:
     volumes:
       - data:/data/db
       - ./config:/tls
+      - ./scripts/init_mongo.js:/docker-entrypoint-initdb.d/init_mongo.js:ro
     expose:
       - 27017
     ports:

@@ -1,10 +1,10 @@
 """Operators for handling database-related operations."""
 import re
+import time
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 from uuid import uuid4
-import time
 
 from aiohttp import web
 from dateutil.relativedelta import relativedelta
@@ -12,7 +12,7 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
 from multidict import MultiDictProxy
 from pymongo.errors import ConnectionFailure, OperationFailure
 
-from ..conf.conf import query_map, mongo_database
+from ..conf.conf import mongo_database, query_map
 from ..database.db_service import DBService, auto_reconnect
 from ..helpers.logger import LOG
 from ..helpers.parser import XMLToJSONParser
@@ -658,6 +658,7 @@ class FolderOperator:
         """
         folder_id = self._generate_folder_id()
         data["folderId"] = folder_id
+        data["text_name"] = " ".join(re.split("[\\W_]", data["name"]))
         data["published"] = False
         data["dateCreated"] = int(time.time())
         data["metadataObjects"] = data["metadataObjects"] if "metadataObjects" in data else []
@@ -677,21 +678,34 @@ class FolderOperator:
             LOG.info(f"Inserting folder with id {folder_id} to database succeeded.")
             return folder_id
 
-    async def query_folders(self, query: Dict, page_num: int, page_size: int) -> Tuple[List, int]:
+    async def query_folders(
+        self, query: Dict, page_num: int, page_size: int, sort_param: Optional[dict] = None
+    ) -> Tuple[List, int]:
         """Query database based on url query parameters.
 
         :param query: Dict containing query information
         :param page_num: Page number
         :param page_size: Results per page
+        :param sort_param: Sorting options.
         :returns: Paginated query result
         """
         skips = page_size * (page_num - 1)
+
+        if not sort_param:
+            sort = {"dateCreated": -1}
+        elif sort_param["score"] and not sort_param["date"]:
+            sort = {"score": {"$meta": "textScore"}, "dateCreated": -1}  # type: ignore
+        elif sort_param["score"] and sort_param["date"]:
+            sort = {"dateCreated": -1, "score": {"$meta": "textScore"}}  # type: ignore
+        else:
+            sort = {"dateCreated": -1}
+
         _query = [
             {"$match": query},
-            {"$sort": {"dateCreated": -1}},
+            {"$sort": sort},
             {"$skip": skips},
             {"$limit": page_size},
-            {"$project": {"_id": 0}},
+            {"$project": {"_id": 0, "text_name": 0}},
         ]
         data_raw = await self.db_service.do_aggregate("folder", _query)
 
