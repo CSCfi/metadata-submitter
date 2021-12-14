@@ -685,6 +685,7 @@ class FolderAPIHandler(RESTAPIHandler):
         """
         page = self._get_page_param(req, "page", 1)
         per_page = self._get_page_param(req, "per_page", 5)
+        sort = {"date": True, "score": False}
         db_client = req.app["db_client"]
 
         user_operator = UserOperator(db_client)
@@ -705,9 +706,11 @@ class FolderAPIHandler(RESTAPIHandler):
             name_param = req.query.get("name", "")
             if name_param:
                 folder_query = {"$text": {"$search": name_param}}
+            sort["score"] = True
+            sort["date"] = False
 
         folder_operator = FolderOperator(db_client)
-        folders, total_folders = await folder_operator.query_folders(folder_query, page, per_page)
+        folders, total_folders = await folder_operator.query_folders(folder_query, page, per_page, sort)
 
         result = ujson.dumps(
             {
