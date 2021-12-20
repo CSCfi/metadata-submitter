@@ -40,7 +40,7 @@ idna==3.3
     # via
     #   requests
     #   yarl
-jsonschema==4.2.1
+jsonschema==4.3.1
     # via -r requirements.in
 motor==2.5.1
     # via -r requirements.in
