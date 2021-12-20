@@ -62,7 +62,7 @@ six==1.16.0
     # via python-dateutil
 typing-extensions==4.0.0
     # via async-timeout
-ujson==4.3.0
+ujson==5.1.0
     # via -r requirements.in
 urllib3==1.26.7
     # via requests
