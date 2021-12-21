@@ -84,7 +84,11 @@ class AccessHandler:
             raise web.HTTPBadRequest(reason=reason)
 
         # Verify oidc_state and retrieve auth session
-        session = self.rph.get_session_information(params["state"])
+        session = None
+        try:
+            session = self.rph.get_session_information(params["state"])
+        except KeyError as e:
+            LOG.error(f"Session not initialised: {e}")
         if session is None:
             raise web.HTTPForbidden(reason="Bad user session.")
 
