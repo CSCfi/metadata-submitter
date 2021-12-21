@@ -112,7 +112,7 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
         or (request.path.startswith("/") and request.path.endswith(tuple([".svg", ".jpg", ".ico", ".json"])))
     ):
         return await handler(request)
-    if request.path.startswith(tuple(controlled_paths)) and "OIDC_URL" in os.environ and bool(os.getenv("OIDC_URL")):
+    if request.path.startswith(tuple(controlled_paths)) and "ISS_URL" in os.environ and bool(os.getenv("ISS_URL")):
         cookie = decrypt_cookie(request)
         session = request.app["Session"].setdefault(cookie["id"], {})
         if not all(x in ["access_token", "user_info", "oidc_state"] for x in session):
@@ -129,7 +129,7 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
             raise web.HTTPUnauthorized(headers={"WWW-Authenticate": 'OAuth realm="/", charset="UTF-8"'})
 
         return await handler(request)
-    elif "OIDC_URL" in os.environ and bool(os.getenv("OIDC_URL")):
+    elif "ISS_URL" in os.environ and bool(os.getenv("ISS_URL")):
         LOG.debug(f"not authorised to view this page {request.path}")
         raise web.HTTPUnauthorized(headers={"WWW-Authenticate": 'OAuth realm="/", charset="UTF-8"'})
     else:

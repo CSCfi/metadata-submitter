@@ -8,4 +8,4 @@ requests
 uvloop
 xmlschema
 ujson
-Authlib
+oidcrp

@@ -47,15 +47,14 @@ the table below.
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
 | ``ISS_URL``                    | ``-``                         | OIDC claim issuer URL.                                                            | Yes       |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``AUTH_URL``                   | ``-``                         | Set if a special OIDC authorize URL is required,                                  | No        |
-|                                |                               | otherwise use ``"OIDC_URL"/authorize``.                                           |           |
+| ``AUTH_METHOD`                 | ``code`                       | OIDC Authentication method to use.                                                | No        |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``OIDC_URL``                   | ``-``                         | OIDC base URL for constructing OIDC provider endpoint calls.                      | Yes       |
+| ``OIDC_URL``                   | ``-``                         | OIDC URL that exposes /.well-known/openid-configuration values                    | Yes       |
++--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
+| ``OIDC_SCOPE``                 | ``openid profile email``      | Claims to request from AAI                                                        | No        |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
 | ``REDIRECT_URL``               | ``-``                         | Required only for testing with front-end on ``localhost`` or change to            | No        |
 |                                |                               | ``http://frontend:3000`` if started using ``docker-compose`` (see :ref:`deploy`). |           |
-+--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``JWK_URL``                    | ``-``                         | JWK OIDC URL for retrieving key for validating ID token.                          | Yes       |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
 | ``LOG_LEVEL``                  | ``INFO``                      | Set logging level, uppercase.                                                     | No        |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
@@ -118,11 +117,9 @@ The Authentication follows the `OIDC Specification <https://openid.net/specs/ope
 We follow the steps of the OpenID Connect protocol.
 
 - The RP (Client) sends a request to the OpenID Provider (OP),
-  for this we require ``AAI_CLIENT_SECRET``, ``AAI_CLIENT_ID``, ``OIDC_URL``, a callback url constructed from ``BASE_URL`` and
-  ``AUTH_URL`` if required.
+  for this we require ``AAI_CLIENT_SECRET``, ``AAI_CLIENT_ID``, ``OIDC_URL``, ``ISS_URL`` and a callback url constructed from ``BASE_URL``.
 - The OP authenticates the End-User and obtains authorization.
-- The OP responds with an ID Token and usually an Access Token,
-  we validate the ID Token for which we need ``JWK_URL`` to get the key and ``ISS_URL`` to check the claims issuer is correct.
+- The OP responds with an ID Token and usually an Access Token, which are validated with configuration provided by ``OIDC_URL``.
 - The RP can send a request with the Access Token to the UserInfo Endpoint.
 - The UserInfo Endpoint returns Claims about the End-User, use use some claims ``sub`` and ``eppn`` to identify the user and start a session.
 
@@ -143,12 +140,11 @@ endpoint ``https://<provider_url>/.well-known/openid-configuration``.
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
 | ``ISS_URL``                    | ``-``                         | OIDC claim issuer URL.                                                            | Yes       |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``AUTH_URL``                   | ``-``                         | Set if a special OIDC authorize URL is required,                                  | No        |
-|                                |                               | otherwise use ``"OIDC_URL"/authorize``.                                           |           |
+| ``AUTH_METHOD``                | ``code``                      | OIDC Authentication method to use.                                                | No        |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``OIDC_URL``                   | ``-``                         | OIDC base URL for constructing OIDC provider endpoint calls.                      | Yes       |
+| ``OIDC_URL``                   | ``-``                         | OIDC URL that exposes /.well-known/openid-configuration values.                   | Yes       |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``JWK_URL``                    | ``-``                         | JWK OIDC URL for retrieving key for validating ID token.                          | Yes       |
+| ``OIDC_SCOPE``                 | ``openid profile email``      | Claims to request from AAI                                                        | No        |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
 
 REST API

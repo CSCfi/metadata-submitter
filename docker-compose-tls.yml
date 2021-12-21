@@ -24,10 +24,8 @@ services:
       - "AAI_CLIENT_SECRET=${AAI_CLIENT_SECRET}"
       - "AAI_CLIENT_ID=${AAI_CLIENT_ID}"
       - "ISS_URL=${ISS_URL}"
-      - "AUTH_URL=${AUTH_URL}"
       - "OIDC_URL=${OIDC_URL}"
       - "AUTH_REFERER=${AUTH_REFERER}"
-      - "JWK_URL=${JWK_URL}"
       - "BASE_URL=${BASE_URL}"
       # Enable this for working with front-end on localhost
       # - "REDIRECT_URL=${REDIRECT_URL}"
