@@ -27,8 +27,8 @@ class AccessHandler:
         self.client_id = aai["client_id"]
         self.client_secret = aai["client_secret"]
         self.callback_url = aai["callback_url"]
-        self.oidc_url = aai["oidc_url"]
-        self.iss = aai["iss"]
+        self.oidc_url = aai["oidc_url"].rstrip("/") + "/.well-known/openid-configuration"
+        self.iss = aai["oidc_url"]
         self.scope = aai["scope"]
         self.auth_method = aai["auth_method"]
 

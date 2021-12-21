@@ -145,10 +145,8 @@ aai_config = {
     if bool(os.getenv("REDIRECT_URL"))
     else os.getenv("BASE_URL", "http://localhost:5430"),
     "scope": os.getenv("OIDC_SCOPE", "openid profile email"),
-    "iss": os.getenv("ISS_URL", ""),
     "callback_url": f'{os.getenv("BASE_URL", "http://localhost:5430").rstrip("/")}/callback',
-    "oidc_url": os.getenv("OIDC_URL", "http://auth.org/.well-known/openid-configuration"),
-    "auth_referer": f'{os.getenv("AUTH_REFERER", "")}',
+    "oidc_url": os.getenv("OIDC_URL", ""),
     "auth_method": os.getenv("AUTH_METHOD", "code"),
 }
 
