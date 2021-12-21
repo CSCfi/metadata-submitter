@@ -12,7 +12,7 @@ async def dois(req: web.Request) -> web.Response:
     try:
         content = await req.json()
     except json.decoder.JSONDecodeError as e:
-        reason = "JSON is not correctly formatted." f" See: {e}"
+        reason = f"JSON is not correctly formatted. See: {e}"
         logging.info(reason)
         raise web.HTTPBadRequest(reason=reason)
 
