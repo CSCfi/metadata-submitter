@@ -120,3 +120,7 @@ venv.bak/
 
 metadata_backend/frontend/*
 config/*
+
+# oidcrp generated directories that store JWKs
+private
+static
