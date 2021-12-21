@@ -37,7 +37,7 @@ class AccessHandler:
                 "issuer": self.iss,
                 "client_id": self.client_id,
                 "client_secret": self.client_secret,
-                "redirect_uris": [self.redirect],
+                "redirect_uris": [self.callback_url],
                 "behaviour": {
                     "response_types": self.auth_method.split(" "),
                     "scope": self.scope.split(" "),
