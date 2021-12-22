@@ -97,7 +97,7 @@ class TestConvenienceFunctions(unittest.TestCase):
         """Test check_csrf when skipping referer from auth endpoint."""
         with unittest.mock.patch(
             "metadata_backend.api.middlewares.aai_config",
-            new={"auth_referer": "http://idp:3000"},
+            new={"oidc_url": "http://idp:3000"},
         ):
             testreq = get_request_with_fernet()
             cookie, _ = generate_cookie(testreq)
