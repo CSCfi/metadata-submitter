@@ -79,7 +79,7 @@ Run Jest-based tests with ``npm test``. Check code formatting and style errors w
 Respectively for formatting errors in ``json/yaml/css/md`` -files, use ``npm run format:check`` or ``npm run format``.
 Possible type errors can be checked with ``npm run flow``.
 
-We're following recommended settings from ``eslint``, ``react`` and ``prettier`` - packages witha a couple of exceptions,
+We're following recommended settings from ``eslint``, ``react`` and ``prettier`` - packages with a couple of exceptions,
 which can be found in ``.eslintrc`` and ``.prettierrc``.
 Linting, formatting and testing are also configured for you as a git pre-commit, which is recommended to use to avoid fails on CI pipeline.
 
