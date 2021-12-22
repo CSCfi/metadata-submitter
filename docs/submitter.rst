@@ -96,10 +96,10 @@ For installing ``metadata-submitter`` backend do the following:
 
 .. hint:: Before running the application have MongoDB running.
 
-    MongoDB Server expects to find MongoDB instance running, spesified with following environmental variables:
+    MongoDB Server expects to find MongoDB instance running, specified with following environmental variables:
 
-    - ``MONGO_INITDB_ROOT_USERNAME`` (username for admin user to mondogdb instance)
-    - ``MONGO_INITDB_ROOT_PASSWORD`` (password for admin user to mondogdb instance)
+    - ``MONGO_INITDB_ROOT_USERNAME`` (username for admin user to mongodb instance)
+    - ``MONGO_INITDB_ROOT_PASSWORD`` (password for admin user to mongodb instance)
     - ``MONGO_HOST`` (host and port for MongoDB instance, e.g. `localhost:27017`)
 
 To run the backend from command line set the environment variables required and use:
