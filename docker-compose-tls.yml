@@ -23,7 +23,6 @@ services:
       - "MONGO_SSL_CLIENT_CERT=${MONGO_SSL_CLIENT_CERT}"
       - "AAI_CLIENT_SECRET=${AAI_CLIENT_SECRET}"
       - "AAI_CLIENT_ID=${AAI_CLIENT_ID}"
-      - "ISS_URL=${ISS_URL}"
       - "OIDC_URL=${OIDC_URL}"
       - "BASE_URL=${BASE_URL}"
       # Enable this for working with front-end on localhost
