@@ -1,5 +1,5 @@
 """Test API auth endpoints."""
-from aiohttp.web_exceptions import HTTPForbidden, HTTPUnauthorized, HTTPBadRequest
+from aiohttp.web_exceptions import HTTPForbidden, HTTPInternalServerError, HTTPSeeOther, HTTPBadRequest
 from metadata_backend.api.auth import AccessHandler
 from unittest.mock import MagicMock, patch
 from aiohttp.test_utils import AioHTTPTestCase
@@ -7,16 +7,9 @@ from metadata_backend.api.middlewares import generate_cookie
 
 from metadata_backend.server import init
 from .mockups import (
-    Mock_Request,
-    MockResponse,
     get_request_with_fernet,
-    jwt_data,
-    jwk_data,
-    jwt_data_claim_miss,
-    jwt_data_bad_nonce,
 )
 from unittest import IsolatedAsyncioTestCase
-import ujson
 
 
 class AccessHandlerFailTestCase(AioHTTPTestCase):
@@ -97,51 +90,15 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
             "domain": "http://domain.com:5430",
             "redirect": "http://domain.com:5430",
             "scope": "openid profile email",
-            "iss": "http://iss.domain.com:5430",
             "callback_url": "http://domain.com:5430/callback",
-            "auth_url": "http://auth.domain.com:5430/authorize",
-            "token_url": "http://auth.domain.com:5430/token",
-            "user_info": "http://auth.domain.com:5430/userinfo",
-            "revoke_url": "http://auth.domain.com:5430/revoke",
-            "jwk_server": "http://auth.domain.com:5430/jwk",
-            "auth_referer": "http://auth.domain.com:5430",
+            "oidc_url": "http://auth.domain.com:5430",
+            "auth_method": "code",
         }
         self.AccessHandler = AccessHandler(access_config)
-        self.AccessHandler.nonce = "nonce"
 
     def tearDown(self):
         """Cleanup mocked stuff."""
         pass
-
-    async def test_get_jwk_fail(self):
-        """Test retrieving JWK exception."""
-        with patch("aiohttp.ClientSession.get", side_effect=HTTPUnauthorized):
-            with self.assertRaises(HTTPUnauthorized):
-                await self.AccessHandler._get_key()
-
-    async def test_jwk_key(self):
-        """Test get jwk key."""
-        data = {
-            "kty": "oct",
-            "kid": "018c0ae5-4d9b-471b-bfd6-eef314bc7037",
-            "use": "sig",
-            "alg": "HS256",
-            "k": "hJtXIZ2uSN5kbQfbtTNWbpdmhkV8FJG-Onbc6mxCcYg",
-        }
-        resp = MockResponse(ujson.dumps(data), 200)
-
-        with patch("aiohttp.ClientSession.get", return_value=resp):
-            result = await self.AccessHandler._get_key()
-            self.assertEqual(result, ujson.dumps(data))
-
-    async def test_set_user_fail(self):
-        """Test set user raises exception."""
-        request = Mock_Request()
-        tk = ("something",)
-        session_id = "session_id"
-        with patch("aiohttp.ClientSession.get", side_effect=HTTPUnauthorized):
-            with self.assertRaises(HTTPBadRequest):
-                await self.AccessHandler._set_user(request, session_id, tk)
 
     async def test_set_user(self):
         """Test set user success."""
@@ -151,53 +108,43 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
 
         request.app["db_client"] = MagicMock()
         request.app["Session"] = {session_id: {}}
-        tk = "something"
-        data = {
+        user_data = {
             "eppn": "eppn@test.fi",
             "given_name": "User",
             "family_name": "Test",
         }
-        resp = MockResponse(data, 200)
 
-        with patch("aiohttp.ClientSession.get", return_value=resp):
-            with patch("metadata_backend.api.operators.UserOperator.create_user", return_value=new_user_id):
-                await self.AccessHandler._set_user(request, session_id, tk)
+        with patch("metadata_backend.api.operators.UserOperator.create_user", return_value=new_user_id):
+            await self.AccessHandler._set_user(request, session_id, user_data)
 
         self.assertIn("user_info", request.app["Session"][session_id])
         self.assertEqual(new_user_id, request.app["Session"][session_id]["user_info"])
 
-    async def test_callback_fail(self):
-        """Test callback fails."""
+    async def test_login_fail(self):
+        """Test login fails due to bad OIDCRP config."""
+        # OIDCRP init fails, because AAI config endpoint request fails
         request = get_request_with_fernet()
-        request.query["state"] = "state"
-        request.query["code"] = "code"
-        request.app["Session"] = {}
-        request.app["OIDC_State"] = set(("state",))
-        resp_no_token = MockResponse({}, 200)
-        resp_400 = MockResponse({}, 400)
+        with self.assertRaises(HTTPInternalServerError):
+            await self.AccessHandler.login(request)
 
-        with patch("aiohttp.ClientSession.post", return_value=resp_no_token):
-            with self.assertRaises(HTTPBadRequest):
-                await self.AccessHandler.callback(request)
-
-        with patch("aiohttp.ClientSession.post", return_value=resp_400):
-            with self.assertRaises(HTTPBadRequest):
-                await self.AccessHandler.callback(request)
+    async def test_login_pass(self):
+        """Test login redirects user."""
+        response = {"url": "some url"}
+        request = get_request_with_fernet()
+        with patch("oidcrp.rp_handler.RPHandler.begin", return_value=response):
+            with self.assertRaises(HTTPSeeOther):
+                await self.AccessHandler.login(request)
 
     async def test_callback_pass(self):
         """Test callback correct validation."""
         request = get_request_with_fernet()
         request.query["state"] = "state"
         request.query["code"] = "code"
-        request.app["Session"] = {}
-        request.app["Cookies"] = set({})
-        request.app["OIDC_State"] = set(("state",))
 
-        resp_token = MockResponse(jwt_data, 200)
-        resp_jwk = MockResponse(jwk_data, 200)
-
-        with patch("aiohttp.ClientSession.post", return_value=resp_token):
-            with patch("aiohttp.ClientSession.get", return_value=resp_jwk):
+        session = {"iss": "http://auth.domain.com:5430", "auth_request": {}}
+        finalize = {"token": "token", "userinfo": {"eppn": "eppn", "given_name": "name", "family_name": "name"}}
+        with patch("oidcrp.rp_handler.RPHandler.get_session_information", return_value=session):
+            with patch("oidcrp.rp_handler.RPHandler.finalize", return_value=finalize):
                 with patch("metadata_backend.api.auth.AccessHandler._set_user", return_value=None):
                     await self.AccessHandler.callback(request)
 
@@ -206,33 +153,46 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
         request = get_request_with_fernet()
         request.query["state"] = "state"
         request.query["code"] = "code"
-        request.app["Session"] = {}
-        request.app["Cookies"] = set({})
-        request.app["OIDC_State"] = set(("state",))
 
-        resp_token = MockResponse(jwt_data_claim_miss, 200)
-        resp_jwk = MockResponse(jwk_data, 200)
+        session = {"iss": "http://auth.domain.com:5430", "auth_request": {}}
+        finalize = {"token": "token", "userinfo": {}}
+        with patch("oidcrp.rp_handler.RPHandler.get_session_information", return_value=session):
+            with patch("oidcrp.rp_handler.RPHandler.finalize", return_value=finalize):
+                with self.assertRaises(HTTPBadRequest):
+                    await self.AccessHandler.callback(request)
 
-        with patch("aiohttp.ClientSession.post", return_value=resp_token):
-            with patch("aiohttp.ClientSession.get", return_value=resp_jwk):
-                with patch("metadata_backend.api.auth.AccessHandler._set_user", return_value=None):
-                    with self.assertRaises(HTTPUnauthorized):
-                        await self.AccessHandler.callback(request)
-
-    async def test_callback_bad_claim(self):
-        """Test callback bad nonce validation."""
+    async def test_callback_fail_finalize(self):
+        """Test callback fail finalize."""
         request = get_request_with_fernet()
         request.query["state"] = "state"
         request.query["code"] = "code"
-        request.app["OIDC_State"] = set()
-        request.app["Session"] = {}
-        request.app["Cookies"] = set({})
 
-        resp_token = MockResponse(jwt_data_bad_nonce, 200)
-        resp_jwk = MockResponse(jwk_data, 200)
+        session = {"iss": "http://auth.domain.com:5430", "auth_request": {}}
+        with patch("oidcrp.rp_handler.RPHandler.get_session_information", return_value=session):
+            with self.assertRaises(HTTPBadRequest):
+                await self.AccessHandler.callback(request)
 
-        with patch("aiohttp.ClientSession.post", return_value=resp_token):
-            with patch("aiohttp.ClientSession.get", return_value=resp_jwk):
-                with patch("metadata_backend.api.auth.AccessHandler._set_user", return_value=None):
-                    with self.assertRaises(HTTPForbidden):
-                        await self.AccessHandler.callback(request)
+    async def test_callback_bad_state(self):
+        """Test callback bad state validation."""
+        request = get_request_with_fernet()
+        request.query["state"] = "state"
+        request.query["code"] = "code"
+
+        with self.assertRaises(HTTPForbidden):
+            await self.AccessHandler.callback(request)
+
+    async def test_callback_missing_state(self):
+        """Test callback bad state validation."""
+        request = get_request_with_fernet()
+        request.query["code"] = "code"
+
+        with self.assertRaises(HTTPBadRequest):
+            await self.AccessHandler.callback(request)
+
+    async def test_callback_missing_code(self):
+        """Test callback bad state validation."""
+        request = get_request_with_fernet()
+        request.query["state"] = "state"
+
+        with self.assertRaises(HTTPBadRequest):
+            await self.AccessHandler.callback(request)

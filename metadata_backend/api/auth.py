@@ -56,7 +56,14 @@ class AccessHandler:
         LOG.debug("Start login")
 
         # Generate authentication payload
-        session = self.rph.begin("aai")
+        session = None
+        try:
+            session = self.rph.begin("aai")
+        except Exception as e:
+            # This can be caused if config is improperly configured, and
+            # oidcrp is unable to fetch oidc configuration from the given URL
+            LOG.error(f"OIDC authorization request failed: {e}")
+            raise web.HTTPInternalServerError(reason="OIDC authorization request failed.")
 
         # Redirect user to AAI
         response = web.HTTPSeeOther(session["url"])
@@ -89,6 +96,7 @@ class AccessHandler:
         try:
             session = self.rph.get_session_information(params["state"])
         except KeyError as e:
+            # This exception is raised if the RPHandler doesn't have the supplied "state"
             LOG.error(f"Session not initialised: {e}")
             raise web.HTTPForbidden(reason="Bad user session.")
 
@@ -98,7 +106,14 @@ class AccessHandler:
         # finalize requests id_token and access_token with code, validates them and requests userinfo data
         try:
             session = self.rph.finalize(session["iss"], session["auth_request"])
+        except KeyError as e:
+            LOG.error(f"Issuer {session['iss']} not found: {e}.")
+            raise web.HTTPBadRequest(reason="Token issuer not found.")
         except OidcServiceError as e:
+            # This exception is raised if RPHandler encounters an error due to:
+            # 1. "code" is wrong, so token request failed
+            # 2. token validation failed
+            # 3. userinfo request failed
             LOG.error(f"OIDC Callback failed with: {e}")
             raise web.HTTPBadRequest(reason="Invalid OIDC callback.")
 
@@ -145,6 +160,9 @@ class AccessHandler:
                 session["userinfo"]["sub"],
                 f"{session['userinfo']['given_name']} {session['userinfo']['family_name']}",
             )
+        else:
+            LOG.error("User was authenticated, but they are missing mandatory claim eppn or sub.")
+            raise web.HTTPBadRequest(reason="Could not set user, missing claim eppn or sub.")
         await self._set_user(req, session_id, user_data)
 
         # done like this otherwise it will not redirect properly
