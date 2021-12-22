@@ -36,14 +36,12 @@ class AccessHandlerFailTestCase(AioHTTPTestCase):
         await self.client.close()
 
     async def test_login_with_default_config_values(self):
-        """Test that login raises 404 when the AUTH_URL env variable is not a proper endpoint."""
-        self.client.app["OIDC_State"] = set()
-        response = await self.client.get("/aai")
-        self.assertEqual(response.status, 404)
-        resp_json = await response.json()
-        self.assertEqual(resp_json["instance"], "/authorize")
-        # Also check that we have regisitered oidc state
-        self.assertEqual(1, len(self.client.app["OIDC_State"]))
+        """Test that login raises 500 when OIDC is improperly configured."""
+        with patch("oidcrp.rp_handler.RPHandler.begin", side_effect=Exception):
+            response = await self.client.get("/aai")
+            self.assertEqual(response.status, 500)
+            resp_json = await response.json()
+            self.assertEqual("OIDC authorization request failed.", resp_json["details"])
 
     async def test_callback_fails_without_query_params(self):
         """Test that callback endpoint raises 400 if no params provided in the request."""
@@ -54,18 +52,11 @@ class AccessHandlerFailTestCase(AioHTTPTestCase):
 
     async def test_callback_fails_with_wrong_oidc_state(self):
         """Test that callback endpoint raises 403 when state in the query is not the same as specified in session."""
-        self.client.app["Session"] = {}
-        self.client.app["OIDC_State"] = set()
-        response = await self.client.get("/callback?state=wrong_value&code=code")
-        self.assertEqual(response.status, 403)
-        resp_json = await response.json()
-        self.assertEqual(resp_json["detail"], "Bad user session.")
-
-    async def test_callback_(self):
-        """Test that callback."""
-        self.client.app["OIDC_State"] = set(("mo_state_value",))
-        response = await self.client.get("/callback?state=mo_state_value&code=code")
-        self.assertIn(response.status, (403, 500))
+        with patch("oidcrp.rp_handler.RPHandler.get_session_information", side_effect=KeyError):
+            response = await self.client.get("/callback?state=wrong_value&code=code")
+            self.assertEqual(response.status, 403)
+            resp_json = await response.json()
+            self.assertEqual(resp_json["detail"], "Bad user session.")
 
     async def test_logout_works(self):
         """Test that logout revokes all tokens."""

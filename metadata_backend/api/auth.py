@@ -52,6 +52,7 @@ class AccessHandler:
 
         :param req: A HTTP request instance (unused)
         :raises: HTTPSeeOther redirect to login AAI
+        :raises: HTTPInternalServerError if OIDC configuration init failed
         """
         LOG.debug("Start login")
 
