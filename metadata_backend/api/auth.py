@@ -8,6 +8,7 @@ from aiohttp.web import Request, Response
 from .middlewares import decrypt_cookie, generate_cookie
 from .operators import UserOperator
 from oidcrp.rp_handler import RPHandler
+from oidcrp.exception import OidcServiceError
 
 from typing import Dict, Tuple
 
@@ -89,14 +90,17 @@ class AccessHandler:
             session = self.rph.get_session_information(params["state"])
         except KeyError as e:
             LOG.error(f"Session not initialised: {e}")
-        if session is None:
             raise web.HTTPForbidden(reason="Bad user session.")
 
         # Place authorization_code to session for finalize step
         session["auth_request"]["code"] = params["code"]
 
         # finalize requests id_token and access_token with code, validates them and requests userinfo data
-        session = self.rph.finalize(session["iss"], session["auth_request"])
+        try:
+            session = self.rph.finalize(session["iss"], session["auth_request"])
+        except OidcServiceError as e:
+            LOG.error(f"OIDC Callback failed with: {e}")
+            raise web.HTTPBadRequest(reason="Invalid OIDC callback.")
 
         response = web.HTTPSeeOther(f"{self.redirect}/home")
 
