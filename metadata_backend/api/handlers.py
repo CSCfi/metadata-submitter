@@ -702,12 +702,34 @@ class FolderAPIHandler(RESTAPIHandler):
                 reason = "'published' parameter must be either 'true' or 'false'"
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
+
         if "name" in req.query:
             name_param = req.query.get("name", "")
             if name_param:
                 folder_query = {"$text": {"$search": name_param}}
             sort["score"] = True
             sort["date"] = False
+
+        format_incoming = "%Y-%m-%d"
+        format_query = "%Y-%m-%d %H:%M:%S"
+        if "date_created_start" in req.query and "date_created_end" in req.query:
+            date_param_start = req.query.get("date_created_start", "")
+            date_param_end = req.query.get("date_created_end", "")
+
+            if datetime.strptime(date_param_start, format_incoming) and datetime.strptime(
+                date_param_end, format_incoming
+            ):
+                query_start = datetime.strptime(date_param_start + " 00:00:00", format_query).timestamp()
+                query_end = datetime.strptime(date_param_end + " 23:59:59", format_query).timestamp()
+                folder_query["dateCreated"] = {"$gte": query_start, "$lte": query_end}
+            else:
+                reason = f"'date_created_start' and 'date_created_end' parameters must be formated as {format_incoming}"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+
+        if "name" in req.query and "date_created_start" in req.query:
+            sort["score"] = True
+            sort["date"] = True
 
         folder_operator = FolderOperator(db_client)
         folders, total_folders = await folder_operator.query_folders(folder_query, page, per_page, sort)
