@@ -43,7 +43,7 @@ the table below.
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
 | ``BASE_URL``                   | ``http://localhost:5430``     | base URL of the metadata submitter.                                               | Yes       |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``AUTH_METHOD`                 | ``code`                       | OIDC Authentication method to use.                                                | No        |
+| ``AUTH_METHOD``                | ``code``                      | OIDC Authentication method to use.                                                | No        |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
 | ``OIDC_URL``                   | ``-``                         | OIDC URL base URL, MUST resolve to configuration endpoint when appended with      | Yes       |
 |                                |                               | /.well-known/openid-configuration                                                 |           |
