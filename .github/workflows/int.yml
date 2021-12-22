@@ -43,6 +43,9 @@ jobs:
       env:
         BASE_URL: http://localhost:5430
         ISS_URL: http://localhost:8000
+        MONGO_HOST: localhost:27017
+        MONGO_DATABASE: default
+        MONGO_AUTHDB: admin
 
     - name: Collect logs from docker
       if: ${{ failure() }}
@@ -82,7 +85,8 @@ jobs:
       env:
         BASE_URL: http://localhost:5430
         ISS_URL: http://localhost:8000
-
+        MONGO_SSL: True
+        
     - name: Collect logs from docker
       if: ${{ failure() }}
       run: docker-compose logs --no-color -t > tests/dockerlogs || true
