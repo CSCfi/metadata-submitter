@@ -26,8 +26,8 @@ Server can then be found from `http://localhost:5430`.
 - Install project by running: `pip install .` in project root
 - Setup mongodb and env variables via desired way, details:
   - Server expects to find mongodb instance running, specified with following environment variables:
-    - `MONGO_USERNAME`, username for connecting to mondogdb instance
-    - `MONGO_PASSWORD`, password for connecting to mondogdb instance
+    - `MONGO_USERNAME`, username for connecting to mongodb instance
+    - `MONGO_PASSWORD`, password for connecting to mongodb instance
     - `MONGO_HOST`, host and port for mongodb instance (e.g. `localhost:27017`)
     - `MONGO_DATABASE`, If a specific database is to be used, set the name here. 
     - `MONGO_AUTHDB`, if `MONGO_DATABASE` is set and the user doesn't exists in the database, set this to the database where the user exists (e.g. `admin`)

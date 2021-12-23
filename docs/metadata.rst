@@ -30,7 +30,7 @@ Relationships between objects
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Each of the objects are connected between each other by references, usually in the form of an ``accessionId``.
-Some of the relationships are illustrated in the Metdata ENA Model figure, however in more detail they are connected as follows:
+Some of the relationships are illustrated in the Metadata ENA Model figure, however in more detail they are connected as follows:
 
 - ``Study`` - usually other objects point to it, as it represents one of the main objects of a ``Submission``;
 - ``Analysis`` - contains references to:
