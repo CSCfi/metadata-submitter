@@ -68,7 +68,7 @@ async def http_error_handler(req: Request, handler: Callable) -> Response:
             raise web.HTTPUnprocessableEntity(text=details, content_type=c_type)
         else:
             _check_error_page_requested(req, 500)
-            raise web.HTTPServerError()
+            raise web.HTTPInternalServerError(text=details, content_type=c_type)
 
 
 @middleware

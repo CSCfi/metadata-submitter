@@ -41,7 +41,7 @@ class AccessHandlerFailTestCase(AioHTTPTestCase):
             response = await self.client.get("/aai")
             self.assertEqual(response.status, 500)
             resp_json = await response.json()
-            self.assertEqual("OIDC authorization request failed.", resp_json["details"])
+            self.assertEqual("OIDC authorization request failed.", resp_json["detail"])
 
     async def test_callback_fails_without_query_params(self):
         """Test that callback endpoint raises 400 if no params provided in the request."""
