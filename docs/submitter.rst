@@ -79,8 +79,8 @@ the table below.
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
 
 
-.. note:: If just ``MONGO_DATABASE`` is specified it will autenticate the user against it.
-          If just ``MONGO_AUTHDB`` is specified it will autenticate the user against it.
+.. note:: If just ``MONGO_DATABASE`` is specified it will authenticate the user against it.
+          If just ``MONGO_AUTHDB`` is specified it will authenticate the user against it.
           If both ``MONGO_DATABASE`` and ``MONGO_AUTHDB`` are specified, the client will attempt to authenticate the specified user to the MONGO_AUTHDB database.
           If both ``MONGO_DATABASE`` and ``MONGO_AUTHDB`` are unspecified, the client will attempt to authenticate the specified user to the admin database.
 

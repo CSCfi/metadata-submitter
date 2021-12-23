@@ -21,7 +21,7 @@ and `flake8 <http://flake8.pycqa.org/en/latest/>`_ (coding style guide)
 
     $ tox -p auto
 
-To run environments seprately use:
+To run environments separately use:
 
 .. code-block:: console
 
@@ -64,7 +64,7 @@ running the following commands in the repository root directory will run differe
 
 The configuration values for running performance tests are predefined in the ``locust.conf`` file in the repository root directory.
 All configuration options (`as defined here <https://docs.locust.io/en/stable/configuration.html#all-available-configuration-options>`_)
-can be overriden and new options can be added by either editing the current ``locust.conf`` file or running the test with additional tags, e.g.:
+can be overridden and new options can be added by either editing the current ``locust.conf`` file or running the test with additional tags, e.g.:
 
 .. code-block:: console
 

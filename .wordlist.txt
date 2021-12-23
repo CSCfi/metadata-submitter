@@ -9,7 +9,6 @@ asciicast
 asciinema
 Async
 async
-autenticate
 auth
 AUTHDB
 automodule
@@ -63,7 +62,6 @@ html
 http
 https
 INITDB
-inteded
 io
 javascript
 js
@@ -80,7 +78,6 @@ makeStyles
 maxdepth
 md
 metadataObjects
-Metdata
 middlewares
 modindex
 mongo
@@ -106,7 +103,6 @@ OIDC
 ol
 OpenID
 openid
-overriden
 phenome
 pre
 prettierrc
@@ -124,9 +120,7 @@ rst
 schemas
 SDA
 sda
-seprately
 SLLVERSION
-spesified
 sra
 src
 SSL
