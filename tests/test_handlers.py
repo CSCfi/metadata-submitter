@@ -4,11 +4,12 @@ from pathlib import Path
 from unittest.mock import patch
 
 from aiohttp import FormData
-from aiohttp.test_utils import AioHTTPTestCase
-
+from aiohttp.test_utils import AioHTTPTestCase, make_mocked_coro
+from metadata_backend.api.handlers.api_handlers import RESTAPIHandler
 from metadata_backend.api.middlewares import generate_cookie
-from .mockups import get_request_with_fernet
 from metadata_backend.server import init
+
+from .mockups import get_request_with_fernet
 
 
 class HandlersTestCase(AioHTTPTestCase):
@@ -22,6 +23,14 @@ class HandlersTestCase(AioHTTPTestCase):
         server["Session"] = {"user_info": ["value", "value"]}
         return server
 
+    def authenticate(self, client):
+        """Authenticate client."""
+        request = get_request_with_fernet()
+        request.app["Crypt"] = client.app["Crypt"]
+        cookie, cookiestring = generate_cookie(request)
+        client.app["Session"] = {cookie["id"]: {"access_token": "mock_token_value", "user_info": {}}}
+        client._session.cookie_jar.update_cookies({"MTD_SESSION": cookiestring})
+
     async def setUpAsync(self):
         """Configure default values for testing and other modules.
 
@@ -34,6 +43,7 @@ class HandlersTestCase(AioHTTPTestCase):
         self.client = await self.get_client(self.server)
 
         await self.client.start_server()
+        self.authenticate(self.client)
 
         self.test_ega_string = "EGA123456"
         self.query_accessionId = ("EDAG3991701442770179",)
@@ -66,15 +76,8 @@ class HandlersTestCase(AioHTTPTestCase):
             "templates": [],
             "folders": ["FOL12345678"],
         }
-        self.test_draft_doi = {"fullDOI": "10.xxxx/yyyyy", "dataset": "https://doi.org/10.xxxx/yyyyy"}
 
-        class_parser = "metadata_backend.api.handlers.XMLToJSONParser"
-        class_operator = "metadata_backend.api.handlers.Operator"
-        class_xmloperator = "metadata_backend.api.handlers.XMLOperator"
-        class_folderoperator = "metadata_backend.api.handlers.FolderOperator"
-        class_useroperator = "metadata_backend.api.handlers.UserOperator"
-        class_doihandler = "metadata_backend.api.handlers.DOIHandler"
-        operator_config = {
+        self.operator_config = {
             "read_metadata_object.side_effect": self.fake_operator_read_metadata_object,
             "query_metadata_database.side_effect": self.fake_operator_query_metadata_object,
             "create_metadata_object.side_effect": self.fake_operator_create_metadata_object,
@@ -82,53 +85,27 @@ class HandlersTestCase(AioHTTPTestCase):
             "update_metadata_object.side_effect": self.fake_operator_update_metadata_object,
             "replace_metadata_object.side_effect": self.fake_operator_replace_metadata_object,
         }
-        xmloperator_config = {
+        self.xmloperator_config = {
             "read_metadata_object.side_effect": self.fake_xmloperator_read_metadata_object,
             "create_metadata_object.side_effect": self.fake_xmloperator_create_metadata_object,
             "replace_metadata_object.side_effect": self.fake_xmloperator_replace_metadata_object,
         }
-        folderoperator_config = {
+        self.folderoperator_config = {
             "create_folder.side_effect": self.fake_folderoperator_create_folder,
             "read_folder.side_effect": self.fake_folderoperator_read_folder,
             "delete_folder.side_effect": self.fake_folderoperator_delete_folder,
             "check_object_in_folder.side_effect": self.fake_folderoperator_check_object,
-            "get_collection_objects.side_effect": self.fake_folderoperator_get_collection_objects,
         }
-        useroperator_config = {
+        self.useroperator_config = {
             "create_user.side_effect": self.fake_useroperator_create_user,
             "read_user.side_effect": self.fake_useroperator_read_user,
             "filter_user.side_effect": self.fake_useroperator_filter_user,
-            "check_user_has_doc.side_effect": self.fake_useroperator_user_has_folder,
         }
-        self.patch_parser = patch(class_parser, spec=True)
-        self.patch_operator = patch(class_operator, **operator_config, spec=True)
-        self.patch_xmloperator = patch(class_xmloperator, **xmloperator_config, spec=True)
-        self.patch_folderoperator = patch(class_folderoperator, **folderoperator_config, spec=True)
-        self.patch_useroperator = patch(class_useroperator, **useroperator_config, spec=True)
-        self.patch_doihandler = patch(class_doihandler, spec=True)
-        self.MockedParser = self.patch_parser.start()
-        self.MockedOperator = self.patch_operator.start()
-        self.MockedXMLOperator = self.patch_xmloperator.start()
-        self.MockedFolderOperator = self.patch_folderoperator.start()
-        self.MockedUserOperator = self.patch_useroperator.start()
-        self.MockedDoiHandler = self.patch_doihandler.start()
 
-        # Set up authentication
-        request = get_request_with_fernet()
-        request.app["Crypt"] = self.client.app["Crypt"]
-        cookie, cookiestring = generate_cookie(request)
-        self.client.app["Session"] = {cookie["id"]: {"access_token": "mock_token_value", "user_info": {}}}
-        self.client._session.cookie_jar.update_cookies({"MTD_SESSION": cookiestring})
+        RESTAPIHandler._handle_check_ownedby_user = make_mocked_coro(True)
 
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
-        self.patch_parser.stop()
-        self.patch_operator.stop()
-        self.patch_xmloperator.stop()
-        self.patch_folderoperator.stop()
-        self.patch_useroperator.stop()
-        self.patch_doihandler.stop()
-
         await self.client.close()
 
     def create_submission_data(self, files):
@@ -195,14 +172,6 @@ class HandlersTestCase(AioHTTPTestCase):
         data = True, self.folder_id, False
         return data
 
-    async def fake_folderoperator_get_collection_objects(self, schema_type, accession_id):
-        """Fake get collection of objects in folder."""
-        return ["EDAG3991701442770179", "EGA123456"]
-
-    async def fake_useroperator_user_has_folder(self, schema_type, user_id, folder_id):
-        """Fake check object in folder."""
-        return True
-
     async def fake_useroperator_create_user(self, content):
         """Fake user operation to return mocked userId."""
         return self.user_id
@@ -215,37 +184,9 @@ class HandlersTestCase(AioHTTPTestCase):
         """Fake read operation to return mocked user."""
         return self.test_user[item_type], len(self.test_user[item_type])
 
-    async def test_submit_endpoint_submission_does_not_fail(self):
-        """Test that submission with valid SUBMISSION.xml does not fail."""
-        files = [("submission", "ERA521986_valid.xml")]
-        data = self.create_submission_data(files)
-        response = await self.client.post("/submit", data=data)
-        self.assertEqual(response.status, 200)
-        self.assertEqual(response.content_type, "application/json")
 
-    async def test_submit_endpoint_fails_without_submission_xml(self):
-        """Test that basic POST submission fails with no submission.xml.
-
-        User should also be notified for missing file.
-        """
-        files = [("analysis", "ERZ266973.xml")]
-        data = self.create_submission_data(files)
-        response = await self.client.post("/submit", data=data)
-        failure_text = "There must be a submission.xml file in submission."
-        self.assertEqual(response.status, 400)
-        self.assertIn(failure_text, await response.text())
-
-    async def test_submit_endpoint_fails_with_many_submission_xmls(self):
-        """Test submission fails when there's too many submission.xml -files.
-
-        User should be notified for submitting too many files.
-        """
-        files = [("submission", "ERA521986_valid.xml"), ("submission", "ERA521986_valid2.xml")]
-        data = self.create_submission_data(files)
-        response = await self.client.post("/submit", data=data)
-        failure_text = "You should submit only one submission.xml file."
-        self.assertEqual(response.status, 400)
-        self.assertIn(failure_text, await response.text())
+class APIHandlerTestCase(HandlersTestCase):
+    """Schema API endpoint class test cases."""
 
     async def test_correct_schema_types_are_returned(self):
         """Test api endpoint for all schema types."""
@@ -284,6 +225,138 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 400)
         resp_json = await response.json()
         self.assertEqual(resp_json["detail"], "The provided schema type could not be found. (project)")
+
+
+class SubmissionHandlerTestCase(HandlersTestCase):
+    """Submission API endpoint class test cases."""
+
+    async def setUpAsync(self):
+        """Configure default values for testing and other modules.
+
+        This patches used modules and sets default return values for their
+        methods.
+        """
+
+        await super().setUpAsync()
+        class_parser = "metadata_backend.api.handlers.submission_handler.XMLToJSONParser"
+        self.patch_parser = patch(class_parser, spec=True)
+        self.MockedParser = self.patch_parser.start()
+
+        class_xmloperator = "metadata_backend.api.handlers.submission_handler.XMLOperator"
+        self.patch_xmloperator = patch(class_xmloperator, **self.xmloperator_config, spec=True)
+        self.MockedXMLOperator = self.patch_xmloperator.start()
+
+    async def tearDownAsync(self):
+        """Cleanup mocked stuff."""
+        await super().tearDownAsync()
+        self.patch_parser.stop()
+        self.patch_xmloperator.stop()
+
+    async def test_submit_endpoint_submission_does_not_fail(self):
+        """Test that submission with valid SUBMISSION.xml does not fail."""
+        files = [("submission", "ERA521986_valid.xml")]
+        data = self.create_submission_data(files)
+        response = await self.client.post("/submit", data=data)
+        self.assertEqual(response.status, 200)
+        self.assertEqual(response.content_type, "application/json")
+
+    async def test_submit_endpoint_fails_without_submission_xml(self):
+        """Test that basic POST submission fails with no submission.xml.
+
+        User should also be notified for missing file.
+        """
+        files = [("analysis", "ERZ266973.xml")]
+        data = self.create_submission_data(files)
+        response = await self.client.post("/submit", data=data)
+        failure_text = "There must be a submission.xml file in submission."
+        self.assertEqual(response.status, 400)
+        self.assertIn(failure_text, await response.text())
+
+    async def test_submit_endpoint_fails_with_many_submission_xmls(self):
+        """Test submission fails when there's too many submission.xml -files.
+
+        User should be notified for submitting too many files.
+        """
+        files = [("submission", "ERA521986_valid.xml"), ("submission", "ERA521986_valid2.xml")]
+        data = self.create_submission_data(files)
+        response = await self.client.post("/submit", data=data)
+        failure_text = "You should submit only one submission.xml file."
+        self.assertEqual(response.status, 400)
+        self.assertIn(failure_text, await response.text())
+
+    async def test_validation_passes_for_valid_xml(self):
+        """Test validation endpoint for valid xml."""
+        files = [("study", "SRP000539.xml")]
+        data = self.create_submission_data(files)
+        response = await self.client.post("/validate", data=data)
+        self.assertEqual(response.status, 200)
+        self.assertIn('{"isValid":true}', await response.text())
+
+    async def test_validation_fails_bad_schema(self):
+        """Test validation fails for bad schema and valid xml."""
+        files = [("fake", "SRP000539.xml")]
+        data = self.create_submission_data(files)
+        response = await self.client.post("/validate", data=data)
+        self.assertEqual(response.status, 404)
+
+    async def test_validation_fails_for_invalid_xml_syntax(self):
+        """Test validation endpoint for XML with bad syntax."""
+        files = [("study", "SRP000539_invalid.xml")]
+        data = self.create_submission_data(files)
+        response = await self.client.post("/validate", data=data)
+        resp_dict = await response.json()
+        self.assertEqual(response.status, 200)
+        self.assertIn("Faulty XML file was given, mismatched tag", resp_dict["detail"]["reason"])
+
+    async def test_validation_fails_for_invalid_xml(self):
+        """Test validation endpoint for invalid xml."""
+        files = [("study", "SRP000539_invalid2.xml")]
+        data = self.create_submission_data(files)
+        response = await self.client.post("/validate", data=data)
+        resp_dict = await response.json()
+        self.assertEqual(response.status, 200)
+        self.assertIn("value must be one of", resp_dict["detail"]["reason"])
+
+    async def test_validation_fails_with_too_many_files(self):
+        """Test validation endpoint for too many files."""
+        files = [("submission", "ERA521986_valid.xml"), ("submission", "ERA521986_valid2.xml")]
+        data = self.create_submission_data(files)
+        response = await self.client.post("/validate", data=data)
+        reason = "Only one file can be sent to this endpoint at a time."
+        self.assertEqual(response.status, 400)
+        self.assertIn(reason, await response.text())
+
+
+class ObjectHandlerTestCase(HandlersTestCase):
+    """Object API endpoint class test cases."""
+
+    async def setUpAsync(self):
+        """Configure default values for testing and other modules.
+
+        This patches used modules and sets default return values for their
+        methods.
+        """
+
+        await super().setUpAsync()
+
+        class_xmloperator = "metadata_backend.api.handlers.object_handler.XMLOperator"
+        self.patch_xmloperator = patch(class_xmloperator, **self.xmloperator_config, spec=True)
+        self.MockedXMLOperator = self.patch_xmloperator.start()
+
+        class_operator = "metadata_backend.api.handlers.object_handler.Operator"
+        self.patch_operator = patch(class_operator, **self.operator_config, spec=True)
+        self.MockedOperator = self.patch_operator.start()
+
+        class_folderoperator = "metadata_backend.api.handlers.object_handler.FolderOperator"
+        self.patch_folderoperator = patch(class_folderoperator, **self.folderoperator_config, spec=True)
+        self.MockedFolderOperator = self.patch_folderoperator.start()
+
+    async def tearDownAsync(self):
+        """Cleanup mocked stuff."""
+        await super().tearDownAsync()
+        self.patch_xmloperator.stop()
+        self.patch_folderoperator.stop()
+        self.patch_operator.stop()
 
     async def test_submit_object_works(self):
         """Test that submission is handled, XMLOperator is called."""
@@ -421,6 +494,7 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 400)
         self.assertIn(reason, await response.text())
 
+    # handle_check_ownedby_user.return_value = True
     async def test_get_object(self):
         """Test that accessionId returns correct JSON object."""
         url = f"/objects/study/{self.query_accessionId}"
@@ -447,6 +521,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     async def test_query_is_called_and_returns_json_in_correct_format(self):
         """Test query method calls operator and returns mocked JSON object."""
+        RESTAPIHandler._handle_user_objects_collection = make_mocked_coro(["EDAG3991701442770179", "EGA123456"])
         url = f"/objects/study?studyType=foo&name=bar&page={self.page_num}" f"&per_page={self.page_size}"
         response = await self.client.get(url)
         self.assertEqual(response.status, 200)
@@ -478,48 +553,6 @@ class HandlersTestCase(AioHTTPTestCase):
         json_resp = await response.json()
         self.assertEqual(response.status, 400)
         self.assertIn("xml-formatted query results are not supported", json_resp["detail"])
-
-    async def test_validation_passes_for_valid_xml(self):
-        """Test validation endpoint for valid xml."""
-        files = [("study", "SRP000539.xml")]
-        data = self.create_submission_data(files)
-        response = await self.client.post("/validate", data=data)
-        self.assertEqual(response.status, 200)
-        self.assertIn('{"isValid":true}', await response.text())
-
-    async def test_validation_fails_bad_schema(self):
-        """Test validation fails for bad schema and valid xml."""
-        files = [("fake", "SRP000539.xml")]
-        data = self.create_submission_data(files)
-        response = await self.client.post("/validate", data=data)
-        self.assertEqual(response.status, 404)
-
-    async def test_validation_fails_for_invalid_xml_syntax(self):
-        """Test validation endpoint for XML with bad syntax."""
-        files = [("study", "SRP000539_invalid.xml")]
-        data = self.create_submission_data(files)
-        response = await self.client.post("/validate", data=data)
-        resp_dict = await response.json()
-        self.assertEqual(response.status, 200)
-        self.assertIn("Faulty XML file was given, mismatched tag", resp_dict["detail"]["reason"])
-
-    async def test_validation_fails_for_invalid_xml(self):
-        """Test validation endpoint for invalid xml."""
-        files = [("study", "SRP000539_invalid2.xml")]
-        data = self.create_submission_data(files)
-        response = await self.client.post("/validate", data=data)
-        resp_dict = await response.json()
-        self.assertEqual(response.status, 200)
-        self.assertIn("value must be one of", resp_dict["detail"]["reason"])
-
-    async def test_validation_fails_with_too_many_files(self):
-        """Test validation endpoint for too many files."""
-        files = [("submission", "ERA521986_valid.xml"), ("submission", "ERA521986_valid2.xml")]
-        data = self.create_submission_data(files)
-        response = await self.client.post("/validate", data=data)
-        reason = "Only one file can be sent to this endpoint at a time."
-        self.assertEqual(response.status, 400)
-        self.assertIn(reason, await response.text())
 
     async def test_operations_fail_for_wrong_schema_type(self):
         """Test 404 error is raised if incorrect schema name is given."""
@@ -557,126 +590,36 @@ class HandlersTestCase(AioHTTPTestCase):
         get_resp = await self.client.get("/objects/study?per_page=0")
         self.assertEqual(get_resp.status, 400)
 
-    async def test_folder_creation_works(self):
-        """Test that folder is created and folder ID returned."""
-        json_req = {"name": "test", "description": "test folder"}
-        response = await self.client.post("/folders", json=json_req)
-        json_resp = await response.json()
-        self.MockedFolderOperator().create_folder.assert_called_once()
-        self.assertEqual(response.status, 201)
-        self.assertEqual(json_resp["folderId"], self.folder_id)
 
-    async def test_folder_creation_with_missing_data_fails(self):
-        """Test that folder creation fails when missing data in request."""
-        json_req = {"description": "test folder"}
-        response = await self.client.post("/folders", json=json_req)
-        json_resp = await response.json()
-        self.assertEqual(response.status, 400)
-        self.assertIn("'name' is a required property", json_resp["detail"])
+class UserHandlerTestCase(HandlersTestCase):
+    """User API endpoint class test cases."""
 
-    async def test_folder_creation_with_empty_body_fails(self):
-        """Test that folder creation fails when no data in request."""
-        response = await self.client.post("/folders")
-        json_resp = await response.json()
-        self.assertEqual(response.status, 400)
-        self.assertIn("JSON is not correctly formatted.", json_resp["detail"])
+    async def setUpAsync(self):
+        """Configure default values for testing and other modules.
 
-    async def test_get_folders_with_1_folder(self):
-        """Test get_folders() endpoint returns list with 1 folder."""
-        self.MockedFolderOperator().query_folders.return_value = (self.test_folder, 1)
-        response = await self.client.get("/folders")
-        self.MockedFolderOperator().query_folders.assert_called_once()
-        self.assertEqual(response.status, 200)
-        result = {
-            "page": {
-                "page": 1,
-                "size": 5,
-                "totalPages": 1,
-                "totalFolders": 1,
-            },
-            "folders": self.test_folder,
-        }
-        self.assertEqual(await response.json(), result)
+        This patches used modules and sets default return values for their
+        methods.
+        """
 
-    async def test_get_folders_with_no_folders(self):
-        """Test get_folders() endpoint returns empty list."""
-        self.MockedFolderOperator().query_folders.return_value = ([], 0)
-        response = await self.client.get("/folders")
-        self.MockedFolderOperator().query_folders.assert_called_once()
-        self.assertEqual(response.status, 200)
-        result = {
-            "page": {
-                "page": 1,
-                "size": 5,
-                "totalPages": 0,
-                "totalFolders": 0,
-            },
-            "folders": [],
-        }
-        self.assertEqual(await response.json(), result)
+        await super().setUpAsync()
+        class_useroperator = "metadata_backend.api.handlers.user_handler.UserOperator"
+        self.patch_useroperator = patch(class_useroperator, **self.useroperator_config, spec=True)
+        self.MockedUserOperator = self.patch_useroperator.start()
 
-    async def test_get_folders_with_bad_params(self):
-        """Test get_folders() with faulty pagination parameters."""
-        response = await self.client.get("/folders?page=ayylmao")
-        self.assertEqual(response.status, 400)
-        resp = await response.json()
-        self.assertEqual(resp["detail"], "page parameter must be a number, now it is ayylmao")
+        class_folderoperator = "metadata_backend.api.handlers.user_handler.FolderOperator"
+        self.patch_folderoperator = patch(class_folderoperator, **self.folderoperator_config, spec=True)
+        self.MockedFolderOperator = self.patch_folderoperator.start()
 
-        response = await self.client.get("/folders?page=1&per_page=-100")
-        self.assertEqual(response.status, 400)
-        resp = await response.json()
-        self.assertEqual(resp["detail"], "per_page parameter must be over 0")
+        class_operator = "metadata_backend.api.handlers.user_handler.Operator"
+        self.patch_operator = patch(class_operator, **self.operator_config, spec=True)
+        self.MockedOperator = self.patch_operator.start()
 
-        response = await self.client.get("/folders?published=yes")
-        self.assertEqual(response.status, 400)
-        resp = await response.json()
-        self.assertEqual(resp["detail"], "'published' parameter must be either 'true' or 'false'")
-
-    async def test_get_folder_works(self):
-        """Test folder is returned when correct folder id is given."""
-        response = await self.client.get("/folders/FOL12345678")
-        self.assertEqual(response.status, 200)
-        self.MockedFolderOperator().read_folder.assert_called_once()
-        json_resp = await response.json()
-        self.assertEqual(self.test_folder, json_resp)
-
-    async def test_update_folder_fails_with_wrong_key(self):
-        """Test that folder does not update when wrong keys are provided."""
-        data = [{"op": "add", "path": "/objects"}]
-        response = await self.client.patch("/folders/FOL12345678", json=data)
-        self.assertEqual(response.status, 400)
-        json_resp = await response.json()
-        reason = "Request contains '/objects' key that cannot be updated to folders."
-        self.assertEqual(reason, json_resp["detail"])
-
-    async def test_update_folder_passes(self):
-        """Test that folder would update with correct keys."""
-        self.MockedFolderOperator().update_folder.return_value = self.folder_id
-        data = [{"op": "replace", "path": "/name", "value": "test2"}]
-        response = await self.client.patch("/folders/FOL12345678", json=data)
-        self.MockedFolderOperator().update_folder.assert_called_once()
-        self.assertEqual(response.status, 200)
-        json_resp = await response.json()
-        self.assertEqual(json_resp["folderId"], self.folder_id)
-
-    async def test_folder_is_published(self):
-        """Test that folder would be published and DOI would be added."""
-        self.MockedDoiHandler().create_draft_doi.return_value = self.test_draft_doi
-        self.MockedFolderOperator().update_folder.return_value = self.folder_id
-        response = await self.client.patch("/publish/FOL12345678")
-        self.MockedDoiHandler().create_draft_doi.assert_called_once()
-        self.MockedFolderOperator().update_folder.assert_called_once()
-        self.assertEqual(response.status, 200)
-        json_resp = await response.json()
-        self.assertEqual(json_resp["folderId"], self.folder_id)
-
-    async def test_folder_deletion_is_called(self):
-        """Test that folder would be deleted."""
-        self.MockedFolderOperator().read_folder.return_value = self.test_folder
-        response = await self.client.delete("/folders/FOL12345678")
-        self.MockedFolderOperator().read_folder.assert_called_once()
-        self.MockedFolderOperator().delete_folder.assert_called_once()
-        self.assertEqual(response.status, 204)
+    async def tearDownAsync(self):
+        """Cleanup mocked stuff."""
+        await super().tearDownAsync()
+        self.patch_useroperator.stop()
+        self.patch_folderoperator.stop()
+        self.patch_operator.stop()
 
     async def test_get_user_works(self):
         """Test user object is returned when correct user id is given."""
@@ -776,3 +719,164 @@ class HandlersTestCase(AioHTTPTestCase):
         self.assertEqual(response.status, 200)
         json_resp = await response.json()
         self.assertEqual(json_resp["userId"], self.user_id)
+
+
+class FolderHandlerTestCase(HandlersTestCase):
+    """Folder API endpoint class test cases."""
+
+    async def setUpAsync(self):
+        """Configure default values for testing and other modules.
+
+        This patches used modules and sets default return values for their
+        methods.
+        """
+
+        await super().setUpAsync()
+
+        self.test_draft_doi = {"fullDOI": "10.xxxx/yyyyy", "dataset": "https://doi.org/10.xxxx/yyyyy"}
+        class_doihandler = "metadata_backend.api.handlers.folder_handler.DOIHandler"
+        self.patch_doihandler = patch(class_doihandler, spec=True)
+        self.MockedDoiHandler = self.patch_doihandler.start()
+
+        class_folderoperator = "metadata_backend.api.handlers.folder_handler.FolderOperator"
+        self.patch_folderoperator = patch(class_folderoperator, **self.folderoperator_config, spec=True)
+        self.MockedFolderOperator = self.patch_folderoperator.start()
+
+        class_useroperator = "metadata_backend.api.handlers.folder_handler.UserOperator"
+        self.patch_useroperator = patch(class_useroperator, **self.useroperator_config, spec=True)
+        self.MockedUserOperator = self.patch_useroperator.start()
+
+        class_operator = "metadata_backend.api.handlers.folder_handler.Operator"
+        self.patch_operator = patch(class_operator, **self.operator_config, spec=True)
+        self.MockedOperator = self.patch_operator.start()
+
+    async def tearDownAsync(self):
+        """Cleanup mocked stuff."""
+        await super().tearDownAsync()
+        self.patch_doihandler.stop()
+        self.patch_folderoperator.stop()
+        self.patch_useroperator.stop()
+        self.patch_operator.stop()
+
+    async def test_folder_creation_works(self):
+        """Test that folder is created and folder ID returned."""
+        json_req = {"name": "test", "description": "test folder"}
+        response = await self.client.post("/folders", json=json_req)
+        json_resp = await response.json()
+        self.MockedFolderOperator().create_folder.assert_called_once()
+        self.assertEqual(response.status, 201)
+        self.assertEqual(json_resp["folderId"], self.folder_id)
+
+    async def test_folder_creation_with_missing_data_fails(self):
+        """Test that folder creation fails when missing data in request."""
+        json_req = {"description": "test folder"}
+        response = await self.client.post("/folders", json=json_req)
+        json_resp = await response.json()
+        self.assertEqual(response.status, 400)
+        self.assertIn("'name' is a required property", json_resp["detail"])
+
+    async def test_folder_creation_with_empty_body_fails(self):
+        """Test that folder creation fails when no data in request."""
+        response = await self.client.post("/folders")
+        json_resp = await response.json()
+        self.assertEqual(response.status, 400)
+        self.assertIn("JSON is not correctly formatted.", json_resp["detail"])
+
+    async def test_get_folders_with_1_folder(self):
+        """Test get_folders() endpoint returns list with 1 folder."""
+        self.MockedFolderOperator().query_folders.return_value = (self.test_folder, 1)
+        response = await self.client.get("/folders")
+        self.MockedFolderOperator().query_folders.assert_called_once()
+        self.assertEqual(response.status, 200)
+        result = {
+            "page": {
+                "page": 1,
+                "size": 5,
+                "totalPages": 1,
+                "totalFolders": 1,
+            },
+            "folders": self.test_folder,
+        }
+        self.assertEqual(await response.json(), result)
+
+    async def test_get_folders_with_no_folders(self):
+        """Test get_folders() endpoint returns empty list."""
+        self.MockedFolderOperator().query_folders.return_value = ([], 0)
+        response = await self.client.get("/folders")
+        self.MockedFolderOperator().query_folders.assert_called_once()
+        self.assertEqual(response.status, 200)
+        result = {
+            "page": {
+                "page": 1,
+                "size": 5,
+                "totalPages": 0,
+                "totalFolders": 0,
+            },
+            "folders": [],
+        }
+        self.assertEqual(await response.json(), result)
+
+    async def test_get_folders_with_bad_params(self):
+        """Test get_folders() with faulty pagination parameters."""
+        response = await self.client.get("/folders?page=ayylmao")
+        self.assertEqual(response.status, 400)
+        resp = await response.json()
+        self.assertEqual(resp["detail"], "page parameter must be a number, now it is ayylmao")
+
+        response = await self.client.get("/folders?page=1&per_page=-100")
+        self.assertEqual(response.status, 400)
+        resp = await response.json()
+        self.assertEqual(resp["detail"], "per_page parameter must be over 0")
+
+        response = await self.client.get("/folders?published=yes")
+        self.assertEqual(response.status, 400)
+        resp = await response.json()
+        self.assertEqual(resp["detail"], "'published' parameter must be either 'true' or 'false'")
+
+    async def test_get_folder_works(self):
+        """Test folder is returned when correct folder id is given."""
+        # RESTAPIHandler._handle_check_ownedby_user = make_mocked_coro(True)
+
+        response = await self.client.get("/folders/FOL12345678")
+        self.assertEqual(response.status, 200)
+        self.MockedFolderOperator().read_folder.assert_called_once()
+        json_resp = await response.json()
+        self.assertEqual(self.test_folder, json_resp)
+
+    async def test_update_folder_fails_with_wrong_key(self):
+        """Test that folder does not update when wrong keys are provided."""
+        data = [{"op": "add", "path": "/objects"}]
+        response = await self.client.patch("/folders/FOL12345678", json=data)
+        self.assertEqual(response.status, 400)
+        json_resp = await response.json()
+        reason = "Request contains '/objects' key that cannot be updated to folders."
+        self.assertEqual(reason, json_resp["detail"])
+
+    async def test_update_folder_passes(self):
+        """Test that folder would update with correct keys."""
+        self.MockedFolderOperator().update_folder.return_value = self.folder_id
+        data = [{"op": "replace", "path": "/name", "value": "test2"}]
+        response = await self.client.patch("/folders/FOL12345678", json=data)
+        self.MockedFolderOperator().update_folder.assert_called_once()
+        self.assertEqual(response.status, 200)
+        json_resp = await response.json()
+        self.assertEqual(json_resp["folderId"], self.folder_id)
+
+    async def test_folder_is_published(self):
+        """Test that folder would be published and DOI would be added."""
+        self.MockedDoiHandler().create_draft_doi.return_value = self.test_draft_doi
+        self.MockedFolderOperator().update_folder.return_value = self.folder_id
+        response = await self.client.patch("/publish/FOL12345678")
+        self.MockedDoiHandler().create_draft_doi.assert_called_once()
+        self.MockedFolderOperator().update_folder.assert_called_once()
+        self.assertEqual(response.status, 200)
+        json_resp = await response.json()
+        self.assertEqual(json_resp["folderId"], self.folder_id)
+
+    async def test_folder_deletion_is_called(self):
+        """Test that folder would be deleted."""
+        self.MockedFolderOperator().read_folder.return_value = self.test_folder
+        response = await self.client.delete("/folders/FOL12345678")
+        self.MockedFolderOperator().read_folder.assert_called_once()
+        self.MockedFolderOperator().delete_folder.assert_called_once()
+        self.assertEqual(response.status, 204)

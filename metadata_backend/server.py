@@ -1,26 +1,23 @@
 """Functions to launch backend server."""
 
 import asyncio
+import secrets
+import time
 
 import uvloop
 from aiohttp import web
 from cryptography.fernet import Fernet
-import secrets
-import time
 
-from .api.handlers import (
-    RESTAPIHandler,
-    StaticHandler,
-    SubmissionAPIHandler,
-    FolderAPIHandler,
-    UserAPIHandler,
-    ObjectAPIHandler,
-    TemplatesAPIHandler,
-)
 from .api.auth import AccessHandler
-from .api.middlewares import http_error_handler, check_login
+from .api.handlers.api_handlers import RESTAPIHandler, StaticHandler
+from .api.handlers.folder_handler import FolderAPIHandler
+from .api.handlers.object_handler import ObjectAPIHandler
+from .api.handlers.submission_handler import SubmissionAPIHandler
+from .api.handlers.templates_handler import TemplatesAPIHandler
+from .api.handlers.user_handler import UserAPIHandler
 from .api.health import HealthHandler
-from .conf.conf import create_db_client, frontend_static_files, aai_config
+from .api.middlewares import check_login, http_error_handler
+from .conf.conf import aai_config, create_db_client, frontend_static_files
 from .helpers.logger import LOG
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
