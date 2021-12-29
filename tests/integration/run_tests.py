@@ -9,8 +9,6 @@ import json
 import logging
 import os
 import re
-from pathlib import Path
-from typing import List
 import urllib
 import xml.etree.ElementTree as ET
 from datetime import datetime
@@ -154,7 +152,7 @@ async def post_object(sess, schema, filename):
         LOG.debug(f"Adding new object to {schema}, via XML/CSV file {filename}")
         assert resp.status == 201, "HTTP Status code error"
         ans = await resp.json()
-        return ans if isinstance(ans, List) else ans["accessionId"], schema
+        return ans if isinstance(ans, list) else ans["accessionId"], schema
 
 
 async def post_object_json(sess, schema, filename):
