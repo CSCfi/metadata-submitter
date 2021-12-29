@@ -1,7 +1,7 @@
 """Test API endpoints from handlers module."""
 
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import patch, call
 
 from aiohttp import FormData
 from aiohttp.test_utils import AioHTTPTestCase, make_mocked_coro
@@ -131,6 +131,13 @@ class HandlersTestCase(AioHTTPTestCase):
                     content_type="text/csv",
                 )
         return data
+
+    def get_file_data(self, schema, filename):
+        """Read file contents as plain text."""
+        path_to_file = self.TESTFILES_ROOT / schema / filename
+        with open(path_to_file.as_posix(), mode="r") as csv_file:
+            _reader = csv_file.read()
+        return _reader
 
     async def fake_operator_read_metadata_object(self, schema_type, accession_id):
         """Fake read operation to return mocked JSON."""
@@ -360,6 +367,10 @@ class ObjectHandlerTestCase(HandlersTestCase):
         self.patch_operator = patch(class_operator, **self.operator_config, spec=True)
         self.MockedOperator = self.patch_operator.start()
 
+        class_csv_parser = "metadata_backend.api.handlers.common.CSVToJSONParser"
+        self.patch_csv_parser = patch(class_csv_parser, spec=True)
+        self.MockedCSVParser = self.patch_csv_parser.start()
+
         class_folderoperator = "metadata_backend.api.handlers.object.FolderOperator"
         self.patch_folderoperator = patch(class_folderoperator, **self.folderoperator_config, spec=True)
         self.MockedFolderOperator = self.patch_folderoperator.start()
@@ -368,6 +379,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         """Cleanup mocked stuff."""
         await super().tearDownAsync()
         self.patch_xmloperator.stop()
+        self.patch_csv_parser.stop()
         self.patch_folderoperator.stop()
         self.patch_operator.stop()
 
@@ -428,13 +440,21 @@ class ObjectHandlerTestCase(HandlersTestCase):
         """Test that CSV file is parsed and submitted as json."""
         files = [("sample", "EGAformat.csv")]
         data = self.create_submission_data(files)
+        file_content = self.get_file_data("sample", "EGAformat.csv")
         self.MockedCSVParser().parse.return_value = [{}, {}, {}]
         response = await self.client.post("/objects/sample", data=data)
         json_resp = await response.json()
         self.assertEqual(response.status, 201)
-        self.assertEqual(self.test_ega_string, json_resp["accessionId"])
-        self.MockedCSVParser().parse.assert_called_once()
-        self.MockedOperator().create_metadata_object.assert_called_once()
+        self.assertEqual(self.test_ega_string, json_resp[0]["accessionId"])
+        parse_calls = [
+            call(
+                "sample",
+                file_content,
+            )
+        ]
+        op_calls = [call("sample", {}), call("sample", {}), call("sample", {})]
+        self.MockedCSVParser().parse.assert_has_calls(parse_calls, any_order=True)
+        self.MockedOperator().create_metadata_object.assert_has_calls(op_calls, any_order=True)
 
     async def test_post_objet_error_with_empty(self):
         """Test multipart request post fails when no objects are parsed."""

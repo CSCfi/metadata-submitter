@@ -317,7 +317,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ObjectCreated"
+                oneOf:
+                  - $ref: "#/components/schemas/ObjectCreated"
+                  - $ref: "#/components/schemas/ObjectsCreated"
         400:
           description: Bad Request
           content:

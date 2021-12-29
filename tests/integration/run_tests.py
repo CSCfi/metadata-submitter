@@ -150,9 +150,25 @@ async def post_object(sess, schema, filename):
     request_data = await create_request_data(schema, filename)
     async with sess.post(f"{objects_url}/{schema}", data=request_data) as resp:
         LOG.debug(f"Adding new object to {schema}, via XML/CSV file {filename}")
-        assert resp.status == 201, "HTTP Status code error"
+        assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
         return ans if isinstance(ans, list) else ans["accessionId"], schema
+
+
+async def post_object_expect_status(sess, schema, filename, status):
+    """Post one metadata object within session, returns accessionId.
+
+    :param sess: HTTP session in which request call is made
+    :param schema: name of the schema (folder) used for testing
+    :param filename: name of the file used for testing.
+    """
+    request_data = await create_request_data(schema, filename)
+    async with sess.post(f"{objects_url}/{schema}", data=request_data) as resp:
+        LOG.debug(f"Adding new object to {schema}, via XML/CSV file {filename} and expecting status: {status}")
+        assert resp.status == status, f"HTTP Status code error, got {resp.status}"
+        if status < 400:
+            ans = await resp.json()
+            return ans if isinstance(ans, list) else ans["accessionId"], schema
 
 
 async def post_object_json(sess, schema, filename):
@@ -527,35 +543,52 @@ async def test_crud_works(sess, schema, filename, folder_id):
         assert expected_true, "draft object still exists"
 
 
-async def test_csv_post(sess, schema, filename, folder_id):
+async def test_csv(sess, folder_id):
     """Test CRUD for a submitted CSV file.
 
-    Test case is basically the same as test_crud_works() but without the XML checks.
+    Test tries with good csv file first for sample object, after which we try with empty file.
+    After this we try with study object which is not allowed.
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (folder) used for testing
     :param filename: name of the file used for testing
     :param folder_id: id of the folder used to group submission
     """
-    accession_id = await post_object(sess, schema, filename)
+    _schema = "sample"
+    _filename = "EGAformat.csv"
+    accession_id = await post_object(sess, _schema, _filename)
+    # there are 3 rows but only 2 are correct
+    print(accession_id)
+    assert len(accession_id[0]) == 3, f"expected nb of CSV entries does not match, we got: {len(accession_id)}"
+    _first_csv_row_id = accession_id[0][0]["accessionId"]
     patch_object = [
-        {"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id[0], "schema": schema}}
+        {"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": _first_csv_row_id, "schema": _schema}}
     ]
-    await patch_folder(sess, folder_id, patch_object)
-    async with sess.get(f"{objects_url}/{schema}/{accession_id[0]}") as resp:
-        LOG.debug(f"Checking that {accession_id[0]} JSON is in {schema}")
-        assert resp.status == 200, "HTTP Status code error"
 
-    await delete_object(sess, schema, accession_id[0])
-    async with sess.get(f"{objects_url}/{schema}/{accession_id[0]}") as resp:
-        LOG.debug(f"Checking that JSON object {accession_id[0]} was deleted")
-        assert resp.status == 404, "HTTP Status code error"
+    await patch_folder(sess, folder_id, patch_object)
+    async with sess.get(f"{objects_url}/{_schema}/{_first_csv_row_id}") as resp:
+        LOG.debug(f"Checking that {_first_csv_row_id} JSON is in {_schema}")
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+
+    await delete_object(sess, _schema, _first_csv_row_id)
+    async with sess.get(f"{objects_url}/{_schema}/{_first_csv_row_id}") as resp:
+        LOG.debug(f"Checking that JSON object {_first_csv_row_id} was deleted")
+        assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
 
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
-        LOG.debug(f"Checking that object {accession_id} was deleted from folder {folder_id}")
+        LOG.debug(f"Checking that object {_first_csv_row_id} was deleted from folder {folder_id}")
         res = await resp.json()
-        expected_true = not any(d["accessionId"] == accession_id for d in res["metadataObjects"])
-        assert expected_true, "draft object still exists"
+        expected_true = not any(d["accessionId"] == _first_csv_row_id for d in res["metadataObjects"])
+        assert expected_true, f"object {_first_csv_row_id} still exists"
+
+    _filename = "empty.csv"
+    # status should be 400
+    await post_object_expect_status(sess, _schema, _filename, 400)
+
+    _filename = "EGA_sample_w_issue.csv"
+    # status should be 201 but we expect 3 rows, as the CSV has 4 rows one of which is empty
+    accession_id = await post_object_expect_status(sess, _schema, _filename, 201)
+    assert len(accession_id[0]) == 3, f"expected nb of CSV entries does not match, we got: {len(accession_id)}"
 
 
 async def test_put_objects(sess, folder_id):
@@ -1450,8 +1483,11 @@ async def main():
         }
         basic_folder_id = await post_folder(sess, basic_folder)
 
+        # test XML files
         await asyncio.gather(*[test_crud_works(sess, schema, file, basic_folder_id) for schema, file in test_xml_files])
-        await test_csv_post(sess, "sample", "EGAformat.csv", basic_folder_id)
+
+        # test CSV files
+        await test_csv(sess, basic_folder_id)
 
         put_object_folder = {
             "name": "test put object",

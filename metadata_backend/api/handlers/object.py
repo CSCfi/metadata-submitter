@@ -1,6 +1,6 @@
 """Handle HTTP methods for server."""
 from math import ceil
-from typing import Dict, Union
+from typing import Dict, Union, List, Any, Tuple
 
 import ujson
 from aiohttp import web
@@ -10,7 +10,7 @@ from multidict import CIMultiDict
 from ...helpers.logger import LOG
 from ...helpers.validator import JSONValidator
 from ..operators import FolderOperator, Operator, XMLOperator
-from .common import extract_xml_upload
+from .common import multipart_content
 from .restapi import RESTAPIHandler
 
 
@@ -93,35 +93,62 @@ class ObjectAPIHandler(RESTAPIHandler):
     async def post_object(self, req: Request) -> Response:
         """Save metadata object to database.
 
-        For JSON request body we validate it is consistent with the
-        associated JSON schema.
+        For JSON request body we validate it is consistent with the associated JSON schema.
+        For CSV upload we allow it for a select number objects, currently: ``sample``.
 
         :param req: POST request
         :returns: JSON response containing accessionId for submitted object
         """
+        _allowed_csv = ["sample"]
         schema_type = req.match_info["schema"]
         self._check_schema_exists(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
 
         db_client = req.app["db_client"]
-        content: Union[Dict, str]
+        content: Union[Dict[str, Any], str, List[Tuple[Any, str]]]
         operator: Union[Operator, XMLOperator]
         if req.content_type == "multipart/form-data":
-            files = await extract_xml_upload(req, extract_one=True)
-            content, _ = files[0]
-            operator = XMLOperator(db_client)
+            _only_xml = False if schema_type in _allowed_csv else True
+            files, cont_type = await multipart_content(req, extract_one=True, expect_xml=_only_xml)
+            if cont_type == "xml":
+                # from this tuple we only care about the content
+                # files should be of form (content, schema)
+                content, _ = files[0]
+            else:
+                # for CSV files we need to tread this as a list of tuples (content, schema)
+                content = files
+            # If multipart request contains XML, XML operator is used.
+            # Else the multipart request is expected to contain CSV file(s) which are converted into JSON.
+            operator = XMLOperator(db_client) if cont_type == "xml" else Operator(db_client)
         else:
             content = await self._get_data(req)
             if not req.path.startswith("/drafts"):
                 JSONValidator(content, schema_type).validate
             operator = Operator(db_client)
 
-        accession_id = await operator.create_metadata_object(collection, content)
-
-        body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
+        # Add a new metadata object or multiple objects if multiple were extracted
         url = f"{req.scheme}://{req.host}{req.path}"
-        location_headers = CIMultiDict(Location=f"{url}/{accession_id}")
-        LOG.info(f"POST object with accesssion ID {accession_id} in schema {collection} was successful.")
+        data: Union[List[Dict[str, str]], Dict[str, str]]
+        if isinstance(content, List):
+            LOG.debug(f"Inserting multiple objects for {schema_type}.")
+            ids: List[Dict[str, str]] = []
+            for item in content:
+                accession_id = await operator.create_metadata_object(collection, item[0])
+                ids.append({"accessionId": accession_id})
+                LOG.info(f"POST object with accesssion ID {accession_id} in schema {collection} was successful.")
+            # we format like this to make it consistent with the response from /submit endpoint
+            data = [dict(item, **{"schema": schema_type}) for item in ids]
+            # we take the first result if we get multiple
+            location_headers = CIMultiDict(Location=f"{url}/{data[0]['accessionId']}")
+        else:
+            accession_id = await operator.create_metadata_object(collection, content)
+            data = {"accessionId": accession_id}
+
+            location_headers = CIMultiDict(Location=f"{url}/{accession_id}")
+            LOG.info(f"POST object with accesssion ID {accession_id} in schema {collection} was successful.")
+
+        body = ujson.dumps(data, escape_forward_slashes=False)
+
         return web.Response(
             body=body,
             status=201,
@@ -180,6 +207,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         """Replace metadata object in database.
 
         For JSON request we don't allow replacing in the DB.
+        For CSV upload we don't allow replace, as it is problematic to identify fields.
 
         :param req: PUT request
         :raises: HTTPUnsupportedMediaType if JSON replace is attempted
@@ -194,7 +222,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         content: Union[Dict, str]
         operator: Union[Operator, XMLOperator]
         if req.content_type == "multipart/form-data":
-            files = await extract_xml_upload(req, extract_one=True)
+            files, _ = await multipart_content(req, extract_one=True, expect_xml=True)
             content, _ = files[0]
             operator = XMLOperator(db_client)
         else:

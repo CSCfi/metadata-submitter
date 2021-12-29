@@ -2,7 +2,7 @@
 
 import re
 import csv
-import io
+from io import StringIO
 from typing import Any, Dict, List, Optional, Type, Union
 
 from aiohttp import web
@@ -290,7 +290,7 @@ class XMLToJSONParser:
             raise web.HTTPBadRequest(reason=reason)
         # result is of type:
         # Union[Any, List[Any], Tuple[None, List[XMLSchemaValidationError]],
-        #  Tuple[Any, List[XMLSchemaValidationError]], Tuple[List[Any], List[XMLSchemaValidationError]]]
+        # Tuple[Any, List[XMLSchemaValidationError]], Tuple[List[Any], List[XMLSchemaValidationError]]]
         # however we expect any type as it is easier to work with
         result: Any = schema.to_dict(content, converter=MetadataXMLConverter, decimal_type=float, dict_class=dict)
         _schema_type: str = schema_type.lower()
@@ -327,31 +327,54 @@ class CSVToJSONParser:
         :returns: CSV parsed to JSON
         :raises: HTTPBadRequest if error was raised during parsing or validation
         """
-        # Write content string into text stream for easy parsing into an object
-        with io.StringIO() as file:
-            file.write(content)
-            file.seek(0)
-            csv_reader = csv.DictReader(file)
-            rows = [row for row in csv_reader]
+        csv_reader = csv.DictReader(StringIO(content), delimiter=",", quoting=csv.QUOTE_NONE)
 
-        # CSV files should contain precisely one object
+        _sample_list = [
+            "title",
+            "alias",
+            "description",
+            "subjectId",
+            "bioSampleId",
+            "caseOrControl",
+            "gender",
+            "organismPart",
+            "cellLine",
+            "region",
+            "phenotype",
+        ]
+
+        if (
+            csv_reader.fieldnames
+            and schema_type == "sample"
+            and all(elem in _sample_list for elem in csv_reader.fieldnames)
+        ):
+            LOG.debug("sample CSV file has the correct header")
+        else:
+            reason = f"{schema_type} does not contain the correct header fields: {_sample_list}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        rows = [row for row in csv_reader]
+
         if not rows:
             reason = "CSV file appears to be incomplete. No rows of data were parsed."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
+        _parsed = []
         for row in rows:
-            LOG.info(row)
+            LOG.debug(f"current row: {row}")
+            _tmp: Dict[str, Any] = row
             # This is required to pass validation against current sample schema
             if schema_type == "sample" and "sampleName" not in row:
                 # Without TaxonID provided we assume the sample relates to
                 # Homo Sapien which has default TaxonID of 9606
-                row["sampleName"] = '{"taxonId": 9606}'
-                row["sampleName"] = row["sampleName"]
-            JSONValidator(row, schema_type.lower()).validate
+                _tmp["sampleName"] = {"taxonId": 9606}
+            JSONValidator(_tmp, schema_type.lower()).validate
+            _parsed.append(_tmp)
 
-        LOG.info(f"CSV was successfully converted to {len(rows)} JSON object(s).")
-        return rows
+        LOG.info(f"CSV was successfully converted to {len(_parsed)} JSON object(s).")
+        return _parsed
 
 
 def jsonpatch_mongo(identifier: Dict, json_patch: List[Dict[str, Any]]) -> List:
