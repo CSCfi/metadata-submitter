@@ -4,7 +4,7 @@ Current implementation relies on searching XSD files from folder, should
 probably be replaced with database searching in the future.
 """
 
-import json
+import ujson
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
@@ -97,5 +97,5 @@ class JSONSchemaLoader(SchemaLoader):
         """
         file = self._identify_file(schema_type)
         with file.open() as f:
-            schema_content = json.load(f)
+            schema_content = ujson.load(f)
         return schema_content
