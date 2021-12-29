@@ -9,7 +9,7 @@ from multidict import CIMultiDict
 from ...helpers.logger import LOG
 from ..middlewares import get_session
 from ..operators import Operator, UserOperator, XMLOperator
-from .api_handlers import RESTAPIHandler
+from .restapi import RESTAPIHandler
 
 
 class TemplatesAPIHandler(RESTAPIHandler):

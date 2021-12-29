@@ -1,12 +1,10 @@
 """Handle HTTP methods for server."""
 import json
-import mimetypes
 from math import ceil
-from pathlib import Path
-from typing import AsyncGenerator, Dict, List, Tuple, cast
+from typing import AsyncGenerator, Dict, List
 
 import ujson
-from aiohttp import BodyPartReader, web
+from aiohttp import web
 from aiohttp.web import Request, Response
 from motor.motor_asyncio import AsyncIOMotorClient
 from multidict import CIMultiDict
@@ -216,92 +214,3 @@ class RESTAPIHandler:
         link_headers = CIMultiDict(Link=f"{links}")
         LOG.debug("Link headers created")
         return link_headers
-
-
-class StaticHandler:
-    """Handler for static routes, mostly frontend and 404."""
-
-    def __init__(self, frontend_static_files: Path) -> None:
-        """Initialize path to frontend static files folder."""
-        self.path = frontend_static_files
-
-    async def frontend(self, req: Request) -> Response:
-        """Serve requests related to frontend SPA.
-
-        :param req: GET request
-        :returns: Response containing frontpage static file
-        """
-        serve_path = self.path.joinpath("./" + req.path)
-
-        if not serve_path.exists() or not serve_path.is_file():
-            LOG.debug(f"{serve_path} was not found or is not a file - serving index.html")
-            serve_path = self.path.joinpath("./index.html")
-
-        LOG.debug(f"Serve Frontend SPA {req.path} by {serve_path}.")
-
-        mime_type = mimetypes.guess_type(serve_path.as_posix())
-
-        return Response(body=serve_path.read_bytes(), content_type=(mime_type[0] or "text/html"))
-
-    def setup_static(self) -> Path:
-        """Set path for static js files and correct return mimetypes.
-
-        :returns: Path to static js files folder
-        """
-        mimetypes.init()
-        mimetypes.types_map[".js"] = "application/javascript"
-        mimetypes.types_map[".js.map"] = "application/json"
-        mimetypes.types_map[".svg"] = "image/svg+xml"
-        mimetypes.types_map[".css"] = "text/css"
-        mimetypes.types_map[".css.map"] = "application/json"
-        LOG.debug("static paths for SPA set.")
-        return self.path / "static"
-
-
-# Private functions shared between handlers
-async def _extract_xml_upload(req: Request, extract_one: bool = False) -> List[Tuple[str, str]]:
-    """Extract submitted xml-file(s) from multi-part request.
-
-    Files are sorted to spesific order by their schema priorities (e.g.
-    submission should be processed before study).
-
-    :param req: POST request containing "multipart/form-data" upload
-    :raises: HTTPBadRequest if request is not valid for multipart or multiple files sent. HTTPNotFound if
-    schema was not found.
-    :returns: content and schema type for each uploaded file, sorted by schema
-    type.
-    """
-    files: List[Tuple[str, str]] = []
-    try:
-        reader = await req.multipart()
-    except AssertionError:
-        reason = "Request does not have valid multipart/form content"
-        LOG.error(reason)
-        raise web.HTTPBadRequest(reason=reason)
-    while True:
-        part = await reader.next()
-        # Following is probably error in aiohttp type hints, fixing so
-        # mypy doesn't complain about it. No runtime consequences.
-        part = cast(BodyPartReader, part)
-        if not part:
-            break
-        if extract_one and files:
-            reason = "Only one file can be sent to this endpoint at a time."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-        if part.name:
-            schema_type = part.name.lower()
-            if schema_type not in schema_types:
-                reason = f"Specified schema {schema_type} was not found."
-                LOG.error(reason)
-                raise web.HTTPNotFound(reason=reason)
-            data = []
-            while True:
-                chunk = await part.read_chunk()
-                if not chunk:
-                    break
-                data.append(chunk)
-            xml_content = "".join(x.decode("UTF-8") for x in data)
-            files.append((xml_content, schema_type))
-            LOG.debug(f"processed file in {schema_type}")
-    return sorted(files, key=lambda x: schema_types[x[1]]["priority"])

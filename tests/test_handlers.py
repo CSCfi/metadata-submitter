@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from aiohttp import FormData
 from aiohttp.test_utils import AioHTTPTestCase, make_mocked_coro
-from metadata_backend.api.handlers.api_handlers import RESTAPIHandler
+from metadata_backend.api.handlers.restapi import RESTAPIHandler
 from metadata_backend.api.middlewares import generate_cookie
 from metadata_backend.server import init
 
@@ -238,11 +238,11 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         """
 
         await super().setUpAsync()
-        class_parser = "metadata_backend.api.handlers.submission_handler.XMLToJSONParser"
+        class_parser = "metadata_backend.api.handlers.submission.XMLToJSONParser"
         self.patch_parser = patch(class_parser, spec=True)
         self.MockedParser = self.patch_parser.start()
 
-        class_xmloperator = "metadata_backend.api.handlers.submission_handler.XMLOperator"
+        class_xmloperator = "metadata_backend.api.handlers.submission.XMLOperator"
         self.patch_xmloperator = patch(class_xmloperator, **self.xmloperator_config, spec=True)
         self.MockedXMLOperator = self.patch_xmloperator.start()
 
@@ -339,15 +339,15 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
         await super().setUpAsync()
 
-        class_xmloperator = "metadata_backend.api.handlers.object_handler.XMLOperator"
+        class_xmloperator = "metadata_backend.api.handlers.object.XMLOperator"
         self.patch_xmloperator = patch(class_xmloperator, **self.xmloperator_config, spec=True)
         self.MockedXMLOperator = self.patch_xmloperator.start()
 
-        class_operator = "metadata_backend.api.handlers.object_handler.Operator"
+        class_operator = "metadata_backend.api.handlers.object.Operator"
         self.patch_operator = patch(class_operator, **self.operator_config, spec=True)
         self.MockedOperator = self.patch_operator.start()
 
-        class_folderoperator = "metadata_backend.api.handlers.object_handler.FolderOperator"
+        class_folderoperator = "metadata_backend.api.handlers.object.FolderOperator"
         self.patch_folderoperator = patch(class_folderoperator, **self.folderoperator_config, spec=True)
         self.MockedFolderOperator = self.patch_folderoperator.start()
 
@@ -602,15 +602,15 @@ class UserHandlerTestCase(HandlersTestCase):
         """
 
         await super().setUpAsync()
-        class_useroperator = "metadata_backend.api.handlers.user_handler.UserOperator"
+        class_useroperator = "metadata_backend.api.handlers.user.UserOperator"
         self.patch_useroperator = patch(class_useroperator, **self.useroperator_config, spec=True)
         self.MockedUserOperator = self.patch_useroperator.start()
 
-        class_folderoperator = "metadata_backend.api.handlers.user_handler.FolderOperator"
+        class_folderoperator = "metadata_backend.api.handlers.user.FolderOperator"
         self.patch_folderoperator = patch(class_folderoperator, **self.folderoperator_config, spec=True)
         self.MockedFolderOperator = self.patch_folderoperator.start()
 
-        class_operator = "metadata_backend.api.handlers.user_handler.Operator"
+        class_operator = "metadata_backend.api.handlers.user.Operator"
         self.patch_operator = patch(class_operator, **self.operator_config, spec=True)
         self.MockedOperator = self.patch_operator.start()
 
@@ -734,19 +734,19 @@ class FolderHandlerTestCase(HandlersTestCase):
         await super().setUpAsync()
 
         self.test_draft_doi = {"fullDOI": "10.xxxx/yyyyy", "dataset": "https://doi.org/10.xxxx/yyyyy"}
-        class_doihandler = "metadata_backend.api.handlers.folder_handler.DOIHandler"
+        class_doihandler = "metadata_backend.api.handlers.folder.DOIHandler"
         self.patch_doihandler = patch(class_doihandler, spec=True)
         self.MockedDoiHandler = self.patch_doihandler.start()
 
-        class_folderoperator = "metadata_backend.api.handlers.folder_handler.FolderOperator"
+        class_folderoperator = "metadata_backend.api.handlers.folder.FolderOperator"
         self.patch_folderoperator = patch(class_folderoperator, **self.folderoperator_config, spec=True)
         self.MockedFolderOperator = self.patch_folderoperator.start()
 
-        class_useroperator = "metadata_backend.api.handlers.folder_handler.UserOperator"
+        class_useroperator = "metadata_backend.api.handlers.folder.UserOperator"
         self.patch_useroperator = patch(class_useroperator, **self.useroperator_config, spec=True)
         self.MockedUserOperator = self.patch_useroperator.start()
 
-        class_operator = "metadata_backend.api.handlers.folder_handler.Operator"
+        class_operator = "metadata_backend.api.handlers.folder.Operator"
         self.patch_operator = patch(class_operator, **self.operator_config, spec=True)
         self.MockedOperator = self.patch_operator.start()
 
