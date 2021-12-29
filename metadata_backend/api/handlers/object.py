@@ -9,8 +9,9 @@ from multidict import CIMultiDict
 
 from ...helpers.logger import LOG
 from ...helpers.validator import JSONValidator
-from .api_handlers import RESTAPIHandler, _extract_xml_upload
 from ..operators import FolderOperator, Operator, XMLOperator
+from .common import extract_xml_upload
+from .restapi import RESTAPIHandler
 
 
 class ObjectAPIHandler(RESTAPIHandler):
@@ -106,7 +107,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         content: Union[Dict, str]
         operator: Union[Operator, XMLOperator]
         if req.content_type == "multipart/form-data":
-            files = await _extract_xml_upload(req, extract_one=True)
+            files = await extract_xml_upload(req, extract_one=True)
             content, _ = files[0]
             operator = XMLOperator(db_client)
         else:
@@ -193,7 +194,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         content: Union[Dict, str]
         operator: Union[Operator, XMLOperator]
         if req.content_type == "multipart/form-data":
-            files = await _extract_xml_upload(req, extract_one=True)
+            files = await extract_xml_upload(req, extract_one=True)
             content, _ = files[0]
             operator = XMLOperator(db_client)
         else:

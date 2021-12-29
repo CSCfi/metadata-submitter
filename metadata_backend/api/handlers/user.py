@@ -10,7 +10,7 @@ from multidict import CIMultiDict
 
 from ...conf.conf import aai_config
 from ...helpers.logger import LOG
-from .api_handlers import RESTAPIHandler
+from .restapi import RESTAPIHandler
 from ..middlewares import decrypt_cookie, get_session
 from ..operators import FolderOperator, Operator, UserOperator
 

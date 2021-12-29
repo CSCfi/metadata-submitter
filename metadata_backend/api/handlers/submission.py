@@ -13,8 +13,8 @@ from ...helpers.logger import LOG
 from ...helpers.parser import XMLToJSONParser
 from ...helpers.schema_loader import SchemaNotFoundException, XMLSchemaLoader
 from ...helpers.validator import XMLValidator
-from .api_handlers import _extract_xml_upload
 from ..operators import Operator, XMLOperator
+from .common import extract_xml_upload
 
 
 class SubmissionAPIHandler:
@@ -31,7 +31,7 @@ class SubmissionAPIHandler:
         :raises: HTTPBadRequest if request is missing some parameters or cannot be processed
         :returns: XML-based receipt from submission
         """
-        files = await _extract_xml_upload(req)
+        files = await extract_xml_upload(req)
         schema_types = Counter(file[1] for file in files)
         if "submission" not in schema_types:
             reason = "There must be a submission.xml file in submission."
@@ -92,7 +92,7 @@ class SubmissionAPIHandler:
         :param req: Multipart POST request with submission.xml and files
         :returns: JSON response indicating if validation was successful or not
         """
-        files = await _extract_xml_upload(req, extract_one=True)
+        files = await extract_xml_upload(req, extract_one=True)
         xml_content, schema_type = files[0]
         validator = await self._perform_validation(schema_type, xml_content)
         return web.Response(body=validator.resp_body, content_type="application/json")

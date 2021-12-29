@@ -9,12 +9,13 @@ from aiohttp import web
 from cryptography.fernet import Fernet
 
 from .api.auth import AccessHandler
-from .api.handlers.api_handlers import RESTAPIHandler, StaticHandler
-from .api.handlers.folder_handler import FolderAPIHandler
-from .api.handlers.object_handler import ObjectAPIHandler
-from .api.handlers.submission_handler import SubmissionAPIHandler
-from .api.handlers.templates_handler import TemplatesAPIHandler
-from .api.handlers.user_handler import UserAPIHandler
+from .api.handlers.restapi import RESTAPIHandler
+from .api.handlers.static import StaticHandler
+from .api.handlers.folder import FolderAPIHandler
+from .api.handlers.object import ObjectAPIHandler
+from .api.handlers.submission import SubmissionAPIHandler
+from .api.handlers.template import TemplatesAPIHandler
+from .api.handlers.user import UserAPIHandler
 from .api.health import HealthHandler
 from .api.middlewares import check_login, http_error_handler
 from .conf.conf import aai_config, create_db_client, frontend_static_files
