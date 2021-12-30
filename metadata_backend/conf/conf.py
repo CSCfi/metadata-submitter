@@ -7,7 +7,7 @@ Currently in use:
 
 - ``MONGO_USERNAME`` - Username for mongodb
 - ``MONGO_PASSWORD`` - Password for mongodb
-- ``MONGO_HOST`` - Mongodb server hostname, with port specified
+- ``MONGO_HOST`` - MongoDB server hostname, with port specified
 
 Admin access is needed in order to create new databases during runtime.
 Default values are the same that are used in docker-compose file
@@ -22,7 +22,7 @@ module.
 Schema types (such as ``"submission"``, ``"study"``, ``"sample"``) are needed in
 different parts of the application.
 
-3) Mongodb query mappings
+3) MongoDB query mappings
 Mappings are needed to turn incoming REST api queries into mongodb queries.
 Change these if database structure changes.
 
