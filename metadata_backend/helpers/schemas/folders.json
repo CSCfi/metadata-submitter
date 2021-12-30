@@ -652,7 +652,7 @@
         },
         "relatedIdentifiers": {
           "type": "array",
-          "title": "Related Indetifiers",
+          "title": "Related Identifiers",
           "description": "Must be a globally unique identifier",
           "items": {
             "type": "object",
@@ -842,7 +842,7 @@
         "formats": {
           "type": "array",
           "title": "Formats",
-          "description": "Use file extension or MIME type where possible, e.g., PDF, XML, MPG or application/pdf, text/xml, video/mpeg. We will prefill some of them based on what was filled in metadata.",
+          "description": "Use file extension or MIME type where possible, e.g., PDF, XML, MPG or application/pdf, text/xml, video/mpeg. We will pre-fill some of them based on what was filled in metadata.",
           "items": {
             "type": "string",
             "title": "Format"

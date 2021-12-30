@@ -168,7 +168,7 @@
                 "pool": {
                     "type": "object",
                     "title": "Sample Members",
-                    "description": "Identifies a list of group/pool/multiplex sample members. This implies that this sample record is a group, pool, or multiplex, but it continues to receive its own accession and can be referenced by an experiment. By default ifno match to any of the listed members can be determined, then the default sample reference is used.",
+                    "description": "Identifies a list of group/pool/multiplex sample members. This implies that this sample record is a group, pool, or multiplex, but it continues to receive its own accession and can be referenced by an experiment. By default if no match to any of the listed members can be determined, then the default sample reference is used.",
                     "properties": {
                         "defaultMember": {
                             "type": "object",
@@ -180,7 +180,6 @@
                             "title": "Member",
                             "$ref": "#/definitions/poolMemberType"
                         }
-                        
                     }
                 }
             }
@@ -208,7 +207,11 @@
             "$id": "#/definitions/libraryType",
             "type": "object",
             "title": "Library used for experiment design",
-            "required": ["designDescription", "sampleDescriptor", "libraryDescriptor"],
+            "required": [
+                "designDescription",
+                "sampleDescriptor",
+                "libraryDescriptor"
+            ],
             "properties": {
                 "designDescription": {
                     "title": "Design Description",
@@ -227,7 +230,6 @@
                             "$ref": "#/definitions/reference"
                         }
                     ]
-                    
                 },
                 "libraryDescriptor": {
                     "description": "The LIBRARY_DESCRIPTOR specifies the origin of the material being sequenced and any treatments that the material might have undergone that affect the sequencing result. This specification is needed even if the platform does not require a library construction step per se.",
@@ -585,7 +587,7 @@
                             "properties": {
                                 "leaveAsPool": {
                                     "type": "string",
-                                    "description": "There shall be no sample de-multiplexing at the level of assiging individual reads to sample pool members.",
+                                    "description": "There shall be no sample de-multiplexing at the level of assigning individual reads to sample pool members.",
                                     "title": "Leave as pool"
                                 },
                                 "submitterDemultiplexed": {
