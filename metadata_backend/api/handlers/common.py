@@ -39,11 +39,13 @@ async def multipart_content(
         part = await reader.next()
         # we expect a simple body part (BodyPartReader) instance here
         # otherwise, it will be another MultipartReader instance for the nested multipart.
-        # we don't need to cast the part BodyPartReader, we fail if we get anything else
+        # we don't need to cast the part BodyPartReader, we fail if we get anything else.
+        # MultipartReader is aimed at ``multiplart/mixed``, ``multipart/related`` content
+        # we will be working with ``multipart/form-data`` only.
         if isinstance(part, MultipartReader):
-            reason = "Only one file can be sent to this endpoint at a time."
+            reason = "We cannot work nested multipart content."
             LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
+            raise web.HTTPUnsupportedMediaType(reason=reason)
         if not part:
             break
         if extract_one and (xml_files or csv_files):
