@@ -43,9 +43,9 @@ After the backend has been successfully set up, run the following in the backend
 This command will run a series of integration tests.
 
 To clean db before or after each integration tests run: ``python tests/integration/clean_db.py`` (``--tls`` argument
-can be added if Mongodb is started via ``docker-compose-tls.yml``). Script clean_db.py will delete all documents in all collections in the database.
+can be added if MongoDB is started via ``docker-compose-tls.yml``). Script clean_db.py will delete all documents in all collections in the database.
 To erase the database run: ``python tests/integration/clean_db.py --purge``. After that indexes need to be recreated.
-To do that run: ``python tests/integration/mongo_indexes.py`` (``--tls`` argument can be added if Mongodb is started via ``docker-compose-tls.yml``).
+To do that run: ``python tests/integration/mongo_indexes.py`` (``--tls`` argument can be added if MongoDB is started via ``docker-compose-tls.yml``).
 
 
 Performance Testing
