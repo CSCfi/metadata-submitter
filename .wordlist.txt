@@ -11,6 +11,7 @@ allof
 alternateidentifier
 alternateidentifiers
 alternateidentifiertype
+amd
 amplicon
 amr
 amrantibiogram
@@ -64,6 +65,7 @@ blastdbinfo
 bokmål
 bookchapter
 boolean
+buildx
 cdd
 cdna
 centername
@@ -73,6 +75,7 @@ checksummethod
 chia
 chichewa
 chip
+cli
 clinvar
 cloneend
 commonname
@@ -83,6 +86,7 @@ conferenceproceeding
 const
 contributortype
 covid
+cp
 cpg
 crai
 createfromjson
@@ -95,6 +99,7 @@ csc
 cscfi
 cscusername
 csi
+ctrl
 cts
 curation
 currentsubmissiontype
@@ -129,8 +134,10 @@ demux
 descriptiontype
 designdescription
 destructure
+devcontainer
 divehi
 dnase
+docstrings
 doi
 doiinfo
 dt
@@ -259,6 +266,7 @@ librarytype
 limburgish
 lims
 lingala
+linux
 lissn
 locusname
 lsid
@@ -297,6 +305,7 @@ minlength
 minmatch
 mirna
 miseq
+mkdir
 mnase
 mol
 moltype
@@ -306,6 +315,7 @@ motu
 mpeg
 mre
 msll
+mypy
 nameidentifier
 nameidentifiers
 nameidentifierscheme
@@ -529,6 +539,7 @@ volapük
 wcs
 westboundlongitude
 wga
+wget
 wgs
 wizardobject
 wizardsavedobjectslistprops
