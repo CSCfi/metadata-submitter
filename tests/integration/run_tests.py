@@ -557,7 +557,7 @@ async def test_csv(sess, folder_id):
     _schema = "sample"
     _filename = "EGAformat.csv"
     accession_id = await post_object(sess, _schema, _filename)
-    # there are 3 rows but only 2 are correct
+    # there are 3 rows and we expected to get 3rd
     assert len(accession_id[0]) == 3, f"expected nb of CSV entries does not match, we got: {len(accession_id)}"
     _first_csv_row_id = accession_id[0][0]["accessionId"]
     patch_object = [
