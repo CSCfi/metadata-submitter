@@ -113,6 +113,7 @@ datapaper
 dataset
 datasetattribute
 datasetattributes
+datasetIdentifiers
 datasetlinks
 datasets
 datasettype
@@ -487,6 +488,7 @@ studyabstract
 studyattribute
 studyattributes
 studydescription
+studyIdentifier
 studylinks
 studyref
 studytitle

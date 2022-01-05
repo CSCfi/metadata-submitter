@@ -5,7 +5,7 @@ matrix:
     ignore-case: true
   dictionary:
     wordlists:
-    - .wordlist.txt
+    - .github/config/.wordlist.txt
     encoding: utf-8
   pipeline:
   - pyspelling.filters.markdown:
@@ -17,7 +17,7 @@ matrix:
       - open: '(?P<open>`+)'
         close: '(?P=open)'
       # Ignore surrounded in <> as in RST it is link
-      - open: '<([A-Za-z0-9-_:.]+)|(https?://[^\\s/$.?#].[^\\s]+|[A-Za-z0-9-_:.]+)'
+      - open: '<([A-Za-z0-9-_:.]+)|(https?://[^\s/$.?#].[^\s]+|[A-Za-z0-9-_:.]+)'
         close: '>'
   sources:
   - 'docs/*.rst'
@@ -30,7 +30,7 @@ matrix:
     ignore-case: true
   dictionary:
     wordlists:
-    - .wordlist.txt
+    - .github/config/.wordlist.txt
   pipeline:
   - pyspelling.filters.javascript:
       jsdocs: true

@@ -15,6 +15,8 @@ jobs:
     - uses: actions/checkout@master
     - uses: rojopolis/spellcheck-github-actions@0.20.0
       name: Spellcheck
+      with:
+        config_path: .github/config/.spellcheck.yml
 
   code_docs:
     strategy:
