@@ -100,7 +100,7 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
         request.app["db_client"] = MagicMock()
         request.app["Session"] = {session_id: {}}
         user_data = {
-            "eppn": "eppn@test.fi",
+            "sub": "user@test.fi",
             "given_name": "User",
             "family_name": "Test",
         }
@@ -133,7 +133,7 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
         request.query["code"] = "code"
 
         session = {"iss": "http://auth.domain.com:5430", "auth_request": {}}
-        finalize = {"token": "token", "userinfo": {"eppn": "eppn", "given_name": "name", "family_name": "name"}}
+        finalize = {"token": "token", "userinfo": {"sub": "user", "given_name": "name", "family_name": "name"}}
         with patch("oidcrp.rp_handler.RPHandler.get_session_information", return_value=session):
             with patch("oidcrp.rp_handler.RPHandler.finalize", return_value=finalize):
                 with patch("metadata_backend.api.auth.AccessHandler._set_user", return_value=None):
