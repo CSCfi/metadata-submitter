@@ -151,9 +151,14 @@ class AccessHandler:
         req.app["Cookies"].add(session_id)
 
         user_data: Tuple[str, str]
-        if "eppn" in session["userinfo"]:
+        if "CSCUserName" in session["userinfo"]:
             user_data = (
-                session["userinfo"]["eppn"],
+                session["userinfo"]["CSCUserName"],
+                f"{session['userinfo']['given_name']} {session['userinfo']['family_name']}",
+            )
+        if "remoteUserIdentifier" in session["userinfo"]:
+            user_data = (
+                session["userinfo"]["remoteUserIdentifier"],
                 f"{session['userinfo']['given_name']} {session['userinfo']['family_name']}",
             )
         elif "sub" in session["userinfo"]:
@@ -162,7 +167,9 @@ class AccessHandler:
                 f"{session['userinfo']['given_name']} {session['userinfo']['family_name']}",
             )
         else:
-            LOG.error("User was authenticated, but they are missing mandatory claim eppn or sub.")
+            LOG.error(
+                "User was authenticated, but they are missing mandatory claim CSCUserName, remoteUserIdentifier or sub."
+            )
             raise web.HTTPBadRequest(reason="Could not set user, missing claim eppn or sub.")
         await self._set_user(req, session_id, user_data)
 
