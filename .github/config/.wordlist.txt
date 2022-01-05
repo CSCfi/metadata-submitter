@@ -125,6 +125,8 @@ datepublished
 datetype
 dbprobe
 dbvar
+DDI
+ddialliance
 de
 decodings
 defaultlength
@@ -264,6 +266,7 @@ libraryselection
 librarysource
 librarystrategy
 librarytype
+Lifecycle
 limburgish
 lims
 lingala
@@ -550,6 +553,7 @@ wxs
 xl
 xml
 xmlfile
+XMLSchema
 xref
 xrefdb
 xrefid
