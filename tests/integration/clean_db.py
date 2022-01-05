@@ -16,7 +16,7 @@ connectTimeout = 15000
 # === Global vars ===
 DATABASE = os.getenv("MONGO_DATABASE", "default")
 AUTHDB = os.getenv("MONGO_AUTHDB", "admin")
-HOST = os.getenv("MONGO_HOST", "admin")
+HOST = os.getenv("MONGO_HOST", "localhost")
 FORMAT = "[%(asctime)s][%(name)s][%(process)d %(processName)s][%(levelname)-8s](L:%(lineno)s) %(funcName)s: %(message)s"
 logging.basicConfig(format=FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
 LOG = logging.getLogger(__name__)

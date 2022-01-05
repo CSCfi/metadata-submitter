@@ -3,6 +3,7 @@
 import unittest
 from aiohttp import FormData, web
 from aiohttp.test_utils import AioHTTPTestCase
+from pathlib import Path
 
 from metadata_backend.server import init
 from metadata_backend.api.middlewares import generate_cookie, decrypt_cookie, _check_csrf
@@ -38,13 +39,14 @@ class ErrorMiddlewareTestCase(AioHTTPTestCase):
 
 
 def _create_improper_data():
-    """Create request data that produces a 404 error.
+    """Create request data that produces a 400 error.
 
     Submission method in API handlers raises Bad Request (400) error
     if 'submission' is not included on the first field of request
     """
+    path_to_file = Path(__file__).parent / "test_files" / "study" / "SRP000539_invalid.xml"
     data = FormData()
-    data.add_field("study", "content of a file", filename="file", content_type="text/xml")
+    data.add_field("STUDY", open(path_to_file.as_posix(), "r"), filename="file", content_type="text/xml")
     return data
 
 
