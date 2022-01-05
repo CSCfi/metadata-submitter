@@ -31,12 +31,12 @@ Production version gets frontend SPA from this folder, after it has been built
 and inserted here in projects Dockerfile.
 """
 
-import ujson
 import os
-from pathlib import Path
 from distutils.util import strtobool
+from pathlib import Path
 from typing import Tuple
 
+import ujson
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from ..helpers.logger import LOG
@@ -159,3 +159,9 @@ doi_user = os.getenv("DOI_USER", "")
 doi_key = os.getenv("DOI_KEY", "")
 datacite_url = os.getenv("DATACITE_URL", "https://doi.org")
 publisher = "CSC - IT Center for Science"
+
+metax_config = {
+    "username": os.getenv("METAX_USER", "sd"),
+    "password": os.getenv("METAX_PASS", "test"),
+    "url": os.getenv("METAX_URL", "http://mockmetax:8002"),
+}
