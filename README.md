@@ -35,7 +35,7 @@ Server can then be found from `http://localhost:5430`.
   - Suitable mongodb instance can be launched with Docker by running `docker-compose up database`
 - After installing and setting up database, server can be launched with `metadata_submitter`
 
-If you also need frontend for development, check out [frontend repository](https://github.com/CSCfi/metadata-submitter-frontend/).
+If you also need frontend for development, check out [frontend repository](https://github.com/CSCfi/metadata-submitter-frontend/). You will also need to uncomment `REDIRECT_URL` environment variable from .env file.
 
 ## Tests
 
