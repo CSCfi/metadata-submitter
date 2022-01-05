@@ -33,8 +33,21 @@ async def kill_sess_on_shutdown(app: web.Application) -> None:
         # Purge the openstack connection from the server
         app["Session"].pop(key)
         LOG.debug("Purged connection information for %s :: %s", key, time.ctime())
-    app["Cookies"] = set({})
     LOG.debug("Removed session")
+
+
+async def startup(server: web.Application) -> None:
+    """Add startup web server state configuration."""
+    # Mutable_map handles cookie storage, also stores the object that provides
+    # the encryption we use
+    server["Crypt"] = Fernet(Fernet.generate_key())
+    # Create a signature salt to prevent editing the signature on the client
+    # side. Hash function doesn't need to be cryptographically secure, it's
+    # just a convenient way of getting ascii output from byte values.
+    server["Salt"] = secrets.token_hex(64)
+    server["Session"] = {}
+    server["Cookies"] = set({})
+    server["OIDC_State"] = set({})
 
 
 async def init() -> web.Application:
@@ -50,16 +63,7 @@ async def init() -> web.Application:
 
     """
     server = web.Application()
-    # Mutable_map handles cookie storage, also stores the object that provides
-    # the encryption we use
-    server["Crypt"] = Fernet(Fernet.generate_key())
-    # Create a signature salt to prevent editing the signature on the client
-    # side. Hash function doesn't need to be cryptographically secure, it's
-    # just a convenient way of getting ascii output from byte values.
-    server["Salt"] = secrets.token_hex(64)
-    server["Session"] = {}
-    server["Cookies"] = set({})
-    server["OIDC_State"] = set({})
+    server.on_startup.append(startup)
 
     server.middlewares.append(http_error_handler)
     server.middlewares.append(check_login)

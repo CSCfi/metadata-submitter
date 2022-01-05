@@ -63,7 +63,7 @@ publish_url = f"{base_url}/publish"
 # to form direct contact to db with create_folder()
 DATABASE = os.getenv("MONGO_DATABASE", "default")
 AUTHDB = os.getenv("MONGO_AUTHDB", "admin")
-HOST = os.getenv("MONGO_HOST", "database:27017")
+HOST = os.getenv("MONGO_HOST", "localhost:27017")
 TLS = os.getenv("MONGO_SSL", False)
 
 user_id = "current"
@@ -103,7 +103,8 @@ async def create_request_data(schema, filename):
     path_to_file = testfiles_root / schema / filename
     path = path_to_file.as_posix()
     async with aiofiles.open(path, mode="r") as f:
-        request_data.add_field(schema.upper(), await f.read(), filename=filename, content_type="text/xml")
+        c_type = "text/xml" if filename[-3:] == "xml" else "text/csv"
+        request_data.add_field(schema.upper(), await f.read(), filename=filename, content_type=c_type)
     return request_data
 
 
@@ -148,10 +149,26 @@ async def post_object(sess, schema, filename):
     """
     request_data = await create_request_data(schema, filename)
     async with sess.post(f"{objects_url}/{schema}", data=request_data) as resp:
-        LOG.debug(f"Adding new object to {schema}, via XML file {filename}")
-        assert resp.status == 201, "HTTP Status code error"
+        LOG.debug(f"Adding new object to {schema}, via XML/CSV file {filename}")
+        assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
-        return ans["accessionId"], schema
+        return ans if isinstance(ans, list) else ans["accessionId"], schema
+
+
+async def post_object_expect_status(sess, schema, filename, status):
+    """Post one metadata object within session, returns accessionId.
+
+    :param sess: HTTP session in which request call is made
+    :param schema: name of the schema (folder) used for testing
+    :param filename: name of the file used for testing.
+    """
+    request_data = await create_request_data(schema, filename)
+    async with sess.post(f"{objects_url}/{schema}", data=request_data) as resp:
+        LOG.debug(f"Adding new object to {schema}, via XML/CSV file {filename} and expecting status: {status}")
+        assert resp.status == status, f"HTTP Status code error, got {resp.status}"
+        if status < 400:
+            ans = await resp.json()
+            return ans if isinstance(ans, list) else ans["accessionId"], schema
 
 
 async def post_object_json(sess, schema, filename):
@@ -164,7 +181,7 @@ async def post_object_json(sess, schema, filename):
     request_data = await create_request_json_data(schema, filename)
     async with sess.post(f"{objects_url}/{schema}", data=request_data) as resp:
         LOG.debug(f"Adding new object to {schema}, via JSON file {filename}")
-        assert resp.status == 201, "HTTP Status code error"
+        assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
         return ans["accessionId"]
 
@@ -178,7 +195,7 @@ async def delete_object(sess, schema, accession_id):
     """
     async with sess.delete(f"{objects_url}/{schema}/{accession_id}") as resp:
         LOG.debug(f"Deleting object {accession_id} from {schema}")
-        assert resp.status == 204, "HTTP Status code error"
+        assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
 
 async def post_draft(sess, schema, filename):
@@ -191,7 +208,7 @@ async def post_draft(sess, schema, filename):
     request_data = await create_request_data(schema, filename)
     async with sess.post(f"{drafts_url}/{schema}", data=request_data) as resp:
         LOG.debug(f"Adding new draft object to {schema}, via XML file {filename}")
-        assert resp.status == 201, "HTTP Status code error"
+        assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
         return ans["accessionId"]
 
@@ -206,7 +223,7 @@ async def post_draft_json(sess, schema, filename):
     request_data = await create_request_json_data(schema, filename)
     async with sess.post(f"{drafts_url}/{schema}", data=request_data) as resp:
         LOG.debug(f"Adding new draft object to {schema}, via JSON file {filename}")
-        assert resp.status == 201, "HTTP Status code error"
+        assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
         return ans["accessionId"]
 
@@ -220,7 +237,7 @@ async def get_draft(sess, schema, draft_id, expected_status=200):
     """
     async with sess.get(f"{drafts_url}/{schema}/{draft_id}") as resp:
         LOG.debug(f"Checking that {draft_id} JSON exists")
-        assert resp.status == expected_status, "HTTP Status code error"
+        assert resp.status == expected_status, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
         return json.dumps(ans)
 
@@ -236,7 +253,7 @@ async def put_draft(sess, schema, draft_id, update_filename):
     request_data = await create_request_json_data(schema, update_filename)
     async with sess.put(f"{drafts_url}/{schema}/{draft_id}", data=request_data) as resp:
         LOG.debug(f"Replace draft object in {schema}")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         ans_put = await resp.json()
         assert ans_put["accessionId"] == draft_id, "accession ID error"
         return ans_put["accessionId"]
@@ -253,7 +270,7 @@ async def put_object_json(sess, schema, accession_id, update_filename):
     request_data = await create_request_json_data(schema, update_filename)
     async with sess.put(f"{objects_url}/{schema}/{accession_id}", data=request_data) as resp:
         LOG.debug(f"Try to replace object in {schema}")
-        assert resp.status == 415, "HTTP Status code error"
+        assert resp.status == 415, f"HTTP Status code error, got {resp.status}"
 
 
 async def put_object_xml(sess, schema, accession_id, update_filename):
@@ -267,7 +284,7 @@ async def put_object_xml(sess, schema, accession_id, update_filename):
     request_data = await create_request_data(schema, update_filename)
     async with sess.put(f"{objects_url}/{schema}/{accession_id}", data=request_data) as resp:
         LOG.debug(f"Replace object with XML data in {schema}")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         ans_put = await resp.json()
         assert ans_put["accessionId"] == accession_id, "accession ID error"
         return ans_put["accessionId"]
@@ -284,7 +301,7 @@ async def patch_draft(sess, schema, draft_id, update_filename):
     request_data = await create_request_json_data(schema, update_filename)
     async with sess.patch(f"{drafts_url}/{schema}/{draft_id}", data=request_data) as resp:
         LOG.debug(f"Update draft object in {schema}")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         ans_put = await resp.json()
         assert ans_put["accessionId"] == draft_id, "accession ID error"
         return ans_put["accessionId"]
@@ -299,7 +316,7 @@ async def delete_draft(sess, schema, draft_id):
     """
     async with sess.delete(f"{drafts_url}/{schema}/{draft_id}") as resp:
         LOG.debug(f"Deleting draft object {draft_id} from {schema}")
-        assert resp.status == 204, "HTTP Status code error"
+        assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
 
 async def post_template_json(sess, schema, filename):
@@ -312,7 +329,7 @@ async def post_template_json(sess, schema, filename):
     request_data = await create_request_json_data(schema, filename)
     async with sess.post(f"{templates_url}/{schema}", data=request_data) as resp:
         LOG.debug(f"Adding new template object to {schema}, via JSON file {filename}")
-        assert resp.status == 201, "HTTP Status code error"
+        assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
         if isinstance(ans, list):
             return ans
@@ -329,7 +346,7 @@ async def get_template(sess, schema, template_id):
     """
     async with sess.get(f"{templates_url}/{schema}/{template_id}") as resp:
         LOG.debug(f"Checking that {template_id} JSON exists")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
         return json.dumps(ans)
 
@@ -345,7 +362,7 @@ async def patch_template(sess, schema, template_id, update_filename):
     request_data = await create_request_json_data(schema, update_filename)
     async with sess.patch(f"{templates_url}/{schema}/{template_id}", data=request_data) as resp:
         LOG.debug(f"Update draft object in {schema}")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         ans_put = await resp.json()
         assert ans_put["accessionId"] == template_id, "accession ID error"
         return ans_put["accessionId"]
@@ -360,7 +377,7 @@ async def delete_template(sess, schema, template_id):
     """
     async with sess.delete(f"{templates_url}/{schema}/{template_id}") as resp:
         LOG.debug(f"Deleting template object {template_id} from {schema}")
-        assert resp.status == 204, "HTTP Status code error"
+        assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
 
 async def post_folder(sess, data):
@@ -385,7 +402,7 @@ async def patch_folder(sess, folder_id, json_patch):
     """
     async with sess.patch(f"{folders_url}/{folder_id}", data=json.dumps(json_patch)) as resp:
         LOG.debug(f"Updating folder {folder_id}")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         ans_patch = await resp.json()
         assert ans_patch["folderId"] == folder_id, "folder ID error"
         return ans_patch["folderId"]
@@ -399,7 +416,7 @@ async def publish_folder(sess, folder_id):
     """
     async with sess.patch(f"{publish_url}/{folder_id}") as resp:
         LOG.debug(f"Publishing folder {folder_id}")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
         assert ans["folderId"] == folder_id, "folder ID error"
         return ans["folderId"]
@@ -413,7 +430,7 @@ async def delete_folder(sess, folder_id):
     """
     async with sess.delete(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Deleting folder {folder_id}")
-        assert resp.status == 204, "HTTP Status code error"
+        assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
 
 async def delete_folder_publish(sess, folder_id):
@@ -424,7 +441,7 @@ async def delete_folder_publish(sess, folder_id):
     """
     async with sess.delete(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Deleting folder {folder_id}")
-        assert resp.status == 401, "HTTP Status code error"
+        assert resp.status == 401, f"HTTP Status code error, got {resp.status}"
 
 
 async def create_folder(data, user):
@@ -467,7 +484,7 @@ async def patch_user(sess, user_id, real_user_id, json_patch):
     """
     async with sess.patch(f"{users_url}/current", data=json.dumps(json_patch)) as resp:
         LOG.debug(f"Updating user {real_user_id}")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         ans_patch = await resp.json()
         assert ans_patch["userId"] == real_user_id, "user ID error"
         return ans_patch["userId"]
@@ -483,7 +500,7 @@ async def delete_user(sess, user_id):
         LOG.debug(f"Deleting user {user_id}")
         # we expect 404 as there is no frontend
         assert str(resp.url) == f"{base_url}/", "redirect url user delete differs"
-        assert resp.status == 404, "HTTP Status code error"
+        assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
 
 
 # === Integration tests ===
@@ -496,7 +513,7 @@ async def test_crud_works(sess, schema, filename, folder_id):
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (folder) used for testing
-    :param filename: name of the file used for testing.
+    :param filename: name of the file used for testing
     :param folder_id: id of the folder used to group submission
     """
     accession_id = await post_object(sess, schema, filename)
@@ -506,24 +523,71 @@ async def test_crud_works(sess, schema, filename, folder_id):
     await patch_folder(sess, folder_id, patch_object)
     async with sess.get(f"{objects_url}/{schema}/{accession_id[0]}") as resp:
         LOG.debug(f"Checking that {accession_id[0]} JSON is in {schema}")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
     async with sess.get(f"{objects_url}/{schema}/{accession_id[0]}?format=xml") as resp:
         LOG.debug(f"Checking that {accession_id[0]} XML is in {schema}")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
     await delete_object(sess, schema, accession_id[0])
     async with sess.get(f"{objects_url}/{schema}/{accession_id[0]}") as resp:
         LOG.debug(f"Checking that JSON object {accession_id[0]} was deleted")
-        assert resp.status == 404, "HTTP Status code error"
+        assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
     async with sess.get(f"{objects_url}/{schema}/{accession_id[0]}?format=xml") as resp:
         LOG.debug(f"Checking that XML object {accession_id[0]} was deleted")
-        assert resp.status == 404, "HTTP Status code error"
+        assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
 
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
-        LOG.debug(f"Checking that object {accession_id} was deleted from folder {folder_id}")
+        LOG.debug(f"Checking that object {accession_id[0]} was deleted from folder {folder_id}")
         res = await resp.json()
-        expected_true = not any(d["accessionId"] == accession_id for d in res["metadataObjects"])
-        assert expected_true, "draft object still exists"
+        expected_true = not any(d["accessionId"] == accession_id[0] for d in res["metadataObjects"])
+        assert expected_true, f"object {accession_id[0]} still exists"
+
+
+async def test_csv(sess, folder_id):
+    """Test CRUD for a submitted CSV file.
+
+    Test tries with good csv file first for sample object, after which we try with empty file.
+    After this we try with study object which is not allowed.
+
+    :param sess: HTTP session in which request call is made
+    :param schema: name of the schema (folder) used for testing
+    :param filename: name of the file used for testing
+    :param folder_id: id of the folder used to group submission
+    """
+    _schema = "sample"
+    _filename = "EGAformat.csv"
+    accession_id = await post_object(sess, _schema, _filename)
+    # there are 3 rows and we expected to get 3rd
+    assert len(accession_id[0]) == 3, f"expected nb of CSV entries does not match, we got: {len(accession_id)}"
+    _first_csv_row_id = accession_id[0][0]["accessionId"]
+    patch_object = [
+        {"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": _first_csv_row_id, "schema": _schema}}
+    ]
+
+    await patch_folder(sess, folder_id, patch_object)
+    async with sess.get(f"{objects_url}/{_schema}/{_first_csv_row_id}") as resp:
+        LOG.debug(f"Checking that {_first_csv_row_id} JSON is in {_schema}")
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+
+    await delete_object(sess, _schema, _first_csv_row_id)
+    async with sess.get(f"{objects_url}/{_schema}/{_first_csv_row_id}") as resp:
+        LOG.debug(f"Checking that JSON object {_first_csv_row_id} was deleted")
+        assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
+
+    async with sess.get(f"{folders_url}/{folder_id}") as resp:
+        LOG.debug(f"Checking that object {_first_csv_row_id} was deleted from folder {folder_id}")
+        res = await resp.json()
+        expected_true = not any(d["accessionId"] == _first_csv_row_id for d in res["metadataObjects"])
+        assert expected_true, f"object {_first_csv_row_id} still exists"
+
+    _filename = "empty.csv"
+    # status should be 400
+    await post_object_expect_status(sess, _schema, _filename, 400)
+
+    _filename = "EGA_sample_w_issue.csv"
+    # status should be 201 but we expect 3 rows, as the CSV has 4 rows one of which is empty
+    accession_id = await post_object_expect_status(sess, _schema, _filename, 201)
+    assert len(accession_id[0]) == 3, f"expected nb of CSV entries does not match, we got: {len(accession_id)}"
 
 
 async def test_put_objects(sess, folder_id):
@@ -566,18 +630,18 @@ async def test_crud_drafts_works(sess, schema, orginal_file, update_file, folder
     accession_id = await put_draft(sess, schema, draft_id, update_file)
     async with sess.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
         LOG.debug(f"Checking that {accession_id} JSON is in {schema}")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
     await delete_draft(sess, schema, accession_id)
     async with sess.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
         LOG.debug(f"Checking that JSON object {accession_id} was deleted")
-        assert resp.status == 404, "HTTP Status code error"
+        assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
 
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that JSON object {accession_id} was deleted from folder {folder_id}")
         res = await resp.json()
         expected_true = not any(d["accessionId"] == accession_id for d in res["drafts"])
-        assert expected_true, "draft object still exists"
+        assert expected_true, f"draft object {accession_id} still exists"
 
 
 async def test_patch_drafts_works(sess, schema, orginal_file, update_file, folder_id):
@@ -604,12 +668,12 @@ async def test_patch_drafts_works(sess, schema, orginal_file, update_file, folde
         res = await resp.json()
         assert res["centerName"] == "GEOM", "object centerName content mismatch"
         assert res["alias"] == "GSE10968", "object alias content mismatch"
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
     await delete_draft(sess, schema, accession_id)
     async with sess.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
         LOG.debug(f"Checking that JSON object {accession_id} was deleted")
-        assert resp.status == 404, "HTTP Status code error"
+        assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
 
 
 async def test_querying_works(sess, folder_id):
@@ -657,7 +721,7 @@ async def test_querying_works(sess, folder_id):
 
     async def do_one_query(schema, key, value, expected_status):
         async with sess.get(f"{objects_url}/{schema}?{key}={value}") as resp:
-            assert resp.status == expected_status, "HTTP Status code error"
+            assert resp.status == expected_status, f"HTTP Status code error, got {resp.status}"
 
     for schema, schema_queries in queries.items():
         LOG.debug(f"Querying {schema} collection with working params")
@@ -724,7 +788,7 @@ async def test_crud_folders_works(sess):
     folder_id = await post_folder(sess, folder_data)
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was created")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
     # Create draft from test XML file and patch the draft into the newly created folder
     draft_id = await post_draft(sess, "sample", "SRS001433.xml")
@@ -746,7 +810,7 @@ async def test_crud_folders_works(sess):
     draft_data = await get_draft(sess, "sample", draft_id)
     async with sess.post(f"{objects_url}/sample", data=draft_data) as resp:
         LOG.debug("Adding draft to actual objects")
-        assert resp.status == 201, "HTTP Status code error"
+        assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
         assert ans["accessionId"] != draft_id, "draft id does not match expected"
         accession_id = ans["accessionId"]
@@ -789,7 +853,7 @@ async def test_crud_folders_works(sess):
 
     async with sess.get(f"{drafts_url}/sample/{draft_id}") as resp:
         LOG.debug(f"Checking that JSON object {accession_id} was deleted")
-        assert resp.status == 404, "HTTP Status code error"
+        assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
 
 
 async def test_crud_folders_works_no_publish(sess):
@@ -802,7 +866,7 @@ async def test_crud_folders_works_no_publish(sess):
     folder_id = await post_folder(sess, folder_data)
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was created")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
     # Create draft from test XML file and patch the draft into the newly created folder
     draft_id = await post_draft(sess, "sample", "SRS001433.xml")
@@ -824,7 +888,7 @@ async def test_crud_folders_works_no_publish(sess):
     draft = await get_draft(sess, "sample", draft_id)
     async with sess.post(f"{objects_url}/sample", data=draft) as resp:
         LOG.debug("Adding draft to actual objects")
-        assert resp.status == 201, "HTTP Status code error"
+        assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
         assert ans["accessionId"] != draft_id, "draft id does not match expected"
         accession_id = ans["accessionId"]
@@ -848,7 +912,7 @@ async def test_crud_folders_works_no_publish(sess):
     await delete_folder(sess, folder_id)
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was deleted")
-        assert resp.status == 404, "HTTP Status code error"
+        assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
 
     async with sess.get(f"{users_url}/current") as resp:
         LOG.debug(f"Checking that folder {folder_id} was deleted from current user")
@@ -867,7 +931,7 @@ async def test_adding_doi_info_to_folder_works(sess):
     folder_id = await post_folder(sess, folder_data)
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was created")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
     # Get correctly formatted DOI info and patch it into the new folder successfully
     doi_data_raw = await create_request_json_data("doi", "test_doi.json")
@@ -888,7 +952,7 @@ async def test_adding_doi_info_to_folder_works(sess):
     patch_add_bad_doi = [{"op": "add", "path": "/doiInfo", "value": {"identifier": {}}}]
     async with sess.patch(f"{folders_url}/{folder_id}", data=json.dumps(patch_add_bad_doi)) as resp:
         LOG.debug(f"Tried updating folder {folder_id}")
-        assert resp.status == 400, "HTTP Status code error"
+        assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
         res = await resp.json()
         assert res["detail"] == "Provided input does not seem correct for field: 'doiInfo'", "expected error mismatch"
 
@@ -902,7 +966,7 @@ async def test_adding_doi_info_to_folder_works(sess):
     patch_add_bad_doi = [{"op": "add", "path": "/extraInfo", "value": {"publisher": "something"}}]
     async with sess.patch(f"{folders_url}/{folder_id}", data=json.dumps(patch_add_bad_doi)) as resp:
         LOG.debug(f"Tried updating folder {folder_id}")
-        assert resp.status == 400, "HTTP Status code error"
+        assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
         res = await resp.json()
         assert res["detail"] == "Request contains '/extraInfo' key that cannot be updated to folders.", "error mismatch"
 
@@ -910,7 +974,7 @@ async def test_adding_doi_info_to_folder_works(sess):
     await delete_folder(sess, folder_id)
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was deleted")
-        assert resp.status == 404, "HTTP Status code error"
+        assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
 
 
 async def test_getting_paginated_folders(sess):
@@ -1087,7 +1151,7 @@ async def test_getting_user_items(sess):
     # Get real user ID
     async with sess.get(f"{users_url}/{user_id}") as resp:
         LOG.debug(f"Reading user {user_id}")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
     # Add template to user
     template_id = await post_template_json(sess, "study", "SRP000539_template.json")
@@ -1095,7 +1159,7 @@ async def test_getting_user_items(sess):
     # Test querying for list of user draft templates
     async with sess.get(f"{users_url}/{user_id}?items=templates") as resp:
         LOG.debug(f"Reading user {user_id} templates")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
         assert ans["page"]["page"] == 1
         assert ans["page"]["size"] == 5
@@ -1105,7 +1169,7 @@ async def test_getting_user_items(sess):
 
     async with sess.get(f"{users_url}/{user_id}?items=templates&per_page=3") as resp:
         LOG.debug(f"Reading user {user_id} templates")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
         assert ans["page"]["page"] == 1
         assert ans["page"]["size"] == 3
@@ -1116,7 +1180,7 @@ async def test_getting_user_items(sess):
     # Test querying for the list of folder IDs
     async with sess.get(f"{users_url}/{user_id}?items=folders") as resp:
         LOG.debug(f"Reading user {user_id} folder list")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
         assert ans["page"]["page"] == 1
         assert ans["page"]["size"] == 5
@@ -1127,7 +1191,7 @@ async def test_getting_user_items(sess):
     # Test the same with a bad query param
     async with sess.get(f"{users_url}/{user_id}?items=bad") as resp:
         LOG.debug(f"Reading user {user_id} but with faulty item descriptor")
-        assert resp.status == 400, "HTTP Status code error"
+        assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
 
 
 async def test_crud_users_works(sess):
@@ -1138,7 +1202,7 @@ async def test_crud_users_works(sess):
     # Check user exists in database (requires an user object to be mocked)
     async with sess.get(f"{users_url}/{user_id}") as resp:
         LOG.debug(f"Reading user {user_id}")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         response = await resp.json()
         real_user_id = response["userId"]
 
@@ -1221,7 +1285,7 @@ async def test_crud_users_works(sess):
     # this check is not needed but good to do
     async with sess.get(f"{users_url}/{user_id}") as resp:
         LOG.debug(f"Checking that user {user_id} was deleted")
-        assert resp.status == 401, "HTTP Status code error"
+        assert resp.status == 401, f"HTTP Status code error, got {resp.status}"
 
 
 async def test_get_folders(sess, folder_id: str):
@@ -1232,7 +1296,7 @@ async def test_get_folders(sess, folder_id: str):
     """
     async with sess.get(f"{folders_url}") as resp:
         LOG.debug(f"Reading folder {folder_id}")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         response = await resp.json()
         assert len(response["folders"]) == 1
         assert response["page"] == {"page": 1, "size": 5, "totalPages": 1, "totalFolders": 1}
@@ -1252,7 +1316,7 @@ async def test_get_folders_objects(sess, folder_id: str):
     await patch_folder(sess, folder_id, patch_add_object)
     async with sess.get(f"{folders_url}") as resp:
         LOG.debug(f"Reading folder {folder_id}")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         response = await resp.json()
         assert len(response["folders"]) == 1
         assert response["folders"][0]["metadataObjects"][0]["accessionId"] == accession_id
@@ -1267,7 +1331,7 @@ async def test_get_folders_objects(sess, folder_id: str):
     await patch_folder(sess, folder_id, patch_add_more_object)
     async with sess.get(f"{folders_url}") as resp:
         LOG.debug(f"Reading folder {folder_id}")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         response = await resp.json()
         assert len(response["folders"]) == 1
         assert response["folders"][0]["metadataObjects"][0]["accessionId"] == accession_id
@@ -1283,7 +1347,7 @@ async def test_get_folders_objects(sess, folder_id: str):
     await patch_folder(sess, folder_id, patch_change_tags_object)
     async with sess.get(f"{folders_url}") as resp:
         LOG.debug(f"Reading folder {folder_id}")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         response = await resp.json()
         assert len(response["folders"]) == 1
         assert response["folders"][0]["metadataObjects"][0]["accessionId"] == accession_id
@@ -1301,7 +1365,7 @@ async def test_submissions_work(sess, folder_id):
     submission_data = await create_multi_file_request_data(sub_files)
     async with sess.post(f"{submit_url}", data=submission_data) as resp:
         LOG.debug("Checking initial submission worked")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         res = await resp.json()
         assert len(res) == 2, "expected 2 objects"
         assert res[0]["schema"] == "study", "expected first element to be study"
@@ -1324,7 +1388,7 @@ async def test_submissions_work(sess, folder_id):
     # Sanity check that the study object was inserted correctly before modifying it
     async with sess.get(f"{objects_url}/study/{study_access_id}") as resp:
         LOG.debug("Sanity checking that previous object was added correctly")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         res = await resp.json()
         assert res["accessionId"] == study_access_id, "study accession id does not match"
         assert res["alias"] == "GSE10966", "study alias does not match"
@@ -1346,7 +1410,7 @@ async def test_submissions_work(sess, folder_id):
     more_submission_data = await create_multi_file_request_data(sub_files)
     async with sess.post(f"{submit_url}", data=more_submission_data) as resp:
         LOG.debug("Checking object in initial submission was modified")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         res = await resp.json()
         assert len(res) == 2, "expected 2 objects"
         new_study_access_id = res[0]["accessionId"]
@@ -1355,7 +1419,7 @@ async def test_submissions_work(sess, folder_id):
     # Check the modified object was inserted correctly
     async with sess.get(f"{objects_url}/study/{new_study_access_id}") as resp:
         LOG.debug("Checking that previous object was modified correctly")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         res = await resp.json()
         assert res["accessionId"] == new_study_access_id, "study accession id does not match"
         assert res["alias"] == "GSE10966", "study alias does not match"
@@ -1380,7 +1444,7 @@ async def test_health_check(sess):
     """
     async with sess.get(f"{base_url}/health") as resp:
         LOG.debug("Checking that health status is ok")
-        assert resp.status == 200, "HTTP Status code error"
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         res = await resp.json()
         assert res["status"] == "Ok"
         assert res["services"]["database"]["status"] == "Ok"
@@ -1418,7 +1482,11 @@ async def main():
         }
         basic_folder_id = await post_folder(sess, basic_folder)
 
+        # test XML files
         await asyncio.gather(*[test_crud_works(sess, schema, file, basic_folder_id) for schema, file in test_xml_files])
+
+        # test CSV files
+        await test_csv(sess, basic_folder_id)
 
         put_object_folder = {
             "name": "test put object",
@@ -1505,7 +1573,7 @@ async def main():
         await login(sess, other_test_user, other_test_user_given, other_test_user_family)
         async with sess.get(f"{users_url}/{user_id}") as resp:
             LOG.debug(f"Reading user {user_id}")
-            assert resp.status == 200, "HTTP Status code error"
+            assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
             response = await resp.json()
             real_user_id = response["userId"]
         await delete_user(sess, real_user_id)

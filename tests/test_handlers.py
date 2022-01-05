@@ -1,7 +1,7 @@
 """Test API endpoints from handlers module."""
 
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import patch, call
 
 from aiohttp import FormData
 from aiohttp.test_utils import AioHTTPTestCase, make_mocked_coro
@@ -114,10 +114,30 @@ class HandlersTestCase(AioHTTPTestCase):
         for schema, filename in files:
             schema_path = "study" if schema == "fake" else schema
             path_to_file = self.TESTFILES_ROOT / schema_path / filename
-            data.add_field(
-                schema.upper(), open(path_to_file.as_posix(), "r"), filename=path_to_file.name, content_type="text/xml"
-            )
+            # Differentiate between xml and csv
+            if filename[-3:] == "xml":
+                data.add_field(
+                    schema.upper(),
+                    open(path_to_file.as_posix(), "r"),
+                    filename=path_to_file.name,
+                    content_type="text/xml",
+                )
+            elif filename[-3:] == "csv":
+                # files = {schema.upper(): open(path_to_file.as_posix(), "r")}
+                data.add_field(
+                    schema.upper(),
+                    open(path_to_file.as_posix(), "r"),
+                    filename=path_to_file.name,
+                    content_type="text/csv",
+                )
         return data
+
+    def get_file_data(self, schema, filename):
+        """Read file contents as plain text."""
+        path_to_file = self.TESTFILES_ROOT / schema / filename
+        with open(path_to_file.as_posix(), mode="r") as csv_file:
+            _reader = csv_file.read()
+        return _reader
 
     async def fake_operator_read_metadata_object(self, schema_type, accession_id):
         """Fake read operation to return mocked JSON."""
@@ -347,6 +367,10 @@ class ObjectHandlerTestCase(HandlersTestCase):
         self.patch_operator = patch(class_operator, **self.operator_config, spec=True)
         self.MockedOperator = self.patch_operator.start()
 
+        class_csv_parser = "metadata_backend.api.handlers.common.CSVToJSONParser"
+        self.patch_csv_parser = patch(class_csv_parser, spec=True)
+        self.MockedCSVParser = self.patch_csv_parser.start()
+
         class_folderoperator = "metadata_backend.api.handlers.object.FolderOperator"
         self.patch_folderoperator = patch(class_folderoperator, **self.folderoperator_config, spec=True)
         self.MockedFolderOperator = self.patch_folderoperator.start()
@@ -355,6 +379,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         """Cleanup mocked stuff."""
         await super().tearDownAsync()
         self.patch_xmloperator.stop()
+        self.patch_csv_parser.stop()
         self.patch_folderoperator.stop()
         self.patch_operator.stop()
 
@@ -383,7 +408,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         """Test that JSON has missing property."""
         json_req = {"centerName": "GEO", "alias": "GSE10966"}
         response = await self.client.post("/objects/study", json=json_req)
-        reason = "Provided input does not seem correct because: " "''descriptor' is a required property'"
+        reason = "Provided input does not seem correct because: ''descriptor' is a required property'"
         self.assertEqual(response.status, 400)
         self.assertIn(reason, await response.text())
 
@@ -395,7 +420,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
             "descriptor": {"studyTitle": "Highly", "studyType": "ceva"},
         }
         response = await self.client.post("/objects/study", json=json_req)
-        reason = "Provided input does not seem correct for field: " "'descriptor'"
+        reason = "Provided input does not seem correct for field: 'descriptor'"
         self.assertEqual(response.status, 400)
         self.assertIn(reason, await response.text())
 
@@ -407,9 +432,39 @@ class ObjectHandlerTestCase(HandlersTestCase):
             "descriptor": {"studyTitle": "Highly", "studyType": "Other"},
         }
         response = await self.client.post("/objects/study", data=json_req)
-        reason = "JSON is not correctly formatted. " "See: Expecting value: line 1 column 1"
+        reason = "JSON is not correctly formatted. See: Expecting value: line 1 column 1"
         self.assertEqual(response.status, 400)
         self.assertIn(reason, await response.text())
+
+    async def test_post_object_works_with_csv(self):
+        """Test that CSV file is parsed and submitted as json."""
+        files = [("sample", "EGAformat.csv")]
+        data = self.create_submission_data(files)
+        file_content = self.get_file_data("sample", "EGAformat.csv")
+        self.MockedCSVParser().parse.return_value = [{}, {}, {}]
+        response = await self.client.post("/objects/sample", data=data)
+        json_resp = await response.json()
+        self.assertEqual(response.status, 201)
+        self.assertEqual(self.test_ega_string, json_resp[0]["accessionId"])
+        parse_calls = [
+            call(
+                "sample",
+                file_content,
+            )
+        ]
+        op_calls = [call("sample", {}), call("sample", {}), call("sample", {})]
+        self.MockedCSVParser().parse.assert_has_calls(parse_calls, any_order=True)
+        self.MockedOperator().create_metadata_object.assert_has_calls(op_calls, any_order=True)
+
+    async def test_post_objet_error_with_empty(self):
+        """Test multipart request post fails when no objects are parsed."""
+        files = [("sample", "empty.csv")]
+        data = self.create_submission_data(files)
+        response = await self.client.post("/objects/sample", data=data)
+        json_resp = await response.json()
+        self.assertEqual(response.status, 400)
+        self.assertEqual(json_resp["detail"], "Request data seems empty.")
+        self.MockedCSVParser().parse.assert_called_once()
 
     async def test_put_object_bad_json(self):
         """Test that put JSON is badly formated."""
@@ -420,7 +475,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         }
         call = "/drafts/study/EGA123456"
         response = await self.client.put(call, data=json_req)
-        reason = "JSON is not correctly formatted. " "See: Expecting value: line 1 column 1"
+        reason = "JSON is not correctly formatted. See: Expecting value: line 1 column 1"
         self.assertEqual(response.status, 400)
         self.assertIn(reason, await response.text())
 
@@ -429,7 +484,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         json_req = {"centerName": "GEO", "alias": "GSE10966"}
         call = "/drafts/study/EGA123456"
         response = await self.client.patch(call, data=json_req)
-        reason = "JSON is not correctly formatted. " "See: Expecting value: line 1 column 1"
+        reason = "JSON is not correctly formatted. See: Expecting value: line 1 column 1"
         self.assertEqual(response.status, 400)
         self.assertIn(reason, await response.text())
 

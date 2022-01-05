@@ -3,7 +3,7 @@
 import secrets
 import urllib.parse
 import hashlib
-import json
+import ujson
 
 from aiohttp import web, BasicAuth, ClientSession
 from aiohttp.web import Request, Response
@@ -126,7 +126,7 @@ class AccessHandler:
             hashlib.sha256((cookie["id"] + cookie["referer"] + req.app["Salt"]).encode("utf-8"))
         ).hexdigest()
 
-        cookie_crypted = req.app["Crypt"].encrypt(json.dumps(cookie).encode("utf-8")).decode("utf-8")
+        cookie_crypted = req.app["Crypt"].encrypt(ujson.dumps(cookie).encode("utf-8")).decode("utf-8")
 
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         response.headers["Pragma"] = "no-Cache"
