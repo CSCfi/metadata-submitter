@@ -155,6 +155,19 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
 
+            if "processing" in key:
+                if not bool(value):
+                    continue
+
+            if "pipeSection" in key:
+                children[key] = [value]
+                continue
+
+            if "prevStepIndex" in key:
+                if not bool(value):
+                    children[key] = None
+                    continue
+
             if key in links and len(value) == 1:
                 grp = list()
                 if isinstance(value[key[:-1]], dict):
@@ -241,6 +254,9 @@ class MetadataXMLConverter(XMLSchemaConverter):
           selected
         - analysisRef, sampleRef, runRef, experimentRef need to be an array
         - experimentRef in run is an array with maxitems 1
+        - if processing is empty do not show it as it is not required
+        - processing pipeSection should be intepreted as an array
+        - processing pipeSection prevStepIndex can be None if not specified empty
         """
         xsd_type = xsd_type or xsd_element.type
 

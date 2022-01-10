@@ -1,4 +1,4 @@
-{ 
+{
   "title": "Experiment",
   "alias": "NA18504.3",
   "centerName": "MPIMG",
@@ -54,7 +54,6 @@
     }
   },
   "platform": "AB SOLiD System",
-  "processing": "true",
   "experimentAttributes": [
     {
       "tag": "center_name",
