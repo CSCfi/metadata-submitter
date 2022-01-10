@@ -27,17 +27,18 @@
             "properties": {
                 "xrefDb": {
                     "type": "string",
-                    "title": "Database"
+                    "title": "Database",
+                    "description": "Name of the database or a link where the resource is located at. INSDC controlled vocabulary of permitted cross references.Please see http://www.insdc.org/db_xref.html . For example, FLYBASE."
                 },
                 "xrefId": {
                     "type": "string",
                     "title": "Database ID",
-                    "description": "Accession in the referenced database."
+                    "description": "Accession ID or stable identifier, in the referenced database. For example, FBtr0080008 (in FLYBASE)"
                 },
                 "label": {
                     "type": "string",
                     "title": "Label",
-                    "description": "Text label to display for the link."
+                    "description": "A text label to identify the xrefLink by."
                 }
             }
         },
@@ -53,7 +54,7 @@
                 "label": {
                     "type": "string",
                     "title": "Label",
-                    "description": "Text label to display for the link."
+                    "description": "A text label to identify the urlLink by."
                 },
                 "url": {
                     "type": "string",
@@ -73,7 +74,7 @@
             ],
             "properties": {
                 "entrezDb": {
-                    "description": "NCBI controlled vocabulary of permitted cross references",
+                    "description": "Entrez Molecular Sequence Database System, NCBI controlled vocabulary of permitted cross references.",
                     "title": "Database",
                     "type": "string",
                     "enum": [
@@ -129,7 +130,7 @@
                     "pattern": "^[a-zA-Z0-9]+"
                 },
                 "label": {
-                    "description": "Text label to display for the link.",
+                    "description": "A text label to identify the url Entrez link by.",
                     "title": "Label",
                     "type": "string"
                 }
@@ -139,7 +140,6 @@
             "$id": "#/definitions/datasetAttribute",
             "type": "object",
             "title": "Dataset Attribute",
-            "description": "Properties and attributes of the data set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
             "required": [
                 "tag",
                 "value"
@@ -294,6 +294,7 @@
         "datasetLinks": {
             "type": "array",
             "title": "Dataset Links",
+            "description": "Used to encode URL links, Entrez links, and xref DB links. These are links used to cross reference with other relevant resources.",
             "items": {
                 "$ref": "#/definitions/Links"
             }
@@ -301,6 +302,7 @@
         "datasetAttributes": {
             "type": "array",
             "title": "Dataset Attributes",
+            "description": "Properties and attributes of the data set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
             "items": {
                 "$ref": "#/definitions/datasetAttribute"
             }
