@@ -74,7 +74,7 @@
             ],
             "properties": {
                 "entrezDb": {
-                    "description": "Entrez Molecular Sequence Database System, NCBI controlled vocabulary of permitted cross references.",
+                    "description": "Entrez Molecular Sequence Database System, NCBI controlled vocabulary of permitted cross references. Also known as Entrez Direct (EDirect) .",
                     "title": "Database",
                     "type": "string",
                     "enum": [
@@ -162,23 +162,28 @@
         "identifiers": {
             "$id": "#/definitions/identifiers",
             "title": "Identifiers",
+            "description": "Identifiers to be used in the International Nucleotide Sequence Database Collaboration (INSDC) namespace.",
             "type": "object",
             "properties": {
                 "primaryId": {
                     "type": "string",
+                    "description": "A primary identifier in the INSDC namespace.",
                     "title": "Primary Id"
                 },
                 "secondaryId": {
                     "type": "string",
+                    "description": "A secondary identifier in the INSDC namespace.",
                     "title": "Secondary Id"
                 },
                 "uuid": {
                     "type": "string",
+                    "description": "A universally unique identifier that requires no namespace.",
                     "title": "UUID"
                 },
                 "externalId": {
                     "type": "object",
                     "title": "External Id",
+                    "description": "An identifier from a public non-INSDC resource.",
                     "properties": {
                         "namespace": {
                             "type": "string",
@@ -193,6 +198,7 @@
                 "submitterId": {
                     "type": "object",
                     "title": "Submitter Id",
+                    "description": "A submitter provided identifier.",
                     "properties": {
                         "namespace": {
                             "type": "string",
@@ -211,20 +217,19 @@
             "additionalProperties": true,
             "type": "object",
             "properties": {
-                "label": {
-                    "type": "string",
-                    "title": "Label"
-                },
                 "refname": {
                     "type": "string",
+                    "description": "Identifies an object by name within the namespace defined by attribute refcenter",
                     "title": "Record name"
                 },
                 "refcenter": {
                     "type": "string",
+                    "description": "The namespace of the attribute refname.",
                     "title": "Center Namespace"
                 },
                 "accessionId": {
                     "type": "string",
+                    "description": "Identifies a record by its accession. The scope of resolution is the entire Storage.",
                     "title": "Accession Id"
                 },
                 "identifiers": {
@@ -241,7 +246,7 @@
     "properties": {
         "title": {
             "title": "Dataset Title",
-            "description": "Short text that can be used to call out data sets in searches or in displays.",
+            "description": "Title of the Dataset as would be used in a publication.",
             "type": "string"
         },
         "datasetType": {
@@ -270,17 +275,17 @@
         },
         "description": {
             "title": "Dataset Description",
-            "description": "Free-form text describing the data sets.",
+            "description": "Free-form text describing the Dataset.",
             "type": "string"
         },
         "policyRef": {
             "title": "Policy Reference",
-            "description": "Identifies the data access committee to which this policy pertains.",
+            "description": "Identifies the data access policy controlling this Dataset.",
             "$ref": "#/definitions/reference"
         },
         "runRef": {
             "title": "Run Reference",
-            "description": "Identifies the runs which are part of this dataset.",
+            "description": "Identifies the Runs which are part of this Dataset.",
             "type": "array",
             "items": {
                 "$ref": "#/definitions/reference"
@@ -288,7 +293,7 @@
         },
         "analysisRef": {
             "title": "Analysis Reference",
-            "description": "Identifies the data access committee to which this policy pertains.",
+            "description": "Identifies the Analyses which are part of this Dataset.",
             "type": "array",
             "items": {
                 "$ref": "#/definitions/reference"

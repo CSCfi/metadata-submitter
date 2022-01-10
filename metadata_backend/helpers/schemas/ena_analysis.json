@@ -74,7 +74,7 @@
             ],
             "properties": {
                 "entrezDb": {
-                    "description": "Entrez Molecular Sequence Database System, NCBI controlled vocabulary of permitted cross references.",
+                    "description": "Entrez Molecular Sequence Database System, NCBI controlled vocabulary of permitted cross references. Also known as Entrez Direct (EDirect) .",
                     "title": "Database",
                     "type": "string",
                     "enum": [
@@ -161,6 +161,8 @@
         },
         "sequenceType": {
             "$id": "#/definitions/sequenceType",
+            "title": "Reference Alignment",
+            "additionalProperties": true,
             "type": "object",
             "properties": {
                 "assembly": {
@@ -170,23 +172,27 @@
                         {
                             "type": "object",
                             "title": "Standard",
+                            "description": "A standard genome assembly.",
                             "required": [
-                                "accessionId"
+                                "accession"
                             ],
                             "properties": {
                                 "refname": {
                                     "type": "string",
+                                    "description": "A recognized name for the genome assembly.",
                                     "title": "Reference name"
                                 },
-                                "accessionId": {
+                                "accession": {
                                     "type": "string",
-                                    "title": "Accession Id"
+                                    "description": "Accession.version with version being mandatory.",
+                                    "title": "Accession.version"
                                 }
                             }
                         },
                         {
                             "type": "object",
                             "title": "Custom",
+                            "description": "Other genome assembly.",
                             "required": [
                                 "description"
                             ],
@@ -213,20 +219,23 @@
                 "sequence": {
                     "type": "array",
                     "title": "Sequence",
+                    "description": "Reference sequence details.",
                     "items": {
                         "type": "object",
                         "required": [
-                            "accessionId"
+                            "accession"
                         ],
                         "additionalProperties": true,
                         "properties": {
                             "label": {
                                 "type": "string",
+                                "description": "This is how Reference Sequence is labeled in submission file(s). It is equivalent to  SQ label in BAM. Optional when submitted file uses INSDC accession.version.",
                                 "title": "Label"
                             },
-                            "accessionId": {
+                            "accession": {
                                 "type": "string",
-                                "title": "Accession Id"
+                                "description": "Accession.version with version being mandatory",
+                                "title": "Accession.version"
                             }
                         }
                     }
@@ -236,23 +245,28 @@
         "identifiers": {
             "$id": "#/definitions/identifiers",
             "title": "Identifiers",
+            "description": "Identifiers to be used in the International Nucleotide Sequence Database Collaboration (INSDC) namespace.",
             "type": "object",
             "properties": {
                 "primaryId": {
                     "type": "string",
+                    "description": "A primary identifier in the INSDC namespace.",
                     "title": "Primary Id"
                 },
                 "secondaryId": {
                     "type": "string",
+                    "description": "A secondary identifier in the INSDC namespace.",
                     "title": "Secondary Id"
                 },
                 "uuid": {
                     "type": "string",
+                    "description": "A universally unique identifier that requires no namespace.",
                     "title": "UUID"
                 },
                 "externalId": {
                     "type": "object",
                     "title": "External Id",
+                    "description": "An identifier from a public non-INSDC resource.",
                     "properties": {
                         "namespace": {
                             "type": "string",
@@ -267,6 +281,7 @@
                 "submitterId": {
                     "type": "object",
                     "title": "Submitter Id",
+                    "description": "A submitter provided identifier.",
                     "properties": {
                         "namespace": {
                             "type": "string",
@@ -285,20 +300,19 @@
             "additionalProperties": true,
             "type": "object",
             "properties": {
-                "label": {
-                    "type": "string",
-                    "title": "Label"
-                },
                 "refname": {
                     "type": "string",
+                    "description": "Identifies an object by name within the namespace defined by attribute refcenter",
                     "title": "Record name"
                 },
                 "refcenter": {
                     "type": "string",
+                    "description": "The namespace of the attribute refname.",
                     "title": "Center Namespace"
                 },
                 "accessionId": {
                     "type": "string",
+                    "description": "Identifies a record by its accession. The scope of resolution is the entire Storage.",
                     "title": "Accession Id"
                 },
                 "identifiers": {
@@ -319,45 +333,49 @@
             "properties": {
                 "filename": {
                     "type": "string",
-                    "title": "Filename"
+                    "description": "The name or relative path name of a run data file.",
+                    "title": "File Name"
                 },
                 "filetype": {
                     "type": "string",
-                    "title": "Filetype",
+                    "description": "The Analysis data file model/type.",
+                    "title": "File type",
                     "enum": [
                         "agp",
                         "bai",
                         "bam",
-                        "bcf_aggregate",
                         "bcf",
                         "bed",
-                        "BioNano_native",
-                        "chromosome_list",
+                        "BioNano native",
+                        "chromosome list",
                         "crai",
                         "cram",
-                        "csi",
                         "fasta",
                         "fastq",
                         "flatfile",
                         "gff",
                         "info",
-                        "Kallisto_native",
+                        "Kallisto native",
                         "manifest",
-                        "other",
-                        "phenotype_file",
-                        "readme_file",
-                        "sample_list",
+                        "phenotype file",
+                        "readme file",
+                        "sample list",
+                        "sff",
+                        "sra",
+                        "srf",
                         "tab",
                         "tabix",
-                        "unlocalised_list",
-                        "vcf_aggregate",
+                        "unlocalised list",
+                        "vcf aggregate",
                         "vcf",
-                        "wig"
+                        "wig",
+                        "other"
                     ]
                 },
                 "checksumMethod": {
                     "type": "string",
                     "title": "Checksum Method",
+                    "description": "Checksum method used MD5 or SHA-256.",
                     "enum": [
                         "MD5",
                         "SHA-256"
@@ -365,7 +383,13 @@
                 },
                 "checksum": {
                     "type": "string",
+                    "description": "Checksum of uncompressed file.",
                     "title": "Checksum"
+                },
+                "unencryptedChecksum": {
+                    "type": "string",
+                    "description": "Checksum of un-encrypted file (used in conjunction with checksum of encrypted file).",
+                    "title": "Un-encrypted Checksum"
                 }
             }
         },
@@ -414,7 +438,7 @@
                         },
                         "minGapLength": {
                             "type": "number",
-                            "title": "MinGapLength"
+                            "title": "Min Gap Length"
                         },
                         "molType": {
                             "type": "string",
@@ -504,20 +528,30 @@
                             {
                                 "type": "object",
                                 "title": "Standard",
+                                "description": "A standard genome assembly.",
+                                "required": [
+                                    "accession"
+                                ],
                                 "properties": {
                                     "refname": {
                                         "type": "string",
+                                        "description": "A recognized name for the genome assembly.",
                                         "title": "Reference name"
                                     },
-                                    "accessionId": {
+                                    "accession": {
                                         "type": "string",
-                                        "title": "Accession Id"
+                                        "description": "Accession.version with version being mandatory.",
+                                        "title": "Accession.version"
                                     }
                                 }
                             },
                             {
                                 "type": "object",
                                 "title": "Custom",
+                                "description": "Other genome assembly.",
+                                "required": [
+                                    "description"
+                                ],
                                 "properties": {
                                     "label": {
                                         "type": "string",
@@ -541,20 +575,23 @@
                     "sequence": {
                         "type": "array",
                         "title": "Sequence",
+                        "description": "Reference sequence details.",
                         "items": {
                             "type": "object",
                             "required": [
-                                "accessionId"
+                                "accession"
                             ],
                             "additionalProperties": true,
                             "properties": {
                                 "label": {
                                     "type": "string",
+                                    "description": "This is how Reference Sequence is labeled in submission file(s). It is equivalent to  SQ label in BAM. Optional when submitted file uses INSDC accession.version.",
                                     "title": "Label"
                                 },
-                                "accessionId": {
+                                "accession": {
                                     "type": "string",
-                                    "title": "Accession Id"
+                                    "description": "Accession.version with version being mandatory",
+                                    "title": "Accession.version"
                                 }
                             }
                         }
@@ -917,20 +954,17 @@
         },
         "studyRef": {
             "title": "Study Reference",
-            "description": "Identifies the associated study.",
+            "description": "Identifies the associated parent study.",
             "$ref": "#/definitions/reference"
         },
         "experimentRef": {
             "title": "Experiment Reference",
             "description": "Identifies the associated experiment.",
-            "type": "array",
-            "items": {
-                "$ref": "#/definitions/reference"
-            }
+            "$ref": "#/definitions/reference"
         },
         "sampleRef": {
             "title": "Sample Reference",
-            "description": "Identifies the associated sample.",
+            "description": "Identifies the associated sample(s).",
             "type": "array",
             "items": {
                 "$ref": "#/definitions/reference"

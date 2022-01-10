@@ -113,6 +113,8 @@ curation
 currentsubmissiontype
 customfields
 dac
+dacAttribute
+dacAttributes
 daclinks
 dacref
 datacite
@@ -574,6 +576,7 @@ twi
 txt
 ui
 umi
+unencryptedChecksum
 uniqueitems
 unlocalised
 uri

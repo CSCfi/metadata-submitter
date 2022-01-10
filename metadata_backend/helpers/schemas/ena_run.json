@@ -74,7 +74,7 @@
             ],
             "properties": {
                 "entrezDb": {
-                    "description": "Entrez Molecular Sequence Database System, NCBI controlled vocabulary of permitted cross references.",
+                    "description": "Entrez Molecular Sequence Database System, NCBI controlled vocabulary of permitted cross references. Also known as Entrez Direct (EDirect) .",
                     "title": "Database",
                     "type": "string",
                     "enum": [
@@ -211,7 +211,7 @@
                                     },
                                     "version": {
                                         "type": "string",
-                                        "description": " Version of the program or process for primary analysis. ",
+                                        "description": "Version of the program or process for primary analysis. ",
                                         "title": "Version"
                                     },
                                     "notes": {
@@ -232,11 +232,11 @@
                 "directives": {
                     "type": "object",
                     "title": "Directives",
-                    "description": "Processing directives tell the Sequence Read Archive how to treat the input data, if any treatment is requested.",
+                    "description": "Processing directives tell the Sequence Read Storage how to treat the input data, if any treatment is requested.",
                     "properties": {
                         "sampleDemuxDirective": {
                             "type": "object",
-                            "description": "Tells the Archive who will execute the sample demultiplexing operation.",
+                            "description": "Tells the Sequence Read Storage who will execute the sample demultiplexing operation.",
                             "title": "Sample Demux Directive",
                             "properties": {
                                 "leaveAsPool": {
@@ -258,23 +258,28 @@
         "identifiers": {
             "$id": "#/definitions/identifiers",
             "title": "Identifiers",
+            "description": "Identifiers to be used in the International Nucleotide Sequence Database Collaboration (INSDC) namespace.",
             "type": "object",
             "properties": {
                 "primaryId": {
                     "type": "string",
+                    "description": "A primary identifier in the INSDC namespace.",
                     "title": "Primary Id"
                 },
                 "secondaryId": {
                     "type": "string",
+                    "description": "A secondary identifier in the INSDC namespace.",
                     "title": "Secondary Id"
                 },
                 "uuid": {
                     "type": "string",
+                    "description": "A universally unique identifier that requires no namespace.",
                     "title": "UUID"
                 },
                 "externalId": {
                     "type": "object",
                     "title": "External Id",
+                    "description": "An identifier from a public non-INSDC resource.",
                     "properties": {
                         "namespace": {
                             "type": "string",
@@ -289,6 +294,7 @@
                 "submitterId": {
                     "type": "object",
                     "title": "Submitter Id",
+                    "description": "A submitter provided identifier.",
                     "properties": {
                         "namespace": {
                             "type": "string",
@@ -307,20 +313,19 @@
             "additionalProperties": true,
             "type": "object",
             "properties": {
-                "label": {
-                    "type": "string",
-                    "title": "Label"
-                },
                 "refname": {
                     "type": "string",
+                    "description": "Identifies an object by name within the namespace defined by attribute refcenter",
                     "title": "Record name"
                 },
                 "refcenter": {
                     "type": "string",
+                    "description": "The namespace of the attribute refname.",
                     "title": "Center Namespace"
                 },
                 "accessionId": {
                     "type": "string",
+                    "description": "Identifies a record by its accession. The scope of resolution is the entire Storage.",
                     "title": "Accession Id"
                 },
                 "identifiers": {
@@ -341,19 +346,21 @@
             "properties": {
                 "filename": {
                     "type": "string",
-                    "title": "filename"
+                    "description": "The name or relative path name of a run data file.",
+                    "title": "File Name"
                 },
                 "filetype": {
                     "type": "string",
-                    "title": "filetype",
+                    "description": "The Run data file model/type.",
+                    "title": "File Type",
                     "enum": [
                         "agp",
                         "bai",
                         "bam",
                         "bcf",
                         "bed",
-                        "BioNano_native",
-                        "chromosome_list",
+                        "BioNano native",
+                        "chromosome list",
                         "crai",
                         "cram",
                         "fasta",
@@ -361,18 +368,18 @@
                         "flatfile",
                         "gff",
                         "info",
-                        "Kallisto_native",
+                        "Kallisto native",
                         "manifest",
-                        "phenotype_file",
-                        "readme_file",
-                        "sample_list",
+                        "phenotype file",
+                        "readme file",
+                        "sample list",
                         "sff",
                         "sra",
                         "srf",
                         "tab",
                         "tabix",
-                        "unlocalised_list",
-                        "vcf_aggregate",
+                        "unlocalised list",
+                        "vcf aggregate",
                         "vcf",
                         "wig",
                         "other"
@@ -380,7 +387,8 @@
                 },
                 "checksumMethod": {
                     "type": "string",
-                    "title": "checksumMethod",
+                    "title": "Checksum Method",
+                    "description": "Checksum method used MD5 or SHA-256.",
                     "enum": [
                         "MD5",
                         "SHA-256"
@@ -388,10 +396,12 @@
                 },
                 "readLabel": {
                     "title": "Read Label",
+                    "description": "The Read Label can associate a certain file to a certain read label defined in the spot descriptor.",
                     "type": "string"
                 },
                 "readType": {
                     "title": "Read Type",
+                    "description": "Identifies a record by its accession. The scope of resolution is the entire Storage.",
                     "type": "string",
                     "enum": [
                         "cell_barcode",
@@ -405,25 +415,31 @@
                 },
                 "checksum": {
                     "type": "string",
-                    "title": "checksum"
+                    "description": "Checksum of uncompressed file.",
+                    "title": "Checksum"
+                },
+                "unencryptedChecksum": {
+                    "type": "string",
+                    "description": "Checksum of un-encrypted file (used in conjunction with checksum of encrypted file).",
+                    "title": "Un-encrypted Checksum"
                 }
             }
         }
     },
     "type": "object",
-    "description": "A run contains a group of reads generated for a particular experiment.",
+    "description": "A Run contains a group of reads generated for a particular experiment.",
     "required": [
         "experimentRef"
     ],
     "properties": {
         "title": {
             "title": "Run Title",
-            "description": "Short text that can be used to define submissions in searches or in displays.",
+            "description": "Title of the Run as would be used to identify it in reference to the Study and Dataset.",
             "type": "string"
         },
         "description": {
             "title": "Run Description",
-            "description": "Free-form text describing the data sets.",
+            "description": "Free-form text describing the Run and any relevant information.",
             "type": "string"
         },
         "runType": {
@@ -443,23 +459,27 @@
                                 {
                                     "type": "object",
                                     "title": "Standard",
+                                    "description": "A standard genome assembly.",
                                     "required": [
-                                        "accessionId"
+                                        "accession"
                                     ],
                                     "properties": {
                                         "refname": {
                                             "type": "string",
+                                            "description": "A recognized name for the genome assembly.",
                                             "title": "Reference name"
                                         },
-                                        "accessionId": {
+                                        "accession": {
                                             "type": "string",
-                                            "title": "Accession Id"
+                                            "description": "Accession.version with version being mandatory.",
+                                            "title": "Accession.version"
                                         }
                                     }
                                 },
                                 {
                                     "type": "object",
                                     "title": "Custom",
+                                    "description": "Other genome assembly.",
                                     "required": [
                                         "description"
                                     ],
@@ -486,20 +506,23 @@
                         "sequence": {
                             "type": "array",
                             "title": "Sequence",
+                            "description": "Reference sequence details.",
                             "items": {
                                 "type": "object",
                                 "required": [
-                                    "accessionId"
+                                    "accession"
                                 ],
                                 "additionalProperties": true,
                                 "properties": {
                                     "label": {
                                         "type": "string",
+                                        "description": "This is how Reference Sequence is labeled in submission file(s). It is equivalent to  SQ label in BAM. Optional when submitted file uses INSDC accession.version.",
                                         "title": "Label"
                                     },
-                                    "accessionId": {
+                                    "accession": {
                                         "type": "string",
-                                        "title": "Accession Id"
+                                        "description": "Accession.version with version being mandatory",
+                                        "title": "Accession.version"
                                     }
                                 }
                             }
@@ -510,13 +533,13 @@
         },
         "runDate": {
             "title": "Run Date",
-            "description": "Date when the run took place",
+            "description": "Date when the Run took place.",
             "type": "string",
             "format": "date-time"
         },
         "runCenter": {
             "title": "Run Center",
-            "description": "If applicable, the name of the contract sequencing center that executed the run.",
+            "description": "If applicable, the name of the contract sequencing center that executed the Run.",
             "type": "string"
         },
         "experimentRef": {
@@ -538,6 +561,7 @@
             "properties": {
                 "spotLength": {
                     "title": "Spot Length",
+                    "description": "Number of base/color calls, cycles, or flows per spot (raw sequence length or flow length including all application and technical tags and mate pairs, but not including gap lengths). This value will be platform dependent, library dependent, and possibly run dependent. Variable length platforms will still have a constant flow/cycle length.",
                     "type": "number",
                     "minimum": 0
                 },
@@ -547,11 +571,13 @@
                     "properties": {
                         "readIndex": {
                             "title": "Read Index",
+                            "description": "Read Index starts at 0 and is incrementally increased for each sequential read_spec within a spot decode specification",
                             "type": "number",
                             "minimum": 0
                         },
                         "readLabel": {
                             "title": "Read Label",
+                            "description": "Read Label is a name for this tag, and can be used to on output to determine read name, for example F or R.",
                             "type": "string"
                         },
                         "readClass": {
@@ -564,6 +590,7 @@
                         },
                         "readType": {
                             "title": "Read Type",
+                            "description": "",
                             "type": "string",
                             "enum": [
                                 "cell_barcode",
@@ -578,14 +605,17 @@
                         "relativeOrder": {
                             "type": "object",
                             "title": "Relative Order",
+                            "description": "The read is located beginning at the offset or cycle relative to another read. This choice is appropriate for example when specifying a read that follows a variable length expected sequence(s).",
                             "properties": {
                                 "followsReadIndex": {
-                                    "title": "Read Index",
+                                    "title": "Follows Read Index",
                                     "type": "number",
+                                    "description": "Specify the read index that precedes this read.",
                                     "minimum": 0
                                 },
                                 "precedesReadIndex": {
-                                    "title": "Read Index",
+                                    "title": "Precedes Read Index",
+                                    "description": "Specify the read index that follows this read.",
                                     "type": "number",
                                     "minimum": 0
                                 }
@@ -593,38 +623,69 @@
                         },
                         "baseCoord": {
                             "title": "Base Coordinate",
+                            "description": "The location of the read start in terms of base count (1 is beginning of spot).",
                             "type": "number"
                         },
                         "expectedBaseCallTable": {
                             "title": "Expected Base Call Table",
+                            "description": " A set of choices of expected base calls for a current read. Read will be zero-length if none is found.",
                             "type": "array",
                             "items": {
                                 "type": "object",
                                 "properties": {
                                     "baseCall": {
-                                        "type": "string"
+                                        "type": "string",
+                                        "description": "Element's body contains a basecall, attribute provide description of this read meaning as well as matching rules.",
+                                        "title": "Base Call"
                                     },
                                     "readGroupTag": {
-                                        "type": "string"
+                                        "type": "string",
+                                        "description": "When match occurs, the read will be tagged with this group membership.",
+                                        "title": "Read Group Tag"
                                     },
                                     "minMatch": {
                                         "type": "number",
-                                        "minimum": 0
+                                        "description": " Minimum number of matches to trigger identification.",
+                                        "minimum": 0,
+                                        "title": "Min Match"
                                     },
                                     "maxMisMatch": {
+                                        "description": "Maximum number of mismatches.",
                                         "type": "number",
-                                        "minimum": 0
+                                        "minimum": 0,
+                                        "title": "Max MisMatch"
                                     },
                                     "matchEdge": {
-                                        "type": "string"
+                                        "description": "Where the match should occur. Changes the rules on how min_match and max_mismatch are counted.",
+                                        "type": "string",
+                                        "title": "Match Edge"
+                                    },
+                                    "full": {
+                                        "description": "Only @max_mismatch influences matching process.",
+                                        "type": "string",
+                                        "title": "Full"
+                                    },
+                                    "start": {
+                                        "description": "Both matches and mismatches are counted. When @max_mismatch is exceeded - it is not a match. When @min_match is reached - match is declared. ",
+                                        "type": "string",
+                                        "title": "Start"
+                                    },
+                                    "end": {
+                                        "description": "Both matches and mismatches are counted. When @max_mismatch is exceeded - it is not a match. When @min_match is reached - match is declared.",
+                                        "type": "string",
+                                        "title": "End"
                                     },
                                     "defaultLength": {
+                                        "description": "Specify whether the spot should have a default length for this tag if the expected base cannot be matched.",
                                         "type": "number",
-                                        "minimum": 0
+                                        "minimum": 0,
+                                        "title": "Default Length"
                                     },
                                     "baseCoord": {
+                                        "description": "Specify an optional starting point for tag (base offset from 1).",
                                         "type": "number",
-                                        "minimum": 0
+                                        "minimum": 0,
+                                        "title": "Base Coordinate"
                                     }
                                 }
                             }
@@ -635,7 +696,7 @@
         },
         "platform": {
             "title": "Platform / Instrument",
-            "description": " The PLATFORM record selects which sequencing platform and platform-specific runtime parameters. This will be determined by the Center.",
+            "description": "The PLATFORM record selects which sequencing platform and platform-specific runtime parameters. This will be determined by the Center.",
             "type": "string",
             "enum": [
                 "454 GS 20",
@@ -710,6 +771,7 @@
         "files": {
             "type": "array",
             "title": "Files",
+            "description": "Data files associated with the Run.",
             "items": {
                 "$ref": "#/definitions/file"
             }

@@ -74,7 +74,7 @@
             ],
             "properties": {
                 "entrezDb": {
-                    "description": "Entrez Molecular Sequence Database System, NCBI controlled vocabulary of permitted cross references.",
+                    "description": "Entrez Molecular Sequence Database System, NCBI controlled vocabulary of permitted cross references. Also known as Entrez Direct (EDirect) .",
                     "title": "Database",
                     "type": "string",
                     "enum": [
@@ -162,7 +162,7 @@
         "studyType": {
             "$id": "#/definitions/studyType",
             "title": "Study Type",
-            "description": "The Study type presents a controlled vocabulary for expressing the overall purpose of the study.",
+            "description": "The Study type presents a controlled vocabulary for expressing the overall purpose of the Study.",
             "type": "string",
             "enum": [
                 "Cancer Genomics",
@@ -184,6 +184,7 @@
         }
     },
     "type": "object",
+    "description": "A Study is a container for a sequencing investigation that may comprise multiple experiments. The Study has an overall goal, but is otherwise minimally defined with a descriptor, zero or more experiments, and zero or more analyses. The submitter may add to the Study web links and properties.",
     "required": [
         "descriptor"
     ],
@@ -198,7 +199,7 @@
             "properties": {
                 "studyTitle": {
                     "title": "Study Title",
-                    "description": "Title of the study as would be used in a publication.",
+                    "description": "Title of the Study as would be used in a publication.",
                     "type": "string"
                 },
                 "studyType": {
@@ -219,7 +220,7 @@
         },
         "studyDescription": {
             "title": "Study Description",
-            "description": "More extensive free-form description of the study.",
+            "description": "More extensive free-form description of the Study.",
             "type": "string"
         },
         "studyLinks": {
@@ -233,19 +234,19 @@
         "studyAttributes": {
             "type": "array",
             "title": "Study Attributes",
-            "description": "Properties and attributes of the study. These can be entered as free-form tag-value pairs. For certain studies, submitters may be asked to follow a community established ontology when describing the work.",
+            "description": "Properties and attributes of the Study. These can be entered as free-form tag-value pairs. For certain studies, submitters may be asked to follow a community established ontology when describing the work.",
             "items": {
                 "$ref": "#/definitions/studyAttribute"
             }
         },
         "center": {
             "title": "Description for Center",
-            "description": "More for backwards compatibility, we might not need it.",
+            "description": "Description of the center is intended for backward tracking of the Study record to the submitter's LIMS.",
             "type": "object",
             "properties": {
                 "centerProjectName": {
                     "title": "Center Project Name",
-                    "description": " Submitter defined project name. This field is intended for backward tracking of the study record to the submitter's LIMS.",
+                    "description": "Submitter defined project name. This field is intended for backward tracking of the Study record to the submitter's LIMS.",
                     "type": "string"
                 }
             }

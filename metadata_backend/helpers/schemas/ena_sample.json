@@ -74,7 +74,7 @@
             ],
             "properties": {
                 "entrezDb": {
-                    "description": "Entrez Molecular Sequence Database System, NCBI controlled vocabulary of permitted cross references.",
+                    "description": "Entrez Molecular Sequence Database System, NCBI controlled vocabulary of permitted cross references. Also known as Entrez Direct (EDirect) .",
                     "title": "Database",
                     "type": "string",
                     "enum": [
@@ -161,6 +161,7 @@
         }
     },
     "type": "object",
+    "description": "A Sample defines an isolate of sequenceable material upon which sequencing experiments can be based.  The Sample object may be a surrogate for taxonomy accession or an anonymized individual identifier.  Or, it may fully specify provenance and isolation method of the starting material.",
     "required": [
         "sampleName"
     ],
@@ -172,7 +173,7 @@
         },
         "sampleName": {
             "title": "Sample Names",
-            "description": "Short text that can be used to call out sample records in search results or in displays.",
+            "description": "Add relevant information to properly identify the Sample: common and scientific names, taxonomy identifier etc. - information can be retrieved from NCBI Taxonomy Browser.",
             "type": "object",
             "required": [
                 "taxonId"
@@ -180,12 +181,12 @@
             "properties": {
                 "taxonId": {
                     "type": "integer",
-                    "description": "NCBI Taxonomy Identifier. This is appropriate for individual organisms and some environmental samples.",
+                    "description": "NCBI Taxonomy Identifier, this is appropriate for individual organisms and some environmental samples.",
                     "title": "Taxon ID"
                 },
                 "scientificName": {
                     "title": "Scientific Name",
-                    "description": "Scientific name of sample that distinguishes its taxonomy.  Please use a name or synonym that is tracked in the INSDC Taxonomy database. Also, this field can be used to confirm the TAXON_ID setting.",
+                    "description": "Scientific name of Sample that distinguishes its taxonomy.  Please use a name or synonym that is tracked in the INSDC Taxonomy database. Also, this field can be used to confirm the TAXON_ID setting.",
                     "type": "string"
                 },
                 "commonName": {
@@ -197,11 +198,12 @@
         },
         "description": {
             "title": "Sample Description",
-            "description": "More extensive free-form description of the sample.",
+            "description": "More extensive free-form description of the Sample.",
             "type": "string"
         },
         "sampleData": {
             "title": "Sample Data Type",
+            "description": "Specify if the Sample represents a human or non-human species. Not specifying the type we will consider it human, with unknown gender.",
             "oneOf": [
                 {
                     "type": "object",
@@ -224,6 +226,7 @@
                 {
                     "type": "object",
                     "title": "Non Human Sample",
+                    "description": "The non-human Sample requires a free-form description of the data e.g. species, gender if known and other relevant information.",
                     "properties": {
                         "dataDescription": {
                             "type": "string",
@@ -247,7 +250,7 @@
         "sampleAttributes": {
             "type": "array",
             "title": "Sample Attributes",
-            "description": "Properties and attributes of a sample.  These can be entered as free-form tag-value pairs. For certain studies, submitters may be asked to follow a community established ontology when describing the work.",
+            "description": "Properties and attributes of a Sample.  These can be entered as free-form tag-value pairs. For certain studies, submitters may be asked to follow a community established ontology when describing the work.",
             "items": {
                 "$ref": "#/definitions/sampleAttribute"
             }
