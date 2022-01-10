@@ -705,6 +705,11 @@
             "additionalProperties": false,
             "type": "object",
             "properties": {
+                "accessionId": {
+                    "type": "string",
+                    "description": "Identifies a record by its accession. The scope of resolution is the entire Storage.",
+                    "title": "Accession Id"
+                },
                 "refname": {
                     "type": "string",
                     "description": "Identifies an object by name within the namespace defined by attribute refcenter",
@@ -714,11 +719,6 @@
                     "type": "string",
                     "description": "The namespace of the attribute refname.",
                     "title": "Center Namespace"
-                },
-                "accessionId": {
-                    "type": "string",
-                    "description": "Identifies a record by its accession. The scope of resolution is the entire Storage.",
-                    "title": "Accession Id"
                 },
                 "identifiers": {
                     "$ref": "#/definitions/identifiers"
@@ -743,16 +743,6 @@
             "title": "Experiment Description",
             "description": "Free-form text describing the data sets.",
             "type": "string"
-        },
-        "studyRef": {
-            "title": "Study Reference",
-            "description": "Identifies the associated study.",
-            "$ref": "#/definitions/reference"
-        },
-        "design": {
-            "title": "Design",
-            "description": "The library design including library properties, layout, protocol, targeting information, and spot and gap descriptors. ",
-            "$ref": "#/definitions/libraryType"
         },
         "platform": {
             "title": "Platform / Instrument",
@@ -822,6 +812,16 @@
                 "Sequel",
                 "unspecified"
             ]
+        },
+        "studyRef": {
+            "title": "Study Reference",
+            "description": "Identifies the associated study.",
+            "$ref": "#/definitions/reference"
+        },
+        "design": {
+            "title": "Design",
+            "description": "The library design including library properties, layout, protocol, targeting information, and spot and gap descriptors. ",
+            "$ref": "#/definitions/libraryType"
         },
         "processing": {
             "title": "Processing",

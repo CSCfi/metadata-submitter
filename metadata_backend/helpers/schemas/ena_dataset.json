@@ -217,6 +217,11 @@
             "additionalProperties": true,
             "type": "object",
             "properties": {
+                "accessionId": {
+                    "type": "string",
+                    "description": "Identifies a record by its accession. The scope of resolution is the entire Storage.",
+                    "title": "Accession Id"
+                },
                 "refname": {
                     "type": "string",
                     "description": "Identifies an object by name within the namespace defined by attribute refcenter",
@@ -226,11 +231,6 @@
                     "type": "string",
                     "description": "The namespace of the attribute refname.",
                     "title": "Center Namespace"
-                },
-                "accessionId": {
-                    "type": "string",
-                    "description": "Identifies a record by its accession. The scope of resolution is the entire Storage.",
-                    "title": "Accession Id"
                 },
                 "identifiers": {
                     "$ref": "#/definitions/identifiers"
