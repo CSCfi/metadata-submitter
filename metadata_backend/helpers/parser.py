@@ -257,6 +257,8 @@ class MetadataXMLConverter(XMLSchemaConverter):
         - if processing is empty do not show it as it is not required
         - processing pipeSection should be intepreted as an array
         - processing pipeSection prevStepIndex can be None if not specified empty
+        - if sampleData does not exist (as it can only be added via forms) we will
+          add it with default gender unknown
         """
         xsd_type = xsd_type or xsd_element.type
 
@@ -271,6 +273,8 @@ class MetadataXMLConverter(XMLSchemaConverter):
             tmp = self.dict((self._to_camel(key.lower()), value) for key, value in self.map_attributes(data.attributes))
             if "accession" in tmp:
                 tmp["accessionId"] = tmp.pop("accession")
+            if "sampleName" in tmp and "sampleData" not in tmp:
+                tmp["sampleData"] = {"gender": "unknown"}
             if children is not None:
                 if isinstance(children, dict):
                     for key, value in children.items():
@@ -386,6 +390,12 @@ class CSVToJSONParser:
                 # Without TaxonID provided we assume the sample relates to
                 # Homo Sapien which has default TaxonID of 9606
                 _tmp["sampleName"] = {"taxonId": 9606}
+            # if geneder exists we will format it accordingly
+            if not bool(_tmp["gender"]):
+                _tmp["sampleData"] = {"gender": "unknown"}
+            else:
+                _tmp["sampleData"] = {"gender": _tmp["gender"]}
+            _tmp.pop("gender")
             JSONValidator(_tmp, schema_type.lower()).validate
             _parsed.append(_tmp)
 
