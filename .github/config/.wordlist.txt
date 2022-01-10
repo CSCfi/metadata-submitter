@@ -171,10 +171,12 @@ familyname
 faroese
 fasta
 fastq
+FBtr
 filename
 filetype
 flatfile
 flx
+FLYBASE
 folderid
 followsreadindex
 formdata
