@@ -108,8 +108,19 @@ class MetadataXMLConverter(XMLSchemaConverter):
             if "assembly" in key:
                 if next(iter(value)) in ["standard", "custom"]:
                     children[key] = next(iter(value.values()))
+                    if "accessionId" in children[key]:
+                        children[key]["accession"] = children[key].pop("accessionId")
                 else:
                     children[key] = value
+                continue
+
+            if key == "sequence":
+                if "sequence" not in children:
+                    children[key] = list()
+                children[key].append(value)
+                for d in children[key]:
+                    if "accessionId" in d:
+                        d["accession"] = d.pop("accessionId")
                 continue
 
             if "analysisType" in key:
@@ -132,6 +143,21 @@ class MetadataXMLConverter(XMLSchemaConverter):
             if "dataBlock" in key:
                 children["files"] = value["files"]
                 continue
+
+            if "processing" in key:
+                if not bool(value):
+                    continue
+
+            if "pipeSection" in key:
+                if "pipeSection" not in children:
+                    children[key] = list()
+                children[key].append(value)
+                continue
+
+            if "prevStepIndex" in key:
+                if not bool(value):
+                    children[key] = None
+                    continue
 
             if "spotDescriptor" in key:
                 children[key] = value["spotDecodeSpec"]
@@ -271,6 +297,8 @@ class MetadataXMLConverter(XMLSchemaConverter):
 
         if data.attributes:
             tmp = self.dict((self._to_camel(key.lower()), value) for key, value in self.map_attributes(data.attributes))
+            # we add the bool(children) condition as for referenceAlignment
+            # this is to distinguish between the attributes
             if "accession" in tmp:
                 tmp["accessionId"] = tmp.pop("accession")
             if "sampleName" in tmp and "sampleData" not in tmp:
