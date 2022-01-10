@@ -268,6 +268,11 @@
             "additionalProperties": true,
             "type": "object",
             "properties": {
+                "accessionId": {
+                    "type": "string",
+                    "description": "Identifies a record by its accession. The scope of resolution is the entire Storage.",
+                    "title": "Accession Id"
+                },
                 "refname": {
                     "type": "string",
                     "description": "Identifies an object by name within the namespace defined by attribute refcenter",
@@ -277,11 +282,6 @@
                     "type": "string",
                     "description": "The namespace of the attribute refname.",
                     "title": "Center Namespace"
-                },
-                "accessionId": {
-                    "type": "string",
-                    "description": "Identifies a record by its accession. The scope of resolution is the entire Storage.",
-                    "title": "Accession Id"
                 },
                 "identifiers": {
                     "$ref": "#/definitions/identifiers"
@@ -341,14 +341,6 @@
                 }
             ]
         },
-        "policyLinks": {
-            "type": "array",
-            "title": "Policy Links",
-            "description": "Links to resources related to this experiment or experiment set (publication, datasets, online databases). Used to encode URL links, Entrez links, and xref DB links. ",
-            "items": {
-                "$ref": "#/definitions/Links"
-            }
-        },
         "dataUses": {
             "type": "array",
             "description": "Data use ontologies (DUO) related to the Policy. More information at: https://github.com/EBISPOT/DUO .",
@@ -356,6 +348,14 @@
                 "$ref": "#/definitions/dataUseType"
             },
             "title": "Data Use Ontology"
+        },
+        "policyLinks": {
+            "type": "array",
+            "title": "Policy Links",
+            "description": "Links to resources related to this experiment or experiment set (publication, datasets, online databases). Used to encode URL links, Entrez links, and xref DB links. ",
+            "items": {
+                "$ref": "#/definitions/Links"
+            }
         },
         "policyAttributes": {
             "type": "array",
