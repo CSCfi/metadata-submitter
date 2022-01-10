@@ -520,9 +520,11 @@
             "$id": "#/definitions/processingType",
             "type": "object",
             "title": "Processing Type",
+            "description": "Information about the processing type such as pipeline and sequencing directives.",
             "properties": {
                 "pipeline": {
                     "title": "Pipeline",
+                    "description": "The Pipeline type identifies the sequence or tree of actions to process the sequencing data.",
                     "type": "object",
                     "required": [
                         "pipeSection"
@@ -534,17 +536,21 @@
                             "items": {
                                 "type": "object",
                                 "required": [
-                                    "prevStepIndex"
+                                    "stepIndex",
+                                    "prevStepIndex",
+                                    "program",
+                                    "version"
                                 ],
                                 "properties": {
                                     "stepIndex": {
                                         "type": "string",
+                                        "description": "Lexically ordered value that allows for the pipe section to be hierarchically ordered. The primitive data type is used to allow for pipe sections to be inserted later on.",
                                         "title": "Step Index"
                                     },
                                     "prevStepIndex": {
                                         "oneOf": [
                                             {
-                                                "title": "String value",
+                                                "title": "Float value",
                                                 "type": "string"
                                             },
                                             {
@@ -552,22 +558,27 @@
                                                 "type": "null"
                                             }
                                         ],
+                                        "description": "stepIndex of the previous step in the workflow. Set Null if the first pipe section.",
                                         "title": "Prev Step Index"
                                     },
                                     "program": {
                                         "type": "string",
+                                        "description": "Name of the program or process for primary analysis. This may include a test or condition that leads to branching in the workflow.",
                                         "title": "Program"
                                     },
                                     "version": {
                                         "type": "string",
+                                        "description": " Version of the program or process for primary analysis. ",
                                         "title": "Version"
                                     },
                                     "notes": {
                                         "type": "string",
+                                        "description": "Notes about the program or process for primary analysis. ",
                                         "title": "Notes"
                                     },
                                     "sectionName": {
                                         "type": "string",
+                                        "description": "If there are multiple sections specify the name of the processing pipeline section.",
                                         "title": "Section Name"
                                     }
                                 }
@@ -582,18 +593,18 @@
                     "properties": {
                         "sampleDemuxDirective": {
                             "type": "object",
-                            "title": "Sample demux directive",
                             "description": "Tells the Archive who will execute the sample demultiplexing operation.",
+                            "title": "Sample Demux Directive",
                             "properties": {
                                 "leaveAsPool": {
                                     "type": "string",
                                     "description": "There shall be no sample de-multiplexing at the level of assigning individual reads to sample pool members.",
-                                    "title": "Leave as pool"
+                                    "title": "Leave As Pool"
                                 },
                                 "submitterDemultiplexed": {
                                     "type": "string",
                                     "description": "The submitter has assigned individual reads to sample pool members by providing individual files containing reads with the same member assignment.",
-                                    "title": "Submitter demultiplexed"
+                                    "title": "Submitter Demultiplexed"
                                 }
                             }
                         }
@@ -774,19 +785,7 @@
         },
         "processing": {
             "title": "Processing",
-            "oneOf": [
-                {
-                    "title": "Single Processing",
-                    "type": "string"
-                },
-                {
-                    "title": "Complex Processing",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/processingType"
-                    }
-                }
-            ]
+            "$ref": "#/definitions/processingType"
         },
         "experimentLinks": {
             "type": "array",

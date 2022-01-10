@@ -23,6 +23,7 @@ analysislinks
 analysisref
 analysistype
 annotinfo
+anonymized
 antibiogram
 api
 apisauce
@@ -147,6 +148,7 @@ dt
 dzongkha
 ean
 eastboundlongitude
+EDirect
 ega
 eissn
 ena
@@ -260,6 +262,7 @@ kwanyama
 kyrgyz
 lang
 leaveaspool
+Lexically
 libraryconstructionprotocol
 librarydescriptor
 librarylayout
@@ -469,6 +472,7 @@ secondaryid
 sectionname
 selex
 seqannot
+sequenceable
 sequenceannotation
 sequenceassembly
 sequenceflatfile
