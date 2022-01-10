@@ -933,21 +933,86 @@
       "type": "object",
       "title": "The extra DOI info schema",
       "properties": {
-        "identifier": {
+        "studyIdentifier": {
           "type": "object",
-          "title": "identifier object",
           "required": [
-            "identifierType",
-            "doi"
+            "accessionId",
+            "identifier",
+            "url"
           ],
           "properties": {
-            "identifierType": {
-              "type": "string",
-              "title": "Type of identifier (= DOI)"
+            "identifier": {
+              "type": "object",
+              "title": "identifier object",
+              "required": [
+                "identifierType",
+                "doi"
+              ],
+              "properties": {
+                "identifierType": {
+                  "type": "string",
+                  "title": "Type of identifier (= DOI)"
+                },
+                "doi": {
+                  "type": "string",
+                  "title": "A persistent identifier for a resource"
+                }
+              }
             },
-            "doi": {
+            "accessionId": {
               "type": "string",
-              "title": "A persistent identifier for a resource"
+              "title": "Internal accessionId for the study"
+            },
+            "url": {
+              "type": "string",
+              "title": "URL of the digital location of the object"
+            },
+            "types": {
+              "type": "object",
+              "title": "Type info of the resource. Multiple types can be listed: ResourceTypeGeneral, schemaOrg etc."
+            }
+          }
+        },
+        "datasetIdentifiers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "accessionId",
+              "identifier",
+              "url"
+            ],
+            "properties": {
+              "identifier": {
+                "type": "object",
+                "title": "identifier object",
+                "required": [
+                  "identifierType",
+                  "doi"
+                ],
+                "properties": {
+                  "identifierType": {
+                    "type": "string",
+                    "title": "Type of identifier (= DOI)"
+                  },
+                  "doi": {
+                    "type": "string",
+                    "title": "A persistent identifier for a resource"
+                  }
+                }
+              },
+              "accessionId": {
+                "type": "string",
+                "title": "Internal accessionid for the dataset"
+              },
+              "url": {
+                "type": "string",
+                "title": "URL of the digital location of the object"
+              },
+              "types": {
+                "type": "object",
+                "title": "Type info of the resource. Multiple types can be listed: ResourceTypeGeneral, schemaOrg etc."
+              }
             }
           }
         },
@@ -958,14 +1023,6 @@
         "publicationYear": {
           "type": "integer",
           "title": "Publication Year"
-        },
-        "types": {
-          "type": "object",
-          "title": "Type info of the resource. Multiple types can be listed: ResourceTypeGeneral, schemaOrg etc."
-        },
-        "url": {
-          "type": "string",
-          "title": "URL of the digital location of the object"
         },
         "version": {
           "type": "string",
