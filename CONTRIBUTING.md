@@ -23,7 +23,7 @@ Once submitted, the Pull Request will go through a review process, meaning we wi
 
 #### Git Branches
 
-We use `develop` branch as the main developopment branch and `master` as the releases branch.
+We use `develop` branch as the main development branch and `master` as the releases branch.
 All Pull Requests related to features should be done against `develop` branch, releases Pull Requests should be done against `master` branch.
 
 Give your branch a short descriptive name (like the names between the `<>` below) and prefix the name with something representative for that branch:
@@ -42,12 +42,12 @@ We do optimize for readability, and it would be awesome if you go through the co
 - Indentation should be 4 *spaces*
 - 120 character limit is almost strict, but can be broken in documentation when
  hyperlinks go over the limits
-- We use [black](https://github.com/psf/black) code formatter and also check for [pep8](https://www.python.org/dev/peps/pep-0008/) and [pep257](https://www.python.org/dev/peps/pep-0257/) with some small exceptions. You can see the stated exceptions in `tox.ini` configuration file
+- We use [black](https://github.com/psf/black) for code format and also check for [pep8](https://www.python.org/dev/peps/pep-0008/) and [pep257](https://www.python.org/dev/peps/pep-0257/) with some small exceptions. You can see the stated exceptions in `tox.ini` configuration file
 - We like to keep things simple, so when possible avoid importing any big libraries.
 - Tools to help you:
   - Tox is configured to run bunch of tests: black, flake8, docstrings, missing type hints, mypy;
   - Tox is also ran in our CI, so please run tox before each push to this repository;
-  - If you like things to happen automagically, you can add pre-commit hook to your git workflow! Hook can be found from [scripts-folder](scripts) and it includes settings for tox and [pyspelling](https://facelessuser.github.io/pyspelling/) (which is there just for, well, spelling errors).
+  - If you like things to happen in an automated manner, you can add pre-commit hook to your git workflow! Hook can be found from [scripts-folder](scripts) and it includes settings for tox and [pyspelling](https://facelessuser.github.io/pyspelling/) (which is there just for, well, spelling errors).
 
 Thanks,
 CSC developers

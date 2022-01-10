@@ -23,9 +23,9 @@ fi
 echo "Running pyspelling as a pre-commit hook"
 # Checking pyspelling against files and folder not in .gitignore
 
-if ! pyspelling -v -c "$root_dir/.spellcheck.yml"; then
+if ! pyspelling -v -c "$root_dir/.github/config/.spellcheck.yml"; then
     echo "=============================="
     echo "Check your spelling errors before commit!"
-    echo "To fix errors with one command, run: pyspelling -v -c $root_dir/.spellcheck.yml"
+    echo "To fix errors with one command, run: pyspelling -v -c $root_dir/.github/config/.spellcheck.yml"
     exit 1
 fi

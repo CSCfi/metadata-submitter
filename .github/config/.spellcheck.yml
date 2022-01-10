@@ -17,7 +17,7 @@ matrix:
       - open: '(?P<open>`+)'
         close: '(?P=open)'
       # Ignore surrounded in <> as in RST it is link
-      - open: '<([A-Za-z0-9-_:.]+)|(https?://[^\s/$.?#].[^\s]+|[A-Za-z0-9-_:.]+)'
+      - open: '<(https?://[^\\s/$.?#].[^\\s]+|[A-Za-z0-9-_:.]+)'
         close: '>'
   sources:
   - 'docs/*.rst'
