@@ -74,7 +74,7 @@
             ],
             "properties": {
                 "entrezDb": {
-                    "description": "Entrez Molecular Sequence Database System, NCBI controlled vocabulary of permitted cross references.",
+                    "description": "Entrez Molecular Sequence Database System, NCBI controlled vocabulary of permitted cross references. Also known as Entrez Direct (EDirect) .",
                     "title": "Database",
                     "type": "string",
                     "enum": [
@@ -153,24 +153,47 @@
                 "email": {
                     "type": "string",
                     "title": "Contact Email",
-                    "description": "email of the person to contact.",
+                    "description": "Email of the person to contact.",
                     "format": "email"
                 },
                 "telephoneNumber": {
                     "type": "string",
                     "title": "Contact Telephone Number",
-                    "description": "telephone number of the person to contact.",
+                    "description": "Telephone number of the person to contact.",
                     "pattern": "^[-a-zA-Z0-9-()+ ]*"
                 },
                 "organisation": {
                     "type": "string",
                     "title": "Organisation",
-                    "description": "Center or institution name."
+                    "description": "Center or institution name. We will use ROR to suggest an organisation."
                 },
                 "mainContact": {
                     "type": "boolean",
                     "title": "Main Contact",
-                    "description": "If true then this is the main contact."
+                    "description": "If selected then this is the main contact for the DAC."
+                }
+            }
+        },
+        "dacAttribute": {
+            "$id": "#/definitions/dacAttribute",
+            "type": "object",
+            "title": "DAC Attribute",
+            "required": [
+                "tag",
+                "value"
+            ],
+            "properties": {
+                "tag": {
+                    "type": "string",
+                    "title": "Tag title"
+                },
+                "value": {
+                    "type": "string",
+                    "title": "Description"
+                },
+                "units": {
+                    "type": "string",
+                    "title": "Optional scientific units."
                 }
             }
         }
@@ -184,6 +207,7 @@
         "contacts": {
             "type": "array",
             "title": "Contacts",
+            "description": "List of persons that ar part of the Data Access Committee. At least one main contact is required.",
             "items": {
                 "$ref": "#/definitions/contact"
             },
@@ -209,7 +233,7 @@
         },
         "title": {
             "title": "DAC Title",
-            "description": "Short text that can be used to call out DAC records in searches or in displays.",
+            "description": "Title of the Data Access Committee (DAC) that will approve applications to the datasets.",
             "type": "string"
         },
         "dacLinks": {
@@ -218,6 +242,14 @@
             "description": "Links to resources related to this experiment or experiment set (publication, datasets, online databases). Used to encode URL links, Entrez links, and xref DB links. ",
             "items": {
                 "$ref": "#/definitions/Links"
+            }
+        },
+        "dacAttributes": {
+            "type": "array",
+            "title": "Study Attributes",
+            "description": "Properties and attributes of the DAC. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
+            "items": {
+                "$ref": "#/definitions/dacAttribute"
             }
         }
     }

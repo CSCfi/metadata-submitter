@@ -74,7 +74,7 @@
             ],
             "properties": {
                 "entrezDb": {
-                    "description": "Entrez Molecular Sequence Database System, NCBI controlled vocabulary of permitted cross references.",
+                    "description": "Entrez Molecular Sequence Database System, NCBI controlled vocabulary of permitted cross references. Also known as Entrez Direct (EDirect) .",
                     "title": "Database",
                     "type": "string",
                     "enum": [
@@ -140,7 +140,7 @@
             "$id": "#/definitions/dataUseType",
             "type": "object",
             "title": "Data Use Type",
-            "description": "tag title and its associated value (description)",
+            "description": "Data Use ontology",
             "required": [
                 "ontology",
                 "code",
@@ -149,18 +149,19 @@
             "properties": {
                 "modifier": {
                     "title": "List of Use Modifiers",
+                    "description": "If Data Use Ontology used, see https://github.com/EBISPOT/DUO for examples.",
                     "type": "array",
                     "items": {
                         "type": "object",
                         "properties": {
                             "modifier": {
-                                "description": "Describes modifiers to the Data Use Restriction",
+                                "description": "Describes modifiers to the Data Use Restriction.",
                                 "title": "Modifier",
                                 "$ref": "#/definitions/xrefLink"
                             },
                             "url": {
                                 "type": "string",
-                                "description": "Link to URL describing the Data Use"
+                                "description": "Link to URL describing the Data Use."
                             }
                         }
                     }
@@ -172,10 +173,12 @@
                 },
                 "ontology": {
                     "type": "string",
-                    "title": "Ontology abbreviation, e.g. DUO for Data Use Ontology"
+                    "description": "If Data Use Ontology then use DUO.",
+                    "title": "Ontology abbreviation"
                 },
                 "code": {
                     "type": "string",
+                    "description": "Where the ontology can be found.",
                     "title": "Code for the ontology"
                 },
                 "version": {
@@ -210,23 +213,28 @@
         "identifiers": {
             "$id": "#/definitions/identifiers",
             "title": "Identifiers",
+            "description": "Identifiers to be used in the International Nucleotide Sequence Database Collaboration (INSDC) namespace.",
             "type": "object",
             "properties": {
                 "primaryId": {
                     "type": "string",
+                    "description": "A primary identifier in the INSDC namespace.",
                     "title": "Primary Id"
                 },
                 "secondaryId": {
                     "type": "string",
+                    "description": "A secondary identifier in the INSDC namespace.",
                     "title": "Secondary Id"
                 },
                 "uuid": {
                     "type": "string",
+                    "description": "A universally unique identifier that requires no namespace.",
                     "title": "UUID"
                 },
                 "externalId": {
                     "type": "object",
                     "title": "External Id",
+                    "description": "An identifier from a public non-INSDC resource.",
                     "properties": {
                         "namespace": {
                             "type": "string",
@@ -241,6 +249,7 @@
                 "submitterId": {
                     "type": "object",
                     "title": "Submitter Id",
+                    "description": "A submitter provided identifier.",
                     "properties": {
                         "namespace": {
                             "type": "string",
@@ -259,20 +268,19 @@
             "additionalProperties": true,
             "type": "object",
             "properties": {
-                "label": {
-                    "type": "string",
-                    "title": "Label"
-                },
                 "refname": {
                     "type": "string",
+                    "description": "Identifies an object by name within the namespace defined by attribute refcenter",
                     "title": "Record name"
                 },
                 "refcenter": {
                     "type": "string",
+                    "description": "The namespace of the attribute refname.",
                     "title": "Center Namespace"
                 },
                 "accessionId": {
                     "type": "string",
+                    "description": "Identifies a record by its accession. The scope of resolution is the entire Storage.",
                     "title": "Accession Id"
                 },
                 "identifiers": {
@@ -282,7 +290,7 @@
         }
     },
     "type": "object",
-    "description": "Describes an object that contains data access policy information.",
+    "description": "Describes an object that contains data access Policy information.",
     "required": [
         "dacRef",
         "policy"
@@ -290,21 +298,22 @@
     "properties": {
         "title": {
             "title": "Policy Title",
-            "description": "Short text that can be used to call out data access policies in searches or in displays.",
+            "description": "Title of the Policy so it can be easily be found.",
             "type": "string"
         },
         "dacRef": {
             "title": "Data Access Committee Reference",
-            "description": "Identifies the data access committee to which this policy pertains.",
+            "description": "Identifies the data access committee to which this Policy pertains.",
             "$ref": "#/definitions/reference"
         },
         "policy": {
             "title": "Policy",
-            "description": "Identifies the data access committee to which this policy pertains.",
+            "description": "Policies can be added either by adding the text of the Policy of by pointing to an existing URL.",
             "oneOf": [
                 {
                     "type": "object",
                     "title": "Policy Text",
+                    "description": "Text containing the policy.",
                     "properties": {
                         "policyText": {
                             "type": "string",
@@ -318,6 +327,7 @@
                 {
                     "type": "object",
                     "title": "Policy URL",
+                    "description": "Links to the Policy text / information.",
                     "properties": {
                         "policyUrl": {
                             "type": "string",
@@ -341,7 +351,7 @@
         },
         "dataUses": {
             "type": "array",
-            "description": "Data use ontologies (DUO) related to the policy",
+            "description": "Data use ontologies (DUO) related to the Policy. More information at: https://github.com/EBISPOT/DUO .",
             "items": {
                 "$ref": "#/definitions/dataUseType"
             },
@@ -350,7 +360,7 @@
         "policyAttributes": {
             "type": "array",
             "title": "Policy Attributes",
-            "description": "Properties and attributes of the policy. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
+            "description": "Properties and attributes of the Policy. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
             "items": {
                 "$ref": "#/definitions/policyAttribute"
             }
