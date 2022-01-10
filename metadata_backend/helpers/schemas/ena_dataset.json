@@ -235,6 +235,9 @@
     },
     "type": "object",
     "description": "Describes an object that contains data access policy information.",
+    "required": [
+        "title"
+    ],
     "properties": {
         "title": {
             "title": "Dataset Title",
@@ -281,7 +284,7 @@
             "type": "array",
             "items": {
                 "$ref": "#/definitions/reference"
-            } 
+            }
         },
         "analysisRef": {
             "title": "Analysis Reference",
@@ -289,7 +292,7 @@
             "type": "array",
             "items": {
                 "$ref": "#/definitions/reference"
-            } 
+            }
         },
         "datasetLinks": {
             "type": "array",
