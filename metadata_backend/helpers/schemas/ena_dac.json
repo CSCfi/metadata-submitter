@@ -194,7 +194,9 @@
                         "$ref": "#/definitions/contact"
                     },
                     {
-                        "required": ["mainContact"],
+                        "required": [
+                            "mainContact"
+                        ],
                         "properties": {
                             "mainContact": {
                                 "const": true
@@ -206,10 +208,9 @@
             "maxContains": 1
         },
         "title": {
-            "title": "DAC Description",
+            "title": "DAC Title",
             "description": "Short text that can be used to call out DAC records in searches or in displays.",
-            "type": "string",
-            "minLength": 10
+            "type": "string"
         },
         "dacLinks": {
             "type": "array",
