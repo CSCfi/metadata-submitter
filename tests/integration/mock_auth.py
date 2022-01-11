@@ -1,5 +1,6 @@
 """Mock OAUTH2 aiohttp.web server."""
 
+from os import getenv
 from time import time
 from aiohttp import web
 from cryptography.hazmat.primitives import serialization
@@ -43,7 +44,10 @@ user_sub = ""
 user_given_name = ""
 user_family_name = ""
 
-header = {"jku": "http://mockauth:8000/jwk", "kid": "rsa1", "alg": "RS256", "typ": "JWT"}
+mock_auth_url_docker = getenv("OIDC_URL", "http://mockauth:8000")  # called from inside docker-network
+mock_auth_url_local = getenv("OIDC_URL_TEST", "http://localhost:8000")  # called from local machine
+
+header = {"jku": f"{mock_auth_url_docker}/jwk", "kid": "rsa1", "alg": "RS256", "typ": "JWT"}
 
 
 async def setmock(req: web.Request) -> web.Response:
@@ -83,12 +87,12 @@ async def token(req: web.Request) -> web.Response:
         "eduPersonAffiliation": "member;staff",
         "sub": user_sub,
         "displayName": f"{user_given_name} {user_family_name}",
-        "iss": "http://mockauth:8000",
+        "iss": mock_auth_url_docker,
         "schacHomeOrganizationType": "urn:schac:homeOrganizationType:test:other",
         "given_name": user_given_name,
         "nonce": nonce,
         "aud": "aud2",
-        "acr": "http://mockauth:8000/LoginHaka",
+        "acr": f"{mock_auth_url_docker}/LoginHaka",
         "nsAccountLock": "false",
         "eduPersonScopedAffiliation": "staff@test.what;member@test.what",
         "auth_time": iat,
@@ -148,12 +152,11 @@ async def userinfo(request: web.Request) -> web.Response:
 async def oidc_config(request: web.Request) -> web.Response:
     """Return standard OIDC configuration."""
     oidc_config_json = {
-        "issuer": "http://mockauth:8000",
-        # must be localhost to be accessible outside of docker-network
-        "authorization_endpoint": "http://localhost:8000/authorize",
-        "token_endpoint": "http://mockauth:8000/token",
-        "userinfo_endpoint": "http://mockauth:8000/userinfo",
-        "jwks_uri": "http://mockauth:8000/keyset",
+        "issuer": mock_auth_url_docker,
+        "authorization_endpoint": f"{mock_auth_url_local}/authorize",
+        "token_endpoint": f"{mock_auth_url_docker}/token",
+        "userinfo_endpoint": f"{mock_auth_url_docker}/userinfo",
+        "jwks_uri": f"{mock_auth_url_docker}/keyset",
         "response_types_supported": [
             "code",
             "id_token",

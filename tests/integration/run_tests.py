@@ -52,8 +52,7 @@ test_json_files = [
     ("analysis", "ERZ266973.json", "ERZ266973.json"),
 ]
 base_url = os.getenv("BASE_URL", "http://localhost:5430")
-# mock_auth_url = os.getenv("OIDC_URL", "http://localhost:8000")
-mock_auth_url = "http://localhost:8000"  # must be localhost, accessible from outside of docker-network
+mock_auth_url = os.getenv("OIDC_URL_TEST", "http://localhost:8000")
 objects_url = f"{base_url}/objects"
 drafts_url = f"{base_url}/drafts"
 templates_url = f"{base_url}/templates"
