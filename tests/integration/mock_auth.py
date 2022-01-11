@@ -80,7 +80,6 @@ async def token(req: web.Request) -> web.Response:
     global nonce, user_sub, user_family_name, user_given_name
     id_token = {
         "at_hash": "fSi3VUa5i2o2SgY5gPJZgg",
-        "sub": "smth",
         "eduPersonAffiliation": "member;staff",
         "sub": user_sub,
         "displayName": f"{user_given_name} {user_family_name}",
@@ -150,7 +149,8 @@ async def oidc_config(request: web.Request) -> web.Response:
     """Return standard OIDC configuration."""
     oidc_config_json = {
         "issuer": "http://mockauth:8000",
-        "authorization_endpoint": "http://localhost:8000/authorize",  # must be localhost to be accessible outside of docker-network
+        # must be localhost to be accessible outside of docker-network
+        "authorization_endpoint": "http://localhost:8000/authorize",
         "token_endpoint": "http://mockauth:8000/token",
         "userinfo_endpoint": "http://mockauth:8000/userinfo",
         "jwks_uri": "http://mockauth:8000/keyset",
