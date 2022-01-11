@@ -308,7 +308,7 @@
         },
         "policy": {
             "title": "Policy",
-            "description": "Policies can be added either by adding the text of the Policy of by pointing to an existing URL.",
+            "description": "Policies can be added either by providing the text of the Policy of by pointing to an existing URL.",
             "oneOf": [
                 {
                     "type": "object",
