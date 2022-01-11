@@ -13,7 +13,7 @@ COPY requirements.txt .
 COPY metadata_backend/ ./metadata_backend
 
 RUN pip install .
-RUN pip install authlib==0.15.5  # required for mockauth (integration test)
+RUN pip install authlib  # required for mockauth (integration test)
 
 EXPOSE 5430
 
