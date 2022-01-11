@@ -52,7 +52,8 @@ test_json_files = [
     ("analysis", "ERZ266973.json", "ERZ266973.json"),
 ]
 base_url = os.getenv("BASE_URL", "http://localhost:5430")
-mock_auth_url = os.getenv("OIDC_URL", "http://localhost:8000")
+# mock_auth_url = os.getenv("OIDC_URL", "http://localhost:8000")
+mock_auth_url = "http://localhost:8000"  # must be localhost, accessible from outside of docker-network
 objects_url = f"{base_url}/objects"
 drafts_url = f"{base_url}/drafts"
 templates_url = f"{base_url}/templates"
@@ -77,10 +78,10 @@ other_test_user = "mock_user@test.what"
 
 
 # === Helper functions ===
-async def login(sess, eppn, given, family):
+async def login(sess, sub, given, family):
     """Mock login."""
     params = {
-        "eppn": eppn,
+        "sub": sub,
         "family": family,
         "given": given,
     }

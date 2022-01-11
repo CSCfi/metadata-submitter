@@ -170,7 +170,9 @@ class AccessHandler:
             LOG.error(
                 "User was authenticated, but they are missing mandatory claim CSCUserName, remoteUserIdentifier or sub."
             )
-            raise web.HTTPBadRequest(reason="Could not set user, missing claim eppn or sub.")
+            raise web.HTTPBadRequest(
+                reason="Could not set user, missing claim CSCUserName, remoteUserIdentifier or sub."
+            )
         await self._set_user(req, session_id, user_data)
 
         # done like this otherwise it will not redirect properly

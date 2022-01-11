@@ -118,7 +118,7 @@ We follow the steps of the OpenID Connect protocol.
 - The OP authenticates the End-User and obtains authorization.
 - The OP responds with an ID Token and usually an Access Token, which are validated with configuration provided by ``OIDC_URL``.
 - The RP can send a request with the Access Token to the UserInfo Endpoint.
-- The UserInfo Endpoint returns Claims about the End-User, use use some claims ``sub`` and ``eppn`` to identify the user and start a session.
+- The UserInfo Endpoint returns Claims about the End-User, use claims ``sub``, ``CSCUserName`` or ``remoteUserIdentifier`` to identify the user and start a session.
 
 Information related to the OpenID Provider (OP) that needs to be configured is displayed in the table below.
 Most of the information can be retrieved from `OIDC Provider <https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata>`_ metadata
