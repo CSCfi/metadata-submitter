@@ -30,7 +30,7 @@
                     "affiliation": {
                         "type": "array",
                         "title": "Affiliations",
-                        "description": "The organizational or institutional affiliation of the creator. Start writing the name of the organization or institution and a suggestion will be made from Research Organization Registry (ROR) Community API.",
+                        "description": "The organizational or institutional affiliation of the creator. Upon filling the form with the organization or institution suggestion will be made from Research Organization Registry (ROR) Community API.",
                         "items": {
                             "type": "object",
                             "title": "Affiliation Details",
@@ -212,7 +212,7 @@
                     "affiliation": {
                         "type": "array",
                         "title": "Affiliations",
-                        "description": "The organizational or institutional affiliation of the creator. Start writing the name of the organization or institution and a suggestion will be made from Research Organization Registry (ROR) Community API.",
+                        "description": "The organizational or institutional affiliation of the creator. Upon filling the form with the organization or institution suggestion will be made from Research Organization Registry (ROR) Community API.",
                         "items": {
                             "type": "object",
                             "title": "Affiliation Details",
@@ -590,7 +590,7 @@
                 "Walloon",
                 "Welsh",
                 "Western Frisian",
-                "WolOf",
+                "Wolof",
                 "Xhosa",
                 "Yiddish",
                 "Yoruba",
@@ -684,17 +684,17 @@
                     "relatedMetadataScheme": {
                         "type": "string",
                         "title": "Related Metadata Scheme",
-                        "description": "To be Use only with this relation pair: (Has Metadata/Is Metadata For). Example DDI-L"
+                        "description": "To be used only with this relation pair: (Has Metadata/Is Metadata For). Example DDI-L"
                     },
                     "schemeUri": {
                         "type": "string",
                         "title": "Related Metadata Scheme URI",
-                        "description": "To be Use only with this relation pair: (Has Metadata/Is Metadata For). Example: http://www.ddialliance.org/Specification/DDI-Lifecycle/3.1/XMLSchema/instance.xsd"
+                        "description": "To be used only with this relation pair: (Has Metadata/Is Metadata For). Example: http://www.ddialliance.org/Specification/DDI-Lifecycle/3.1/XMLSchema/instance.xsd"
                     },
                     "schemeType": {
                         "type": "string",
                         "title": "Related Metadata Scheme Type",
-                        "description": "To be Use only with this relation pair: (Has Metadata/Is Metadata For). Examples: XSD, DDT, Turtle"
+                        "description": "To be used only with this relation pair: (Has Metadata/Is Metadata For). Examples: XSD, DDT, Turtle"
                     },
                     "resourceTypeGeneral": {
                         "type": "string",

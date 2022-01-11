@@ -98,6 +98,6 @@ Frontend is built and added as static files to backend while building.
 
 Metadata submission interface is released under `MIT`, see [LICENSE](LICENSE).
 
-## contributing
+## Contributing
 
 If you want to contribute to a project and make it better, your help is very welcome. For more info about how to contribute, see [CONTRIBUTING](CONTRIBUTING.md).

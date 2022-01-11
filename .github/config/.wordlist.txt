@@ -113,8 +113,8 @@ curation
 currentsubmissiontype
 customfields
 dac
-dacAttribute
-dacAttributes
+dacattribute
+dacattributes
 daclinks
 dacref
 datacite
@@ -123,7 +123,7 @@ datapaper
 dataset
 datasetattribute
 datasetattributes
-datasetIdentifiers
+datasetidentifiers
 datasetlinks
 datasets
 datasettype
@@ -135,7 +135,7 @@ datepublished
 datetype
 dbprobe
 dbvar
-DDI
+ddi
 ddialliance
 de
 decodings
@@ -159,8 +159,8 @@ dzongkha
 ean
 eastboundlongitude
 ebi
-EBISPOT
-EDirect
+ebispot
+edirect
 ega
 eissn
 ena
@@ -189,12 +189,12 @@ familyname
 faroese
 fasta
 fastq
-FBtr
+fbtr
 filename
 filetype
 flatfile
 flx
-FLYBASE
+flybase
 folderid
 followsreadindex
 formdata
@@ -283,7 +283,7 @@ kwanyama
 kyrgyz
 lang
 leaveaspool
-Lexically
+lexically
 libraryconstructionprotocol
 librarydescriptor
 librarylayout
@@ -292,7 +292,7 @@ libraryselection
 librarysource
 librarystrategy
 librarytype
-Lifecycle
+lifecycle
 limburgish
 lims
 lingala
@@ -538,7 +538,7 @@ studyabstract
 studyattribute
 studyattributes
 studydescription
-studyIdentifier
+studyidentifier
 studylinks
 studyref
 studytitle
@@ -576,7 +576,7 @@ twi
 txt
 ui
 umi
-unencryptedChecksum
+unencryptedchecksum
 uniqueitems
 unlocalised
 uri
@@ -611,7 +611,7 @@ wxs
 xl
 xml
 xmlfile
-XMLSchema
+xmlschema
 xref
 xrefdb
 xrefid
