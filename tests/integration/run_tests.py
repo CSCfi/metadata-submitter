@@ -52,7 +52,7 @@ test_json_files = [
     ("analysis", "ERZ266973.json", "ERZ266973.json"),
 ]
 base_url = os.getenv("BASE_URL", "http://localhost:5430")
-mock_auth_url = os.getenv("ISS_URL", "http://localhost:8000")
+mock_auth_url = os.getenv("OIDC_URL_TEST", "http://localhost:8000")
 objects_url = f"{base_url}/objects"
 drafts_url = f"{base_url}/drafts"
 templates_url = f"{base_url}/templates"
@@ -77,10 +77,10 @@ other_test_user = "mock_user@test.what"
 
 
 # === Helper functions ===
-async def login(sess, eppn, given, family):
+async def login(sess, sub, given, family):
     """Mock login."""
     params = {
-        "eppn": eppn,
+        "sub": sub,
         "family": family,
         "given": given,
     }

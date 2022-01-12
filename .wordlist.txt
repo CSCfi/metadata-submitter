@@ -24,6 +24,7 @@ createFromXML
 createNewDraftFolder
 createSlice
 CSC
+CSCUserName
 CSCfi
 cscfi
 css
@@ -115,6 +116,7 @@ readthedocs
 redux
 REFERER
 reqs
+remoteUserIdentifier
 rootReducer
 rst
 schemas

@@ -144,17 +144,10 @@ aai_config = {
     "redirect": f'{os.getenv("REDIRECT_URL")}'
     if bool(os.getenv("REDIRECT_URL"))
     else os.getenv("BASE_URL", "http://localhost:5430"),
-    "scope": "openid profile email",
-    "iss": os.getenv("ISS_URL", ""),
+    "scope": os.getenv("OIDC_SCOPE", "openid profile email"),
     "callback_url": f'{os.getenv("BASE_URL", "http://localhost:5430").rstrip("/")}/callback',
-    "auth_url": f'{os.getenv("AUTH_URL", "")}'
-    if bool(os.getenv("AUTH_URL"))
-    else f'{os.getenv("OIDC_URL", "").rstrip("/")}/authorize',
-    "token_url": f'{os.getenv("OIDC_URL", "").rstrip("/")}/token',
-    "user_info": f'{os.getenv("OIDC_URL", "").rstrip("/")}/userinfo',
-    "revoke_url": f'{os.getenv("OIDC_URL", "").rstrip("/")}/revoke',
-    "jwk_server": f'{os.getenv("JWK_URL", "")}',
-    "auth_referer": f'{os.getenv("AUTH_REFERER", "")}',
+    "oidc_url": os.getenv("OIDC_URL", ""),
+    "auth_method": os.getenv("AUTH_METHOD", "code"),
 }
 
 
