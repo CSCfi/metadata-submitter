@@ -42,7 +42,7 @@ jobs:
         python tests/integration/run_tests.py
       env:
         BASE_URL: http://localhost:5430
-        ISS_URL: http://localhost:8000
+        OIDC_URL: http://localhost:8000
         MONGO_HOST: localhost:27017
         MONGO_DATABASE: default
         MONGO_AUTHDB: admin
@@ -84,7 +84,7 @@ jobs:
         python tests/integration/run_tests.py
       env:
         BASE_URL: http://localhost:5430
-        ISS_URL: http://localhost:8000
+        OIDC_URL: http://localhost:8000
         MONGO_SSL: True
         
     - name: Collect logs from docker

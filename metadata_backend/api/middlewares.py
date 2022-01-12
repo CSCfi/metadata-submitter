@@ -68,7 +68,7 @@ async def http_error_handler(req: Request, handler: Callable) -> Response:
             raise web.HTTPUnprocessableEntity(text=details, content_type=c_type)
         else:
             _check_error_page_requested(req, 500)
-            raise web.HTTPServerError()
+            raise web.HTTPInternalServerError(text=details, content_type=c_type)
 
 
 @middleware
@@ -199,7 +199,7 @@ def _check_csrf(request: web.Request) -> bool:
         if "redirect" in aai_config and request.headers["Referer"].startswith(aai_config["redirect"]):
             LOG.info("Skipping Referer check due to request coming from frontend.")
             return True
-        if "auth_referer" in aai_config and request.headers["Referer"].startswith(aai_config["auth_referer"]):
+        if "oidc_url" in aai_config and request.headers["Referer"].startswith(aai_config["oidc_url"]):
             LOG.info("Skipping Referer check due to request coming from OIDC.")
             return True
         if cookie["referer"] not in request.headers["Referer"]:
