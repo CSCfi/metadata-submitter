@@ -11,6 +11,7 @@ from ...helpers.doi import DOIHandler
 from ...helpers.logger import LOG
 from ...helpers.metax_api_handler import MetaxServiceHandler
 from ...helpers.validator import JSONValidator
+from ..metax_api_handler import MetaxServiceHandler
 from ..operators import FolderOperator, Operator, XMLOperator
 from .common import multipart_content
 from .restapi import RESTAPIHandler
@@ -194,6 +195,42 @@ class ObjectAPIHandler(RESTAPIHandler):
             headers=location_headers,
             content_type="application/json",
         )
+
+    # TODO: update doi related code
+    async def create_metax_dataset(self, req: Request, collection: str, accession_id: str) -> str:
+        """Handle connection to Metax api handler and returned data.
+
+        Sends Dataset or Study object's data to Metax api handler. Updates object with returned metax ID to database.
+        Object's data has to be fetched first from db in case of XML input.
+        Has temporary DOI fetching, will be chaged with real data.
+
+        :param req: HTTP request
+        :param collection: object's schema
+        :param accession_id: object's accession ID
+        :returns: Metax ID
+        """
+        metax_service = MetaxServiceHandler(req)
+        operator = Operator(req.app["db_client"])
+        object_data, _ = await operator.read_metadata_object(collection, accession_id)
+        if isinstance(object_data, Dict):
+            object_data["doi"] = await self.create_doi()
+            metax_id = await metax_service.post_dataset_as_draft(collection, object_data)
+        else:
+            raise ValueError("Object's data must be dictionary")
+        new_info = {"doi": object_data["doi"], "metaxIdentifier": {"identifier": metax_id, "status": "draft"}}
+        accession_id = await operator.update_metadata_object(collection, accession_id, new_info)
+        return metax_id
+
+    # TODO: to be replaced with real doi fetching
+    async def create_doi(self) -> str:
+        """Temporary function for random DOI creation.
+
+        :returns: Temporary DOI string
+        """
+        from uuid import uuid4
+
+        rand = str(uuid4()).split("-")[1:3]
+        return f"10.{rand[0]}/{rand[1]}"
 
     async def query_objects(self, req: Request) -> Response:
         """Query metadata objects from database.
