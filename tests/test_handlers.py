@@ -5,6 +5,7 @@ from unittest.mock import call, patch
 
 from aiohttp import FormData
 from aiohttp.test_utils import AioHTTPTestCase, make_mocked_coro
+from metadata_backend.api.handlers.object import ObjectAPIHandler
 from metadata_backend.api.handlers.restapi import RESTAPIHandler
 from metadata_backend.api.middlewares import generate_cookie
 from metadata_backend.server import init
@@ -103,6 +104,7 @@ class HandlersTestCase(AioHTTPTestCase):
         }
 
         RESTAPIHandler._handle_check_ownedby_user = make_mocked_coro(True)
+        ObjectAPIHandler.create_metax_dataset = make_mocked_coro("111-222-333")
 
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
