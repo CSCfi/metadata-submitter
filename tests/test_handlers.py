@@ -5,6 +5,7 @@ from unittest.mock import call, patch
 
 from aiohttp import FormData
 from aiohttp.test_utils import AioHTTPTestCase, make_mocked_coro
+from metadata_backend.api.handlers.object import ObjectAPIHandler
 from metadata_backend.api.handlers.restapi import RESTAPIHandler
 from metadata_backend.api.middlewares import generate_cookie
 from metadata_backend.server import init
