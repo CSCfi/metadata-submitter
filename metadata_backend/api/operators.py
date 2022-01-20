@@ -482,12 +482,24 @@ class Operator(BaseOperator):
         :returns: Accession Id for object inserted to database
         """
         forbidden_keys = ["accessionId", "publishDate", "dateCreated"]
+        # when replacing from xml file there are no metax data in content data
+        # therefore we need to check if the object already exists in database and has metax id
+        if schema_type in {"study", "dataset"}:
+            read_data = await self.db_service.read(schema_type, accession_id)
+            if read_data.get("metaxIdentifier", None):
+                forbidden_keys.extend(["metaxIdentifier"])
         if any(i in data for i in forbidden_keys):
             reason = f"Some items (e.g: {', '.join(forbidden_keys)}) cannot be changed."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         data["accessionId"] = accession_id
         data["dateModified"] = datetime.utcnow()
+        if schema_type in {"study", "dataset"}:
+            try:
+                data["metaxIdentifier"] = read_data["metaxIdentifier"]
+                data["doi"] = read_data["doi"]
+            except KeyError:
+                pass
         LOG.debug(f"Operator formatted data for {schema_type} to add to DB")
         return await self._replace_object_from_db(schema_type, accession_id, data)
 
@@ -500,12 +512,18 @@ class Operator(BaseOperator):
         :returns: Accession Id for object inserted to database
         """
         forbidden_keys = ["accessionId", "publishDate", "dateCreated"]
+        # check if object already has metax id or is it first time writing it
+        if schema_type in {"study", "dataset"}:
+            read_data = await self.db_service.read(schema_type, accession_id)
+            if read_data.get("metaxIdentifier", None):
+                forbidden_keys.extend(["metaxIdentifier"])
         if any(i in data for i in forbidden_keys):
             reason = f"Some items (e.g: {', '.join(forbidden_keys)}) cannot be changed."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         data["accessionId"] = accession_id
         data["dateModified"] = datetime.utcnow()
+
         LOG.debug(f"Operator formatted data for {schema_type} to add to DB")
         return await self._update_object_from_db(schema_type, accession_id, data)
 
