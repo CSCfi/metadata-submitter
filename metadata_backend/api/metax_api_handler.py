@@ -114,6 +114,44 @@ class MetaxServiceHandler:
                 reason = await resp.text()
                 raise self.process_error(status, reason)
 
+    async def update_draft_dataset(self, collection: str, data: Dict) -> str:
+        """Update draft dataset to Metax.
+
+        Construct Metax draft dataset data from submitters' Study or Dataset and
+        send it to Metax Dataset API for update.
+
+        :param collection: schema of incomming submitters metadata
+        :param data: validated Study or Dataset data dict
+        :raises: HTTPError depending on returned error from Metax
+        :returns: Metax ID for dataset returned by Metax API
+        """
+        metax_dataset = self.minimal_dataset_template
+        # TODO: should this be changed if person updating data is different from data creator?
+        metax_dataset["metadata_provider_user"] = await self.get_metadata_provider_user()
+        if collection == "dataset":
+            dataset_data = await self.create_metax_dataset_data_from_dataset(data)
+        else:
+            dataset_data = await self.create_metax_dataset_data_from_study(data)
+        metax_dataset["research_dataset"] = dataset_data
+        LOG.info(f"Sending updated {collection} object data to Metax service.")
+
+        async with aiohttp.ClientSession() as sess:
+            resp = await sess.put(
+                f'{self.metax_url}{self.rest_route}/{data["metaxIdentifier"]["identifier"]}',
+                params="draft",
+                json=metax_dataset,
+                auth=aiohttp.BasicAuth(self.username, self.password),
+            )
+            status = resp.status
+            if status == 200:
+                metax_data = await resp.json()
+                LOG.info(f"Updated Metax draft dataset with ID {metax_data['identifier']} with data: {metax_data}")
+                return metax_data["identifier"]
+            else:
+                # TODO: how front end should react on this??
+                reason = await resp.text()
+                raise self.process_error(status, reason)
+
     async def create_metax_dataset_data_from_study(self, data: Dict) -> Dict:
         """Construct Metax dataset's research dataset dictionary from Submitters Study.
 
