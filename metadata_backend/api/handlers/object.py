@@ -167,7 +167,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         # Create draft dataset to Metax catalog
         if collection in {"study", "dataset"}:
-            [await self.create_metax_dataset(req, collection, item["accessionId"]) for item in ids]
+            [await self.create_or_update_metax_dataset(req, collection, item["accessionId"]) for item in ids]
 
         body = ujson.dumps(data, escape_forward_slashes=False)
 
@@ -177,42 +177,6 @@ class ObjectAPIHandler(RESTAPIHandler):
             headers=location_headers,
             content_type="application/json",
         )
-
-    # TODO: update doi related code
-    async def create_metax_dataset(self, req: Request, collection: str, accession_id: str) -> str:
-        """Handle connection to Metax api handler and returned data.
-
-        Sends Dataset or Study object's data to Metax api handler. Updates object with returned metax ID to database.
-        Object's data has to be fetched first from db in case of XML input.
-        Has temporary DOI fetching, will be chaged with real data.
-
-        :param req: HTTP request
-        :param collection: object's schema
-        :param accession_id: object's accession ID
-        :returns: Metax ID
-        """
-        metax_service = MetaxServiceHandler(req)
-        operator = Operator(req.app["db_client"])
-        object_data, _ = await operator.read_metadata_object(collection, accession_id)
-        if isinstance(object_data, Dict):
-            object_data["doi"] = await self.create_doi()
-            metax_id = await metax_service.post_dataset_as_draft(collection, object_data)
-        else:
-            raise ValueError("Object's data must be dictionary")
-        new_info = {"doi": object_data["doi"], "metaxIdentifier": {"identifier": metax_id, "status": "draft"}}
-        accession_id = await operator.update_metadata_object(collection, accession_id, new_info)
-        return metax_id
-
-    # TODO: to be replaced with real doi fetching
-    async def create_doi(self) -> str:
-        """Temporary function for random DOI creation.
-
-        :returns: Temporary DOI string
-        """
-        from uuid import uuid4
-
-        rand = str(uuid4()).split("-")[1:3]
-        return f"10.{rand[0]}/{rand[1]}"
 
     async def query_objects(self, req: Request) -> Response:
         """Query metadata objects from database.
@@ -308,6 +272,10 @@ class ObjectAPIHandler(RESTAPIHandler):
         patch = await self.prepare_folder_patch_update_object(collection, accession_id, title, filename)
         await folder_op.update_folder(folder_id, patch)
 
+        # Update draft dataset to Metax catalog
+        if collection in {"study", "dataset"}:
+            await self.create_or_update_metax_dataset(req, collection, accession_id)
+
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info(f"PUT object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
@@ -356,6 +324,10 @@ class ObjectAPIHandler(RESTAPIHandler):
             await folder_op.update_folder(folder_id, patch)
         except (TypeError, KeyError):
             pass
+
+        # Update draft dataset to Metax catalog
+        if collection in {"study", "dataset"}:
+            await self.create_or_update_metax_dataset(req, collection, accession_id)
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info(f"PATCH object with accession ID {accession_id} in schema {collection} was successful.")
@@ -433,3 +405,45 @@ class ObjectAPIHandler(RESTAPIHandler):
                 }
             )
         return [patch_op]
+
+    # TODO: update doi related code
+    async def create_or_update_metax_dataset(self, req: Request, collection: str, accession_id: str) -> str:
+        """Handle connection to Metax api handler.
+
+        Sends Dataset or Study object's data to Metax api handler.
+        If creating new dataset, object is updated with returned metax ID to database.
+        Object's data has to be fetched first from db in case of XML data in request.
+        Has temporary DOI fetching, will be chaged with real data.
+
+        :param req: HTTP request
+        :param collection: object's schema
+        :param accession_id: object's accession ID
+        :returns: Metax ID
+        """
+        metax_service = MetaxServiceHandler(req)
+        operator = Operator(req.app["db_client"])
+        object_data, _ = await operator.read_metadata_object(collection, accession_id)
+        if isinstance(object_data, Dict):
+            if object_data.get("metaxIdentifier", None):
+                LOG.info("Updating draft dataset to Metax.")
+                metax_id = await metax_service.update_draft_dataset(collection, object_data)
+            else:
+                LOG.info("Creating draft dataset to Metax.")
+                object_data["doi"] = await self.create_doi()
+                metax_id = await metax_service.post_dataset_as_draft(collection, object_data)
+                new_info = {"doi": object_data["doi"], "metaxIdentifier": {"identifier": metax_id, "status": "draft"}}
+                accession_id = await operator.update_metadata_object(collection, accession_id, new_info)
+        else:
+            raise ValueError("Object's data must be dictionary")
+        return metax_id
+
+    # TODO: to be replaced with real doi fetching
+    async def create_doi(self) -> str:
+        """Temporary function for random DOI creation.
+
+        :returns: Temporary DOI string
+        """
+        from uuid import uuid4
+
+        rand = str(uuid4()).split("-")[1:3]
+        return f"10.{rand[0]}/{rand[1]}"
