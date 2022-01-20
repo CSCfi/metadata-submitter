@@ -6,18 +6,11 @@ from unittest import IsolatedAsyncioTestCase
 from unittest.mock import MagicMock, call, patch
 from uuid import uuid4
 
-from aiohttp.web import HTTPBadRequest, HTTPNotFound, HTTPUnprocessableEntity
 from aiohttp.test_utils import make_mocked_coro
+from aiohttp.web import HTTPBadRequest, HTTPNotFound, HTTPUnprocessableEntity
+from metadata_backend.api.operators import FolderOperator, Operator, ProjectOperator, UserOperator, XMLOperator
 from multidict import MultiDict, MultiDictProxy
 from pymongo.errors import ConnectionFailure, OperationFailure
-
-from metadata_backend.api.operators import (
-    FolderOperator,
-    Operator,
-    XMLOperator,
-    UserOperator,
-    ProjectOperator,
-)
 
 from .mockups import get_request_with_fernet
 
@@ -346,7 +339,11 @@ class TestOperators(IsolatedAsyncioTestCase):
                 mocked_insert.assert_called_once_with(
                     "study",
                     self.accession_id,
-                    {"accessionId": self.accession_id, "dateModified": datetime.datetime(2020, 4, 14)},
+                    {
+                        "accessionId": self.accession_id,
+                        "dateModified": datetime.datetime(2020, 4, 14),
+                        "metaxIdentifier": {"identifier": 12345},
+                    },
                 )
             self.assertEqual(acc["accessionId"], self.accession_id)
 
