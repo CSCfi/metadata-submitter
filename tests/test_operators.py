@@ -285,7 +285,7 @@ class TestOperators(IsolatedAsyncioTestCase):
                 )
             self.assertEqual(acc, self.accession_id)
 
-    async def test_wront_data_is_set_to_json_when_replacing(self):
+    async def test_wrong_data_is_set_to_json_when_replacing(self):
         """Test operator replace catches error."""
         operator = Operator(self.client)
         with patch("metadata_backend.api.operators.Operator._replace_object_from_db", return_value=self.accession_id):
@@ -313,11 +313,20 @@ class TestOperators(IsolatedAsyncioTestCase):
         ) as mocked_insert:
             with patch("metadata_backend.api.operators.datetime") as m_date:
                 m_date.utcnow.return_value = datetime.datetime(2020, 4, 14)
+                self.MockedDbService().read.return_value = {
+                    "accessionId": self.accession_id,
+                    "dateModified": datetime.datetime(2020, 4, 14),
+                    "metaxIdentifier": {"identifier": 12345},
+                }
                 acc = await (operator._format_data_to_replace_and_add_to_db("study", self.accession_id, {}))
                 mocked_insert.assert_called_once_with(
                     "study",
                     self.accession_id,
-                    {"accessionId": self.accession_id, "dateModified": datetime.datetime(2020, 4, 14)},
+                    {
+                        "accessionId": self.accession_id,
+                        "dateModified": datetime.datetime(2020, 4, 14),
+                        "metaxIdentifier": {"identifier": 12345},
+                    },
                 )
             self.assertEqual(acc, self.accession_id)
 
