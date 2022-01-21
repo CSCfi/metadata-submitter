@@ -26,8 +26,7 @@ services:
       - "OIDC_URL=${OIDC_URL}"
       - "OIDC_URL_TEST=${OIDC_URL_TEST}"
       - "BASE_URL=${BASE_URL}"
-      # Enable this for working with front-end on localhost
-      # - "REDIRECT_URL=${REDIRECT_URL}"
+      - "REDIRECT_URL=${REDIRECT_URL}"
       - "LOG_LEVEL=${LOG_LEVEL}"
       - "MONGO_DATABASE=${MONGO_DATABASE}"
       - "MONGO_AUTHDB=${MONGO_AUTHDB}"
