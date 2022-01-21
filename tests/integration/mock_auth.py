@@ -1,15 +1,22 @@
 """Mock OAUTH2 aiohttp.web server."""
 
+import logging
+import urllib
 from os import getenv
 from time import time
+from typing import Tuple
+
 from aiohttp import web
+from authlib.jose import jwk, jwt
+from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.backends import default_backend
-from authlib.jose import jwt, jwk
-from typing import Tuple
-import urllib
-import logging
+
+FORMAT = "[%(asctime)s][%(levelname)-8s](L:%(lineno)s) %(funcName)s: %(message)s"
+logging.basicConfig(format=FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
+
+LOG = logging.getLogger("server")
+LOG.setLevel(getenv("LOG_LEVEL", "INFO"))
 
 
 def generate_token() -> Tuple:
@@ -56,8 +63,7 @@ async def setmock(req: web.Request) -> web.Response:
     user_sub = req.query["sub"]
     user_family_name = req.query["family"]
     user_given_name = req.query["given"]
-
-    logging.info(user_sub, user_family_name, user_given_name)
+    LOG.info(f"{mock_auth_url_local}: {user_sub}, {user_family_name}, {user_given_name}")
 
     return web.HTTPOk()
 
@@ -73,7 +79,7 @@ async def auth(req: web.Request) -> web.Response:
     callback_url = req.query["redirect_uri"]
     url = f"{callback_url}?{urllib.parse.urlencode(params)}"
 
-    logging.info(url)
+    LOG.info(url)
 
     response = web.HTTPSeeOther(url)
     return response
@@ -82,6 +88,10 @@ async def auth(req: web.Request) -> web.Response:
 async def token(req: web.Request) -> web.Response:
     """Auth endpoint."""
     global nonce, user_sub, user_family_name, user_given_name
+    # oidcrp is strict about iat, exp, ttl, so we can't hard code them
+    iat = int(time())
+    ttl = 3600
+    exp = iat + ttl
     id_token = {
         "at_hash": "fSi3VUa5i2o2SgY5gPJZgg",
         "eduPersonAffiliation": "member;staff",
@@ -110,7 +120,7 @@ async def token(req: web.Request) -> web.Response:
         "expires_in": ttl,
     }
 
-    logging.info(data)
+    LOG.info(data)
 
     return web.json_response(data)
 
@@ -121,7 +131,7 @@ async def jwk_response(request: web.Request) -> web.Response:
     keys[0]["kid"] = "rsa1"
     data = {"keys": keys}
 
-    logging.info(data)
+    LOG.info(data)
 
     return web.json_response(data)
 
@@ -144,7 +154,7 @@ async def userinfo(request: web.Request) -> web.Response:
         "email": user_sub,
     }
 
-    logging.info(user_info)
+    LOG.info(user_info)
 
     return web.json_response(user_info)
 

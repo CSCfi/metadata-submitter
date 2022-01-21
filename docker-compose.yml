@@ -19,6 +19,7 @@ services:
       - "AAI_CLIENT_SECRET=${AAI_CLIENT_SECRET}"
       - "AAI_CLIENT_ID=${AAI_CLIENT_ID}"
       - "OIDC_URL=${OIDC_URL}"
+      - "OIDC_URL_TEST=${OIDC_URL_TEST}"
       - "BASE_URL=${BASE_URL}"
       # Enable this for working with front-end on localhost
       # - "REDIRECT_URL=${REDIRECT_URL}"
@@ -49,6 +50,10 @@ services:
       context: .
       target: develop
     image: cscfi/metadata-submitter-dev
+    environment:
+      - "LOG_LEVEL=${LOG_LEVEL}"
+      - "OIDC_URL=${OIDC_URL}"
+      - "OIDC_URL_TEST=${OIDC_URL_TEST}"
     hostname: mockauth
     expose:
       - 8000
