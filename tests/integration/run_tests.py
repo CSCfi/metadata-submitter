@@ -1845,8 +1845,8 @@ async def main():
         # Test objects study and dataset are connecting to metax and saving metax id to db
         LOG.debug("=== Testing Metax integration related basic CRUD operations for study and dataset ===")
         metax_folder = {
-            "name": "basic test pagination",
-            "description": "basic test pagination folder",
+            "name": "test_metax_crud",
+            "description": "testing metax crud operations",
             "projectId": project_id,
         }
         metax_folder_id = await post_folder(sess, metax_folder)
@@ -1854,15 +1854,6 @@ async def main():
         await test_metax_crud_with_json(sess, metax_folder_id)
         await test_metax_id_not_updated_on_patch(sess, metax_folder_id)
         await test_metax_publish_dataset(sess, metax_folder_id)
-
-        # Test objects study and dataset are connecting to metax and saving metax id to db
-        LOG.debug("=== Testing Metax integration related basic CRUD operations for study and dataset ===")
-        metax_folder = {
-            "name": "basic test pagination",
-            "description": "basic test pagination folder",
-        }
-        metax_folder_id = await post_folder(sess, metax_folder)
-        await test_metax_crud(sess, metax_folder_id)
 
         # Test add, modify, validate and release action with submissions
         LOG.debug("=== Testing actions within submissions ===")

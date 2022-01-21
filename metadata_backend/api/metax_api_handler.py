@@ -7,7 +7,7 @@ from aiohttp.web import HTTPBadRequest, HTTPError, HTTPForbidden, HTTPNotFound, 
 
 from ..helpers.logger import LOG
 from .middlewares import get_session
-from .operators import UserOperator
+from .operators import FolderOperator, Operator, UserOperator
 
 
 class MetaxServiceHandler:
@@ -169,6 +169,56 @@ class MetaxServiceHandler:
                 # TODO: how front end should react on this??
                 reason = await resp.text()
                 raise self.process_error(status, reason)
+
+    async def publish_dataset(self, folder_id: str) -> None:
+        """Publish draft dataset to Metax service.
+
+        Fetch metadataObjects for published folder. Publish each object within Metax service and
+        update object's Metax status to db.
+
+        :param folder_id: Folder ID where metadata objects to publish resides
+        """
+        folder = await FolderOperator(self.db_client).read_folder(folder_id)
+        operator = Operator(self.db_client)
+        for object in folder["metadataObjects"]:
+            if object["schema"] in {"study", "dataset"}:
+                data, _ = await operator.read_metadata_object(object["schema"], object["accessionId"])
+                if isinstance(data, dict):
+                    metax_id = data["metaxIdentifier"]["identifier"]
+                    doi = data["doi"]
+                async with aiohttp.ClientSession() as sess:
+                    resp = await sess.post(
+                        f"{self.metax_url}{self.publish_route}",
+                        params={"identifier": metax_id},
+                        auth=aiohttp.BasicAuth(self.username, self.password),
+                    )
+                    status = resp.status
+                    if status == 200:
+                        preferred_id = await resp.json()
+                        if doi != preferred_id["preferred_identifier"]:
+                            LOG.warning(
+                                f"Metax Preferred Identifier {preferred_id['preferred_identifier']} "
+                                f"does not match object's DOI {doi}"
+                            )
+                        LOG.debug(
+                            f"Object {object['schema']} with accession ID {object['accessionId']} is "
+                            "published to Metax service."
+                        )
+                        await operator.update_metadata_object(
+                            object["schema"],
+                            object["accessionId"],
+                            {
+                                "metaxIdentifier": {
+                                    "identifier": metax_id,
+                                    "status": "published",
+                                }
+                            },
+                        )
+                    else:
+                        # TODO: how front end should react on this??
+                        reason = await resp.text()
+                        raise self.process_error(status, reason)
+            LOG.info(f"Folder's {folder_id} metadata objects are published to Metax service.")
 
     async def create_metax_dataset_data_from_study(self, data: Dict) -> Dict:
         """Construct Metax dataset's research dataset dictionary from Submitters Study.
