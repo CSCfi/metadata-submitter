@@ -3,8 +3,15 @@
 import json
 import logging
 from datetime import datetime
+from os import getenv
 
 from aiohttp import web
+
+FORMAT = "[%(asctime)s][%(levelname)-8s](L:%(lineno)s) %(funcName)s: %(message)s"
+logging.basicConfig(format=FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
+
+LOG = logging.getLogger("server")
+LOG.setLevel(getenv("LOG_LEVEL", "INFO"))
 
 
 async def dois(req: web.Request) -> web.Response:
@@ -13,14 +20,14 @@ async def dois(req: web.Request) -> web.Response:
         content = await req.json()
     except json.decoder.JSONDecodeError as e:
         reason = f"JSON is not correctly formatted. See: {e}"
-        logging.info(reason)
+        LOG.info(reason)
         raise web.HTTPBadRequest(reason=reason)
 
     try:
         attributes = content["data"]["attributes"]
     except KeyError:
         reason = "Provided payload did not include required attributes."
-        logging.info(reason)
+        LOG.info(reason)
         raise web.HTTPBadRequest(reason=reason)
 
     data = {
@@ -95,11 +102,11 @@ async def dois(req: web.Request) -> web.Response:
     }
 
     if "doi" in attributes or "prefix" in attributes:
-        logging.info(data)
+        LOG.info(data)
         return web.json_response(data)
     else:
         reason = "Provided payload include faulty attributes."
-        logging.info(reason)
+        LOG.info(reason)
         raise web.HTTPBadRequest(reason=reason)
 
 
