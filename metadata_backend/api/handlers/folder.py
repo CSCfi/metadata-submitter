@@ -14,6 +14,7 @@ from ...conf.conf import publisher
 from ...helpers.doi import DOIHandler
 from ...helpers.logger import LOG
 from ...helpers.validator import JSONValidator
+from ..metax_api_handler import MetaxServiceHandler
 from ..middlewares import get_session
 from ..operators import FolderOperator, Operator, UserOperator
 from .restapi import RESTAPIHandler
@@ -289,6 +290,8 @@ class FolderAPIHandler(RESTAPIHandler):
             {"op": "add", "path": "/extraInfo/publicationYear", "value": date.today().year},
         ]
         new_folder = await operator.update_folder(folder_id, patch)
+
+        await MetaxServiceHandler(req).publish_dataset(new_folder)
 
         body = ujson.dumps({"folderId": new_folder}, escape_forward_slashes=False)
         LOG.info(f"Patching folder with ID {new_folder} was successful.")
