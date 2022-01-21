@@ -1,18 +1,17 @@
 """Handle Access for request and OIDC workflow."""
 
 import hashlib
-import ujson
-
-from aiohttp import web
-from aiohttp.web import Request, Response
-from .middlewares import decrypt_cookie, generate_cookie
-from .operators import UserOperator
-from oidcrp.rp_handler import RPHandler
-from oidcrp.exception import OidcServiceError
-
 from typing import Dict, Tuple
 
+import ujson
+from aiohttp import web
+from aiohttp.web import Request, Response
+from oidcrp.exception import OidcServiceError
+from oidcrp.rp_handler import RPHandler
+
 from ..helpers.logger import LOG
+from .middlewares import decrypt_cookie, generate_cookie
+from .operators import UserOperator
 
 
 class AccessHandler:
