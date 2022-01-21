@@ -1,0 +1,7 @@
+{
+    "title": "Test Dataset",
+    "datasetType": [
+        "Amplicon sequencing"
+    ],
+    "description": "ome cool test description for json dataset"
+}
