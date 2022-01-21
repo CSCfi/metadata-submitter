@@ -939,6 +939,44 @@ async def test_metax_crud(sess, folder_id):
             assert metax_resp.status == 404, f"HTTP Status code error - expected 404 Not Found, got {resp.status}"
 
 
+async def test_metax_publish_dataset(sess, folder_id):
+    """Test publishing dataset to Metax service after folder(submission) is published.
+
+    :param sess: HTTP session in which request call is made
+    :param folder_id: id of the folder where objects reside
+    """
+    # POST to object endpoint creates draft dataset in Metax for Study and Dataset
+    objects = []
+    for schema, filename in {
+        ("study", "SRP000539.xml"),
+        ("dataset", "dataset.xml"),
+    }:
+        accession_id, _ = await post_object(sess, schema, folder_id, filename)
+        objects.append([schema, accession_id])
+
+    for object in objects:
+        schema, object_id = object
+        async with sess.get(f"{objects_url}/{schema}/{object_id}") as resp:
+            assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+            res = await resp.json()
+            object.append(res["metaxIdentifier"]["identifier"])
+
+    await publish_folder(sess, folder_id)
+
+    for schema, object_id, metax_id in objects:
+        async with sess.get(f"{objects_url}/{schema}/{object_id}") as resp:
+            assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+            res = await resp.json()
+            actual = res["metaxIdentifier"]
+            expected = {"identifier": metax_id, "status": "published"}
+            assert expected == actual
+
+        async with sess.get(f"{metax_url}/{metax_id}") as metax_resp:
+            assert metax_resp.status == 200, f"HTTP Status code error, got {resp.status}"
+            metax_res = await metax_resp.json()
+            assert metax_res["state"] == "published"
+
+
 async def test_crud_folders_works(sess):
     """Test folders REST api POST, GET, PATCH, PUBLISH and DELETE reqs.
 
@@ -1701,6 +1739,7 @@ async def main():
         }
         metax_folder_id = await post_folder(sess, metax_folder)
         await test_metax_crud(sess, metax_folder_id)
+        await test_metax_publish_dataset(sess, metax_folder_id)
 
         # Test add, modify, validate and release action with submissions
         LOG.debug("=== Testing actions within submissions ===")
