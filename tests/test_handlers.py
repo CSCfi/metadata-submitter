@@ -808,6 +808,10 @@ class FolderHandlerTestCase(HandlersTestCase):
         self.patch_operator = patch(class_operator, **self.operator_config, spec=True)
         self.MockedOperator = self.patch_operator.start()
 
+        class_metaxhandler = "metadata_backend.api.handlers.folder.MetaxServiceHandler"
+        self.patch_metaxhandler = patch(class_metaxhandler, spec=True)
+        self.MockedMetaxHandler = self.patch_metaxhandler.start()
+
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
         await super().tearDownAsync()
@@ -815,6 +819,7 @@ class FolderHandlerTestCase(HandlersTestCase):
         self.patch_folderoperator.stop()
         self.patch_useroperator.stop()
         self.patch_operator.stop()
+        self.patch_metaxhandler.stop()
 
     async def test_folder_creation_works(self):
         """Test that folder is created and folder ID returned."""
@@ -924,6 +929,7 @@ class FolderHandlerTestCase(HandlersTestCase):
         """Test that folder would be published and DOI would be added."""
         self.MockedDoiHandler().create_draft_doi.return_value = self.test_draft_doi
         self.MockedFolderOperator().update_folder.return_value = self.folder_id
+        self.MockedMetaxHandler().publish_dataset.return_value = None
         response = await self.client.patch("/publish/FOL12345678")
         self.MockedDoiHandler().create_draft_doi.assert_called_once()
         self.MockedFolderOperator().update_folder.assert_called_once()
