@@ -34,6 +34,40 @@ drafts = {}
 published = {}
 
 
+async def get_dataset(req: web.Request) -> web.Response:
+    """Mock endpoint for retrieving Metax dataset.
+
+    :params req: HTTP request with data for Metax dataset
+    :return: HTTP response with mocked Metax dataset data
+    """
+    metax_id = req.match_info["metax_id"]
+    # await asyncio.sleep(1)
+    LOG.info(f"Retrieving Metax dataset {metax_id}")
+    if not metax_id:
+        LOG.error("Query params missing Metax ID.")
+        raise web.HTTPBadRequest(
+            reason={
+                "detail": ["Query params missing Metax ID."],
+                "error_identifier": datetime.now(),
+            }
+        )
+    stuff = list(drafts.keys()) + list(published.keys())
+    if metax_id not in stuff:
+        LOG.error(f"No dataset found with identifier {metax_id}")
+        raise web.HTTPNotFound(reason={"detail": "Not found."})
+    try:
+        content = drafts[metax_id]
+    except KeyError:
+        content = published[metax_id]
+
+    LOG.debug(f"Found {content['state']} dataset {content['identifier']} with data: {content}")
+    return web.Response(
+        body=ujson.dumps(content, escape_forward_slashes=False),
+        status=200,
+        content_type="application/json",
+    )
+
+
 async def post_dataset(req: web.Request) -> web.Response:
     """Mock endpoint for creating Metax dataset.
 
@@ -206,6 +240,7 @@ def init() -> web.Application:
         web.put("/rest/v2/datasets/{metax_id}", update_dataset),
         web.delete("/rest/v2/datasets/{metax_id}", delete_dataset),
         web.post("/rpc/v2/datasets/publish_dataset", publish_dataset),
+        web.get("/rest/v2/datasets/{metax_id}", get_dataset),
     ]
     app.router.add_routes(api_routes)
     LOG.info("Metax mock API started")
