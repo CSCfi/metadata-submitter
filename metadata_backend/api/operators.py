@@ -468,7 +468,7 @@ class Operator(BaseOperator):
 
         :param schema_type: Schema type of the object to read.
         :param data_raw: Data from mongodb query, can contain multiple results
-        :returns: Mongodb query result, formatted to readable dicts
+        :returns: MongoDB query result, formatted to readable dicts
         """
         if isinstance(data_raw, dict):
             return self._format_single_dict(schema_type, data_raw)

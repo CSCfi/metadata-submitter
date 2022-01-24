@@ -9,7 +9,7 @@ The tool can be found and installed from `metadata-submitter-tools repository <h
 Usage
 -----
 
-After the package has been installed, the validation tool is used by by executing ``xml-validate`` in a terminal with specified options/arguments followingly:
+After the package has been installed, the validation tool is used by by executing ``xml-validate`` in a terminal with specified options/arguments following:
 
 .. code-block:: console
 

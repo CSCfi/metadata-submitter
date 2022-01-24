@@ -27,17 +27,18 @@
             "properties": {
                 "xrefDb": {
                     "type": "string",
-                    "title": "Database"
+                    "title": "Database",
+                    "description": "Name of the database or a link where the resource is located at. INSDC controlled vocabulary of permitted cross references.Please see http://www.insdc.org/db_xref.html . For example, FLYBASE."
                 },
                 "xrefId": {
                     "type": "string",
                     "title": "Database ID",
-                    "description": "Accession in the referenced database."
+                    "description": "Accession ID or stable identifier, in the referenced database. For example, FBtr0080008 (in FLYBASE)"
                 },
                 "label": {
                     "type": "string",
                     "title": "Label",
-                    "description": "Text label to display for the link."
+                    "description": "A text label to identify the xrefLink by."
                 }
             }
         },
@@ -53,7 +54,7 @@
                 "label": {
                     "type": "string",
                     "title": "Label",
-                    "description": "Text label to display for the link."
+                    "description": "A text label to identify the urlLink by."
                 },
                 "url": {
                     "type": "string",
@@ -73,53 +74,53 @@
             ],
             "properties": {
                 "entrezDb": {
-                    "description": "NCBI controlled vocabulary of permitted cross references",
+                    "description": "Entrez Molecular Sequence Database System, NCBI controlled vocabulary of permitted cross references. Also known as Entrez Direct (EDirect) .",
                     "title": "Database",
                     "type": "string",
                     "enum": [
-                        "pubmed",
-                        "protein",
-                        "nuccore",
-                        "ipg",
-                        "nucleotide",
-                        "structure",
-                        "genome",
                         "annotinfo",
                         "assembly",
+                        "biocollections",
                         "bioproject",
                         "biosample",
+                        "biosystems",
                         "blastdbinfo",
                         "books",
                         "cdd",
                         "clinvar",
+                        "dbvar",
                         "gap",
                         "gapplus",
-                        "grasp",
-                        "dbvar",
-                        "gene",
                         "gds",
+                        "gene",
+                        "genome",
                         "geoprofiles",
+                        "grasp",
+                        "gtr",
                         "homologene",
+                        "ipg",
                         "medgen",
                         "mesh",
                         "ncbisearch",
                         "nlmcatalog",
+                        "nuccore",
+                        "nucleotide",
                         "omim",
                         "orgtrack",
-                        "pmc",
-                        "popset",
-                        "proteinclusters",
                         "pcassay",
-                        "protfam",
-                        "biosystems",
                         "pccompound",
                         "pcsubstance",
+                        "pmc",
+                        "popset",
+                        "protein",
+                        "proteinclusters",
+                        "protfam",
+                        "pubmed",
                         "seqannot",
                         "snp",
                         "sra",
-                        "taxonomy",
-                        "biocollections",
-                        "gtr"
+                        "structure",
+                        "taxonomy"
                     ]
                 },
                 "entrezId": {
@@ -129,7 +130,7 @@
                     "pattern": "^[a-zA-Z0-9]+"
                 },
                 "label": {
-                    "description": "Text label to display for the link.",
+                    "description": "A text label to identify the url Entrez link by.",
                     "title": "Label",
                     "type": "string"
                 }
@@ -139,7 +140,6 @@
             "$id": "#/definitions/sampleAttribute",
             "type": "object",
             "title": "Sample Attribute",
-            "description": "tag title and its associated value (description)",
             "required": [
                 "tag",
                 "value"
@@ -161,6 +161,7 @@
         }
     },
     "type": "object",
+    "description": "A Sample defines an isolate of sequenceable material upon which sequencing experiments can be based.  The Sample object may be a surrogate for taxonomy accession or an anonymized individual identifier.  Or, it may fully specify provenance and isolation method of the starting material.",
     "required": [
         "sampleName"
     ],
@@ -172,7 +173,7 @@
         },
         "sampleName": {
             "title": "Sample Names",
-            "description": "Short text that can be used to call out sample records in search results or in displays.",
+            "description": "Add relevant information to properly identify the Sample: common and scientific names, taxonomy identifier etc. - information can be retrieved from NCBI Taxonomy Browser.",
             "type": "object",
             "required": [
                 "taxonId"
@@ -180,12 +181,12 @@
             "properties": {
                 "taxonId": {
                     "type": "integer",
-                    "description": "NCBI Taxonomy Identifier. This is appropriate for individual organisms and some environmental samples.",
+                    "description": "NCBI Taxonomy Identifier, this is appropriate for individual organisms and some environmental samples.",
                     "title": "Taxon ID"
                 },
                 "scientificName": {
                     "title": "Scientific Name",
-                    "description": "Scientific name of sample that distinguishes its taxonomy.  Please use a name or synonym that is tracked in the INSDC Taxonomy database. Also, this field can be used to confirm the TAXON_ID setting.",
+                    "description": "Scientific name of Sample that distinguishes its taxonomy.  Please use a name or synonym that is tracked in the INSDC Taxonomy database. Also, this field can be used to confirm the TAXON_ID setting.",
                     "type": "string"
                 },
                 "commonName": {
@@ -197,11 +198,12 @@
         },
         "description": {
             "title": "Sample Description",
-            "description": "More extensive free-form description of the sample.",
+            "description": "More extensive free-form description of the Sample.",
             "type": "string"
         },
         "sampleData": {
             "title": "Sample Data Type",
+            "description": "Specify if the Sample represents a human or non-human species. Not specifying the type we will consider it human, with unknown gender.",
             "oneOf": [
                 {
                     "type": "object",
@@ -210,7 +212,11 @@
                         "gender": {
                             "type": "string",
                             "title": "Gender",
-                            "enum": ["male", "female", "unknown"]
+                            "enum": [
+                                "male",
+                                "female",
+                                "unknown"
+                            ]
                         }
                     },
                     "required": [
@@ -220,6 +226,7 @@
                 {
                     "type": "object",
                     "title": "Non Human Sample",
+                    "description": "The non-human Sample requires a free-form description of the data e.g. species, gender if known and other relevant information.",
                     "properties": {
                         "dataDescription": {
                             "type": "string",
@@ -235,6 +242,7 @@
         "sampleLinks": {
             "type": "array",
             "title": "Sample Links",
+            "description": "Links to resources related to this experiment or experiment set (publication, datasets, online databases). Used to encode URL links, Entrez links, and xref DB links. ",
             "items": {
                 "$ref": "#/definitions/Links"
             }
@@ -242,6 +250,7 @@
         "sampleAttributes": {
             "type": "array",
             "title": "Sample Attributes",
+            "description": "Properties and attributes of a Sample.  These can be entered as free-form tag-value pairs. For certain studies, submitters may be asked to follow a community established ontology when describing the work.",
             "items": {
                 "$ref": "#/definitions/sampleAttribute"
             }

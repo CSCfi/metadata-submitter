@@ -3,7 +3,7 @@
     "priority": 1,
     "description": {
       "title": "Submission",
-      "detail": "A submission contains submission actions to be performed by the archive. A submission can add more objects to the archive, update already submitted objects or make objects publicly available.",
+      "detail": "A submission contains submission actions to be performed by the storage. A submission can add more objects to the storage, update already submitted objects or make objects publicly available.",
       "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.submission.xsd"
     },
     "provider": "ENA"
@@ -12,7 +12,7 @@
     "priority": 2,
     "description": {
       "title": "Study",
-      "detail": "A study groups together data submitted to the archive. A study accession is typically used when citing data submitted to ENA. Note that all associated data and other objects are made public when the study is released.",
+      "detail": "A study groups together data submitted to the storage. A study accession is typically used when citing data submitted to ENA. Note that all associated data and other objects are made public when the study is released.",
       "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.study.xsd"
     },
     "provider": "ENA"
@@ -21,7 +21,7 @@
     "priority": 3,
     "description": {
       "title": "Project",
-      "detail": "A project groups together data submitted to the archive. A project accession is typically used when citing data submitted to ENA. Note that all associated data and other objects are made public when the project is released.",
+      "detail": "A project groups together data submitted to the storage. A project accession is typically used when citing data submitted to ENA. Note that all associated data and other objects are made public when the project is released.",
       "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/ENA.project.xsd"
     },
     "provider": "ENA"

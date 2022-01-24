@@ -108,8 +108,19 @@ class MetadataXMLConverter(XMLSchemaConverter):
             if "assembly" in key:
                 if next(iter(value)) in ["standard", "custom"]:
                     children[key] = next(iter(value.values()))
+                    if "accessionId" in children[key]:
+                        children[key]["accession"] = children[key].pop("accessionId")
                 else:
                     children[key] = value
+                continue
+
+            if key == "sequence":
+                if "sequence" not in children:
+                    children[key] = list()
+                children[key].append(value)
+                for d in children[key]:
+                    if "accessionId" in d:
+                        d["accession"] = d.pop("accessionId")
                 continue
 
             if "analysisType" in key:
@@ -133,6 +144,21 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 children["files"] = value["files"]
                 continue
 
+            if "processing" in key:
+                if not bool(value):
+                    continue
+
+            if "pipeSection" in key:
+                if "pipeSection" not in children:
+                    children[key] = list()
+                children[key].append(value)
+                continue
+
+            if "prevStepIndex" in key:
+                if not bool(value):
+                    children[key] = None
+                    continue
+
             if "spotDescriptor" in key:
                 children[key] = value["spotDecodeSpec"]
                 continue
@@ -154,6 +180,19 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 reason = "Policy file not supported"
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
+
+            if "processing" in key:
+                if not bool(value):
+                    continue
+
+            if "pipeSection" in key:
+                children[key] = [value]
+                continue
+
+            if "prevStepIndex" in key:
+                if not bool(value):
+                    children[key] = None
+                    continue
 
             if key in links and len(value) == 1:
                 grp = list()
@@ -241,6 +280,11 @@ class MetadataXMLConverter(XMLSchemaConverter):
           selected
         - analysisRef, sampleRef, runRef, experimentRef need to be an array
         - experimentRef in run is an array with maxitems 1
+        - if processing is empty do not show it as it is not required
+        - processing pipeSection should be intepreted as an array
+        - processing pipeSection prevStepIndex can be None if not specified empty
+        - if sampleData does not exist (as it can only be added via forms) we will
+          add it with default gender unknown
         """
         xsd_type = xsd_type or xsd_element.type
 
@@ -253,8 +297,12 @@ class MetadataXMLConverter(XMLSchemaConverter):
 
         if data.attributes:
             tmp = self.dict((self._to_camel(key.lower()), value) for key, value in self.map_attributes(data.attributes))
+            # we add the bool(children) condition as for referenceAlignment
+            # this is to distinguish between the attributes
             if "accession" in tmp:
                 tmp["accessionId"] = tmp.pop("accession")
+            if "sampleName" in tmp and "sampleData" not in tmp:
+                tmp["sampleData"] = {"gender": "unknown"}
             if children is not None:
                 if isinstance(children, dict):
                     for key, value in children.items():
@@ -370,6 +418,12 @@ class CSVToJSONParser:
                 # Without TaxonID provided we assume the sample relates to
                 # Homo Sapien which has default TaxonID of 9606
                 _tmp["sampleName"] = {"taxonId": 9606}
+            # if geneder exists we will format it accordingly
+            if not bool(_tmp["gender"]):
+                _tmp["sampleData"] = {"gender": "unknown"}
+            else:
+                _tmp["sampleData"] = {"gender": _tmp["gender"]}
+            _tmp.pop("gender")
             JSONValidator(_tmp, schema_type.lower()).validate
             _parsed.append(_tmp)
 

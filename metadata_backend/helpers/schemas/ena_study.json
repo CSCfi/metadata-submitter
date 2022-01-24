@@ -27,17 +27,18 @@
             "properties": {
                 "xrefDb": {
                     "type": "string",
-                    "title": "Database"
+                    "title": "Database",
+                    "description": "Name of the database or a link where the resource is located at. INSDC controlled vocabulary of permitted cross references.Please see http://www.insdc.org/db_xref.html . For example, FLYBASE."
                 },
                 "xrefId": {
                     "type": "string",
                     "title": "Database ID",
-                    "description": "Accession in the referenced database."
+                    "description": "Accession ID or stable identifier, in the referenced database. For example, FBtr0080008 (in FLYBASE)"
                 },
                 "label": {
-                    "description": "Text label to display for the link.",
+                    "type": "string",
                     "title": "Label",
-                    "type": "string"
+                    "description": "A text label to identify the xrefLink by."
                 }
             }
         },
@@ -53,7 +54,7 @@
                 "label": {
                     "type": "string",
                     "title": "Label",
-                    "description": "Text label to display for the link."
+                    "description": "A text label to identify the urlLink by."
                 },
                 "url": {
                     "type": "string",
@@ -73,53 +74,53 @@
             ],
             "properties": {
                 "entrezDb": {
-                    "description": "NCBI controlled vocabulary of permitted cross references",
+                    "description": "Entrez Molecular Sequence Database System, NCBI controlled vocabulary of permitted cross references. Also known as Entrez Direct (EDirect) .",
                     "title": "Database",
                     "type": "string",
                     "enum": [
-                        "pubmed",
-                        "protein",
-                        "nuccore",
-                        "ipg",
-                        "nucleotide",
-                        "structure",
-                        "genome",
                         "annotinfo",
                         "assembly",
+                        "biocollections",
                         "bioproject",
                         "biosample",
+                        "biosystems",
                         "blastdbinfo",
                         "books",
                         "cdd",
                         "clinvar",
+                        "dbvar",
                         "gap",
                         "gapplus",
-                        "grasp",
-                        "dbvar",
-                        "gene",
                         "gds",
+                        "gene",
+                        "genome",
                         "geoprofiles",
+                        "grasp",
+                        "gtr",
                         "homologene",
+                        "ipg",
                         "medgen",
                         "mesh",
                         "ncbisearch",
                         "nlmcatalog",
+                        "nuccore",
+                        "nucleotide",
                         "omim",
                         "orgtrack",
-                        "pmc",
-                        "popset",
-                        "proteinclusters",
                         "pcassay",
-                        "protfam",
-                        "biosystems",
                         "pccompound",
                         "pcsubstance",
+                        "pmc",
+                        "popset",
+                        "protein",
+                        "proteinclusters",
+                        "protfam",
+                        "pubmed",
                         "seqannot",
                         "snp",
                         "sra",
-                        "taxonomy",
-                        "biocollections",
-                        "gtr"
+                        "structure",
+                        "taxonomy"
                     ]
                 },
                 "entrezId": {
@@ -129,7 +130,7 @@
                     "pattern": "^[a-zA-Z0-9]+"
                 },
                 "label": {
-                    "description": "Text label to display for the link.",
+                    "description": "A text label to identify the url Entrez link by.",
                     "title": "Label",
                     "type": "string"
                 }
@@ -139,7 +140,6 @@
             "$id": "#/definitions/studyAttribute",
             "type": "object",
             "title": "Study Attribute",
-            "description": "Tag title and its associated value",
             "required": [
                 "tag",
                 "value"
@@ -162,28 +162,29 @@
         "studyType": {
             "$id": "#/definitions/studyType",
             "title": "Study Type",
-            "description": "The Study type presents a controlled vocabulary for expressing the overall purpose of the study.",
+            "description": "The Study type presents a controlled vocabulary for expressing the overall purpose of the Study.",
             "type": "string",
             "enum": [
-                "Whole Genome Sequencing",
-                "Metagenomics",
-                "Transcriptome Analysis",
-                "Resequencing",
+                "Cancer Genomics",
                 "Epigenetics",
-                "Synthetic Genomics",
+                "Exome Sequencing",
                 "Forensic or Paleo-genomics",
                 "Gene Regulation Study",
-                "Cancer Genomics",
-                "Population Genomics",
-                "RNASeq",
-                "Exome Sequencing",
+                "Metagenomics",
                 "Pooled Clone Sequencing",
+                "Population Genomics",
+                "Resequencing",
+                "RNASeq",
+                "Synthetic Genomics",
+                "Transcriptome Analysis",
                 "Transcriptome Sequencing",
+                "Whole Genome Sequencing",
                 "Other"
             ]
         }
     },
     "type": "object",
+    "description": "A Study is a container for a sequencing investigation that may comprise multiple experiments. The Study has an overall goal, but is otherwise minimally defined with a descriptor, zero or more experiments, and zero or more analyses. The submitter may add to the Study web links and properties.",
     "required": [
         "descriptor"
     ],
@@ -198,7 +199,7 @@
             "properties": {
                 "studyTitle": {
                     "title": "Study Title",
-                    "description": "Title of the study as would be used in a publication.",
+                    "description": "Title of the Study as would be used in a publication.",
                     "type": "string"
                 },
                 "studyType": {
@@ -219,12 +220,13 @@
         },
         "studyDescription": {
             "title": "Study Description",
-            "description": "More extensive free-form description of the study.",
+            "description": "More extensive free-form description of the Study.",
             "type": "string"
         },
         "studyLinks": {
             "type": "array",
             "title": "Study Links",
+            "description": "Links to resources related to this experiment or experiment set (publication, datasets, online databases). Used to encode URL links, Entrez links, and xref DB links. ",
             "items": {
                 "$ref": "#/definitions/Links"
             }
@@ -232,18 +234,19 @@
         "studyAttributes": {
             "type": "array",
             "title": "Study Attributes",
+            "description": "Properties and attributes of the Study. These can be entered as free-form tag-value pairs. For certain studies, submitters may be asked to follow a community established ontology when describing the work.",
             "items": {
                 "$ref": "#/definitions/studyAttribute"
             }
         },
         "center": {
             "title": "Description for Center",
-            "description": "More for backwards compatibility, we might not need it.",
+            "description": "Description of the center is intended for backward tracking of the Study record to the submitter's LIMS.",
             "type": "object",
             "properties": {
                 "centerProjectName": {
                     "title": "Center Project Name",
-                    "description": " Submitter defined project name. This field is intended for backward tracking of the study record to the submitter's LIMS.",
+                    "description": "Submitter defined project name. This field is intended for backward tracking of the Study record to the submitter's LIMS.",
                     "type": "string"
                 }
             }
