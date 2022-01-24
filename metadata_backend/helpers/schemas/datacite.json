@@ -12,7 +12,7 @@
             "description": "The main researcher(s) involved in producing the data, or the author(s) of the publication.",
             "items": {
                 "type": "object",
-                "title": "Main researcher(s) involved with data or the author(s) of the publication",
+                "title": "Main researcher(s) involved with data or the author(s) of the publication.",
                 "properties": {
                     "givenName": {
                         "type": "string",
@@ -24,14 +24,16 @@
                     },
                     "name": {
                         "type": "string",
-                        "title": "Full name (from Given Name and Family Name)."
+                        "description": "This field will be constructed based from Given Name and Family Name.",
+                        "title": "Full name."
                     },
                     "affiliation": {
                         "type": "array",
                         "title": "Affiliations",
+                        "description": "The organizational or institutional affiliation of the creator. Upon filling the form with the organization or institution suggestion will be made from Research Organization Registry (ROR) Community API.",
                         "items": {
                             "type": "object",
-                            "title": "Affiliation details",
+                            "title": "Affiliation Details",
                             "properties": {
                                 "name": {
                                     "type": "string",
@@ -39,14 +41,17 @@
                                 },
                                 "schemeUri": {
                                     "type": "string",
+                                    "description": "Name identifier scheme. This will default to https://ror.org/ .",
                                     "title": "URI (location) of the affiliation scheme"
                                 },
                                 "affiliationIdentifier": {
                                     "type": "string",
+                                    "description": "URI location based on the URI scheme of the name identifier this will be pre-filled based on  https://ror.org/name.",
                                     "title": "Location of affiliation identifier"
                                 },
                                 "affiliationIdentifierScheme": {
                                     "type": "string",
+                                    "description": "Identifier scheme name. This will default to ROR.",
                                     "title": "Name of affiliation identifier scheme"
                                 }
                             }
@@ -56,23 +61,26 @@
                     "nameIdentifiers": {
                         "type": "array",
                         "title": "Creator Identifiers",
-                        "description": "Uniquely identifies an individual or legal entity, according to various schemas, e.g. ORCID, ROR or ISNI. Use name identifier expressed as URL.",
+                        "description": "Uniquely identifies the creator, according to various schemas, e.g. ORCID, ROR or ISNI. Use name identifier expressed as URL.",
                         "items": {
                             "type": "object",
-                            "title": "Name identifier object",
+                            "title": "Creator Name Identifier",
                             "properties": {
                                 "schemeUri": {
                                     "type": "string",
-                                    "title": "URI (location) of the name identifier scheme",
+                                    "description": "Depending on the name identifier scheme e.g. https://isni.org/ or https://orcid.org/ or https://ror.org/ or https://www.grid.ac/ .",
+                                    "title": "Scheme of the URI (location) of the name identifier",
                                     "format": "uri"
                                 },
                                 "nameIdentifier": {
                                     "type": "string",
-                                    "title": "URI (location) of name identifier"
+                                    "description": "URI location based on the URI scheme of the name identifier e.g. https://orcid.org/nameIdentifier .",
+                                    "title": "URI (location) of name identifier. "
                                 },
                                 "nameIdentifierScheme": {
                                     "type": "string",
-                                    "title": "Name of name identifier scheme"
+                                    "description": "Identifier scheme name e.g. ORCID, ROR or ISNI .",
+                                    "title": "Name of identifier scheme."
                                 }
                             }
                         },
@@ -86,7 +94,7 @@
         "subjects": {
             "type": "array",
             "title": "Subjects",
-            "description": "Subject, keyword, classification code, or key phrase describing the resource specified by OECD Fields of Science and Technology (FOS)",
+            "description": "Subject, keyword, classification code, or key phrase describing the resources specified by OECD Fields of Science and Technology (FOS)",
             "items": {
                 "type": "object",
                 "title": "Subjects",
@@ -98,54 +106,54 @@
                         "type": "string",
                         "title": "FOS identifier",
                         "enum": [
-                            "FOS: Natural sciences",
-                            "FOS: Mathematics",
-                            "FOS: Computer and information sciences",
-                            "FOS: Physical sciences",
-                            "FOS: Chemical sciences",
-                            "FOS: Earth and related environmental sciences",
-                            "FOS: Biological sciences",
-                            "FOS: Other natural sciences",
-                            "FOS: Engineering and technology",
-                            "FOS: Civil engineering",
-                            "FOS: Electrical engineering, electronic engineering, information engineering",
-                            "FOS: Mechanical engineering",
-                            "FOS: Chemical engineering",
-                            "FOS: Materials engineering",
-                            "FOS: Medical engineering",
-                            "FOS: Environmental engineering",
-                            "FOS: Environmental biotechnology",
-                            "FOS: Industrial biotechnology",
-                            "FOS: Nano-technology",
-                            "FOS: Other engineering and technologies",
-                            "FOS: Medical and health sciences",
-                            "FOS: Basic medicine",
-                            "FOS: Clinical medicine",
-                            "FOS: Health sciences",
-                            "FOS: Medical biotechnology",
-                            "FOS: Other medical sciences",
+                            "FOS: Agricultural biotechnology",
                             "FOS: Agricultural sciences",
                             "FOS: Agriculture, forestry, and fisheries",
                             "FOS: Animal and dairy science",
-                            "FOS: Veterinary science",
-                            "FOS: Agricultural biotechnology",
-                            "FOS: Other agricultural sciences",
-                            "FOS: Social sciences",
-                            "FOS: Psychology",
+                            "FOS: Arts (arts, history of arts, performing arts, music)",
+                            "FOS: Basic medicine",
+                            "FOS: Biological sciences",
+                            "FOS: Chemical engineering",
+                            "FOS: Chemical sciences",
+                            "FOS: Civil engineering",
+                            "FOS: Clinical medicine",
+                            "FOS: Computer and information sciences",
+                            "FOS: Earth and related environmental sciences",
                             "FOS: Economics and business",
                             "FOS: Educational sciences",
-                            "FOS: Sociology",
-                            "FOS: Law",
-                            "FOS: Political science",
-                            "FOS: Social and economic geography",
-                            "FOS: Media and communications",
-                            "FOS: Other social sciences",
-                            "FOS: Humanities",
+                            "FOS: Electrical engineering, electronic engineering, information engineering",
+                            "FOS: Engineering and technology",
+                            "FOS: Environmental biotechnology",
+                            "FOS: Environmental engineering",
+                            "FOS: Health sciences",
                             "FOS: History and archaeology",
+                            "FOS: Humanities",
+                            "FOS: Industrial biotechnology",
                             "FOS: Languages and literature",
+                            "FOS: Law",
+                            "FOS: Materials engineering",
+                            "FOS: Mathematics",
+                            "FOS: Mechanical engineering",
+                            "FOS: Media and communications",
+                            "FOS: Medical and health sciences",
+                            "FOS: Medical biotechnology",
+                            "FOS: Medical engineering",
+                            "FOS: Nano-technology",
+                            "FOS: Natural sciences",
+                            "FOS: Other agricultural sciences",
+                            "FOS: Other engineering and technologies",
+                            "FOS: Other humanities",
+                            "FOS: Other medical sciences",
+                            "FOS: Other natural sciences",
+                            "FOS: Other social sciences",
                             "FOS: Philosophy, ethics and religion",
-                            "FOS: Arts (arts, history of arts, performing arts, music)",
-                            "FOS: Other humanities"
+                            "FOS: Physical sciences",
+                            "FOS: Political science",
+                            "FOS: Psychology",
+                            "FOS: Social and economic geography",
+                            "FOS: Social sciences",
+                            "FOS: Sociology",
+                            "FOS: Veterinary science"
                         ]
                     }
                 },
@@ -174,7 +182,8 @@
                     },
                     "name": {
                         "type": "string",
-                        "title": "Full name (from Given Name and Family Name)."
+                        "description": "This field will be constructed based from Given Name and Family Name.",
+                        "title": "Full name."
                     },
                     "contributorType": {
                         "type": "string",
@@ -191,8 +200,8 @@
                             "Project Manager",
                             "Project Member",
                             "Related Person",
-                            "Researcher",
                             "Research Group",
+                            "Researcher",
                             "Rights Holder",
                             "Sponsor",
                             "Supervisor",
@@ -203,9 +212,10 @@
                     "affiliation": {
                         "type": "array",
                         "title": "Affiliations",
+                        "description": "The organizational or institutional affiliation of the creator. Upon filling the form with the organization or institution suggestion will be made from Research Organization Registry (ROR) Community API.",
                         "items": {
                             "type": "object",
-                            "title": "Affiliation details",
+                            "title": "Affiliation Details",
                             "properties": {
                                 "name": {
                                     "type": "string",
@@ -213,14 +223,17 @@
                                 },
                                 "schemeUri": {
                                     "type": "string",
+                                    "description": "Name identifier scheme. This will default to https://ror.org/ .",
                                     "title": "URI (location) of the affiliation scheme"
                                 },
                                 "affiliationIdentifier": {
                                     "type": "string",
+                                    "description": "URI location based on the URI scheme of the name identifier this will be pre-filled based on  https://ror.org/name.",
                                     "title": "Location of affiliation identifier"
                                 },
                                 "affiliationIdentifierScheme": {
                                     "type": "string",
+                                    "description": "Identifier scheme name. This will default to ROR.",
                                     "title": "Name of affiliation identifier scheme"
                                 }
                             }
@@ -229,27 +242,31 @@
                     },
                     "nameIdentifiers": {
                         "type": "array",
-                        "title": "Contributor identifiers",
-                        "description": "Uniquely identifies an individual or legal entity, according to various schemas, e.g. ORCID, ROR or ISNI. Use name identifier expressed as URL.",
+                        "title": "Contributor Identifiers",
+                        "description": "Uniquely identifies the contributor, according to various schemas, e.g. ORCID, ROR or ISNI. Use name identifier expressed as URL.",
                         "items": {
                             "type": "object",
-                            "title": "Identifier details",
+                            "title": "Contributor Name Identifier",
                             "properties": {
                                 "schemeUri": {
                                     "type": "string",
-                                    "title": "URI (location) of the name identifier scheme",
+                                    "description": "Depending on the name identifier scheme e.g. https://isni.org/ or https://orcid.org/ or https://ror.org/ or https://www.grid.ac/ .",
+                                    "title": "Scheme of the URI (location) of the name identifier",
                                     "format": "uri"
                                 },
                                 "nameIdentifier": {
                                     "type": "string",
-                                    "title": "Location of name identifier"
+                                    "description": "URI location based on the URI scheme of the name identifier e.g. https://orcid.org/nameIdentifier .",
+                                    "title": "URI (location) of name identifier. "
                                 },
                                 "nameIdentifierScheme": {
                                     "type": "string",
-                                    "title": "Name of name identifier scheme"
+                                    "description": "Identifier scheme name e.g. ORCID, ROR or ISNI .",
+                                    "title": "Name of identifier scheme."
                                 }
                             }
-                        }
+                        },
+                        "uniqueItems": true
                     }
                 },
                 "additionalProperties": false
@@ -259,7 +276,7 @@
         "dates": {
             "type": "array",
             "title": "Dates",
-            "description": "List of relevant dates to publication",
+            "description": "List of relevant dates to publication. The type of date can vary and it is recommended to add information if appropriate to distinguish between dates.",
             "items": {
                 "type": "object",
                 "title": "Date",
@@ -271,17 +288,17 @@
                     "date": {
                         "type": "string",
                         "title": "Date",
-                        "description": "A standard format for a date value"
+                        "description": "A standard format for a date value."
                     },
                     "dateType": {
                         "type": "string",
                         "title": "Date Type",
-                        "description": "Relevance of the date",
+                        "description": "Relevance of the date for the resources being submitted.",
                         "enum": [
                             "Accepted",
                             "Available",
-                            "Copyrighted",
                             "Collected",
+                            "Copyrighted",
                             "Created",
                             "Issued",
                             "Submitted",
@@ -304,7 +321,7 @@
         "descriptions": {
             "type": "array",
             "title": "Descriptions",
-            "description": "Additional information about the resource that does not fit in any of the other categories.",
+            "description": "Additional information about the resources that does not fit in any of the other categories, or general descriptions that are supplemental to the descriptions added for Study or Datasets.",
             "items": {
                 "type": "object",
                 "title": "description",
@@ -337,7 +354,7 @@
         "geoLocations": {
             "type": "array",
             "title": "GeoLocations",
-            "description": "Spatial region or named place where the data was gathered or about which the resource is focused.",
+            "description": "Spatial region or named place where the data was gathered or where the resources are focused.",
             "items": {
                 "type": "object",
                 "title": "GeoLocation",
@@ -369,19 +386,19 @@
                         "properties": {
                             "westBoundLongitude": {
                                 "type": "string",
-                                "title": "Longitude coordinate of west bound"
+                                "title": "Longitude coordinate of west bound."
                             },
                             "eastBoundLongitude": {
                                 "type": "string",
-                                "title": "Longitude coordinate of east bound"
+                                "title": "Longitude coordinate of east bound."
                             },
                             "southBoundLatitude": {
                                 "type": "string",
-                                "title": "Latitude coordinate of south bound"
+                                "title": "Latitude coordinate of south bound."
                             },
                             "northBoundLatitude": {
                                 "type": "string",
-                                "title": "Latitude coordinate of north bound"
+                                "title": "Latitude coordinate of north bound."
                             }
                         }
                     }
@@ -393,198 +410,198 @@
         "language": {
             "type": "string",
             "title": "Language",
-            "description": "Primary language of the Study/Datasets submitted.",
+            "description": "Primary language of the submitted resources.",
             "enum": [
-                "Afar",
                 "Abkhaz",
-                "Avestan",
+                "Afar",
                 "Afrikaans",
                 "Akan",
+                "Albanian",
                 "Amharic",
-                "Aragonese",
                 "Arabic",
+                "Aragonese",
+                "Armenian",
                 "Assamese",
                 "Avaric",
+                "Avestan",
                 "Aymara",
                 "Azerbaijani",
+                "Bambara",
                 "Bashkir",
+                "Basque",
                 "Belarusian",
-                "Bulgarian",
+                "Bengali",
                 "Bihari",
                 "Bislama",
-                "Bambara",
-                "Bengali",
-                "Tibetan",
-                "Breton",
                 "Bosnian",
+                "Breton",
+                "Bulgarian",
+                "Burmese",
                 "Catalan",
-                "Chechen",
                 "Chamorro",
+                "Chechen",
+                "Chichewa",
+                "Chinese",
+                "Chuvash",
+                "Cornish",
                 "Corsican",
                 "Cree",
+                "Croatian",
                 "Czech",
-                "Old Church Slavonic",
-                "Chuvash",
-                "Welsh",
                 "Danish",
-                "German",
                 "Divehi",
+                "Dutch",
                 "Dzongkha",
-                "Ewe",
-                "Greek",
                 "English",
                 "Esperanto",
-                "Spanish",
                 "Estonian",
-                "Basque",
-                "Persian",
-                "Fula",
-                "Finnish",
-                "Fijian",
+                "Ewe",
                 "Faroese",
+                "Fijian",
+                "Finnish",
                 "French",
-                "Western Frisian",
-                "Irish",
-                "Scottish Gaelic",
+                "Fula",
                 "Galician",
+                "Ganda",
+                "Georgian",
+                "German",
+                "Greek",
                 "Guaraní",
                 "Gujarati",
-                "Manx",
+                "Haitian",
                 "Hausa",
                 "Hebrew",
+                "Herero",
                 "Hindi",
                 "Hiri Motu",
-                "Croatian",
-                "Haitian",
                 "Hungarian",
-                "Armenian",
-                "Herero",
-                "Interlingua",
-                "Indonesian",
-                "Interlingue",
-                "Igbo",
-                "Nuosu",
-                "Inupiaq",
-                "Ido",
                 "Icelandic",
-                "Italian",
+                "Ido",
+                "Igbo",
+                "Indonesian",
+                "Interlingua",
+                "Interlingue",
                 "Inuktitut",
+                "Inupiaq",
+                "Irish",
+                "Italian",
                 "Japanese",
                 "Javanese",
-                "Georgian",
-                "Kongo",
-                "Kikuyu",
-                "Kwanyama",
-                "Kazakh",
                 "Kalaallisut",
-                "Khmer",
                 "Kannada",
-                "Korean",
                 "Kanuri",
                 "Kashmiri",
-                "Kurdish",
+                "Kazakh",
+                "Khmer",
+                "Kikuyu",
+                "Kinyarwanda",
+                "Kirundi",
                 "Komi",
-                "Cornish",
+                "Kongo",
+                "Korean",
+                "Kurdish",
+                "Kwanyama",
                 "Kyrgyz",
+                "Lao",
                 "Latin",
-                "Luxembourgish",
-                "Ganda",
+                "Latvian",
                 "Limburgish",
                 "Lingala",
-                "Lao",
                 "Lithuanian",
                 "Luba-Katanga",
-                "Latvian",
-                "Malagasy",
-                "Marshallese",
-                "Māori",
+                "Luxembourgish",
                 "Macedonian",
-                "Malayalam",
-                "Mongolian",
-                "Marathi",
+                "Malagasy",
                 "Malay",
+                "Malayalam",
                 "Maltese",
-                "Burmese",
+                "Manx",
+                "Māori",
+                "Marathi",
+                "Marshallese",
+                "Mongolian",
                 "Nauru",
-                "Norwegian Bokmål",
-                "Northern Ndebele",
-                "Nepali",
+                "Navajo",
                 "Ndonga",
-                "Dutch",
+                "Nepali",
+                "Northern Ndebele",
+                "Northern Sami",
+                "Norwegian Bokmål",
                 "Norwegian Nynorsk",
                 "Norwegian",
-                "Southern Ndebele",
-                "Navajo",
-                "Chichewa",
+                "Nuosu",
                 "Occitan",
                 "Ojibwe",
-                "Oromo",
+                "Old Church Slavonic",
                 "Oriya",
+                "Oromo",
                 "Ossetian",
-                "Panjabi",
                 "Pāli",
-                "Polish",
+                "Panjabi",
                 "Pashto",
+                "Persian",
+                "Polish",
                 "Portuguese",
                 "Quechua",
-                "Romansh",
-                "Kirundi",
                 "Romanian",
+                "Romansh",
                 "Russian",
-                "Kinyarwanda",
+                "Samoan",
+                "Sango",
                 "Sanskrit",
                 "Sardinian",
+                "Scottish Gaelic",
+                "Serbian",
+                "Shona",
                 "Sindhi",
-                "Northern Sami",
-                "Sango",
                 "Sinhala",
                 "Slovak",
                 "Slovenian",
-                "Samoan",
-                "Shona",
                 "Somali",
-                "Albanian",
-                "Serbian",
-                "Swati",
+                "Southern Ndebele",
                 "Southern Sotho",
+                "Spanish",
                 "Sundanese",
-                "Swedish",
                 "Swahili",
-                "Tamil",
-                "Telugu",
-                "Tajik",
-                "Thai",
-                "Tigrinya",
-                "Turkmen",
+                "Swati",
+                "Swedish",
                 "Tagalog",
-                "Tswana",
-                "Tonga",
-                "Turkish",
-                "Tsonga",
-                "Tatar",
-                "Twi",
                 "Tahitian",
-                "Uyghur",
+                "Tajik",
+                "Tamil",
+                "Tatar",
+                "Telugu",
+                "Thai",
+                "Tibetan",
+                "Tigrinya",
+                "Tonga",
+                "Tsonga",
+                "Tswana",
+                "Turkish",
+                "Turkmen",
+                "Twi",
                 "Ukrainian",
                 "Urdu",
+                "Uyghur",
                 "Uzbek",
                 "Venda",
                 "Vietnamese",
                 "Volapük",
                 "Walloon",
+                "Welsh",
+                "Western Frisian",
                 "Wolof",
                 "Xhosa",
                 "Yiddish",
                 "Yoruba",
                 "Zhuang",
-                "Chinese",
                 "Zulu"
             ]
         },
         "relatedIdentifiers": {
             "type": "array",
-            "title": "Related Indetifiers",
-            "description": "Must be a globally unique identifier",
+            "title": "Related Identifiers",
+            "description": "Information about a resource related to the one being registered, primarily used to provide series information or a text citation where the related resource does not have an identifier. It is also optional to provide such an identifier.",
             "items": {
                 "type": "object",
                 "title": "Identifier of related resource",
@@ -597,7 +614,7 @@
                     "relatedIdentifier": {
                         "type": "string",
                         "title": "Identifier",
-                        "description": "These must be globally unique identifiers and correspond to the type selected"
+                        "description": "These must be globally unique identifiers and correspond to the type selected. e.g. 10.2022/example.78m9865 for DOI identifier Type"
                     },
                     "relatedIdentifierType": {
                         "type": "string",
@@ -629,56 +646,59 @@
                         "title": "Relationship Type",
                         "enum": [
                             "Cites",
-                            "Is cited by",
+                            "Is Cited By",
                             "Compiles",
-                            "Is compiled by",
+                            "Is Compiled By",
                             "Continues",
-                            "Is continued by",
+                            "Is Continued By",
                             "Describes",
-                            "Is described by",
+                            "Is Described By",
                             "Documents",
-                            "Is documented by",
-                            "Is derived from",
-                            "Is source of",
-                            "Has metadata",
-                            "Is metadata for",
-                            "Has part",
-                            "Is part of",
-                            "Is supplemented by",
-                            "Is supplement to",
+                            "Is Documented By",
+                            "Is Derived From",
+                            "Is Source Of",
+                            "Has Metadata",
+                            "Is Metadata For",
+                            "Has Part",
+                            "Is Part Of",
+                            "Is Supplemented By",
+                            "Is Supplement To",
                             "Obsoletes",
-                            "Is obsoleted by",
+                            "Is Obsoleted By",
                             "References",
-                            "Is referenced by",
+                            "Is Referenced By",
                             "Requires",
-                            "Is required by",
+                            "Is Required By",
                             "Reviews",
-                            "Is reviewed by",
-                            "Has version",
-                            "Is version of",
-                            "Is new version of",
-                            "Is previous version of",
-                            "Is published in",
-                            "Is variant form of",
-                            "Is original form of",
-                            "Is identical to"
+                            "Is Reviewed By",
+                            "Has Version",
+                            "Is Version Of",
+                            "Is New version Of",
+                            "Is Previous Version Of",
+                            "Is Published In",
+                            "Is Variant Form Of",
+                            "Is Original Form Of",
+                            "Is Identical To"
                         ]
                     },
                     "relatedMetadataScheme": {
                         "type": "string",
-                        "title": "Related Metadata Scheme"
+                        "title": "Related Metadata Scheme",
+                        "description": "To be used only with this relation pair: (Has Metadata/Is Metadata For). Example DDI-L"
                     },
                     "schemeUri": {
                         "type": "string",
-                        "title": "Related Metadata Scheme URI"
+                        "title": "Related Metadata Scheme URI",
+                        "description": "To be used only with this relation pair: (Has Metadata/Is Metadata For). Example: http://www.ddialliance.org/Specification/DDI-Lifecycle/3.1/XMLSchema/instance.xsd"
                     },
                     "schemeType": {
                         "type": "string",
-                        "title": "Related Metadata Scheme Type"
+                        "title": "Related Metadata Scheme Type",
+                        "description": "To be used only with this relation pair: (Has Metadata/Is Metadata For). Examples: XSD, DDT, Turtle"
                     },
                     "resourceTypeGeneral": {
                         "type": "string",
-                        "title": "Resource Type General",
+                        "title": "Resource Type",
                         "enum": [
                             "Audiovisual",
                             "Book",
@@ -718,10 +738,10 @@
         "alternateIdentifiers": {
             "type": "array",
             "title": "Alternate Identifiers",
-            "description": "An identifier or identifiers other than the primary or related identifier applied to the resource being registered. EGA identifier obtained that as an alternative to the current resource.",
+            "description": "An identifier or identifiers other than the primary or related identifier applied to the resources being registered. EGA identifier(s) obtained, that can be used as an alternative to the current resources.",
             "items": {
                 "type": "object",
-                "title": "An identifier or identifiers other than the primary Identifier of the resource.",
+                "title": "Identifier(s) other than the primary identifier of the resources",
                 "required": [
                     "alternateIdentifier",
                     "alternateIdentifierType"
@@ -764,7 +784,7 @@
         "sizes": {
             "type": "array",
             "title": "Sizes",
-            "description": "Size (e.g., bytes, pages, inches, etc.) or duration (extent), e.g., hours, minutes, days, etc., of a resource. Examples: '15 pages', '6 MB', '45 minutes'",
+            "description": "Size (e.g., bytes, pages, inches, etc.) or duration (extent), e.g., hours, minutes, days, etc., of a resources. Examples: '15 pages', '6 MB', '45 minutes'.",
             "items": {
                 "type": "string",
                 "title": "Size"
@@ -773,7 +793,7 @@
         "formats": {
             "type": "array",
             "title": "Formats",
-            "description": "Use file extension or MIME type where possible, e.g., PDF, XML, MPG or application/pdf, text/xml, video/mpeg. We will prefill some of them based on what was filled in metadata.",
+            "description": "Use file extension or MIME type where possible, e.g., PDF, XML, MPG or application/pdf, text/xml, video/mpeg. We will pre-fill some of them based on what was filled in metadata.",
             "items": {
                 "type": "string",
                 "title": "Format"
@@ -782,9 +802,10 @@
         "fundingReferences": {
             "type": "array",
             "title": "Funding References",
+            "description": "It is recommended to supply funding information when financial support has been received. The funder will be identified by their Research Organization Registry (ROR).",
             "items": {
                 "type": "object",
-                "title": "Information about financial support for the resource",
+                "title": "Information about financial support for producing the resources",
                 "required": [
                     "funderName",
                     "funderIdentifier",
@@ -815,12 +836,12 @@
                     "awardNumber": {
                         "type": "string",
                         "title": "Award Number",
-                        "description": "The code assigned by the funder to a sponsored award"
+                        "description": "The code assigned by the funder to a sponsored award."
                     },
                     "awardTitle": {
                         "type": "string",
                         "title": "Award Title",
-                        "description": "The human readable title of the award"
+                        "description": "The human readable title of the award."
                     },
                     "awardUri": {
                         "type": "string",

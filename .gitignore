@@ -124,3 +124,5 @@ config/*
 # oidcrp generated directories that store JWKs
 private
 static
+# ignore pyspelling dictionary
+*.dic

@@ -27,17 +27,18 @@
             "properties": {
                 "xrefDb": {
                     "type": "string",
-                    "title": "Database"
+                    "title": "Database",
+                    "description": "Name of the database or a link where the resource is located at. INSDC controlled vocabulary of permitted cross references.Please see http://www.insdc.org/db_xref.html . For example, FLYBASE."
                 },
                 "xrefId": {
                     "type": "string",
                     "title": "Database ID",
-                    "description": "Accession in the referenced database."
+                    "description": "Accession ID or stable identifier, in the referenced database. For example, FBtr0080008 (in FLYBASE)"
                 },
                 "label": {
                     "type": "string",
                     "title": "Label",
-                    "description": "Text label to display for the link."
+                    "description": "A text label to identify the xrefLink by."
                 }
             }
         },
@@ -53,7 +54,7 @@
                 "label": {
                     "type": "string",
                     "title": "Label",
-                    "description": "Text label to display for the link."
+                    "description": "A text label to identify the urlLink by."
                 },
                 "url": {
                     "type": "string",
@@ -73,53 +74,53 @@
             ],
             "properties": {
                 "entrezDb": {
-                    "description": "NCBI controlled vocabulary of permitted cross references",
+                    "description": "Entrez Molecular Sequence Database System, NCBI controlled vocabulary of permitted cross references. Also known as Entrez Direct (EDirect) .",
                     "title": "Database",
                     "type": "string",
                     "enum": [
-                        "pubmed",
-                        "protein",
-                        "nuccore",
-                        "ipg",
-                        "nucleotide",
-                        "structure",
-                        "genome",
                         "annotinfo",
                         "assembly",
+                        "biocollections",
                         "bioproject",
                         "biosample",
+                        "biosystems",
                         "blastdbinfo",
                         "books",
                         "cdd",
                         "clinvar",
+                        "dbvar",
                         "gap",
                         "gapplus",
-                        "grasp",
-                        "dbvar",
-                        "gene",
                         "gds",
+                        "gene",
+                        "genome",
                         "geoprofiles",
+                        "grasp",
+                        "gtr",
                         "homologene",
+                        "ipg",
                         "medgen",
                         "mesh",
                         "ncbisearch",
                         "nlmcatalog",
+                        "nuccore",
+                        "nucleotide",
                         "omim",
                         "orgtrack",
-                        "pmc",
-                        "popset",
-                        "proteinclusters",
                         "pcassay",
-                        "protfam",
-                        "biosystems",
                         "pccompound",
                         "pcsubstance",
+                        "pmc",
+                        "popset",
+                        "protein",
+                        "proteinclusters",
+                        "protfam",
+                        "pubmed",
                         "seqannot",
                         "snp",
                         "sra",
-                        "taxonomy",
-                        "biocollections",
-                        "gtr"
+                        "structure",
+                        "taxonomy"
                     ]
                 },
                 "entrezId": {
@@ -129,7 +130,7 @@
                     "pattern": "^[a-zA-Z0-9]+"
                 },
                 "label": {
-                    "description": "Text label to display for the link.",
+                    "description": "A text label to identify the url Entrez link by.",
                     "title": "Label",
                     "type": "string"
                 }
@@ -139,7 +140,6 @@
             "$id": "#/definitions/datasetAttribute",
             "type": "object",
             "title": "Dataset Attribute",
-            "description": "Properties and attributes of the data set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
             "required": [
                 "tag",
                 "value"
@@ -162,23 +162,28 @@
         "identifiers": {
             "$id": "#/definitions/identifiers",
             "title": "Identifiers",
+            "description": "Identifiers to be used in the International Nucleotide Sequence Database Collaboration (INSDC) namespace.",
             "type": "object",
             "properties": {
                 "primaryId": {
                     "type": "string",
+                    "description": "A primary identifier in the INSDC namespace.",
                     "title": "Primary Id"
                 },
                 "secondaryId": {
                     "type": "string",
+                    "description": "A secondary identifier in the INSDC namespace.",
                     "title": "Secondary Id"
                 },
                 "uuid": {
                     "type": "string",
+                    "description": "A universally unique identifier that requires no namespace.",
                     "title": "UUID"
                 },
                 "externalId": {
                     "type": "object",
                     "title": "External Id",
+                    "description": "An identifier from a public non-INSDC resource.",
                     "properties": {
                         "namespace": {
                             "type": "string",
@@ -193,6 +198,7 @@
                 "submitterId": {
                     "type": "object",
                     "title": "Submitter Id",
+                    "description": "A submitter provided identifier.",
                     "properties": {
                         "namespace": {
                             "type": "string",
@@ -211,21 +217,20 @@
             "additionalProperties": true,
             "type": "object",
             "properties": {
-                "label": {
+                "accessionId": {
                     "type": "string",
-                    "title": "Label"
+                    "description": "Identifies a record by its accession. The scope of resolution is the entire Storage.",
+                    "title": "Accession Id"
                 },
                 "refname": {
                     "type": "string",
+                    "description": "Identifies an object by name within the namespace defined by attribute refcenter",
                     "title": "Record name"
                 },
                 "refcenter": {
                     "type": "string",
+                    "description": "The namespace of the attribute refname.",
                     "title": "Center Namespace"
-                },
-                "accessionId": {
-                    "type": "string",
-                    "title": "Accession Id"
                 },
                 "identifiers": {
                     "$ref": "#/definitions/identifiers"
@@ -235,10 +240,13 @@
     },
     "type": "object",
     "description": "Describes an object that contains data access policy information.",
+    "required": [
+        "title"
+    ],
     "properties": {
         "title": {
             "title": "Dataset Title",
-            "description": "Short text that can be used to call out data sets in searches or in displays.",
+            "description": "Title of the Dataset as would be used in a publication.",
             "type": "string"
         },
         "datasetType": {
@@ -247,53 +255,54 @@
             "items": {
                 "type": "string",
                 "enum": [
-                    "Whole genome sequencing",
-                    "Exome sequencing",
-                    "Genotyping by array",
-                    "Transcriptome profiling by high-throughput sequencing",
-                    "Transcriptome profiling by array",
                     "Amplicon sequencing",
+                    "Chip-Seq",
+                    "Chromatin accessibility profiling by high-throughput sequencing",
+                    "Exome sequencing",
+                    "Genomic variant calling",
+                    "Genotyping by array",
+                    "Histone modification profiling by high-throughput sequencing",
                     "Methylation binding domain sequencing",
                     "Methylation profiling by high-throughput sequencing",
                     "Phenotype information",
                     "Study summary information",
-                    "Genomic variant calling",
-                    "Chromatin accessibility profiling by high-throughput sequencing",
-                    "Histone modification profiling by high-throughput sequencing",
-                    "Chip-Seq"
+                    "Transcriptome profiling by array",
+                    "Transcriptome profiling by high-throughput sequencing",
+                    "Whole genome sequencing"
                 ]
             },
             "uniqueItems": true
         },
         "description": {
             "title": "Dataset Description",
-            "description": "Free-form text describing the data sets.",
+            "description": "Free-form text describing the Dataset.",
             "type": "string"
         },
         "policyRef": {
             "title": "Policy Reference",
-            "description": "Identifies the data access committee to which this policy pertains.",
+            "description": "Identifies the data access policy controlling this Dataset.",
             "$ref": "#/definitions/reference"
         },
         "runRef": {
             "title": "Run Reference",
-            "description": "Identifies the runs which are part of this dataset.",
+            "description": "Identifies the Runs which are part of this Dataset.",
             "type": "array",
             "items": {
                 "$ref": "#/definitions/reference"
-            } 
+            }
         },
         "analysisRef": {
             "title": "Analysis Reference",
-            "description": "Identifies the data access committee to which this policy pertains.",
+            "description": "Identifies the Analyses which are part of this Dataset.",
             "type": "array",
             "items": {
                 "$ref": "#/definitions/reference"
-            } 
+            }
         },
         "datasetLinks": {
             "type": "array",
             "title": "Dataset Links",
+            "description": "Used to encode URL links, Entrez links, and xref DB links. These are links used to cross reference with other relevant resources.",
             "items": {
                 "$ref": "#/definitions/Links"
             }
@@ -301,6 +310,7 @@
         "datasetAttributes": {
             "type": "array",
             "title": "Dataset Attributes",
+            "description": "Properties and attributes of the data set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
             "items": {
                 "$ref": "#/definitions/datasetAttribute"
             }
