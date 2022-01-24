@@ -561,9 +561,6 @@
                     "title": "Pipeline",
                     "description": "The Pipeline type identifies the sequence or tree of actions to process the sequencing data.",
                     "type": "object",
-                    "required": [
-                        "pipeSection"
-                    ],
                     "properties": {
                         "pipeSection": {
                             "type": "array",
