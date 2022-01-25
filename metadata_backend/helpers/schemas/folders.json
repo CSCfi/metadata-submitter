@@ -44,7 +44,8 @@
       "title": "Datacite DOI Registration Information",
       "required": [
         "creators",
-        "subjects"
+        "subjects",
+        "keywords"
       ],
       "properties": {
         "creators": {
@@ -140,7 +141,7 @@
         "subjects": {
           "type": "array",
           "title": "Subjects",
-          "description": "Subject, keyword, classification code, or key phrase describing the resources specified by OECD Fields of Science and Technology (FOS)",
+          "description": "Subject, classification code, or key phrase describing the resources specified by OECD Fields of Science and Technology (FOS)",
           "items": {
             "type": "object",
             "title": "Subjects",
@@ -210,6 +211,15 @@
             "additionalProperties": false
           },
           "uniqueItems": true
+        },
+        "keywords": {
+          "type": "array",
+          "title": "Keywords",
+          "description": "A keyword or tag describing the resources. It is recommended to use a controlled vocabulary, ontology or classification when choosing keywords. At least one keyword is required.",
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          }
         },
         "contributors": {
           "type": "array",
