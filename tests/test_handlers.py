@@ -400,7 +400,11 @@ class ObjectHandlerTestCase(HandlersTestCase):
         json_req = {
             "centerName": "GEO",
             "alias": "GSE10966",
-            "descriptor": {"studyTitle": "Highly", "studyType": "Other"},
+            "descriptor": {
+                "studyTitle": "Highly",
+                "studyType": "Other",
+                "studyAbstract": "abstract description for testing",
+            },
         }
         response = await self.client.post("/objects/study", params={"folder": "some id"}, json=json_req)
         self.assertEqual(response.status, 201)
@@ -420,7 +424,11 @@ class ObjectHandlerTestCase(HandlersTestCase):
         json_req = {
             "centerName": "GEO",
             "alias": "GSE10966",
-            "descriptor": {"studyTitle": "Highly", "studyType": "ceva"},
+            "descriptor": {
+                "studyTitle": "Highly",
+                "studyType": "ceva",
+                "studyAbstract": "abstract description for testing",
+            },
         }
         response = await self.client.post("/objects/study", params={"folder": "some id"}, json=json_req)
         reason = "Provided input does not seem correct for field: 'descriptor'"
@@ -432,7 +440,11 @@ class ObjectHandlerTestCase(HandlersTestCase):
         json_req = {
             "centerName": "GEO",
             "alias": "GSE10966",
-            "descriptor": {"studyTitle": "Highly", "studyType": "Other"},
+            "descriptor": {
+                "studyTitle": "Highly",
+                "studyType": "Other",
+                "studyAbstract": "abstract description for testing",
+            },
         }
         response = await self.client.post("/objects/study", params={"folder": "some id"}, data=json_req)
         reason = "JSON is not correctly formatted. See: Expecting value: line 1 column 1"
@@ -475,7 +487,11 @@ class ObjectHandlerTestCase(HandlersTestCase):
         json_req = {
             "centerName": "GEO",
             "alias": "GSE10966",
-            "descriptor": {"studyTitle": "Highly", "studyType": "Other"},
+            "descriptor": {
+                "studyTitle": "Highly",
+                "studyType": "Other",
+                "studyAbstract": "abstract description for testing",
+            },
         }
         call = "/drafts/study/EGA123456"
         response = await self.client.put(call, data=json_req)
@@ -497,7 +513,11 @@ class ObjectHandlerTestCase(HandlersTestCase):
         json_req = {
             "centerName": "GEO",
             "alias": "GSE10966",
-            "descriptor": {"studyTitle": "Highly", "studyType": "Other"},
+            "descriptor": {
+                "studyTitle": "Highly",
+                "studyType": "Other",
+                "studyAbstract": "abstract description for testing",
+            },
         }
         response = await self.client.post("/drafts/study", params={"folder": "some id"}, json=json_req)
         self.assertEqual(response.status, 201)
@@ -509,7 +529,11 @@ class ObjectHandlerTestCase(HandlersTestCase):
         json_req = {
             "centerName": "GEO",
             "alias": "GSE10966",
-            "descriptor": {"studyTitle": "Highly", "studyType": "Other"},
+            "descriptor": {
+                "studyTitle": "Highly",
+                "studyType": "Other",
+                "studyAbstract": "abstract description for testing",
+            },
         }
         call = "/drafts/study/EGA123456"
         response = await self.client.put(call, json=json_req)
