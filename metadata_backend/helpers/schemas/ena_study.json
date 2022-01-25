@@ -188,13 +188,15 @@
     "required": [
         "descriptor"
     ],
+    "additionalProperties": true,
     "properties": {
         "descriptor": {
             "type": "object",
             "title": "Study Description",
             "required": [
                 "studyTitle",
-                "studyType"
+                "studyType",
+                "studyAbstract"
             ],
             "properties": {
                 "studyTitle": {
