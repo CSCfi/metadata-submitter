@@ -1,11 +1,10 @@
 """Functions shared between handlers."""
 import csv
 import string
-from typing import List, Tuple, Dict, Any
+from typing import Any, Dict, List, Tuple
 
-from aiohttp import BodyPartReader, web, hdrs, MultipartReader
+from aiohttp import BodyPartReader, MultipartReader, hdrs, web
 from aiohttp.web import Request
-
 from xmlschema import XMLResource
 from xmlschema.etree import ElementTree
 
@@ -16,7 +15,7 @@ from ...helpers.parser import CSVToJSONParser
 
 async def multipart_content(
     req: Request, extract_one: bool = False, expect_xml: bool = False
-) -> Tuple[List[Tuple[Any, str]], str]:
+) -> Tuple[List[Tuple[Any, str]], str, str]:
     """Get content(s) and schema type(s) of a multipart request (from either csv or xml format).
 
     Note: for multiple files support check: https://docs.aiohttp.org/en/stable/multipart.html#hacking-multipart
@@ -48,6 +47,7 @@ async def multipart_content(
             raise web.HTTPUnsupportedMediaType(reason=reason)
         if not part:
             break
+        filename = part.filename if part.filename else ""
         if extract_one and (xml_files or csv_files):
             reason = "Only one file can be sent to this endpoint at a time."
             LOG.error(reason)
@@ -72,7 +72,7 @@ async def multipart_content(
             raise web.HTTPBadRequest(reason=reason)
 
     # Return extracted content
-    return _get_content_with_type(xml_files, csv_files)
+    return _get_content_with_type(xml_files, csv_files) + (filename,)
 
 
 async def _extract_upload(part: BodyPartReader) -> Tuple[str, str]:
