@@ -109,7 +109,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         operator: Union[Operator, XMLOperator]
         if req.content_type == "multipart/form-data":
             _only_xml = False if schema_type in _allowed_csv else True
-            files, cont_type = await multipart_content(req, extract_one=True, expect_xml=_only_xml)
+            files, cont_type, _ = await multipart_content(req, extract_one=True, expect_xml=_only_xml)
             if cont_type == "xml":
                 # from this tuple we only care about the content
                 # files should be of form (content, schema)
@@ -222,7 +222,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         content: Union[Dict, str]
         operator: Union[Operator, XMLOperator]
         if req.content_type == "multipart/form-data":
-            files, _ = await multipart_content(req, extract_one=True, expect_xml=True)
+            files, _, _ = await multipart_content(req, extract_one=True, expect_xml=True)
             content, _ = files[0]
             operator = XMLOperator(db_client)
         else:
