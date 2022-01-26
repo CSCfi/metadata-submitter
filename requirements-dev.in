@@ -2,6 +2,7 @@ aiofiles  # to run integration tests
 black
 certifi
 flake8
+mypy
 pip-tools  # pip depedencies management
 pre-commit
 tox
