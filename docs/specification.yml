@@ -299,6 +299,13 @@ paths:
           schema:
             type: string
           required: true
+        - name: folder
+          in: query
+          schema:
+            type: string
+          description: The folder ID where object belongs to.
+          required: true
+          example: "folder=12345"
       requestBody:
         content:
           multipart/form-data::
@@ -535,6 +542,13 @@ paths:
           schema:
             type: string
           required: true
+        - name: folder
+          in: query
+          schema:
+            type: string
+          description: The folder ID where object belongs to.
+          required: true
+          example: "folder=12345"
       requestBody:
         content:
           multipart/form-data::
