@@ -23,6 +23,13 @@
 		"python.linting.pylintEnabled": true,
 		"python.linting.enabled": true,
 		"python.pythonPath": "/usr/local/bin/python",
+		"python.linting.mypyEnabled": true,
+		"python.linting.mypyArgs": [
+			"--ignore-missing-imports",
+			"--follow-imports=silent",
+			"--show-column-numbers",
+			"--strict"
+		  ],
 	},
 	"extensions": [
 		"ms-python.python",
