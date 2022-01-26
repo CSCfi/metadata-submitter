@@ -140,7 +140,7 @@ async def create_request_json_data(schema, filename):
     return request_data
 
 
-async def post_object(sess, schema, filename):
+async def post_object(sess, schema, folder_id, filename):
     """Post one metadata object within session, returns accessionId.
 
     :param sess: HTTP session in which request call is made
@@ -148,14 +148,14 @@ async def post_object(sess, schema, filename):
     :param filename: name of the file used for testing.
     """
     request_data = await create_request_data(schema, filename)
-    async with sess.post(f"{objects_url}/{schema}", data=request_data) as resp:
+    async with sess.post(f"{objects_url}/{schema}", params={"folder": folder_id}, data=request_data) as resp:
         LOG.debug(f"Adding new object to {schema}, via XML/CSV file {filename}")
         assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
         return ans if isinstance(ans, list) else ans["accessionId"], schema
 
 
-async def post_object_expect_status(sess, schema, filename, status):
+async def post_object_expect_status(sess, schema, folder_id, filename, status):
     """Post one metadata object within session, returns accessionId.
 
     :param sess: HTTP session in which request call is made
@@ -163,7 +163,7 @@ async def post_object_expect_status(sess, schema, filename, status):
     :param filename: name of the file used for testing.
     """
     request_data = await create_request_data(schema, filename)
-    async with sess.post(f"{objects_url}/{schema}", data=request_data) as resp:
+    async with sess.post(f"{objects_url}/{schema}", params={"folder": folder_id}, data=request_data) as resp:
         LOG.debug(f"Adding new object to {schema}, via XML/CSV file {filename} and expecting status: {status}")
         assert resp.status == status, f"HTTP Status code error, got {resp.status}"
         if status < 400:
@@ -171,7 +171,7 @@ async def post_object_expect_status(sess, schema, filename, status):
             return ans if isinstance(ans, list) else ans["accessionId"], schema
 
 
-async def post_object_json(sess, schema, filename):
+async def post_object_json(sess, schema, folder_id, filename):
     """Post & put one metadata object within session, returns accessionId.
 
     :param sess: HTTP session in which request call is made
@@ -179,7 +179,7 @@ async def post_object_json(sess, schema, filename):
     :param filename: name of the file used for testing.
     """
     request_data = await create_request_json_data(schema, filename)
-    async with sess.post(f"{objects_url}/{schema}", data=request_data) as resp:
+    async with sess.post(f"{objects_url}/{schema}", params={"folder": folder_id}, data=request_data) as resp:
         LOG.debug(f"Adding new object to {schema}, via JSON file {filename}")
         assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
@@ -198,7 +198,7 @@ async def delete_object(sess, schema, accession_id):
         assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
 
-async def post_draft(sess, schema, filename):
+async def post_draft(sess, schema, folder_id, filename):
     """Post one draft metadata object within session, returns accessionId.
 
     :param sess: HTTP session in which request call is made
@@ -206,14 +206,14 @@ async def post_draft(sess, schema, filename):
     :param filename: name of the file used for testing.
     """
     request_data = await create_request_data(schema, filename)
-    async with sess.post(f"{drafts_url}/{schema}", data=request_data) as resp:
+    async with sess.post(f"{drafts_url}/{schema}", params={"folder": folder_id}, data=request_data) as resp:
         LOG.debug(f"Adding new draft object to {schema}, via XML file {filename}")
         assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
         return ans["accessionId"]
 
 
-async def post_draft_json(sess, schema, filename):
+async def post_draft_json(sess, schema, folder_id, filename):
     """Post & put one metadata object within session, returns accessionId.
 
     :param sess: HTTP session in which request call is made
@@ -221,7 +221,7 @@ async def post_draft_json(sess, schema, filename):
     :param filename: name of the file used for testing.
     """
     request_data = await create_request_json_data(schema, filename)
-    async with sess.post(f"{drafts_url}/{schema}", data=request_data) as resp:
+    async with sess.post(f"{drafts_url}/{schema}", params={"folder": folder_id}, data=request_data) as resp:
         LOG.debug(f"Adding new draft object to {schema}, via JSON file {filename}")
         assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
@@ -516,11 +516,7 @@ async def test_crud_works(sess, schema, filename, folder_id):
     :param filename: name of the file used for testing
     :param folder_id: id of the folder used to group submission
     """
-    accession_id = await post_object(sess, schema, filename)
-    patch_object = [
-        {"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id[0], "schema": schema}}
-    ]
-    await patch_folder(sess, folder_id, patch_object)
+    accession_id = await post_object(sess, schema, folder_id, filename)
     async with sess.get(f"{objects_url}/{schema}/{accession_id[0]}") as resp:
         LOG.debug(f"Checking that {accession_id[0]} JSON is in {schema}")
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
@@ -556,15 +552,11 @@ async def test_csv(sess, folder_id):
     """
     _schema = "sample"
     _filename = "EGAformat.csv"
-    accession_id = await post_object(sess, _schema, _filename)
+    accession_id = await post_object(sess, _schema, folder_id, _filename)
     # there are 3 rows and we expected to get 3rd
     assert len(accession_id[0]) == 3, f"expected nb of CSV entries does not match, we got: {len(accession_id)}"
     _first_csv_row_id = accession_id[0][0]["accessionId"]
-    patch_object = [
-        {"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": _first_csv_row_id, "schema": _schema}}
-    ]
 
-    await patch_folder(sess, folder_id, patch_object)
     async with sess.get(f"{objects_url}/{_schema}/{_first_csv_row_id}") as resp:
         LOG.debug(f"Checking that {_first_csv_row_id} JSON is in {_schema}")
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
@@ -582,11 +574,11 @@ async def test_csv(sess, folder_id):
 
     _filename = "empty.csv"
     # status should be 400
-    await post_object_expect_status(sess, _schema, _filename, 400)
+    await post_object_expect_status(sess, _schema, folder_id, _filename, 400)
 
     _filename = "EGA_sample_w_issue.csv"
     # status should be 201 but we expect 3 rows, as the CSV has 4 rows one of which is empty
-    accession_id = await post_object_expect_status(sess, _schema, _filename, 201)
+    accession_id = await post_object_expect_status(sess, _schema, folder_id, _filename, 201)
     assert len(accession_id[0]) == 3, f"expected nb of CSV entries does not match, we got: {len(accession_id)}"
 
 
@@ -600,11 +592,7 @@ async def test_put_objects(sess, folder_id):
     :param sess: HTTP session in which request call is made
     :param folder_id: id of the folder used to group submission
     """
-    accession_id = await post_object(sess, "study", "SRP000539.xml")
-    patch_object = [
-        {"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id[0], "schema": "study"}}
-    ]
-    await patch_folder(sess, folder_id, patch_object)
+    accession_id = await post_object(sess, "study", folder_id, "SRP000539.xml")
     await put_object_json(sess, "study", accession_id[0], "SRP000539.json")
     await put_object_xml(sess, "study", accession_id[0], "SRP000539_put.xml")
 
@@ -622,11 +610,7 @@ async def test_crud_drafts_works(sess, schema, orginal_file, update_file, folder
     :param update_file: name of the file used for updating object.
     :param folder_id: id of the folder used to group submission objects
     """
-    draft_id = await post_draft_json(sess, schema, orginal_file)
-    patch_draft_data = [
-        {"op": "add", "path": "/drafts/-", "value": {"accessionId": draft_id, "schema": f"draft-{schema}"}}
-    ]
-    await patch_folder(sess, folder_id, patch_draft_data)
+    draft_id = await post_draft_json(sess, schema, folder_id, orginal_file)
     accession_id = await put_draft(sess, schema, draft_id, update_file)
     async with sess.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
         LOG.debug(f"Checking that {accession_id} JSON is in {schema}")
@@ -657,11 +641,7 @@ async def test_patch_drafts_works(sess, schema, orginal_file, update_file, folde
     :param update_file: name of the file used for updating object.
     :param folder_id: id of the folder used to group submission objects
     """
-    draft_id = await post_draft_json(sess, schema, orginal_file)
-    patch_draft_data = [
-        {"op": "add", "path": "/drafts/-", "value": {"accessionId": draft_id, "schema": f"draft-{schema}"}}
-    ]
-    await patch_folder(sess, folder_id, patch_draft_data)
+    draft_id = await post_draft_json(sess, schema, folder_id, orginal_file)
     accession_id = await patch_draft(sess, schema, draft_id, update_file)
     async with sess.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
         LOG.debug(f"Checking that {accession_id} JSON is in {schema}")
@@ -682,13 +662,9 @@ async def test_querying_works(sess, folder_id):
     :param sess: HTTP session in which request call is made
     :param folder_id: id of the folder used to group submission objects
     """
-    files = await asyncio.gather(*[post_object(sess, schema, filename) for schema, filename in test_xml_files])
-
-    for accession_id, schema in files:
-        patch_folder_obj = [
-            {"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id, "schema": schema}}
-        ]
-        await patch_folder(sess, folder_id, patch_folder_obj)
+    files = await asyncio.gather(
+        *[post_object(sess, schema, folder_id, filename) for schema, filename in test_xml_files]
+    )
 
     queries = {
         "study": [
@@ -740,13 +716,7 @@ async def test_getting_all_objects_from_schema_works(sess, folder_id):
     :param folder_id: id of the folder used to group submission objects
     """
     # Add objects
-    files = await asyncio.gather(*[post_object(sess, "study", "SRP000539.xml") for _ in range(13)])
-
-    for accession_id, schema in files:
-        patch_folder_obj = [
-            {"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id, "schema": schema}}
-        ]
-        await patch_folder(sess, folder_id, patch_folder_obj)
+    files = await asyncio.gather(*[post_object(sess, "study", folder_id, "SRP000539.xml") for _ in range(13)])
 
     # Test default values
     async with sess.get(f"{objects_url}/study") as resp:
@@ -791,11 +761,7 @@ async def test_crud_folders_works(sess):
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
     # Create draft from test XML file and patch the draft into the newly created folder
-    draft_id = await post_draft(sess, "sample", "SRS001433.xml")
-    patch_add_draft = [
-        {"op": "add", "path": "/drafts/-", "value": [{"accessionId": draft_id, "schema": "draft-sample"}]}
-    ]
-    folder_id = await patch_folder(sess, folder_id, patch_add_draft)
+    draft_id = await post_draft(sess, "sample", folder_id, "SRS001433.xml")
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was patched")
         res = await resp.json()
@@ -803,32 +769,43 @@ async def test_crud_folders_works(sess):
         assert res["name"] == folder_data["name"], "expected folder name does not match"
         assert res["description"] == folder_data["description"], "folder description content mismatch"
         assert res["published"] is False, "folder is published, expected False"
-        assert res["drafts"] == [{"accessionId": draft_id, "schema": "draft-sample"}], "folder drafts content mismatch"
+        assert res["drafts"] == [
+            {
+                "accessionId": draft_id,
+                "schema": "draft-sample",
+                "tags": {"submissionType": "XML", "displayTitle": "SRS001433.xml", "fileName": "SRS001433.xml"},
+            }
+        ], "folder drafts content mismatch"
         assert res["metadataObjects"] == [], "there are objects in folder, expected empty"
 
     # Get the draft from the collection within this session and post it to objects collection
     draft_data = await get_draft(sess, "sample", draft_id)
-    async with sess.post(f"{objects_url}/sample", data=draft_data) as resp:
+    async with sess.post(f"{objects_url}/sample", params={"folder": folder_id}, data=draft_data) as resp:
         LOG.debug("Adding draft to actual objects")
         assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
         assert ans["accessionId"] != draft_id, "draft id does not match expected"
         accession_id = ans["accessionId"]
 
-    # Patch folder so that original draft becomes an object in the folder
-    patch_folder_move_draft = [
-        {"op": "add", "path": "/metadataObjects/-", "value": [{"accessionId": accession_id, "schema": "sample"}]},
-    ]
-    folder_id = await patch_folder(sess, folder_id, patch_folder_move_draft)
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was patched")
         res = await resp.json()
         assert res["folderId"] == folder_id, "expected folder id does not match"
         assert res["published"] is False, "folder is published, expected False"
         assert "datePublished" not in res.keys()
-        assert res["drafts"] == [{"accessionId": draft_id, "schema": "draft-sample"}], "folder drafts content mismatch"
+        assert res["drafts"] == [
+            {
+                "accessionId": draft_id,
+                "schema": "draft-sample",
+                "tags": {"submissionType": "XML", "displayTitle": "SRS001433.xml", "fileName": "SRS001433.xml"},
+            }
+        ], "folder drafts content mismatch"
         assert res["metadataObjects"] == [
-            {"accessionId": accession_id, "schema": "sample"}
+            {
+                "accessionId": accession_id,
+                "schema": "sample",
+                "tags": {"submissionType": "Form", "displayTitle": "HapMap sample from Homo sapiens"},
+            }
         ], "folder metadataObjects content mismatch"
 
     # Publish the folder
@@ -845,7 +822,11 @@ async def test_crud_folders_works(sess):
         assert "extraInfo" in res.keys()
         assert res["drafts"] == [], "there are drafts in folder, expected empty"
         assert res["metadataObjects"] == [
-            {"accessionId": accession_id, "schema": "sample"}
+            {
+                "accessionId": accession_id,
+                "schema": "sample",
+                "tags": {"submissionType": "Form", "displayTitle": "HapMap sample from Homo sapiens"},
+            }
         ], "folder metadataObjects content mismatch"
 
     # Delete folder
@@ -869,11 +850,7 @@ async def test_crud_folders_works_no_publish(sess):
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
     # Create draft from test XML file and patch the draft into the newly created folder
-    draft_id = await post_draft(sess, "sample", "SRS001433.xml")
-    patch_add_draft = [
-        {"op": "add", "path": "/drafts/-", "value": [{"accessionId": draft_id, "schema": "draft-sample"}]}
-    ]
-    folder_id = await patch_folder(sess, folder_id, patch_add_draft)
+    draft_id = await post_draft(sess, "sample", folder_id, "SRS001433.xml")
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was patched")
         res = await resp.json()
@@ -881,31 +858,42 @@ async def test_crud_folders_works_no_publish(sess):
         assert res["name"] == folder_data["name"], "expected folder name does not match"
         assert res["description"] == folder_data["description"], "folder description content mismatch"
         assert res["published"] is False, "folder is published, expected False"
-        assert res["drafts"] == [{"accessionId": draft_id, "schema": "draft-sample"}], "folder drafts content mismatch"
+        assert res["drafts"] == [
+            {
+                "accessionId": draft_id,
+                "schema": "draft-sample",
+                "tags": {"submissionType": "XML", "displayTitle": "SRS001433.xml", "fileName": "SRS001433.xml"},
+            }
+        ], "folder drafts content mismatch"
         assert res["metadataObjects"] == [], "there are objects in folder, expected empty"
 
     # Get the draft from the collection within this session and post it to objects collection
     draft = await get_draft(sess, "sample", draft_id)
-    async with sess.post(f"{objects_url}/sample", data=draft) as resp:
+    async with sess.post(f"{objects_url}/sample", params={"folder": folder_id}, data=draft) as resp:
         LOG.debug("Adding draft to actual objects")
         assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
         assert ans["accessionId"] != draft_id, "draft id does not match expected"
         accession_id = ans["accessionId"]
 
-    # Patch folder so that original draft becomes an object in the folder
-    patch_folder_move_draft = [
-        {"op": "add", "path": "/metadataObjects/-", "value": [{"accessionId": accession_id, "schema": "sample"}]},
-    ]
-    folder_id = await patch_folder(sess, folder_id, patch_folder_move_draft)
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was patched")
         res = await resp.json()
         assert res["folderId"] == folder_id, "expected folder id does not match"
         assert res["published"] is False, "folder is published, expected False"
-        assert res["drafts"] == [{"accessionId": draft_id, "schema": "draft-sample"}], "folder drafts content mismatch"
+        assert res["drafts"] == [
+            {
+                "accessionId": draft_id,
+                "schema": "draft-sample",
+                "tags": {"submissionType": "XML", "displayTitle": "SRS001433.xml", "fileName": "SRS001433.xml"},
+            }
+        ], "folder drafts content mismatch"
         assert res["metadataObjects"] == [
-            {"accessionId": accession_id, "schema": "sample"}
+            {
+                "accessionId": accession_id,
+                "schema": "sample",
+                "tags": {"submissionType": "Form", "displayTitle": "HapMap sample from Homo sapiens"},
+            }
         ], "folder metadataObjects content mismatch"
 
     # Delete folder
@@ -1309,32 +1297,14 @@ async def test_get_folders_objects(sess, folder_id: str):
     :param sess: HTTP session in which request call is made
     :param folder_id: id of the folder used to group submission objects
     """
-    accession_id = await post_object_json(sess, "study", "SRP000539.json")
-    patch_add_object = [
-        {"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id, "schema": "study"}}
-    ]
-    await patch_folder(sess, folder_id, patch_add_object)
+    accession_id = await post_object_json(sess, "study", folder_id, "SRP000539.json")
     async with sess.get(f"{folders_url}") as resp:
         LOG.debug(f"Reading folder {folder_id}")
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         response = await resp.json()
         assert len(response["folders"]) == 1
         assert response["folders"][0]["metadataObjects"][0]["accessionId"] == accession_id
-        assert "tags" not in response["folders"][0]["metadataObjects"][0]
-    patch_add_more_object = [
-        {
-            "op": "add",
-            "path": "/metadataObjects/0/tags",
-            "value": {"submissionType": "Form"},
-        }
-    ]
-    await patch_folder(sess, folder_id, patch_add_more_object)
-    async with sess.get(f"{folders_url}") as resp:
-        LOG.debug(f"Reading folder {folder_id}")
-        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-        response = await resp.json()
-        assert len(response["folders"]) == 1
-        assert response["folders"][0]["metadataObjects"][0]["accessionId"] == accession_id
+        assert "tags" in response["folders"][0]["metadataObjects"][0]
         assert response["folders"][0]["metadataObjects"][0]["tags"]["submissionType"] == "Form"
 
     patch_change_tags_object = [

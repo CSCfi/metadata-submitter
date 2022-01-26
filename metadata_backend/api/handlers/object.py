@@ -1,6 +1,6 @@
 """Handle HTTP methods for server."""
 from math import ceil
-from typing import Dict, Union, List, Any, Tuple
+from typing import Any, Dict, List, Tuple, Union
 
 import ujson
 from aiohttp import web
@@ -101,6 +101,13 @@ class ObjectAPIHandler(RESTAPIHandler):
         """
         _allowed_csv = ["sample"]
         schema_type = req.match_info["schema"]
+
+        folder_id = req.query.get("folder", "")
+        if not folder_id:
+            reason = "Folder ID is required query parameter."
+            raise web.HTTPBadRequest(reason=reason)
+        patch_params = {"folder": folder_id}
+
         self._check_schema_exists(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
 
@@ -109,17 +116,18 @@ class ObjectAPIHandler(RESTAPIHandler):
         operator: Union[Operator, XMLOperator]
         if req.content_type == "multipart/form-data":
             _only_xml = False if schema_type in _allowed_csv else True
-            files, cont_type, _ = await multipart_content(req, extract_one=True, expect_xml=_only_xml)
+            files, cont_type, filename = await multipart_content(req, extract_one=True, expect_xml=_only_xml)
             if cont_type == "xml":
                 # from this tuple we only care about the content
                 # files should be of form (content, schema)
                 content, _ = files[0]
             else:
-                # for CSV files we need to tread this as a list of tuples (content, schema)
+                # for CSV files we need to treat this as a list of tuples (content, schema)
                 content = files
             # If multipart request contains XML, XML operator is used.
             # Else the multipart request is expected to contain CSV file(s) which are converted into JSON.
             operator = XMLOperator(db_client) if cont_type == "xml" else Operator(db_client)
+            patch_params.update({"cont_type": cont_type, "title": filename})
         else:
             content = await self._get_data(req)
             if not req.path.startswith("/drafts"):
@@ -146,6 +154,20 @@ class ObjectAPIHandler(RESTAPIHandler):
 
             location_headers = CIMultiDict(Location=f"{url}/{accession_id}")
             LOG.info(f"POST object with accesssion ID {accession_id} in schema {collection} was successful.")
+
+        # Gathering data for object to be added to folder
+        if not isinstance(data, List):
+            ids = [data]
+        if not patch_params.get("title", None) and isinstance(content, Dict):
+            try:
+                patch_params["title"] = (
+                    content["descriptor"]["studyTitle"] if collection == "study" else content["title"]
+                )
+            except (TypeError, KeyError):
+                patch_params["title"] = ""
+        patch = await self.prepare_folder_patch(collection, ids, patch_params)
+        folder_op = FolderOperator(db_client)
+        folder_id = await folder_op.update_folder(folder_id, patch)
 
         body = ujson.dumps(data, escape_forward_slashes=False)
 
@@ -283,3 +305,43 @@ class ObjectAPIHandler(RESTAPIHandler):
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info(f"PATCH object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
+
+    async def prepare_folder_patch(self, schema: str, ids: List, params: Dict[str, str]) -> List:
+        """Prepare patch operations list.
+
+        :param schema: schema of objects to be added to the folder
+        :param ids: object IDs
+        :param params: addidtional data required for db entry
+        :returns: list of patch operations
+        """
+        if not params.get("cont_type", None):
+            submission_type = "Form"
+        else:
+            submission_type = params["cont_type"].upper()
+
+        if schema.startswith("draft"):
+            path = "/drafts/-"
+        else:
+            path = "/metadataObjects/-"
+
+        patch = []
+        patch_ops: Dict[str, Any] = {}
+        for id in ids:
+            patch_ops = {
+                "op": "add",
+                "path": path,
+                "value": {
+                    "accessionId": id["accessionId"],
+                    "schema": schema,
+                    "tags": {
+                        "submissionType": submission_type,
+                        "displayTitle": params["title"],
+                    },
+                },
+            }
+
+            if submission_type != "Form":
+                patch_ops["value"]["tags"]["fileName"] = params["title"]
+            patch.append(patch_ops)
+
+        return patch
