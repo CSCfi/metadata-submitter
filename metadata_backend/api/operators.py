@@ -888,7 +888,7 @@ class UserOperator:
             LOG.info(f"found doc {accession_id} at current user")
             return True
 
-    async def create_user(self, data: Tuple) -> str:
+    async def create_user(self, data: Dict[str, Union[list, str]]) -> str:
         """Create new user object to database.
 
         :param data: User Data to identify user
@@ -897,19 +897,18 @@ class UserOperator:
         """
         user_data: Dict[str, Union[list, str]] = dict()
 
-        external_id = data[0]  # this also can be sub key
-        name = data[1]
         try:
-            existing_user_id = await self.db_service.exists_user_by_external_id(external_id, name)
+            existing_user_id = await self.db_service.exists_user_by_external_id(data["user_id"], data["real_name"])
             if existing_user_id:
-                LOG.info(f"User with identifier: {external_id} exists, no need to create.")
+                LOG.info(f"User with identifier: {data['user_id']} exists, no need to create.")
                 return existing_user_id
             else:
+                user_data["projects"] = data["projects"]
                 user_data["templates"] = []
                 user_data["folders"] = []
                 user_data["userId"] = user_id = self._generate_user_id()
-                user_data["name"] = name
-                user_data["externalId"] = external_id
+                user_data["name"] = data["real_name"]
+                user_data["externalId"] = data["user_id"]
                 JSONValidator(user_data, "users")
                 insert_success = await self.db_service.create("user", user_data)
                 if not insert_success:
@@ -1099,4 +1098,73 @@ class UserOperator:
         """
         sequence = uuid4().hex
         LOG.debug("Generated user ID.")
+        return sequence
+
+
+class ProjectOperator:
+    """Operator class for handling database operations of project groups.
+
+    Operations are implemented with JSON format.
+    """
+
+    def __init__(self, db_client: AsyncIOMotorClient) -> None:
+        """Init db_service.
+
+        :param db_client: Motor client used for database connections. Should be
+        running on same loop with aiohttp, so needs to be passed from aiohttp
+        Application.
+        """
+        self.db_service = DBService(mongo_database, db_client)
+
+    async def create_project(self, project_number: str) -> str:
+        """Create new object project to database.
+
+        :param project_numer: project external ID received from AAI
+        :raises: HTTPBadRequest if error occurs during the process of insert
+        :returns: Project id for the project inserted to database
+        """
+        project_data: Dict[str, str] = dict()
+
+        try:
+            existing_project_id = await self.db_service.exists_project_by_external_id(project_number)
+            if existing_project_id:
+                LOG.info(f"Project with external ID: {project_number} exists, no need to create.")
+                return existing_project_id
+            else:
+                project_id = self._generate_project_id()
+                project_data["projectId"] = project_id
+                project_data["externalId"] = project_number
+                insert_success = await self.db_service.create("project", project_data)
+                if not insert_success:
+                    reason = "Inserting project to database failed for some reason."
+                    LOG.error(reason)
+                    raise web.HTTPBadRequest(reason=reason)
+                else:
+                    LOG.info(f"Inserting project with id {project_id} to database succeeded.")
+                    return project_id
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while inserting project: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+    async def _check_project_exists(self, project_id: str) -> None:
+        """Check the existence of a project by its id in the database.
+
+        :param project_id: Identifier of project to find.
+        :raises: HTTPNotFound if project does not exist
+        :returns: None
+        """
+        exists = await self.db_service.exists("project", project_id)
+        if not exists:
+            reason = f"Project with id {project_id} was not found."
+            LOG.error(reason)
+            raise web.HTTPNotFound(reason=reason)
+
+    def _generate_project_id(self) -> str:
+        """Generate random project id.
+
+        :returns: str with project id
+        """
+        sequence = uuid4().hex
+        LOG.debug("Generated project ID.")
         return sequence

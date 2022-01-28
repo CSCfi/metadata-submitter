@@ -16,6 +16,7 @@ from metadata_backend.api.operators import (
     Operator,
     XMLOperator,
     UserOperator,
+    ProjectOperator,
 )
 
 
@@ -74,6 +75,8 @@ class TestOperators(IsolatedAsyncioTestCase):
         other patches and mocks for tests.
         """
         self.client = MagicMock()
+        self.project_id = "project_1000"
+        self.project_generated_id = "64fbdce1c69b436e8d6c91fd746064d4"
         self.accession_id = uuid4().hex
         self.folder_id = uuid4().hex
         self.test_folder = {
@@ -112,6 +115,12 @@ class TestOperators(IsolatedAsyncioTestCase):
             autospec=True,
         )
         self.patch_user.start()
+        self.patch_project = patch(
+            ("metadata_backend.api.operators.ProjectOperator._generate_project_id"),
+            return_value=self.project_generated_id,
+            autospec=True,
+        )
+        self.patch_project.start()
 
     def tearDown(self):
         """Stop patchers."""
@@ -119,6 +128,7 @@ class TestOperators(IsolatedAsyncioTestCase):
         self.patch_accession.stop()
         self.patch_folder.stop()
         self.patch_user.stop()
+        self.patch_project.stop()
 
     async def test_reading_metadata_works(self):
         """Test JSON is read from db correctly."""
@@ -774,6 +784,13 @@ class TestOperators(IsolatedAsyncioTestCase):
         with self.assertRaises(HTTPBadRequest):
             await operator.remove_object(self.test_folder, "study", self.accession_id)
 
+    async def test_check_folder_exists_passes(self):
+        """Test fails exists passes."""
+        operator = FolderOperator(self.client)
+        operator.db_service.exists.return_value = True
+        await operator.check_folder_exists(self.folder_id)
+        operator.db_service.exists.assert_called_once()
+
     async def test_check_folder_exists_fails(self):
         """Test fails exists fails."""
         operator = FolderOperator(self.client)
@@ -809,7 +826,7 @@ class TestOperators(IsolatedAsyncioTestCase):
     async def test_create_user_works_and_returns_userId(self):
         """Test create method for users work."""
         operator = UserOperator(self.client)
-        data = "externalId", "name"
+        data = {"user_id": "externalId", "real_name": "name", "projects": ""}
         operator.db_service.exists_user_by_external_id.return_value = None
         operator.db_service.create.return_value = True
         user = await operator.create_user(data)
@@ -819,7 +836,7 @@ class TestOperators(IsolatedAsyncioTestCase):
     async def test_create_user_on_create_fails(self):
         """Test create method fails on db create."""
         operator = UserOperator(self.client)
-        data = "externalId", "name"
+        data = {"user_id": "externalId", "real_name": "name", "projects": ""}
         operator.db_service.exists_user_by_external_id.return_value = None
         operator.db_service.create.return_value = False
         with self.assertRaises(HTTPBadRequest):
@@ -866,7 +883,7 @@ class TestOperators(IsolatedAsyncioTestCase):
     async def test_create_user_works_existing_userId(self):
         """Test create method for existing user."""
         operator = UserOperator(self.client)
-        data = "eppn", "name"
+        data = {"user_id": "eppn", "real_name": "name", "projects": ""}
         operator.db_service.exists_user_by_external_id.return_value = self.user_generated_id
         user = await operator.create_user(data)
         operator.db_service.create.assert_not_called()
@@ -874,7 +891,7 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     async def test_create_user_fails(self):
         """Test create user fails."""
-        data = "eppn", "name"
+        data = {"user_id": "eppn", "real_name": "name", "projects": ""}
         operator = UserOperator(self.client)
         operator.db_service.exists_user_by_external_id.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
@@ -896,6 +913,13 @@ class TestOperators(IsolatedAsyncioTestCase):
         operator.db_service.exists.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
             await operator.read_user(self.user_id)
+
+    async def test_check_user_exists_passes(self):
+        """Test user exists passes."""
+        operator = UserOperator(self.client)
+        operator.db_service.exists.return_value = True
+        await operator._check_user_exists(self.user_id)
+        operator.db_service.exists.assert_called_once()
 
     async def test_check_user_exists_fails(self):
         """Test user exists fails."""
@@ -1001,6 +1025,54 @@ class TestOperators(IsolatedAsyncioTestCase):
         operator.db_service.exists.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
             await operator.assign_objects(self.user_generated_id, "study", [])
+
+    async def test_create_project_works_and_returns_projectId(self):
+        """Test create method for projects work."""
+        operator = ProjectOperator(self.client)
+        operator.db_service.exists_project_by_external_id.return_value = None
+        operator.db_service.create.return_value = True
+        project = await operator.create_project(self.project_id)
+        operator.db_service.create.assert_called_once()
+        self.assertEqual(project, self.project_generated_id)
+
+    async def test_create_project_works_existing_projectId(self):
+        """Test create method for existing user."""
+        operator = ProjectOperator(self.client)
+        operator.db_service.exists_project_by_external_id.return_value = self.project_generated_id
+        project = await operator.create_project(self.project_id)
+        operator.db_service.create.assert_not_called()
+        self.assertEqual(project, self.project_generated_id)
+
+    async def test_create_project_on_create_fails(self):
+        """Test create method fails on db create."""
+        operator = ProjectOperator(self.client)
+        operator.db_service.exists_project_by_external_id.return_value = None
+        operator.db_service.create.return_value = False
+        with self.assertRaises(HTTPBadRequest):
+            await operator.create_project(self.project_id)
+            operator.db_service.create.assert_called_once()
+
+    async def test_create_project_fails(self):
+        """Test create project fails."""
+        operator = ProjectOperator(self.client)
+        operator.db_service.exists_project_by_external_id.side_effect = ConnectionFailure
+        with self.assertRaises(HTTPBadRequest):
+            await operator.create_project(self.project_id)
+
+    async def test_check_project_exists_fails(self):
+        """Test project exists fails."""
+        operator = ProjectOperator(self.client)
+        operator.db_service.exists.return_value = False
+        with self.assertRaises(HTTPNotFound):
+            await operator._check_project_exists(self.project_id)
+            operator.db_service.exists.assert_called_once()
+
+    async def test_check_project_exists_passes(self):
+        """Test project exists passes."""
+        operator = ProjectOperator(self.client)
+        operator.db_service.exists.return_value = True
+        await operator._check_project_exists(self.project_id)
+        operator.db_service.exists.assert_called_once()
 
 
 if __name__ == "__main__":

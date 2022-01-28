@@ -815,20 +815,28 @@ class FolderHandlerTestCase(HandlersTestCase):
 
     async def test_folder_creation_works(self):
         """Test that folder is created and folder ID returned."""
-        json_req = {"name": "test", "description": "test folder"}
+        json_req = {"name": "test", "description": "test folder", "projectId": "1000"}
         response = await self.client.post("/folders", json=json_req)
         json_resp = await response.json()
         self.MockedFolderOperator().create_folder.assert_called_once()
         self.assertEqual(response.status, 201)
         self.assertEqual(json_resp["folderId"], self.folder_id)
 
-    async def test_folder_creation_with_missing_data_fails(self):
-        """Test that folder creation fails when missing data in request."""
-        json_req = {"description": "test folder"}
+    async def test_folder_creation_with_missing_name_fails(self):
+        """Test that folder creation fails when missing name in request."""
+        json_req = {"description": "test folder", "projectId": "1000"}
         response = await self.client.post("/folders", json=json_req)
         json_resp = await response.json()
         self.assertEqual(response.status, 400)
         self.assertIn("'name' is a required property", json_resp["detail"])
+
+    async def test_folder_creation_with_missing_project_fails(self):
+        """Test that folder creation fails when missing project in request."""
+        json_req = {"description": "test folder", "name": "name"}
+        response = await self.client.post("/folders", json=json_req)
+        json_resp = await response.json()
+        self.assertEqual(response.status, 400)
+        self.assertIn("'projectId' is a required property", json_resp["detail"])
 
     async def test_folder_creation_with_empty_body_fails(self):
         """Test that folder creation fails when no data in request."""
@@ -840,7 +848,7 @@ class FolderHandlerTestCase(HandlersTestCase):
     async def test_get_folders_with_1_folder(self):
         """Test get_folders() endpoint returns list with 1 folder."""
         self.MockedFolderOperator().query_folders.return_value = (self.test_folder, 1)
-        response = await self.client.get("/folders")
+        response = await self.client.get("/folders?projectId=1000")
         self.MockedFolderOperator().query_folders.assert_called_once()
         self.assertEqual(response.status, 200)
         result = {
@@ -857,7 +865,7 @@ class FolderHandlerTestCase(HandlersTestCase):
     async def test_get_folders_with_no_folders(self):
         """Test get_folders() endpoint returns empty list."""
         self.MockedFolderOperator().query_folders.return_value = ([], 0)
-        response = await self.client.get("/folders")
+        response = await self.client.get("/folders?projectId=1000")
         self.MockedFolderOperator().query_folders.assert_called_once()
         self.assertEqual(response.status, 200)
         result = {
@@ -873,17 +881,17 @@ class FolderHandlerTestCase(HandlersTestCase):
 
     async def test_get_folders_with_bad_params(self):
         """Test get_folders() with faulty pagination parameters."""
-        response = await self.client.get("/folders?page=ayylmao")
+        response = await self.client.get("/folders?page=ayylmao&projectId=1000")
         self.assertEqual(response.status, 400)
         resp = await response.json()
         self.assertEqual(resp["detail"], "page parameter must be a number, now it is ayylmao")
 
-        response = await self.client.get("/folders?page=1&per_page=-100")
+        response = await self.client.get("/folders?page=1&per_page=-100&projectId=1000")
         self.assertEqual(response.status, 400)
         resp = await response.json()
         self.assertEqual(resp["detail"], "per_page parameter must be over 0")
 
-        response = await self.client.get("/folders?published=yes")
+        response = await self.client.get("/folders?published=yes&projectId=1000")
         self.assertEqual(response.status, 400)
         resp = await response.json()
         self.assertEqual(resp["detail"], "'published' parameter must be either 'true' or 'false'")
