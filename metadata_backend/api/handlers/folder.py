@@ -3,7 +3,7 @@ import re
 from datetime import date, datetime
 from distutils.util import strtobool
 from math import ceil
-from typing import Any
+from typing import Any, Dict, Union
 
 import ujson
 from aiohttp import web
@@ -96,7 +96,7 @@ class FolderAPIHandler(RESTAPIHandler):
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)
 
-        folder_query = {"projectId": project_id}
+        folder_query: Dict[str, Union[str, Dict[str, Union[str, bool, float]]]] = {"projectId": project_id}
         # Check if only published or draft folders are requestsed
         if "published" in req.query:
             pub_param = req.query.get("published", "").title()
