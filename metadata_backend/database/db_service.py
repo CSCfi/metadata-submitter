@@ -84,7 +84,7 @@ class DBService:
         :param accession_id: ID of the object/folder/user to be searched
         :returns: True if exists and False if it does not
         """
-        id_key = f"{collection}Id" if (collection in ["folder", "user"]) else "accessionId"
+        id_key = f"{collection}Id" if (collection in ["folder", "user", "project"]) else "accessionId"
         projection = {"_id": False, "externalId": False} if collection == "user" else {"_id": False}
         find_by_id = {id_key: accession_id}
         exists = await self.database[collection].find_one(find_by_id, projection)

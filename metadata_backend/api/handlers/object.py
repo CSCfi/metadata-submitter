@@ -82,7 +82,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         await operator.check_exists(collection, accession_id)
 
-        await self._handle_check_ownedby_user(req, collection, accession_id)
+        await self._handle_check_ownership(req, collection, accession_id)
 
         data, content_type = await operator.read_metadata_object(type_collection, accession_id)
 
@@ -183,7 +183,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         await Operator(db_client).check_exists(collection, accession_id)
 
-        await self._handle_check_ownedby_user(req, collection, accession_id)
+        await self._handle_check_ownership(req, collection, accession_id)
 
         folder_op = FolderOperator(db_client)
         exists, folder_id, published = await folder_op.check_object_in_folder(collection, accession_id)
@@ -235,7 +235,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         await operator.check_exists(collection, accession_id)
 
-        await self._handle_check_ownedby_user(req, collection, accession_id)
+        await self._handle_check_ownership(req, collection, accession_id)
 
         accession_id = await operator.replace_metadata_object(collection, accession_id, content)
 
@@ -268,7 +268,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         await operator.check_exists(collection, accession_id)
 
-        await self._handle_check_ownedby_user(req, collection, accession_id)
+        await self._handle_check_ownership(req, collection, accession_id)
 
         folder_op = FolderOperator(db_client)
         exists, _, published = await folder_op.check_object_in_folder(collection, accession_id)

@@ -6,10 +6,11 @@ from uuid import uuid4
 from unittest.mock import MagicMock, patch, call
 
 from aiohttp.web import HTTPBadRequest, HTTPNotFound, HTTPUnprocessableEntity
+from aiohttp.test_utils import make_mocked_coro
 from unittest import IsolatedAsyncioTestCase
 
 from multidict import MultiDict, MultiDictProxy
-from pymongo.errors import ConnectionFailure
+from pymongo.errors import ConnectionFailure, OperationFailure
 
 from metadata_backend.api.operators import (
     FolderOperator,
@@ -18,6 +19,8 @@ from metadata_backend.api.operators import (
     UserOperator,
     ProjectOperator,
 )
+
+from .mockups import get_request_with_fernet
 
 
 class AsyncIterator:
@@ -80,6 +83,14 @@ class TestOperators(IsolatedAsyncioTestCase):
         self.accession_id = uuid4().hex
         self.folder_id = uuid4().hex
         self.test_folder = {
+            "folderId": self.folder_id,
+            "projectId": self.project_generated_id,
+            "name": "Mock folder",
+            "description": "test mock folder",
+            "published": False,
+            "metadataObjects": [{"accessionId": "EGA1234567", "schema": "study"}],
+        }
+        self.test_folder_no_project = {
             "folderId": self.folder_id,
             "name": "Mock folder",
             "description": "test mock folder",
@@ -625,6 +636,92 @@ class TestOperators(IsolatedAsyncioTestCase):
             operator.db_service.do_aggregate.assert_has_calls(calls, any_order=True)
             self.assertEqual(operator.db_service.do_aggregate.call_count, 2)
 
+    async def test_get_object_project_connfail(self):
+        """Test get object project, db connection failure."""
+        operator = Operator(self.client)
+        operator.db_service.query.side_effect = ConnectionFailure
+        with self.assertRaises(HTTPBadRequest):
+            await operator.get_object_project("template", self.accession_id)
+
+    async def test_get_object_project_opfail(self):
+        """Test get object project, db operation failure."""
+        operator = Operator(self.client)
+        operator.db_service.query.side_effect = OperationFailure("err")
+        with self.assertRaises(HTTPBadRequest):
+            await operator.get_object_project("template", self.accession_id)
+
+    async def test_get_object_project_passes(self):
+        """Test get object project returns project id."""
+        operator = Operator(self.client)
+        operator.db_service.query.return_value = AsyncIterator([self.test_folder])
+        result = await operator.get_object_project("template", self.accession_id)
+        operator.db_service.query.assert_called_once_with("template", {"accessionId": self.accession_id})
+        self.assertEqual(result, self.project_generated_id)
+
+    async def test_get_object_project_fails(self):
+        """Test get object project returns nothing and raises an error."""
+        operator = Operator(self.client)
+        operator.db_service.query.return_value = AsyncIterator([])
+        with self.assertRaises(HTTPBadRequest):
+            await operator.get_object_project("template", self.accession_id)
+
+    async def test_get_object_project_fails_missing_project(self):
+        """Test get object project returns faulty object record that is missing project id."""
+        operator = Operator(self.client)
+        operator.db_service.query.return_value = AsyncIterator([self.test_folder_no_project])
+        with self.assertRaises(HTTPBadRequest):
+            await operator.get_object_project("template", self.accession_id)
+
+    async def test_get_object_project_fails_invalid_collection(self):
+        """Test get object project raises bad request on invalid collection."""
+        operator = Operator(self.client)
+        operator.db_service.query.return_value = AsyncIterator([])
+        with self.assertRaises(HTTPBadRequest):
+            await operator.get_object_project("something", self.accession_id)
+
+    async def test_get_folder_project_connfail(self):
+        """Test get folder project, db connection failure."""
+        operator = FolderOperator(self.client)
+        operator.db_service.query.side_effect = ConnectionFailure
+        with self.assertRaises(HTTPBadRequest):
+            await operator.get_folder_project(self.folder_id)
+
+    async def test_get_folder_project_opfail(self):
+        """Test get folder project, db operation failure."""
+        operator = FolderOperator(self.client)
+        operator.db_service.query.side_effect = OperationFailure("err")
+        with self.assertRaises(HTTPBadRequest):
+            await operator.get_folder_project(self.folder_id)
+
+    async def test_get_folder_project_passes(self):
+        """Test get folder project returns project id."""
+        operator = FolderOperator(self.client)
+        operator.db_service.query.return_value = AsyncIterator([self.test_folder])
+        result = await operator.get_folder_project(self.folder_id)
+        operator.db_service.query.assert_called_once_with("folder", {"folderId": self.folder_id})
+        self.assertEqual(result, self.project_generated_id)
+
+    async def test_get_folder_project_fails(self):
+        """Test get folder project returns nothing and raises an error."""
+        operator = FolderOperator(self.client)
+        operator.db_service.query.return_value = AsyncIterator([])
+        with self.assertRaises(HTTPBadRequest):
+            await operator.get_folder_project(self.folder_id)
+
+    async def test_get_folder_project_fails_missing_project(self):
+        """Test get folder project returns faulty folder record that is missing project id."""
+        operator = FolderOperator(self.client)
+        operator.db_service.query.return_value = AsyncIterator([self.test_folder_no_project])
+        with self.assertRaises(HTTPBadRequest):
+            await operator.get_folder_project(self.folder_id)
+
+    async def test_get_folder_project_fails_invalid_collection(self):
+        """Test get folder project raises bad request on invalid collection."""
+        operator = FolderOperator(self.client)
+        operator.db_service.query.return_value = AsyncIterator([])
+        with self.assertRaises(HTTPBadRequest):
+            await operator.get_folder_project(self.folder_id)
+
     async def test_create_folder_works_and_returns_folderId(self):
         """Test create method for folders work."""
         operator = FolderOperator(self.client)
@@ -845,40 +942,42 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     async def test_check_user_doc_fails(self):
         """Test check user doc fails."""
+        request = get_request_with_fernet()
+        request.app["db_client"] = MagicMock()
         operator = UserOperator(self.client)
-        operator.db_service.query.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
-            await operator.check_user_has_doc("folders", self.user_generated_id, self.folder_id)
+            await operator.check_user_has_doc(request, "something", self.user_generated_id, self.folder_id)
 
     async def test_check_user_doc_passes(self):
-        """Test check user doc returns proper data."""
+        """Test check user doc passes when object has same project id and user."""
+        UserOperator.check_user_has_doc = make_mocked_coro(True)
+        request = get_request_with_fernet()
+        request.app["db_client"] = MagicMock()
         operator = UserOperator(self.client)
-        operator.db_service.query.return_value = AsyncIterator(["1"])
-        result = await operator.check_user_has_doc("folders", self.user_generated_id, self.folder_id)
-        operator.db_service.query.assert_called_once_with(
-            "user", {"folders": {"$elemMatch": {"$eq": self.folder_id}}, "userId": self.user_generated_id}
-        )
-        self.assertTrue(result)
-
-    async def test_check_user_doc_multiple_folders_fails(self):
-        """Test check user doc returns multiple unique folders."""
-        operator = UserOperator(self.client)
-        operator.db_service.query.return_value = AsyncIterator(["1", "2"])
-        with self.assertRaises(HTTPUnprocessableEntity):
-            await operator.check_user_has_doc("folders", self.user_generated_id, self.folder_id)
-            operator.db_service.query.assert_called_once_with(
-                "user", {"folders": {"$elemMatch": {"$eq": self.folder_id}}, "userId": self.user_generated_id}
-            )
-
-    async def test_check_user_doc_no_data(self):
-        """Test check user doc returns no data."""
-        operator = UserOperator(self.client)
-        operator.db_service.query.return_value = AsyncIterator([])
-        result = await operator.check_user_has_doc("folders", self.user_generated_id, self.folder_id)
-        operator.db_service.query.assert_called_once_with(
-            "user", {"folders": {"$elemMatch": {"$eq": self.folder_id}}, "userId": self.user_generated_id}
-        )
-        self.assertFalse(result)
+        with patch(
+            "metadata_backend.api.operators.FolderOperator.get_folder_project",
+            return_value=self.project_generated_id,
+        ):
+            with patch(
+                "metadata_backend.api.middlewares.decrypt_cookie",
+                return_value={"id": "test"},
+            ):
+                with patch(
+                    "metadata_backend.api.middlewares.get_session",
+                    return_value={"user_info": {}},
+                ):
+                    with patch(
+                        "metadata_backend.api.operators.UserOperator.read_user",
+                        return_value={"userId": "test"},
+                    ):
+                        with patch(
+                            "metadata_backend.api.operators.UserOperator.check_user_has_project",
+                            return_value=True,
+                        ):
+                            result = await operator.check_user_has_doc(
+                                request, "folders", self.user_generated_id, self.folder_id
+                            )
+                            self.assertTrue(result)
 
     async def test_create_user_works_existing_userId(self):
         """Test create method for existing user."""
@@ -1025,6 +1124,42 @@ class TestOperators(IsolatedAsyncioTestCase):
         operator.db_service.exists.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
             await operator.assign_objects(self.user_generated_id, "study", [])
+
+    async def test_check_user_has_project_passes(self):
+        """Test check user has project and doesn't raise an exception."""
+        operator = UserOperator(self.client)
+        operator.db_service.query.return_value = AsyncIterator(["1"])
+        result = await operator.check_user_has_project(self.project_generated_id, self.user_generated_id)
+        operator.db_service.query.assert_called_once_with(
+            "user",
+            {"projects": {"$elemMatch": {"projectId": self.project_generated_id}}, "userId": self.user_generated_id},
+        )
+        self.assertTrue(result)
+
+    async def test_check_user_has_no_project(self):
+        """Test check user does not have project and raises unauthorised."""
+        operator = UserOperator(self.client)
+        operator.db_service.query.return_value = AsyncIterator([])
+        result = await operator.check_user_has_project(self.project_generated_id, self.user_generated_id)
+        operator.db_service.query.assert_called_once_with(
+            "user",
+            {"projects": {"$elemMatch": {"projectId": self.project_generated_id}}, "userId": self.user_generated_id},
+        )
+        self.assertFalse(result)
+
+    async def test_check_user_has_project_connfail(self):
+        """Test check user has project, db connection failure."""
+        operator = UserOperator(self.client)
+        operator.db_service.query.side_effect = ConnectionFailure
+        with self.assertRaises(HTTPBadRequest):
+            await operator.check_user_has_project(self.project_generated_id, self.user_generated_id)
+
+    async def test_check_user_has_project_opfail(self):
+        """Test check user has project, db operation failure."""
+        operator = UserOperator(self.client)
+        operator.db_service.query.side_effect = OperationFailure("err")
+        with self.assertRaises(HTTPBadRequest):
+            await operator.check_user_has_project(self.project_generated_id, self.user_generated_id)
 
     async def test_create_project_works_and_returns_projectId(self):
         """Test create method for projects work."""

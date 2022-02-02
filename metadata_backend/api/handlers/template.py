@@ -8,7 +8,7 @@ from multidict import CIMultiDict
 
 from ...helpers.logger import LOG
 from ..middlewares import get_session
-from ..operators import Operator, UserOperator, XMLOperator
+from ..operators import Operator, ProjectOperator, UserOperator, XMLOperator
 from .restapi import RESTAPIHandler
 
 
@@ -33,7 +33,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
 
         await operator.check_exists(collection, accession_id)
 
-        await self._handle_check_ownedby_user(req, collection, accession_id)
+        await self._handle_check_ownership(req, collection, accession_id)
 
         data, content_type = await operator.read_metadata_object(collection, accession_id)
 
@@ -57,8 +57,25 @@ class TemplatesAPIHandler(RESTAPIHandler):
         db_client = req.app["db_client"]
         content = await self._get_data(req)
 
+        # No schema validation, so must check that project is set
+        if "projectId" not in content:
+            reason = "projectId is a mandatory POST key"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        # Check that project exists
+        project_op = ProjectOperator(db_client)
+        await project_op._check_project_exists(content["projectId"])
+
+        # Check that user is affiliated with project
         user_op = UserOperator(db_client)
         current_user = get_session(req)["user_info"]
+        user = await user_op.read_user(current_user)
+        user_has_project = await user_op.check_user_has_project(content["projectId"], user["userId"])
+        if not user_has_project:
+            reason = f"user {user['userId']} is not affiliated with project {content['projectId']}"
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
 
         operator = Operator(db_client)
 
@@ -73,7 +90,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
                 data = [{"accessionId": accession_id, "schema": collection}]
                 if "tags" in tmpl:
                     data[0]["tags"] = tmpl["tags"]
-                await user_op.assign_objects(current_user, "templates", data)
+                # await user_op.assign_objects(current_user, "templates", data)
                 tmpl_list.append({"accessionId": accession_id})
 
             body = ujson.dumps(tmpl_list, escape_forward_slashes=False)
@@ -86,7 +103,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
             data = [{"accessionId": accession_id, "schema": collection}]
             if "tags" in content:
                 data[0]["tags"] = content["tags"]
-            await user_op.assign_objects(current_user, "templates", data)
+            # await user_op.assign_objects(current_user, "templates", data)
 
             body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
 
@@ -120,7 +137,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
 
         await operator.check_exists(collection, accession_id)
 
-        await self._handle_check_ownedby_user(req, collection, accession_id)
+        await self._handle_check_ownership(req, collection, accession_id)
 
         accession_id = await operator.update_metadata_object(collection, accession_id, content)
 
@@ -145,17 +162,17 @@ class TemplatesAPIHandler(RESTAPIHandler):
 
         await Operator(db_client).check_exists(collection, accession_id)
 
-        await self._handle_check_ownedby_user(req, collection, accession_id)
+        await self._handle_check_ownership(req, collection, accession_id)
 
-        user_op = UserOperator(db_client)
-        current_user = get_session(req)["user_info"]
-        check_user = await user_op.check_user_has_doc(collection, current_user, accession_id)
-        if check_user:
-            await user_op.remove_objects(current_user, "templates", [accession_id])
-        else:
-            reason = "This template does not seem to belong to any user."
-            LOG.error(reason)
-            raise web.HTTPUnprocessableEntity(reason=reason)
+        # user_op = UserOperator(db_client)
+        # current_user = get_session(req)["user_info"]
+        # check_user = await user_op.check_user_has_doc(collection, current_user, accession_id)
+        # if check_user:
+        #     await user_op.remove_objects(current_user, "templates", [accession_id])
+        # else:
+        #     reason = "This template does not seem to belong to any user."
+        #     LOG.error(reason)
+        #     raise web.HTTPUnprocessableEntity(reason=reason)
 
         accession_id = await Operator(db_client).delete_metadata_object(collection, accession_id)
 
