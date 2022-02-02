@@ -12,6 +12,7 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
 from multidict import MultiDictProxy
 from pymongo.errors import ConnectionFailure, OperationFailure
 
+from .middlewares import get_session
 from ..conf.conf import mongo_database, query_map
 from ..database.db_service import DBService, auto_reconnect
 from ..helpers.logger import LOG
@@ -291,6 +292,34 @@ class Operator(BaseOperator):
         Application.
         """
         super().__init__(mongo_database, "application/json", db_client)
+
+    async def get_object_project(self, collection: str, accession_id: str) -> str:
+        """Get the project ID the object is associated to.
+
+        :param collection: database table to look into
+        :param object_id: internal accession ID of object
+        :returns: project ID object is associated to
+        """
+        try:
+            object_cursor = self.db_service.query(collection, {"accessionId": accession_id})
+            objects = [object async for object in object_cursor]
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting object from {collection}: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        if len(objects) == 1:
+            try:
+                return objects[0]["projectId"]
+            except KeyError as error:
+                # This should not be possible and should never happen, if the object was created properly
+                reason = f"{collection} {accession_id} does not have an associated project, err={error}"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+        else:
+            reason = f"{collection} {accession_id} not found"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
 
     async def query_metadata_database(
         self, schema_type: str, que: MultiDictProxy, page_num: int, page_size: int, filter_objects: List
@@ -594,6 +623,33 @@ class FolderOperator:
         """
         self.db_service = DBService(mongo_database, db_client)
 
+    async def get_folder_project(self, folder_id: str) -> str:
+        """Get the project ID the folder is associated to.
+
+        :param folder_id: internal accession ID of folder
+        :returns: project ID folder is associated to
+        """
+        try:
+            folder_cursor = self.db_service.query("folder", {"folderId": folder_id})
+            folders = [folder async for folder in folder_cursor]
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting folder: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        if len(folders) == 1:
+            try:
+                return folders[0]["projectId"]
+            except KeyError as error:
+                # This should not be possible and should never happen, if the folder was created properly
+                reason = f"folder {folder_id} does not have an associated project, err={error}"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+        else:
+            reason = f"folder {folder_id} not found"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
     async def check_object_in_folder(self, collection: str, accession_id: str) -> Tuple[bool, str, bool]:
         """Check a object/draft is in a folder.
 
@@ -856,8 +912,8 @@ class UserOperator:
         """
         self.db_service = DBService(mongo_database, db_client)
 
-    async def check_user_has_doc(self, collection: str, user_id: str, accession_id: str) -> bool:
-        """Check a folder/template belongs to user.
+    async def check_user_has_doc(self, req: web.Request, collection: str, user_id: str, accession_id: str) -> bool:
+        """Check a folder/template belongs to same project the user is in.
 
         :param collection: collection it belongs to, it would be used as path
         :param user_id: user_id from session
@@ -865,28 +921,51 @@ class UserOperator:
         :raises: HTTPUnprocessableEntity if more users seem to have same folder
         :returns: True if accession_id belongs to user
         """
-        try:
-            if collection.startswith("template"):
-                user_query = {"templates": {"$elemMatch": {"accessionId": accession_id}}, "userId": user_id}
-            else:
-                user_query = {"folders": {"$elemMatch": {"$eq": accession_id}}, "userId": user_id}
-            user_cursor = self.db_service.query("user", user_query)
-            user_check = [user async for user in user_cursor]
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while inserting user: {error}"
+        LOG.debug(f"check that user {user_id} belongs to same project as {collection} {accession_id}")
+
+        db_client = req.app["db_client"]
+        user_operator = UserOperator(db_client)
+
+        project_id = ""
+        if collection.startswith("template"):
+            object_operator = Operator(db_client)
+            project_id = await object_operator.get_object_project("template", accession_id)
+        elif collection == "folders":
+            folder_operator = FolderOperator(db_client)
+            project_id = await folder_operator.get_folder_project(accession_id)
+        else:
+            reason = f"collection must be folders or template, received {collection}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        if len(user_check) == 0:
-            LOG.info(f"doc {accession_id} belongs to no user something is off")
-            return False
-        elif len(user_check) > 1:
-            reason = "There seem to be more users with same ID and/or same folders."
+        current_user = get_session(req)["user_info"]
+        user = await user_operator.read_user(current_user)
+        user_has_project = await user_operator.check_user_has_project(project_id, user["userId"])
+        return user_has_project
+
+    async def check_user_has_project(self, project_id: str, user_id: str) -> bool:
+        """Check that user has project affiliation.
+
+        :param project_id: internal project ID
+        :param user_id: internal user ID
+        :raises HTTPBadRequest: on database error
+        :returns: True if user has project, False if user does not have project
+        """
+        try:
+            user_query = {"projects": {"$elemMatch": {"projectId": project_id}}, "userId": user_id}
+            user_cursor = self.db_service.query("user", user_query)
+            user_check = [user async for user in user_cursor]
+            if user_check:
+                LOG.debug(f"user {user_id} has project {project_id} affiliation")
+                return True
+            else:
+                reason = f"user {user_id} does not have project {project_id} affiliation"
+                LOG.debug(reason)
+                return False
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while reading user project affiliation: {error}"
             LOG.error(reason)
-            raise web.HTTPUnprocessableEntity(reason=reason)
-        else:
-            LOG.info(f"found doc {accession_id} at current user")
-            return True
+            raise web.HTTPBadRequest(reason=reason)
 
     async def create_user(self, data: Dict[str, Union[list, str]]) -> str:
         """Create new user object to database.

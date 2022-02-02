@@ -50,12 +50,25 @@ class RESTAPIHandler:
             raise web.HTTPBadRequest(reason=reason)
         return param
 
-    async def _handle_check_ownedby_user(self, req: Request, collection: str, accession_id: str) -> bool:
-        """Check if object belongs to user.
+    def _get_param(self, req: Request, name: str) -> str:
+        """Extract mandatory query parameter from URL.
+
+        :param req: GET Request
+        :param name: name of query param to get
+        :returns: project ID parameter value
+        """
+        param = req.query.get(name, "")
+        if param == "":
+            reason = f"mandatory query parameter {name} is not set"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        return param
+
+    async def _handle_check_ownership(self, req: Request, collection: str, accession_id: str) -> bool:
+        """Check if object belongs to project.
 
         For this we need to check the object is in exactly 1 folder and we need to check
-        that folder belongs to a user. If the folder is published that means it can be
-        browsed by other users as well.
+        that folder belongs to a project.
 
         :param req: HTTP request
         :param collection: collection or schema of document
@@ -71,24 +84,24 @@ class RESTAPIHandler:
         if collection != "folders":
 
             folder_op = FolderOperator(db_client)
-            check, folder_id, published = await folder_op.check_object_in_folder(collection, accession_id)
-            if published:
-                _check = True
-            elif check:
+            check, folder_id, _ = await folder_op.check_object_in_folder(collection, accession_id)
+            # if published:
+            #     _check = True
+            if check:
                 # if the draft object is found in folder we just need to check if the folder belongs to user
-                _check = await user_op.check_user_has_doc("folders", current_user, folder_id)
+                _check = await user_op.check_user_has_doc(req, "folders", current_user, folder_id)
             elif collection.startswith("template"):
                 # if collection is template but not found in a folder
                 # we also check if object is in templates of the user
                 # they will be here if they will not be deleted after publish
-                _check = await user_op.check_user_has_doc(collection, current_user, accession_id)
+                _check = await user_op.check_user_has_doc(req, collection, current_user, accession_id)
             else:
                 _check = False
         else:
-            _check = await user_op.check_user_has_doc(collection, current_user, accession_id)
+            _check = await user_op.check_user_has_doc(req, collection, current_user, accession_id)
 
         if not _check:
-            reason = f"The ID: {accession_id} does not belong to current user."
+            reason = f"{collection} {accession_id}."
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)
 
@@ -143,7 +156,7 @@ class RESTAPIHandler:
         :returns: AsyncGenerator
         """
         for el in seq:
-            if await self._handle_check_ownedby_user(req, collection, el["accessionId"]):
+            if await self._handle_check_ownership(req, collection, el["accessionId"]):
                 yield el
 
     async def _get_data(self, req: Request) -> Dict:

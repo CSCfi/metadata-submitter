@@ -102,7 +102,7 @@ class HandlersTestCase(AioHTTPTestCase):
             "filter_user.side_effect": self.fake_useroperator_filter_user,
         }
 
-        RESTAPIHandler._handle_check_ownedby_user = make_mocked_coro(True)
+        RESTAPIHandler._handle_check_ownership = make_mocked_coro(True)
 
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
@@ -816,11 +816,15 @@ class FolderHandlerTestCase(HandlersTestCase):
     async def test_folder_creation_works(self):
         """Test that folder is created and folder ID returned."""
         json_req = {"name": "test", "description": "test folder", "projectId": "1000"}
-        response = await self.client.post("/folders", json=json_req)
-        json_resp = await response.json()
-        self.MockedFolderOperator().create_folder.assert_called_once()
-        self.assertEqual(response.status, 201)
-        self.assertEqual(json_resp["folderId"], self.folder_id)
+        with patch(
+            "metadata_backend.api.operators.ProjectOperator._check_project_exists",
+            return_value=True,
+        ):
+            response = await self.client.post("/folders", json=json_req)
+            json_resp = await response.json()
+            self.MockedFolderOperator().create_folder.assert_called_once()
+            self.assertEqual(response.status, 201)
+            self.assertEqual(json_resp["folderId"], self.folder_id)
 
     async def test_folder_creation_with_missing_name_fails(self):
         """Test that folder creation fails when missing name in request."""
@@ -898,7 +902,7 @@ class FolderHandlerTestCase(HandlersTestCase):
 
     async def test_get_folder_works(self):
         """Test folder is returned when correct folder id is given."""
-        # RESTAPIHandler._handle_check_ownedby_user = make_mocked_coro(True)
+        RESTAPIHandler._handle_check_ownership = make_mocked_coro(True)
 
         response = await self.client.get("/folders/FOL12345678")
         self.assertEqual(response.status, 200)
