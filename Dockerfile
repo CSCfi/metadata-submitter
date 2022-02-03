@@ -11,8 +11,7 @@ ARG BRANCH=master
 RUN git clone -b ${BRANCH} https://github.com/CSCfi/metadata-submitter-frontend.git
 
 WORKDIR /metadata-submitter-frontend
-RUN npm install -g npm@8.4.0 \
-    && npx --quiet pinst --disable \
+RUN npx --quiet pinst --disable \
     && npm install --production \
     && npm run build --production
 
