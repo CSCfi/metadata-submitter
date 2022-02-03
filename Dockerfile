@@ -1,5 +1,5 @@
 #=======================
-FROM node:14-alpine as BUILD-FRONTEND
+FROM node:16-alpine as BUILD-FRONTEND
 #=======================
 
 RUN apk add --update \
@@ -11,13 +11,12 @@ ARG BRANCH=master
 RUN git clone -b ${BRANCH} https://github.com/CSCfi/metadata-submitter-frontend.git
 
 WORKDIR /metadata-submitter-frontend
-RUN npm install -g npm@7.21.0 \
-    && npx --quiet pinst --disable \
+RUN npx --quiet pinst --disable \
     && npm install --production \
     && npm run build --production
 
 #=======================
-FROM python:3.8-alpine3.13 as BUILD-BACKEND
+FROM python:3.8-alpine3.15 as BUILD-BACKEND
 #=======================
 
 RUN apk add --update \
@@ -37,7 +36,7 @@ RUN pip install --upgrade pip && \
     pip install /root/submitter
 
 #=======================
-FROM python:3.8-alpine3.13
+FROM python:3.8-alpine3.15
 #=======================
 
 RUN apk add --no-cache --update libstdc++
