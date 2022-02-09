@@ -198,7 +198,7 @@ class TestOperators(IsolatedAsyncioTestCase):
         operator = Operator(self.client)
         operator.db_service.exists.return_value = True
         operator.db_service.replace.return_value = True
-        accession = await operator.replace_metadata_object("study", self.accession_id, data)
+        accession, _ = await operator.replace_metadata_object("study", self.accession_id, data)
         operator.db_service.replace.assert_called_once()
         self.assertEqual(accession, self.accession_id)
 
@@ -388,7 +388,7 @@ class TestOperators(IsolatedAsyncioTestCase):
         xml_data = "<MOCK_ELEM></MOCK_ELEM>"
         with patch(
             "metadata_backend.api.operators.Operator._format_data_to_replace_and_add_to_db",
-            return_value=self.accession_id,
+            return_value=(self.accession_id, "title"),
         ):
             with patch(
                 "metadata_backend.api.operators.XMLOperator._replace_object_from_db",
