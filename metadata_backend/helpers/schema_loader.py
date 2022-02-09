@@ -42,6 +42,7 @@ class SchemaLoader(ABC):
         for file in [x for x in self.path.iterdir()]:
             if schema_type in file.name and file.name.endswith(self.loader_type):
                 schema_file = file
+                break
         if not schema_file:
             raise SchemaNotFoundException
 
