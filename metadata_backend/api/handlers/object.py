@@ -104,9 +104,9 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         folder_id = req.query.get("folder", "")
         if not folder_id:
-            reason = "Folder ID is required query parameter."
+            reason = "Folder is required query parameter. Please provide folder id where object is added to."
             raise web.HTTPBadRequest(reason=reason)
-        patch_params = {"folder": folder_id}
+        patch_params = {}
 
         self._check_schema_exists(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
@@ -127,7 +127,7 @@ class ObjectAPIHandler(RESTAPIHandler):
             # If multipart request contains XML, XML operator is used.
             # Else the multipart request is expected to contain CSV file(s) which are converted into JSON.
             operator = XMLOperator(db_client) if cont_type == "xml" else Operator(db_client)
-            patch_params.update({"cont_type": cont_type, "title": filename})
+            patch_params = {"cont_type": cont_type, "filename": filename}
         else:
             content = await self._get_data(req)
             if not req.path.startswith("/drafts"):
@@ -141,33 +141,25 @@ class ObjectAPIHandler(RESTAPIHandler):
             LOG.debug(f"Inserting multiple objects for {schema_type}.")
             ids: List[Dict[str, str]] = []
             for item in content:
-                accession_id = await operator.create_metadata_object(collection, item[0])
-                ids.append({"accessionId": accession_id})
+                accession_id, title = await operator.create_metadata_object(collection, item[0])
+                ids.append({"accessionId": accession_id, "title": title})
                 LOG.info(f"POST object with accesssion ID {accession_id} in schema {collection} was successful.")
             # we format like this to make it consistent with the response from /submit endpoint
-            data = [dict(item, **{"schema": schema_type}) for item in ids]
+            data = [dict({"accessionId": item["accessionId"]}, **{"schema": schema_type}) for item in ids]
             # we take the first result if we get multiple
             location_headers = CIMultiDict(Location=f"{url}/{data[0]['accessionId']}")
         else:
-            accession_id = await operator.create_metadata_object(collection, content)
+            accession_id, title = await operator.create_metadata_object(collection, content)
             data = {"accessionId": accession_id}
-
             location_headers = CIMultiDict(Location=f"{url}/{accession_id}")
             LOG.info(f"POST object with accesssion ID {accession_id} in schema {collection} was successful.")
 
         # Gathering data for object to be added to folder
         if not isinstance(data, List):
-            ids = [data]
-        if not patch_params.get("title", None) and isinstance(content, Dict):
-            try:
-                patch_params["title"] = (
-                    content["descriptor"]["studyTitle"] if collection == "study" else content["title"]
-                )
-            except (TypeError, KeyError):
-                patch_params["title"] = ""
-        patch = await self.prepare_folder_patch(collection, ids, patch_params)
+            ids = [dict(data, **{"title": title})]
         folder_op = FolderOperator(db_client)
-        folder_id = await folder_op.update_folder(folder_id, patch)
+        patch = await self.prepare_folder_patch_new_object(collection, ids, patch_params)
+        await folder_op.update_folder(folder_id, patch)
 
         body = ujson.dumps(data, escape_forward_slashes=False)
 
@@ -306,8 +298,8 @@ class ObjectAPIHandler(RESTAPIHandler):
         LOG.info(f"PATCH object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
-    async def prepare_folder_patch(self, schema: str, ids: List, params: Dict[str, str]) -> List:
-        """Prepare patch operations list.
+    async def prepare_folder_patch_new_object(self, schema: str, ids: List, params: Dict[str, str]) -> List:
+        """Prepare patch operations list for adding an object or objects to a folder.
 
         :param schema: schema of objects to be added to the folder
         :param ids: object IDs
@@ -335,13 +327,11 @@ class ObjectAPIHandler(RESTAPIHandler):
                     "schema": schema,
                     "tags": {
                         "submissionType": submission_type,
-                        "displayTitle": params["title"],
+                        "displayTitle": id["title"],
                     },
                 },
             }
-
             if submission_type != "Form":
-                patch_ops["value"]["tags"]["fileName"] = params["title"]
+                patch_ops["value"]["tags"]["fileName"] = params["filename"]
             patch.append(patch_ops)
-
         return patch
