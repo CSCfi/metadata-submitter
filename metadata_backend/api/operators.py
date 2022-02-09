@@ -39,7 +39,7 @@ class BaseOperator(ABC):
         self.db_service = DBService(db_name, db_client)
         self.content_type = content_type
 
-    async def create_metadata_object(self, schema_type: str, data: Union[Dict, str]) -> str:
+    async def create_metadata_object(self, schema_type: str, data: Union[Dict, str]) -> Tuple[str, str]:
         """Create new metadata object to database.
 
         Data formatting and addition step for JSON or XML must be implemented
@@ -49,9 +49,9 @@ class BaseOperator(ABC):
         :param data: Data to be saved to database.
         :returns: Accession id for the object inserted to database
         """
-        accession_id = await self._format_data_to_create_and_add_to_db(schema_type, data)
+        accession_id, title = await self._format_data_to_create_and_add_to_db(schema_type, data)
         LOG.info(f"Inserting object with schema {schema_type} to database succeeded with accession id: {accession_id}")
-        return accession_id
+        return accession_id, title
 
     async def replace_metadata_object(self, schema_type: str, accession_id: str, data: Union[Dict, str]) -> str:
         """Replace metadata object from database.
@@ -127,7 +127,7 @@ class BaseOperator(ABC):
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-    async def _insert_formatted_object_to_db(self, schema_type: str, data: Dict) -> str:
+    async def _insert_formatted_object_to_db(self, schema_type: str, data: Dict) -> Tuple[str, str]:
         """Insert formatted metadata object to database.
 
         :param schema_type: Schema type of the object to insert.
@@ -142,7 +142,11 @@ class BaseOperator(ABC):
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         if insert_success:
-            return data["accessionId"]
+            try:
+                title = data["descriptor"]["studyTitle"] if schema_type == "study" else data["title"]
+            except (TypeError, KeyError):
+                title = ""
+            return data["accessionId"], title
         else:
             reason = "Inserting object to database failed for some reason."
             LOG.error(reason)
@@ -249,7 +253,7 @@ class BaseOperator(ABC):
             raise web.HTTPNotFound(reason=reason)
 
     @abstractmethod
-    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: Any) -> str:
+    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: Any) -> Tuple[str, str]:
         """Format and add data to database.
 
         Must be implemented by subclass.
@@ -380,7 +384,7 @@ class Operator(BaseOperator):
         )
         return data, page_num, page_size, total_objects[0]["total"]
 
-    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: Dict) -> str:
+    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: Dict) -> Tuple[str, str]:
         """Format JSON metadata object and add it to db.
 
         Adds necessary additional information to object before adding to db.
@@ -513,7 +517,7 @@ class XMLOperator(BaseOperator):
         """
         super().__init__(mongo_database, "text/xml", db_client)
 
-    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: str) -> str:
+    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: str) -> Tuple[str, str]:
         """Format XML metadata object and add it to db.
 
         XML is validated, then parsed to JSON, which is added to database.
@@ -527,10 +531,10 @@ class XMLOperator(BaseOperator):
         # remove `draft-` from schema type
         schema = schema_type[6:] if schema_type.startswith("draft") else schema_type
         data_as_json = XMLToJSONParser().parse(schema, data)
-        accession_id = await Operator(db_client)._format_data_to_create_and_add_to_db(schema_type, data_as_json)
+        accession_id, title = await Operator(db_client)._format_data_to_create_and_add_to_db(schema_type, data_as_json)
         LOG.debug(f"XMLOperator formatted data for xml-{schema_type} to add to DB")
         return await self._insert_formatted_object_to_db(
-            f"xml-{schema_type}", {"accessionId": accession_id, "content": data}
+            f"xml-{schema_type}", {"accessionId": accession_id, "title": title, "content": data}
         )
 
     async def _format_data_to_replace_and_add_to_db(self, schema_type: str, accession_id: str, data: str) -> str:
