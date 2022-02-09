@@ -1,17 +1,17 @@
 """Tool to parse XML and CSV files to JSON."""
 
-import re
 import csv
+import re
 from io import StringIO
 from typing import Any, Dict, List, Optional, Type, Union
 
 from aiohttp import web
+from pymongo import UpdateOne
 from xmlschema import XMLSchema, XMLSchemaConverter, XMLSchemaException, XsdElement, XsdType
 
 from .logger import LOG
 from .schema_loader import SchemaNotFoundException, XMLSchemaLoader
 from .validator import JSONValidator, XMLValidator
-from pymongo import UpdateOne
 
 
 class MetadataXMLConverter(XMLSchemaConverter):
@@ -457,6 +457,8 @@ def jsonpatch_mongo(identifier: Dict, json_patch: List[Dict[str, Any]]) -> List:
                 queries.append(UpdateOne(identifier, {"$set": {op["path"][1:].replace("/", "."): op["value"]}}))
         elif op["op"] == "replace":
             path = op["path"][1:-2] if op["path"].endswith("/-") else op["path"][1:].replace("/", ".")
+            if op.get("match", None):
+                identifier.update(op["match"])
             queries.append(UpdateOne(identifier, {"$set": {path: op["value"]}}))
 
     return queries
