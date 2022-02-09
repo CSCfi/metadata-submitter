@@ -235,8 +235,9 @@ class ObjectAPIHandler(RESTAPIHandler):
         db_client = req.app["db_client"]
         content: Union[Dict, str]
         operator: Union[Operator, XMLOperator]
+        filename = ""
         if req.content_type == "multipart/form-data":
-            files, _, _ = await multipart_content(req, extract_one=True, expect_xml=True)
+            files, _, filename = await multipart_content(req, extract_one=True, expect_xml=True)
             content, _ = files[0]
             operator = XMLOperator(db_client)
         else:
@@ -250,8 +251,17 @@ class ObjectAPIHandler(RESTAPIHandler):
         await operator.check_exists(collection, accession_id)
 
         await self._handle_check_ownedby_user(req, collection, accession_id)
+        folder_op = FolderOperator(db_client)
+        exists, folder_id, published = await folder_op.check_object_in_folder(collection, accession_id)
+        if exists:
+            if published:
+                reason = "Published objects cannot be updated."
+                LOG.error(reason)
+                raise web.HTTPUnauthorized(reason=reason)
 
-        accession_id = await operator.replace_metadata_object(collection, accession_id, content)
+        accession_id, title = await operator.replace_metadata_object(collection, accession_id, content)
+        patch = await self.prepare_folder_patch_update_object(collection, accession_id, title, filename)
+        await folder_op.update_folder(folder_id, patch)
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info(f"PUT object with accession ID {accession_id} in schema {collection} was successful.")
@@ -285,7 +295,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         await self._handle_check_ownedby_user(req, collection, accession_id)
 
         folder_op = FolderOperator(db_client)
-        exists, _, published = await folder_op.check_object_in_folder(collection, accession_id)
+        exists, folder_id, published = await folder_op.check_object_in_folder(collection, accession_id)
         if exists:
             if published:
                 reason = "Published objects cannot be updated."
@@ -293,6 +303,14 @@ class ObjectAPIHandler(RESTAPIHandler):
                 raise web.HTTPUnauthorized(reason=reason)
 
         accession_id = await operator.update_metadata_object(collection, accession_id, content)
+
+        # If there's changed title it will be updated to folder
+        try:
+            title = content["descriptor"]["studyTitle"] if collection == "study" else content["title"]
+            patch = await self.prepare_folder_patch_update_object(collection, accession_id, title)
+            await folder_op.update_folder(folder_id, patch)
+        except (TypeError, KeyError):
+            pass
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info(f"PATCH object with accession ID {accession_id} in schema {collection} was successful.")
@@ -335,3 +353,38 @@ class ObjectAPIHandler(RESTAPIHandler):
                 patch_ops["value"]["tags"]["fileName"] = params["filename"]
             patch.append(patch_ops)
         return patch
+
+    async def prepare_folder_patch_update_object(
+        self, schema: str, accession_id: str, title: str, filename: str = ""
+    ) -> List:
+        """Prepare patch operation for updating object's title in a folder.
+
+        :param schema: schema of object to be updated
+        :param accession_id: object ID
+        :param title: title to be updated
+        :returns: dict with patch operation
+        """
+        if schema.startswith("draft"):
+            path = "/drafts"
+        else:
+            path = "/metadataObjects"
+
+        patch_op = {
+            "op": "replace",
+            "match": {path.replace("/", ""): {"$elemMatch": {"schema": schema, "accessionId": accession_id}}},
+        }
+        if not filename:
+            patch_op.update(
+                {
+                    "path": f"{path}/$/tags/displayTitle",
+                    "value": title,
+                }
+            )
+        else:
+            patch_op.update(
+                {
+                    "path": f"{path}/$/tags",
+                    "value": {"submissionType": "XML", "fileName": filename, "displayTitle": title},
+                }
+            )
+        return [patch_op]
