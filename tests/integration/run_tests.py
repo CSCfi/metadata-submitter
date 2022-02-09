@@ -773,7 +773,11 @@ async def test_crud_folders_works(sess):
             {
                 "accessionId": draft_id,
                 "schema": "draft-sample",
-                "tags": {"submissionType": "XML", "displayTitle": "SRS001433.xml", "fileName": "SRS001433.xml"},
+                "tags": {
+                    "submissionType": "XML",
+                    "displayTitle": "HapMap sample from Homo sapiens",
+                    "fileName": "SRS001433.xml",
+                },
             }
         ], "folder drafts content mismatch"
         assert res["metadataObjects"] == [], "there are objects in folder, expected empty"
@@ -797,7 +801,11 @@ async def test_crud_folders_works(sess):
             {
                 "accessionId": draft_id,
                 "schema": "draft-sample",
-                "tags": {"submissionType": "XML", "displayTitle": "SRS001433.xml", "fileName": "SRS001433.xml"},
+                "tags": {
+                    "submissionType": "XML",
+                    "displayTitle": "HapMap sample from Homo sapiens",
+                    "fileName": "SRS001433.xml",
+                },
             }
         ], "folder drafts content mismatch"
         assert res["metadataObjects"] == [
@@ -862,7 +870,11 @@ async def test_crud_folders_works_no_publish(sess):
             {
                 "accessionId": draft_id,
                 "schema": "draft-sample",
-                "tags": {"submissionType": "XML", "displayTitle": "SRS001433.xml", "fileName": "SRS001433.xml"},
+                "tags": {
+                    "submissionType": "XML",
+                    "displayTitle": "HapMap sample from Homo sapiens",
+                    "fileName": "SRS001433.xml",
+                },
             }
         ], "folder drafts content mismatch"
         assert res["metadataObjects"] == [], "there are objects in folder, expected empty"
@@ -885,7 +897,11 @@ async def test_crud_folders_works_no_publish(sess):
             {
                 "accessionId": draft_id,
                 "schema": "draft-sample",
-                "tags": {"submissionType": "XML", "displayTitle": "SRS001433.xml", "fileName": "SRS001433.xml"},
+                "tags": {
+                    "submissionType": "XML",
+                    "displayTitle": "HapMap sample from Homo sapiens",
+                    "fileName": "SRS001433.xml",
+                },
             }
         ], "folder drafts content mismatch"
         assert res["metadataObjects"] == [

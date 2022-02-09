@@ -128,8 +128,9 @@ class SubmissionAPIHandler:
         :returns: Dict containing specific action that was completed
         """
         if action == "add":
+            assession_id, _ = await XMLOperator(db_client).create_metadata_object(schema, content)
             result = {
-                "accessionId": await XMLOperator(db_client).create_metadata_object(schema, content),
+                "accessionId": assession_id,
                 "schema": schema,
             }
             LOG.debug(f"added some content in {schema} ...")
