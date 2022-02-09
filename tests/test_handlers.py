@@ -1,7 +1,7 @@
 """Test API endpoints from handlers module."""
 
 from pathlib import Path
-from unittest.mock import patch, call
+from unittest.mock import call, patch
 
 from aiohttp import FormData
 from aiohttp.test_utils import AioHTTPTestCase, make_mocked_coro
@@ -153,7 +153,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     async def fake_xmloperator_create_metadata_object(self, schema_type, content):
         """Fake create operation to return mocked accessionId."""
-        return self.test_ega_string
+        return self.test_ega_string, "title"
 
     async def fake_xmloperator_replace_metadata_object(self, schema_type, accession_id, content):
         """Fake replace operation to return mocked accessionId."""
@@ -161,7 +161,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     async def fake_operator_create_metadata_object(self, schema_type, content):
         """Fake create operation to return mocked accessionId."""
-        return self.test_ega_string
+        return self.test_ega_string, "title"
 
     async def fake_operator_update_metadata_object(self, schema_type, accession_id, content):
         """Fake update operation to return mocked accessionId."""
@@ -443,6 +443,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         file_content = self.get_file_data("sample", "EGAformat.csv")
         self.MockedCSVParser().parse.return_value = [{}, {}, {}]
         response = await self.client.post("/objects/sample", params={"folder": "some id"}, data=data)
+        print("=== RESP ===", await response.text())
         json_resp = await response.json()
         self.assertEqual(response.status, 201)
         self.assertEqual(self.test_ega_string, json_resp[0]["accessionId"])
@@ -549,7 +550,6 @@ class ObjectHandlerTestCase(HandlersTestCase):
         self.assertEqual(response.status, 400)
         self.assertIn(reason, await response.text())
 
-    # handle_check_ownedby_user.return_value = True
     async def test_get_object(self):
         """Test that accessionId returns correct JSON object."""
         url = f"/objects/study/{self.query_accessionId}"
