@@ -503,6 +503,54 @@ async def delete_user(sess, user_id):
         assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
 
 
+def extract_folders_object(res, accession_id, draft):
+    """Extract object from folder metadataObjects with provided accessionId.
+
+    :param res: JSON parsed responce from folder query request
+    :param accession_id: accession ID of reviwed object
+    :returns: dict of object entry in folder
+    """
+    object = "drafts" if draft else "metadataObjects"
+    actual_res = next(obj for obj in res[object] if obj["accessionId"] == accession_id)
+    return actual_res
+
+
+async def check_folders_object_patch(sess, folder_id, schema, accession_id, title, filename, draft=False):
+    """Check that draft is added correctly to folder.
+
+    Get draft or metadata object from the folder and assert with data
+    returned from object endpoint itself.
+
+    :param sess: HTTP session in which request call is made
+    :param folder_id: id of the folder
+    :param schema: name of the schema (folder) used for testing
+    :param accession_id: accession ID of reviwed object
+    :param title: title of reviwed object
+    :param filename: name of the file used for inserting data
+    :param draft: indication of object draft status, default False
+    """
+    sub_type = "Form" if filename.split(".")[-1] == "json" else filename.split(".")[-1].upper()
+    async with sess.get(f"{folders_url}/{folder_id}") as resp:
+        res = await resp.json()
+        try:
+            actual = extract_folders_object(res, accession_id, draft)
+            expected = {
+                "accessionId": accession_id,
+                "schema": schema if not draft else f"draft-{schema}",
+                "tags": {
+                    "submissionType": sub_type,
+                    "displayTitle": title,
+                    "fileName": filename,
+                },
+            }
+            if sub_type == "Form":
+                del expected["tags"]["fileName"]
+            assert actual == expected, "actual end expected data did not match"
+        except StopIteration:
+            pass
+        return schema
+
+
 # === Integration tests ===
 async def test_crud_works(sess, schema, filename, folder_id):
     """Test REST api POST, GET and DELETE reqs.
@@ -520,6 +568,9 @@ async def test_crud_works(sess, schema, filename, folder_id):
     async with sess.get(f"{objects_url}/{schema}/{accession_id[0]}") as resp:
         LOG.debug(f"Checking that {accession_id[0]} JSON is in {schema}")
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+        res = await resp.json()
+        title = res["descriptor"].get("studyTitle", "") if schema == "study" else res.get("title", "")
+    await check_folders_object_patch(sess, folder_id, schema, accession_id[0], title, filename)
     async with sess.get(f"{objects_url}/{schema}/{accession_id[0]}?format=xml") as resp:
         LOG.debug(f"Checking that {accession_id[0]} XML is in {schema}")
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
@@ -560,6 +611,9 @@ async def test_csv(sess, folder_id):
     async with sess.get(f"{objects_url}/{_schema}/{_first_csv_row_id}") as resp:
         LOG.debug(f"Checking that {_first_csv_row_id} JSON is in {_schema}")
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+        res = await resp.json()
+        title = res.get("title", "")
+    await check_folders_object_patch(sess, folder_id, _schema, accession_id, title, _filename)
 
     await delete_object(sess, _schema, _first_csv_row_id)
     async with sess.get(f"{objects_url}/{_schema}/{_first_csv_row_id}") as resp:
@@ -595,6 +649,14 @@ async def test_put_objects(sess, folder_id):
     accession_id = await post_object(sess, "study", folder_id, "SRP000539.xml")
     await put_object_json(sess, "study", accession_id[0], "SRP000539.json")
     await put_object_xml(sess, "study", accession_id[0], "SRP000539_put.xml")
+    await check_folders_object_patch(
+        sess,
+        folder_id,
+        "study",
+        accession_id,
+        "Highly integrated epigenome maps in Arabidopsis - whole genome shotgun bisulfite sequencing",
+        "SRP000539_put.xml",
+    )
 
 
 async def test_crud_drafts_works(sess, schema, orginal_file, update_file, folder_id):
@@ -611,10 +673,19 @@ async def test_crud_drafts_works(sess, schema, orginal_file, update_file, folder
     :param folder_id: id of the folder used to group submission objects
     """
     draft_id = await post_draft_json(sess, schema, folder_id, orginal_file)
+    async with sess.get(f"{drafts_url}/{schema}/{draft_id}") as resp:
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+        res = await resp.json()
+        title = res["descriptor"]["studyTitle"] if schema == "study" else res.get("title", "")
+    await check_folders_object_patch(sess, folder_id, draft_id, schema, title, orginal_file, draft=True)
+
     accession_id = await put_draft(sess, schema, draft_id, update_file)
     async with sess.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
         LOG.debug(f"Checking that {accession_id} JSON is in {schema}")
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+        res = await resp.json()
+        title = res["descriptor"]["studyTitle"] if schema == "study" else res.get("title", "")
+    await check_folders_object_patch(sess, folder_id, schema, accession_id, title, update_file, draft=True)
 
     await delete_draft(sess, schema, accession_id)
     async with sess.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
@@ -646,9 +717,11 @@ async def test_patch_drafts_works(sess, schema, orginal_file, update_file, folde
     async with sess.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
         LOG.debug(f"Checking that {accession_id} JSON is in {schema}")
         res = await resp.json()
+        title = res["descriptor"]["studyTitle"] if schema == "study" else res.get("title", None)
         assert res["centerName"] == "GEOM", "object centerName content mismatch"
         assert res["alias"] == "GSE10968", "object alias content mismatch"
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+    await check_folders_object_patch(sess, folder_id, schema, accession_id, title, update_file, draft=True)
 
     await delete_draft(sess, schema, accession_id)
     async with sess.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
