@@ -28,6 +28,7 @@ annotinfo
 anonymized
 antibiogram
 api
+api's
 apisauce
 aragonese
 arxiv
@@ -36,6 +37,7 @@ async
 atac
 auth
 authdb
+authlib
 automodule
 autosummary
 avaric
@@ -70,6 +72,7 @@ bokmål
 bookchapter
 boolean
 bugfix
+bugfixes
 buildkit
 buildx
 cdd
@@ -78,6 +81,7 @@ centername
 centerprojectname
 certreqs
 chamorro
+changelog
 checksummethod
 chia
 chichewa
@@ -86,11 +90,14 @@ chmod
 cli
 clinvar
 cloneend
+codeql
 commonname
 computationalnotebook
 conf
 conferencepaper
 conferenceproceeding
+config
+configs
 const
 contributortype
 covid
@@ -107,6 +114,7 @@ csc
 cscfi
 cscusername
 csi
+csrf
 ctrl
 cts
 curation
@@ -144,6 +152,7 @@ defaultmember
 demultiplexed
 demultiplexing
 demux
+dependabot
 descriptiontype
 designdescription
 destructure
@@ -151,6 +160,7 @@ dev
 devcontainer
 divehi
 dnase
+dockerfile
 docstrings
 doi
 doiinfo
@@ -171,6 +181,7 @@ entrezid
 entrezlink
 enum
 env
+envs
 epigenetics
 eppn
 eslint
@@ -226,6 +237,7 @@ geolocationpolygon
 geolocations
 geoprofiles
 gff
+gh
 github
 githubusercontent
 givenname
@@ -249,7 +261,10 @@ html
 http
 https
 identifiertype
+identitypython
 ido
+idp
+ietf
 igbo
 igsn
 iix
@@ -269,6 +284,7 @@ js
 json
 jsoncontent
 jwk
+jwtconnect
 kalaallisut
 kallisto
 kanuri
@@ -277,6 +293,7 @@ katanga
 keyfile
 kinyarwanda
 kirundi
+koalaman
 komi
 kubernetes
 kwanyama
@@ -328,7 +345,9 @@ methylation
 methylcytidine
 mf
 mgiseq
+middleware
 middlewares
+mimetype
 mingaplength
 minion
 miniseq
@@ -339,6 +358,7 @@ mirna
 miseq
 mkdir
 mnase
+mockauth
 modindex
 mol
 moltype
@@ -386,12 +406,14 @@ objecttypes
 occitan
 oecd
 oidc
+oidcrp
 ojibwe
 ol
 oligo
 omim
 oneof
 ontologies
+openapi
 openid
 orcid
 orgtrack
@@ -399,6 +421,7 @@ oromo
 oss
 ossetian
 outputmanagementplan
+ownedby
 pacbio
 paleo
 panjabi
@@ -431,6 +454,7 @@ poolmembertype
 popset
 pre
 precedesreadindex
+prefill
 preprint
 prettierrc
 prevstepindex
@@ -446,6 +470,7 @@ publicationyear
 pubmed
 py
 pycqa
+pymongo
 pyspelling
 quickstart
 randompriming
@@ -475,6 +500,7 @@ reqs
 resequencing
 resourcetypegeneral
 rnaseq
+rojopolis
 rootreducer
 ror
 rrna
@@ -519,6 +545,7 @@ sequencetype
 sequencevariation
 sff
 sha
+shellcheck
 shona
 sinhala
 sllversion
@@ -575,6 +602,7 @@ turkmen
 twi
 txt
 ui
+ujson
 umi
 unencryptedchecksum
 uniqueitems
@@ -587,11 +615,13 @@ userid
 userinfo
 useselector
 uuid
+uuids
 uyghur
 validator
 vcf
 venda
 volapük
+vscode
 wcs
 westboundlongitude
 wga
@@ -607,6 +637,7 @@ wizardshowsummarystep
 wizardsteps
 wizardsubmissionfolderslice
 wolof
+wordlist
 wxs
 xl
 xml
