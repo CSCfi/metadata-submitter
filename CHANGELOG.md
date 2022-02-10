@@ -52,7 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - coveralls report #267
-- typoes for functions and tests #279
+- typos for functions and tests #279
 - fix spelling mistakes for JSON schemas #323
 - oidcrp does not allow empty values, prefill them in mockauth so front-end can start #333
 - Fix development environment #336
