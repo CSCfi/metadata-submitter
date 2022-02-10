@@ -181,7 +181,6 @@ entrezid
 entrezlink
 enum
 env
-enviroment
 envs
 epigenetics
 eppn
@@ -497,7 +496,6 @@ relatedmetadatascheme
 relationtype
 relativeorder
 remoteuseridentifier
-repsonses
 reqs
 resequencing
 resourcetypegeneral
@@ -603,7 +601,6 @@ tsonga
 turkmen
 twi
 txt
-typose
 ui
 ujson
 umi
@@ -620,7 +617,6 @@ useselector
 uuid
 uuids
 uyghur
-validatad
 validator
 vcf
 venda

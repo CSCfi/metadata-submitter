@@ -52,10 +52,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - coveralls report #267
-- typose for functions and tests #279
+- typoes for functions and tests #279
 - fix spelling mistakes for JSON schemas #323
 - oidcrp does not allow empty values, prefill them in mockauth so front-end can start #333
-- Fix development enviroment #336
+- Fix development environment #336
   
   - Add env vars OIDC_URL and OIDC_URL_TEST to mock auth container
   - Adds logging configs for mock auth
@@ -271,7 +271,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- refactor API endpoints and repsonses
+- refactor API endpoints and responses
   - error using https://tools.ietf.org/html/rfc7807
   - `objects` and `schemas` endpoints added
 
@@ -280,7 +280,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - RESTful API for metadata XML files, making it possible to Submit, List and Query files
-- Files are also validatad during submission process.
+- Files are also validated during submission process.
 
 
 [unreleased]: https://github.com/CSCfi/metadata-submitter/compare/v0.11.0...HEAD
