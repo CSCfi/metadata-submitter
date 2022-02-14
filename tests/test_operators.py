@@ -2,21 +2,14 @@
 import datetime
 import re
 import unittest
+from unittest import IsolatedAsyncioTestCase
+from unittest.mock import MagicMock, call, patch
 from uuid import uuid4
-from unittest.mock import MagicMock, patch, call
 
 from aiohttp.web import HTTPBadRequest, HTTPNotFound, HTTPUnprocessableEntity
-from unittest import IsolatedAsyncioTestCase
-
+from metadata_backend.api.operators import FolderOperator, Operator, UserOperator, XMLOperator
 from multidict import MultiDict, MultiDictProxy
 from pymongo.errors import ConnectionFailure
-
-from metadata_backend.api.operators import (
-    FolderOperator,
-    Operator,
-    XMLOperator,
-    UserOperator,
-)
 
 
 class AsyncIterator:
@@ -191,7 +184,7 @@ class TestOperators(IsolatedAsyncioTestCase):
             "descriptor": {"studyTitle": "Highly", "studyType": "Other"},
         }
         operator.db_service.create.return_value = True
-        accession = await operator.create_metadata_object("study", data)
+        accession, _ = await operator.create_metadata_object("study", data)
         operator.db_service.create.assert_called_once()
         self.assertEqual(accession, self.accession_id)
 
@@ -205,7 +198,7 @@ class TestOperators(IsolatedAsyncioTestCase):
         operator = Operator(self.client)
         operator.db_service.exists.return_value = True
         operator.db_service.replace.return_value = True
-        accession = await operator.replace_metadata_object("study", self.accession_id, data)
+        accession, _ = await operator.replace_metadata_object("study", self.accession_id, data)
         operator.db_service.replace.assert_called_once()
         self.assertEqual(accession, self.accession_id)
 
@@ -264,10 +257,10 @@ class TestOperators(IsolatedAsyncioTestCase):
         operator.db_service.create.return_value = True
         with patch(
             ("metadata_backend.api.operators.Operator._format_data_to_create_and_add_to_db"),
-            return_value=self.accession_id,
+            return_value=(self.accession_id, "title"),
         ):
             with patch("metadata_backend.api.operators.XMLToJSONParser"):
-                accession = await operator.create_metadata_object("study", "<MOCK_ELEM></MOCK_ELEM>")
+                accession, _ = await operator.create_metadata_object("study", "<MOCK_ELEM></MOCK_ELEM>")
         operator.db_service.create.assert_called_once()
         self.assertEqual(accession, self.accession_id)
 
@@ -375,7 +368,7 @@ class TestOperators(IsolatedAsyncioTestCase):
         xml_data = "<MOCK_ELEM></MOCK_ELEM>"
         with patch(
             ("metadata_backend.api.operators.Operator._format_data_to_create_and_add_to_db"),
-            return_value=self.accession_id,
+            return_value=(self.accession_id, "title"),
         ):
             with patch(
                 ("metadata_backend.api.operators.XMLOperator._insert_formatted_object_to_db"),
@@ -384,7 +377,7 @@ class TestOperators(IsolatedAsyncioTestCase):
                 with patch("metadata_backend.api.operators.XMLToJSONParser"):
                     acc = await (operator._format_data_to_create_and_add_to_db("study", xml_data))
                     m_insert.assert_called_once_with(
-                        "xml-study", {"accessionId": self.accession_id, "content": xml_data}
+                        "xml-study", {"accessionId": self.accession_id, "title": "title", "content": xml_data}
                     )
                     self.assertEqual(acc, self.accession_id)
 
@@ -395,7 +388,7 @@ class TestOperators(IsolatedAsyncioTestCase):
         xml_data = "<MOCK_ELEM></MOCK_ELEM>"
         with patch(
             "metadata_backend.api.operators.Operator._format_data_to_replace_and_add_to_db",
-            return_value=self.accession_id,
+            return_value=(self.accession_id, "title"),
         ):
             with patch(
                 "metadata_backend.api.operators.XMLOperator._replace_object_from_db",
