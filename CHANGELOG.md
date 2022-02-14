@@ -9,9 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- templates API #256
+- Add patching of folders after object save and update operations
+  - Object is added or updated to folder(submission) where it belongs with it's accession ID, schema, submission type, title and filename in the case of CSV and XML upload
+  - Adds configuration for mypy linting to VScode devcontainer setup
+- Templates API #256
   - use `ujson` as default json library
-- creating draft Datacite DOI for folders #257
+- Creating draft Datacite DOI for folders #257
   - created a mock web app, which would act similarly to DataCite REST API
   - altered `publish_folder` endpoint so that `extraInfo` containing the DOI data is added upon publishing
   - added `datePublished` key to folders which takes in the date/time, when folder is published
@@ -26,7 +29,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - update github actions
 - Add folder querying by date #308
 - Add description to JSON schemas #323
-
   - add JSON schema spelling checker to pyspelling github action
   - optimise wordlist by adding regex ignore patterns
   - added pyspelling to pre-commit hooks (fixed syntax for scripts according to https://github.com/koalaman/shellcheck )
@@ -41,22 +43,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - New mandatory ENV `OIDC_URL`
   - New optional ENVs `OIDC_SCOPE`, `AUTH_METHOD`
   - Added oidcrp dependency
-- use node 16+ #345
+- Use node 16+ #345
 - VScode Dev environment #287
   - Adds requirements-dev.in/txt files. Now pip dependencies can be managed with pip-tools
   - README updated with tox command, development build instructions, and prettify Dockerfile.
-- update ENA XML and JSON schemas #299
+- Update ENA XML and JSON schemas #299
 - Github actions changed the use of https://git.io/misspell to rojopolis/spellcheck-github-actions #316
 - Separated most of the handlers to own files inside the handlers folder #319
 
 ### Fixed
 
-- coveralls report #267
-- typos for functions and tests #279
-- fix spelling mistakes for JSON schemas #323
-- oidcrp does not allow empty values, prefill them in mockauth so front-end can start #333
+- Coveralls report #267
+- Typos for functions and tests #279
+- Fix spelling mistakes for JSON schemas #323
+- Oidcrp does not allow empty values, prefill them in mockauth so front-end can start #333
 - Fix development environment #336
-  
   - Add env vars OIDC_URL and OIDC_URL_TEST to mock auth container
   - Adds logging configs for mock auth
   - Updates mock auth api's token endpoint with expiration configs
@@ -76,7 +77,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- package updates
+- Package updates
 
 ### Added
 
@@ -88,72 +89,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- add integration tests for misses in dataset, experiment, policy
+- Add integration tests for misses in dataset, experiment, policy
 
 ### Changed
 
-- package updates
+- Package updates
 - EGA XML schemas version:1.8.0
-- refactor analysis and experiment schemas to adhere to XML schema
+- Refactor analysis and experiment schemas to adhere to XML schema
 
 ### Fixed
 
-- fix misses for DAC, experiment and policy processing of XML
-- fix misses in JSON Schema
+- Fix misses for DAC, experiment and policy processing of XML
+- Fix misses in JSON Schema
 
 ## [0.9.0] - 2021-03-22
 
 ### Added
 
-- use dependabot
-- support simultaneous sessions
+- Use dependabot
+- Support simultaneous sessions
 
 ### Changed
 
 - Refactor JSON schema Links
-- refactor handlers to be more streamlined
-- validate patch requests for JSON content
-- switch to python 3.8
+- Refactor handlers to be more streamlined
+- Validate patch requests for JSON content
+- Switch to python 3.8
 
 ## [0.8.1] - 2021-02-15
 
 ### Fixed
 
-- bugfix for error pages #202
+- Bugfix for error pages #202
 
 ## [0.8.0] - 2021-02-12
 
 ### Added
 
 - TLS support
-- use `sub` as alternative to `eppn` to identify users
+- Use `sub` as alternative to `eppn` to identify users
 - `PATCH` for objects and `PUT` for XML objects enabled
-- delete folders and objects associated to user on user delete
+- Delete folders and objects associated to user on user delete
 
 ### Changed
 
-- redirect to error pages
-- extended integration tests
+- Redirect to error pages
+- Extended integration tests
 
 ### Fixed
 
-- fix replace on json patch
-- general bug and fixes
+- Fix replace on json patch
+- General bug and fixes
 
 ## [0.7.1] - 2021-01-19
 
 ### Fixed
 
-- hotfix release #176
- 
+- Hotfix release #176
   - added check_object_exists to check object exists and fail early with 404 before checking it belongs to user
   - refactor and added more check_folder_exists to check folder exists before doing anything
   - integration test to check objects are deleted properly
 
 ### Changes
 
-- check objects and folders exist before any operation
-- integration check to see if deleted object or folder are still registered in db
+- Check objects and folders exist before any operation
+- Integration check to see if deleted object or folder are still registered in db
 
 ## [0.7.0] - 2021-01-06
 
@@ -162,7 +162,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CodeQL github action #162
 - `/health` endpoint #173
 
-- map `users` to `folders` with `_handle_check_ownedby_user` #158
+- Map `users` to `folders` with `_handle_check_ownedby_user` #158
   - querying for objects is restricted to only the objects that belong to user 
   - return folders owned by user or published
   - added a few db operators some used (aggregate, remove)
@@ -170,17 +170,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - standardise raises description and general improvements and fixes of logs and descriptions
 
 ### Changed
-- verify `/publish` endpoint #163
-- restrict endpoints to logged in users #151
-- updated documentation #165
-- switch to using uuids for accession ids #168
-- integration tests and increase unit test coverage #166
+- Verify `/publish` endpoint #163
+- Restrict endpoints to logged in users #151
+- Updated documentation #165
+- Switch to using uuids for accession ids #168
+- Integration tests and increase unit test coverage #166
 
 ### Fixed
 
-- fixes for idp and location headers redirects #150
-- fix race condition in db operations #158
-- fix handling of draft deletion by removing redundant deletion #164, #169 and #172
+- Fixes for idp and location headers redirects #150
+- Fix race condition in db operations #158
+- Fix handling of draft deletion by removing redundant deletion #164, #169 and #172
 
 ## [0.6.1] - 2020-11-23
 
@@ -190,38 +190,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- refactor draft `/folder` #144
-- refactor gh actions #140
-- patch publish #141
+- Refactor draft `/folder` #144
+- Refactor gh actions #140
+- Patch publish #141
 
 ### Fixed
 
-- bugfixes for login redirect #139
+- Bugfixes for login redirect #139
 
 ## [0.6.0] - 2020-10-08
 
 ### Added 
 
-- authentication with OIDC  #133
-- only 3.7 support going further #134
-- more submission actions `ADD` and `MODIFY` #137
+- Authentication with OIDC  #133
+- Only 3.7 support going further #134
+- More submission actions `ADD` and `MODIFY` #137
 
 
 ## [0.5.3] - 2020-08-21
 
 ### Changed
 
-- updated OpenAPI specifications #127
-- python modules, project description and instructions to documentation sources #128
-- added integration tests #129
-- updated documentation #130
+- Updated OpenAPI specifications #127
+- Python modules, project description and instructions to documentation sources #128
+- Added integration tests #129
+- Updated documentation #130
 
 
 ## [0.5.2] - 2020-08-14
 
 ### Fixes
 
-- fix mimetype for SVG image and package data
+- Fix mimetype for SVG image and package data
 
 ## [0.5.1] - 2020-08-14
 
@@ -233,10 +233,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixes
 
 - Dockerfile build fixes #115
-- fix JSON Schema details #117 
-- missing env from github actions #119
-- typo fixes #120
-- await responses #122
+- Fix JSON Schema details #117 
+- Missing env from github actions #119
+- Typo fixes #120
+- Await responses #122
 
 
 ## [0.5.0] - 2020-08-06
@@ -250,28 +250,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - JSON validation
 - XML better parsing
 - Auth middleware
-- pagination
+- Pagination
 
 ### Changed
 
 - Improved current naming conventions #82
 - Login flow with new routes for Home & Login #76, #79, #80
-- change from pymongo to motor
+- Change from pymongo to motor
 
 ## [0.2.0] - 2020-07-01
 
 ### Added
 
 - Added integration tests
-- switched to github actions
-- added base docs folder
-- added more refined XML parsing
+- Switched to github actions
+- Added base docs folder
+- Added more refined XML parsing
 - Integration tests added
 - Refactor unit tests
 
 ### Changed
 
-- refactor API endpoints and responses
+- Refactor API endpoints and responses
   - error using https://tools.ietf.org/html/rfc7807
   - `objects` and `schemas` endpoints added
 
