@@ -225,6 +225,9 @@ class ObjectAPIHandler(RESTAPIHandler):
         if collection in {"study", "dataset"}:
             [await self._create_metax_dataset(req, collection, item) for item in objects]
 
+        patch = self._prepare_folder_patch_new_object(collection, ids, patch_params)
+        await folder_op.update_folder(folder_id, patch)
+
         body = ujson.dumps(data, escape_forward_slashes=False)
 
         return web.Response(
