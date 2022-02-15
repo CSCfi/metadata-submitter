@@ -118,7 +118,7 @@ class AccessHandler:
             raise web.HTTPBadRequest(reason="Invalid OIDC callback.")
 
         # If user has no project affiliations, they will be redirected to an instructions page
-        if "sdSubmitProjects" not in session["userinfo"]:
+        if not session["userinfo"].get("sdSubmitProjects", ""):
             LOG.error("user has no project affiliations")
             response = web.HTTPSeeOther(f"{self.redirect}/noproject")
             return response
