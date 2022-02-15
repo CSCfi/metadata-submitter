@@ -155,10 +155,9 @@ class ObjectAPIHandler(RESTAPIHandler):
             data = {"accessionId": accession_id}
             location_headers = CIMultiDict(Location=f"{url}/{accession_id}")
             LOG.info(f"POST object with accesssion ID {accession_id} in schema {collection} was successful.")
-
-        # Gathering data for object to be added to folder
-        if not isinstance(data, List):
+            # Gathering data for object to be added to folder
             ids = [dict(data, **{"title": title})]
+
         folder_op = FolderOperator(db_client)
         patch = self._prepare_folder_patch_new_object(collection, ids, patch_params)
         await folder_op.update_folder(folder_id, patch)
