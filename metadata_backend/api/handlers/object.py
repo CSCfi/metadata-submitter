@@ -252,6 +252,14 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         await self._handle_check_ownership(req, collection, accession_id)
 
+        folder_op = FolderOperator(db_client)
+        exists, folder_id, published = await folder_op.check_object_in_folder(collection, accession_id)
+        if exists:
+            if published:
+                reason = "Published objects cannot be updated."
+                LOG.error(reason)
+                raise web.HTTPUnauthorized(reason=reason)
+
         accession_id, title = await operator.replace_metadata_object(collection, accession_id, content)
         patch = await self.prepare_folder_patch_update_object(collection, accession_id, title, filename)
         await folder_op.update_folder(folder_id, patch)

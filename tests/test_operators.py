@@ -8,7 +8,6 @@ from uuid import uuid4
 
 from aiohttp.web import HTTPBadRequest, HTTPNotFound, HTTPUnprocessableEntity
 from aiohttp.test_utils import make_mocked_coro
-from unittest import IsolatedAsyncioTestCase
 from multidict import MultiDict, MultiDictProxy
 from pymongo.errors import ConnectionFailure, OperationFailure
 
@@ -21,6 +20,7 @@ from metadata_backend.api.operators import (
 )
 
 from .mockups import get_request_with_fernet
+
 
 class AsyncIterator:
     """Async iterator based on range."""
