@@ -1003,6 +1003,7 @@
                 "title": "Type of submission",
                 "enum": [
                   "XML",
+                  "CSV",
                   "Form"
                 ]
               }
@@ -1041,6 +1042,7 @@
                 "title": "Type of submission",
                 "enum": [
                   "XML",
+                  "CSV",
                   "Form"
                 ]
               }

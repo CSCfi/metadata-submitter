@@ -6,9 +6,9 @@
 #
 aiofiles==0.8.0
     # via -r requirements-dev.in
-backports.entry-points-selectable==1.1.1
+backports-entry-points-selectable==1.1.1
     # via virtualenv
-black==21.12b0
+black==22.1.0
     # via -r requirements-dev.in
 certifi==2021.10.8
     # via -r requirements-dev.in
@@ -30,8 +30,12 @@ identify==2.3.6
     # via pre-commit
 mccabe==0.6.1
     # via flake8
+mypy==0.931
+    # via -r requirements-dev.in
 mypy-extensions==0.4.3
-    # via black
+    # via
+    #   black
+    #   mypy
 nodeenv==1.6.0
     # via pre-commit
 packaging==21.2
@@ -40,7 +44,7 @@ pathspec==0.9.0
     # via black
 pep517==0.12.0
     # via pip-tools
-pip-tools==6.4.0
+pip-tools==6.5.1
     # via -r requirements-dev.in
 platformdirs==2.4.0
     # via
@@ -71,11 +75,12 @@ toml==0.10.2
 tomli==1.2.2
     # via
     #   black
+    #   mypy
     #   pep517
 tox==3.24.5
     # via -r requirements-dev.in
 typing-extensions==4.0.0
-    # via black
+    # via mypy
 virtualenv==20.10.0
     # via
     #   pre-commit

@@ -5,7 +5,7 @@ Metadata Submitter Frontend
 
 .. note:: Requirements:
 
-    * Node 14+
+    * Node 16+
 
 Environment Setup
 -----------------

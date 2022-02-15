@@ -1,7 +1,7 @@
 """Test API endpoints from handlers module."""
 
 from pathlib import Path
-from unittest.mock import patch, call
+from unittest.mock import call, patch
 
 from aiohttp import FormData
 from aiohttp.test_utils import AioHTTPTestCase, make_mocked_coro
@@ -153,15 +153,15 @@ class HandlersTestCase(AioHTTPTestCase):
 
     async def fake_xmloperator_create_metadata_object(self, schema_type, content):
         """Fake create operation to return mocked accessionId."""
-        return self.test_ega_string
+        return self.test_ega_string, "title"
 
     async def fake_xmloperator_replace_metadata_object(self, schema_type, accession_id, content):
         """Fake replace operation to return mocked accessionId."""
-        return self.test_ega_string
+        return self.test_ega_string, "title"
 
     async def fake_operator_create_metadata_object(self, schema_type, content):
         """Fake create operation to return mocked accessionId."""
-        return self.test_ega_string
+        return self.test_ega_string, "title"
 
     async def fake_operator_update_metadata_object(self, schema_type, accession_id, content):
         """Fake update operation to return mocked accessionId."""
@@ -169,7 +169,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     async def fake_operator_replace_metadata_object(self, schema_type, accession_id, content):
         """Fake replace operation to return mocked accessionId."""
-        return self.test_ega_string
+        return self.test_ega_string, "title"
 
     async def fake_operator_delete_metadata_object(self, schema_type, accession_id):
         """Fake delete operation to await successful operation indicator."""
@@ -387,7 +387,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         """Test that submission is handled, XMLOperator is called."""
         files = [("study", "SRP000539.xml")]
         data = self.create_submission_data(files)
-        response = await self.client.post("/objects/study", data=data)
+        response = await self.client.post("/objects/study", params={"folder": "some id"}, data=data)
         self.assertEqual(response.status, 201)
         self.assertIn(self.test_ega_string, await response.text())
         self.MockedXMLOperator().create_metadata_object.assert_called_once()
@@ -399,7 +399,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
             "alias": "GSE10966",
             "descriptor": {"studyTitle": "Highly", "studyType": "Other"},
         }
-        response = await self.client.post("/objects/study", json=json_req)
+        response = await self.client.post("/objects/study", params={"folder": "some id"}, json=json_req)
         self.assertEqual(response.status, 201)
         self.assertIn(self.test_ega_string, await response.text())
         self.MockedOperator().create_metadata_object.assert_called_once()
@@ -407,7 +407,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
     async def test_submit_object_missing_field_json(self):
         """Test that JSON has missing property."""
         json_req = {"centerName": "GEO", "alias": "GSE10966"}
-        response = await self.client.post("/objects/study", json=json_req)
+        response = await self.client.post("/objects/study", params={"folder": "some id"}, json=json_req)
         reason = "Provided input does not seem correct because: ''descriptor' is a required property'"
         self.assertEqual(response.status, 400)
         self.assertIn(reason, await response.text())
@@ -419,7 +419,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
             "alias": "GSE10966",
             "descriptor": {"studyTitle": "Highly", "studyType": "ceva"},
         }
-        response = await self.client.post("/objects/study", json=json_req)
+        response = await self.client.post("/objects/study", params={"folder": "some id"}, json=json_req)
         reason = "Provided input does not seem correct for field: 'descriptor'"
         self.assertEqual(response.status, 400)
         self.assertIn(reason, await response.text())
@@ -431,7 +431,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
             "alias": "GSE10966",
             "descriptor": {"studyTitle": "Highly", "studyType": "Other"},
         }
-        response = await self.client.post("/objects/study", data=json_req)
+        response = await self.client.post("/objects/study", params={"folder": "some id"}, data=json_req)
         reason = "JSON is not correctly formatted. See: Expecting value: line 1 column 1"
         self.assertEqual(response.status, 400)
         self.assertIn(reason, await response.text())
@@ -442,7 +442,8 @@ class ObjectHandlerTestCase(HandlersTestCase):
         data = self.create_submission_data(files)
         file_content = self.get_file_data("sample", "EGAformat.csv")
         self.MockedCSVParser().parse.return_value = [{}, {}, {}]
-        response = await self.client.post("/objects/sample", data=data)
+        response = await self.client.post("/objects/sample", params={"folder": "some id"}, data=data)
+        print("=== RESP ===", await response.text())
         json_resp = await response.json()
         self.assertEqual(response.status, 201)
         self.assertEqual(self.test_ega_string, json_resp[0]["accessionId"])
@@ -460,7 +461,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         """Test multipart request post fails when no objects are parsed."""
         files = [("sample", "empty.csv")]
         data = self.create_submission_data(files)
-        response = await self.client.post("/objects/sample", data=data)
+        response = await self.client.post("/objects/sample", params={"folder": "some id"}, data=data)
         json_resp = await response.json()
         self.assertEqual(response.status, 400)
         self.assertEqual(json_resp["detail"], "Request data seems empty.")
@@ -495,7 +496,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
             "alias": "GSE10966",
             "descriptor": {"studyTitle": "Highly", "studyType": "Other"},
         }
-        response = await self.client.post("/drafts/study", json=json_req)
+        response = await self.client.post("/drafts/study", params={"folder": "some id"}, json=json_req)
         self.assertEqual(response.status, 201)
         self.assertIn(self.test_ega_string, await response.text())
         self.MockedOperator().create_metadata_object.assert_called_once()
@@ -544,12 +545,11 @@ class ObjectHandlerTestCase(HandlersTestCase):
         """Test that sending two files to endpoint results failure."""
         files = [("study", "SRP000539.xml"), ("study", "SRP000539_copy.xml")]
         data = self.create_submission_data(files)
-        response = await self.client.post("/objects/study", data=data)
+        response = await self.client.post("/objects/study", params={"folder": "some id"}, data=data)
         reason = "Only one file can be sent to this endpoint at a time."
         self.assertEqual(response.status, 400)
         self.assertIn(reason, await response.text())
 
-    # handle_check_ownedby_user.return_value = True
     async def test_get_object(self):
         """Test that accessionId returns correct JSON object."""
         url = f"/objects/study/{self.query_accessionId}"
@@ -616,7 +616,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         json_get_resp = await get_resp.json()
         self.assertIn("Specified schema", json_get_resp["detail"])
 
-        post_rep = await self.client.post("/objects/bad_scehma_name")
+        post_rep = await self.client.post("/objects/bad_scehma_name", params={"folder": "some id"})
         self.assertEqual(post_rep.status, 404)
         post_json_rep = await post_rep.json()
         self.assertIn("Specified schema", post_json_rep["detail"])
