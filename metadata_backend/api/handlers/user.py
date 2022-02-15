@@ -30,13 +30,17 @@ class UserAPIHandler(RESTAPIHandler):
         :raises: HTTPUnauthorized if request tries to do anything else than add or replace
         :returns: None
         """
-        _arrays = ["/templates/-", "/folders/-"]
-        _required_values = ["schema", "accessionId"]
+        _arrays = {"/templates/-", "/folders/-"}
+        _required_values = {"schema", "accessionId"}
         _tags = re.compile("^/(templates)/[0-9]*/(tags)$")
         for op in patch_ops:
             if _tags.match(op["path"]):
                 LOG.info(f"{op['op']} on tags in folder")
-                if "submissionType" in op["value"].keys() and op["value"]["submissionType"] not in ["XML", "Form"]:
+                if "submissionType" in op["value"].keys() and op["value"]["submissionType"] not in {
+                    "XML",
+                    "CSV",
+                    "Form",
+                }:
                     reason = "submissionType is restricted to either 'XML' or 'Form' values."
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
@@ -46,7 +50,7 @@ class UserAPIHandler(RESTAPIHandler):
                     reason = f"Request contains '{op['path']}' key that cannot be updated to user object"
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
-                if op["op"] in ["remove", "copy", "test", "move", "replace"]:
+                if op["op"] in {"remove", "copy", "test", "move", "replace"}:
                     reason = f"{op['op']} on {op['path']} is not allowed."
                     LOG.error(reason)
                     raise web.HTTPUnauthorized(reason=reason)
@@ -65,7 +69,7 @@ class UserAPIHandler(RESTAPIHandler):
                         if (
                             "tags" in item
                             and "submissionType" in item["tags"]
-                            and item["tags"]["submissionType"] not in ["XML", "Form"]
+                            and item["tags"]["submissionType"] not in {"XML", "CSV", "Form"}
                         ):
                             reason = "submissionType is restricted to either 'XML' or 'Form' values."
                             LOG.error(reason)
@@ -187,7 +191,7 @@ class UserAPIHandler(RESTAPIHandler):
         :returns: Paginated list of user draft templates and link header
         """
         # Check item_type parameter is not faulty
-        if item_type not in ["templates", "folders"]:
+        if item_type not in {"templates", "folders"}:
             reason = f"{item_type} is a faulty item parameter. Should be either folders or templates"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
