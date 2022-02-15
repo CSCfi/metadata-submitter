@@ -196,8 +196,6 @@ class FolderAPIHandler(RESTAPIHandler):
         operator = FolderOperator(db_client)
         folder = await operator.create_folder(content)
 
-        # await user_op.assign_objects(current_user, "folders", [folder])
-
         body = ujson.dumps({"folderId": folder}, escape_forward_slashes=False)
 
         url = f"{req.scheme}://{req.host}{req.path}"
@@ -335,10 +333,6 @@ class FolderAPIHandler(RESTAPIHandler):
             await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
 
         _folder_id = await operator.delete_folder(folder_id)
-
-        # user_op = UserOperator(db_client)
-        # current_user = get_session(req)["user_info"]
-        # await user_op.remove_objects(current_user, "folders", [folder_id])
 
         LOG.info(f"DELETE folder with ID {_folder_id} was successful.")
         return web.Response(status=204)

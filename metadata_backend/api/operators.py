@@ -1096,60 +1096,62 @@ class UserOperator:
             LOG.info(f"Updating user with id {user_id} to database succeeded.")
             return user_id
 
-    async def assign_objects(self, user_id: str, collection: str, object_ids: List) -> None:
-        """Assing object to user.
+    # DEPRECATED
+    # async def assign_objects(self, user_id: str, collection: str, object_ids: List) -> None:
+    #     """Assing object to user.
 
-        An object can be folder(s) or templates(s).
+    #     An object can be folder(s) or templates(s).
 
-        :param user_id: ID of user to update
-        :param collection: collection where to remove the id from
-        :param object_ids: ID or list of IDs of folder(s) to assign
-        :raises: HTTPBadRequest if assigning templates/folders to user was not successful
-        returns: None
-        """
-        try:
-            await self._check_user_exists(user_id)
-            assign_success = await self.db_service.append(
-                "user", user_id, {collection: {"$each": object_ids, "$position": 0}}
-            )
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting user: {error}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
+    #     :param user_id: ID of user to update
+    #     :param collection: collection where to remove the id from
+    #     :param object_ids: ID or list of IDs of folder(s) to assign
+    #     :raises: HTTPBadRequest if assigning templates/folders to user was not successful
+    #     returns: None
+    #     """
+    #     try:
+    #         await self._check_user_exists(user_id)
+    #         assign_success = await self.db_service.append(
+    #             "user", user_id, {collection: {"$each": object_ids, "$position": 0}}
+    #         )
+    #     except (ConnectionFailure, OperationFailure) as error:
+    #         reason = f"Error happened while getting user: {error}"
+    #         LOG.error(reason)
+    #         raise web.HTTPBadRequest(reason=reason)
 
-        if not assign_success:
-            reason = "Assigning objects to user failed."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
+    #     if not assign_success:
+    #         reason = "Assigning objects to user failed."
+    #         LOG.error(reason)
+    #         raise web.HTTPBadRequest(reason=reason)
 
-        LOG.info(f"Assigning {object_ids} from {user_id} succeeded.")
+    #     LOG.info(f"Assigning {object_ids} from {user_id} succeeded.")
 
-    async def remove_objects(self, user_id: str, collection: str, object_ids: List) -> None:
-        """Remove object from user.
+    # DEPRECATED
+    # async def remove_objects(self, user_id: str, collection: str, object_ids: List) -> None:
+    #     """Remove object from user.
 
-        An object can be folder(s) or template(s).
+    #     An object can be folder(s) or template(s).
 
-        :param user_id: ID of user to update
-        :param collection: collection where to remove the id from
-        :param object_ids: ID or list of IDs of folder(s) to remove
-        :raises: HTTPBadRequest if db connection fails
-        returns: None
-        """
-        remove_content: Dict
-        try:
-            await self._check_user_exists(user_id)
-            for obj in object_ids:
-                if collection == "templates":
-                    remove_content = {"templates": {"accessionId": obj}}
-                else:
-                    remove_content = {"folders": obj}
-                await self.db_service.remove("user", user_id, remove_content)
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while removing objects from user: {error}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
+    #     :param user_id: ID of user to update
+    #     :param collection: collection where to remove the id from
+    #     :param object_ids: ID or list of IDs of folder(s) to remove
+    #     :raises: HTTPBadRequest if db connection fails
+    #     returns: None
+    #     """
+    #     remove_content: Dict
+    #     try:
+    #         await self._check_user_exists(user_id)
+    #         for obj in object_ids:
+    #             if collection == "templates":
+    #                 remove_content = {"templates": {"accessionId": obj}}
+    #             else:
+    #                 remove_content = {"folders": obj}
+    #             await self.db_service.remove("user", user_id, remove_content)
+    #     except (ConnectionFailure, OperationFailure) as error:
+    #         reason = f"Error happened while removing objects from user: {error}"
+    #         LOG.error(reason)
+    #         raise web.HTTPBadRequest(reason=reason)
 
-        LOG.info(f"Removing {object_ids} from {user_id} succeeded.")
+    #     LOG.info(f"Removing {object_ids} from {user_id} succeeded.")
 
     async def delete_user(self, user_id: str) -> str:
         """Delete user object from database.

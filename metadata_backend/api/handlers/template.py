@@ -87,10 +87,6 @@ class TemplatesAPIHandler(RESTAPIHandler):
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
                 accession_id, _ = await operator.create_metadata_object(collection, tmpl["template"])
-                data = [{"accessionId": accession_id, "schema": collection}]
-                if "tags" in tmpl:
-                    data[0]["tags"] = tmpl["tags"]
-                # await user_op.assign_objects(current_user, "templates", data)
                 tmpl_list.append({"accessionId": accession_id})
 
             body = ujson.dumps(tmpl_list, escape_forward_slashes=False)
@@ -99,11 +95,9 @@ class TemplatesAPIHandler(RESTAPIHandler):
                 reason = "template key is missing from request body."
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
+            # Move projectId to template key, so that it is saved in mongo
+            content["template"]["projectId"] = content["projectId"]
             accession_id, _ = await operator.create_metadata_object(collection, content["template"])
-            data = [{"accessionId": accession_id, "schema": collection}]
-            if "tags" in content:
-                data[0]["tags"] = content["tags"]
-            # await user_op.assign_objects(current_user, "templates", data)
 
             body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
 
@@ -163,16 +157,6 @@ class TemplatesAPIHandler(RESTAPIHandler):
         await Operator(db_client).check_exists(collection, accession_id)
 
         await self._handle_check_ownership(req, collection, accession_id)
-
-        # user_op = UserOperator(db_client)
-        # current_user = get_session(req)["user_info"]
-        # check_user = await user_op.check_user_has_doc(collection, current_user, accession_id)
-        # if check_user:
-        #     await user_op.remove_objects(current_user, "templates", [accession_id])
-        # else:
-        #     reason = "This template does not seem to belong to any user."
-        #     LOG.error(reason)
-        #     raise web.HTTPUnprocessableEntity(reason=reason)
 
         accession_id = await Operator(db_client).delete_metadata_object(collection, accession_id)
 

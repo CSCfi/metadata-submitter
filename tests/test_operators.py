@@ -1079,50 +1079,55 @@ class TestOperators(IsolatedAsyncioTestCase):
         with self.assertRaises(HTTPBadRequest):
             await operator.delete_user(self.user_id)
 
-    async def test_user_objects_remove_passes(self):
-        """Test remove objects method for users works."""
-        operator = UserOperator(self.client)
-        operator.db_service.exists.return_value = True
-        operator.db_service.remove.return_value = self.test_user
-        await operator.remove_objects(self.user_generated_id, "study", ["id"])
-        operator.db_service.exists.assert_called_once()
-        operator.db_service.remove.assert_called_once()
-        self.assertEqual(len(operator.db_service.remove.mock_calls), 1)
+    # DEPRECATED
+    # async def test_user_objects_remove_passes(self):
+    #     """Test remove objects method for users works."""
+    #     operator = UserOperator(self.client)
+    #     operator.db_service.exists.return_value = True
+    #     operator.db_service.remove.return_value = self.test_user
+    #     await operator.remove_objects(self.user_generated_id, "study", ["id"])
+    #     operator.db_service.exists.assert_called_once()
+    #     operator.db_service.remove.assert_called_once()
+    #     self.assertEqual(len(operator.db_service.remove.mock_calls), 1)
 
-    async def test_user_objects_remove_fails(self):
-        """Test remove objects method for users fails."""
-        operator = UserOperator(self.client)
-        operator.db_service.exists.return_value = True
-        operator.db_service.remove.side_effect = ConnectionFailure
-        with self.assertRaises(HTTPBadRequest):
-            await operator.remove_objects(self.user_generated_id, "study", ["id"])
+    # DEPRECATED
+    # async def test_user_objects_remove_fails(self):
+    #     """Test remove objects method for users fails."""
+    #     operator = UserOperator(self.client)
+    #     operator.db_service.exists.return_value = True
+    #     operator.db_service.remove.side_effect = ConnectionFailure
+    #     with self.assertRaises(HTTPBadRequest):
+    #         await operator.remove_objects(self.user_generated_id, "study", ["id"])
 
-    async def test_user_objects_append_passes(self):
-        """Test append objects method for users works."""
-        operator = UserOperator(self.client)
-        operator.db_service.exists.return_value = True
-        operator.db_service.append.return_value = self.test_user
-        await operator.assign_objects(self.user_generated_id, "study", [])
-        operator.db_service.exists.assert_called_once()
-        operator.db_service.append.assert_called_once()
-        self.assertEqual(len(operator.db_service.append.mock_calls), 1)
+    # DEPRECATED
+    # async def test_user_objects_append_passes(self):
+    #     """Test append objects method for users works."""
+    #     operator = UserOperator(self.client)
+    #     operator.db_service.exists.return_value = True
+    #     operator.db_service.append.return_value = self.test_user
+    #     await operator.assign_objects(self.user_generated_id, "study", [])
+    #     operator.db_service.exists.assert_called_once()
+    #     operator.db_service.append.assert_called_once()
+    #     self.assertEqual(len(operator.db_service.append.mock_calls), 1)
 
-    async def test_user_objects_append_on_result_fails(self):
-        """Test append objects method for users fails on db response validation."""
-        operator = UserOperator(self.client)
-        operator.db_service.exists.return_value = True
-        operator.db_service.append.return_value = False
-        with self.assertRaises(HTTPBadRequest):
-            await operator.assign_objects(self.user_generated_id, "study", [])
-            operator.db_service.exists.assert_called_once()
-            operator.db_service.append.assert_called_once()
+    # DEPRECATED
+    # async def test_user_objects_append_on_result_fails(self):
+    #     """Test append objects method for users fails on db response validation."""
+    #     operator = UserOperator(self.client)
+    #     operator.db_service.exists.return_value = True
+    #     operator.db_service.append.return_value = False
+    #     with self.assertRaises(HTTPBadRequest):
+    #         await operator.assign_objects(self.user_generated_id, "study", [])
+    #         operator.db_service.exists.assert_called_once()
+    #         operator.db_service.append.assert_called_once()
 
-    async def test_user_objects_assing_fails(self):
-        """Test append objects method for users fails."""
-        operator = UserOperator(self.client)
-        operator.db_service.exists.side_effect = ConnectionFailure
-        with self.assertRaises(HTTPBadRequest):
-            await operator.assign_objects(self.user_generated_id, "study", [])
+    # DEPRECATED
+    # async def test_user_objects_assing_fails(self):
+    #     """Test append objects method for users fails."""
+    #     operator = UserOperator(self.client)
+    #     operator.db_service.exists.side_effect = ConnectionFailure
+    #     with self.assertRaises(HTTPBadRequest):
+    #         await operator.assign_objects(self.user_generated_id, "study", [])
 
     async def test_check_user_has_project_passes(self):
         """Test check user has project and doesn't raise an exception."""
