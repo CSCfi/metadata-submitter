@@ -52,7 +52,7 @@ class ObjectAPIHandler(RESTAPIHandler):
             escape_forward_slashes=False,
         )
         url = f"{req.scheme}://{req.host}{req.path}"
-        link_headers = await self._header_links(url, page_num, per_page, total_objects)
+        link_headers = self._header_links(url, page_num, per_page, total_objects)
         LOG.debug(f"Pagination header links: {link_headers}")
         LOG.info(f"Querying for objects in {collection} resulted in {total_objects} objects ")
         return web.Response(
@@ -160,7 +160,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         if not isinstance(data, List):
             ids = [dict(data, **{"title": title})]
         folder_op = FolderOperator(db_client)
-        patch = await self.prepare_folder_patch_new_object(collection, ids, patch_params)
+        patch = self._prepare_folder_patch_new_object(collection, ids, patch_params)
         await folder_op.update_folder(folder_id, patch)
 
         # Create draft dataset to Metax catalog
@@ -282,7 +282,7 @@ class ObjectAPIHandler(RESTAPIHandler):
                 raise web.HTTPUnauthorized(reason=reason)
 
         accession_id, title = await operator.replace_metadata_object(collection, accession_id, content)
-        patch = await self.prepare_folder_patch_update_object(collection, accession_id, title, filename)
+        patch = self._prepare_folder_patch_update_object(collection, accession_id, title, filename)
         await folder_op.update_folder(folder_id, patch)
 
         # Update draft dataset to Metax catalog
@@ -333,7 +333,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         # If there's changed title it will be updated to folder
         try:
             title = content["descriptor"]["studyTitle"] if collection == "study" else content["title"]
-            patch = await self.prepare_folder_patch_update_object(collection, accession_id, title)
+            patch = self._prepare_folder_patch_update_object(collection, accession_id, title)
             await folder_op.update_folder(folder_id, patch)
         except (TypeError, KeyError):
             pass
@@ -346,7 +346,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         LOG.info(f"PATCH object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
-    async def prepare_folder_patch_new_object(self, schema: str, ids: List, params: Dict[str, str]) -> List:
+    def _prepare_folder_patch_new_object(self, schema: str, ids: List, params: Dict[str, str]) -> List:
         """Prepare patch operations list for adding an object or objects to a folder.
 
         :param schema: schema of objects to be added to the folder
@@ -384,7 +384,7 @@ class ObjectAPIHandler(RESTAPIHandler):
             patch.append(patch_ops)
         return patch
 
-    async def prepare_folder_patch_update_object(
+    def _prepare_folder_patch_update_object(
         self, schema: str, accession_id: str, title: str, filename: str = ""
     ) -> List:
         """Prepare patch operation for updating object's title in a folder.

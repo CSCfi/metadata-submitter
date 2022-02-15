@@ -195,7 +195,7 @@ class RESTAPIHandler:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-    async def _header_links(self, url: str, page: int, size: int, total_objects: int) -> CIMultiDict[str]:
+    def _header_links(self, url: str, page: int, size: int, total_objects: int) -> CIMultiDict[str]:
         """Create link header for pagination.
 
         :param url: base url for request
