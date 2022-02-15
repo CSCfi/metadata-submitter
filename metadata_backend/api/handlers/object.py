@@ -139,8 +139,9 @@ class ObjectAPIHandler(RESTAPIHandler):
         :param req: POST request
         :returns: JSON response containing accessionId for submitted object
         """
-        _allowed_csv = ["sample"]
+        _allowed_csv = {"sample"}
         _allowed_doi = {"study", "dataset"}
+
         schema_type = req.match_info["schema"]
 
         folder_id = req.query.get("folder", "")

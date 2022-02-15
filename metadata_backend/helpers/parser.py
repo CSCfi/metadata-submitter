@@ -52,7 +52,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
         :param schema_type: XML data
         :returns: XML element flattened.
         """
-        links = [
+        links = {
             "studyLinks",
             "sampleLinks",
             "runLinks",
@@ -64,7 +64,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
             "datasetLinks",
             "assemblyLinks",
             "submissionLinks",
-        ]
+        }
 
         attrs = [
             "studyAttributes",
@@ -82,14 +82,14 @@ class MetadataXMLConverter(XMLSchemaConverter):
             "dataUses",
         ]
 
-        refs = ["analysisRef", "sampleRef", "runRef", "experimentRef"]
+        refs = {"analysisRef", "sampleRef", "runRef", "experimentRef"}
 
         children: Any = self.dict()
 
         for key, value, _ in self.map_content(data.content):
             key = self._to_camel(key.lower())
 
-            if key in attrs and len(value) == 1:
+            if key in set(attrs) and len(value) == 1:
                 attrs = list(value.values())
                 children[key] = attrs[0] if isinstance(attrs[0], list) else attrs
                 continue
@@ -106,7 +106,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 continue
 
             if "assembly" in key:
-                if next(iter(value)) in ["standard", "custom"]:
+                if next(iter(value)) in {"standard", "custom"}:
                     children[key] = next(iter(value.values()))
                     if "accessionId" in children[key]:
                         children[key]["accession"] = children[key].pop("accessionId")
@@ -377,7 +377,7 @@ class CSVToJSONParser:
         """
         csv_reader = csv.DictReader(StringIO(content), delimiter=",", quoting=csv.QUOTE_NONE)
 
-        _sample_list = [
+        _sample_list = {
             "title",
             "alias",
             "description",
@@ -389,7 +389,7 @@ class CSVToJSONParser:
             "cellLine",
             "region",
             "phenotype",
-        ]
+        }
 
         if (
             csv_reader.fieldnames
