@@ -18,7 +18,7 @@ from ..conf.conf import aai_config
 def _check_error_page_requested(req: Request, error_code: int) -> web.Response:  # type:ignore
     """Return the correct error page with correct status code."""
     if "Accept" in req.headers and req.headers["Accept"]:
-        if req.headers["Accept"].split(",")[0] in ["text/html", "application/xhtml+xml"]:
+        if req.headers["Accept"].split(",")[0] in {"text/html", "application/xhtml+xml"}:
             raise web.HTTPSeeOther(
                 f"/error{str(error_code)}",
                 headers={
@@ -115,7 +115,7 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
     if request.path.startswith(tuple(controlled_paths)) and "OIDC_URL" in os.environ and bool(os.getenv("OIDC_URL")):
         cookie = decrypt_cookie(request)
         session = request.app["Session"].setdefault(cookie["id"], {})
-        if not all(x in ["access_token", "user_info", "oidc_state"] for x in session):
+        if not all(x in {"access_token", "user_info", "oidc_state"} for x in session):
             LOG.debug("checked session parameter")
             response = web.HTTPSeeOther(f"{aai_config['domain']}/aai")
             response.headers["Location"] = "/aai"

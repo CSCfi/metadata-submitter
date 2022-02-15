@@ -36,7 +36,7 @@ async def create_indexes(url: str) -> None:
     db = client[DATABASE]
     LOG.debug(f"Current database: {db}")
     LOG.debug("=== Create collections ===")
-    for col in ["folder", "user"]:
+    for col in {"folder", "user"}:
         try:
             await db.create_collection(col)
         except pymongo.errors.CollectionInvalid as e:
