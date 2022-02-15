@@ -210,9 +210,6 @@ class ObjectAPIHandler(RESTAPIHandler):
             # Gathering data for object to be added to folder
             ids = [dict(data, **{"title": title})]
 
-        patch = self._prepare_folder_patch_new_object(collection, ids, patch_params)
-        await folder_op.update_folder(folder_id, patch, schema_type)
-
         # we don't create DOIs for drafts and we restrict doi creation to
         # study and datasets
         if not req.path.startswith("/drafts") and schema_type in _allowed_doi:
@@ -221,6 +218,9 @@ class ObjectAPIHandler(RESTAPIHandler):
 
             # Create draft dataset to Metax catalog
             [await self.create_or_update_metax_dataset(req, collection, item["accessionId"]) for item in ids]
+
+        patch = self._prepare_folder_patch_new_object(collection, ids, patch_params)
+        await folder_op.update_folder(folder_id, patch)
 
         body = ujson.dumps(data, escape_forward_slashes=False)
 
