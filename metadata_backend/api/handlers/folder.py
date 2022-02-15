@@ -152,29 +152,29 @@ class FolderAPIHandler(RESTAPIHandler):
         :raises: HTTPUnauthorized if request tries to do anything else than add or replace
         :returns: None
         """
-        _required_paths = ["/name", "/description"]
-        _required_values = ["schema", "accessionId"]
-        _arrays = ["/metadataObjects/-", "/drafts/-", "/doiInfo"]
+        _required_paths = {"/name", "/description"}
+        _required_values = {"schema", "accessionId"}
+        _arrays = {"/metadataObjects/-", "/drafts/-", "/doiInfo"}
         _tags = re.compile("^/(metadataObjects|drafts)/[0-9]*/(tags)$")
 
         for op in patch_ops:
             if _tags.match(op["path"]):
                 LOG.info(f"{op['op']} on tags in folder")
-                if "submissionType" in op["value"].keys() and op["value"]["submissionType"] not in [
+                if "submissionType" in op["value"].keys() and op["value"]["submissionType"] not in {
                     "XML",
                     "CSV",
                     "Form",
-                ]:
+                }:
                     reason = "submissionType is restricted to either 'CSV', 'XML' or 'Form' values."
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
                 pass
             else:
-                if all(i not in op["path"] for i in _required_paths + _arrays):
+                if all(i not in op["path"] for i in set.union(_required_paths, _arrays)):
                     reason = f"Request contains '{op['path']}' key that cannot be updated to folders."
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
-                if op["op"] in ["remove", "copy", "test", "move"]:
+                if op["op"] in {"remove", "copy", "test", "move"}:
                     reason = f"{op['op']} on {op['path']} is not allowed."
                     LOG.error(reason)
                     raise web.HTTPUnauthorized(reason=reason)
@@ -192,7 +192,7 @@ class FolderAPIHandler(RESTAPIHandler):
                         if (
                             "tags" in item
                             and "submissionType" in item["tags"]
-                            and item["tags"]["submissionType"] not in ["XML", "Form"]
+                            and item["tags"]["submissionType"] not in {"XML", "CSV", "Form"}
                         ):
                             reason = "submissionType is restricted to either 'XML' or 'Form' values."
                             LOG.error(reason)
@@ -217,7 +217,7 @@ class FolderAPIHandler(RESTAPIHandler):
         # Check if only published or draft folders are requestsed
         if "published" in req.query:
             pub_param = req.query.get("published", "").title()
-            if pub_param in ["True", "False"]:
+            if pub_param in {"True", "False"}:
                 folder_query["published"] = {"$eq": bool(strtobool(pub_param))}
             else:
                 reason = "'published' parameter must be either 'true' or 'false'"

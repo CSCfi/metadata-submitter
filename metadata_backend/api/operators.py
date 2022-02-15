@@ -419,7 +419,7 @@ class Operator(BaseOperator):
         :param data: Metadata object
         :returns: Accession Id for object inserted to database
         """
-        forbidden_keys = ["accessionId", "publishDate", "dateCreated"]
+        forbidden_keys = {"accessionId", "publishDate", "dateCreated"}
         # when replacing from xml file there are no (not supposed to be) metax data in content data
         # therefore we need to check if the object already exists in database and has metax id
         if schema_type in {"study", "dataset"}:
@@ -449,7 +449,7 @@ class Operator(BaseOperator):
         :param data: Metadata object
         :returns: Accession Id for object inserted to database
         """
-        forbidden_keys = ["accessionId", "publishDate", "dateCreated"]
+        forbidden_keys = {"accessionId", "publishDate", "dateCreated"}
         # check if object already has metax id or is it first time writing it
         if schema_type in {"study", "dataset"}:
             read_data = await self.db_service.read(schema_type, accession_id)
