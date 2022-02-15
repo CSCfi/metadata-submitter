@@ -293,6 +293,11 @@ paths:
         - Submission
       summary: Submit data to a specific schema
       parameters:
+        - in: query
+          name: folder
+          schema:
+            type: string
+          description: The folder ID where object belongs to.
         - name: schema
           in: path
           description: Name of the Metadata schema.

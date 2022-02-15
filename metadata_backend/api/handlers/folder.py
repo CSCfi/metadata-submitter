@@ -14,9 +14,9 @@ from ...conf.conf import publisher
 from ...helpers.doi import DOIHandler
 from ...helpers.logger import LOG
 from ...helpers.validator import JSONValidator
-from .restapi import RESTAPIHandler
 from ..middlewares import get_session
 from ..operators import FolderOperator, Operator, UserOperator, ProjectOperator
+from .restapi import RESTAPIHandler
 
 
 class FolderAPIHandler(RESTAPIHandler):
@@ -26,7 +26,7 @@ class FolderAPIHandler(RESTAPIHandler):
         """Check patch operations in request are valid.
 
         We check that ``metadataObjects`` and ``drafts`` have ``_required_values``.
-        For tags we check that the ``submissionType`` takes either ``XML`` or
+        For tags we check that the ``submissionType`` takes either ``CSV``, ``XML`` or
         ``Form`` as values.
         :param patch_ops: JSON patch request
         :raises: HTTPBadRequest if request does not fullfil one of requirements
@@ -41,8 +41,12 @@ class FolderAPIHandler(RESTAPIHandler):
         for op in patch_ops:
             if _tags.match(op["path"]):
                 LOG.info(f"{op['op']} on tags in folder")
-                if "submissionType" in op["value"].keys() and op["value"]["submissionType"] not in ["XML", "Form"]:
-                    reason = "submissionType is restricted to either 'XML' or 'Form' values."
+                if "submissionType" in op["value"].keys() and op["value"]["submissionType"] not in [
+                    "XML",
+                    "CSV",
+                    "Form",
+                ]:
+                    reason = "submissionType is restricted to either 'CSV', 'XML' or 'Form' values."
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
                 pass
