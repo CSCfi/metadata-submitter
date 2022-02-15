@@ -25,7 +25,7 @@ class RESTAPIHandler:
         :param schema_type: schema type.
         :raises: HTTPNotFound if schema does not exist.
         """
-        if schema_type not in schema_types.keys():
+        if schema_type not in set(schema_types.keys()):
             reason = f"Specified schema {schema_type} was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)

@@ -1,11 +1,10 @@
 """Services that handle database connections. Implemented with MongoDB."""
 from functools import wraps
-from typing import Any, Callable, Dict, Union, List
+from typing import Any, Callable, Dict, List, Union
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
-from pymongo.errors import AutoReconnect, ConnectionFailure
 from pymongo import ReturnDocument
-from pymongo.errors import BulkWriteError
+from pymongo.errors import AutoReconnect, BulkWriteError, ConnectionFailure
 
 from ..conf.conf import serverTimeout
 from ..helpers.logger import LOG
@@ -35,8 +34,8 @@ def auto_reconnect(db_func: Callable) -> Callable:
                     message = f"Connection to database failed after {attempt} tries"
                     raise ConnectionFailure(message=message)
                 LOG.error(
-                    "Connection not successful, trying to reconnect."
-                    f"Reconnection attempt number {attempt}, waiting for {default_timeout} seconds."
+                    "Connection not successful, trying to reconnect. "
+                    + f"Reconnection attempt number {attempt}, waiting for {default_timeout} seconds."
                 )
                 continue
 
@@ -136,7 +135,7 @@ class DBService:
         :param accession_id: ID of the object/folder/user to be searched
         :returns: First document matching the accession_id
         """
-        id_key = f"{collection}Id" if (collection in ["folder", "user"]) else "accessionId"
+        id_key = f"{collection}Id" if (collection in {"folder", "user"}) else "accessionId"
         projection = {"_id": False, "eppn": False} if collection == "user" else {"_id": False}
         find_by_id = {id_key: accession_id}
         LOG.debug(f"DB doc in {collection} read for {accession_id}.")
@@ -196,7 +195,7 @@ class DBService:
         updated to object, can replace previous fields and add new ones.
         :returns: True if operation was successful
         """
-        id_key = f"{collection}Id" if (collection in ["folder", "user"]) else "accessionId"
+        id_key = f"{collection}Id" if (collection in {"folder", "user"}) else "accessionId"
         find_by_id = {id_key: accession_id}
         update_op = {"$set": data_to_be_updated}
         result = await self.database[collection].update_one(find_by_id, update_op)
@@ -277,7 +276,7 @@ class DBService:
         :param accession_id: ID for object/folder/user to be deleted
         :returns: True if operation was successful
         """
-        id_key = f"{collection}Id" if (collection in ["folder", "user"]) else "accessionId"
+        id_key = f"{collection}Id" if (collection in {"folder", "user"}) else "accessionId"
         find_by_id = {id_key: accession_id}
         result = await self.database[collection].delete_one(find_by_id)
         LOG.debug(f"DB doc in {collection} deleted for {accession_id}.")
