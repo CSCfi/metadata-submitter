@@ -215,7 +215,7 @@ class UserAPIHandler(RESTAPIHandler):
         }
 
         url = f"{req.scheme}://{req.host}{req.path}"
-        link_headers = await self._header_links(url, page, per_page, total_items)
+        link_headers = self._header_links(url, page, per_page, total_items)
         LOG.debug(f"Pagination header links: {link_headers}")
         LOG.info(f"Querying for user's {item_type} resulted in {total_items} {item_type}")
         return result, link_headers
