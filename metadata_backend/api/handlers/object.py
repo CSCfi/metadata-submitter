@@ -108,6 +108,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         """
         _allowed_csv = {"sample"}
         _allowed_doi = {"study", "dataset"}
+
         schema_type = req.match_info["schema"]
         filename = ""
         cont_type = ""
