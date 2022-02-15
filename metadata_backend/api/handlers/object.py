@@ -52,7 +52,7 @@ class ObjectAPIHandler(RESTAPIHandler):
             escape_forward_slashes=False,
         )
         url = f"{req.scheme}://{req.host}{req.path}"
-        link_headers = await self._header_links(url, page_num, per_page, total_objects)
+        link_headers = self._header_links(url, page_num, per_page, total_objects)
         LOG.debug(f"Pagination header links: {link_headers}")
         LOG.info(f"Querying for objects in {collection} resulted in {total_objects} objects ")
         return web.Response(

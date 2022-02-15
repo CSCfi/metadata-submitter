@@ -157,7 +157,7 @@ class FolderAPIHandler(RESTAPIHandler):
         )
 
         url = f"{req.scheme}://{req.host}{req.path}"
-        link_headers = await self._header_links(url, page, per_page, total_folders)
+        link_headers = self._header_links(url, page, per_page, total_folders)
         LOG.debug(f"Pagination header links: {link_headers}")
         LOG.info(f"Querying for project={project_id} folders resulted in {total_folders} folders")
         return web.Response(
