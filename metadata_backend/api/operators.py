@@ -12,12 +12,12 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
 from multidict import MultiDictProxy
 from pymongo.errors import ConnectionFailure, OperationFailure
 
-from .middlewares import get_session
 from ..conf.conf import mongo_database, query_map
 from ..database.db_service import DBService, auto_reconnect
 from ..helpers.logger import LOG
 from ..helpers.parser import XMLToJSONParser
 from ..helpers.validator import JSONValidator
+from .middlewares import get_session
 
 
 class BaseOperator(ABC):
@@ -104,7 +104,7 @@ class BaseOperator(ABC):
                 raise web.HTTPNotFound()
             data = await self._format_read_data(schema_type, data_raw)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting object: {error}"
+            reason = f"Error happened while reading object: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         return data, self.content_type
@@ -712,7 +712,7 @@ class FolderOperator:
             )
             folder_check = [folder async for folder in folder_cursor]
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while inserting user: {error}"
+            reason = f"Error happened while checking object in folder: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -732,7 +732,7 @@ class FolderOperator:
         """List objects ids per collection.
 
         :param collection: collection it belongs to, it would be used as path
-        :returns: count of objects
+        :returns: List of objects
         """
         try:
             folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
@@ -742,7 +742,7 @@ class FolderOperator:
             )
             folders = [folder async for folder in folder_cursor]
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while inserting user: {error}"
+            reason = f"Error happened while getting collection objects: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -852,7 +852,7 @@ class FolderOperator:
         try:
             update_success = await self.db_service.patch("folder", folder_id, patch)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting folder: {error}"
+            reason = f"Error happened while updating folder: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -878,7 +878,7 @@ class FolderOperator:
             upd_content = {folder_path: {"accessionId": accession_id}}
             await self.db_service.remove("folder", folder_id, upd_content)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting user: {error}"
+            reason = f"Error happened while removing object from folder: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -1114,7 +1114,7 @@ class UserOperator:
             await self._check_user_exists(user_id)
             update_success = await self.db_service.patch("user", user_id, patch)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting user: {error}"
+            reason = f"Error happened while updating user: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -1125,6 +1125,61 @@ class UserOperator:
         else:
             LOG.info(f"Updating user with id {user_id} to database succeeded.")
             return user_id
+
+    async def assign_objects(self, user_id: str, collection: str, object_ids: List) -> None:
+        """Assing object to user.
+
+        An object can be folder(s) or templates(s).
+
+        :param user_id: ID of user to update
+        :param collection: collection where to remove the id from
+        :param object_ids: ID or list of IDs of folder(s) to assign
+        :raises: HTTPBadRequest if assigning templates/folders to user was not successful
+        returns: None
+        """
+        try:
+            await self._check_user_exists(user_id)
+            assign_success = await self.db_service.append(
+                "user", user_id, {collection: {"$each": object_ids, "$position": 0}}
+            )
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while assigning objects to user: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        if not assign_success:
+            reason = "Assigning objects to user failed."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        LOG.info(f"Assigning {object_ids} from {user_id} succeeded.")
+
+    async def remove_objects(self, user_id: str, collection: str, object_ids: List) -> None:
+        """Remove object from user.
+
+        An object can be folder(s) or template(s).
+
+        :param user_id: ID of user to update
+        :param collection: collection where to remove the id from
+        :param object_ids: ID or list of IDs of folder(s) to remove
+        :raises: HTTPBadRequest if db connection fails
+        returns: None
+        """
+        remove_content: Dict
+        try:
+            await self._check_user_exists(user_id)
+            for obj in object_ids:
+                if collection == "templates":
+                    remove_content = {"templates": {"accessionId": obj}}
+                else:
+                    remove_content = {"folders": obj}
+                await self.db_service.remove("user", user_id, remove_content)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while removing objects from user: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        LOG.info(f"Removing {object_ids} from {user_id} succeeded.")
 
     async def delete_user(self, user_id: str) -> str:
         """Delete user object from database.
