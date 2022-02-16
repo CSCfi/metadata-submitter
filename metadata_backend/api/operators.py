@@ -945,7 +945,7 @@ class UserOperator:
         project_id = ""
         if collection.startswith("template"):
             object_operator = Operator(db_client)
-            project_id = await object_operator.get_object_project("template", accession_id)
+            project_id = await object_operator.get_object_project(collection, accession_id)
         elif collection == "folders":
             folder_operator = FolderOperator(db_client)
             project_id = await folder_operator.get_folder_project(accession_id)
