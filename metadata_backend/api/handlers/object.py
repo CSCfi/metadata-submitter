@@ -13,10 +13,56 @@ from ..metax_api_handler import MetaxServiceHandler
 from ..operators import FolderOperator, Operator, XMLOperator
 from .common import multipart_content
 from .restapi import RESTAPIHandler
+from ...helpers.doi import DOIHandler
 
 
 class ObjectAPIHandler(RESTAPIHandler):
     """API Handler for Objects."""
+
+    def __init__(self) -> None:
+        """Init Object handler."""
+        super().__init__()
+        self.doi = DOIHandler()
+
+    async def _draft_doi(self, schema_type: str) -> Dict:
+        """Create draft DOI for study and dataset.
+
+        The Draft DOI will be created only on POST and the data added to the
+        folder. Any update of this should not be possible.
+
+        :param schema_type: schema can be either study or dataset
+        :returns: Dict with DOI of the study or dataset as well as the types.
+        """
+        _doi_data = await self.doi.create_draft(prefix=schema_type)
+
+        LOG.debug(f"doi created with doi: {_doi_data['fullDOI']}")
+
+        data: Dict = {}
+        if schema_type == "study":
+            data["identifier"] = {
+                "identifierType": "DOI",
+                "doi": _doi_data["fullDOI"],
+            }
+            data["types"] = {
+                "bibtex": "misc",
+                "citeproc": "collection",
+                "schemaOrg": "Collection",
+                "resourceTypeGeneral": "Collection",
+            }
+        elif schema_type == "dataset":
+            data["identifier"] = {
+                "identifierType": "DOI",
+                "doi": _doi_data["fullDOI"],
+            }
+            data["types"] = {
+                "ris": "DATA",
+                "bibtex": "misc",
+                "citeproc": "dataset",
+                "schemaOrg": "Dataset",
+                "resourceTypeGeneral": "Dataset",
+            }
+
+        return data
 
     async def _handle_query(self, req: Request) -> Response:
         """Handle query results.
@@ -101,6 +147,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         :returns: JSON response containing accessionId for submitted object
         """
         _allowed_csv = ["sample"]
+        _allowed_doi = {"study", "dataset"}
         schema_type = req.match_info["schema"]
 
         folder_id = req.query.get("folder", "")
@@ -113,6 +160,16 @@ class ObjectAPIHandler(RESTAPIHandler):
         collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
 
         db_client = req.app["db_client"]
+        folder_op = FolderOperator(db_client)
+
+        # we need to check if there is already a study in a folder
+        # we only allow one study per folder
+        if not req.path.startswith("/drafts") and schema_type == "study":
+            _ids = await folder_op.get_collection_objects(folder_id, collection)
+            if len(_ids) == 1:
+                reason = "Only one study is allowed per submission."
+                raise web.HTTPBadRequest(reason=reason)
+
         content: Union[Dict[str, Any], str, List[Tuple[Any, str]]]
         operator: Union[Operator, XMLOperator]
         if req.content_type == "multipart/form-data":
@@ -158,12 +215,16 @@ class ObjectAPIHandler(RESTAPIHandler):
             # Gathering data for object to be added to folder
             ids = [dict(data, **{"title": title})]
 
-        folder_op = FolderOperator(db_client)
         patch = self._prepare_folder_patch_new_object(collection, ids, patch_params)
         await folder_op.update_folder(folder_id, patch)
 
-        # Create draft dataset to Metax catalog
-        if collection in {"study", "dataset"}:
+        # we don't create DOIs for drafts and we restrict doi creation to
+        # study and datasets
+        if not req.path.startswith("/drafts") and schema_type in _allowed_doi:
+            doi_patch = await self._prepare_folder_patch_doi(schema_type, ids)
+            await folder_op.update_folder(folder_id, doi_patch)
+
+            # Create draft dataset to Metax catalog
             [await self.create_or_update_metax_dataset(req, collection, item["accessionId"]) for item in ids]
 
         body = ujson.dumps(data, escape_forward_slashes=False)
@@ -470,3 +531,23 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         rand = str(uuid4()).split("-")[1:3]
         return f"10.{rand[0]}/{rand[1]}"
+
+    async def _prepare_folder_patch_doi(self, schema: str, ids: List) -> List:
+        """Prepare patch operation for updating object's doi information in a folder.
+
+        :param schema: schema of object to be updated
+        :param ids: object IDs
+        :returns: dict with patch operation
+        """
+        patch = []
+        for id in ids:
+            _data = await self._draft_doi(schema)
+            _data["accessionId"] = id["accessionId"]
+            if schema == "study":
+                patch_op = {"op": "add", "path": "/extraInfo/studyIdentifier", "value": _data}
+                patch.append(patch_op)
+            elif schema == "dataset":
+                patch_op = {"op": "add", "path": "/extraInfo/datasetIdentifiers/-", "value": _data}
+                patch.append(patch_op)
+
+        return patch

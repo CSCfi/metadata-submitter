@@ -11,7 +11,6 @@ from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
 from ...conf.conf import publisher
-from ...helpers.doi import DOIHandler
 from ...helpers.logger import LOG
 from ...helpers.validator import JSONValidator
 from ..metax_api_handler import MetaxServiceHandler
@@ -261,9 +260,6 @@ class FolderAPIHandler(RESTAPIHandler):
         obj_ops = Operator(db_client)
 
         # Create draft DOI and delete draft objects from the folder
-        doi = DOIHandler()
-        doi_data = await doi.create_draft_doi()
-        identifier = {"identifierType": "DOI", "doi": doi_data["fullDOI"]}
 
         for obj in folder["drafts"]:
             await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
@@ -273,20 +269,7 @@ class FolderAPIHandler(RESTAPIHandler):
             {"op": "replace", "path": "/published", "value": True},
             {"op": "replace", "path": "/drafts", "value": []},
             {"op": "add", "path": "/datePublished", "value": int(datetime.now().timestamp())},
-            {"op": "add", "path": "/extraInfo/identifier", "value": identifier},
-            {"op": "add", "path": "/extraInfo/url", "value": doi_data["dataset"]},
             {"op": "add", "path": "/extraInfo/publisher", "value": publisher},
-            {
-                "op": "add",
-                "path": "/extraInfo/types",
-                "value": {
-                    "ris": "DATA",
-                    "bibtex": "misc",
-                    "citeproc": "dataset",
-                    "schemaOrg": "Dataset",
-                    "resourceTypeGeneral": "Dataset",
-                },
-            },
             {"op": "add", "path": "/extraInfo/publicationYear", "value": date.today().year},
         ]
         new_folder = await operator.update_folder(folder_id, patch)

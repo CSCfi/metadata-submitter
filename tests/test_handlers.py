@@ -78,6 +78,19 @@ class HandlersTestCase(AioHTTPTestCase):
             "folders": ["FOL12345678"],
         }
 
+        self._draf_doi_data = {
+            "identifier": {
+                "identifierType": "DOI",
+                "doi": "https://doi.org/10.xxxx/yyyyy",
+            },
+            "types": {
+                "bibtex": "misc",
+                "citeproc": "collection",
+                "schemaOrg": "Collection",
+                "resourceTypeGeneral": "Collection",
+            },
+        }
+
         self.operator_config = {
             "read_metadata_object.side_effect": self.fake_operator_read_metadata_object,
             "query_metadata_database.side_effect": self.fake_operator_query_metadata_object,
@@ -109,6 +122,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
+
         await self.client.close()
 
     def create_submission_data(self, files):
@@ -362,6 +376,8 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
         await super().setUpAsync()
 
+        self._mock_draf_doi = "metadata_backend.api.handlers.object.ObjectAPIHandler._draft_doi"
+
         class_xmloperator = "metadata_backend.api.handlers.object.XMLOperator"
         self.patch_xmloperator = patch(class_xmloperator, **self.xmloperator_config, spec=True)
         self.MockedXMLOperator = self.patch_xmloperator.start()
@@ -390,10 +406,11 @@ class ObjectHandlerTestCase(HandlersTestCase):
         """Test that submission is handled, XMLOperator is called."""
         files = [("study", "SRP000539.xml")]
         data = self.create_submission_data(files)
-        response = await self.client.post("/objects/study", params={"folder": "some id"}, data=data)
-        self.assertEqual(response.status, 201)
-        self.assertIn(self.test_ega_string, await response.text())
-        self.MockedXMLOperator().create_metadata_object.assert_called_once()
+        with patch(self._mock_draf_doi, return_value=self._draf_doi_data):
+            response = await self.client.post("/objects/study", params={"folder": "some id"}, data=data)
+            self.assertEqual(response.status, 201)
+            self.assertIn(self.test_ega_string, await response.text())
+            self.MockedXMLOperator().create_metadata_object.assert_called_once()
 
     async def test_submit_object_works_with_json(self):
         """Test that JSON submission is handled, operator is called."""
@@ -406,10 +423,11 @@ class ObjectHandlerTestCase(HandlersTestCase):
                 "studyAbstract": "abstract description for testing",
             },
         }
-        response = await self.client.post("/objects/study", params={"folder": "some id"}, json=json_req)
-        self.assertEqual(response.status, 201)
-        self.assertIn(self.test_ega_string, await response.text())
-        self.MockedOperator().create_metadata_object.assert_called_once()
+        with patch(self._mock_draf_doi, return_value=self._draf_doi_data):
+            response = await self.client.post("/objects/study", params={"folder": "some id"}, json=json_req)
+            self.assertEqual(response.status, 201)
+            self.assertIn(self.test_ega_string, await response.text())
+            self.MockedOperator().create_metadata_object.assert_called_once()
 
     async def test_submit_object_missing_field_json(self):
         """Test that JSON has missing property."""
@@ -815,11 +833,6 @@ class FolderHandlerTestCase(HandlersTestCase):
 
         await super().setUpAsync()
 
-        self.test_draft_doi = {"fullDOI": "10.xxxx/yyyyy", "dataset": "https://doi.org/10.xxxx/yyyyy"}
-        class_doihandler = "metadata_backend.api.handlers.folder.DOIHandler"
-        self.patch_doihandler = patch(class_doihandler, spec=True)
-        self.MockedDoiHandler = self.patch_doihandler.start()
-
         class_folderoperator = "metadata_backend.api.handlers.folder.FolderOperator"
         self.patch_folderoperator = patch(class_folderoperator, **self.folderoperator_config, spec=True)
         self.MockedFolderOperator = self.patch_folderoperator.start()
@@ -839,7 +852,6 @@ class FolderHandlerTestCase(HandlersTestCase):
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
         await super().tearDownAsync()
-        self.patch_doihandler.stop()
         self.patch_folderoperator.stop()
         self.patch_useroperator.stop()
         self.patch_operator.stop()
@@ -951,11 +963,9 @@ class FolderHandlerTestCase(HandlersTestCase):
 
     async def test_folder_is_published(self):
         """Test that folder would be published and DOI would be added."""
-        self.MockedDoiHandler().create_draft_doi.return_value = self.test_draft_doi
         self.MockedFolderOperator().update_folder.return_value = self.folder_id
         self.MockedMetaxHandler().publish_dataset.return_value = None
         response = await self.client.patch("/publish/FOL12345678")
-        self.MockedDoiHandler().create_draft_doi.assert_called_once()
         self.MockedFolderOperator().update_folder.assert_called_once()
         self.assertEqual(response.status, 200)
         json_resp = await response.json()
