@@ -19,6 +19,11 @@ from .restapi import RESTAPIHandler
 class ObjectAPIHandler(RESTAPIHandler):
     """API Handler for Objects."""
 
+    def __init__(self) -> None:
+        """Init Object handler."""
+        super().__init__()
+        self.doi = DOIHandler()
+
     async def _handle_query(self, req: Request) -> Response:
         """Handle query results.
 

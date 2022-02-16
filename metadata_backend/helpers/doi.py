@@ -6,10 +6,10 @@ https://github.com/neicnordic/sda-orchestration/blob/master/sda_orchestrator/uti
 from typing import Dict, Union
 from uuid import uuid4
 
-from aiohttp import web, ClientSession, BasicAuth, ClientTimeout
+from aiohttp import BasicAuth, ClientSession, ClientTimeout, web
 
-from ..helpers.logger import LOG
 from ..conf.conf import doi_config
+from ..helpers.logger import LOG
 
 
 class DOIHandler:

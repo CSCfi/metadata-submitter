@@ -90,6 +90,19 @@ class HandlersTestCase(AioHTTPTestCase):
             },
         }
 
+        self._draf_doi_data = {
+            "identifier": {
+                "identifierType": "DOI",
+                "doi": "https://doi.org/10.xxxx/yyyyy",
+            },
+            "types": {
+                "bibtex": "misc",
+                "citeproc": "collection",
+                "schemaOrg": "Collection",
+                "resourceTypeGeneral": "Collection",
+            },
+        }
+
         self.operator_config = {
             "read_metadata_object.side_effect": self.fake_operator_read_metadata_object,
             "query_metadata_database.side_effect": self.fake_operator_query_metadata_object,
@@ -790,7 +803,6 @@ class FolderHandlerTestCase(HandlersTestCase):
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
         await super().tearDownAsync()
-        self.patch_doihandler.stop()
         self.patch_folderoperator.stop()
         self.patch_useroperator.stop()
         self.patch_operator.stop()
