@@ -48,12 +48,12 @@ class UserAPIHandler(RESTAPIHandler):
                     reason = f"{op['op']} on {op['path']} is not allowed."
                     LOG.error(reason)
                     raise web.HTTPUnauthorized(reason=reason)
-                if op["path"] == "/folders/-":
+                if op["path"] == "/folders/-":  # DEPRECATED, what to do?
                     if not (isinstance(op["value"], str) or isinstance(op["value"], list)):
                         reason = "We only accept string folder IDs."
                         LOG.error(reason)
                         raise web.HTTPBadRequest(reason=reason)
-                if op["path"] == "/templates/-":
+                if op["path"] == "/templates/-":  # DEPRECATED, what to do?
                     _ops = op["value"] if isinstance(op["value"], list) else [op["value"]]
                     for item in _ops:
                         if not all(key in item.keys() for key in _required_values):
@@ -150,47 +150,3 @@ class UserAPIHandler(RESTAPIHandler):
         )
         LOG.debug("Logged out user ")
         raise response
-
-    # DEPRECATED
-    # async def _get_user_items(self, req: Request, user: Dict, item_type: str) -> Tuple[Dict, CIMultiDict[str]]:
-    #     """Get draft templates owned by the user with pagination values.
-
-    #     :param req: GET request
-    #     :param user: User object
-    #     :param item_type: Name of the items ("templates" or "folders")
-    #     :raises: HTTPUnauthorized if not current user
-    #     :returns: Paginated list of user draft templates and link header
-    #     """
-    #     # Check item_type parameter is not faulty
-    #     if item_type not in ["templates", "folders"]:
-    #         reason = f"{item_type} is a faulty item parameter. Should be either folders or templates"
-    #         LOG.error(reason)
-    #         raise web.HTTPBadRequest(reason=reason)
-
-    #     page = self._get_page_param(req, "page", 1)
-    #     per_page = self._get_page_param(req, "per_page", 5)
-
-    #     db_client = req.app["db_client"]
-    #     operator = UserOperator(db_client)
-    #     user_id = req.match_info["userId"]
-
-    #     query = {"userId": user}
-
-    #     items, total_items = await operator.filter_user(query, item_type, page, per_page)
-    #     LOG.info(f"GET user with ID {user_id} was successful.")
-
-    #     result = {
-    #         "page": {
-    #             "page": page,
-    #             "size": per_page,
-    #             "totalPages": ceil(total_items / per_page),
-    #             "total" + item_type.title(): total_items,
-    #         },
-    #         item_type: items,
-    #     }
-
-    #     url = f"{req.scheme}://{req.host}{req.path}"
-    #     link_headers = await self._header_links(url, page, per_page, total_items)
-    #     LOG.debug(f"Pagination header links: {link_headers}")
-    #     LOG.info(f"Querying for user's {item_type} resulted in {total_items} {item_type}")
-    #     return result, link_headers
