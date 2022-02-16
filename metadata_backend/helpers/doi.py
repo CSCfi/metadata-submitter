@@ -3,7 +3,7 @@
 The DOI handler from SDA orchestration was used as reference:
 https://github.com/neicnordic/sda-orchestration/blob/master/sda_orchestrator/utils/id_ops.py
 """
-from typing import Dict
+from typing import Dict, Union
 from uuid import uuid4
 
 from aiohttp import web, ClientSession, BasicAuth
@@ -23,10 +23,10 @@ class DOIHandler:
         self.doi_key = conf.doi_key
         self.doi_url = f"{conf.datacite_url.rstrip('/')}/{self.doi_prefix}"
 
-    async def create_draft_doi(self) -> Dict:
+    async def create_draft(self, prefix: Union[str, None] = None) -> Dict:
         """Generate random suffix and POST request a draft DOI to DataCite DOI API."""
         suffix = uuid4().hex[:10]
-        doi_suffix = f"{suffix[:4]}-{suffix[4:]}"
+        doi_suffix = f"{prefix}.{suffix[:4]}-{suffix[4:]}" if prefix else f"{suffix[:4]}-{suffix[4:]}"
         headers = {"Content-Type": "application/json"}
         doi_payload = {"data": {"type": "dois", "attributes": {"doi": f"{self.doi_prefix}/{doi_suffix}"}}}
 
