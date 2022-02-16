@@ -228,6 +228,12 @@ class ObjectAPIHandler(RESTAPIHandler):
         patch = self._prepare_folder_patch_new_object(collection, ids, patch_params)
         await folder_op.update_folder(folder_id, patch)
 
+        # we don't create DOIs for drafts and we restrict doi creation to
+        # study and datasets
+        if not req.path.startswith("/drafts") and schema_type in _allowed_doi:
+            doi_patch = await self._prepare_folder_patch_doi(schema_type, ids)
+            await folder_op.update_folder(folder_id, doi_patch)
+
         body = ujson.dumps(data, escape_forward_slashes=False)
 
         return web.Response(
