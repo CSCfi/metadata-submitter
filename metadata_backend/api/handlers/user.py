@@ -1,18 +1,16 @@
 """Handle HTTP methods for server."""
 import re
-from math import ceil
-from typing import Any, Dict, Tuple
+from typing import Any
 
 import ujson
 from aiohttp import web
 from aiohttp.web import Request, Response
-from multidict import CIMultiDict
 
 from ...conf.conf import aai_config
 from ...helpers.logger import LOG
 from .restapi import RESTAPIHandler
 from ..middlewares import decrypt_cookie, get_session
-from ..operators import FolderOperator, Operator, UserOperator
+from ..operators import UserOperator
 
 
 class UserAPIHandler(RESTAPIHandler):
@@ -85,25 +83,14 @@ class UserAPIHandler(RESTAPIHandler):
 
         current_user = get_session(req)["user_info"]
 
-        item_type = req.query.get("items", "").lower()
-        if item_type:
-            # Return only list of templates or list of folder IDs owned by the user
-            result, link_headers = await self._get_user_items(req, current_user, item_type)
-            return web.Response(
-                body=ujson.dumps(result, escape_forward_slashes=False),
-                status=200,
-                headers=link_headers,
-                content_type="application/json",
-            )
-        else:
-            # Return whole user object if templates or folders are not specified in query
-            db_client = req.app["db_client"]
-            operator = UserOperator(db_client)
-            user = await operator.read_user(current_user)
-            LOG.info(f"GET user with ID {user_id} was successful.")
-            return web.Response(
-                body=ujson.dumps(user, escape_forward_slashes=False), status=200, content_type="application/json"
-            )
+        # Return whole user object if templates or folders are not specified in query
+        db_client = req.app["db_client"]
+        operator = UserOperator(db_client)
+        user = await operator.read_user(current_user)
+        LOG.info(f"GET user with ID {user_id} was successful.")
+        return web.Response(
+            body=ujson.dumps(user, escape_forward_slashes=False), status=200, content_type="application/json"
+        )
 
     async def patch_user(self, req: Request) -> Response:
         """Update user object with a specific user ID.
@@ -143,21 +130,8 @@ class UserAPIHandler(RESTAPIHandler):
             raise web.HTTPUnauthorized(reason="Only current user deletion is allowed")
         db_client = req.app["db_client"]
         operator = UserOperator(db_client)
-        fold_ops = FolderOperator(db_client)
-        obj_ops = Operator(db_client)
 
         current_user = get_session(req)["user_info"]
-        user = await operator.read_user(current_user)
-
-        for folder_id in user["folders"]:
-            _folder = await fold_ops.read_folder(folder_id)
-            if "published" in _folder and not _folder["published"]:
-                for obj in _folder["drafts"] + _folder["metadataObjects"]:
-                    await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
-                await fold_ops.delete_folder(folder_id)
-
-        for tmpl in user["templates"]:
-            await obj_ops.delete_metadata_object(tmpl["schema"], tmpl["accessionId"])
 
         await operator.delete_user(current_user)
         LOG.info(f"DELETE user with ID {current_user} was successful.")
@@ -177,45 +151,46 @@ class UserAPIHandler(RESTAPIHandler):
         LOG.debug("Logged out user ")
         raise response
 
-    async def _get_user_items(self, req: Request, user: Dict, item_type: str) -> Tuple[Dict, CIMultiDict[str]]:
-        """Get draft templates owned by the user with pagination values.
+    # DEPRECATED
+    # async def _get_user_items(self, req: Request, user: Dict, item_type: str) -> Tuple[Dict, CIMultiDict[str]]:
+    #     """Get draft templates owned by the user with pagination values.
 
-        :param req: GET request
-        :param user: User object
-        :param item_type: Name of the items ("templates" or "folders")
-        :raises: HTTPUnauthorized if not current user
-        :returns: Paginated list of user draft templates and link header
-        """
-        # Check item_type parameter is not faulty
-        if item_type not in ["templates", "folders"]:
-            reason = f"{item_type} is a faulty item parameter. Should be either folders or templates"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
+    #     :param req: GET request
+    #     :param user: User object
+    #     :param item_type: Name of the items ("templates" or "folders")
+    #     :raises: HTTPUnauthorized if not current user
+    #     :returns: Paginated list of user draft templates and link header
+    #     """
+    #     # Check item_type parameter is not faulty
+    #     if item_type not in ["templates", "folders"]:
+    #         reason = f"{item_type} is a faulty item parameter. Should be either folders or templates"
+    #         LOG.error(reason)
+    #         raise web.HTTPBadRequest(reason=reason)
 
-        page = self._get_page_param(req, "page", 1)
-        per_page = self._get_page_param(req, "per_page", 5)
+    #     page = self._get_page_param(req, "page", 1)
+    #     per_page = self._get_page_param(req, "per_page", 5)
 
-        db_client = req.app["db_client"]
-        operator = UserOperator(db_client)
-        user_id = req.match_info["userId"]
+    #     db_client = req.app["db_client"]
+    #     operator = UserOperator(db_client)
+    #     user_id = req.match_info["userId"]
 
-        query = {"userId": user}
+    #     query = {"userId": user}
 
-        items, total_items = await operator.filter_user(query, item_type, page, per_page)
-        LOG.info(f"GET user with ID {user_id} was successful.")
+    #     items, total_items = await operator.filter_user(query, item_type, page, per_page)
+    #     LOG.info(f"GET user with ID {user_id} was successful.")
 
-        result = {
-            "page": {
-                "page": page,
-                "size": per_page,
-                "totalPages": ceil(total_items / per_page),
-                "total" + item_type.title(): total_items,
-            },
-            item_type: items,
-        }
+    #     result = {
+    #         "page": {
+    #             "page": page,
+    #             "size": per_page,
+    #             "totalPages": ceil(total_items / per_page),
+    #             "total" + item_type.title(): total_items,
+    #         },
+    #         item_type: items,
+    #     }
 
-        url = f"{req.scheme}://{req.host}{req.path}"
-        link_headers = await self._header_links(url, page, per_page, total_items)
-        LOG.debug(f"Pagination header links: {link_headers}")
-        LOG.info(f"Querying for user's {item_type} resulted in {total_items} {item_type}")
-        return result, link_headers
+    #     url = f"{req.scheme}://{req.host}{req.path}"
+    #     link_headers = await self._header_links(url, page, per_page, total_items)
+    #     LOG.debug(f"Pagination header links: {link_headers}")
+    #     LOG.info(f"Querying for user's {item_type} resulted in {total_items} {item_type}")
+    #     return result, link_headers

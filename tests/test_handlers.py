@@ -661,20 +661,22 @@ class UserHandlerTestCase(HandlersTestCase):
         self.patch_useroperator = patch(class_useroperator, **self.useroperator_config, spec=True)
         self.MockedUserOperator = self.patch_useroperator.start()
 
-        class_folderoperator = "metadata_backend.api.handlers.user.FolderOperator"
-        self.patch_folderoperator = patch(class_folderoperator, **self.folderoperator_config, spec=True)
-        self.MockedFolderOperator = self.patch_folderoperator.start()
+        # DEPRECATED
+        # class_folderoperator = "metadata_backend.api.handlers.user.FolderOperator"
+        # self.patch_folderoperator = patch(class_folderoperator, **self.folderoperator_config, spec=True)
+        # self.MockedFolderOperator = self.patch_folderoperator.start()
 
-        class_operator = "metadata_backend.api.handlers.user.Operator"
-        self.patch_operator = patch(class_operator, **self.operator_config, spec=True)
-        self.MockedOperator = self.patch_operator.start()
+        # class_operator = "metadata_backend.api.handlers.user.Operator"
+        # self.patch_operator = patch(class_operator, **self.operator_config, spec=True)
+        # self.MockedOperator = self.patch_operator.start()
 
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
         await super().tearDownAsync()
         self.patch_useroperator.stop()
-        self.patch_folderoperator.stop()
-        self.patch_operator.stop()
+        # DEPRECATED
+        # self.patch_folderoperator.stop()
+        # self.patch_operator.stop()
 
     async def test_get_user_works(self):
         """Test user object is returned when correct user id is given."""
@@ -684,76 +686,76 @@ class UserHandlerTestCase(HandlersTestCase):
         json_resp = await response.json()
         self.assertEqual(self.test_user, json_resp)
 
-    async def test_get_user_drafts_with_no_drafts(self):
-        """Test getting user drafts when user has no drafts."""
-        response = await self.client.get("/users/current?items=templates")
-        self.assertEqual(response.status, 200)
-        self.MockedUserOperator().filter_user.assert_called_once()
-        json_resp = await response.json()
-        result = {
-            "page": {
-                "page": 1,
-                "size": 5,
-                "totalPages": 0,
-                "totalTemplates": 0,
-            },
-            "templates": [],
-        }
-        self.assertEqual(json_resp, result)
+    # DEPRECATED
+    # async def test_get_user_drafts_with_no_drafts(self):
+    #     """Test getting user drafts when user has no drafts."""
+    #     response = await self.client.get("/users/current?items=templates")
+    #     self.assertEqual(response.status, 200)
+    #     self.MockedUserOperator().filter_user.assert_called_once()
+    #     json_resp = await response.json()
+    #     result = {
+    #         "page": {
+    #             "page": 1,
+    #             "size": 5,
+    #             "totalPages": 0,
+    #             "totalTemplates": 0,
+    #         },
+    #         "templates": [],
+    #     }
+    #     self.assertEqual(json_resp, result)
 
-    async def test_get_user_templates_with_1_template(self):
-        """Test getting user templates when user has 1 draft."""
-        user = self.test_user
-        user["templates"].append(self.metadata_json)
-        self.MockedUserOperator().filter_user.return_value = (user["templates"], 1)
-        response = await self.client.get("/users/current?items=templates")
-        self.assertEqual(response.status, 200)
-        self.MockedUserOperator().filter_user.assert_called_once()
-        json_resp = await response.json()
-        result = {
-            "page": {
-                "page": 1,
-                "size": 5,
-                "totalPages": 1,
-                "totalTemplates": 1,
-            },
-            "templates": [self.metadata_json],
-        }
-        self.assertEqual(json_resp, result)
+    # async def test_get_user_templates_with_1_template(self):
+    #     """Test getting user templates when user has 1 draft."""
+    #     user = self.test_user
+    #     user["templates"].append(self.metadata_json)
+    #     self.MockedUserOperator().filter_user.return_value = (user["templates"], 1)
+    #     response = await self.client.get("/users/current?items=templates")
+    #     self.assertEqual(response.status, 200)
+    #     self.MockedUserOperator().filter_user.assert_called_once()
+    #     json_resp = await response.json()
+    #     result = {
+    #         "page": {
+    #             "page": 1,
+    #             "size": 5,
+    #             "totalPages": 1,
+    #             "totalTemplates": 1,
+    #         },
+    #         "templates": [self.metadata_json],
+    #     }
+    #     self.assertEqual(json_resp, result)
 
-    async def test_get_user_folder_list(self):
-        """Test get user with folders url returns a folder ID."""
-        self.MockedUserOperator().filter_user.return_value = (self.test_user["folders"], 1)
-        response = await self.client.get("/users/current?items=folders")
-        self.assertEqual(response.status, 200)
-        self.MockedUserOperator().filter_user.assert_called_once()
-        json_resp = await response.json()
-        result = {
-            "page": {
-                "page": 1,
-                "size": 5,
-                "totalPages": 1,
-                "totalFolders": 1,
-            },
-            "folders": ["FOL12345678"],
-        }
-        self.assertEqual(json_resp, result)
+    # async def test_get_user_folder_list(self):
+    #     """Test get user with folders url returns a folder ID."""
+    #     self.MockedUserOperator().filter_user.return_value = (self.test_user["folders"], 1)
+    #     response = await self.client.get("/users/current?items=folders")
+    #     self.assertEqual(response.status, 200)
+    #     self.MockedUserOperator().filter_user.assert_called_once()
+    #     json_resp = await response.json()
+    #     result = {
+    #         "page": {
+    #             "page": 1,
+    #             "size": 5,
+    #             "totalPages": 1,
+    #             "totalFolders": 1,
+    #         },
+    #         "folders": ["FOL12345678"],
+    #     }
+    #     self.assertEqual(json_resp, result)
 
-    async def test_get_user_items_with_bad_param(self):
-        """Test that error is raised if items parameter in query is not templates or folders."""
-        response = await self.client.get("/users/current?items=wrong_thing")
-        self.assertEqual(response.status, 400)
-        json_resp = await response.json()
-        self.assertEqual(
-            json_resp["detail"], "wrong_thing is a faulty item parameter. Should be either folders or templates"
-        )
+    # async def test_get_user_items_with_bad_param(self):
+    #     """Test that error is raised if items parameter in query is not templates or folders."""
+    #     response = await self.client.get("/users/current?items=wrong_thing")
+    #     self.assertEqual(response.status, 400)
+    #     json_resp = await response.json()
+    #     self.assertEqual(
+    #         json_resp["detail"], "wrong_thing is a faulty item parameter. Should be either folders or templates"
+    #     )
 
     async def test_user_deletion_is_called(self):
         """Test that user object would be deleted."""
         self.MockedUserOperator().read_user.return_value = self.test_user
         self.MockedUserOperator().delete_user.return_value = None
         await self.client.delete("/users/current")
-        self.MockedUserOperator().read_user.assert_called_once()
         self.MockedUserOperator().delete_user.assert_called_once()
 
     async def test_update_user_fails_with_wrong_key(self):

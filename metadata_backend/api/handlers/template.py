@@ -57,26 +57,9 @@ class TemplatesAPIHandler(RESTAPIHandler):
         db_client = req.app["db_client"]
         content = await self._get_data(req)
 
-        # No schema validation, so must check that project is set
-        if "projectId" not in content:
-            reason = "projectId is a mandatory POST key"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        # Check that project exists
+        # Operators
         project_op = ProjectOperator(db_client)
-        await project_op._check_project_exists(content["projectId"])
-
-        # Check that user is affiliated with project
         user_op = UserOperator(db_client)
-        current_user = get_session(req)["user_info"]
-        user = await user_op.read_user(current_user)
-        user_has_project = await user_op.check_user_has_project(content["projectId"], user["userId"])
-        if not user_has_project:
-            reason = f"user {user['userId']} is not affiliated with project {content['projectId']}"
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
-
         operator = Operator(db_client)
 
         if isinstance(content, list):
@@ -86,6 +69,26 @@ class TemplatesAPIHandler(RESTAPIHandler):
                     reason = f"template key is missing from request body for element: {num}."
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
+
+                # No schema validation, so must check that project is set
+                if "projectId" not in tmpl:
+                    reason = "projectId is a mandatory POST key"
+                    LOG.error(reason)
+                    raise web.HTTPBadRequest(reason=reason)
+
+                # Check that project exists and user is affiliated with it
+                await project_op._check_project_exists(tmpl["projectId"])
+                current_user = get_session(req)["user_info"]
+                user = await user_op.read_user(current_user)
+                user_has_project = await user_op.check_user_has_project(tmpl["projectId"], user["userId"])
+                if not user_has_project:
+                    reason = f"user {user['userId']} is not affiliated with project {tmpl['projectId']}"
+                    LOG.error(reason)
+                    raise web.HTTPUnauthorized(reason=reason)
+
+                # Process template
+                # Move projectId to template structure, so that it is saved in mongo
+                tmpl["template"]["projectId"] = tmpl["projectId"]
                 accession_id, _ = await operator.create_metadata_object(collection, tmpl["template"])
                 tmpl_list.append({"accessionId": accession_id})
 
@@ -95,7 +98,25 @@ class TemplatesAPIHandler(RESTAPIHandler):
                 reason = "template key is missing from request body."
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
-            # Move projectId to template key, so that it is saved in mongo
+
+            # No schema validation, so must check that project is set
+            if "projectId" not in content:
+                reason = "projectId is a mandatory POST key"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+
+            # Check that project exists and user is affiliated with it
+            await project_op._check_project_exists(content["projectId"])
+            current_user = get_session(req)["user_info"]
+            user = await user_op.read_user(current_user)
+            user_has_project = await user_op.check_user_has_project(content["projectId"], user["userId"])
+            if not user_has_project:
+                reason = f"user {user['userId']} is not affiliated with project {content['projectId']}"
+                LOG.error(reason)
+                raise web.HTTPUnauthorized(reason=reason)
+
+            # Process template
+            # Move projectId to template structure, so that it is saved in mongo
             content["template"]["projectId"] = content["projectId"]
             accession_id, _ = await operator.create_metadata_object(collection, content["template"])
 
