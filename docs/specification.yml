@@ -891,6 +891,12 @@ paths:
       summary: List of folders available for the user.
       parameters:
         - in: query
+          name: projectId
+          schema:
+            type: string
+          description: ID of the project the folder belongs to
+          required: true
+        - in: query
           name: page
           schema:
             type: string
@@ -959,10 +965,13 @@ paths:
               required:
                 - name
                 - description
+                - projectId
               properties:
                 name:
                   type: string
                 description:
+                  type: string
+                projectId:
                   type: string
       responses:
         201:
@@ -1158,11 +1167,6 @@ paths:
           schema:
             type: string
           description: Results per page
-        - in: query
-          name: items
-          schema:
-            type: string
-          description: Item type name
       responses:
         200:
           description: OK
@@ -1443,6 +1447,7 @@ components:
       type: object
       required:
         - folderId
+        - projectId
         - name
         - description
         - published
@@ -1455,6 +1460,9 @@ components:
         folderId:
           type: string
           description: Folder id
+        projectId:
+          type: string
+          description: Project ID this folder belongs to
         name:
           type: string
           description: Folder name
@@ -1622,8 +1630,7 @@ components:
       required:
         - userId
         - name
-        - drafts
-        - folders
+        - projects
       additionalProperties: false
       properties:
         userId:
@@ -1632,35 +1639,21 @@ components:
         name:
           type: string
           description: User's Name
-        drafts:
+        projects:
           type: array
           items:
             type: object
             required:
-              - accessionId
-              - schema
+              - projectId
+              - projectNumber
             additionalProperties: false
             properties:
-              accessionId:
+              projectId:
                 type: string
-                description: Accession id generated to identify an object
-              schema:
+                description: Internal accession ID for project
+              projectNumber:
                 type: string
-                description: type of schema this Accession ID relates to and was added in submit
-              tags:
-                type: object
-                description: Different tags to describe the object.
-                additionalProperties: true
-                properties:
-                  submissionType:
-                    type: string
-                    description: Type of submission
-                    enum: ["XML", "Form"]
-        folders:
-          type: array
-          items:
-            type: string
-            description: Folder Id
+                description: Human friendly project number received from AAI
     UserUpdated:
       type: object
       required:
