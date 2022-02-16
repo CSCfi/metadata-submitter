@@ -103,7 +103,7 @@ class BaseOperator(ABC):
                 raise web.HTTPNotFound()
             data = await self._format_read_data(schema_type, data_raw)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting object: {error}"
+            reason = f"Error happened while reading object: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         return data, self.content_type
@@ -635,7 +635,7 @@ class FolderOperator:
             )
             folder_check = [folder async for folder in folder_cursor]
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while inserting user: {error}"
+            reason = f"Error happened while checking object in folder: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -655,7 +655,7 @@ class FolderOperator:
         """List objects ids per collection.
 
         :param collection: collection it belongs to, it would be used as path
-        :returns: count of objects
+        :returns: List of objects
         """
         try:
             folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
@@ -665,7 +665,7 @@ class FolderOperator:
             )
             folders = [folder async for folder in folder_cursor]
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while inserting user: {error}"
+            reason = f"Error happened while getting collection objects: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -775,7 +775,7 @@ class FolderOperator:
         try:
             update_success = await self.db_service.patch("folder", folder_id, patch)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting folder: {error}"
+            reason = f"Error happened while updating folder: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -801,7 +801,7 @@ class FolderOperator:
             upd_content = {folder_path: {"accessionId": accession_id}}
             await self.db_service.remove("folder", folder_id, upd_content)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting user: {error}"
+            reason = f"Error happened while removing object from folder: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -898,7 +898,7 @@ class UserOperator:
             user_cursor = self.db_service.query("user", user_query)
             user_check = [user async for user in user_cursor]
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while inserting user: {error}"
+            reason = f"Error happened while checking user has object: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -1015,7 +1015,7 @@ class UserOperator:
             await self._check_user_exists(user_id)
             update_success = await self.db_service.patch("user", user_id, patch)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting user: {error}"
+            reason = f"Error happened while updating user: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -1044,7 +1044,7 @@ class UserOperator:
                 "user", user_id, {collection: {"$each": object_ids, "$position": 0}}
             )
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting user: {error}"
+            reason = f"Error happened while assigning objects to user: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
