@@ -152,6 +152,24 @@ class MetaxServiceHandler:
                 reason = await resp.text()
                 raise self.process_error(status, reason)
 
+    async def delete_draft_dataset(self, metax_id: str) -> None:
+        """Delete draft dataset from Metax service.
+
+        :param metax_id: Identification string pointing to Metax dataset to be deleted
+        """
+        async with aiohttp.ClientSession() as sess:
+            resp = await sess.delete(
+                f"{self.metax_url}{self.rest_route}/{metax_id}",
+                auth=aiohttp.BasicAuth(self.username, self.password),
+            )
+            status = resp.status
+            if status == 204:
+                LOG.info(f"Deleted draft dataset {metax_id} from Metax service")
+            else:
+                # TODO: how front end should react on this??
+                reason = await resp.text()
+                raise self.process_error(status, reason)
+
     async def create_metax_dataset_data_from_study(self, data: Dict) -> Dict:
         """Construct Metax dataset's research dataset dictionary from Submitters Study.
 

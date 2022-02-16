@@ -203,7 +203,8 @@ class ObjectAPIHandler(RESTAPIHandler):
         accession_id = req.match_info["accessionId"]
         db_client = req.app["db_client"]
 
-        await Operator(db_client).check_exists(collection, accession_id)
+        operator = Operator(db_client)
+        await operator.check_exists(collection, accession_id)
 
         await self._handle_check_ownership(req, collection, accession_id)
 
@@ -220,7 +221,21 @@ class ObjectAPIHandler(RESTAPIHandler):
             LOG.error(reason)
             raise web.HTTPUnprocessableEntity(reason=reason)
 
-        accession_id = await Operator(db_client).delete_metadata_object(collection, accession_id)
+        metax_id: str = ""
+        if collection in {"study", "dataset"}:
+            try:
+                object_data, _ = await operator.read_metadata_object(collection, accession_id)
+                # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
+                if isinstance(object_data, dict):
+                    metax_id = object_data["metaxIdentifier"]["identifier"]
+            except KeyError:
+                LOG.warning(f"MetadataObject {collection} {accession_id} was never added to Metax service.")
+
+        accession_id = await operator.delete_metadata_object(collection, accession_id)
+
+        # Delete draft dataset from Metax catalog
+        if collection in {"study", "dataset"}:
+            await self.delete_metax_dataset(req, metax_id)
 
         LOG.info(f"DELETE object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(status=204)
@@ -423,6 +438,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         metax_service = MetaxServiceHandler(req)
         operator = Operator(req.app["db_client"])
         object_data, _ = await operator.read_metadata_object(collection, accession_id)
+        # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
         if isinstance(object_data, Dict):
             if object_data.get("metaxIdentifier", None):
                 LOG.info("Updating draft dataset to Metax.")
@@ -436,6 +452,16 @@ class ObjectAPIHandler(RESTAPIHandler):
         else:
             raise ValueError("Object's data must be dictionary")
         return metax_id
+
+    async def delete_metax_dataset(self, req: Request, metax_id: str) -> None:
+        """Handle deletion of Study or Dataset object from Metax service.
+
+        :param req: HTTP request
+        :param metax_id: object's Metax ID
+        :returns: True if request succeded, else raises error
+        """
+        metax_service = MetaxServiceHandler(req)
+        await metax_service.delete_draft_dataset(metax_id)
 
     # TODO: to be replaced with real doi fetching
     async def create_doi(self) -> str:
