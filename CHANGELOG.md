@@ -37,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - add default `gender` as `unknown`
 - Project ownership #346 --DRAFT
   - deprecated `folders` and `templates` keys from `GET /users/current`
-    - as a side effect, deprecated `items` query param from the same endpoint
+    - as a side effect, deprecated `items` query parameter from the same endpoint
   - added new collection `project`
   - added new key `projects` to `user`
   - added new key `projectId` to `folder` and `template-*`
