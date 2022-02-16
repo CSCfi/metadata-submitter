@@ -1589,7 +1589,6 @@ async def main():
         # Test getting a list of folders and draft templates owned by the user
         LOG.debug("=== Testing getting folders, draft folders and draft templates with pagination ===")
         await test_getting_paginated_folders(sess, project_id)
-        # await test_getting_user_items(sess, project_id) # DEPRECATED
         LOG.debug("=== Testing getting folders filtered with name and date created ===")
         await test_getting_folders_filtered_by_name(sess, project_id)
         # too much of a hassle to make test work with tls db connection in github

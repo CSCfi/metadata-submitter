@@ -124,6 +124,7 @@ class RESTAPIHandler:
 
             yield result
 
+    # DEPRECATED, what to do?
     async def _handle_user_objects_collection(self, req: Request, collection: str) -> List:
         """Retrieve list of objects accession ids belonging to user in collection.
 
@@ -144,20 +145,6 @@ class RESTAPIHandler:
             dt.extend(r)
 
         return dt
-
-    async def _filter_by_user(self, req: Request, collection: str, seq: List) -> AsyncGenerator:
-        """For a list of objects check if these are owned by a user.
-
-        This can be called using a partial from functools.
-
-        :param req: HTTP request
-        :param collection: collection or schema of document
-        :param seq: list of folders
-        :returns: AsyncGenerator
-        """
-        for el in seq:
-            if await self._handle_check_ownership(req, collection, el["accessionId"]):
-                yield el
 
     async def _get_data(self, req: Request) -> Dict:
         """Get the data content from a request.
