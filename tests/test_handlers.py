@@ -101,7 +101,9 @@ class HandlersTestCase(AioHTTPTestCase):
             "filter_user.side_effect": self.fake_useroperator_filter_user,
         }
 
-        RESTAPIHandler._handle_check_ownership = make_mocked_coro(True)
+        RESTAPIHandler._handle_check_ownedby_user = make_mocked_coro(True)
+        ObjectAPIHandler.create_or_update_metax_dataset = make_mocked_coro("111-222-333")
+        ObjectAPIHandler.delete_metax_dataset = make_mocked_coro()
 
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
