@@ -257,8 +257,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         # Delete draft dataset from Metax catalog
         if collection in _allowed_doi:
-            metax_service = MetaxServiceHandler(req)
-            await metax_service.delete_draft_dataset(metax_id)
+            await MetaxServiceHandler(req).delete_draft_dataset(metax_id)
             doi_service = DOIHandler()
             await doi_service.delete(doi_id)
 
@@ -474,11 +473,10 @@ class ObjectAPIHandler(RESTAPIHandler):
         :param folder_id: folder ID where metadata object belongs to
         :returns: Metax ID
         """
-        metax_service = MetaxServiceHandler(req)
         operator = Operator(req.app["db_client"])
         LOG.info("Creating draft dataset to Metax.")
         object["doi"] = await self._draft_doi(collection)
-        metax_id = await metax_service.post_dataset_as_draft(collection, object)
+        metax_id = await MetaxServiceHandler(req).post_dataset_as_draft(collection, object)
 
         new_info = {"doi": object["doi"], "metaxIdentifier": metax_id}
         await operator.create_metax_info(collection, object["accessionId"], new_info)
