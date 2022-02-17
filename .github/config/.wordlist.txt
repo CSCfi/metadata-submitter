@@ -465,6 +465,7 @@ probeset
 processedreads
 processingtype
 projectId
+projectNumber
 promethion
 proteinclusters
 protfam
