@@ -870,6 +870,7 @@ class FolderHandlerTestCase(HandlersTestCase):
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
         await super().tearDownAsync()
+        self.patch_doihandler.stop()
         self.patch_folderoperator.stop()
         self.patch_useroperator.stop()
         self.patch_operator.stop()
