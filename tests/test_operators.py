@@ -101,8 +101,8 @@ class TestOperators(IsolatedAsyncioTestCase):
         self.test_user = {
             "userId": self.user_generated_id,
             "name": "tester",
-            "drafts": [],
-            "folders": [],
+            "drafts": [],  # DEPRECATED
+            "folders": [],  # DEPRECATED
         }
         class_dbservice = "metadata_backend.api.operators.DBService"
         self.patch_dbservice = patch(class_dbservice, spec=True)
