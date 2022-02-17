@@ -1036,6 +1036,15 @@ async def test_crud_folders_works(sess):
         ], "folder metadataObjects content mismatch"
 
     # Publish the folder
+    # add a study and dataset for publishing a folder
+    doi_data_raw = await create_request_json_data("doi", "test_doi.json")
+    doi_data = json.loads(doi_data_raw)
+    patch_add_doi = [{"op": "add", "path": "/doiInfo", "value": doi_data}]
+    folder_id = await patch_folder(sess, folder_id, patch_add_doi)
+
+    await post_object_json(sess, "study", folder_id, "SRP000539.json")
+    await post_object(sess, "dataset", folder_id, "dataset.xml")
+
     folder_id = await publish_folder(sess, folder_id)
 
     await get_draft(sess, "sample", draft_id, 404)  # checking the draft was deleted after publication
@@ -1048,13 +1057,7 @@ async def test_crud_folders_works(sess):
         assert "datePublished" in res.keys()
         assert "extraInfo" in res.keys()
         assert res["drafts"] == [], "there are drafts in folder, expected empty"
-        assert res["metadataObjects"] == [
-            {
-                "accessionId": accession_id,
-                "schema": "sample",
-                "tags": {"submissionType": "Form", "displayTitle": "HapMap sample from Homo sapiens"},
-            }
-        ], "folder metadataObjects content mismatch"
+        assert len(res["metadataObjects"]) == 3, "folder metadataObjects content mismatch"
 
     # Delete folder
     await delete_folder_publish(sess, folder_id)
@@ -1443,6 +1446,16 @@ async def test_crud_users_works(sess):
 
     folder_published = {"name": "Another test Folder", "description": "Test published folder does not get deleted"}
     publish_folder_id = await post_folder(sess, folder_published)
+
+    # add a study and dataset for publishing a folder
+    doi_data_raw = await create_request_json_data("doi", "test_doi.json")
+    doi_data = json.loads(doi_data_raw)
+    patch_add_doi = [{"op": "add", "path": "/doiInfo", "value": doi_data}]
+    await patch_folder(sess, publish_folder_id, patch_add_doi)
+
+    await post_object_json(sess, "study", publish_folder_id, "SRP000539.json")
+    await post_object(sess, "dataset", publish_folder_id, "dataset.xml")
+
     await publish_folder(sess, publish_folder_id)
     async with sess.get(f"{folders_url}/{publish_folder_id}") as resp:
         LOG.debug(f"Checking that folder {publish_folder_id} was published")
