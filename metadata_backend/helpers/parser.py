@@ -446,7 +446,7 @@ def jsonpatch_mongo(identifier: Dict, json_patch: List[Dict[str, Any]]) -> List:
                         identifier,
                         {
                             "$addToSet": {
-                                op["path"][1:-2]: {
+                                op["path"][1:-2].replace("/", "."): {
                                     "$each": op["value"] if isinstance(op["value"], list) else [op["value"]]
                                 },
                             },
