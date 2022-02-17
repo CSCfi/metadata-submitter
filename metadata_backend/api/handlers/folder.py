@@ -3,7 +3,7 @@ import re
 from datetime import date, datetime
 from distutils.util import strtobool
 from math import ceil
-from typing import Any
+from typing import Any, Dict, List, Tuple
 
 import ujson
 from aiohttp import web
@@ -14,6 +14,7 @@ from ...conf.conf import publisher
 from ...helpers.logger import LOG
 from ...helpers.validator import JSONValidator
 from ..metax_api_handler import MetaxServiceHandler
+from ...helpers.doi import DOIHandler
 from ..middlewares import get_session
 from ..operators import FolderOperator, Operator, UserOperator
 from .restapi import RESTAPIHandler
@@ -21,6 +22,122 @@ from .restapi import RESTAPIHandler
 
 class FolderAPIHandler(RESTAPIHandler):
     """API Handler for folders."""
+
+    def _prepare_doi_update(self, folder: Dict) -> Tuple[Dict, List]:
+        """Prepare dictionary with values for the Datacite DOI update.
+
+        We need to prepare data for Study and Datasets, publish doi for each,
+        and create links (relatedIdentifiers) between Study and Datasets.
+        All the required information should be in the folder ``doiInfo``,
+        as well as ``extraInfo`` which contains the draft DOIs created for the Study
+        and each Dataset.
+
+        :param folder: Folder data
+        :returns: Tuple with the Study and list of Datasets.
+        """
+
+        _general_info = {
+            "attributes": {
+                "publisher": publisher,
+                "publicationYear": date.today().year,
+                "event": "publish",
+                "schemaVersion": "https://schema.datacite.org/meta/kernel-4",
+            },
+        }
+
+        study = {}
+        datasets = []
+
+        # we need to re-format these for Datacite, as in the JSON schemas
+        # we split the words so that front-end will display them nicely
+        _info = folder["doiInfo"]
+        if "relatedIdentifiers" in _info:
+            for d in _info["relatedIdentifiers"]:
+                d.update((k, "".join(v.split())) for k, v in d.items() if k in {"resourceTypeGeneral", "relationType"})
+
+        if "contributors" in _info:
+            for d in _info["contributors"]:
+                d.update((k, "".join(v.split())) for k, v in d.items() if k == "contributorType")
+
+        if "descriptions" in _info:
+            for d in _info["descriptions"]:
+                d.update((k, "".join(v.split())) for k, v in d.items() if k == "descriptionType")
+
+        if "fundingReferences" in _info:
+            for d in _info["fundingReferences"]:
+                d.update((k, "".join(v.split())) for k, v in d.items() if k == "funderIdentifierType")
+
+        try:
+            # keywords are only required for Metax integration
+            # thus we remove them
+            _info.pop("keywords", None)
+            _general_info["attributes"].update(_info)
+
+            _study_doi = folder["extraInfo"]["studyIdentifier"]["identifier"]["doi"]
+            study = {
+                "attributes": {
+                    "doi": _study_doi,
+                    "prefix": _study_doi.split("/")[0],
+                    "suffix": _study_doi.split("/")[1],
+                    "types": folder["extraInfo"]["studyIdentifier"]["types"],
+                    # "url": folder["extraInfo"]["studyIdentifier"]["url"],
+                    "identifiers": [folder["extraInfo"]["studyIdentifier"]["identifier"]],
+                },
+                "id": _study_doi,
+                "type": "dois",
+            }
+
+            study.update(_general_info)
+
+            for ds in folder["extraInfo"]["datasetIdentifiers"]:
+                _doi = ds["identifier"]["doi"]
+                _tmp = {
+                    "attributes": {
+                        "doi": _doi,
+                        "prefix": _doi.split("/")[0],
+                        "suffix": _doi.split("/")[1],
+                        "types": ds["types"],
+                        # "url": ds["url"],
+                        "identifiers": [ds["identifier"]],
+                    },
+                    "id": _doi,
+                    "type": "dois",
+                }
+                _tmp.update(_general_info)
+
+                # A Dataset is described by a Study
+                if "relatedIdentifiers" not in _tmp["attributes"]:
+                    _tmp["attributes"]["relatedIdentifiers"] = []
+
+                _tmp["attributes"]["relatedIdentifiers"].append(
+                    {
+                        "relationType": "IsDescribedBy",
+                        "relatedIdentifier": _study_doi,
+                        "resourceTypeGeneral": "Collection",
+                        "relatedIdentifierType": "DOI",
+                    }
+                )
+
+                datasets.append(_tmp)
+
+                # A Study describes a Dataset
+                if "relatedIdentifiers" not in study["attributes"]:
+                    study["attributes"]["relatedIdentifiers"] = []
+
+                study["attributes"]["relatedIdentifiers"].append(
+                    {
+                        "relationType": "Describes",
+                        "relatedIdentifier": _doi,
+                        "resourceTypeGeneral": "Dataset",
+                        "relatedIdentifierType": "DOI",
+                    }
+                )
+        except Exception as e:
+            reason = f"Could not construct DOI data, reason: {e}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        return (study, datasets)
 
     def _check_patch_folder(self, patch_ops: Any) -> None:
         """Check patch operations in request are valid.
@@ -256,6 +373,15 @@ class FolderAPIHandler(RESTAPIHandler):
         await self._handle_check_ownedby_user(req, "folders", folder_id)
 
         folder = await operator.read_folder(folder_id)
+
+        # we first try to publish the DOI before actually publishing the folder
+        study, datasets = self._prepare_doi_update(folder)
+
+        doi_ops = DOIHandler()
+
+        await doi_ops.set_state(study)
+        for ds in datasets:
+            await doi_ops.set_state(ds)
 
         obj_ops = Operator(db_client)
 

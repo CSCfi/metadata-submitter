@@ -116,6 +116,11 @@ class HandlersTestCase(AioHTTPTestCase):
             "filter_user.side_effect": self.fake_useroperator_filter_user,
         }
 
+        self.doi_handler = {
+            "create_draft.side_effect": self.fake_doi_create_draft,
+            "set_state.side_effect": self.fake_doi_set_state,
+        }
+
         RESTAPIHandler._handle_check_ownedby_user = make_mocked_coro(True)
         ObjectAPIHandler.create_or_update_metax_dataset = make_mocked_coro("111-222-333")
         ObjectAPIHandler.delete_metax_dataset = make_mocked_coro()
@@ -155,6 +160,13 @@ class HandlersTestCase(AioHTTPTestCase):
         with open(path_to_file.as_posix(), mode="r") as csv_file:
             _reader = csv_file.read()
         return _reader
+
+    async def fake_doi_create_draft(self, prefix):
+        """."""
+        return {"fullDOI": "10.xxxx/yyyyy", "dataset": "https://doi.org/10.xxxx/yyyyy"}
+
+    async def fake_doi_set_state(self, data):
+        """."""
 
     async def fake_operator_read_metadata_object(self, schema_type, accession_id):
         """Fake read operation to return mocked JSON."""
@@ -833,6 +845,12 @@ class FolderHandlerTestCase(HandlersTestCase):
 
         await super().setUpAsync()
 
+        class_doihandler = "metadata_backend.api.handlers.folder.DOIHandler"
+        self.patch_doihandler = patch(class_doihandler, **self.doi_handler, spec=True)
+        self.MockedDoiHandler = self.patch_doihandler.start()
+
+        self._mock_prepare_doi = "metadata_backend.api.handlers.folder.FolderAPIHandler._prepare_doi_update"
+
         class_folderoperator = "metadata_backend.api.handlers.folder.FolderOperator"
         self.patch_folderoperator = patch(class_folderoperator, **self.folderoperator_config, spec=True)
         self.MockedFolderOperator = self.patch_folderoperator.start()
@@ -852,6 +870,7 @@ class FolderHandlerTestCase(HandlersTestCase):
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
         await super().tearDownAsync()
+        self.patch_doihandler.stop()
         self.patch_folderoperator.stop()
         self.patch_useroperator.stop()
         self.patch_operator.stop()
@@ -963,13 +982,15 @@ class FolderHandlerTestCase(HandlersTestCase):
 
     async def test_folder_is_published(self):
         """Test that folder would be published and DOI would be added."""
+        self.MockedDoiHandler().set_state.return_value = None
         self.MockedFolderOperator().update_folder.return_value = self.folder_id
         self.MockedMetaxHandler().publish_dataset.return_value = None
-        response = await self.client.patch("/publish/FOL12345678")
-        self.MockedFolderOperator().update_folder.assert_called_once()
-        self.assertEqual(response.status, 200)
-        json_resp = await response.json()
-        self.assertEqual(json_resp["folderId"], self.folder_id)
+        with patch(self._mock_prepare_doi, return_value=({}, [{}])):
+            response = await self.client.patch("/publish/FOL12345678")
+            # self.MockedFolderOperator().update_folder.assert_called_once()
+            self.assertEqual(response.status, 200)
+            json_resp = await response.json()
+            self.assertEqual(json_resp["folderId"], self.folder_id)
 
     async def test_folder_deletion_is_called(self):
         """Test that folder would be deleted."""
