@@ -440,9 +440,9 @@ async def post_folder(sess, data):
     :param data: data used to update the folder
     """
     async with sess.post(f"{folders_url}", data=json.dumps(data)) as resp:
-        LOG.debug("Adding new folder")
         ans = await resp.json()
         assert resp.status == 201, f"HTTP Status code error {resp.status} {ans}"
+        LOG.debug(f"Adding new folder {ans['folderId']}")
         return ans["folderId"]
 
 
@@ -504,12 +504,12 @@ async def create_folder(data, user):
     :param user: User id to which data is assigned
     :returns: Folder id for the folder inserted to database
     """
-    LOG.info("Creating new folder")
     url = f"mongodb://{AUTHDB}:{AUTHDB}@{HOST}/{DATABASE}?authSource=admin"
     db_client = AsyncIOMotorClient(url, connectTimeoutMS=1000, serverSelectionTimeoutMS=1000)
     database = db_client[DATABASE]
 
     folder_id = uuid4().hex
+    LOG.info(f"Creating new folder {folder_id}")
     data["folderId"] = folder_id
     data["text_name"] = " ".join(re.split("[\\W_]", data["name"]))
     data["drafts"] = []
