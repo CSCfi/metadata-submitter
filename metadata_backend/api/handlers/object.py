@@ -19,11 +19,6 @@ from ...helpers.doi import DOIHandler
 class ObjectAPIHandler(RESTAPIHandler):
     """API Handler for Objects."""
 
-    def __init__(self) -> None:
-        """Init Object handler."""
-        super().__init__()
-        self.doi = DOIHandler()
-
     async def _draft_doi(self, schema_type: str) -> Dict:
         """Create draft DOI for study and dataset.
 
@@ -33,16 +28,18 @@ class ObjectAPIHandler(RESTAPIHandler):
         :param schema_type: schema can be either study or dataset
         :returns: Dict with DOI of the study or dataset as well as the types.
         """
-        _doi_data = await self.doi.create_draft(prefix=schema_type)
+        doi_ops = DOIHandler()
+        _doi_data = await doi_ops.create_draft(prefix=schema_type)
 
         LOG.debug(f"doi created with doi: {_doi_data['fullDOI']}")
 
-        data: Dict = {}
-        if schema_type == "study":
-            data["identifier"] = {
+        data = {
+            "identifier": {
                 "identifierType": "DOI",
                 "doi": _doi_data["fullDOI"],
             }
+        }
+        if schema_type == "study":
             data["types"] = {
                 "bibtex": "misc",
                 "citeproc": "collection",
@@ -50,10 +47,6 @@ class ObjectAPIHandler(RESTAPIHandler):
                 "resourceTypeGeneral": "Collection",
             }
         elif schema_type == "dataset":
-            data["identifier"] = {
-                "identifierType": "DOI",
-                "doi": _doi_data["fullDOI"],
-            }
             data["types"] = {
                 "ris": "DATA",
                 "bibtex": "misc",
