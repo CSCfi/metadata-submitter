@@ -999,8 +999,6 @@ class UserOperator:
                 return existing_user_id
             else:
                 user_data["projects"] = data["projects"]
-                user_data["templates"] = []
-                user_data["folders"] = []
                 user_data["userId"] = user_id = self._generate_user_id()
                 user_data["name"] = data["real_name"]
                 user_data["externalId"] = data["user_id"]

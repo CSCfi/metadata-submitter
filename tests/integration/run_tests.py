@@ -487,11 +487,12 @@ async def create_folder(data, user):
     data["metadataObjects"] = []
     try:
         await database["folder"].insert_one(data)
-        find_by_id = {"userId": user}
-        append_op = {"$push": {"folders": {"$each": [folder_id], "$position": 0}}}
-        await database["user"].find_one_and_update(
-            find_by_id, append_op, projection={"_id": False}, return_document=True
-        )
+        # DEPRECATED
+        # find_by_id = {"userId": user}
+        # append_op = {"$push": {"folders": {"$each": [folder_id], "$position": 0}}}
+        # await database["user"].find_one_and_update(
+        #     find_by_id, append_op, projection={"_id": False}, return_document=True
+        # )
         return folder_id
 
     except Exception as e:
@@ -1016,12 +1017,6 @@ async def test_crud_folders_works_no_publish(sess, project_id):
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was deleted")
         assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
-
-    async with sess.get(f"{users_url}/current") as resp:
-        LOG.debug(f"Checking that folder {folder_id} was deleted from current user")
-        res = await resp.json()
-        expected_true = not any(d == accession_id for d in res["folders"])
-        assert expected_true, "folder still exists at user"
 
 
 async def test_adding_doi_info_to_folder_works(sess, project_id):

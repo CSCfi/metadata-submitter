@@ -73,8 +73,8 @@ class HandlersTestCase(AioHTTPTestCase):
         self.test_user = {
             "userId": self.user_id,
             "name": "tester",
-            "templates": [],
-            "folders": ["FOL12345678"],
+            "templates": [],  # DEPRECATED
+            "folders": ["FOL12345678"],  # DEPRECATED
         }
 
         self.operator_config = {

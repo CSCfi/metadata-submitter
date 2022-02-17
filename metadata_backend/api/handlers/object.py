@@ -33,7 +33,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         per_page = self._get_page_param(req, "per_page", 10)
         db_client = req.app["db_client"]
 
-        filter_list = await self._handle_user_objects_collection(req, collection)  # DEPRECATED, what to do?
+        filter_list = []  # DEPRECATED, users don't own folders anymore
         data, page_num, page_size, total_objects = await Operator(db_client).query_metadata_database(
             collection, req.query, page, per_page, filter_list
         )
