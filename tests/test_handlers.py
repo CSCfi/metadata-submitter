@@ -374,7 +374,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
         await super().setUpAsync()
 
-        self._mock_draf_doi = "metadata_backend.api.handlers.object.ObjectAPIHandler._draft_doi"
+        self._mock_draft_doi = "metadata_backend.api.handlers.object.ObjectAPIHandler._draft_doi"
 
         class_xmloperator = "metadata_backend.api.handlers.object.XMLOperator"
         self.patch_xmloperator = patch(class_xmloperator, **self.xmloperator_config, spec=True)
@@ -410,7 +410,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         """Test that submission is handled, XMLOperator is called."""
         files = [("study", "SRP000539.xml")]
         data = self.create_submission_data(files)
-        with patch(self._mock_draf_doi, return_value=self._draf_doi_data):
+        with patch(self._mock_draft_doi, return_value=self._draf_doi_data):
             response = await self.client.post("/objects/study", params={"folder": "some id"}, data=data)
             self.assertEqual(response.status, 201)
             self.assertIn(self.test_ega_string, await response.text())
@@ -427,7 +427,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
                 "studyAbstract": "abstract description for testing",
             },
         }
-        with patch(self._mock_draf_doi, return_value=self._draf_doi_data):
+        with patch(self._mock_draft_doi, return_value=self._draf_doi_data):
             response = await self.client.post("/objects/study", params={"folder": "some id"}, json=json_req)
             self.assertEqual(response.status, 201)
             self.assertIn(self.test_ega_string, await response.text())
