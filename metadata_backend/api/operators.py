@@ -839,7 +839,7 @@ class FolderOperator:
             raise web.HTTPBadRequest(reason=reason)
         return folder
 
-    async def update_folder(self, folder_id: str, patch: List) -> str:
+    async def update_folder(self, folder_id: str, patch: List, schema: str = "") -> str:
         """Update object folder from database.
 
         Utilizes JSON Patch operations specified at: http://jsonpatch.com/
@@ -850,14 +850,20 @@ class FolderOperator:
         :returns: ID of the folder updated to database
         """
         try:
-            update_success = await self.db_service.patch("folder", folder_id, patch)
+            if schema == "study":
+                update_success = await self.db_service.update_study("folder", folder_id, patch)
+            else:
+                update_success = await self.db_service.patch("folder", folder_id, patch)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while updating folder: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
         if not update_success:
-            reason = "Updating folder to database failed for some reason."
+            if schema == "study":
+                reason = "Either there was a request to add another study to a folders or annother error occurred."
+            else:
+                reason = "Updating folder to database failed for some reason."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         else:
