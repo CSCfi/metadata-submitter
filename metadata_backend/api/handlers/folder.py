@@ -66,22 +66,23 @@ class FolderAPIHandler(RESTAPIHandler):
         if "fundingReferences" in _info:
             for d in _info["fundingReferences"]:
                 d.update((k, "".join(v.split())) for k, v in d.items() if k == "funderIdentifierType")
-
+        # need to add titles and descriptions for datasets and study
         try:
             # keywords are only required for Metax integration
             # thus we remove them
             _info.pop("keywords", None)
             _general_info["attributes"].update(_info)
 
-            _study_doi = folder["extraInfo"]["studyIdentifier"]["identifier"]["doi"]
+            _study = folder["extraInfo"]["studyIdentifier"]
+            _study_doi = _study["identifier"]["doi"]
             study = {
                 "attributes": {
                     "doi": _study_doi,
                     "prefix": _study_doi.split("/")[0],
                     "suffix": _study_doi.split("/")[1],
-                    "types": folder["extraInfo"]["studyIdentifier"]["types"],
-                    # "url": folder["extraInfo"]["studyIdentifier"]["url"],
-                    "identifiers": [folder["extraInfo"]["studyIdentifier"]["identifier"]],
+                    "types": _study["types"],
+                    # "url": _study["url"],
+                    "identifiers": [_study["identifier"]],
                 },
                 "id": _study_doi,
                 "type": "dois",
@@ -89,7 +90,8 @@ class FolderAPIHandler(RESTAPIHandler):
 
             study.update(_general_info)
 
-            for ds in folder["extraInfo"]["datasetIdentifiers"]:
+            _datasets = folder["extraInfo"]["datasetIdentifiers"]
+            for ds in _datasets:
                 _doi = ds["identifier"]["doi"]
                 _tmp = {
                     "attributes": {

@@ -151,6 +151,30 @@ class DBService:
             return False
 
     @auto_reconnect
+    async def update_study(self, collection: str, accession_id: str, patch_data: Any) -> bool:
+        """Update and avoid duplicates for study object.
+
+        Currently we don't allow duplicate studies in the same folder,
+        thus we need to check before inserting. Regular Bulkwrite cannot prevent race condition.
+
+        :param collection: Collection where document should be searched from
+        :param accession_id: ID of the object/folder/user to be updated
+        :param patch_data: JSON representing the data that should be
+        updated to object it will update fields.
+        :returns: True if operation was successful
+        """
+        find_by_id = {f"{collection}Id": accession_id, "metadataObjects.schema": {"$ne": "study"}}
+        requests = jsonpatch_mongo(find_by_id, patch_data)
+        for req in requests:
+            result = await self.database[collection].find_one_and_update(
+                find_by_id, req._doc, projection={"_id": False}, return_document=ReturnDocument.AFTER
+            )
+            LOG.debug(f"DB doc in {collection} with data: {patch_data} modified for {accession_id}.")
+            if not result:
+                return False
+        return True
+
+    @auto_reconnect
     async def update(self, collection: str, accession_id: str, data_to_be_updated: Dict) -> bool:
         """Update some elements of object by its accessionId.
 
