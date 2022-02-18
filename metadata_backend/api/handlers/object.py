@@ -157,6 +157,8 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         # we need to check if there is already a study in a folder
         # we only allow one study per folder
+        # this is not enough to catch duplicate entries if updates happen in parallel
+        # that is why we check in db_service.update_study
         if not req.path.startswith("/drafts") and schema_type == "study":
             _ids = await folder_op.get_collection_objects(folder_id, collection)
             if len(_ids) == 1:
@@ -209,7 +211,7 @@ class ObjectAPIHandler(RESTAPIHandler):
             ids = [dict(data, **{"title": title})]
 
         patch = self._prepare_folder_patch_new_object(collection, ids, patch_params)
-        await folder_op.update_folder(folder_id, patch)
+        await folder_op.update_folder(folder_id, patch, schema_type)
 
         # we don't create DOIs for drafts and we restrict doi creation to
         # study and datasets
