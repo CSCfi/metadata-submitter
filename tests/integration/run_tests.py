@@ -808,36 +808,36 @@ async def test_getting_all_objects_from_schema_works(sess, folder_id):
     :param folder_id: id of the folder used to group submission objects
     """
     # Add objects
-    files = await asyncio.gather(*[post_object(sess, "study", folder_id, "SRP000539.xml") for _ in range(13)])
+    files = await asyncio.gather(*[post_object(sess, "sample", folder_id, "SRS001433.xml") for _ in range(13)])
 
     # Test default values
-    async with sess.get(f"{objects_url}/study") as resp:
+    async with sess.get(f"{objects_url}/sample") as resp:
         assert resp.status == 200
         ans = await resp.json()
         assert ans["page"]["page"] == 1
         assert ans["page"]["size"] == 10
         assert ans["page"]["totalPages"] == 2
-        assert ans["page"]["totalObjects"] == 14
+        assert ans["page"]["totalObjects"] == 18, ans["page"]["totalObjects"]
         assert len(ans["objects"]) == 10
 
     # Test with custom pagination values
-    async with sess.get(f"{objects_url}/study?page=2&per_page=3") as resp:
+    async with sess.get(f"{objects_url}/sample?page=2&per_page=3") as resp:
         assert resp.status == 200
         ans = await resp.json()
         assert ans["page"]["page"] == 2
         assert ans["page"]["size"] == 3
-        assert ans["page"]["totalPages"] == 5
-        assert ans["page"]["totalObjects"] == 14
+        assert ans["page"]["totalPages"] == 6, ans["page"]["totalPages"]
+        assert ans["page"]["totalObjects"] == 18, ans["page"]["totalObjects"]
         assert len(ans["objects"]) == 3
 
     # Test with wrong pagination values
-    async with sess.get(f"{objects_url}/study?page=-1") as resp:
+    async with sess.get(f"{objects_url}/sample?page=-1") as resp:
         assert resp.status == 400
-    async with sess.get(f"{objects_url}/study?per_page=0") as resp:
+    async with sess.get(f"{objects_url}/sample?per_page=0") as resp:
         assert resp.status == 400
 
     # Delete objects
-    await asyncio.gather(*[delete_object(sess, "study", accession_id) for accession_id, _ in files])
+    await asyncio.gather(*[delete_object(sess, "sample", accession_id) for accession_id, _ in files])
 
 
 async def test_metax_crud(sess, folder_id):
