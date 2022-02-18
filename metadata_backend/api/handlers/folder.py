@@ -187,7 +187,7 @@ class FolderAPIHandler(RESTAPIHandler):
         if "fundingReferences" in _info:
             for d in _info["fundingReferences"]:
                 d.update((k, "".join(v.split())) for k, v in d.items() if k == "funderIdentifierType")
-
+        # need to add titles and descriptions for datasets and study
         try:
             # keywords are only required for Metax integration
             # thus we remove them
