@@ -224,7 +224,7 @@ class ObjectAPIHandler(RESTAPIHandler):
             [await self._create_metax_dataset(req, collection, item) for item in objects]
 
         patch = self._prepare_folder_patch_new_object(collection, ids, patch_params)
-        await folder_op.update_folder(folder_id, patch)
+        await folder_op.update_folder(folder_id, patch, schema_type)
 
         # we don't create DOIs for drafts and we restrict doi creation to
         # study and datasets
