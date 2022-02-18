@@ -159,6 +159,8 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         # we need to check if there is already a study in a folder
         # we only allow one study per folder
+        # this is not enough to catch duplicate entries if updates happen in parallel
+        # that is why we check in db_service.update_study
         if not req.path.startswith("/drafts") and schema_type == "study":
             _ids = await folder_op.get_collection_objects(folder_id, collection)
             if len(_ids) == 1:
