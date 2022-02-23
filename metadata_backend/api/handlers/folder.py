@@ -80,7 +80,7 @@ class FolderAPIHandler(RESTAPIHandler):
                             raise web.HTTPBadRequest(reason=reason)
 
     async def get_folders(self, req: Request) -> Response:
-        """Get a set of folders owned by the user with pagination values.
+        """Get a set of folders owned by the project with pagination values.
 
         :param req: GET Request
         :returns: JSON list of folders available for the user
@@ -158,7 +158,7 @@ class FolderAPIHandler(RESTAPIHandler):
         url = f"{req.scheme}://{req.host}{req.path}"
         link_headers = await self._header_links(url, page, per_page, total_folders)
         LOG.debug(f"Pagination header links: {link_headers}")
-        LOG.info(f"Querying for user's folders resulted in {total_folders} folders")
+        LOG.info(f"Querying for project={project_id} folders resulted in {total_folders} folders")
         return web.Response(
             body=result,
             status=200,
@@ -168,8 +168,6 @@ class FolderAPIHandler(RESTAPIHandler):
 
     async def post_folder(self, req: Request) -> Response:
         """Save object folder to database.
-
-        Also assigns the folder to the current user.
 
         :param req: POST request
         :returns: JSON response containing folder ID for submitted folder

@@ -305,6 +305,65 @@ class Operator(BaseOperator):
         """
         super().__init__(mongo_database, "application/json", db_client)
 
+    async def query_templates_by_project(self, project_id: str) -> List[Dict[str, str]]:
+        """Query all template schemas for given project ID.
+
+        :param query: Dict containing query information
+        :returns: Paginated query result
+        """
+
+        templates: List[Dict[str, str]] = []
+
+        # List of possible template collections
+        collections = [
+            "template-analysis",
+            "template-dac",
+            "template-dataset",
+            "template-experiment",
+            "template-policy",
+            "template-run",
+            "template-sample",
+            "template-study",
+        ]
+
+        # Over all collections, query for accessionId and
+        # title (in study it's descriptor.studyTitle), cast them as displayTitle
+        # add schema name from current collection, bundle together
+        for collection in collections:
+
+            # Cast title as displayTitle
+            title = "$title"
+            if collection == "template-study":
+                # Study has title in slightly different format
+                title = "$descriptor.studyTitle"
+
+            # Query with projectId, get title and id, set schema with default value
+            _query = [
+                {
+                    "$match": {
+                        "projectId": project_id,
+                    },
+                },
+                {
+                    "$project": {
+                        "_id": 0,
+                        "displayTitle": title,
+                        "accessionId": "$accessionId",
+                        "schema": collection,
+                    },
+                },
+            ]
+            data_raw = await self.db_service.do_aggregate(collection, _query)
+
+            # Parse and bundle up
+            if not data_raw:
+                data = []
+            else:
+                data = [doc for doc in data_raw]
+            templates += data
+
+        return templates
+
     async def get_object_project(self, collection: str, accession_id: str) -> str:
         """Get the project ID the object is associated to.
 

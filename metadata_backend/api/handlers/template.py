@@ -15,6 +15,39 @@ from .restapi import RESTAPIHandler
 class TemplatesAPIHandler(RESTAPIHandler):
     """API Handler for Templates."""
 
+    async def get_templates(self, req: Request) -> Response:
+        """Get a set of templates owned by the project.
+
+        :param req: GET Request
+        :returns: JSON list of templates available for the user
+        """
+        project_id = self._get_param(req, "projectId")
+        db_client = req.app["db_client"]
+
+        user_operator = UserOperator(db_client)
+        current_user = get_session(req)["user_info"]
+        user = await user_operator.read_user(current_user)
+        user_has_project = await user_operator.check_user_has_project(project_id, user["userId"])
+        if not user_has_project:
+            reason = f"user {user['userId']} is not affiliated with project {project_id}"
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
+
+        operator = Operator(db_client)
+        templates = await operator.query_templates_by_project(project_id)
+
+        result = ujson.dumps(
+            templates,
+            escape_forward_slashes=False,
+        )
+
+        LOG.info(f"Querying for project={project_id} templates resulted in {len(templates)} templates")
+        return web.Response(
+            body=result,
+            status=200,
+            content_type="application/json",
+        )
+
     async def get_template(self, req: Request) -> Response:
         """Get one metadata template by its accession id.
 
