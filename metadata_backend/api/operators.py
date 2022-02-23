@@ -308,8 +308,8 @@ class Operator(BaseOperator):
     async def query_templates_by_project(self, project_id: str) -> List[Dict[str, str]]:
         """Query all template schemas for given project ID.
 
-        :param query: Dict containing query information
-        :returns: Paginated query result
+        :param project_id: project internal ID that owns templates
+        :returns: list of simplified template objects
         """
 
         templates: List[Dict[str, str]] = []
