@@ -337,7 +337,7 @@ async def post_template_json(sess, schema, filename, project_id):
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (folder) used for testing
     :param filename: name of the file used for testing.
-    :param project_id: id of the project the folder belongs to
+    :param project_id: id of the project the template belongs to
     """
     request_data = await create_request_json_data(schema, filename)
     request_data = json.loads(request_data)
@@ -355,6 +355,20 @@ async def post_template_json(sess, schema, filename, project_id):
             return ans
         else:
             return ans["accessionId"]
+
+
+async def get_templates(sess, project_id):
+    """Get templates from project.
+
+    :param sess: HTTP session in which request call is made
+    :param project_id: id of the project the template belongs to
+    """
+    async with sess.get(f"{templates_url}?projectId={project_id}") as resp:
+        LOG.debug(f"Requesting templates from project={project_id}")
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+        ans = await resp.json()
+        LOG.debug(f"Received {len(ans)} templates")
+        return ans
 
 
 async def get_template(sess, schema, template_id):
@@ -1319,6 +1333,12 @@ async def test_crud_users_works(sess, project_id):
 
     template_ids = await post_template_json(sess, "study", "SRP000539_list.json", project_id)
     assert len(template_ids) == 2, "templates could not be added as batch"
+
+    templates = await get_templates(sess, project_id)
+    assert len(templates) == 2, "did not find templates from project"
+    assert templates[0]["schema"] == "template-study", "wrong template schema"
+    title = "Highly integrated epigenome maps in Arabidopsis - whole genome shotgun bisulfite sequencing"
+    assert templates[0]["displayTitle"] == title, "wrong template title"
 
     # Delete user
     await delete_user(sess, user_id)
