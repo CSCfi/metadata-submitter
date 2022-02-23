@@ -35,8 +35,6 @@ class DatabaseTestCase(IsolatedAsyncioTestCase):
         self.user_stub = {
             "userId": self.user_id_stub,
             "name": "name",
-            "drafts": ["EGA123456", "EGA1234567"],  # DEPRECATED
-            "folders": ["EGA1234569"],  # DEPRECATED
         }
         self.data_stub = {
             "accessionId": self.id_stub,

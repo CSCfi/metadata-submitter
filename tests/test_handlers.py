@@ -73,8 +73,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.test_user = {
             "userId": self.user_id,
             "name": "tester",
-            "templates": [],  # DEPRECATED
-            "folders": ["FOL12345678"],  # DEPRECATED
         }
 
         self.operator_config = {
@@ -576,7 +574,6 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
     async def test_query_is_called_and_returns_json_in_correct_format(self):
         """Test query method calls operator and returns mocked JSON object."""
-        RESTAPIHandler._handle_user_objects_collection = make_mocked_coro(["EDAG3991701442770179", "EGA123456"])
         url = f"/objects/study?studyType=foo&name=bar&page={self.page_num}" f"&per_page={self.page_size}"
         response = await self.client.get(url)
         self.assertEqual(response.status, 200)
