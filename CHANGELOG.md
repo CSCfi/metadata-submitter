@@ -45,8 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - user is redirected to `/noproject` if key is empty or missing
   - new mandatory query parameter `projectId` in `GET /folders`
   - new mandatory JSON key `projectId` in `POST /folders` and `POST /templates`
-  - UNDECIDED: new endpoint `GET /templates` to replace `GET /users/current` `{"templates":[...]}`
-  - UNDECIDED: new endpoint `GET /project/{projectId}` to replace `GET /users/current` `{"templates":[...]}`
+  - new endpoint `GET /templates` to replace `GET /users/current` `{"templates":[...]}`
   - WARNING: breaking change that requires fresh database, because "project" is new information that did not exist before, and it can't be migrated to existing user-owned hierarchy
 
 ### Changed

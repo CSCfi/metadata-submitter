@@ -487,12 +487,6 @@ async def create_folder(data, user):
     data["metadataObjects"] = []
     try:
         await database["folder"].insert_one(data)
-        # DEPRECATED
-        # find_by_id = {"userId": user}
-        # append_op = {"$push": {"folders": {"$each": [folder_id], "$position": 0}}}
-        # await database["user"].find_one_and_update(
-        #     find_by_id, append_op, projection={"_id": False}, return_document=True
-        # )
         return folder_id
 
     except Exception as e:

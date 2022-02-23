@@ -124,28 +124,6 @@ class RESTAPIHandler:
 
             yield result
 
-    # DEPRECATED, what to do?
-    async def _handle_user_objects_collection(self, req: Request, collection: str) -> List:
-        """Retrieve list of objects accession ids belonging to user in collection.
-
-        :param req: HTTP request
-        :param collection: collection or schema of document
-        :returns: List
-        """
-        db_client = req.app["db_client"]
-        current_user = get_session(req)["user_info"]
-        user_op = UserOperator(db_client)
-        folder_op = FolderOperator(db_client)
-
-        user = await user_op.read_user(current_user)
-        res = self._get_collection_objects(folder_op, collection, user["folders"])
-
-        dt = []
-        async for r in res:
-            dt.extend(r)
-
-        return dt
-
     async def _get_data(self, req: Request) -> Dict:
         """Get the data content from a request.
 
