@@ -342,6 +342,9 @@ metagenomic
 metagenomics
 metatranscriptome
 metatranscriptomic
+metax
+metaxservicehandler
+metaxidentifier
 methylation
 methylcytidine
 mf
@@ -609,6 +612,7 @@ txt
 ui
 ujson
 umi
+uncomment
 unencryptedchecksum
 uniqueitems
 unlocalised
