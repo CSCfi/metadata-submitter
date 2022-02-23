@@ -8,7 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-
+- Integration with Metax service
+  - Adds new local container for testing against mocked Metax API
+  - Introduces new env vars: METAX_USER, METAX_PASS, METAX_URL
+  - Adds new key metaxIdentifier to Study and Dataset collections with dict {identifier: <metax_id>, status: "draft"|"published"}
+  - Adds new handler MetaxServiceHandler to take care of mapping Submitter metadata to Metax metadata and to connect to Metax API
 - Add patching of folders after object save and update operations
   - Object is added or updated to folder(submission) where it belongs with it's accession ID, schema, submission type, title and filename in the case of CSV and XML upload
   - Adds configuration for mypy linting to VScode devcontainer setup
