@@ -756,6 +756,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
+  /templates:
+    get:
+      tags:
+        - Query
+      summary: Get templates from selected project
+      parameters:
+        - name: projectId
+          in: query
+          description: project internal ID
+          schema:
+            type: string
+          required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Templates"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
   /templates/{schema}:
     post:
       tags:
@@ -1339,6 +1370,20 @@ components:
             type: string
             description: URL pointing to the schema source
             example: https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.sample.xsd
+    Templates:
+      type: array
+      items:
+        type: object
+        properties:
+          accessionId:
+            type: string
+            description: internal ID of template
+          displayTitle:
+            type: string
+            description: name of template to be displayed in UI
+          schema:
+            type: string
+            description: database collection name template belongs to
     Object:
       type: object
       required:
