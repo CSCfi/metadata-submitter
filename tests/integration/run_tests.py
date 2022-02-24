@@ -910,6 +910,24 @@ async def test_metax_crud(sess, folder_id):
             assert metax_resp.status == 404, f"HTTP Status code error - expected 404 Not Found, got {resp.status}"
 
 
+async def test_metax_id_not_updated_on_patch(sess, folder_id):
+    """Test that Metax id cannot be sent in patch.
+
+    :param sess: HTTP session in which request call is made
+    :param folder_id: id of the folder where objects reside
+    """
+    for schema, filename in {
+        ("study", "SRP000539.json"),
+        ("dataset", "dataset.json"),
+    }:
+        accession_id = await post_object_json(sess, schema, folder_id, filename)
+        async with sess.patch(
+            f"{objects_url}/{schema}/{accession_id}", data={"metaxIdentifier": {"identifier": "12345"}}
+        ) as resp:
+            LOG.debug(f"Try to patch object in {schema}")
+            assert resp.status == 400
+
+
 async def test_metax_publish_dataset(sess, folder_id):
     """Test publishing dataset to Metax service after folder(submission) is published.
 
@@ -1744,6 +1762,7 @@ async def main():
         }
         metax_folder_id = await post_folder(sess, metax_folder)
         await test_metax_crud(sess, metax_folder_id)
+        await test_metax_id_not_updated_on_patch(sess, metax_folder_id)
         await test_metax_publish_dataset(sess, metax_folder_id)
 
         # Test add, modify, validate and release action with submissions
