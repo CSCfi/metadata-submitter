@@ -4,6 +4,7 @@ services:
     build:
       dockerfile: Dockerfile-dev
       context: .
+      target: develop
     image: cscfi/metadata-submitter-dev
     container_name: "metadata_submitter_backend_dev"
     volumes:
@@ -14,6 +15,7 @@ services:
       - database
       - mockauth
       - mockdoi
+      - mockmetax
     restart: on-failure
     environment:
       - "MONGO_HOST=${MONGO_HOST}"
@@ -57,6 +59,7 @@ services:
     build:
       dockerfile: Dockerfile-dev
       context: .
+      target: develop
     image: cscfi/metadata-submitter-dev
     environment:
       - "LOG_LEVEL=${LOG_LEVEL}"
@@ -74,6 +77,7 @@ services:
     build:
       dockerfile: Dockerfile-dev
       context: .
+      target: develop
     image: cscfi/metadata-submitter-dev
     hostname: mockdoi
     expose:
@@ -87,6 +91,7 @@ services:
     build:
       dockerfile: Dockerfile-dev
       context: .
+      target: develop
     image: cscfi/metadata-submitter-dev
     hostname: mockmetax
     expose:
@@ -97,4 +102,4 @@ services:
       - ./tests/integration/mock_metax_api.py:/mock_metax_api.py
     entrypoint: ["python", "/mock_metax_api.py", "0.0.0.0", "8002"]
 volumes:
-  data: 
+  data:
