@@ -61,7 +61,7 @@ folders_url = f"{base_url}/folders"
 users_url = f"{base_url}/users"
 submit_url = f"{base_url}/submit"
 publish_url = f"{base_url}/publish"
-metax_url = "http://mockmetax:8002/rest/v2/datasets"
+metax_url = f"{os.getenv('METAX_URL', 'http://localhost:8002')}/rest/v2/datasets"
 # to form direct contact to db with create_folder()
 DATABASE = os.getenv("MONGO_DATABASE", "default")
 AUTHDB = os.getenv("MONGO_AUTHDB", "admin")
