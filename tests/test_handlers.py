@@ -824,8 +824,6 @@ class FolderHandlerTestCase(HandlersTestCase):
 
     async def test_get_folder_works(self):
         """Test folder is returned when correct folder id is given."""
-        RESTAPIHandler._handle_check_ownership = make_mocked_coro(True)
-
         response = await self.client.get("/folders/FOL12345678")
         self.assertEqual(response.status, 200)
         self.MockedFolderOperator().read_folder.assert_called_once()
