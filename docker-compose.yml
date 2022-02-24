@@ -13,6 +13,7 @@ services:
       - database
       - mockauth
       - mockdoi
+      - mockmetax
     restart: on-failure
     environment:
       - "MONGO_HOST=${MONGO_HOST}"
@@ -63,7 +64,7 @@ services:
       - 8000:8000
     volumes:
       - ./tests/integration/mock_auth.py:/mock_auth.py
-    entrypoint: [ "python", "/mock_auth.py", "0.0.0.0", "8000" ]
+    entrypoint: ["python", "/mock_auth.py", "0.0.0.0", "8000"]
   mockdoi:
     build:
       dockerfile: Dockerfile-dev
@@ -77,11 +78,12 @@ services:
       - 8001:8001
     volumes:
       - ./tests/integration/mock_doi_api.py:/mock_doi_api.py
-    entrypoint: [ "python", "/mock_doi_api.py", "0.0.0.0", "8001" ]
+    entrypoint: ["python", "/mock_doi_api.py", "0.0.0.0", "8001"]
   mockmetax:
     build:
       dockerfile: Dockerfile-dev
       context: .
+      target: develop
     image: cscfi/metadata-submitter-dev
     hostname: mockmetax
     expose:
