@@ -26,7 +26,7 @@ class MetaxServiceHandler:
 
         self.username = os.getenv("METAX_USER", "sd")
         self.password = os.getenv("METAX_PASS", "test")
-        self.metax_url = os.getenv("METAX_URL", "http://mockmetax:8002")
+        self.metax_url = os.getenv("METAX_URL", "http://localhost:8002")
         self.rest_route = "/rest/v2/datasets"
         self.publish_route = "/rpc/v2/datasets/publish_dataset"
 
