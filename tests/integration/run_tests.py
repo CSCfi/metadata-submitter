@@ -406,15 +406,14 @@ async def patch_template(sess, schema, template_id, update_filename, project_id)
         return ans_put["accessionId"]
 
 
-async def delete_template(sess, schema, template_id, project_id):
+async def delete_template(sess, schema, template_id):
     """Delete metadata object within session.
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (folder) used for testing
     :param template_id: id of the draft
-    :param template_id: id of the project the template belongs to
     """
-    async with sess.delete(f"{templates_url}/{schema}/{template_id}?projectId={project_id}") as resp:
+    async with sess.delete(f"{templates_url}/{schema}/{template_id}") as resp:
         LOG.debug(f"Deleting template object {template_id} from {schema}")
         assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
@@ -1327,7 +1326,7 @@ async def test_crud_users_works(sess, project_id):
         assert res["projectId"] == project_id
         assert res["identifiers"]["primaryId"] == "SRP000539"
 
-    await delete_template(sess, "study", template_id, project_id)
+    await delete_template(sess, "study", template_id)
     async with sess.get(f"{templates_url}/study/{template_id}") as resp:
         LOG.debug(f"Checking that template {template_id} was deleted")
         assert resp.status == 404

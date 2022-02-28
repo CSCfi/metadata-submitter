@@ -949,14 +949,16 @@ class UserOperator:
         """
         self.db_service = DBService(mongo_database, db_client)
 
-    async def check_user_has_doc(self, req: web.Request, collection: str, user_id: str, accession_id: str) -> bool:
+    async def check_user_has_doc(
+        self, req: web.Request, collection: str, user_id: str, accession_id: str
+    ) -> Tuple[bool, str]:
         """Check a folder/template belongs to same project the user is in.
 
         :param collection: collection it belongs to, it would be used as path
         :param user_id: user_id from session
         :param accession_id: document by accession_id
         :raises: HTTPUnprocessableEntity if more users seem to have same folder
-        :returns: True if accession_id belongs to user
+        :returns: True and project_id if accession_id belongs to user, False otherwise
         """
         LOG.debug(f"check that user {user_id} belongs to same project as {collection} {accession_id}")
 
@@ -978,7 +980,7 @@ class UserOperator:
         current_user = get_session(req)["user_info"]
         user = await user_operator.read_user(current_user)
         user_has_project = await user_operator.check_user_has_project(project_id, user["userId"])
-        return user_has_project
+        return user_has_project, project_id
 
     async def check_user_has_project(self, project_id: str, user_id: str) -> bool:
         """Check that user has project affiliation.

@@ -212,14 +212,13 @@ class TemplatesAPIHandler(RESTAPIHandler):
         schema_type = req.match_info["schema"]
         self._check_schema_exists(schema_type)
         collection = f"template-{schema_type}"
-        project_id = self._get_param(req, "projectId")
         accession_id = req.match_info["accessionId"]
         db_client = req.app["db_client"]
 
         await Operator(db_client).check_exists(collection, accession_id)
         project_operator = ProjectOperator(db_client)
 
-        project_ok = await self._handle_check_ownership(req, collection, accession_id)
+        project_ok, project_id = await self._handle_check_ownership(req, collection, accession_id)
         if project_ok:
             await project_operator.remove_templates(project_id, [accession_id])
         else:
