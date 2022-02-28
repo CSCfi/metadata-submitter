@@ -1,6 +1,6 @@
 """Handle HTTP methods for server."""
 from math import ceil
-from typing import Dict, Union, List, Any, Tuple
+from typing import Any, Dict, List, Tuple, Union
 
 import ujson
 from aiohttp import web
@@ -101,6 +101,13 @@ class ObjectAPIHandler(RESTAPIHandler):
         """
         _allowed_csv = ["sample"]
         schema_type = req.match_info["schema"]
+
+        folder_id = req.query.get("folder", "")
+        if not folder_id:
+            reason = "Folder is required query parameter. Please provide folder id where object is added to."
+            raise web.HTTPBadRequest(reason=reason)
+        patch_params = {}
+
         self._check_schema_exists(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
 
@@ -109,17 +116,18 @@ class ObjectAPIHandler(RESTAPIHandler):
         operator: Union[Operator, XMLOperator]
         if req.content_type == "multipart/form-data":
             _only_xml = False if schema_type in _allowed_csv else True
-            files, cont_type = await multipart_content(req, extract_one=True, expect_xml=_only_xml)
+            files, cont_type, filename = await multipart_content(req, extract_one=True, expect_xml=_only_xml)
             if cont_type == "xml":
                 # from this tuple we only care about the content
                 # files should be of form (content, schema)
                 content, _ = files[0]
             else:
-                # for CSV files we need to tread this as a list of tuples (content, schema)
+                # for CSV files we need to treat this as a list of tuples (content, schema)
                 content = files
             # If multipart request contains XML, XML operator is used.
             # Else the multipart request is expected to contain CSV file(s) which are converted into JSON.
             operator = XMLOperator(db_client) if cont_type == "xml" else Operator(db_client)
+            patch_params = {"cont_type": cont_type, "filename": filename}
         else:
             content = await self._get_data(req)
             if not req.path.startswith("/drafts"):
@@ -133,19 +141,25 @@ class ObjectAPIHandler(RESTAPIHandler):
             LOG.debug(f"Inserting multiple objects for {schema_type}.")
             ids: List[Dict[str, str]] = []
             for item in content:
-                accession_id = await operator.create_metadata_object(collection, item[0])
-                ids.append({"accessionId": accession_id})
+                accession_id, title = await operator.create_metadata_object(collection, item[0])
+                ids.append({"accessionId": accession_id, "title": title})
                 LOG.info(f"POST object with accesssion ID {accession_id} in schema {collection} was successful.")
             # we format like this to make it consistent with the response from /submit endpoint
-            data = [dict(item, **{"schema": schema_type}) for item in ids]
+            data = [dict({"accessionId": item["accessionId"]}, **{"schema": schema_type}) for item in ids]
             # we take the first result if we get multiple
             location_headers = CIMultiDict(Location=f"{url}/{data[0]['accessionId']}")
         else:
-            accession_id = await operator.create_metadata_object(collection, content)
+            accession_id, title = await operator.create_metadata_object(collection, content)
             data = {"accessionId": accession_id}
-
             location_headers = CIMultiDict(Location=f"{url}/{accession_id}")
             LOG.info(f"POST object with accesssion ID {accession_id} in schema {collection} was successful.")
+
+        # Gathering data for object to be added to folder
+        if not isinstance(data, List):
+            ids = [dict(data, **{"title": title})]
+        folder_op = FolderOperator(db_client)
+        patch = await self.prepare_folder_patch_new_object(collection, ids, patch_params)
+        await folder_op.update_folder(folder_id, patch)
 
         body = ujson.dumps(data, escape_forward_slashes=False)
 
@@ -221,8 +235,9 @@ class ObjectAPIHandler(RESTAPIHandler):
         db_client = req.app["db_client"]
         content: Union[Dict, str]
         operator: Union[Operator, XMLOperator]
+        filename = ""
         if req.content_type == "multipart/form-data":
-            files, _ = await multipart_content(req, extract_one=True, expect_xml=True)
+            files, _, filename = await multipart_content(req, extract_one=True, expect_xml=True)
             content, _ = files[0]
             operator = XMLOperator(db_client)
         else:
@@ -236,8 +251,17 @@ class ObjectAPIHandler(RESTAPIHandler):
         await operator.check_exists(collection, accession_id)
 
         await self._handle_check_ownedby_user(req, collection, accession_id)
+        folder_op = FolderOperator(db_client)
+        exists, folder_id, published = await folder_op.check_object_in_folder(collection, accession_id)
+        if exists:
+            if published:
+                reason = "Published objects cannot be updated."
+                LOG.error(reason)
+                raise web.HTTPUnauthorized(reason=reason)
 
-        accession_id = await operator.replace_metadata_object(collection, accession_id, content)
+        accession_id, title = await operator.replace_metadata_object(collection, accession_id, content)
+        patch = await self.prepare_folder_patch_update_object(collection, accession_id, title, filename)
+        await folder_op.update_folder(folder_id, patch)
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info(f"PUT object with accession ID {accession_id} in schema {collection} was successful.")
@@ -271,7 +295,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         await self._handle_check_ownedby_user(req, collection, accession_id)
 
         folder_op = FolderOperator(db_client)
-        exists, _, published = await folder_op.check_object_in_folder(collection, accession_id)
+        exists, folder_id, published = await folder_op.check_object_in_folder(collection, accession_id)
         if exists:
             if published:
                 reason = "Published objects cannot be updated."
@@ -280,6 +304,87 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         accession_id = await operator.update_metadata_object(collection, accession_id, content)
 
+        # If there's changed title it will be updated to folder
+        try:
+            title = content["descriptor"]["studyTitle"] if collection == "study" else content["title"]
+            patch = await self.prepare_folder_patch_update_object(collection, accession_id, title)
+            await folder_op.update_folder(folder_id, patch)
+        except (TypeError, KeyError):
+            pass
+
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info(f"PATCH object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
+
+    async def prepare_folder_patch_new_object(self, schema: str, ids: List, params: Dict[str, str]) -> List:
+        """Prepare patch operations list for adding an object or objects to a folder.
+
+        :param schema: schema of objects to be added to the folder
+        :param ids: object IDs
+        :param params: addidtional data required for db entry
+        :returns: list of patch operations
+        """
+        if not params.get("cont_type", None):
+            submission_type = "Form"
+        else:
+            submission_type = params["cont_type"].upper()
+
+        if schema.startswith("draft"):
+            path = "/drafts/-"
+        else:
+            path = "/metadataObjects/-"
+
+        patch = []
+        patch_ops: Dict[str, Any] = {}
+        for id in ids:
+            patch_ops = {
+                "op": "add",
+                "path": path,
+                "value": {
+                    "accessionId": id["accessionId"],
+                    "schema": schema,
+                    "tags": {
+                        "submissionType": submission_type,
+                        "displayTitle": id["title"],
+                    },
+                },
+            }
+            if submission_type != "Form":
+                patch_ops["value"]["tags"]["fileName"] = params["filename"]
+            patch.append(patch_ops)
+        return patch
+
+    async def prepare_folder_patch_update_object(
+        self, schema: str, accession_id: str, title: str, filename: str = ""
+    ) -> List:
+        """Prepare patch operation for updating object's title in a folder.
+
+        :param schema: schema of object to be updated
+        :param accession_id: object ID
+        :param title: title to be updated
+        :returns: dict with patch operation
+        """
+        if schema.startswith("draft"):
+            path = "/drafts"
+        else:
+            path = "/metadataObjects"
+
+        patch_op = {
+            "op": "replace",
+            "match": {path.replace("/", ""): {"$elemMatch": {"schema": schema, "accessionId": accession_id}}},
+        }
+        if not filename:
+            patch_op.update(
+                {
+                    "path": f"{path}/$/tags/displayTitle",
+                    "value": title,
+                }
+            )
+        else:
+            patch_op.update(
+                {
+                    "path": f"{path}/$/tags",
+                    "value": {"submissionType": "XML", "fileName": filename, "displayTitle": title},
+                }
+            )
+        return [patch_op]

@@ -69,7 +69,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
                     reason = f"template key is missing from request body for element: {num}."
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
-                accession_id = await operator.create_metadata_object(collection, tmpl["template"])
+                accession_id, _ = await operator.create_metadata_object(collection, tmpl["template"])
                 data = [{"accessionId": accession_id, "schema": collection}]
                 if "tags" in tmpl:
                     data[0]["tags"] = tmpl["tags"]
@@ -82,7 +82,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
                 reason = "template key is missing from request body."
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
-            accession_id = await operator.create_metadata_object(collection, content["template"])
+            accession_id, _ = await operator.create_metadata_object(collection, content["template"])
             data = [{"accessionId": accession_id, "schema": collection}]
             if "tags" in content:
                 data[0]["tags"] = content["tags"]
