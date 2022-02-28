@@ -1161,6 +1161,51 @@ class TestOperators(IsolatedAsyncioTestCase):
         await operator._check_project_exists(self.project_id)
         operator.db_service.exists.assert_called_once()
 
+    async def test_project_objects_remove_passes(self):
+        """Test remove objects method for projects works."""
+        operator = ProjectOperator(self.client)
+        operator.db_service.exists.return_value = True
+        operator.db_service.remove.return_value = None
+        await operator.remove_templates(self.project_generated_id, ["id"])
+        operator.db_service.exists.assert_called_once()
+        operator.db_service.remove.assert_called_once()
+        self.assertEqual(len(operator.db_service.remove.mock_calls), 1)
+
+    async def test_project_objects_remove_fails(self):
+        """Test remove objects method for projects fails."""
+        operator = ProjectOperator(self.client)
+        operator.db_service.exists.return_value = True
+        operator.db_service.remove.side_effect = ConnectionFailure
+        with self.assertRaises(HTTPBadRequest):
+            await operator.remove_templates(self.project_generated_id, ["id"])
+
+    async def test_project_objects_append_passes(self):
+        """Test append objects method for projects works."""
+        operator = ProjectOperator(self.client)
+        operator.db_service.exists.return_value = True
+        operator.db_service.append.return_value = True
+        await operator.assign_templates(self.project_generated_id, [])
+        operator.db_service.exists.assert_called_once()
+        operator.db_service.append.assert_called_once()
+        self.assertEqual(len(operator.db_service.append.mock_calls), 1)
+
+    async def test_project_objects_append_on_result_fails(self):
+        """Test append objects method for projects fails on db response validation."""
+        operator = ProjectOperator(self.client)
+        operator.db_service.exists.return_value = True
+        operator.db_service.append.return_value = False
+        with self.assertRaises(HTTPBadRequest):
+            await operator.assign_templates(self.project_generated_id, [])
+            operator.db_service.exists.assert_called_once()
+            operator.db_service.append.assert_called_once()
+
+    async def test_project_objects_assing_fails(self):
+        """Test append objects method for projects fails."""
+        operator = ProjectOperator(self.client)
+        operator.db_service.exists.side_effect = ConnectionFailure
+        with self.assertRaises(HTTPBadRequest):
+            await operator.assign_templates(self.project_generated_id, [])
+
 
 if __name__ == "__main__":
     unittest.main()

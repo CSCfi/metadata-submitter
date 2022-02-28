@@ -406,14 +406,15 @@ async def patch_template(sess, schema, template_id, update_filename, project_id)
         return ans_put["accessionId"]
 
 
-async def delete_template(sess, schema, template_id):
+async def delete_template(sess, schema, template_id, project_id):
     """Delete metadata object within session.
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (folder) used for testing
     :param template_id: id of the draft
+    :param template_id: id of the project the template belongs to
     """
-    async with sess.delete(f"{templates_url}/{schema}/{template_id}") as resp:
+    async with sess.delete(f"{templates_url}/{schema}/{template_id}?projectId={project_id}") as resp:
         LOG.debug(f"Deleting template object {template_id} from {schema}")
         assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
@@ -1326,19 +1327,17 @@ async def test_crud_users_works(sess, project_id):
         assert res["projectId"] == project_id
         assert res["identifiers"]["primaryId"] == "SRP000539"
 
-    await delete_template(sess, "study", template_id)
+    await delete_template(sess, "study", template_id, project_id)
     async with sess.get(f"{templates_url}/study/{template_id}") as resp:
         LOG.debug(f"Checking that template {template_id} was deleted")
         assert resp.status == 404
 
     template_ids = await post_template_json(sess, "study", "SRP000539_list.json", project_id)
     assert len(template_ids) == 2, "templates could not be added as batch"
-
     templates = await get_templates(sess, project_id)
-    assert len(templates) == 2, "did not find templates from project"
+
+    assert len(templates) == 2, f"should be 2 templates, got {len(templates)}"
     assert templates[0]["schema"] == "template-study", "wrong template schema"
-    title = "Highly integrated epigenome maps in Arabidopsis - whole genome shotgun bisulfite sequencing"
-    assert templates[0]["displayTitle"] == title, "wrong template title"
 
     # Delete user
     await delete_user(sess, user_id)
