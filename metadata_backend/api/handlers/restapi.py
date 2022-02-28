@@ -1,7 +1,7 @@
 """Handle HTTP methods for server."""
 import json
 from math import ceil
-from typing import AsyncGenerator, Dict, List
+from typing import AsyncGenerator, Dict, List, Tuple
 
 import ujson
 from aiohttp import web
@@ -64,7 +64,7 @@ class RESTAPIHandler:
             raise web.HTTPBadRequest(reason=reason)
         return param
 
-    async def _handle_check_ownership(self, req: Request, collection: str, accession_id: str) -> bool:
+    async def _handle_check_ownership(self, req: Request, collection: str, accession_id: str) -> Tuple[bool, str]:
         """Check if object belongs to project.
 
         For this we need to check the object is in exactly 1 folder and we need to check
@@ -74,13 +74,14 @@ class RESTAPIHandler:
         :param collection: collection or schema of document
         :param doc_id: document accession id
         :raises: HTTPUnauthorized if accession id does not belong to user
-        :returns: bool
+        :returns: bool and possible project id
         """
         db_client = req.app["db_client"]
         current_user = get_session(req)["user_info"]
         user_op = UserOperator(db_client)
         _check = False
 
+        project_id = ""
         if collection != "folders":
 
             folder_op = FolderOperator(db_client)
@@ -89,23 +90,23 @@ class RESTAPIHandler:
             #     _check = True
             if check:
                 # if the draft object is found in folder we just need to check if the folder belongs to user
-                _check = await user_op.check_user_has_doc(req, "folders", current_user, folder_id)
+                _check, project_id = await user_op.check_user_has_doc(req, "folders", current_user, folder_id)
             elif collection.startswith("template"):
                 # if collection is template but not found in a folder
                 # we also check if object is in templates of the user
                 # they will be here if they will not be deleted after publish
-                _check = await user_op.check_user_has_doc(req, collection, current_user, accession_id)
+                _check, project_id = await user_op.check_user_has_doc(req, collection, current_user, accession_id)
             else:
                 _check = False
         else:
-            _check = await user_op.check_user_has_doc(req, collection, current_user, accession_id)
+            _check, project_id = await user_op.check_user_has_doc(req, collection, current_user, accession_id)
 
         if not _check:
             reason = f"{collection} {accession_id}."
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)
 
-        return _check
+        return _check, project_id
 
     async def _get_collection_objects(
         self, folder_op: AsyncIOMotorClient, collection: str, seq: List
