@@ -106,6 +106,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         if not folder_id:
             reason = "Folder is required query parameter. Please provide folder id where object is added to."
             raise web.HTTPBadRequest(reason=reason)
+
         await self._handle_check_ownership(req, "folders", folder_id)
         patch_params = {}
 
