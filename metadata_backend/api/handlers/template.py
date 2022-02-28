@@ -123,6 +123,10 @@ class TemplatesAPIHandler(RESTAPIHandler):
                 # Move projectId to template structure, so that it is saved in mongo
                 tmpl["template"]["projectId"] = tmpl["projectId"]
                 accession_id, _ = await operator.create_metadata_object(collection, tmpl["template"])
+                data = [{"accessionId": accession_id, "schema": collection}]
+                if "tags" in tmpl:
+                    data[0]["tags"] = tmpl["tags"]
+                await project_op.assign_templates(tmpl["projectId"], data)
                 tmpl_list.append({"accessionId": accession_id})
 
             body = ujson.dumps(tmpl_list, escape_forward_slashes=False)
@@ -152,6 +156,10 @@ class TemplatesAPIHandler(RESTAPIHandler):
             # Move projectId to template structure, so that it is saved in mongo
             content["template"]["projectId"] = content["projectId"]
             accession_id, _ = await operator.create_metadata_object(collection, content["template"])
+            data = [{"accessionId": accession_id, "schema": collection}]
+            if "tags" in content:
+                data[0]["tags"] = content["tags"]
+            await project_op.assign_templates(content["projectId"], data)
 
             body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
 
@@ -204,13 +212,20 @@ class TemplatesAPIHandler(RESTAPIHandler):
         schema_type = req.match_info["schema"]
         self._check_schema_exists(schema_type)
         collection = f"template-{schema_type}"
-
+        project_id = self._get_param(req, "projectId")
         accession_id = req.match_info["accessionId"]
         db_client = req.app["db_client"]
 
         await Operator(db_client).check_exists(collection, accession_id)
+        project_operator = ProjectOperator(db_client)
 
-        await self._handle_check_ownership(req, collection, accession_id)
+        project_ok = await self._handle_check_ownership(req, collection, accession_id)
+        if project_ok:
+            await project_operator.remove_templates(project_id, [accession_id])
+        else:
+            reason = "This template does not belong to this project."
+            LOG.error(reason)
+            raise web.HTTPUnprocessableEntity(reason=reason)
 
         accession_id = await Operator(db_client).delete_metadata_object(collection, accession_id)
 

@@ -305,64 +305,26 @@ class Operator(BaseOperator):
         """
         super().__init__(mongo_database, "application/json", db_client)
 
-    async def query_templates_by_project(self, project_id: str) -> List[Dict[str, str]]:
-        """Query all template schemas for given project ID.
+    async def query_templates_by_project(self, project_id: str) -> List[Dict[str, Union[Dict[str, str], str]]]:
+        """Get templates list from given project ID.
 
         :param project_id: project internal ID that owns templates
-        :returns: list of simplified template objects
+        :returns: list of templates in project
         """
+        try:
+            templates_cursor = self.db_service.query(
+                "project", {"projectId": project_id}, custom_projection={"_id": 0, "templates": 1}
+            )
+            templates = [template async for template in templates_cursor]
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting templates from project {project_id}: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
 
-        templates: List[Dict[str, str]] = []
-
-        # List of possible template collections
-        collections = [
-            "template-analysis",
-            "template-dac",
-            "template-dataset",
-            "template-experiment",
-            "template-policy",
-            "template-run",
-            "template-sample",
-            "template-study",
-        ]
-
-        # Over all collections, query for accessionId and
-        # title (in study it's descriptor.studyTitle), cast them as displayTitle
-        # add schema name from current collection, bundle together
-        for collection in collections:
-
-            # Cast title as displayTitle
-            title = "$title"
-            if collection == "template-study":
-                # Study has title in slightly different format
-                title = "$descriptor.studyTitle"
-
-            # Query with projectId, get title and id, set schema with default value
-            _query = [
-                {
-                    "$match": {
-                        "projectId": project_id,
-                    },
-                },
-                {
-                    "$project": {
-                        "_id": 0,
-                        "displayTitle": title,
-                        "accessionId": "$accessionId",
-                        "schema": collection,
-                    },
-                },
-            ]
-            data_raw = await self.db_service.do_aggregate(collection, _query)
-
-            # Parse and bundle up
-            if not data_raw:
-                data = []
-            else:
-                data = [doc for doc in data_raw]
-            templates += data
-
-        return templates
+        if len(templates) == 1:
+            return templates[0]["templates"]
+        else:
+            return []
 
     async def get_object_project(self, collection: str, accession_id: str) -> str:
         """Get the project ID the object is associated to.
@@ -1220,7 +1182,7 @@ class ProjectOperator:
         :raises: HTTPBadRequest if error occurs during the process of insert
         :returns: Project id for the project inserted to database
         """
-        project_data: Dict[str, str] = dict()
+        project_data: Dict[str, Union[str, List[str]]] = dict()
 
         try:
             existing_project_id = await self.db_service.exists_project_by_external_id(project_number)
@@ -1229,6 +1191,7 @@ class ProjectOperator:
                 return existing_project_id
             else:
                 project_id = self._generate_project_id()
+                project_data["templates"] = []
                 project_data["projectId"] = project_id
                 project_data["externalId"] = project_number
                 insert_success = await self.db_service.create("project", project_data)
@@ -1256,6 +1219,52 @@ class ProjectOperator:
             reason = f"Project with id {project_id} was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
+
+    async def assign_templates(self, project_id: str, object_ids: List) -> None:
+        """Assing templates to project.
+
+        :param project_id: ID of project to update
+        :param object_ids: ID or list of IDs of template(s) to assign
+        :raises: HTTPBadRequest if assigning templates to project was not successful
+        returns: None
+        """
+        try:
+            await self._check_project_exists(project_id)
+            assign_success = await self.db_service.append(
+                "project", project_id, {"templates": {"$each": object_ids, "$position": 0}}
+            )
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting project: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        if not assign_success:
+            reason = "Assigning templates to project failed."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        LOG.info(f"Assigning templates={object_ids} to project={project_id} succeeded.")
+
+    async def remove_templates(self, project_id: str, object_ids: List) -> None:
+        """Remove templates from project.
+
+        :param project_id: ID of project to update
+        :param object_ids: ID or list of IDs of template(s) to remove
+        :raises: HTTPBadRequest if db connection fails
+        returns: None
+        """
+        remove_content: Dict
+        try:
+            await self._check_project_exists(project_id)
+            for obj in object_ids:
+                remove_content = {"templates": {"accessionId": obj}}
+                await self.db_service.remove("project", project_id, remove_content)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while removing templates from project: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        LOG.info(f"Removing templates={object_ids} from project={project_id} succeeded.")
 
     def _generate_project_id(self) -> str:
         """Generate random project id.
