@@ -164,4 +164,7 @@ metax_config = {
     "username": os.getenv("METAX_USER", "sd"),
     "password": os.getenv("METAX_PASS", "test"),
     "url": os.getenv("METAX_URL", "http://mockmetax:8002"),
+    "rest_route": "/rest/v2/datasets",
+    "publish_route": "/rpc/v2/datasets/publish_dataset",
+    "catalog_pid": "urn:nbn:fi:att:data-catalog-sd",
 }
