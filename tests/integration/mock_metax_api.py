@@ -41,7 +41,6 @@ async def get_dataset(req: web.Request) -> web.Response:
     :return: HTTP response with mocked Metax dataset data
     """
     metax_id = req.match_info["metax_id"]
-    # await asyncio.sleep(1)
     LOG.info(f"Retrieving Metax dataset {metax_id}")
     if not metax_id:
         LOG.error("Query params missing Metax ID.")
@@ -191,7 +190,7 @@ async def delete_dataset(req: web.Request) -> web.Response:
     else:
         del drafts[metax_id]
     LOG.info(f"Deleted Metax dataset with identifier {metax_id}")
-    return web.Response(status=204)
+    return web.HTTPNoContent()
 
 
 async def validate_payload(req: web.Request, draft=True) -> dict:
