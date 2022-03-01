@@ -44,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - new mandatory query parameter `projectId` in `GET /folders`
   - new mandatory JSON key `projectId` in `POST /folders` and `POST /templates`
   - new endpoint `GET /templates` to replace `GET /users/current` `{"templates":[...]}`
+  - new JSON keys `index` and `tags` to `PATCH /templates/schema/templateId`, same values as were previously used in `PATCH /user` which is now removed
   - WARNING: breaking change that requires fresh database, because "project" is new information that did not exist before, and it can't be migrated to existing user-owned hierarchy
 
 ### Changed

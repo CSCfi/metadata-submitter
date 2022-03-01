@@ -385,19 +385,15 @@ async def get_template(sess, schema, template_id):
         return json.dumps(ans)
 
 
-async def patch_template(sess, schema, template_id, update_filename, project_id):
+async def patch_template(sess, schema, template_id, update_filename):
     """Patch one metadata object within session, return accessionId.
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (folder) used for testing
     :param template_id: id of the draft
     :param update_filename: name of the file used to use for updating data.
-    :param project_id: id of the project the folder belongs to
     """
     request_data = await create_request_json_data(schema, update_filename)
-    request_data = json.loads(request_data)
-    request_data["projectId"] = project_id
-    request_data = json.dumps(request_data)
     async with sess.patch(f"{templates_url}/{schema}/{template_id}", data=request_data) as resp:
         LOG.debug(f"Update draft object in {schema}")
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
@@ -1318,13 +1314,18 @@ async def test_crud_users_works(sess, project_id):
         assert resp.status == 404
 
     template_id = await post_template_json(sess, "study", "SRP000539_template.json", project_id)
-    await patch_template(sess, "study", template_id, "patch.json", project_id)
+    await patch_template(sess, "study", template_id, "patch.json")
     async with sess.get(f"{templates_url}/study/{template_id}") as resp:
         LOG.debug(f"Checking that template: {template_id} was added")
         res = await resp.json()
         assert res["accessionId"] == template_id
         assert res["projectId"] == project_id
         assert res["identifiers"]["primaryId"] == "SRP000539"
+
+    async with sess.get(f"{templates_url}?projectId={project_id}") as resp:
+        LOG.debug("Checking that template display title was updated in separate templates list")
+        res = await resp.json()
+        assert res[0]["tags"]["displayTitle"] == "new name"
 
     await delete_template(sess, "study", template_id)
     async with sess.get(f"{templates_url}/study/{template_id}") as resp:

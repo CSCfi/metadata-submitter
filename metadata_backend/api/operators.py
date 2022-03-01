@@ -1268,6 +1268,29 @@ class ProjectOperator:
 
         LOG.info(f"Removing templates={object_ids} from project={project_id} succeeded.")
 
+    async def update_project(self, project_id: str, patch: List) -> str:
+        """Update project object in database.
+
+        :param project_id: ID of project to update
+        :param patch: Patch operations determined in the request
+        :returns: ID of the project updated to database
+        """
+        try:
+            await self._check_project_exists(project_id)
+            update_success = await self.db_service.patch("project", project_id, patch)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting project: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        if not update_success:
+            reason = "Updating project in database failed for some reason."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        else:
+            LOG.info(f"Updating project={project_id} to database succeeded.")
+            return project_id
+
     def _generate_project_id(self) -> str:
         """Generate random project id.
 
