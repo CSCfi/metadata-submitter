@@ -1,10 +1,10 @@
 """Class for handling calls to METAX API."""
-import os
 from typing import Any, Dict
 
 import aiohttp
 from aiohttp.web import HTTPBadRequest, HTTPError, HTTPForbidden, HTTPNotFound, Request
 
+from ..conf.conf import metax_config
 from ..helpers.logger import LOG
 from .middlewares import get_session
 from .operators import FolderOperator, Operator, UserOperator
@@ -24,13 +24,12 @@ class MetaxServiceHandler:
         self.req = req
         self.db_client = self.req.app["db_client"]
 
-        self.username = os.getenv("METAX_USER", "sd")
-        self.password = os.getenv("METAX_PASS", "test")
-        self.metax_url = os.getenv("METAX_URL", "http://localhost:8002")
-        self.rest_route = "/rest/v2/datasets"
-        self.publish_route = "/rpc/v2/datasets/publish_dataset"
-
-        catalog_pid = "urn:nbn:fi:att:data-catalog-sd"
+        self.username = metax_config["username"]
+        self.password = metax_config["password"]
+        self.metax_url = metax_config["url"]
+        self.rest_route = metax_config["rest_route"]
+        self.publish_route = metax_config["publish_route"]
+        catalog_pid = metax_config["catalog_pid"]
 
         self.minimal_dataset_template: Dict[Any, Any] = {
             "data_catalog": catalog_pid,
