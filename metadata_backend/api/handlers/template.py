@@ -193,8 +193,24 @@ class TemplatesAPIHandler(RESTAPIHandler):
 
         await operator.check_exists(collection, accession_id)
 
-        await self._handle_check_ownership(req, collection, accession_id)
+        _, project_id = await self._handle_check_ownership(req, collection, accession_id)
 
+        # Update the templates-list in project-collection
+        if "index" in content and "tags" in content:
+            LOG.debug("update template-list tags")
+            index = content.pop("index")
+            tags = content.pop("tags")
+            update_operation = [
+                {
+                    "op": "replace",
+                    "path": f"/templates/{index}/tags",
+                    "value": tags,
+                }
+            ]
+            project_operator = ProjectOperator(db_client)
+            await project_operator.update_project(project_id, update_operation)
+
+        # Update the actual template data in template-collection
         accession_id = await operator.update_metadata_object(collection, accession_id, content)
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)

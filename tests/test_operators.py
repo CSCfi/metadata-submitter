@@ -1206,6 +1206,39 @@ class TestOperators(IsolatedAsyncioTestCase):
         with self.assertRaises(HTTPBadRequest):
             await operator.assign_templates(self.project_generated_id, [])
 
+    async def test_update_project_fail_no_project(self):
+        """Test that project which does not exist can not be updated."""
+        operator = ProjectOperator(self.client)
+        with self.assertRaises(HTTPNotFound):
+            with patch(
+                "metadata_backend.api.operators.ProjectOperator._check_project_exists", side_effect=HTTPNotFound
+            ):
+                await operator.update_project(self.project_generated_id, [])
+
+    async def test_update_project_fail_connfail(self):
+        """Test project update failure with database connection failure."""
+        operator = ProjectOperator(self.client)
+        operator.db_service.patch.side_effect = ConnectionFailure
+        with self.assertRaises(HTTPBadRequest):
+            with patch("metadata_backend.api.operators.ProjectOperator._check_project_exists", return_value=True):
+                await operator.update_project(self.project_generated_id, [])
+
+    async def test_update_project_fail_general(self):
+        """Test project update failure with general error."""
+        operator = ProjectOperator(self.client)
+        operator.db_service.patch.return_value = False
+        with self.assertRaises(HTTPBadRequest):
+            with patch("metadata_backend.api.operators.ProjectOperator._check_project_exists", return_value=True):
+                await operator.update_project(self.project_generated_id, [])
+
+    async def test_update_project_pass(self):
+        """Test project update passes."""
+        operator = ProjectOperator(self.client)
+        operator.db_service.patch.return_value = True
+        with patch("metadata_backend.api.operators.ProjectOperator._check_project_exists", return_value=True):
+            pid = await operator.update_project(self.project_generated_id, [])
+            self.assertEqual(pid, self.project_generated_id)
+
 
 if __name__ == "__main__":
     unittest.main()
