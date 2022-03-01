@@ -4,10 +4,10 @@ from typing import Any, Dict
 import aiohttp
 from aiohttp.web import HTTPBadRequest, HTTPError, HTTPForbidden, HTTPNotFound, Request
 
+from ..api.middlewares import get_session
+from ..api.operators import FolderOperator, Operator, UserOperator
 from ..conf.conf import metax_config
-from ..helpers.logger import LOG
-from .middlewares import get_session
-from .operators import FolderOperator, Operator, UserOperator
+from .logger import LOG
 
 
 class MetaxServiceHandler:
