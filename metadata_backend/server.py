@@ -106,7 +106,6 @@ async def init() -> web.Application:
         web.patch("/publish/{folderId}", _folder.publish_folder),
         # users operations
         web.get("/users/{userId}", _user.get_user),
-        web.patch("/users/{userId}", _user.patch_user),
         web.delete("/users/{userId}", _user.delete_user),
         # submit
         web.post("/submit", _submission.submit),
