@@ -678,25 +678,6 @@ class UserHandlerTestCase(HandlersTestCase):
         await self.client.delete("/users/current")
         self.MockedUserOperator().delete_user.assert_called_once()
 
-    async def test_update_user_fails_with_wrong_key(self):
-        """Test that user object does not update when forbidden keys are provided."""
-        data = [{"op": "add", "path": "/userId"}]
-        response = await self.client.patch("/users/current", json=data)
-        self.assertEqual(response.status, 400)
-        json_resp = await response.json()
-        reason = "Request contains '/userId' key that cannot be updated to user object"
-        self.assertEqual(reason, json_resp["detail"])
-
-    async def test_update_user_passes(self):
-        """Test that user object would update with correct keys."""
-        self.MockedUserOperator().update_user.return_value = self.user_id
-        data = [{"op": "add", "path": "/templates/-", "value": [{"accessionId": "3", "schema": "sample"}]}]
-        response = await self.client.patch("/users/current", json=data)
-        self.MockedUserOperator().update_user.assert_called_once()
-        self.assertEqual(response.status, 200)
-        json_resp = await response.json()
-        self.assertEqual(json_resp["userId"], self.user_id)
-
 
 class FolderHandlerTestCase(HandlersTestCase):
     """Folder API endpoint class test cases."""

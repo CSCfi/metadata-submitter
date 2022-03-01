@@ -1,6 +1,4 @@
 """Handle HTTP methods for server."""
-import re
-from typing import Any
 
 import ujson
 from aiohttp import web
@@ -15,59 +13,6 @@ from ..operators import UserOperator
 
 class UserAPIHandler(RESTAPIHandler):
     """API Handler for users."""
-
-    def _check_patch_user(self, patch_ops: Any) -> None:
-        """Check patch operations in request are valid.
-
-        We check that ``folders`` have string values (one or a list)
-        and ``drafts`` have ``_required_values``.
-        For tags we check that the ``submissionType`` takes either ``XML`` or
-        ``Form`` as values.
-        :param patch_ops: JSON patch request
-        :raises: HTTPBadRequest if request does not fullfil one of requirements
-        :raises: HTTPUnauthorized if request tries to do anything else than add or replace
-        :returns: None
-        """
-        _arrays = ["/templates/-", "/folders/-"]
-        _required_values = ["schema", "accessionId"]
-        _tags = re.compile("^/(templates)/[0-9]*/(tags)$")
-        for op in patch_ops:
-            if _tags.match(op["path"]):
-                LOG.info(f"{op['op']} on tags in folder")
-                if "submissionType" in op["value"].keys() and op["value"]["submissionType"] not in ["XML", "Form"]:
-                    reason = "submissionType is restricted to either 'XML' or 'Form' values."
-                    LOG.error(reason)
-                    raise web.HTTPBadRequest(reason=reason)
-                pass
-            else:
-                if all(i not in op["path"] for i in _arrays):
-                    reason = f"Request contains '{op['path']}' key that cannot be updated to user object"
-                    LOG.error(reason)
-                    raise web.HTTPBadRequest(reason=reason)
-                if op["op"] in ["remove", "copy", "test", "move", "replace"]:
-                    reason = f"{op['op']} on {op['path']} is not allowed."
-                    LOG.error(reason)
-                    raise web.HTTPUnauthorized(reason=reason)
-                if op["path"] == "/folders/-":  # DEPRECATED, what to do?
-                    if not (isinstance(op["value"], str) or isinstance(op["value"], list)):
-                        reason = "We only accept string folder IDs."
-                        LOG.error(reason)
-                        raise web.HTTPBadRequest(reason=reason)
-                if op["path"] == "/templates/-":  # DEPRECATED, what to do?
-                    _ops = op["value"] if isinstance(op["value"], list) else [op["value"]]
-                    for item in _ops:
-                        if not all(key in item.keys() for key in _required_values):
-                            reason = "accessionId and schema are required fields."
-                            LOG.error(reason)
-                            raise web.HTTPBadRequest(reason=reason)
-                        if (
-                            "tags" in item
-                            and "submissionType" in item["tags"]
-                            and item["tags"]["submissionType"] not in ["XML", "Form"]
-                        ):
-                            reason = "submissionType is restricted to either 'XML' or 'Form' values."
-                            LOG.error(reason)
-                            raise web.HTTPBadRequest(reason=reason)
 
     async def get_user(self, req: Request) -> Response:
         """Get one user by its user ID.
@@ -91,31 +36,6 @@ class UserAPIHandler(RESTAPIHandler):
         return web.Response(
             body=ujson.dumps(user, escape_forward_slashes=False), status=200, content_type="application/json"
         )
-
-    async def patch_user(self, req: Request) -> Response:
-        """Update user object with a specific user ID.
-
-        :param req: PATCH request
-        :raises: HTTPUnauthorized if not current user
-        :returns: JSON response containing user ID for updated user object
-        """
-        user_id = req.match_info["userId"]
-        if user_id != "current":
-            LOG.info(f"User ID {user_id} patch was requested")
-            raise web.HTTPUnauthorized(reason="Only current user operations are allowed")
-        db_client = req.app["db_client"]
-
-        patch_ops = await self._get_data(req)
-        self._check_patch_user(patch_ops)
-
-        operator = UserOperator(db_client)
-
-        current_user = get_session(req)["user_info"]
-        user = await operator.update_user(current_user, patch_ops if isinstance(patch_ops, list) else [patch_ops])
-
-        body = ujson.dumps({"userId": user})
-        LOG.info(f"PATCH user with ID {user} was successful.")
-        return web.Response(body=body, status=200, content_type="application/json")
 
     async def delete_user(self, req: Request) -> Response:
         """Delete user from database.
