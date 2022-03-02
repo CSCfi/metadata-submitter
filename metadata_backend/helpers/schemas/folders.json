@@ -946,7 +946,6 @@
         "studyIdentifier": {
           "type": "object",
           "required": [
-            "accessionId",
             "identifier",
             "url"
           ],
@@ -969,10 +968,6 @@
                 }
               }
             },
-            "accessionId": {
-              "type": "string",
-              "title": "Internal accessionId for the study"
-            },
             "url": {
               "type": "string",
               "title": "URL of the digital location of the object"
@@ -988,7 +983,6 @@
           "items": {
             "type": "object",
             "required": [
-              "accessionId",
               "identifier",
               "url"
             ],
@@ -1010,10 +1004,6 @@
                     "title": "A persistent identifier for a resource"
                   }
                 }
-              },
-              "accessionId": {
-                "type": "string",
-                "title": "Internal accessionid for the dataset"
               },
               "url": {
                 "type": "string",
