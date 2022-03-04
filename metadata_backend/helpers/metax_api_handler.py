@@ -203,16 +203,17 @@ class MetaxServiceHandler:
                             f"Object {object['schema']} with accession ID {object['accessionId']} is "
                             "published to Metax service."
                         )
-                        await operator.update_metadata_object(
-                            object["schema"],
-                            object["accessionId"],
-                            {
-                                "metaxIdentifier": {
-                                    "identifier": metax_id,
-                                    "status": "published",
-                                }
-                            },
-                        )
+                        # This must be updated as Metax identifier will be moved to folder from object after publishing
+                        # await operator.update_metadata_object(
+                        #     object["schema"],
+                        #     object["accessionId"],
+                        #     {
+                        #         "metaxIdentifier": {
+                        #             "identifier": metax_id,
+                        #             "status": "published",
+                        #         }
+                        #     },
+                        # )
                     else:
                         # TODO: how front end should react on this??
                         reason = await resp.text()
