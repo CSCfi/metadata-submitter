@@ -103,7 +103,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
         RESTAPIHandler._handle_check_ownedby_user = make_mocked_coro(True)
         ObjectAPIHandler.create_or_update_metax_dataset = make_mocked_coro("111-222-333")
-        ObjectAPIHandler.delete_metax_dataset = make_mocked_coro()
+        ObjectAPIHandler._delete_metax_dataset = make_mocked_coro()
 
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
