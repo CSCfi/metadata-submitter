@@ -285,8 +285,8 @@ class ObjectAPIHandler(RESTAPIHandler):
                 LOG.error(reason)
                 raise web.HTTPUnauthorized(reason=reason)
 
-        accession_id, title = await operator.replace_metadata_object(collection, accession_id, content)
-        patch = self.prepare_folder_patch_update_object(collection, accession_id, title, filename)
+        data = await operator.replace_metadata_object(collection, accession_id, content)
+        patch = self.prepare_folder_patch_update_object(collection, data, filename)
         await folder_op.update_folder(folder_id, patch)
 
         # Update draft dataset to Metax catalog
@@ -336,8 +336,8 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         # If there's changed title it will be updated to folder
         try:
-            title = content["descriptor"]["studyTitle"] if collection == "study" else content["title"]
-            patch = self.prepare_folder_patch_update_object(collection, accession_id, title)
+            _ = content["descriptor"]["studyTitle"] if collection == "study" else content["title"]
+            patch = self.prepare_folder_patch_update_object(collection, content)
             await folder_op.update_folder(folder_id, patch)
         except (TypeError, KeyError):
             pass
@@ -393,9 +393,7 @@ class ObjectAPIHandler(RESTAPIHandler):
             patch.append(patch_ops)
         return patch
 
-    def prepare_folder_patch_update_object(
-        self, schema: str, accession_id: str, title: str, filename: str = ""
-    ) -> List:
+    def prepare_folder_patch_update_object(self, schema: str, data: Dict, filename: str = "") -> List:
         """Prepare patch operation for updating object's title in a folder.
 
         :param schema: schema of object to be updated
@@ -410,8 +408,13 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         patch_op = {
             "op": "replace",
-            "match": {path.replace("/", ""): {"$elemMatch": {"schema": schema, "accessionId": accession_id}}},
+            "match": {path.replace("/", ""): {"$elemMatch": {"schema": schema, "accessionId": data["accessionId"]}}},
         }
+        try:
+            title = data["descriptor"]["studyTitle"] if schema in ["study", "draft-study"] else data["title"]
+        except (TypeError, KeyError):
+            title = ""
+
         if not filename:
             patch_op.update(
                 {
