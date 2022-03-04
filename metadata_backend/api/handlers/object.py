@@ -164,12 +164,12 @@ class ObjectAPIHandler(RESTAPIHandler):
         if not isinstance(data, List):
             objects = [json_data]
         folder_op = FolderOperator(db_client)
-        patch = self.prepare_folder_patch_new_object(collection, objects, patch_params)
+        patch = self._prepare_folder_patch_new_object(collection, objects, patch_params)
         await folder_op.update_folder(folder_id, patch)
 
         # Create draft dataset to Metax catalog
         if collection in {"study", "dataset"}:
-            [await self.create_metax_dataset(req, collection, item) for item in objects]
+            [await self._create_metax_dataset(req, collection, item) for item in objects]
 
         body = ujson.dumps(data, escape_forward_slashes=False)
 
@@ -237,7 +237,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         # Delete draft dataset from Metax catalog
         if collection in {"study", "dataset"}:
-            await self.delete_metax_dataset(req, metax_id)
+            await self._delete_metax_dataset(req, metax_id)
 
         LOG.info(f"DELETE object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(status=204)
@@ -286,12 +286,12 @@ class ObjectAPIHandler(RESTAPIHandler):
                 raise web.HTTPUnauthorized(reason=reason)
 
         data = await operator.replace_metadata_object(collection, accession_id, content)
-        patch = self.prepare_folder_patch_update_object(collection, data, filename)
+        patch = self._prepare_folder_patch_update_object(collection, data, filename)
         await folder_op.update_folder(folder_id, patch)
 
         # Update draft dataset to Metax catalog
         if collection in {"study", "dataset"}:
-            await self.update_metax_dataset(req, collection, accession_id)
+            await self._update_metax_dataset(req, collection, accession_id)
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info(f"PUT object with accession ID {accession_id} in schema {collection} was successful.")
@@ -337,20 +337,20 @@ class ObjectAPIHandler(RESTAPIHandler):
         # If there's changed title it will be updated to folder
         try:
             _ = content["descriptor"]["studyTitle"] if collection == "study" else content["title"]
-            patch = self.prepare_folder_patch_update_object(collection, content)
+            patch = self._prepare_folder_patch_update_object(collection, content)
             await folder_op.update_folder(folder_id, patch)
         except (TypeError, KeyError):
             pass
 
         # Update draft dataset to Metax catalog
         if collection in {"study", "dataset"}:
-            await self.update_metax_dataset(req, collection, accession_id)
+            await self._update_metax_dataset(req, collection, accession_id)
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info(f"PATCH object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
-    def prepare_folder_patch_new_object(self, schema: str, objects: List, params: Dict[str, str]) -> List:
+    def _prepare_folder_patch_new_object(self, schema: str, objects: List, params: Dict[str, str]) -> List:
         """Prepare patch operations list for adding an object or objects to a folder.
 
         :param schema: schema of objects to be added to the folder
@@ -393,7 +393,7 @@ class ObjectAPIHandler(RESTAPIHandler):
             patch.append(patch_ops)
         return patch
 
-    def prepare_folder_patch_update_object(self, schema: str, data: Dict, filename: str = "") -> List:
+    def _prepare_folder_patch_update_object(self, schema: str, data: Dict, filename: str = "") -> List:
         """Prepare patch operation for updating object's title in a folder.
 
         :param schema: schema of object to be updated
@@ -432,7 +432,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         return [patch_op]
 
     # TODO: update doi related code
-    async def create_metax_dataset(self, req: Request, collection: str, object: Dict) -> str:
+    async def _create_metax_dataset(self, req: Request, collection: str, object: Dict) -> str:
         """Handle connection to Metax api handler.
 
         Sends Dataset or Study object's data to Metax api handler.
@@ -459,7 +459,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         return metax_id
 
     # TODO: update doi related code
-    async def update_metax_dataset(self, req: Request, collection: str, accession_id: str) -> str:
+    async def _update_metax_dataset(self, req: Request, collection: str, accession_id: str) -> str:
         """Handle connection to Metax api handler.
 
         Sends Dataset or Study object's data to Metax api handler.
@@ -483,7 +483,7 @@ class ObjectAPIHandler(RESTAPIHandler):
             raise ValueError("Object's data must be dictionary")
         return metax_id
 
-    async def delete_metax_dataset(self, req: Request, metax_id: str) -> None:
+    async def _delete_metax_dataset(self, req: Request, metax_id: str) -> None:
         """Handle deletion of Study or Dataset object from Metax service.
 
         :param req: HTTP request
