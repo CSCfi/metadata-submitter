@@ -122,12 +122,12 @@ class TemplatesAPIHandler(RESTAPIHandler):
                 # Process template
                 # Move projectId to template structure, so that it is saved in mongo
                 tmpl["template"]["projectId"] = tmpl["projectId"]
-                accession_id, _ = await operator.create_metadata_object(collection, tmpl["template"])
-                data = [{"accessionId": accession_id, "schema": collection}]
+                json_data = await operator.create_metadata_object(collection, tmpl["template"])
+                data = [{"accessionId": json_data["accessionId"], "schema": collection}]
                 if "tags" in tmpl:
                     data[0]["tags"] = tmpl["tags"]
                 await project_op.assign_templates(tmpl["projectId"], data)
-                tmpl_list.append({"accessionId": accession_id})
+                tmpl_list.append({"accessionId": json_data["accessionId"]})
 
             body = ujson.dumps(tmpl_list, escape_forward_slashes=False)
         else:
@@ -155,17 +155,17 @@ class TemplatesAPIHandler(RESTAPIHandler):
             # Process template
             # Move projectId to template structure, so that it is saved in mongo
             content["template"]["projectId"] = content["projectId"]
-            accession_id, _ = await operator.create_metadata_object(collection, content["template"])
-            data = [{"accessionId": accession_id, "schema": collection}]
+            json_data = await operator.create_metadata_object(collection, content["template"])
+            data = [{"accessionId": json_data["accessionId"], "schema": collection}]
             if "tags" in content:
                 data[0]["tags"] = content["tags"]
             await project_op.assign_templates(content["projectId"], data)
 
-            body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
+            body = ujson.dumps({"accessionId": json_data["accessionId"]}, escape_forward_slashes=False)
 
         url = f"{req.scheme}://{req.host}{req.path}"
-        location_headers = CIMultiDict(Location=f"{url}/{accession_id}")
-        LOG.info(f"POST template with accesssion ID {accession_id} in schema {collection} was successful.")
+        location_headers = CIMultiDict(Location=f"{url}/{json_data['accessionId']}")
+        LOG.info(f"POST template with accesssion ID {json_data['accessionId']} in schema {collection} was successful.")
         return web.Response(
             body=body,
             status=201,
