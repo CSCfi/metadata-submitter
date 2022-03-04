@@ -952,18 +952,19 @@ async def test_metax_publish_dataset(sess, folder_id):
 
     await publish_folder(sess, folder_id)
 
-    for schema, object_id, metax_id in objects:
-        async with sess.get(f"{objects_url}/{schema}/{object_id}") as resp:
-            assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-            res = await resp.json()
-            actual = res["metaxIdentifier"]
-            expected = {"identifier": metax_id, "status": "published"}
-            assert expected == actual
+    # TODO: This must be updated as Metax identifier will be moved to folder from object after publishing
+    # for schema, object_id, metax_id in objects:
+    #     async with sess.get(f"{objects_url}/{schema}/{object_id}") as resp:
+    #         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+    #         res = await resp.json()
+    #         actual = res["metaxIdentifier"]
+    #         expected = {"identifier": metax_id, "status": "published"}
+    #         assert expected == actual
 
-        async with sess.get(f"{metax_url}/{metax_id}") as metax_resp:
-            assert metax_resp.status == 200, f"HTTP Status code error, got {resp.status}"
-            metax_res = await metax_resp.json()
-            assert metax_res["state"] == "published"
+    #     async with sess.get(f"{metax_url}/{metax_id}") as metax_resp:
+    #         assert metax_resp.status == 200, f"HTTP Status code error, got {resp.status}"
+    #         metax_res = await metax_resp.json()
+    #         assert metax_res["state"] == "published"
 
 
 async def test_crud_folders_works(sess):

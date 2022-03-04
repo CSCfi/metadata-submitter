@@ -156,7 +156,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     async def fake_xmloperator_create_metadata_object(self, schema_type, content):
         """Fake create operation to return mocked accessionId."""
-        return self.test_ega_string, "title"
+        return {"accessionId": self.test_ega_string, "title": "title"}
 
     async def fake_xmloperator_replace_metadata_object(self, schema_type, accession_id, content):
         """Fake replace operation to return mocked accessionId."""
@@ -164,7 +164,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     async def fake_operator_create_metadata_object(self, schema_type, content):
         """Fake create operation to return mocked accessionId."""
-        return self.test_ega_string, "title"
+        return {"accessionId": self.test_ega_string, "title": "title"}
 
     async def fake_operator_update_metadata_object(self, schema_type, accession_id, content):
         """Fake update operation to return mocked accessionId."""
@@ -378,6 +378,11 @@ class ObjectHandlerTestCase(HandlersTestCase):
         self.patch_folderoperator = patch(class_folderoperator, **self.folderoperator_config, spec=True)
         self.MockedFolderOperator = self.patch_folderoperator.start()
 
+        class_metaxhandler = "metadata_backend.api.handlers.object.MetaxServiceHandler"
+        self.patch_metaxhandler = patch(class_metaxhandler, spec=True)
+        self.MockedMetaxHandler = self.patch_metaxhandler.start()
+        self.MockedMetaxHandler().post_dataset_as_draft.return_value = "123-456"
+
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
         await super().tearDownAsync()
@@ -385,6 +390,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         self.patch_csv_parser.stop()
         self.patch_folderoperator.stop()
         self.patch_operator.stop()
+        self.patch_metaxhandler.stop()
 
     async def test_submit_object_works(self):
         """Test that submission is handled, XMLOperator is called."""
@@ -446,7 +452,6 @@ class ObjectHandlerTestCase(HandlersTestCase):
         file_content = self.get_file_data("sample", "EGAformat.csv")
         self.MockedCSVParser().parse.return_value = [{}, {}, {}]
         response = await self.client.post("/objects/sample", params={"folder": "some id"}, data=data)
-        print("=== RESP ===", await response.text())
         json_resp = await response.json()
         self.assertEqual(response.status, 201)
         self.assertEqual(self.test_ega_string, json_resp[0]["accessionId"])

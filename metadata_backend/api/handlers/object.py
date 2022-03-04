@@ -8,8 +8,8 @@ from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
 from ...helpers.logger import LOG
-from ...helpers.validator import JSONValidator
 from ...helpers.metax_api_handler import MetaxServiceHandler
+from ...helpers.validator import JSONValidator
 from ..operators import FolderOperator, Operator, XMLOperator
 from .common import multipart_content
 from .restapi import RESTAPIHandler
@@ -140,32 +140,36 @@ class ObjectAPIHandler(RESTAPIHandler):
         data: Union[List[Dict[str, str]], Dict[str, str]]
         if isinstance(content, List):
             LOG.debug(f"Inserting multiple objects for {schema_type}.")
-            ids: List[Dict[str, str]] = []
+            objects: List[Dict[str, Any]] = []
             for item in content:
-                accession_id, title = await operator.create_metadata_object(collection, item[0])
-                ids.append({"accessionId": accession_id, "title": title})
-                LOG.info(f"POST object with accesssion ID {accession_id} in schema {collection} was successful.")
+                json_data = await operator.create_metadata_object(collection, item[0])
+                objects.append(json_data)
+                LOG.info(
+                    f"POST object with accesssion ID {json_data['accessionId']} in schema {collection} was successful."
+                )
 
             # we format like this to make it consistent with the response from /submit endpoint
-            data = [dict({"accessionId": item["accessionId"]}, **{"schema": schema_type}) for item in ids]
+            data = [dict({"accessionId": item["accessionId"]}, **{"schema": schema_type}) for item in objects]
             # we take the first result if we get multiple
             location_headers = CIMultiDict(Location=f"{url}/{data[0]['accessionId']}")
         else:
-            accession_id, title = await operator.create_metadata_object(collection, content)
-            data = {"accessionId": accession_id}
-            location_headers = CIMultiDict(Location=f"{url}/{accession_id}")
-            LOG.info(f"POST object with accesssion ID {accession_id} in schema {collection} was successful.")
+            json_data = await operator.create_metadata_object(collection, content)
+            data = {"accessionId": json_data["accessionId"]}
+            location_headers = CIMultiDict(Location=f"{url}/{json_data['accessionId']}")
+            LOG.info(
+                f"POST object with accesssion ID {json_data['accessionId']} in schema {collection} was successful."
+            )
 
         # Gathering data for object to be added to folder
         if not isinstance(data, List):
-            ids = [dict(data, **{"title": title})]
+            objects = [json_data]
         folder_op = FolderOperator(db_client)
-        patch = await self.prepare_folder_patch_new_object(collection, ids, patch_params)
+        patch = self.prepare_folder_patch_new_object(collection, objects, patch_params)
         await folder_op.update_folder(folder_id, patch)
 
         # Create draft dataset to Metax catalog
         if collection in {"study", "dataset"}:
-            [await self.create_or_update_metax_dataset(req, collection, item["accessionId"]) for item in ids]
+            [await self.create_metax_dataset(req, collection, item) for item in objects]
 
         body = ujson.dumps(data, escape_forward_slashes=False)
 
@@ -282,12 +286,12 @@ class ObjectAPIHandler(RESTAPIHandler):
                 raise web.HTTPUnauthorized(reason=reason)
 
         accession_id, title = await operator.replace_metadata_object(collection, accession_id, content)
-        patch = await self.prepare_folder_patch_update_object(collection, accession_id, title, filename)
+        patch = self.prepare_folder_patch_update_object(collection, accession_id, title, filename)
         await folder_op.update_folder(folder_id, patch)
 
         # Update draft dataset to Metax catalog
         if collection in {"study", "dataset"}:
-            await self.create_or_update_metax_dataset(req, collection, accession_id)
+            await self.update_metax_dataset(req, collection, accession_id)
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info(f"PUT object with accession ID {accession_id} in schema {collection} was successful.")
@@ -333,24 +337,24 @@ class ObjectAPIHandler(RESTAPIHandler):
         # If there's changed title it will be updated to folder
         try:
             title = content["descriptor"]["studyTitle"] if collection == "study" else content["title"]
-            patch = await self.prepare_folder_patch_update_object(collection, accession_id, title)
+            patch = self.prepare_folder_patch_update_object(collection, accession_id, title)
             await folder_op.update_folder(folder_id, patch)
         except (TypeError, KeyError):
             pass
 
         # Update draft dataset to Metax catalog
         if collection in {"study", "dataset"}:
-            await self.create_or_update_metax_dataset(req, collection, accession_id)
+            await self.update_metax_dataset(req, collection, accession_id)
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info(f"PATCH object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
-    async def prepare_folder_patch_new_object(self, schema: str, ids: List, params: Dict[str, str]) -> List:
+    def prepare_folder_patch_new_object(self, schema: str, objects: List, params: Dict[str, str]) -> List:
         """Prepare patch operations list for adding an object or objects to a folder.
 
         :param schema: schema of objects to be added to the folder
-        :param ids: object IDs
+        :param objects: metadata objects
         :param params: addidtional data required for db entry
         :returns: list of patch operations
         """
@@ -366,16 +370,21 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         patch = []
         patch_ops: Dict[str, Any] = {}
-        for id in ids:
+        for object in objects:
+            try:
+                title = object["descriptor"]["studyTitle"] if schema in ["study", "draft-study"] else object["title"]
+            except (TypeError, KeyError):
+                title = ""
+
             patch_ops = {
                 "op": "add",
                 "path": path,
                 "value": {
-                    "accessionId": id["accessionId"],
+                    "accessionId": object["accessionId"],
                     "schema": schema,
                     "tags": {
                         "submissionType": submission_type,
-                        "displayTitle": id["title"],
+                        "displayTitle": title,
                     },
                 },
             }
@@ -384,7 +393,7 @@ class ObjectAPIHandler(RESTAPIHandler):
             patch.append(patch_ops)
         return patch
 
-    async def prepare_folder_patch_update_object(
+    def prepare_folder_patch_update_object(
         self, schema: str, accession_id: str, title: str, filename: str = ""
     ) -> List:
         """Prepare patch operation for updating object's title in a folder.
@@ -420,7 +429,34 @@ class ObjectAPIHandler(RESTAPIHandler):
         return [patch_op]
 
     # TODO: update doi related code
-    async def create_or_update_metax_dataset(self, req: Request, collection: str, accession_id: str) -> str:
+    async def create_metax_dataset(self, req: Request, collection: str, object: Dict) -> str:
+        """Handle connection to Metax api handler.
+
+        Sends Dataset or Study object's data to Metax api handler.
+        If creating new dataset, object is updated with returned metax ID to database.
+        Object's data has to be fetched first from db in case of XML data in request.
+        Has temporary DOI fetching, will be chaged with real data.
+
+        :param req: HTTP request
+        :param collection: object's schema
+        :param object: metadata object
+        :returns: Metax ID
+        """
+        metax_service = MetaxServiceHandler(req)
+        operator = Operator(req.app["db_client"])
+        # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
+        if isinstance(object, Dict):
+            LOG.info("Creating draft dataset to Metax.")
+            object["doi"] = await self.create_doi()
+            metax_id = await metax_service.post_dataset_as_draft(collection, object)
+            new_info = {"doi": object["doi"], "metaxIdentifier": {"identifier": metax_id, "status": "draft"}}
+            await operator.update_metadata_object(collection, object["accessionId"], new_info)
+        else:
+            raise ValueError("Object's data must be dictionary")
+        return metax_id
+
+    # TODO: update doi related code
+    async def update_metax_dataset(self, req: Request, collection: str, accession_id: str) -> str:
         """Handle connection to Metax api handler.
 
         Sends Dataset or Study object's data to Metax api handler.
@@ -438,15 +474,8 @@ class ObjectAPIHandler(RESTAPIHandler):
         object_data, _ = await operator.read_metadata_object(collection, accession_id)
         # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
         if isinstance(object_data, Dict):
-            if object_data.get("metaxIdentifier", None):
-                LOG.info("Updating draft dataset to Metax.")
-                metax_id = await metax_service.update_draft_dataset(collection, object_data)
-            else:
-                LOG.info("Creating draft dataset to Metax.")
-                object_data["doi"] = await self.create_doi()
-                metax_id = await metax_service.post_dataset_as_draft(collection, object_data)
-                new_info = {"doi": object_data["doi"], "metaxIdentifier": {"identifier": metax_id, "status": "draft"}}
-                accession_id = await operator.update_metadata_object(collection, accession_id, new_info)
+            LOG.info("Updating draft dataset to Metax.")
+            metax_id = await metax_service.update_draft_dataset(collection, object_data)
         else:
             raise ValueError("Object's data must be dictionary")
         return metax_id
