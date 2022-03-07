@@ -505,7 +505,7 @@ class Operator(BaseOperator):
             read_data = await self.db_service.read(schema_type, accession_id)
             # on firs write db doesnt have yet metaxIdentifier
             if read_data.get("metaxIdentifier", None):
-                forbidden_keys.extend(["metaxIdentifier"])
+                forbidden_keys.add("metaxIdentifier")
         if any(i in data for i in forbidden_keys):
             reason = f"Some items (e.g: {', '.join(forbidden_keys)}) cannot be changed."
             LOG.error(reason)
