@@ -262,6 +262,9 @@ class DBService:
         old_data = await self.database[collection].find_one(find_by_id)
         if not (len(new_data) == 2 and new_data["content"].startswith("<")):
             new_data["dateCreated"] = old_data["dateCreated"]
+            if collection in {"study", "dataset"}:
+                new_data["metaxIdentifier"] = old_data["metaxIdentifier"]
+                new_data["doi"] = old_data["doi"]
             if "publishDate" in old_data:
                 new_data["publishDate"] = old_data["publishDate"]
         result = await self.database[collection].replace_one(find_by_id, new_data)
