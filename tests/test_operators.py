@@ -341,17 +341,12 @@ class TestOperators(IsolatedAsyncioTestCase):
                 self.MockedDbService().read.return_value = {
                     "accessionId": self.accession_id,
                     "dateModified": datetime.datetime(2020, 4, 14),
-                    "metaxIdentifier": {"identifier": 12345},
                 }
                 acc = await (operator._format_data_to_replace_and_add_to_db("study", self.accession_id, {}))
                 mocked_insert.assert_called_once_with(
                     "study",
                     self.accession_id,
-                    {
-                        "accessionId": self.accession_id,
-                        "dateModified": datetime.datetime(2020, 4, 14),
-                        "metaxIdentifier": {"identifier": 12345},
-                    },
+                    {"accessionId": self.accession_id, "dateModified": datetime.datetime(2020, 4, 14)},
                 )
             self.assertEqual(acc["accessionId"], self.accession_id)
 
