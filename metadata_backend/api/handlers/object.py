@@ -7,13 +7,13 @@ from aiohttp import web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
+from ...helpers.doi import DOIHandler
 from ...helpers.logger import LOG
 from ...helpers.metax_api_handler import MetaxServiceHandler
 from ...helpers.validator import JSONValidator
 from ..operators import FolderOperator, Operator, XMLOperator
 from .common import multipart_content
 from .restapi import RESTAPIHandler
-from ...helpers.doi import DOIHandler
 
 
 class ObjectAPIHandler(RESTAPIHandler):
@@ -174,11 +174,9 @@ class ObjectAPIHandler(RESTAPIHandler):
             LOG.info(
                 f"POST object with accesssion ID {json_data['accessionId']} in schema {collection} was successful."
             )
+            objects = [json_data]
 
         # Gathering data for object to be added to folder
-        if not isinstance(data, List):
-            objects = [json_data]
-        folder_op = FolderOperator(db_client)
         patch = self._prepare_folder_patch_new_object(collection, objects, patch_params)
         await folder_op.update_folder(folder_id, patch)
 
@@ -448,18 +446,17 @@ class ObjectAPIHandler(RESTAPIHandler):
             )
         return [patch_op]
 
-    # TODO: update doi related code
     async def _create_metax_dataset(self, req: Request, collection: str, object: Dict, folder_id: str) -> str:
-        """Handle connection to Metax api handler.
+        """Handle connection to Metax api handler for dataset creation.
 
-        Sends Dataset or Study object's data to Metax api handler.
-        If creating new dataset, object is updated with returned metax ID to database.
-        Object's data has to be fetched first from db in case of XML data in request.
-        Has temporary DOI fetching, will be chaged with real data.
+        Dataset or Study object is assigned with DOI
+        and it's data is sent to Metax api handler.
+        Object database entry is updated with metax ID returned by Metax service.
 
         :param req: HTTP request
         :param collection: object's schema
         :param object: metadata object
+        :param folder_id: folder ID where metadata object belongs to
         :returns: Metax ID
         """
         metax_service = MetaxServiceHandler(req)
@@ -471,22 +468,18 @@ class ObjectAPIHandler(RESTAPIHandler):
             metax_id = await metax_service.post_dataset_as_draft(collection, object)
             new_info = {"doi": object["doi"], "metaxIdentifier": {"identifier": metax_id, "status": "draft"}}
             await operator.update_metadata_object(collection, object["accessionId"], new_info)
-            if folder_id:
-                folder_op = FolderOperator(req.app["db_client"])
-                doi_patch = self._prepare_folder_patch_doi(collection, object["doi"], metax_id)
-                await folder_op.update_folder(folder_id, doi_patch)
+            folder_op = FolderOperator(req.app["db_client"])
+            doi_patch = self._prepare_folder_patch_doi(collection, object["doi"], metax_id)
+            await folder_op.update_folder(folder_id, doi_patch)
         else:
             raise ValueError("Object's data must be dictionary")
         return metax_id
 
-    # TODO: update doi related code
     async def _update_metax_dataset(self, req: Request, collection: str, accession_id: str) -> str:
-        """Handle connection to Metax api handler.
+        """Handle connection to Metax api handler for dataset update.
 
         Sends Dataset or Study object's data to Metax api handler.
-        If creating new dataset, object is updated with returned metax ID to database.
         Object's data has to be fetched first from db in case of XML data in request.
-        Has temporary DOI fetching, will be chaged with real data.
 
         :param req: HTTP request
         :param collection: object's schema
@@ -495,7 +488,6 @@ class ObjectAPIHandler(RESTAPIHandler):
         """
         metax_service = MetaxServiceHandler(req)
         operator = Operator(req.app["db_client"])
-
         object_data, _ = await operator.read_metadata_object(collection, accession_id)
         # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
         if isinstance(object_data, Dict):
