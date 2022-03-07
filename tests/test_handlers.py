@@ -120,7 +120,6 @@ class HandlersTestCase(AioHTTPTestCase):
         }
 
         RESTAPIHandler._handle_check_ownedby_user = make_mocked_coro(True)
-        ObjectAPIHandler.create_or_update_metax_dataset = make_mocked_coro("111-222-333")
         ObjectAPIHandler._delete_metax_dataset = make_mocked_coro()
 
     async def tearDownAsync(self):
@@ -180,15 +179,15 @@ class HandlersTestCase(AioHTTPTestCase):
 
     async def fake_xmloperator_create_metadata_object(self, schema_type, content):
         """Fake create operation to return mocked accessionId."""
-        return {"accessionId": self.test_ega_string, "title": "title"}
+        return {"accessionId": self.test_ega_string}
 
     async def fake_xmloperator_replace_metadata_object(self, schema_type, accession_id, content):
         """Fake replace operation to return mocked accessionId."""
-        return {"accessionId": self.test_ega_string, "title": "title"}
+        return {"accessionId": self.test_ega_string}
 
     async def fake_operator_create_metadata_object(self, schema_type, content):
         """Fake create operation to return mocked accessionId."""
-        return {"accessionId": self.test_ega_string, "title": "title"}
+        return {"accessionId": self.test_ega_string}
 
     async def fake_operator_update_metadata_object(self, schema_type, accession_id, content):
         """Fake update operation to return mocked accessionId."""
@@ -196,7 +195,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     async def fake_operator_replace_metadata_object(self, schema_type, accession_id, content):
         """Fake replace operation to return mocked accessionId."""
-        return {"accessionId": self.test_ega_string, "title": "title"}
+        return {"accessionId": self.test_ega_string}
 
     async def fake_operator_delete_metadata_object(self, schema_type, accession_id):
         """Fake delete operation to await successful operation indicator."""
