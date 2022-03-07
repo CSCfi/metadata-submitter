@@ -185,11 +185,8 @@ class ObjectAPIHandler(RESTAPIHandler):
         await folder_op.update_folder(folder_id, patch)
 
         # Create draft dataset to Metax catalog
-        if collection in {"study", "dataset"}:
-            [await self._create_metax_dataset(req, collection, item) for item in objects]
-
-        patch = self._prepare_folder_patch_new_object(collection, ids, patch_params)
-        await folder_op.update_folder(folder_id, patch, schema_type)
+        if collection in _allowed_doi:
+            [await self._create_metax_dataset(req, collection, item, folder_id) for item in objects]
 
         body = ujson.dumps(data, escape_forward_slashes=False)
 
@@ -272,6 +269,8 @@ class ObjectAPIHandler(RESTAPIHandler):
         :raises: HTTPUnsupportedMediaType if JSON replace is attempted
         :returns: JSON response containing accessionId for submitted object
         """
+        _allowed_doi = {"study", "dataset"}
+
         schema_type = req.match_info["schema"]
         accession_id = req.match_info["accessionId"]
         self._check_schema_exists(schema_type)
@@ -310,7 +309,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         await folder_op.update_folder(folder_id, patch)
 
         # Update draft dataset to Metax catalog
-        if collection in {"study", "dataset"}:
+        if collection in _allowed_doi:
             await self._update_metax_dataset(req, collection, accession_id)
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
@@ -452,7 +451,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         return [patch_op]
 
     # TODO: update doi related code
-    async def _create_metax_dataset(self, req: Request, collection: str, object: Dict) -> str:
+    async def _create_metax_dataset(self, req: Request, collection: str, object: Dict, folder_id: str) -> str:
         """Handle connection to Metax api handler.
 
         Sends Dataset or Study object's data to Metax api handler.
@@ -470,10 +469,14 @@ class ObjectAPIHandler(RESTAPIHandler):
         # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
         if isinstance(object, Dict):
             LOG.info("Creating draft dataset to Metax.")
-            object["doi"] = await self.create_doi()
+            object["doi"] = await self._draft_doi(collection)
             metax_id = await metax_service.post_dataset_as_draft(collection, object)
             new_info = {"doi": object["doi"], "metaxIdentifier": {"identifier": metax_id, "status": "draft"}}
             await operator.update_metadata_object(collection, object["accessionId"], new_info)
+            if folder_id:
+                folder_op = FolderOperator(req.app["db_client"])
+                doi_patch = self._prepare_folder_patch_doi(collection, object["doi"], metax_id)
+                await folder_op.update_folder(folder_id, doi_patch)
         else:
             raise ValueError("Object's data must be dictionary")
         return metax_id
