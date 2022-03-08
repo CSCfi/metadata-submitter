@@ -306,7 +306,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         # Update draft dataset to Metax catalog
         if collection in _allowed_doi:
-            await self._update_metax_dataset(req, collection, accession_id)
+            await self._update_metax_dataset(req, collection, data)
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info(f"PUT object with accession ID {accession_id} in schema {collection} was successful.")
@@ -359,7 +359,12 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         # Update draft dataset to Metax catalog
         if collection in {"study", "dataset"}:
-            await self._update_metax_dataset(req, collection, accession_id)
+            object_data, _ = await operator.read_metadata_object(collection, accession_id)
+            # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
+            if isinstance(object_data, Dict):
+                await self._update_metax_dataset(req, collection, object_data)
+            else:
+                raise ValueError("Object's data must be dictionary")
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info(f"PATCH object with accession ID {accession_id} in schema {collection} was successful.")
@@ -461,21 +466,19 @@ class ObjectAPIHandler(RESTAPIHandler):
         """
         metax_service = MetaxServiceHandler(req)
         operator = Operator(req.app["db_client"])
-        # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
-        if isinstance(object, Dict):
-            LOG.info("Creating draft dataset to Metax.")
-            object["doi"] = await self._draft_doi(collection)
-            metax_id = await metax_service.post_dataset_as_draft(collection, object)
-            new_info = {"doi": object["doi"], "metaxIdentifier": {"identifier": metax_id, "status": "draft"}}
-            await operator.update_metadata_object(collection, object["accessionId"], new_info)
-            folder_op = FolderOperator(req.app["db_client"])
-            doi_patch = self._prepare_folder_patch_doi(collection, object["doi"], metax_id)
-            await folder_op.update_folder(folder_id, doi_patch)
-        else:
-            raise ValueError("Object's data must be dictionary")
+        LOG.info("Creating draft dataset to Metax.")
+        object["doi"] = await self._draft_doi(collection)
+        metax_id = await metax_service.post_dataset_as_draft(collection, object)
+
+        new_info = {"doi": object["doi"], "metaxIdentifier": {"identifier": metax_id, "status": "draft"}}
+        await operator.create_metax_info(collection, object["accessionId"], new_info)
+
+        folder_op = FolderOperator(req.app["db_client"])
+        doi_patch = self._prepare_folder_patch_doi(collection, object["doi"], metax_id)
+        await folder_op.update_folder(folder_id, doi_patch)
         return metax_id
 
-    async def _update_metax_dataset(self, req: Request, collection: str, accession_id: str) -> str:
+    async def _update_metax_dataset(self, req: Request, collection: str, data: Dict) -> str:
         """Handle connection to Metax api handler for dataset update.
 
         Sends Dataset or Study object's data to Metax api handler.
@@ -487,15 +490,8 @@ class ObjectAPIHandler(RESTAPIHandler):
         :returns: Metax ID
         """
         metax_service = MetaxServiceHandler(req)
-        operator = Operator(req.app["db_client"])
-        object_data, _ = await operator.read_metadata_object(collection, accession_id)
-        # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
-        if isinstance(object_data, Dict):
-            LOG.info("Updating draft dataset to Metax.")
-            metax_id = await metax_service.update_draft_dataset(collection, object_data)
-        else:
-            raise ValueError("Object's data must be dictionary")
-
+        LOG.info("Updating draft dataset to Metax.")
+        metax_id = await metax_service.update_draft_dataset(collection, data)
         return metax_id
 
     async def _delete_metax_dataset(self, req: Request, metax_id: str) -> None:

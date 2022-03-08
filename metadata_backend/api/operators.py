@@ -381,6 +381,31 @@ class Operator(BaseOperator):
         )
         return data, page_num, page_size, total_objects[0]["total"]
 
+    async def create_metax_info(self, schema_type: str, accession_id: str, data: Dict) -> bool:
+        """Update study or dataset object with metax info.
+
+        :param schema_type: Schema type of the object to replace.
+        :param accession_id: Identifier of object to replace.
+        :param data: Metadata object
+        :returns: True on successed database update
+        """
+        if schema_type not in {"study", "dataset"}:
+            LOG.error("Object schema type must be either study or dataset")
+            return False
+        try:
+            create_success = await self.db_service.update(schema_type, accession_id, data)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while updating object: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        if not create_success:
+            reason = "Updating object to database failed for some reason."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        else:
+            LOG.info(f"Object {schema_type} with id {accession_id} opdated with metax info.")
+            return True
+
     async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: Dict) -> Dict:
         """Format JSON metadata object and add it to db.
 
@@ -439,13 +464,7 @@ class Operator(BaseOperator):
         :param data: Metadata object
         :returns: Accession Id for object inserted to database
         """
-        forbidden_keys = {"accessionId", "publishDate", "dateCreated"}
-        # check if object already has metax id or is it first time writing it
-        if schema_type in {"study", "dataset"}:
-            read_data = await self.db_service.read(schema_type, accession_id)
-            # on firs write db doesnt have yet metaxIdentifier
-            if read_data.get("metaxIdentifier", None):
-                forbidden_keys.add("metaxIdentifier")
+        forbidden_keys = {"accessionId", "publishDate", "dateCreated", "metaxIdentifier"}
         if any(i in data for i in forbidden_keys):
             reason = f"Some items (e.g: {', '.join(forbidden_keys)}) cannot be changed."
             LOG.error(reason)
