@@ -96,6 +96,7 @@ class HandlersTestCase(AioHTTPTestCase):
             "delete_metadata_object.side_effect": self.fake_operator_delete_metadata_object,
             "update_metadata_object.side_effect": self.fake_operator_update_metadata_object,
             "replace_metadata_object.side_effect": self.fake_operator_replace_metadata_object,
+            "create_metax_info.side_effect": self.fake_operator_create_metax_info,
         }
         self.xmloperator_config = {
             "read_metadata_object.side_effect": self.fake_xmloperator_read_metadata_object,
@@ -199,6 +200,10 @@ class HandlersTestCase(AioHTTPTestCase):
 
     async def fake_operator_delete_metadata_object(self, schema_type, accession_id):
         """Fake delete operation to await successful operation indicator."""
+        return True
+
+    async def fake_operator_create_metax_info(self, schema_type, accession_id, data):
+        """Fake update operation to await successful operation indicator."""
         return True
 
     async def fake_folderoperator_create_folder(self, content):
@@ -904,7 +909,6 @@ class FolderHandlerTestCase(HandlersTestCase):
         self.MockedMetaxHandler().publish_dataset.return_value = None
         with patch(self._mock_prepare_doi, return_value=({}, [{}])):
             response = await self.client.patch("/publish/FOL12345678")
-            # self.MockedFolderOperator().update_folder.assert_called_once()
             self.assertEqual(response.status, 200)
             json_resp = await response.json()
             self.assertEqual(json_resp["folderId"], self.folder_id)
