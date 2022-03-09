@@ -55,11 +55,6 @@ class MetaxServiceHandler:
             },
         }
 
-    # TODO
-    def authenticate(self) -> None:
-        """Handle authentication to Metax."""
-        pass
-
     async def get_metadata_provider_user(self) -> str:
         """Get current user's external id.
 
