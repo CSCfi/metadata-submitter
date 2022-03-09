@@ -892,7 +892,7 @@ async def test_metax_crud_with_xml(sess, folder_id):
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
             res = await resp.json()
             try:
-                metax_id = res["metaxIdentifier"]["identifier"]
+                metax_id = res["metaxIdentifier"]
             except KeyError:
                 assert False, "Metax ID was not in response data"
         object.append(metax_id)
@@ -947,7 +947,7 @@ async def test_metax_crud_with_json(sess, folder_id):
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
             res = await resp.json()
             try:
-                metax_id = res["metaxIdentifier"]["identifier"]
+                metax_id = res["metaxIdentifier"]
             except KeyError:
                 assert False, "Metax ID was not in response data"
         object.append(metax_id)
@@ -979,9 +979,7 @@ async def test_metax_id_not_updated_on_patch(sess, folder_id):
         ("dataset", "dataset.json"),
     }:
         accession_id = await post_object_json(sess, schema, folder_id, filename)
-        async with sess.patch(
-            f"{objects_url}/{schema}/{accession_id}", data={"metaxIdentifier": {"identifier": "12345"}}
-        ) as resp:
+        async with sess.patch(f"{objects_url}/{schema}/{accession_id}", data={"metaxIdentifier": "12345"}) as resp:
             LOG.debug(f"Trying to patch object in {schema}")
             assert resp.status == 400
 
@@ -1008,7 +1006,7 @@ async def test_metax_publish_dataset(sess, folder_id):
         async with sess.get(f"{objects_url}/{schema}/{object_id}") as resp:
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
             res = await resp.json()
-            object.append(res["metaxIdentifier"]["identifier"])
+            object.append(res["metaxIdentifier"])
 
     # Publish the folder
     # add a study and dataset for publishing a folder
