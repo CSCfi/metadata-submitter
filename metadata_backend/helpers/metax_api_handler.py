@@ -136,7 +136,7 @@ class MetaxServiceHandler:
 
         async with aiohttp.ClientSession() as sess:
             resp = await sess.put(
-                f'{self.metax_url}{self.rest_route}/{data["metaxIdentifier"]["identifier"]}',
+                f'{self.metax_url}{self.rest_route}/{data["metaxIdentifier"]}',
                 params="draft",
                 json=metax_dataset,
                 auth=aiohttp.BasicAuth(self.username, self.password),
@@ -144,7 +144,7 @@ class MetaxServiceHandler:
             status = resp.status
             if status == 200:
                 metax_data = await resp.json()
-                LOG.info(f"Updated Metax draft dataset with ID {metax_data['identifier']} with data: {metax_data}")
+                LOG.info(f"Updated Metax draft dataset with ID {metax_data['identifier']} with data: {metax_dataset}")
                 return metax_data["identifier"]
             else:
                 # TODO: how front end should react on this??
@@ -183,7 +183,7 @@ class MetaxServiceHandler:
             if object["schema"] in {"study", "dataset"}:
                 data, _ = await operator.read_metadata_object(object["schema"], object["accessionId"])
                 if isinstance(data, dict):
-                    metax_id = data["metaxIdentifier"]["identifier"]
+                    metax_id = data["metaxIdentifier"]
                     doi = data["doi"]
                 async with aiohttp.ClientSession() as sess:
                     resp = await sess.post(
