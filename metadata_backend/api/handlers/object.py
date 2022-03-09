@@ -244,7 +244,7 @@ class ObjectAPIHandler(RESTAPIHandler):
                 object_data, _ = await operator.read_metadata_object(collection, accession_id)
                 # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
                 if isinstance(object_data, dict):
-                    metax_id = object_data["metaxIdentifier"]["identifier"]
+                    metax_id = object_data["metaxIdentifier"]
             except KeyError:
                 LOG.warning(f"MetadataObject {collection} {accession_id} was never added to Metax service.")
 
@@ -472,7 +472,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         object["doi"] = await self._draft_doi(collection)
         metax_id = await metax_service.post_dataset_as_draft(collection, object)
 
-        new_info = {"doi": object["doi"], "metaxIdentifier": {"identifier": metax_id, "status": "draft"}}
+        new_info = {"doi": object["doi"], "metaxIdentifier": metax_id}
         await operator.create_metax_info(collection, object["accessionId"], new_info)
 
         folder_op = FolderOperator(req.app["db_client"])
