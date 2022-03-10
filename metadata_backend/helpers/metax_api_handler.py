@@ -80,9 +80,9 @@ class MetaxServiceHandler:
         metax_dataset = self.minimal_dataset_template
         metax_dataset["metadata_provider_user"] = await self.get_metadata_provider_user()
         if collection == "dataset":
-            dataset_data = await self.create_metax_dataset_data_from_dataset(data)
+            dataset_data = self.create_metax_dataset_data_from_dataset(data)
         else:
-            dataset_data = await self.create_metax_dataset_data_from_study(data)
+            dataset_data = self.create_metax_dataset_data_from_study(data)
         metax_dataset["research_dataset"] = dataset_data
         LOG.debug(
             f"Creating draft dataset to Metax service from Submitter {collection} with accession ID "
@@ -123,9 +123,9 @@ class MetaxServiceHandler:
         # TODO: should this be changed if person updating data is different from data creator?
         metax_dataset["metadata_provider_user"] = await self.get_metadata_provider_user()
         if collection == "dataset":
-            dataset_data = await self.create_metax_dataset_data_from_dataset(data)
+            dataset_data = self.create_metax_dataset_data_from_dataset(data)
         else:
-            dataset_data = await self.create_metax_dataset_data_from_study(data)
+            dataset_data = self.create_metax_dataset_data_from_study(data)
         metax_dataset["research_dataset"] = dataset_data
         LOG.info(f"Sending updated {collection} object data to Metax service.")
 
@@ -197,7 +197,7 @@ class MetaxServiceHandler:
                     raise self.process_error(status, reason)
             LOG.info(f"Metax ID {object['metaxIdentifier']} was published to Metax service.")
 
-    async def create_metax_dataset_data_from_study(self, data: Dict) -> Dict:
+    def create_metax_dataset_data_from_study(self, data: Dict) -> Dict:
         """Construct Metax dataset's research dataset dictionary from Submitters Study.
 
         :param data: Study data
@@ -211,7 +211,7 @@ class MetaxServiceHandler:
         LOG.debug(f"Created Metax dataset from Study with data: {research_dataset}")
         return research_dataset
 
-    async def create_metax_dataset_data_from_dataset(self, data: Dict) -> Dict:
+    def create_metax_dataset_data_from_dataset(self, data: Dict) -> Dict:
         """Construct Metax dataset's research dataset dictionary from Submitters Dataset.
 
         :param data: Dataset data
