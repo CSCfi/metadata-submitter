@@ -9,7 +9,7 @@ from uuid import uuid4
 from aiohttp import web, ClientSession, BasicAuth, ClientTimeout
 
 from ..helpers.logger import LOG
-from ..conf import conf
+from ..conf.conf import doi_config
 
 
 class DOIHandler:
@@ -17,11 +17,11 @@ class DOIHandler:
 
     def __init__(self) -> None:
         """Get DOI credentials from config."""
-        self.doi_api = conf.doi_api
-        self.doi_prefix = conf.doi_prefix
-        self.doi_user = conf.doi_user
-        self.doi_key = conf.doi_key
-        self.doi_url = f"{conf.datacite_url.rstrip('/')}/{self.doi_prefix}"
+        self.doi_api = doi_config["api"]
+        self.doi_prefix = doi_config["prefix"]
+        self.doi_user = doi_config["user"]
+        self.doi_key = doi_config["key"]
+        self.doi_url = f"{doi_config['url'].rstrip('/')}/{self.doi_prefix}"
         self.timeout = ClientTimeout(total=2 * 60)  # 2 minutes timeout
         self.headers = {"Content-Type": "application/vnd.api+json"}
 
