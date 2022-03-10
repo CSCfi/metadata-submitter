@@ -1,11 +1,11 @@
 """Class for handling calls to METAX API."""
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import aiohttp
 from aiohttp.web import HTTPBadRequest, HTTPError, HTTPForbidden, HTTPNotFound, Request
 
 from ..api.middlewares import get_session
-from ..api.operators import FolderOperator, Operator, UserOperator
+from ..api.operators import UserOperator
 from ..conf.conf import metax_config
 from .logger import LOG
 
@@ -164,56 +164,38 @@ class MetaxServiceHandler:
                 reason = await resp.text()
                 raise self.process_error(status, reason)
 
-    async def publish_dataset(self, folder_id: str) -> None:
+    async def publish_dataset(self, _metax_ids: List[Dict]) -> None:
         """Publish draft dataset to Metax service.
 
-        Fetch metadataObjects for published folder. Publish each object within Metax service and
-        update object's Metax status to db.
+        Iterate over the metax ids that need to be published.
 
-        :param folder_id: Folder ID where metadata objects to publish resides
+        :param _metax_ids: List of metax IDs that include study and datasets
         """
-        folder = await FolderOperator(self.db_client).read_folder(folder_id)
-        operator = Operator(self.db_client)
-        for object in folder["metadataObjects"]:
-            if object["schema"] in {"study", "dataset"}:
-                data, _ = await operator.read_metadata_object(object["schema"], object["accessionId"])
-                if isinstance(data, dict):
-                    metax_id = data["metaxIdentifier"]
-                    doi = data["doi"]
-                async with aiohttp.ClientSession() as sess:
-                    resp = await sess.post(
-                        f"{self.metax_url}{self.publish_route}",
-                        params={"identifier": metax_id},
-                        auth=aiohttp.BasicAuth(self.username, self.password),
-                    )
-                    status = resp.status
-                    if status == 200:
-                        preferred_id = await resp.json()
-                        if doi != preferred_id["preferred_identifier"]:
-                            LOG.warning(
-                                f"Metax Preferred Identifier {preferred_id['preferred_identifier']} "
-                                f"does not match object's DOI {doi}"
-                            )
-                        LOG.debug(
-                            f"Object {object['schema']} with accession ID {object['accessionId']} is "
-                            "published to Metax service."
+        for object in _metax_ids:
+            metax_id = object["metaxIdentifier"]
+            doi = object["doi"]
+            async with aiohttp.ClientSession() as sess:
+                resp = await sess.post(
+                    f"{self.metax_url}{self.publish_route}",
+                    params={"identifier": metax_id},
+                    auth=aiohttp.BasicAuth(self.username, self.password),
+                )
+                status = resp.status
+                if status == 200:
+                    preferred_id = await resp.json()
+                    if doi != preferred_id["preferred_identifier"]:
+                        LOG.warning(
+                            f"Metax Preferred Identifier {preferred_id['preferred_identifier']} "
+                            f"does not match object's DOI {doi}"
                         )
-                        # This must be updated as Metax identifier will be moved to folder from object after publishing
-                        # await operator.update_metadata_object(
-                        #     object["schema"],
-                        #     object["accessionId"],
-                        #     {
-                        #         "metaxIdentifier": {
-                        #             "identifier": metax_id,
-                        #             "status": "published",
-                        #         }
-                        #     },
-                        # )
-                    else:
-                        # TODO: how front end should react on this??
-                        reason = await resp.text()
-                        raise self.process_error(status, reason)
-            LOG.info(f"Folder's {folder_id} metadata objects are published to Metax service.")
+                    LOG.debug(
+                        f"Object with metax ID {object['metaxIdentifier']} and DOI {object['doi']} is "
+                        "published to Metax service."
+                    )
+                else:
+                    reason = await resp.text()
+                    raise self.process_error(status, reason)
+            LOG.info(f"Metax ID {object['metaxIdentifier']} was published to Metax service.")
 
     async def create_metax_dataset_data_from_study(self, data: Dict) -> Dict:
         """Construct Metax dataset's research dataset dictionary from Submitters Study.
