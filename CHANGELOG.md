@@ -18,10 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Adds configuration for mypy linting to VScode devcontainer setup
 - Templates API #256
   - use `ujson` as default json library
-- Creating draft Datacite DOI for folders #257
+- Creating draft Datacite DOI for folders #257 #332
   - created a mock web app, which would act similarly to DataCite REST API
   - altered `publish_folder` endpoint so that `extraInfo` containing the DOI data is added upon publishing
   - added `datePublished` key to folders which takes in the date/time, when folder is published
+- DOI Publishing and deletion to Datacite #332 #369
+  - create draft DOIs for both Study and Datasets and add them to the folder `extraInfo` when published
+  - delete draft DOIs on object delete
+  - update DOI info at Datacite when folder is published
 - VScode Dev environment #287
   - Add VS Code development container
   - Update docker for development
@@ -50,6 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - new endpoint `GET /templates` to replace `GET /users/current` `{"templates":[...]}`
   - new JSON keys `index` and `tags` to `PATCH /templates/schema/templateId`, same values as were previously used in `PATCH /user` which is now removed
   - WARNING: breaking change that requires fresh database, because "project" is new information that did not exist before, and it can't be migrated to existing user-owned hierarchy
+- Multilevel add patch objects to support `/extraInfo/datasetIdentifiers/-` which needs dot notation for mongodb to work e.g. `extraInfo.datasetIdentifiers` #332
 
 ### Changed
 
@@ -63,7 +68,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - README updated with tox command, development build instructions, and prettify Dockerfile.
 - Update ENA XML and JSON schemas #299
 - Github actions changed the use of https://git.io/misspell to rojopolis/spellcheck-github-actions #316
-- Separated most of the handlers to own files inside the handlers folder #319
+- Separated most of the handlers to own files inside the handlers folder #319 
+- allow inserting only one study in folder #332
+- JSON schemas #332
+   - introduce `keywords` required for Metax in `doiInfo`
+   - dataset `description` and study `studyAbstract` are now mandatory
 
 ### Fixed
 
