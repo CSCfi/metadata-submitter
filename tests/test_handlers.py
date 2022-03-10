@@ -999,7 +999,17 @@ class FolderHandlerTestCase(HandlersTestCase):
         self.MockedDoiHandler().set_state.return_value = None
         self.MockedFolderOperator().update_folder.return_value = self.folder_id
         self.MockedMetaxHandler().publish_dataset.return_value = None
-        with patch(self._mock_prepare_doi, return_value=({}, [{}])):
+        with patch(
+            self._mock_prepare_doi,
+            return_value=(
+                {"id": "prefix/suffix-study", "attributes": {"url": "http://metax_id", "types": {}}},
+                [{"id": "prefix/suffix-dataset", "attributes": {"url": "http://metax_id", "types": {}}}],
+                [
+                    {"doi": "prefix/suffix-study", "metaxIdentifier": "metax_id"},
+                    {"doi": "prefix/suffix-dataset", "metaxIdentifier": "metax_id"},
+                ],
+            ),
+        ):
             response = await self.client.patch("/publish/FOL12345678")
             self.assertEqual(response.status, 200)
             json_resp = await response.json()
