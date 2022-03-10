@@ -97,7 +97,7 @@ def update_dict(d, u):
 
 
 async def create(req: web.Request) -> web.Response:
-    """DOI endpoint."""
+    """DOI draft creation endpoint."""
     try:
         content = await req.json()
     except json.decoder.JSONDecodeError as e:
@@ -129,7 +129,7 @@ async def create(req: web.Request) -> web.Response:
 
 
 async def update(req: web.Request) -> web.Response:
-    """DOI endpoint."""
+    """DOI update endpoint."""
     try:
         content = await req.json()
     except json.decoder.JSONDecodeError as e:
@@ -150,11 +150,18 @@ async def update(req: web.Request) -> web.Response:
     return web.json_response(data, status=200)
 
 
+async def delete(req: web.Request) -> web.Response:
+    """DOI delete endpoint."""
+
+    return web.json_response(status=204)
+
+
 def init() -> web.Application:
     """Start server."""
     app = web.Application()
     app.router.add_post("/dois", create)
     app.router.add_put("/dois/{id:.*}", update)
+    app.router.add_delete("/dois/{id:.*}", delete)
     return app
 
 
