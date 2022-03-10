@@ -103,14 +103,14 @@ class ObjectAPIHandler(RESTAPIHandler):
         """
         _allowed_csv = {"sample"}
         _allowed_doi = {"study", "dataset"}
-
         schema_type = req.match_info["schema"]
+        filename = ""
+        cont_type = ""
 
         folder_id = req.query.get("folder", "")
         if not folder_id:
             reason = "Folder is required query parameter. Please provide folder id where object is added to."
             raise web.HTTPBadRequest(reason=reason)
-        patch_params = {}
 
         self._check_schema_exists(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
@@ -128,22 +128,21 @@ class ObjectAPIHandler(RESTAPIHandler):
                 reason = "Only one study is allowed per submission."
                 raise web.HTTPBadRequest(reason=reason)
 
-        content: Union[Dict[str, Any], str, List[Tuple[Any, str]]]
+        content: Union[Dict[str, Any], str, List[Tuple[Any, str, str]]]
         operator: Union[Operator, XMLOperator]
         if req.content_type == "multipart/form-data":
             _only_xml = False if schema_type in _allowed_csv else True
-            files, cont_type, filename = await multipart_content(req, extract_one=True, expect_xml=_only_xml)
+            files, cont_type = await multipart_content(req, extract_one=True, expect_xml=_only_xml)
             if cont_type == "xml":
                 # from this tuple we only care about the content
                 # files should be of form (content, schema)
-                content, _ = files[0]
+                content, _, filename = files[0]
             else:
                 # for CSV files we need to treat this as a list of tuples (content, schema)
                 content = files
             # If multipart request contains XML, XML operator is used.
             # Else the multipart request is expected to contain CSV file(s) which are converted into JSON.
             operator = XMLOperator(db_client) if cont_type == "xml" else Operator(db_client)
-            patch_params = {"cont_type": cont_type, "filename": filename}
         else:
             content = await self._get_data(req)
             if not req.path.startswith("/drafts"):
@@ -155,16 +154,17 @@ class ObjectAPIHandler(RESTAPIHandler):
         data: Union[List[Dict[str, str]], Dict[str, str]]
         if isinstance(content, List):
             LOG.debug(f"Inserting multiple objects for {schema_type}.")
-            objects: List[Dict[str, Any]] = []
+            objects: List[Tuple[Dict[str, Any], str]] = []
             for item in content:
                 json_data = await operator.create_metadata_object(collection, item[0])
-                objects.append(json_data)
+                filename = item[2]
+                objects.append((json_data, filename))
                 LOG.info(
                     f"POST object with accesssion ID {json_data['accessionId']} in schema {collection} was successful."
                 )
 
             # we format like this to make it consistent with the response from /submit endpoint
-            data = [dict({"accessionId": item["accessionId"]}, **{"schema": schema_type}) for item in objects]
+            data = [dict({"accessionId": item["accessionId"]}, **{"schema": schema_type}) for item, _ in objects]
             # we take the first result if we get multiple
             location_headers = CIMultiDict(Location=f"{url}/{data[0]['accessionId']}")
         else:
@@ -174,15 +174,15 @@ class ObjectAPIHandler(RESTAPIHandler):
             LOG.info(
                 f"POST object with accesssion ID {json_data['accessionId']} in schema {collection} was successful."
             )
-            objects = [json_data]
+            objects = [(json_data, filename)]
 
         # Gathering data for object to be added to folder
-        patch = self._prepare_folder_patch_new_object(collection, objects, patch_params)
+        patch = self._prepare_folder_patch_new_object(collection, objects, cont_type)
         await folder_op.update_folder(folder_id, patch)
 
         # Create draft dataset to Metax catalog
         if collection in _allowed_doi:
-            [await self._create_metax_dataset(req, collection, item) for item in objects]
+            [await self._create_metax_dataset(req, collection, item) for item, _ in objects]
 
         body = ujson.dumps(data, escape_forward_slashes=False)
 
@@ -284,8 +284,8 @@ class ObjectAPIHandler(RESTAPIHandler):
         operator: Union[Operator, XMLOperator]
         filename = ""
         if req.content_type == "multipart/form-data":
-            files, _, filename = await multipart_content(req, extract_one=True, expect_xml=True)
-            content, _ = files[0]
+            files, _ = await multipart_content(req, extract_one=True, expect_xml=True)
+            content, _, _ = files[0]
             operator = XMLOperator(db_client)
         else:
             content = await self._get_data(req)
@@ -379,7 +379,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         LOG.info(f"PATCH object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
-    def _prepare_folder_patch_new_object(self, schema: str, objects: List, params: Dict[str, str]) -> List:
+    def _prepare_folder_patch_new_object(self, schema: str, objects: List, cont_type: str) -> List:
         """Prepare patch operations list for adding an object or objects to a folder.
 
         :param schema: schema of objects to be added to the folder
@@ -387,10 +387,10 @@ class ObjectAPIHandler(RESTAPIHandler):
         :param params: addidtional data required for db entry
         :returns: list of patch operations
         """
-        if not params.get("cont_type", None):
+        if not cont_type:
             submission_type = "Form"
         else:
-            submission_type = params["cont_type"].upper()
+            submission_type = cont_type.upper()
 
         if schema.startswith("draft"):
             path = "/drafts/-"
@@ -399,7 +399,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         patch = []
         patch_ops: Dict[str, Any] = {}
-        for object in objects:
+        for object, filename in objects:
             try:
                 title = object["descriptor"]["studyTitle"] if schema in ["study", "draft-study"] else object["title"]
             except (TypeError, KeyError):
@@ -418,7 +418,7 @@ class ObjectAPIHandler(RESTAPIHandler):
                 },
             }
             if submission_type != "Form":
-                patch_ops["value"]["tags"]["fileName"] = params["filename"]
+                patch_ops["value"]["tags"]["fileName"] = filename
             patch.append(patch_ops)
         return patch
 

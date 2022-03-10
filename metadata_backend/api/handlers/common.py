@@ -15,7 +15,7 @@ from ...helpers.parser import CSVToJSONParser
 
 async def multipart_content(
     req: Request, extract_one: bool = False, expect_xml: bool = False
-) -> Tuple[List[Tuple[Any, str]], str, str]:
+) -> Tuple[List[Tuple[Any, str, str]], str]:
     """Get content(s) and schema type(s) of a multipart request (from either csv or xml format).
 
     Note: for multiple files support check: https://docs.aiohttp.org/en/stable/multipart.html#hacking-multipart
@@ -26,8 +26,8 @@ async def multipart_content(
     :raises: HTTPBadRequest for multiple different reasons
     :returns: content and schema type for each uploaded file and file type of the upload
     """
-    xml_files: List[Tuple[str, str]] = []
-    csv_files: List[Tuple[Dict, str]] = []
+    xml_files: List[Tuple[str, str, str]] = []
+    csv_files: List[Tuple[Dict, str, str]] = []
     try:
         reader = await req.multipart()
     except AssertionError:
@@ -59,20 +59,20 @@ async def multipart_content(
         if expect_xml or part.headers[hdrs.CONTENT_TYPE] == "text/xml":
             content, schema_type = await _extract_upload(part)
             _check_xml(content)
-            xml_files.append((content, schema_type))
+            xml_files.append((content, schema_type, filename))
         elif part.headers[hdrs.CONTENT_TYPE] == "text/csv":
             content, schema_type = await _extract_upload(part)
             _check_csv(content)
             csv_content = CSVToJSONParser().parse(schema_type, content)
             for row in csv_content:
-                csv_files.append((row, schema_type))
+                csv_files.append((row, schema_type, filename))
         else:
             reason = "Submitted file was not proper XML nor CSV."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
     # Return extracted content
-    return _get_content_with_type(xml_files, csv_files) + (filename,)
+    return _get_content_with_type(xml_files, csv_files)
 
 
 async def _extract_upload(part: BodyPartReader) -> Tuple[str, str]:
@@ -137,8 +137,8 @@ def _check_xml(content: str) -> bool:
 
 
 def _get_content_with_type(
-    xml_files: List[Tuple[str, str]], csv_files: List[Tuple[Dict, str]]
-) -> Tuple[List[Tuple[Any, str]], str]:
+    xml_files: List[Tuple[str, str, str]], csv_files: List[Tuple[Dict, str, str]]
+) -> Tuple[List[Tuple[Any, str, str]], str]:
     """Return either list of XML or CSV files with the file type info.
 
     :param xml_files: List of xml contents with schema types
