@@ -187,7 +187,7 @@ class FolderAPIHandler(RESTAPIHandler):
         if "fundingReferences" in _info:
             for d in _info["fundingReferences"]:
                 d.update((k, "".join(v.split())) for k, v in d.items() if k == "funderIdentifierType")
-        # need to add titles and descriptions for datasets and study
+
         try:
             # keywords are only required for Metax integration
             # thus we remove them
@@ -570,8 +570,6 @@ class FolderAPIHandler(RESTAPIHandler):
         ]
         patch.extend(datasets_patch)
         new_folder = await operator.update_folder(folder_id, patch)
-
-        await MetaxServiceHandler(req).publish_dataset(new_folder)
 
         body = ujson.dumps({"folderId": new_folder}, escape_forward_slashes=False)
         LOG.info(f"Patching folder with ID {new_folder} was successful.")
