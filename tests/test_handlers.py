@@ -118,6 +118,7 @@ class HandlersTestCase(AioHTTPTestCase):
         self.doi_handler = {
             "create_draft.side_effect": self.fake_doi_create_draft,
             "set_state.side_effect": self.fake_doi_set_state,
+            "delete.side_effect": self.fake_doi_delete,
         }
 
         RESTAPIHandler._handle_check_ownedby_user = make_mocked_coro(True)
@@ -165,6 +166,11 @@ class HandlersTestCase(AioHTTPTestCase):
 
     async def fake_doi_set_state(self, data):
         """."""
+        return {"fullDOI": "10.xxxx/yyyyy", "dataset": "https://doi.org/10.xxxx/yyyyy"}
+
+    async def fake_doi_delete(self, doi):
+        """."""
+        return None
 
     async def fake_operator_read_metadata_object(self, schema_type, accession_id):
         """Fake read operation to return mocked JSON."""
@@ -660,9 +666,10 @@ class ObjectHandlerTestCase(HandlersTestCase):
     async def test_delete_is_called(self):
         """Test query method calls operator and returns status correctly."""
         url = "/objects/study/EGA123456"
-        response = await self.client.delete(url)
-        self.assertEqual(response.status, 204)
-        self.MockedOperator().delete_metadata_object.assert_called_once()
+        with patch("metadata_backend.api.handlers.object.DOIHandler.delete", return_value=None):
+            response = await self.client.delete(url)
+            self.assertEqual(response.status, 204)
+            self.MockedOperator().delete_metadata_object.assert_called_once()
 
     async def test_query_fails_with_xml_format(self):
         """Test query method calls operator and returns status correctly."""
