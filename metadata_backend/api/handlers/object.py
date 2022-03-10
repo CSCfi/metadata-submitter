@@ -184,7 +184,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         # Create draft dataset to Metax catalog
         if collection in _allowed_doi:
-            [await self._create_metax_dataset(req, collection, item, folder_id) for item in objects]
+            [await self._create_metax_dataset(req, collection, item) for item in objects]
 
         body = ujson.dumps(data, escape_forward_slashes=False)
 
@@ -462,7 +462,7 @@ class ObjectAPIHandler(RESTAPIHandler):
             )
         return [patch_op]
 
-    async def _create_metax_dataset(self, req: Request, collection: str, object: Dict, folder_id: str) -> str:
+    async def _create_metax_dataset(self, req: Request, collection: str, object: Dict) -> str:
         """Handle connection to Metax api handler for dataset creation.
 
         Dataset or Study object is assigned with DOI
@@ -484,9 +484,6 @@ class ObjectAPIHandler(RESTAPIHandler):
         new_info = {"doi": object["doi"], "metaxIdentifier": metax_id}
         await operator.create_metax_info(collection, object["accessionId"], new_info)
 
-        folder_op = FolderOperator(req.app["db_client"])
-        doi_patch = self._prepare_folder_patch_doi(collection, object["doi"], metax_id)
-        await folder_op.update_folder(folder_id, doi_patch)
         return metax_id
 
     async def _draft_doi(self, schema_type: str) -> str:
@@ -504,28 +501,3 @@ class ObjectAPIHandler(RESTAPIHandler):
         LOG.debug(f"doi created with doi: {_doi_data['fullDOI']}")
 
         return _doi_data["fullDOI"]
-
-    def _prepare_folder_patch_doi(self, schema: str, doi: str, url: str) -> List:
-        """Prepare patch operation for updating object's doi information in a folder.
-
-        :param schema: schema of object to be updated
-        :param ids: object IDs
-        :returns: dict with patch operation
-        """
-        patch = []
-
-        data = {
-            "identifier": {
-                "identifierType": "DOI",
-                "doi": doi,
-            },
-            "url": url,
-        }
-        if schema == "study":
-            patch_op = {"op": "add", "path": "/extraInfo/studyIdentifier", "value": data}
-            patch.append(patch_op)
-        elif schema == "dataset":
-            patch_op = {"op": "add", "path": "/extraInfo/datasetIdentifiers/-", "value": data}
-            patch.append(patch_op)
-
-        return patch
