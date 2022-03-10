@@ -100,7 +100,7 @@ class BaseOperator(ABC):
         try:
             data_raw = await self.db_service.read(schema_type, accession_id)
             if not data_raw:
-                LOG.error(f"Object with {accession_id} not found.")
+                LOG.error(f"Object with {accession_id} not found in schema: {schema_type}.")
                 raise web.HTTPNotFound()
             data = await self._format_read_data(schema_type, data_raw)
         except (ConnectionFailure, OperationFailure) as error:
