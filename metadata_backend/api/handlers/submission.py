@@ -31,7 +31,7 @@ class SubmissionAPIHandler:
         :raises: HTTPBadRequest if request is missing some parameters or cannot be processed
         :returns: XML-based receipt from submission
         """
-        files, _, _ = await multipart_content(req, expect_xml=True)
+        files, _ = await multipart_content(req, expect_xml=True)
         schema_types = Counter(file[1] for file in files)
         if "submission" not in schema_types:
             reason = "There must be a submission.xml file in submission."
@@ -92,8 +92,8 @@ class SubmissionAPIHandler:
         :param req: Multipart POST request with submission.xml and files
         :returns: JSON response indicating if validation was successful or not
         """
-        files, _, _ = await multipart_content(req, extract_one=True, expect_xml=True)
-        xml_content, schema_type = files[0]
+        files, _ = await multipart_content(req, extract_one=True, expect_xml=True)
+        xml_content, schema_type, _ = files[0]
         validator = await self._perform_validation(schema_type, xml_content)
         return web.Response(body=validator.resp_body, content_type="application/json")
 
