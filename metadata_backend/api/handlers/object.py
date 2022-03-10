@@ -182,7 +182,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         # Create draft dataset to Metax catalog
         if collection in _allowed_doi:
-            [await self._create_metax_dataset(req, collection, item) for item, _ in objects]
+            [await self.create_metax_dataset(req, collection, item) for item, _ in objects]
 
         body = ujson.dumps(data, escape_forward_slashes=False)
 
@@ -460,7 +460,7 @@ class ObjectAPIHandler(RESTAPIHandler):
             )
         return [patch_op]
 
-    async def _create_metax_dataset(self, req: Request, collection: str, object: Dict) -> str:
+    async def create_metax_dataset(self, req: Request, collection: str, object: Dict) -> str:
         """Handle connection to Metax api handler for dataset creation.
 
         Dataset or Study object is assigned with DOI
