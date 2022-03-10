@@ -153,12 +153,15 @@ aai_config = {
 
 # 6) Set the DataCite REST API values
 
-doi_api = os.getenv("DOI_API", "")
-doi_prefix = os.getenv("DOI_PREFIX", "")
-doi_user = os.getenv("DOI_USER", "")
-doi_key = os.getenv("DOI_KEY", "")
-datacite_url = os.getenv("DATACITE_URL", "https://doi.org")
-publisher = "CSC - IT Center for Science"
+doi_config = {
+    "api": os.getenv("DOI_API", ""),
+    "prefix": os.getenv("DOI_PREFIX", ""),
+    "user": os.getenv("DOI_USER", ""),
+    "key": os.getenv("DOI_KEY", ""),
+    "url": os.getenv("DATACITE_URL", "https://doi.org"),
+    "publisher": "CSC - IT Center for Science",
+    "discovery_url": "https://etsin.fairdata.fi/dataset/",
+}
 
 metax_config = {
     "username": os.getenv("METAX_USER", "sd"),
