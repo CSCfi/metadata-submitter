@@ -10,7 +10,7 @@ from aiohttp import web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
-from ...conf.conf import publisher
+from ...conf.conf import doi_config
 from ...helpers.logger import LOG
 from ...helpers.validator import JSONValidator
 from ...helpers.metax_api_handler import MetaxServiceHandler
@@ -23,7 +23,135 @@ from .restapi import RESTAPIHandler
 class FolderAPIHandler(RESTAPIHandler):
     """API Handler for folders."""
 
-    def _prepare_doi_update(self, folder: Dict) -> Tuple[Dict, List]:
+    def _prepare_published_study(self, study_data: Dict, general_info: Dict) -> Dict:
+        """Prepare Study object for publishing.
+
+        :param study_data: Study Object read from the database
+        :param general_info: General information that is captured in front-end and set in ``doiInfo`` key
+        :returns: Study Object ready to publish to Datacite
+        """
+
+        study = {
+            "attributes": {
+                "publisher": doi_config["publisher"],
+                "publicationYear": date.today().year,
+                "event": "publish",
+                "schemaVersion": "https://schema.datacite.org/meta/kernel-4",
+                "doi": study_data["doi"],
+                "prefix": study_data["doi"].split("/")[0],
+                "suffix": study_data["doi"].split("/")[1],
+                "types": {
+                    "bibtex": "misc",
+                    "citeproc": "collection",
+                    "schemaOrg": "Collection",
+                    "resourceTypeGeneral": "Collection",
+                },
+                "url": f"{doi_config['discovery_url']}{study_data['metaxIdentifier']}",
+                "identifiers": [
+                    {
+                        "identifierType": "DOI",
+                        "doi": study_data["doi"],
+                    }
+                ],
+                "descriptions": [],
+                "titles": [],
+            },
+            "id": study_data["doi"],
+            "type": "dois",
+        }
+
+        study["attributes"]["titles"].append(
+            {"lang": None, "title": study_data["descriptor"]["studyTitle"], "titleType": None},
+        )
+
+        study["attributes"]["descriptions"].append(
+            {
+                "lang": None,
+                "description": study_data["descriptor"]["studyAbstract"],
+                "descriptionType": "Abstract",
+            }
+        )
+
+        if "studyDescription" in study_data:
+            study["attributes"]["descriptions"].append(
+                {"lang": None, "description": study_data["studyDescription"], "descriptionType": "Other"}
+            )
+
+        study["attributes"].update(general_info)
+        LOG.debug(f"prepared study info: {study}")
+
+        return study
+
+    def _prepare_published_dataset(self, study_doi: str, dataset_data: Dict, general_info: Dict) -> Dict:
+        """Prepare Dataset object for publishing.
+
+        :param study_doi: Study DOI to link dataset to study at Datacite
+        :param dataset_data: Dataset Object read from the database
+        :param general_info: General information that is captured in front-end and set in `doiInfo` key
+        :returns: Dataset Object ready to publish to Datacite
+        """
+
+        dataset = {
+            "attributes": {
+                "publisher": doi_config["publisher"],
+                "publicationYear": date.today().year,
+                "event": "publish",
+                "schemaVersion": "https://schema.datacite.org/meta/kernel-4",
+                "doi": dataset_data["doi"],
+                "prefix": dataset_data["doi"].split("/")[0],
+                "suffix": dataset_data["doi"].split("/")[1],
+                "types": {
+                    "ris": "DATA",
+                    "bibtex": "misc",
+                    "citeproc": "dataset",
+                    "schemaOrg": "Dataset",
+                    "resourceTypeGeneral": "Dataset",
+                },
+                "url": f"{doi_config['discovery_url']}{dataset_data['metaxIdentifier']}",
+                "identifiers": [
+                    {
+                        "identifierType": "DOI",
+                        "doi": dataset_data["doi"],
+                    }
+                ],
+                "descriptions": [],
+                "titles": [],
+            },
+            "id": dataset_data["doi"],
+            "type": "dois",
+        }
+
+        dataset["attributes"]["titles"].append(
+            {"lang": None, "title": dataset_data["title"], "titleType": None},
+        )
+
+        dataset["attributes"]["descriptions"].append(
+            {
+                "lang": None,
+                "description": dataset_data["description"],
+                "descriptionType": "Other",
+            }
+        )
+
+        # A Dataset is described by a Study
+        if "relatedIdentifiers" not in dataset["attributes"]:
+            dataset["attributes"]["relatedIdentifiers"] = []
+
+        dataset["attributes"]["relatedIdentifiers"].append(
+            {
+                "relationType": "IsDescribedBy",
+                "relatedIdentifier": study_doi,
+                "resourceTypeGeneral": "Collection",
+                "relatedIdentifierType": "DOI",
+            }
+        )
+
+        dataset["attributes"].update(general_info)
+        LOG.debug(f"prepared dataset info: {dataset}")
+
+        return dataset
+
+    async def _prepare_doi_update(self, obj_op: Operator, folder: Dict) -> Tuple[Dict, List, List]:
         """Prepare dictionary with values for the Datacite DOI update.
 
         We need to prepare data for Study and Datasets, publish doi for each,
@@ -32,21 +160,14 @@ class FolderAPIHandler(RESTAPIHandler):
         as well as ``extraInfo`` which contains the draft DOIs created for the Study
         and each Dataset.
 
+        :param obj_op: Operator for reading objects from database.
         :param folder: Folder data
-        :returns: Tuple with the Study and list of Datasets.
+        :returns: Tuple with the Study and list of Datasets and list of identifiers for publishing to Metax
         """
 
-        _general_info = {
-            "attributes": {
-                "publisher": publisher,
-                "publicationYear": date.today().year,
-                "event": "publish",
-                "schemaVersion": "https://schema.datacite.org/meta/kernel-4",
-            },
-        }
-
+        metax_ids = []
         study = {}
-        datasets = []
+        datasets: List = []
 
         # we need to re-format these for Datacite, as in the JSON schemas
         # we split the words so that front-end will display them nicely
@@ -66,91 +187,80 @@ class FolderAPIHandler(RESTAPIHandler):
         if "fundingReferences" in _info:
             for d in _info["fundingReferences"]:
                 d.update((k, "".join(v.split())) for k, v in d.items() if k == "funderIdentifierType")
-        # need to add titles and descriptions for datasets and study
+
         try:
             # keywords are only required for Metax integration
             # thus we remove them
             _info.pop("keywords", None)
-            _general_info["attributes"].update(_info)
 
-            _study = folder["extraInfo"]["studyIdentifier"]
-            _study_doi = _study["identifier"]["doi"]
-            study = {
-                "attributes": {
-                    "doi": _study_doi,
-                    "prefix": _study_doi.split("/")[0],
-                    "suffix": _study_doi.split("/")[1],
-                    "types": {
-                        "bibtex": "misc",
-                        "citeproc": "collection",
-                        "schemaOrg": "Collection",
-                        "resourceTypeGeneral": "Collection",
-                    },
-                    "url": _study["url"],
-                    "identifiers": [_study["identifier"]],
-                },
-                "id": _study_doi,
-                "type": "dois",
-            }
+            _study_doi = ""
 
-            study.update(_general_info)
+            for _obj in folder["metadataObjects"]:
 
-            _datasets = folder["extraInfo"]["datasetIdentifiers"]
-            for ds in _datasets:
-                _doi = ds["identifier"]["doi"]
-                _tmp = {
-                    "attributes": {
-                        "doi": _doi,
-                        "prefix": _doi.split("/")[0],
-                        "suffix": _doi.split("/")[1],
-                        "types": {
-                            "ris": "DATA",
-                            "bibtex": "misc",
-                            "citeproc": "dataset",
-                            "schemaOrg": "Dataset",
-                            "resourceTypeGeneral": "Dataset",
-                        },
-                        "url": ds["url"],
-                        "identifiers": [ds["identifier"]],
-                    },
-                    "id": _doi,
-                    "type": "dois",
-                }
-                _tmp.update(_general_info)
+                if _obj["schema"] == "study":
 
-                # A Dataset is described by a Study
-                if "relatedIdentifiers" not in _tmp["attributes"]:
-                    _tmp["attributes"]["relatedIdentifiers"] = []
+                    # we need the study for the title, abstract and description
+                    study_data, _ = await obj_op.read_metadata_object("study", _obj["accessionId"])
 
-                _tmp["attributes"]["relatedIdentifiers"].append(
-                    {
-                        "relationType": "IsDescribedBy",
-                        "relatedIdentifier": _study_doi,
-                        "resourceTypeGeneral": "Collection",
-                        "relatedIdentifierType": "DOI",
-                    }
-                )
+                    if isinstance(study_data, dict):
 
-                datasets.append(_tmp)
+                        study = self._prepare_published_study(study_data, _info)
 
-                # A Study describes a Dataset
-                if "relatedIdentifiers" not in study["attributes"]:
-                    study["attributes"]["relatedIdentifiers"] = []
+                        _study_doi = study_data["doi"]
 
-                study["attributes"]["relatedIdentifiers"].append(
-                    {
-                        "relationType": "Describes",
-                        "relatedIdentifier": _doi,
-                        "resourceTypeGeneral": "Dataset",
-                        "relatedIdentifierType": "DOI",
-                    }
-                )
+                        metax_ids.append({"doi": study_data["doi"], "metaxIdentifier": study_data["metaxIdentifier"]})
+
+                        # there are cases where datasets are added first
+                        if len(datasets) > 0:
+                            LOG.info(datasets)
+                            for ds in datasets:
+                                if "relatedIdentifiers" not in study["attributes"]:
+                                    study["attributes"]["relatedIdentifiers"] = []
+
+                                study["attributes"]["relatedIdentifiers"].append(
+                                    {
+                                        "relationType": "Describes",
+                                        "relatedIdentifier": ds["attributes"]["doi"],
+                                        "resourceTypeGeneral": "Dataset",
+                                        "relatedIdentifierType": "DOI",
+                                    }
+                                )
+
+                elif _obj["schema"] == "dataset":
+
+                    # we need the dataset title and description
+                    ds_data, _ = await obj_op.read_metadata_object("dataset", _obj["accessionId"])
+
+                    if isinstance(ds_data, dict):
+                        dataset = self._prepare_published_dataset(_study_doi, ds_data, _info)
+
+                        datasets.append(dataset)
+                        metax_ids.append({"doi": ds_data["doi"], "metaxIdentifier": ds_data["metaxIdentifier"]})
+
+                        # A Study describes a Dataset
+                        # there are cases where datasets are added first
+                        if "attributes" in study:
+                            if "relatedIdentifiers" not in study["attributes"]:
+                                study["attributes"]["relatedIdentifiers"] = []
+
+                            study["attributes"]["relatedIdentifiers"].append(
+                                {
+                                    "relationType": "Describes",
+                                    "relatedIdentifier": ds_data["doi"],
+                                    "resourceTypeGeneral": "Dataset",
+                                    "relatedIdentifierType": "DOI",
+                                }
+                            )
+                else:
+                    pass
+        # we catch all errors, if we missed even a key, that means some information is not
+        # properly recorded
         except Exception as e:
             reason = f"Could not construct DOI data, reason: {e}"
             LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
+            raise web.HTTPInternalServerError(reason=reason)
 
-        return (study, datasets)
+        return (study, datasets, metax_ids)
 
     def _check_patch_folder(self, patch_ops: Any) -> None:
         """Check patch operations in request are valid.
@@ -158,6 +268,7 @@ class FolderAPIHandler(RESTAPIHandler):
         We check that ``metadataObjects`` and ``drafts`` have ``_required_values``.
         For tags we check that the ``submissionType`` takes either ``CSV``, ``XML`` or
         ``Form`` as values.
+
         :param patch_ops: JSON patch request
         :raises: HTTPBadRequest if request does not fullfil one of requirements
         :raises: HTTPUnauthorized if request tries to do anything else than add or replace
@@ -388,32 +499,60 @@ class FolderAPIHandler(RESTAPIHandler):
         folder = await operator.read_folder(folder_id)
 
         # we first try to publish the DOI before actually publishing the folder
-        study, datasets = self._prepare_doi_update(folder)
+        obj_ops = Operator(db_client)
+        study, datasets, metax_ids = await self._prepare_doi_update(obj_ops, folder)
 
         doi_ops = DOIHandler()
 
+        datasets_patch = []
+
         await doi_ops.set_state(study)
+
         for ds in datasets:
             await doi_ops.set_state(ds)
-
-        obj_ops = Operator(db_client)
+            patch_ds = {
+                "op": "add",
+                "path": "/extraInfo/datasetIdentifiers/-",
+                "value": {
+                    "identifier": {
+                        "identifierType": "DOI",
+                        "doi": ds["id"],
+                    },
+                    "url": ds["attributes"]["url"],
+                    "types": ds["attributes"]["types"],
+                },
+            }
+            datasets_patch.append(patch_ds)
 
         # Create draft DOI and delete draft objects from the folder
 
         for obj in folder["drafts"]:
             await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
 
+        await MetaxServiceHandler(req).publish_dataset(metax_ids)
+
         # Patch the folder into a published state
         patch = [
             {"op": "replace", "path": "/published", "value": True},
             {"op": "replace", "path": "/drafts", "value": []},
             {"op": "add", "path": "/datePublished", "value": int(datetime.now().timestamp())},
-            {"op": "add", "path": "/extraInfo/publisher", "value": publisher},
+            {"op": "add", "path": "/extraInfo/publisher", "value": doi_config["publisher"]},
             {"op": "add", "path": "/extraInfo/publicationYear", "value": date.today().year},
+            {
+                "op": "add",
+                "path": "/extraInfo/studyIdentifier",
+                "value": {
+                    "identifier": {
+                        "identifierType": "DOI",
+                        "doi": study["id"],
+                    },
+                    "url": study["attributes"]["url"],
+                    "types": study["attributes"]["types"],
+                },
+            },
         ]
+        patch.extend(datasets_patch)
         new_folder = await operator.update_folder(folder_id, patch)
-
-        await MetaxServiceHandler(req).publish_dataset(new_folder)
 
         body = ujson.dumps({"folderId": new_folder}, escape_forward_slashes=False)
         LOG.info(f"Patching folder with ID {new_folder} was successful.")
