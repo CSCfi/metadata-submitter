@@ -211,6 +211,8 @@ class ObjectAPIHandler(RESTAPIHandler):
         :raises: HTTPUnprocessableEntity if object does not belong to current user
         :returns: HTTPNoContent response
         """
+        _allowed_doi = {"study", "dataset"}
+
         schema_type = req.match_info["schema"]
         self._check_schema_exists(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
@@ -237,21 +239,25 @@ class ObjectAPIHandler(RESTAPIHandler):
             raise web.HTTPUnprocessableEntity(reason=reason)
 
         metax_id: str = ""
-        if collection in {"study", "dataset"}:
+        doi_id: str = ""
+        if collection in _allowed_doi:
             try:
                 object_data, _ = await operator.read_metadata_object(collection, accession_id)
                 # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
                 if isinstance(object_data, dict):
                     metax_id = object_data["metaxIdentifier"]
+                    doi_id = object_data["doi"]
             except KeyError:
                 LOG.warning(f"MetadataObject {collection} {accession_id} was never added to Metax service.")
 
         accession_id = await operator.delete_metadata_object(collection, accession_id)
 
         # Delete draft dataset from Metax catalog
-        if collection in {"study", "dataset"}:
+        if collection in _allowed_doi:
             metax_service = MetaxServiceHandler(req)
             await metax_service.delete_draft_dataset(metax_id)
+            doi_service = DOIHandler()
+            await doi_service.delete(doi_id)
 
         LOG.info(f"DELETE object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(status=204)
