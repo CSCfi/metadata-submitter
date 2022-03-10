@@ -121,10 +121,11 @@ class SubmissionAPIHandler(ObjectAPIHandler):
 
         Only "add/modify/validate" actions are supported.
 
+        :param req: Multipart POST request
         :param schema: Schema type of the object in question
         :param content: Metadata object referred to in submission
-        :param db_client: Database client for database operations
         :param action: Type of action to be done
+        :param filename: Name of file being processed
         :raises: HTTPBadRequest if an incorrect or non-supported action is called
         :returns: Dict containing specific action that was completed
         """
@@ -144,14 +145,12 @@ class SubmissionAPIHandler(ObjectAPIHandler):
             raise web.HTTPBadRequest(reason=reason)
 
     async def _execute_action_add(self, req: Request, schema: str, content: str, filename: str) -> Dict:
-        """Complete the command in the action set of the submission file.
+        """Complete the add action.
 
-        Only "add/modify/validate" actions are supported.
-
+        :param req: Multipart POST request
         :param schema: Schema type of the object in question
         :param content: Metadata object referred to in submission
-        :param db_client: Database client for database operations
-        :param action: Type of action to be done
+        :param filename: Name of file being processed
         :raises: HTTPBadRequest if an incorrect or non-supported action is called
         :returns: Dict containing specific action that was completed
         """
@@ -193,14 +192,12 @@ class SubmissionAPIHandler(ObjectAPIHandler):
         return result
 
     async def _execute_action_modify(self, req: Request, schema: str, content: str, filename: str) -> Dict:
-        """Complete the command in the action set of the submission file.
+        """Complete the modify action.
 
-        Only "add/modify/validate" actions are supported.
-
+        :param req: Multipart POST request
         :param schema: Schema type of the object in question
         :param content: Metadata object referred to in submission
-        :param db_client: Database client for database operations
-        :param action: Type of action to be done
+        :param filename: Name of file being processed
         :raises: HTTPBadRequest if an incorrect or non-supported action is called
         :returns: Dict containing specific action that was completed
         """

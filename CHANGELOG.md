@@ -8,12 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Submission endpoint update #371
+  - Adds mandatory query parameter `folder` for submit endpoint POST 
+  - On actions add and modify object is added or updated to folder(submission) where it belongs with it's accession ID, schema, submission type, title and filename
+  - Adds metax integration to submit endpoint
 - Integration with Metax service #356
   - Adds new local container for testing against mocked Metax API
   - Introduces new env vars: METAX_USER, METAX_PASS, METAX_URL
   - Adds new key metaxIdentifier to Study and Dataset collections containing metax id returned from Metax API
   - Adds new handler MetaxServiceHandler to take care of mapping Submitter metadata to Metax metadata and to connect to Metax API
 - Add patching of folders after object save and update operations #354
+  - Adds mandatory query parameter `folder` for objects endpoint POST 
   - Object is added or updated to folder(submission) where it belongs with it's accession ID, schema, submission type, title and filename in the case of CSV and XML upload
   - Adds configuration for mypy linting to VScode devcontainer setup
 - Templates API #256
@@ -46,7 +51,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - multilevel add patch objects to support `/extraInfo/datasetIdentifiers/-` which needs dot notation for mongodb to work e.g. `extraInfo.datasetIdentifiers` #332
 
 ### Changed
-
 - Refactor auth.py package by removing custom OIDC code and replacing it with https://github.com/IdentityPython/JWTConnect-Python-OidcRP. #315
   - New mandatory ENV `OIDC_URL`
   - New optional ENVs `OIDC_SCOPE`, `AUTH_METHOD`
