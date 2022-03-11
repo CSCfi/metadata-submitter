@@ -40,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - added new key `projects` to `user`
   - added new key `projectId` to `folder` and `template-*` collections
   - new mandatory `/userinfo` value from AAI at login time `sdSubmitProjects`
-    - user is redirected to `/noproject` if key is empty or missing
+    - user is redirected to an info page by AAI if key is missing
   - new mandatory query parameter `projectId` in `GET /folders`
   - new mandatory JSON key `projectId` in `POST /folders` and `POST /templates`
   - new endpoint `GET /templates` to replace `GET /users/current` `{"templates":[...]}`

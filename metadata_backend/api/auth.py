@@ -117,12 +117,6 @@ class AccessHandler:
             LOG.error(f"OIDC Callback failed with: {e}")
             raise web.HTTPBadRequest(reason="Invalid OIDC callback.")
 
-        # If user has no project affiliations, they will be redirected to an instructions page
-        if not session["userinfo"].get("sdSubmitProjects", ""):
-            LOG.error("user has no project affiliations")
-            response = web.HTTPSeeOther(f"{self.redirect}/noproject")
-            return response
-
         response = web.HTTPSeeOther(f"{self.redirect}/home")
 
         cookie, _ = generate_cookie(req)
