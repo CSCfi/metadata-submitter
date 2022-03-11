@@ -64,7 +64,7 @@ class DOIHandler:
         Partial updates are possible.
 
         :param doi_payload: Dictionary with payload to send to Datacite
-        :raises: HTTPInternalServerError if we the Datacite DOI update fails
+        :raises: HTTPInternalServerError if the Datacite DOI update fails
         :returns: None
         """
         auth = BasicAuth(login=self.doi_user, password=self.doi_key)
