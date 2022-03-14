@@ -69,7 +69,7 @@ async def get_dataset(req: web.Request) -> web.Response:
 
 
 async def post_dataset(req: web.Request) -> web.Response:
-    """Mock endpoint for creating Metax dataset.
+    """Mock endpoint for creating draft Metax dataset.
 
     :params req: HTTP request with data for Metax dataset
     :return: HTTP response with mocked Metax dataset data
@@ -88,6 +88,7 @@ async def post_dataset(req: web.Request) -> web.Response:
         )
     validate_data(content)
 
+    content["research_dataset"]["preferred_identifier"] = f"draft:{str(uuid4())}"
     metax_id = str(uuid4())
     metax_additions = {
         "identifier": metax_id,
@@ -215,6 +216,49 @@ async def patch_datasets(req: web.Request) -> web.Response:
     )
 
 
+async def patch_dataset(req: web.Request) -> web.Response:
+    """Mock endpoint for patching Metax dataset.
+
+    :params req: HTTP request with data for Metax dataset
+    :return: HTTP response with mocked Metax dataset data
+    """
+    LOG.info("Patching Metax dataset")
+    metax_id = req.match_info["metax_id"]
+    if not metax_id:
+        raise web.HTTPBadRequest(
+            reason={
+                "detail": ["Query params missing Metax ID."],
+                "error_identifier": datetime.now(),
+            }
+        )
+    if metax_id not in drafts.keys():
+        LOG.error(f"No dataset found with identifier {metax_id}")
+        raise web.HTTPNotFound(reason={"detail": "Not found."})
+
+    try:
+        content = await req.json()
+    except json.decoder.JSONDecodeError as e:
+        reason = f"JSON is not correctly formatted. See: {e}"
+        LOG.error(f"Error while validating payload: {reason}")
+        raise web.HTTPBadRequest(
+            reason={
+                "detail": reason,
+                "error_identifier": datetime.now(),
+            }
+        )
+    for key, value in content.items():
+        drafts[metax_id][key] = value
+
+    drafts[metax_id]["date_modified"] = str(datetime.now())
+
+    LOG.info(f'Updated Metax dataset with identifier {drafts[metax_id]["identifier"]}')
+    return web.Response(
+        body=ujson.dumps(drafts[metax_id], escape_forward_slashes=False),
+        status=200,
+        content_type="application/json",
+    )
+
+
 async def publish_dataset(req: web.Request) -> web.Response:
     """Mock endpoint for publishing Metax dataset.
 
@@ -313,6 +357,7 @@ def init() -> web.Application:
         web.post("/rpc/v2/datasets/publish_dataset", publish_dataset),
         web.get("/rest/v2/datasets/{metax_id}", get_dataset),
         web.patch("/rest/v2/datasets", patch_datasets),
+        web.patch("/rest/v2/datasets/{metax_id}", patch_dataset),
     ]
     app.router.add_routes(api_routes)
     LOG.info("Metax mock API started")
