@@ -102,11 +102,32 @@ class MetaxServiceHandler:
                     f"Created Metax draft dataset {metax_data['identifier']} from Submitter {collection} "
                     f"{data['accessionId']} with data: {metax_dataset}."
                 )
-                return metax_data["identifier"]
+                metax_id = metax_data["identifier"]
             else:
                 # TODO: how front end should react on this??
                 reason = await resp.text()
                 raise self.process_error(status, reason)
+
+            # Metax service overwrites preferred id (DOI) with temporary id for draft datasets
+            # Patching dataset with full research_dataset data updates preferred id to the real one
+            async with aiohttp.ClientSession() as sess:
+                resp = await sess.patch(
+                    f"{self.metax_url}{self.rest_route}/{metax_id}",
+                    json={"research_dataset": dataset_data},
+                    auth=aiohttp.BasicAuth(self.username, self.password),
+                )
+                status = resp.status
+                if status == 200:
+                    metax_data = await resp.json()
+                    LOG.debug(
+                        f"Updated Metax draft dataset {metax_data['identifier']} with permanent preferred "
+                        "identifier."
+                    )
+                    return metax_id
+                else:
+                    # TODO: how front end should react on this??
+                    reason = await resp.text()
+                    raise self.process_error(status, reason)
 
     async def update_draft_dataset(self, collection: str, data: Dict) -> str:
         """Update draft dataset to Metax.
