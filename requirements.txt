@@ -29,7 +29,7 @@ cryptography==36.0.1
     #   pyopenssl
 cryptojwt==1.6.1
     # via oidcmsg
-elementpath==2.4.0
+elementpath==2.5.0
     # via xmlschema
 filelock==3.4.0
     # via oidcmsg
@@ -93,7 +93,7 @@ urllib3==1.26.7
     #   responses
 uvloop==0.16.0
     # via -r requirements.in
-xmlschema==1.9.2
+xmlschema==1.10.0
     # via -r requirements.in
 yarl==1.7.2
     # via aiohttp
