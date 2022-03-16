@@ -69,6 +69,7 @@ class HandlersTestCase(AioHTTPTestCase):
                 {"accessionId": "EGA123456", "schema": "sample"},
             ],
             "drafts": [],
+            "doiInfo": {"creators": [{"name": "Creator, Test"}]},
         }
         self.user_id = "USR12345678"
         self.test_user = {
@@ -913,6 +914,7 @@ class FolderHandlerTestCase(HandlersTestCase):
         """Test that folder would be published and DOI would be added."""
         self.MockedDoiHandler().set_state.return_value = None
         self.MockedFolderOperator().update_folder.return_value = self.folder_id
+        self.MockedMetaxHandler().update_dataset_with_doi_info.return_value = None
         self.MockedMetaxHandler().publish_dataset.return_value = None
         with patch(
             self._mock_prepare_doi,
