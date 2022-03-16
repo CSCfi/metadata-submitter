@@ -62,6 +62,7 @@ users_url = f"{base_url}/users"
 submit_url = f"{base_url}/submit"
 publish_url = f"{base_url}/publish"
 metax_url = f"{os.getenv('METAX_URL', 'http://localhost:8002')}/rest/v2/datasets"
+auth = aiohttp.BasicAuth(os.getenv("METAX_USER", "sd"), os.getenv("METAX_PASS", "test"))
 # to form direct contact to db with create_folder()
 DATABASE = os.getenv("MONGO_DATABASE", "default")
 AUTHDB = os.getenv("MONGO_AUTHDB", "admin")
@@ -867,20 +868,19 @@ async def test_metax_crud_with_xml(sess, folder_id):
             except KeyError:
                 assert False, "Metax ID was not in response data"
         object.append(metax_id)
-        async with sess.get(f"{metax_url}/{metax_id}") as metax_resp:
+        async with sess.get(f"{metax_url}/{metax_id}", auth=auth) as metax_resp:
             assert metax_resp.status == 200, f"HTTP Status code error, got {metax_resp.status}"
             metax_res = await metax_resp.json()
             assert (
                 res.get("doi", None) == metax_res["research_dataset"]["preferred_identifier"]
             ), "Object's DOI was not in Metax response data preferred_identifier"
-            assert metax_res.get("date_modified", None) is None
 
     # PUT and PATCH to object endpoint updates draft dataset in Metax for Study and Dataset
     for schema, accession_id, filename in xml_files:
         await put_object_xml(sess, schema, accession_id, filename)
 
     for _, _, metax_id in ids:
-        async with sess.get(f"{metax_url}/{metax_id}") as metax_resp:
+        async with sess.get(f"{metax_url}/{metax_id}", auth=auth) as metax_resp:
             assert metax_resp.status == 200, f"HTTP Status code error, got {metax_resp.status}"
             metax_res = await metax_resp.json()
             assert (
@@ -892,7 +892,7 @@ async def test_metax_crud_with_xml(sess, folder_id):
         await delete_object(sess, schema, accession_id)
 
     for _, _, metax_id in ids:
-        async with sess.get(f"{metax_url}/{metax_id}") as metax_resp:
+        async with sess.get(f"{metax_url}/{metax_id}", auth=auth) as metax_resp:
             assert metax_resp.status == 404, f"HTTP Status code error - expected 404 Not Found, got {metax_resp.status}"
 
 
@@ -922,13 +922,12 @@ async def test_metax_crud_with_json(sess, folder_id):
             except KeyError:
                 assert False, "Metax ID was not in response data"
         object.append(metax_id)
-        async with sess.get(f"{metax_url}/{metax_id}") as metax_resp:
+        async with sess.get(f"{metax_url}/{metax_id}", auth=auth) as metax_resp:
             assert metax_resp.status == 200, f"HTTP Status code error, got {metax_resp.status}"
             metax_res = await metax_resp.json()
             assert (
                 res.get("doi", None) == metax_res["research_dataset"]["preferred_identifier"]
             ), "Object's DOI was not in Metax response data preferred_identifier"
-            assert metax_res.get("date_modified", None) is None
 
     for schema, accession_id, filename, _ in json_files:
         await put_object_json(sess, schema, accession_id, filename)
