@@ -164,6 +164,49 @@ class MetaxServiceHandler:
                 reason = await resp.text()
                 raise self.process_error(status, reason)
 
+    async def update_dataset_with_doi_info(self, doi_info: Dict, metax_ids: List) -> None:
+        """Update dataset for publishing.
+
+        :param doi_info: Dict containing info to complete metax dataset metadata
+        :param metax_id: Metax id of dataset to be updated
+        """
+        LOG.info("Updating object metax metadata with doi info")
+        bulk_data = []
+        for id in metax_ids:
+            async with aiohttp.ClientSession() as sess:
+                resp = await sess.get(
+                    f"{self.metax_url}{self.rest_route}/{id['metaxIdentifier']}",
+                    auth=aiohttp.BasicAuth(self.username, self.password),
+                )
+                status = resp.status
+                if status == 200:
+                    metax_data = await resp.json()
+                else:
+                    reason = await resp.text()
+                    raise self.process_error(status, reason)
+
+                # Map fields from doi info to Metax schema
+
+                # creator is required field
+                metax_data["research_dataset"]["creator"] = self.map_creators(doi_info["creators"])
+                bulk_data.append(
+                    {"identifier": id["metaxIdentifier"], "research_dataset": metax_data["research_dataset"]}
+                )
+
+        # for id in metax_ids:
+        async with aiohttp.ClientSession() as sess:
+            resp = await sess.patch(
+                f"{self.metax_url}{self.rest_route}",
+                json=bulk_data,
+                auth=aiohttp.BasicAuth(self.username, self.password),
+            )
+            if resp.status == 200:
+                LOG.info("Objects metadata are updated to Metax for publishing")
+                return await resp.json()
+            else:
+                reason = await resp.text()
+                raise self.process_error(status, reason)
+
     async def publish_dataset(self, _metax_ids: List[Dict]) -> None:
         """Publish draft dataset to Metax service.
 
@@ -223,6 +266,42 @@ class MetaxServiceHandler:
         research_dataset["description"]["en"] = data["description"]
         LOG.debug(f"Created Metax dataset from Dataset with data: {research_dataset}")
         return research_dataset
+
+    def map_creators(self, creators: List) -> List:
+        """Map creators.
+
+        :param submitter_data: Data comming from metadata submitter
+        :returns: Constructed creator data for Metax
+        """
+
+        metax_creators = []
+        for creator in creators:
+            metax_creator: Dict[str, Any] = {
+                "name": "",
+                "@type": "Person",
+                "member_of": {"name": {"en": ""}, "@type": "Organization"},
+                "identifier": "",
+            }
+            metax_creator["name"] = creator["name"]
+            metax_creator["@type"] = "Person"
+            # Metax schema accepts only one affiliation per creator
+            # so we take first one
+            if creator.get("affiliation", None):
+                affiliation = creator["affiliation"][0]
+                metax_creator["member_of"]["name"]["en"] = affiliation["name"]
+                metax_creator["member_of"]["@type"] = "Organization"
+                if affiliation.get("affiliationIdentifier"):
+                    metax_creator["member_of"]["identifier"] = affiliation["affiliationIdentifier"]
+            else:
+                metax_creator.pop("member_of")
+            # Metax schema accepts only one identifier per creator
+            # so we take first one
+            if creator.get("nameIdentifiers", None) and creator["nameIdentifiers"][0].get("nameIdentifier", None):
+                metax_creator["identifier"] = creator["nameIdentifiers"][0]["nameIdentifier"]
+            else:
+                metax_creator.pop("identifier")
+            metax_creators.append(metax_creator)
+        return metax_creators
 
     # we dont know exactly what is comming from Metax so we try it all
     def process_error(self, status: int, resp_json: str) -> HTTPError:
