@@ -4,6 +4,7 @@ import json
 import logging
 import os
 from datetime import datetime
+from typing import Dict
 from uuid import uuid4
 
 import ujson
@@ -74,7 +75,19 @@ async def post_dataset(req: web.Request) -> web.Response:
     :return: HTTP response with mocked Metax dataset data
     """
     LOG.info("Creating Metax dataset")
-    content = await validate_payload(req)
+    try:
+        content = await req.json()
+    except json.decoder.JSONDecodeError as e:
+        reason = f"JSON is not correctly formatted. See: {e}"
+        LOG.error(f"Error while validating payload: {reason}")
+        raise web.HTTPBadRequest(
+            reason={
+                "detail": reason,
+                "error_identifier": datetime.now(),
+            }
+        )
+    validate_data(content)
+
     metax_id = str(uuid4())
     metax_additions = {
         "identifier": metax_id,
@@ -116,7 +129,18 @@ async def update_dataset(req: web.Request) -> web.Response:
         LOG.error(f"No dataset found with identifier {metax_id}")
         raise web.HTTPNotFound(reason={"detail": "Not found."})
 
-    content = await validate_payload(req)
+    try:
+        content = await req.json()
+    except json.decoder.JSONDecodeError as e:
+        reason = f"JSON is not correctly formatted. See: {e}"
+        LOG.error(f"Error while validating payload: {reason}")
+        raise web.HTTPBadRequest(
+            reason={
+                "detail": reason,
+                "error_identifier": datetime.now(),
+            }
+        )
+    validate_data(content)
 
     for key, value in content.items():
         drafts[metax_id][key] = value
@@ -126,6 +150,66 @@ async def update_dataset(req: web.Request) -> web.Response:
     LOG.info(f'Updated Metax dataset with identifier {drafts[metax_id]["identifier"]}')
     return web.Response(
         body=ujson.dumps(drafts[metax_id], escape_forward_slashes=False),
+        status=200,
+        content_type="application/json",
+    )
+
+
+async def patch_datasets(req: web.Request) -> web.Response:
+    """Mock endpoint for patching bulk Metax datasets.
+
+    :params req: HTTP request with data for Metax datasets
+    :return: HTTP response with IDs of patched Metax datasets and possible errors
+    """
+    LOG.info("Patching Metax datasets")
+
+    success = []
+    failed = []
+    try:
+        content = await req.json()
+    except json.decoder.JSONDecodeError as e:
+        reason = f"JSON is not correctly formatted. See: {e}"
+        LOG.error(f"Error while validating payload: {reason}")
+        raise web.HTTPBadRequest(
+            reason={
+                "detail": reason,
+                "error_identifier": datetime.now(),
+            }
+        )
+    for dataset in content:
+        try:
+            metax_id = dataset["identifier"]
+            _ = dataset["research_dataset"]["preferred_identifier"]
+        except KeyError:
+            raise web.HTTPBadRequest(
+                reason={
+                    "detail": "Dataset is missing required identifiers",
+                    "error_identifier": datetime.now(),
+                }
+            )
+        if metax_id not in drafts.keys():
+            reason = f"No dataset found with identifier {metax_id}"
+            LOG.error(reason)
+            failed.append(
+                {
+                    "object": {
+                        "detail": reason,
+                        "error_identifier": datetime.now(),
+                    }
+                }
+            )
+            continue
+
+        for key, value in dataset.items():
+            drafts[metax_id][key] = value
+
+        drafts[metax_id]["date_modified"] = str(datetime.now())
+        success.append({"object": drafts[metax_id]})
+
+    LOG.info("Metax datasets patched")
+    body = {"success": success, "failed": failed}
+    return web.Response(
+        body=ujson.dumps(body, escape_forward_slashes=False),
         status=200,
         content_type="application/json",
     )
@@ -156,6 +240,7 @@ async def publish_dataset(req: web.Request) -> web.Response:
         raise web.HTTPNotFound(reason={"detail": "Not found."})
 
     data = drafts[metax_id]
+    validate_data(data, draft=True)
     published[metax_id] = data
     del drafts[metax_id]
     published[metax_id]["state"] = "published"
@@ -193,42 +278,29 @@ async def delete_dataset(req: web.Request) -> web.Response:
     return web.HTTPNoContent()
 
 
-async def validate_payload(req: web.Request, draft=True) -> dict:
+def validate_data(data: Dict, draft=True) -> None:
     """Check for required fields in dataset.
 
-    :param req: HTTP Request with data for dataset creation
+    :param data: Metax data to be validated
     :param draft: Indicator if dataset needs to be validated as draft or not; default true
     """
     LOG.info("Validating payload")
-    try:
-        content = await req.json()
-    except json.decoder.JSONDecodeError as e:
-        reason = f"JSON is not correctly formatted. See: {e}"
-        LOG.error(f"Error while validating payload: {reason}")
-        raise web.HTTPBadRequest(
-            reason={
-                "detail": reason,
-                "error_identifier": datetime.now(),
-            }
-        )
 
     required = ["data_catalog", "metadata_provider_org", "metadata_provider_user", "research_dataset"]
     rd_required = ["title", "description", "preferred_identifier", "access_rights", "publisher"]
 
     if not draft:
         rd_required = rd_required + ["creator"]
-
-    if not all(key in content.keys() for key in required):
+    if not all(key in data.keys() for key in required):
         reason = {"detail": [f"Dataset did not include all required fields: {', '.join(required)}."]}
         reason = json.dumps(reason)
         LOG.error(f"Error while validating payload: {reason}")
         raise web.HTTPBadRequest(reason=reason, content_type="application/json")
-    if not all(key in content["research_dataset"].keys() for key in rd_required):
+    if not all(key in data["research_dataset"].keys() for key in rd_required):
         reason = {"detail": [f"Research dataset did not include all required fields: {', '.join(rd_required)}."]}
         reason = json.dumps(reason)
         LOG.error(f"Error while validating payload: {reason}")
         raise web.HTTPBadRequest(reason=reason, content_type="application/json")
-    return content
 
 
 def init() -> web.Application:
@@ -240,6 +312,7 @@ def init() -> web.Application:
         web.delete("/rest/v2/datasets/{metax_id}", delete_dataset),
         web.post("/rpc/v2/datasets/publish_dataset", publish_dataset),
         web.get("/rest/v2/datasets/{metax_id}", get_dataset),
+        web.patch("/rest/v2/datasets", patch_datasets),
     ]
     app.router.add_routes(api_routes)
     LOG.info("Metax mock API started")
