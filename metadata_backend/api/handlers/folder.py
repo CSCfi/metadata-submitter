@@ -543,7 +543,10 @@ class FolderAPIHandler(RESTAPIHandler):
         for obj in folder["drafts"]:
             await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
 
-        await MetaxServiceHandler(req).publish_dataset(metax_ids)
+        # update study to metax with data comming from doi info
+        metax_handler = MetaxServiceHandler(req)
+        await metax_handler.update_dataset_with_doi_info(folder["doiInfo"], metax_ids)
+        await metax_handler.publish_dataset(metax_ids)
 
         # Patch the folder into a published state
         patch = [
