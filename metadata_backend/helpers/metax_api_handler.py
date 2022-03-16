@@ -1,7 +1,7 @@
 """Class for handling calls to METAX API."""
 from typing import Any, Dict, List
 
-import aiohttp
+from aiohttp import BasicAuth, ClientSession
 from aiohttp.web import HTTPBadRequest, HTTPError, HTTPForbidden, HTTPNotFound, Request
 
 from ..api.middlewares import get_session
@@ -23,9 +23,7 @@ class MetaxServiceHandler:
         """
         self.req = req
         self.db_client = self.req.app["db_client"]
-
-        self.username = metax_config["username"]
-        self.password = metax_config["password"]
+        self.auth = BasicAuth(metax_config["username"], metax_config["password"])
         self.metax_url = metax_config["url"]
         self.rest_route = metax_config["rest_route"]
         self.publish_route = metax_config["publish_route"]
@@ -88,12 +86,12 @@ class MetaxServiceHandler:
             f"Creating draft dataset to Metax service from Submitter {collection} with accession ID "
             f"{data['accessionId']}"
         )
-        async with aiohttp.ClientSession() as sess:
+        async with ClientSession() as sess:
             resp = await sess.post(
                 f"{self.metax_url}{self.rest_route}",
                 params="draft",
                 json=metax_dataset,
-                auth=aiohttp.BasicAuth(self.username, self.password),
+                auth=self.auth,
             )
             status = resp.status
             if status == 201:
@@ -110,11 +108,11 @@ class MetaxServiceHandler:
 
             # Metax service overwrites preferred id (DOI) with temporary id for draft datasets
             # Patching dataset with full research_dataset data updates preferred id to the real one
-            async with aiohttp.ClientSession() as sess:
+            async with ClientSession() as sess:
                 resp = await sess.patch(
                     f"{self.metax_url}{self.rest_route}/{metax_id}",
                     json={"research_dataset": dataset_data},
-                    auth=aiohttp.BasicAuth(self.username, self.password),
+                    auth=self.auth,
                 )
                 status = resp.status
                 if status == 200:
@@ -150,12 +148,12 @@ class MetaxServiceHandler:
         metax_dataset["research_dataset"] = dataset_data
         LOG.info(f"Sending updated {collection} object data to Metax service.")
 
-        async with aiohttp.ClientSession() as sess:
+        async with ClientSession() as sess:
             resp = await sess.put(
                 f'{self.metax_url}{self.rest_route}/{data["metaxIdentifier"]}',
                 params="draft",
                 json=metax_dataset,
-                auth=aiohttp.BasicAuth(self.username, self.password),
+                auth=self.auth,
             )
             status = resp.status
             if status == 200:
@@ -172,10 +170,10 @@ class MetaxServiceHandler:
 
         :param metax_id: Identification string pointing to Metax dataset to be deleted
         """
-        async with aiohttp.ClientSession() as sess:
+        async with ClientSession() as sess:
             resp = await sess.delete(
                 f"{self.metax_url}{self.rest_route}/{metax_id}",
-                auth=aiohttp.BasicAuth(self.username, self.password),
+                auth=self.auth,
             )
             status = resp.status
             if status == 204:
@@ -194,10 +192,10 @@ class MetaxServiceHandler:
         LOG.info("Updating object metax metadata with doi info")
         bulk_data = []
         for id in metax_ids:
-            async with aiohttp.ClientSession() as sess:
+            async with ClientSession() as sess:
                 resp = await sess.get(
                     f"{self.metax_url}{self.rest_route}/{id['metaxIdentifier']}",
-                    auth=aiohttp.BasicAuth(self.username, self.password),
+                    auth=self.auth,
                 )
                 status = resp.status
                 if status == 200:
@@ -215,11 +213,11 @@ class MetaxServiceHandler:
                 )
 
         # for id in metax_ids:
-        async with aiohttp.ClientSession() as sess:
+        async with ClientSession() as sess:
             resp = await sess.patch(
                 f"{self.metax_url}{self.rest_route}",
                 json=bulk_data,
-                auth=aiohttp.BasicAuth(self.username, self.password),
+                auth=self.auth,
             )
             if resp.status == 200:
                 LOG.info("Objects metadata are updated to Metax for publishing")
@@ -238,11 +236,11 @@ class MetaxServiceHandler:
         for object in _metax_ids:
             metax_id = object["metaxIdentifier"]
             doi = object["doi"]
-            async with aiohttp.ClientSession() as sess:
+            async with ClientSession() as sess:
                 resp = await sess.post(
                     f"{self.metax_url}{self.publish_route}",
                     params={"identifier": metax_id},
-                    auth=aiohttp.BasicAuth(self.username, self.password),
+                    auth=self.auth,
                 )
                 status = resp.status
                 if status == 200:
