@@ -11,10 +11,10 @@ from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
 from ...conf.conf import doi_config
-from ...helpers.logger import LOG
-from ...helpers.validator import JSONValidator
-from ...helpers.metax_api_handler import MetaxServiceHandler
 from ...helpers.doi import DOIHandler
+from ...helpers.logger import LOG
+from ...helpers.metax_api_handler import MetaxServiceHandler
+from ...helpers.validator import JSONValidator
 from ..middlewares import get_session
 from ..operators import FolderOperator, Operator, UserOperator
 from .restapi import RESTAPIHandler
@@ -529,7 +529,10 @@ class FolderAPIHandler(RESTAPIHandler):
         for obj in folder["drafts"]:
             await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
 
-        await MetaxServiceHandler(req).publish_dataset(metax_ids)
+        # update study to metax with data comming from doi info
+        metax_handler = MetaxServiceHandler(req)
+        await metax_handler.update_dataset_with_doi_info(folder["doiInfo"], metax_ids)
+        await metax_handler.publish_dataset(metax_ids)
 
         # Patch the folder into a published state
         patch = [
