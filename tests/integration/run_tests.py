@@ -897,7 +897,7 @@ async def test_metax_crud_with_xml(sess, folder_id):
                 assert False, "Metax ID was not in response data"
         object.append(metax_id)
         async with sess.get(f"{metax_url}/{metax_id}") as metax_resp:
-            assert metax_resp.status == 200, f"HTTP Status code error, got {resp.status}"
+            assert metax_resp.status == 200, f"HTTP Status code error, got {metax_resp.status}"
             metax_res = await metax_resp.json()
             assert (
                 res.get("doi", None) == metax_res["research_dataset"]["preferred_identifier"]
@@ -910,7 +910,7 @@ async def test_metax_crud_with_xml(sess, folder_id):
 
     for _, _, metax_id in ids:
         async with sess.get(f"{metax_url}/{metax_id}") as metax_resp:
-            assert metax_resp.status == 200, f"HTTP Status code error, got {resp.status}"
+            assert metax_resp.status == 200, f"HTTP Status code error, got {metax_resp.status}"
             metax_res = await metax_resp.json()
             assert (
                 metax_res.get("date_modified", None) is not None
@@ -922,7 +922,7 @@ async def test_metax_crud_with_xml(sess, folder_id):
 
     for _, _, metax_id in ids:
         async with sess.get(f"{metax_url}/{metax_id}") as metax_resp:
-            assert metax_resp.status == 404, f"HTTP Status code error - expected 404 Not Found, got {resp.status}"
+            assert metax_resp.status == 404, f"HTTP Status code error - expected 404 Not Found, got {metax_resp.status}"
 
 
 async def test_metax_crud_with_json(sess, folder_id):
@@ -952,7 +952,7 @@ async def test_metax_crud_with_json(sess, folder_id):
                 assert False, "Metax ID was not in response data"
         object.append(metax_id)
         async with sess.get(f"{metax_url}/{metax_id}") as metax_resp:
-            assert metax_resp.status == 200, f"HTTP Status code error, got {resp.status}"
+            assert metax_resp.status == 200, f"HTTP Status code error, got {metax_resp.status}"
             metax_res = await metax_resp.json()
             assert (
                 res.get("doi", None) == metax_res["research_dataset"]["preferred_identifier"]
@@ -1017,19 +1017,16 @@ async def test_metax_publish_dataset(sess, folder_id):
 
     await publish_folder(sess, folder_id)
 
-    # TODO: This must be updated as Metax identifier will be moved to folder from object after publishing
-    # for schema, object_id, metax_id in objects:
-    #     async with sess.get(f"{objects_url}/{schema}/{object_id}") as resp:
-    #         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-    #         res = await resp.json()
-    #         actual = res["metaxIdentifier"]
-    #         expected = {"identifier": metax_id, "status": "published"}
-    #         assert expected == actual
+    for schema, object_id, metax_id in objects:
+        async with sess.get(f"{objects_url}/{schema}/{object_id}") as resp:
+            assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+            res = await resp.json()
+            assert res["metaxIdentifier"] == metax_id
 
-    #     async with sess.get(f"{metax_url}/{metax_id}") as metax_resp:
-    #         assert metax_resp.status == 200, f"HTTP Status code error, got {resp.status}"
-    #         metax_res = await metax_resp.json()
-    #         assert metax_res["state"] == "published"
+        async with sess.get(f"{metax_url}/{metax_id}") as metax_resp:
+            assert metax_resp.status == 200, f"HTTP Status code error, got {metax_resp.status}"
+            metax_res = await metax_resp.json()
+            assert metax_res["state"] == "published"
 
 
 async def test_crud_folders_works(sess):
