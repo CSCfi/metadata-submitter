@@ -7,6 +7,7 @@ from aiohttp.web import HTTPBadRequest, HTTPError, HTTPForbidden, HTTPNotFound, 
 from ..api.middlewares import get_session
 from ..api.operators import UserOperator
 from ..conf.conf import metax_config
+from ..helpers.metax_mapper import MetaDataMapper
 from .logger import LOG
 
 
@@ -200,12 +201,10 @@ class MetaxServiceHandler:
                     raise self.process_error(status, reason)
 
                 # Map fields from doi info to Metax schema
-
+                mapper = MetaDataMapper(metax_data["research_dataset"], doi_info)
                 # creator is required field
-                metax_data["research_dataset"]["creator"] = self.map_creators(doi_info["creators"])
-                bulk_data.append(
-                    {"identifier": id["metaxIdentifier"], "research_dataset": metax_data["research_dataset"]}
-                )
+                mapped_metax_data = mapper.map_metadata()
+                bulk_data.append({"identifier": id["metaxIdentifier"], "research_dataset": mapped_metax_data})
 
         # for id in metax_ids:
         async with ClientSession() as sess:
@@ -281,41 +280,41 @@ class MetaxServiceHandler:
         LOG.debug(f"Created Metax dataset from Dataset with data: {research_dataset}")
         return research_dataset
 
-    def map_creators(self, creators: List) -> List:
-        """Map creators.
+    # def map_creators(self, creators: Dict) -> List:
+    #     """Map creators.
 
-        :param submitter_data: Data comming from metadata submitter
-        :returns: Constructed creator data for Metax
-        """
+    #     :param submitter_data: Data comming from metadata submitter
+    #     :returns: Constructed creator data for Metax
+    #     """
 
-        metax_creators = []
-        for creator in creators:
-            metax_creator: Dict[str, Any] = {
-                "name": "",
-                "@type": "Person",
-                "member_of": {"name": {"en": ""}, "@type": "Organization"},
-                "identifier": "",
-            }
-            metax_creator["name"] = creator["name"]
-            metax_creator["@type"] = "Person"
-            # Metax schema accepts only one affiliation per creator
-            # so we take first one
-            if creator.get("affiliation", None):
-                affiliation = creator["affiliation"][0]
-                metax_creator["member_of"]["name"]["en"] = affiliation["name"]
-                metax_creator["member_of"]["@type"] = "Organization"
-                if affiliation.get("affiliationIdentifier"):
-                    metax_creator["member_of"]["identifier"] = affiliation["affiliationIdentifier"]
-            else:
-                metax_creator.pop("member_of")
-            # Metax schema accepts only one identifier per creator
-            # so we take first one
-            if creator.get("nameIdentifiers", None) and creator["nameIdentifiers"][0].get("nameIdentifier", None):
-                metax_creator["identifier"] = creator["nameIdentifiers"][0]["nameIdentifier"]
-            else:
-                metax_creator.pop("identifier")
-            metax_creators.append(metax_creator)
-        return metax_creators
+    #     metax_creators = []
+    #     for creator in creators:
+    #         metax_creator: Dict[str, Any] = {
+    #             "name": "",
+    #             "@type": "Person",
+    #             "member_of": {"name": {"en": ""}, "@type": "Organization"},
+    #             "identifier": "",
+    #         }
+    #         metax_creator["name"] = creator["name"]
+    #         metax_creator["@type"] = "Person"
+    #         # Metax schema accepts only one affiliation per creator
+    #         # so we take first one
+    #         if creator.get("affiliation", None):
+    #             affiliation = creator["affiliation"][0]
+    #             metax_creator["member_of"]["name"]["en"] = affiliation["name"]
+    #             metax_creator["member_of"]["@type"] = "Organization"
+    #             if affiliation.get("affiliationIdentifier"):
+    #                 metax_creator["member_of"]["identifier"] = affiliation["affiliationIdentifier"]
+    #         # Metax schema accepts only one identifier per creator
+    #         # so we take first one
+    #         else:
+    #             metax_creator.pop("member_of")
+    #         if creator.get("nameIdentifiers", None) and creator["nameIdentifiers"][0].get("nameIdentifier", None):
+    #             metax_creator["identifier"] = creator["nameIdentifiers"][0]["nameIdentifier"]
+    #         else:
+    #             metax_creator.pop("identifier")
+    #         metax_creators.append(metax_creator)
+    #     return metax_creators
 
     # we dont know exactly what is comming from Metax so we try it all
     def process_error(self, status: int, resp_json: str) -> HTTPError:
