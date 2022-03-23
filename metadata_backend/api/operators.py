@@ -436,16 +436,16 @@ class Operator(BaseOperator):
 
         We will not replace accessionId, publishDate or dateCreated,
         as these are generated when created.
-        Will not replace metaxIdentifier for study and dataset
+        Will not replace ``metaxIdentifier`` and ``doi`` for ``study`` and ``dataset``
         as it is generated when created.
-        We will keep also publisDate and dateCreated from old object.
+        We will keep also ``publisDate`` and ``dateCreated`` from old object.
 
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
         :param data: Metadata object
         :returns: Accession Id for object inserted to database
         """
-        forbidden_keys = {"accessionId", "publishDate", "dateCreated", "metaxIdentifier"}
+        forbidden_keys = {"accessionId", "publishDate", "dateCreated", "metaxIdentifier", "doi"}
         if any(i in data for i in forbidden_keys):
             reason = f"Some items (e.g: {', '.join(forbidden_keys)}) cannot be changed."
             LOG.error(reason)
@@ -459,12 +459,15 @@ class Operator(BaseOperator):
     async def _format_data_to_update_and_add_to_db(self, schema_type: str, accession_id: str, data: Any) -> str:
         """Format and update data in database.
 
+        Will not allow to update ``metaxIdentifier`` and ``doi`` for ``study`` and ``dataset``
+        as it is generated when created.
+
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
         :param data: Metadata object
         :returns: Accession Id for object inserted to database
         """
-        forbidden_keys = {"accessionId", "publishDate", "dateCreated", "metaxIdentifier"}
+        forbidden_keys = {"accessionId", "publishDate", "dateCreated", "metaxIdentifier", "doi"}
         if any(i in data for i in forbidden_keys):
             reason = f"Some items (e.g: {', '.join(forbidden_keys)}) cannot be changed."
             LOG.error(reason)
