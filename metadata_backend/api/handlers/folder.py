@@ -13,7 +13,7 @@ from multidict import CIMultiDict
 from ...conf.conf import doi_config
 from ...helpers.doi import DOIHandler
 from ...helpers.logger import LOG
-from ...helpers.metax_api_handler import MetaxServiceHandler
+from ...helpers.metax.metax_api_handler import MetaxServiceHandler
 from ...helpers.validator import JSONValidator
 from ..middlewares import get_session
 from ..operators import FolderOperator, Operator, ProjectOperator, UserOperator

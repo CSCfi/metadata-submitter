@@ -9,7 +9,7 @@ from multidict import MultiDict, MultiDictProxy
 from xmlschema import XMLSchemaException
 
 from ...helpers.logger import LOG
-from ...helpers.metax_api_handler import MetaxServiceHandler
+from ...helpers.metax.metax_api_handler import MetaxServiceHandler
 from ...helpers.parser import XMLToJSONParser
 from ...helpers.schema_loader import SchemaNotFoundException, XMLSchemaLoader
 from ...helpers.validator import XMLValidator

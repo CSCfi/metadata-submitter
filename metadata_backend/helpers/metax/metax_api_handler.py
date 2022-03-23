@@ -4,11 +4,11 @@ from typing import Any, Dict, List
 from aiohttp import BasicAuth, ClientSession
 from aiohttp.web import HTTPBadRequest, HTTPError, HTTPForbidden, HTTPNotFound, Request
 
-from ..api.middlewares import get_session
-from ..api.operators import UserOperator
-from ..conf.conf import metax_config
-from ..helpers.metax_mapper import MetaDataMapper
-from .logger import LOG
+from ...api.middlewares import get_session
+from ...api.operators import UserOperator
+from ...conf.conf import metax_config
+from ..logger import LOG
+from .metax_mapper import MetaDataMapper
 
 
 class MetaxServiceHandler:

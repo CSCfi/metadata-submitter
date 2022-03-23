@@ -9,7 +9,7 @@ from multidict import CIMultiDict
 
 from ...helpers.doi import DOIHandler
 from ...helpers.logger import LOG
-from ...helpers.metax_api_handler import MetaxServiceHandler
+from ...helpers.metax.metax_api_handler import MetaxServiceHandler
 from ...helpers.validator import JSONValidator
 from ..operators import FolderOperator, Operator, XMLOperator
 from .common import multipart_content
