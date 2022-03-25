@@ -41,7 +41,13 @@ class MetaxServiceHandler:
                 "description": {"en": ""},
                 # default
                 "access_rights": {
-                    "access_type": {"identifier": "http://uri.suomi.fi/codelist/fairdata/access_type/code/restricted"},
+                    "access_type": {
+                        "identifier": "http://uri.suomi.fi/codelist/fairdata/access_type/code/restricted",
+                        "pref_label": {
+                            "fi": "Saatavuutta rajoitettu",
+                            "en": "Restricted use",
+                        },
+                    }
                 },
                 # default
                 "publisher": {
