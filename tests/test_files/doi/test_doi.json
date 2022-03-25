@@ -41,6 +41,81 @@
         }
       ],
       "contributorType": "Researcher"
+    },
+    {
+      "name": "Curator, Test",
+      "nameType": "Personal",
+      "givenName": "Test",
+      "familyName": "Curator",
+      "affiliation": [
+        {
+          "name": "affiliation place",
+          "schemeUri": "https://ror.org",
+          "affiliationIdentifier": "https://ror.org/test3",
+          "affiliationIdentifierScheme": "ROR"
+        }
+      ],
+      "contributorType": "Data Curator"
+    },
+    {
+      "name": "Rights, Holder",
+      "nameType": "Personal",
+      "givenName": "Rights",
+      "familyName": "Holder",
+      "affiliation": [
+        {
+          "name": "affiliation place",
+          "schemeUri": "https://ror.org",
+          "affiliationIdentifier": "https://ror.org/test3",
+          "affiliationIdentifierScheme": "ROR"
+        }
+      ],
+      "contributorType": "Rights Holder"
+    }
+  ],
+  "dates": [
+    {
+      "date": "2020-10-10/2022-01-10",
+      "dateType": "Collected"
+    },
+    {
+      "date": "2020-10-10",
+      "dateType": "Issued"
+    },
+    {
+      "date": "2022-01-10",
+      "dateType": "Updated"
+    },
+    {
+      "date": "2022-01-10",
+      "dateType": "Available"
+    }
+  ],
+  "geoLocations": [
+    {
+      "geoLocationPlace": "Helsinki"
+    },
+    {
+      "geoLocationPoint": {
+        "pointLongitude": "121.061",
+        "pointLatitude": "14.5786"
+      },
+      "geoLocationBox": {
+        "westBoundLongitude": "23.1994938494",
+        "eastBoundLongitude": "51.3195034857",
+        "southBoundLatitude": "32.6936430193",
+        "northBoundLatitude": "56.1691299506"
+      }
+    }
+  ],
+  "language": "Assamese",
+  "sizes": [
+    "30000"
+  ],
+  "alternateIdentifiers": [
+    {
+      "alternateIdentifier": "arXiv:9912.12345v2",
+      "alternateIdentifierType": "arXiv"
     }
   ]
 }
