@@ -109,6 +109,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         _allowed_csv = {"sample"}
         _allowed_doi = {"study", "dataset"}
         schema_type = req.match_info["schema"]
+        LOG.info(f"Creating object {schema_type}")
         filename = ""
         cont_type = ""
 
@@ -219,12 +220,12 @@ class ObjectAPIHandler(RESTAPIHandler):
         :returns: HTTPNoContent response
         """
         _allowed_doi = {"study", "dataset"}
-
         schema_type = req.match_info["schema"]
+        accession_id = req.match_info["accessionId"]
+        LOG.info(f"Deleting object {schema_type} {accession_id}")
+
         self._check_schema_exists(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
-
-        accession_id = req.match_info["accessionId"]
         db_client = req.app["db_client"]
 
         operator = Operator(db_client)
@@ -282,6 +283,8 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         schema_type = req.match_info["schema"]
         accession_id = req.match_info["accessionId"]
+        LOG.info(f"Replacing object {schema_type} {accession_id}")
+
         self._check_schema_exists(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
 
@@ -336,6 +339,8 @@ class ObjectAPIHandler(RESTAPIHandler):
         """
         schema_type = req.match_info["schema"]
         accession_id = req.match_info["accessionId"]
+        LOG.info(f"Patching object {schema_type} {accession_id}")
+
         self._check_schema_exists(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
 
@@ -391,6 +396,8 @@ class ObjectAPIHandler(RESTAPIHandler):
         :param params: addidtional data required for db entry
         :returns: list of patch operations
         """
+        LOG.info("Preparing folder patch for new objects")
+
         if not cont_type:
             submission_type = "Form"
         else:
@@ -434,6 +441,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         :param title: title to be updated
         :returns: dict with patch operation
         """
+        LOG.info("Preparing folder patch for existing objects")
         if schema.startswith("draft"):
             path = "/drafts"
         else:

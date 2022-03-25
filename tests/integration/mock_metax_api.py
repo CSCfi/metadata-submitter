@@ -103,7 +103,7 @@ async def post_dataset(req: web.Request) -> web.Response:
     }
     resp_data = dict(content, **metax_additions)
     drafts[metax_id] = resp_data
-    LOG.info(f'Created Metax dataset with identifier {resp_data["identifier"]}')
+    LOG.info(f'Created Metax dataset with identifier {resp_data["identifier"]}: {resp_data}')
     return web.Response(
         body=ujson.dumps(resp_data, escape_forward_slashes=False),
         status=201,
@@ -149,6 +149,7 @@ async def update_dataset(req: web.Request) -> web.Response:
     drafts[metax_id]["date_modified"] = str(datetime.now())
 
     LOG.info(f'Updated Metax dataset with identifier {drafts[metax_id]["identifier"]}')
+    LOG.debug(f"Updated dataset data is {drafts[metax_id]}")
     return web.Response(
         body=ujson.dumps(drafts[metax_id], escape_forward_slashes=False),
         status=200,
@@ -252,6 +253,7 @@ async def patch_dataset(req: web.Request) -> web.Response:
     drafts[metax_id]["date_modified"] = str(datetime.now())
 
     LOG.info(f'Updated Metax dataset with identifier {drafts[metax_id]["identifier"]}')
+    LOG.debug(f"Updated dataset data is {drafts[metax_id]}")
     return web.Response(
         body=ujson.dumps(drafts[metax_id], escape_forward_slashes=False),
         status=200,
@@ -290,6 +292,7 @@ async def publish_dataset(req: web.Request) -> web.Response:
     published[metax_id]["state"] = "published"
     published[metax_id]["modified"] = str(datetime.now())
     LOG.info(f"Published Metax dataset with identifier {metax_id}")
+    LOG.debug(f"Published dataset data is {published[metax_id]}")
     return web.Response(
         body=ujson.dumps(
             {"preferred_identifier": data["research_dataset"]["preferred_identifier"]}, escape_forward_slashes=False

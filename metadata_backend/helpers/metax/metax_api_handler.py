@@ -76,6 +76,7 @@ class MetaxServiceHandler:
         :raises: HTTPError depending on returned error from Metax
         :returns: Metax ID for dataset returned by Metax API
         """
+        LOG.info("Post to Metax as draft dataset")
         metax_dataset = self.minimal_dataset_template
         metax_dataset["metadata_provider_user"] = await self.get_metadata_provider_user()
         if collection == "dataset":
@@ -137,6 +138,7 @@ class MetaxServiceHandler:
         :raises: HTTPError depending on returned error from Metax
         :returns: Metax ID for dataset returned by Metax API
         """
+        LOG.info("Update Metax draft dataset")
         metax_dataset = self.minimal_dataset_template
         metax_dataset["metadata_provider_user"] = await self.get_metadata_provider_user()
         if collection == "dataset":
@@ -167,6 +169,7 @@ class MetaxServiceHandler:
 
         :param metax_id: Identification string pointing to Metax dataset to be deleted
         """
+        LOG.info("Delete Metax draft dataset")
         async with ClientSession() as sess:
             resp = await sess.delete(
                 f"{self.metax_url}{self.rest_route}/{metax_id}",
@@ -227,6 +230,7 @@ class MetaxServiceHandler:
 
         :param _metax_ids: List of metax IDs that include study and datasets
         """
+        LOG.info("Publish Metax dataset")
         for object in _metax_ids:
             metax_id = object["metaxIdentifier"]
             doi = object["doi"]
@@ -259,6 +263,7 @@ class MetaxServiceHandler:
         :param data: Study data
         :returns: constructed research dataset
         """
+        LOG.info("Creating Metax metadata for study")
         research_dataset = self.minimal_dataset_template["research_dataset"]
 
         research_dataset["preferred_identifier"] = data["doi"]
@@ -273,48 +278,13 @@ class MetaxServiceHandler:
         :param data: Dataset data
         :returns: constructed research dataset
         """
+        LOG.info("Creating Metax metadata for dataset")
         research_dataset = self.minimal_dataset_template["research_dataset"]
         research_dataset["preferred_identifier"] = data["doi"]
         research_dataset["title"]["en"] = data["title"]
         research_dataset["description"]["en"] = data["description"]
         LOG.debug(f"Created Metax dataset from Dataset with data: {research_dataset}")
         return research_dataset
-
-    # def map_creators(self, creators: Dict) -> List:
-    #     """Map creators.
-
-    #     :param submitter_data: Data comming from metadata submitter
-    #     :returns: Constructed creator data for Metax
-    #     """
-
-    #     metax_creators = []
-    #     for creator in creators:
-    #         metax_creator: Dict[str, Any] = {
-    #             "name": "",
-    #             "@type": "Person",
-    #             "member_of": {"name": {"en": ""}, "@type": "Organization"},
-    #             "identifier": "",
-    #         }
-    #         metax_creator["name"] = creator["name"]
-    #         metax_creator["@type"] = "Person"
-    #         # Metax schema accepts only one affiliation per creator
-    #         # so we take first one
-    #         if creator.get("affiliation", None):
-    #             affiliation = creator["affiliation"][0]
-    #             metax_creator["member_of"]["name"]["en"] = affiliation["name"]
-    #             metax_creator["member_of"]["@type"] = "Organization"
-    #             if affiliation.get("affiliationIdentifier"):
-    #                 metax_creator["member_of"]["identifier"] = affiliation["affiliationIdentifier"]
-    #         # Metax schema accepts only one identifier per creator
-    #         # so we take first one
-    #         else:
-    #             metax_creator.pop("member_of")
-    #         if creator.get("nameIdentifiers", None) and creator["nameIdentifiers"][0].get("nameIdentifier", None):
-    #             metax_creator["identifier"] = creator["nameIdentifiers"][0]["nameIdentifier"]
-    #         else:
-    #             metax_creator.pop("identifier")
-    #         metax_creators.append(metax_creator)
-    #     return metax_creators
 
     # we dont know exactly what is comming from Metax so we try it all
     def process_error(self, status: int, resp_json: str) -> HTTPError:
