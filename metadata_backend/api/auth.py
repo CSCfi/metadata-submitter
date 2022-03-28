@@ -1,7 +1,7 @@
 """Handle Access for request and OIDC workflow."""
 
 import hashlib
-from typing import Dict, Tuple
+from typing import Dict, Union, List
 
 import ujson
 from aiohttp import web
@@ -11,7 +11,7 @@ from oidcrp.rp_handler import RPHandler
 
 from ..helpers.logger import LOG
 from .middlewares import decrypt_cookie, generate_cookie
-from .operators import UserOperator
+from .operators import UserOperator, ProjectOperator
 
 
 class AccessHandler:
@@ -149,22 +149,20 @@ class AccessHandler:
         req.app["Session"][session_id] = {"oidc_state": params["state"], "access_token": session["token"]}
         req.app["Cookies"].add(session_id)
 
-        user_data: Tuple[str, str]
+        # User data is read from AAI /userinfo and is used to create the user model in database
+        user_data = {
+            "user_id": "",
+            "real_name": f"{session['userinfo']['given_name']} {session['userinfo']['family_name']}",
+            # projects come from AAI in this form: "project1 project2 project3"
+            # if user is not affiliated to any projects the `sdSubmitProjects` key will be missing
+            "projects": session["userinfo"]["sdSubmitProjects"].split(" "),
+        }
         if "CSCUserName" in session["userinfo"]:
-            user_data = (
-                session["userinfo"]["CSCUserName"],
-                f"{session['userinfo']['given_name']} {session['userinfo']['family_name']}",
-            )
-        if "remoteUserIdentifier" in session["userinfo"]:
-            user_data = (
-                session["userinfo"]["remoteUserIdentifier"],
-                f"{session['userinfo']['given_name']} {session['userinfo']['family_name']}",
-            )
+            user_data["user_id"] = session["userinfo"]["CSCUserName"]
+        elif "remoteUserIdentifier" in session["userinfo"]:
+            user_data["user_id"] = session["userinfo"]["remoteUserIdentifier"]
         elif "sub" in session["userinfo"]:
-            user_data = (
-                session["userinfo"]["sub"],
-                f"{session['userinfo']['given_name']} {session['userinfo']['family_name']}",
-            )
+            user_data["user_id"] = session["userinfo"]["sub"]
         else:
             LOG.error(
                 "User was authenticated, but they are missing mandatory claim CSCUserName, remoteUserIdentifier or sub."
@@ -172,6 +170,9 @@ class AccessHandler:
             raise web.HTTPBadRequest(
                 reason="Could not set user, missing claim CSCUserName, remoteUserIdentifier or sub."
             )
+
+        # Process project external IDs into the database and return accession IDs back to user_data
+        user_data["projects"] = await self._process_projects(req, user_data["projects"])
         await self._set_user(req, session_id, user_data)
 
         # done like this otherwise it will not redirect properly
@@ -208,7 +209,33 @@ class AccessHandler:
 
         raise response
 
-    async def _set_user(self, req: Request, session_id: str, user_data: Tuple[str, str]) -> None:
+    async def _process_projects(self, req: Request, projects: List[str]) -> List[Dict[str, str]]:
+        """Process project external IDs to internal accession IDs by getting IDs\
+            from database and creating projects that are missing.
+
+        :raises: HTTPBadRequest in failed to add project to database
+        :param req: A HTTP request instance
+        :param projects: A list of project external IDs
+        :returns: A list of objects containing project accession IDs and project numbers
+        """
+        projects.sort()  # sort project numbers to be increasing in order
+        new_project_ids: List[Dict[str, str]] = []
+
+        db_client = req.app["db_client"]
+        operator = ProjectOperator(db_client)
+        for project in projects:
+            project_id = await operator.create_project(project)
+            project_data = {
+                "projectId": project_id,  # internal ID
+                "projectNumber": project,  # human friendly
+            }
+            new_project_ids.append(project_data)
+
+        return new_project_ids
+
+    async def _set_user(
+        self, req: Request, session_id: str, user_data: Dict[str, Union[List[Dict[str, str]], str]]
+    ) -> None:
         """Set user in current session and return user id based on result of create_user.
 
         :raises: HTTPBadRequest in could not get user info from AAI OIDC
@@ -219,5 +246,20 @@ class AccessHandler:
 
         db_client = req.app["db_client"]
         operator = UserOperator(db_client)
+
+        # Create user
         user_id = await operator.create_user(user_data)
+
+        # Check if user's projects have changed
+        old_user = await operator.read_user(user_id)
+        if old_user["projects"] != user_data["projects"]:
+            update_operation = [
+                {
+                    "op": "replace",
+                    "path": "/projects",
+                    "value": user_data["projects"],
+                }
+            ]
+            user_id = await operator.update_user(user_id, update_operation)
+
         req.app["Session"][session_id]["user_info"] = user_id

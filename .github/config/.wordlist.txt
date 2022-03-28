@@ -463,6 +463,8 @@ primaryid
 probeset
 processedreads
 processingtype
+projectId
+projectNumber
 promethion
 proteinclusters
 protfam
@@ -533,6 +535,7 @@ schemeuri
 scientificname
 sda
 sdev
+sdSubmitProjects
 se
 secondaryid
 sectionname
@@ -589,6 +592,7 @@ taxonomicreferenceset
 taxonomysystem
 taxonomysystemversion
 telephonenumber
+templateId
 tigrinya
 tls
 toctree

@@ -73,8 +73,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.test_user = {
             "userId": self.user_id,
             "name": "tester",
-            "templates": [],
-            "folders": ["FOL12345678"],
         }
 
         self.operator_config = {
@@ -102,7 +100,7 @@ class HandlersTestCase(AioHTTPTestCase):
             "filter_user.side_effect": self.fake_useroperator_filter_user,
         }
 
-        RESTAPIHandler._handle_check_ownedby_user = make_mocked_coro(True)
+        RESTAPIHandler._handle_check_ownership = make_mocked_coro(True)
 
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
@@ -576,7 +574,6 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
     async def test_query_is_called_and_returns_json_in_correct_format(self):
         """Test query method calls operator and returns mocked JSON object."""
-        RESTAPIHandler._handle_user_objects_collection = make_mocked_coro(["EDAG3991701442770179", "EGA123456"])
         url = f"/objects/study?studyType=foo&name=bar&page={self.page_num}" f"&per_page={self.page_size}"
         response = await self.client.get(url)
         self.assertEqual(response.status, 200)
@@ -661,20 +658,10 @@ class UserHandlerTestCase(HandlersTestCase):
         self.patch_useroperator = patch(class_useroperator, **self.useroperator_config, spec=True)
         self.MockedUserOperator = self.patch_useroperator.start()
 
-        class_folderoperator = "metadata_backend.api.handlers.user.FolderOperator"
-        self.patch_folderoperator = patch(class_folderoperator, **self.folderoperator_config, spec=True)
-        self.MockedFolderOperator = self.patch_folderoperator.start()
-
-        class_operator = "metadata_backend.api.handlers.user.Operator"
-        self.patch_operator = patch(class_operator, **self.operator_config, spec=True)
-        self.MockedOperator = self.patch_operator.start()
-
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
         await super().tearDownAsync()
         self.patch_useroperator.stop()
-        self.patch_folderoperator.stop()
-        self.patch_operator.stop()
 
     async def test_get_user_works(self):
         """Test user object is returned when correct user id is given."""
@@ -684,96 +671,12 @@ class UserHandlerTestCase(HandlersTestCase):
         json_resp = await response.json()
         self.assertEqual(self.test_user, json_resp)
 
-    async def test_get_user_drafts_with_no_drafts(self):
-        """Test getting user drafts when user has no drafts."""
-        response = await self.client.get("/users/current?items=templates")
-        self.assertEqual(response.status, 200)
-        self.MockedUserOperator().filter_user.assert_called_once()
-        json_resp = await response.json()
-        result = {
-            "page": {
-                "page": 1,
-                "size": 5,
-                "totalPages": 0,
-                "totalTemplates": 0,
-            },
-            "templates": [],
-        }
-        self.assertEqual(json_resp, result)
-
-    async def test_get_user_templates_with_1_template(self):
-        """Test getting user templates when user has 1 draft."""
-        user = self.test_user
-        user["templates"].append(self.metadata_json)
-        self.MockedUserOperator().filter_user.return_value = (user["templates"], 1)
-        response = await self.client.get("/users/current?items=templates")
-        self.assertEqual(response.status, 200)
-        self.MockedUserOperator().filter_user.assert_called_once()
-        json_resp = await response.json()
-        result = {
-            "page": {
-                "page": 1,
-                "size": 5,
-                "totalPages": 1,
-                "totalTemplates": 1,
-            },
-            "templates": [self.metadata_json],
-        }
-        self.assertEqual(json_resp, result)
-
-    async def test_get_user_folder_list(self):
-        """Test get user with folders url returns a folder ID."""
-        self.MockedUserOperator().filter_user.return_value = (self.test_user["folders"], 1)
-        response = await self.client.get("/users/current?items=folders")
-        self.assertEqual(response.status, 200)
-        self.MockedUserOperator().filter_user.assert_called_once()
-        json_resp = await response.json()
-        result = {
-            "page": {
-                "page": 1,
-                "size": 5,
-                "totalPages": 1,
-                "totalFolders": 1,
-            },
-            "folders": ["FOL12345678"],
-        }
-        self.assertEqual(json_resp, result)
-
-    async def test_get_user_items_with_bad_param(self):
-        """Test that error is raised if items parameter in query is not templates or folders."""
-        response = await self.client.get("/users/current?items=wrong_thing")
-        self.assertEqual(response.status, 400)
-        json_resp = await response.json()
-        self.assertEqual(
-            json_resp["detail"], "wrong_thing is a faulty item parameter. Should be either folders or templates"
-        )
-
     async def test_user_deletion_is_called(self):
         """Test that user object would be deleted."""
         self.MockedUserOperator().read_user.return_value = self.test_user
         self.MockedUserOperator().delete_user.return_value = None
         await self.client.delete("/users/current")
-        self.MockedUserOperator().read_user.assert_called_once()
         self.MockedUserOperator().delete_user.assert_called_once()
-
-    async def test_update_user_fails_with_wrong_key(self):
-        """Test that user object does not update when forbidden keys are provided."""
-        data = [{"op": "add", "path": "/userId"}]
-        response = await self.client.patch("/users/current", json=data)
-        self.assertEqual(response.status, 400)
-        json_resp = await response.json()
-        reason = "Request contains '/userId' key that cannot be updated to user object"
-        self.assertEqual(reason, json_resp["detail"])
-
-    async def test_update_user_passes(self):
-        """Test that user object would update with correct keys."""
-        self.MockedUserOperator().update_user.return_value = self.user_id
-        data = [{"op": "add", "path": "/templates/-", "value": [{"accessionId": "3", "schema": "sample"}]}]
-        response = await self.client.patch("/users/current", json=data)
-        self.MockedUserOperator().update_user.assert_called_once()
-        self.assertEqual(response.status, 200)
-        json_resp = await response.json()
-        self.assertEqual(json_resp["userId"], self.user_id)
 
 
 class FolderHandlerTestCase(HandlersTestCase):
@@ -815,20 +718,32 @@ class FolderHandlerTestCase(HandlersTestCase):
 
     async def test_folder_creation_works(self):
         """Test that folder is created and folder ID returned."""
-        json_req = {"name": "test", "description": "test folder"}
-        response = await self.client.post("/folders", json=json_req)
-        json_resp = await response.json()
-        self.MockedFolderOperator().create_folder.assert_called_once()
-        self.assertEqual(response.status, 201)
-        self.assertEqual(json_resp["folderId"], self.folder_id)
+        json_req = {"name": "test", "description": "test folder", "projectId": "1000"}
+        with patch(
+            "metadata_backend.api.operators.ProjectOperator._check_project_exists",
+            return_value=True,
+        ):
+            response = await self.client.post("/folders", json=json_req)
+            json_resp = await response.json()
+            self.MockedFolderOperator().create_folder.assert_called_once()
+            self.assertEqual(response.status, 201)
+            self.assertEqual(json_resp["folderId"], self.folder_id)
 
-    async def test_folder_creation_with_missing_data_fails(self):
-        """Test that folder creation fails when missing data in request."""
-        json_req = {"description": "test folder"}
+    async def test_folder_creation_with_missing_name_fails(self):
+        """Test that folder creation fails when missing name in request."""
+        json_req = {"description": "test folder", "projectId": "1000"}
         response = await self.client.post("/folders", json=json_req)
         json_resp = await response.json()
         self.assertEqual(response.status, 400)
         self.assertIn("'name' is a required property", json_resp["detail"])
+
+    async def test_folder_creation_with_missing_project_fails(self):
+        """Test that folder creation fails when missing project in request."""
+        json_req = {"description": "test folder", "name": "name"}
+        response = await self.client.post("/folders", json=json_req)
+        json_resp = await response.json()
+        self.assertEqual(response.status, 400)
+        self.assertIn("'projectId' is a required property", json_resp["detail"])
 
     async def test_folder_creation_with_empty_body_fails(self):
         """Test that folder creation fails when no data in request."""
@@ -840,7 +755,7 @@ class FolderHandlerTestCase(HandlersTestCase):
     async def test_get_folders_with_1_folder(self):
         """Test get_folders() endpoint returns list with 1 folder."""
         self.MockedFolderOperator().query_folders.return_value = (self.test_folder, 1)
-        response = await self.client.get("/folders")
+        response = await self.client.get("/folders?projectId=1000")
         self.MockedFolderOperator().query_folders.assert_called_once()
         self.assertEqual(response.status, 200)
         result = {
@@ -857,7 +772,7 @@ class FolderHandlerTestCase(HandlersTestCase):
     async def test_get_folders_with_no_folders(self):
         """Test get_folders() endpoint returns empty list."""
         self.MockedFolderOperator().query_folders.return_value = ([], 0)
-        response = await self.client.get("/folders")
+        response = await self.client.get("/folders?projectId=1000")
         self.MockedFolderOperator().query_folders.assert_called_once()
         self.assertEqual(response.status, 200)
         result = {
@@ -873,25 +788,23 @@ class FolderHandlerTestCase(HandlersTestCase):
 
     async def test_get_folders_with_bad_params(self):
         """Test get_folders() with faulty pagination parameters."""
-        response = await self.client.get("/folders?page=ayylmao")
+        response = await self.client.get("/folders?page=ayylmao&projectId=1000")
         self.assertEqual(response.status, 400)
         resp = await response.json()
         self.assertEqual(resp["detail"], "page parameter must be a number, now it is ayylmao")
 
-        response = await self.client.get("/folders?page=1&per_page=-100")
+        response = await self.client.get("/folders?page=1&per_page=-100&projectId=1000")
         self.assertEqual(response.status, 400)
         resp = await response.json()
         self.assertEqual(resp["detail"], "per_page parameter must be over 0")
 
-        response = await self.client.get("/folders?published=yes")
+        response = await self.client.get("/folders?published=yes&projectId=1000")
         self.assertEqual(response.status, 400)
         resp = await response.json()
         self.assertEqual(resp["detail"], "'published' parameter must be either 'true' or 'false'")
 
     async def test_get_folder_works(self):
         """Test folder is returned when correct folder id is given."""
-        # RESTAPIHandler._handle_check_ownedby_user = make_mocked_coro(True)
-
         response = await self.client.get("/folders/FOL12345678")
         self.assertEqual(response.status, 200)
         self.MockedFolderOperator().read_folder.assert_called_once()

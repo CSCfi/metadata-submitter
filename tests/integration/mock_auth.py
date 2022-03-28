@@ -152,6 +152,7 @@ async def userinfo(request: web.Request) -> web.Response:
         "schacHomeOrganization": "test.what",
         "family_name": user_family_name,
         "email": user_sub,
+        "sdSubmitProjects": "1000 2000 3000",
     }
 
     LOG.info(user_info)

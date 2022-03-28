@@ -33,7 +33,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         per_page = self._get_page_param(req, "per_page", 10)
         db_client = req.app["db_client"]
 
-        filter_list = await self._handle_user_objects_collection(req, collection)
+        filter_list: List = []  # DEPRECATED, users don't own folders anymore
         data, page_num, page_size, total_objects = await Operator(db_client).query_metadata_database(
             collection, req.query, page, per_page, filter_list
         )
@@ -82,7 +82,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         await operator.check_exists(collection, accession_id)
 
-        await self._handle_check_ownedby_user(req, collection, accession_id)
+        await self._handle_check_ownership(req, collection, accession_id)
 
         data, content_type = await operator.read_metadata_object(type_collection, accession_id)
 
@@ -106,6 +106,8 @@ class ObjectAPIHandler(RESTAPIHandler):
         if not folder_id:
             reason = "Folder is required query parameter. Please provide folder id where object is added to."
             raise web.HTTPBadRequest(reason=reason)
+
+        await self._handle_check_ownership(req, "folders", folder_id)
         patch_params = {}
 
         self._check_schema_exists(schema_type)
@@ -197,7 +199,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         await Operator(db_client).check_exists(collection, accession_id)
 
-        await self._handle_check_ownedby_user(req, collection, accession_id)
+        await self._handle_check_ownership(req, collection, accession_id)
 
         folder_op = FolderOperator(db_client)
         exists, folder_id, published = await folder_op.check_object_in_folder(collection, accession_id)
@@ -250,7 +252,8 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         await operator.check_exists(collection, accession_id)
 
-        await self._handle_check_ownedby_user(req, collection, accession_id)
+        await self._handle_check_ownership(req, collection, accession_id)
+
         folder_op = FolderOperator(db_client)
         exists, folder_id, published = await folder_op.check_object_in_folder(collection, accession_id)
         if exists:
@@ -292,7 +295,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         await operator.check_exists(collection, accession_id)
 
-        await self._handle_check_ownedby_user(req, collection, accession_id)
+        await self._handle_check_ownership(req, collection, accession_id)
 
         folder_op = FolderOperator(db_client)
         exists, folder_id, published = await folder_op.check_object_in_folder(collection, accession_id)
