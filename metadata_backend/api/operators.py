@@ -12,6 +12,7 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
 from multidict import MultiDictProxy
 from pymongo.errors import ConnectionFailure, OperationFailure
 
+from .middlewares import get_session
 from ..conf.conf import mongo_database, query_map
 from ..database.db_service import DBService, auto_reconnect
 from ..helpers.logger import LOG
@@ -303,6 +304,55 @@ class Operator(BaseOperator):
         Application.
         """
         super().__init__(mongo_database, "application/json", db_client)
+
+    async def query_templates_by_project(self, project_id: str) -> List[Dict[str, Union[Dict[str, str], str]]]:
+        """Get templates list from given project ID.
+
+        :param project_id: project internal ID that owns templates
+        :returns: list of templates in project
+        """
+        try:
+            templates_cursor = self.db_service.query(
+                "project", {"projectId": project_id}, custom_projection={"_id": 0, "templates": 1}
+            )
+            templates = [template async for template in templates_cursor]
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting templates from project {project_id}: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        if len(templates) == 1:
+            return templates[0]["templates"]
+        else:
+            return []
+
+    async def get_object_project(self, collection: str, accession_id: str) -> str:
+        """Get the project ID the object is associated to.
+
+        :param collection: database table to look into
+        :param object_id: internal accession ID of object
+        :returns: project ID object is associated to
+        """
+        try:
+            object_cursor = self.db_service.query(collection, {"accessionId": accession_id})
+            objects = [object async for object in object_cursor]
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting object from {collection}: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        if len(objects) == 1:
+            try:
+                return objects[0]["projectId"]
+            except KeyError as error:
+                # This should not be possible and should never happen, if the object was created properly
+                reason = f"{collection} {accession_id} does not have an associated project, err={error}"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+        else:
+            reason = f"{collection} {accession_id} not found"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
 
     async def query_metadata_database(
         self, schema_type: str, que: MultiDictProxy, page_num: int, page_size: int, filter_objects: List
@@ -610,6 +660,33 @@ class FolderOperator:
         """
         self.db_service = DBService(mongo_database, db_client)
 
+    async def get_folder_project(self, folder_id: str) -> str:
+        """Get the project ID the folder is associated to.
+
+        :param folder_id: internal accession ID of folder
+        :returns: project ID folder is associated to
+        """
+        try:
+            folder_cursor = self.db_service.query("folder", {"folderId": folder_id})
+            folders = [folder async for folder in folder_cursor]
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting folder: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        if len(folders) == 1:
+            try:
+                return folders[0]["projectId"]
+            except KeyError as error:
+                # This should not be possible and should never happen, if the folder was created properly
+                reason = f"folder {folder_id} does not have an associated project, err={error}"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+        else:
+            reason = f"folder {folder_id} not found"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
     async def check_object_in_folder(self, collection: str, accession_id: str) -> Tuple[bool, str, bool]:
         """Check a object/draft is in a folder.
 
@@ -872,39 +949,64 @@ class UserOperator:
         """
         self.db_service = DBService(mongo_database, db_client)
 
-    async def check_user_has_doc(self, collection: str, user_id: str, accession_id: str) -> bool:
-        """Check a folder/template belongs to user.
+    async def check_user_has_doc(
+        self, req: web.Request, collection: str, user_id: str, accession_id: str
+    ) -> Tuple[bool, str]:
+        """Check a folder/template belongs to same project the user is in.
 
         :param collection: collection it belongs to, it would be used as path
         :param user_id: user_id from session
         :param accession_id: document by accession_id
         :raises: HTTPUnprocessableEntity if more users seem to have same folder
-        :returns: True if accession_id belongs to user
+        :returns: True and project_id if accession_id belongs to user, False otherwise
         """
-        try:
-            if collection.startswith("template"):
-                user_query = {"templates": {"$elemMatch": {"accessionId": accession_id}}, "userId": user_id}
-            else:
-                user_query = {"folders": {"$elemMatch": {"$eq": accession_id}}, "userId": user_id}
-            user_cursor = self.db_service.query("user", user_query)
-            user_check = [user async for user in user_cursor]
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while inserting user: {error}"
+        LOG.debug(f"check that user {user_id} belongs to same project as {collection} {accession_id}")
+
+        db_client = req.app["db_client"]
+        user_operator = UserOperator(db_client)
+
+        project_id = ""
+        if collection.startswith("template"):
+            object_operator = Operator(db_client)
+            project_id = await object_operator.get_object_project(collection, accession_id)
+        elif collection == "folders":
+            folder_operator = FolderOperator(db_client)
+            project_id = await folder_operator.get_folder_project(accession_id)
+        else:
+            reason = f"collection must be folders or template, received {collection}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        if len(user_check) == 0:
-            LOG.info(f"doc {accession_id} belongs to no user something is off")
-            return False
-        elif len(user_check) > 1:
-            reason = "There seem to be more users with same ID and/or same folders."
-            LOG.error(reason)
-            raise web.HTTPUnprocessableEntity(reason=reason)
-        else:
-            LOG.info(f"found doc {accession_id} at current user")
-            return True
+        current_user = get_session(req)["user_info"]
+        user = await user_operator.read_user(current_user)
+        user_has_project = await user_operator.check_user_has_project(project_id, user["userId"])
+        return user_has_project, project_id
 
-    async def create_user(self, data: Tuple) -> str:
+    async def check_user_has_project(self, project_id: str, user_id: str) -> bool:
+        """Check that user has project affiliation.
+
+        :param project_id: internal project ID
+        :param user_id: internal user ID
+        :raises HTTPBadRequest: on database error
+        :returns: True if user has project, False if user does not have project
+        """
+        try:
+            user_query = {"projects": {"$elemMatch": {"projectId": project_id}}, "userId": user_id}
+            user_cursor = self.db_service.query("user", user_query)
+            user_check = [user async for user in user_cursor]
+            if user_check:
+                LOG.debug(f"user {user_id} has project {project_id} affiliation")
+                return True
+            else:
+                reason = f"user {user_id} does not have project {project_id} affiliation"
+                LOG.debug(reason)
+                return False
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while reading user project affiliation: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+    async def create_user(self, data: Dict[str, Union[list, str]]) -> str:
         """Create new user object to database.
 
         :param data: User Data to identify user
@@ -913,19 +1015,16 @@ class UserOperator:
         """
         user_data: Dict[str, Union[list, str]] = dict()
 
-        external_id = data[0]  # this also can be sub key
-        name = data[1]
         try:
-            existing_user_id = await self.db_service.exists_user_by_external_id(external_id, name)
+            existing_user_id = await self.db_service.exists_user_by_external_id(data["user_id"], data["real_name"])
             if existing_user_id:
-                LOG.info(f"User with identifier: {external_id} exists, no need to create.")
+                LOG.info(f"User with identifier: {data['user_id']} exists, no need to create.")
                 return existing_user_id
             else:
-                user_data["templates"] = []
-                user_data["folders"] = []
+                user_data["projects"] = data["projects"]
                 user_data["userId"] = user_id = self._generate_user_id()
-                user_data["name"] = name
-                user_data["externalId"] = external_id
+                user_data["name"] = data["real_name"]
+                user_data["externalId"] = data["user_id"]
                 JSONValidator(user_data, "users")
                 insert_success = await self.db_service.create("user", user_data)
                 if not insert_success:
@@ -1018,61 +1117,6 @@ class UserOperator:
             LOG.info(f"Updating user with id {user_id} to database succeeded.")
             return user_id
 
-    async def assign_objects(self, user_id: str, collection: str, object_ids: List) -> None:
-        """Assing object to user.
-
-        An object can be folder(s) or templates(s).
-
-        :param user_id: ID of user to update
-        :param collection: collection where to remove the id from
-        :param object_ids: ID or list of IDs of folder(s) to assign
-        :raises: HTTPBadRequest if assigning templates/folders to user was not successful
-        returns: None
-        """
-        try:
-            await self._check_user_exists(user_id)
-            assign_success = await self.db_service.append(
-                "user", user_id, {collection: {"$each": object_ids, "$position": 0}}
-            )
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting user: {error}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        if not assign_success:
-            reason = "Assigning objects to user failed."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        LOG.info(f"Assigning {object_ids} from {user_id} succeeded.")
-
-    async def remove_objects(self, user_id: str, collection: str, object_ids: List) -> None:
-        """Remove object from user.
-
-        An object can be folder(s) or template(s).
-
-        :param user_id: ID of user to update
-        :param collection: collection where to remove the id from
-        :param object_ids: ID or list of IDs of folder(s) to remove
-        :raises: HTTPBadRequest if db connection fails
-        returns: None
-        """
-        remove_content: Dict
-        try:
-            await self._check_user_exists(user_id)
-            for obj in object_ids:
-                if collection == "templates":
-                    remove_content = {"templates": {"accessionId": obj}}
-                else:
-                    remove_content = {"folders": obj}
-                await self.db_service.remove("user", user_id, remove_content)
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while removing objects from user: {error}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        LOG.info(f"Removing {object_ids} from {user_id} succeeded.")
-
     async def delete_user(self, user_id: str) -> str:
         """Delete user object from database.
 
@@ -1115,4 +1159,143 @@ class UserOperator:
         """
         sequence = uuid4().hex
         LOG.debug("Generated user ID.")
+        return sequence
+
+
+class ProjectOperator:
+    """Operator class for handling database operations of project groups.
+
+    Operations are implemented with JSON format.
+    """
+
+    def __init__(self, db_client: AsyncIOMotorClient) -> None:
+        """Init db_service.
+
+        :param db_client: Motor client used for database connections. Should be
+        running on same loop with aiohttp, so needs to be passed from aiohttp
+        Application.
+        """
+        self.db_service = DBService(mongo_database, db_client)
+
+    async def create_project(self, project_number: str) -> str:
+        """Create new object project to database.
+
+        :param project_numer: project external ID received from AAI
+        :raises: HTTPBadRequest if error occurs during the process of insert
+        :returns: Project id for the project inserted to database
+        """
+        project_data: Dict[str, Union[str, List[str]]] = dict()
+
+        try:
+            existing_project_id = await self.db_service.exists_project_by_external_id(project_number)
+            if existing_project_id:
+                LOG.info(f"Project with external ID: {project_number} exists, no need to create.")
+                return existing_project_id
+            else:
+                project_id = self._generate_project_id()
+                project_data["templates"] = []
+                project_data["projectId"] = project_id
+                project_data["externalId"] = project_number
+                insert_success = await self.db_service.create("project", project_data)
+                if not insert_success:
+                    reason = "Inserting project to database failed for some reason."
+                    LOG.error(reason)
+                    raise web.HTTPBadRequest(reason=reason)
+                else:
+                    LOG.info(f"Inserting project with id {project_id} to database succeeded.")
+                    return project_id
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while inserting project: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+    async def _check_project_exists(self, project_id: str) -> None:
+        """Check the existence of a project by its id in the database.
+
+        :param project_id: Identifier of project to find.
+        :raises: HTTPNotFound if project does not exist
+        :returns: None
+        """
+        exists = await self.db_service.exists("project", project_id)
+        if not exists:
+            reason = f"Project with id {project_id} was not found."
+            LOG.error(reason)
+            raise web.HTTPNotFound(reason=reason)
+
+    async def assign_templates(self, project_id: str, object_ids: List) -> None:
+        """Assing templates to project.
+
+        :param project_id: ID of project to update
+        :param object_ids: ID or list of IDs of template(s) to assign
+        :raises: HTTPBadRequest if assigning templates to project was not successful
+        returns: None
+        """
+        try:
+            await self._check_project_exists(project_id)
+            assign_success = await self.db_service.append(
+                "project", project_id, {"templates": {"$each": object_ids, "$position": 0}}
+            )
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting project: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        if not assign_success:
+            reason = "Assigning templates to project failed."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        LOG.info(f"Assigning templates={object_ids} to project={project_id} succeeded.")
+
+    async def remove_templates(self, project_id: str, object_ids: List) -> None:
+        """Remove templates from project.
+
+        :param project_id: ID of project to update
+        :param object_ids: ID or list of IDs of template(s) to remove
+        :raises: HTTPBadRequest if db connection fails
+        returns: None
+        """
+        remove_content: Dict
+        try:
+            await self._check_project_exists(project_id)
+            for obj in object_ids:
+                remove_content = {"templates": {"accessionId": obj}}
+                await self.db_service.remove("project", project_id, remove_content)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while removing templates from project: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        LOG.info(f"Removing templates={object_ids} from project={project_id} succeeded.")
+
+    async def update_project(self, project_id: str, patch: List) -> str:
+        """Update project object in database.
+
+        :param project_id: ID of project to update
+        :param patch: Patch operations determined in the request
+        :returns: ID of the project updated to database
+        """
+        try:
+            await self._check_project_exists(project_id)
+            update_success = await self.db_service.patch("project", project_id, patch)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting project: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        if not update_success:
+            reason = "Updating project in database failed for some reason."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        else:
+            LOG.info(f"Updating project={project_id} to database succeeded.")
+            return project_id
+
+    def _generate_project_id(self) -> str:
+        """Generate random project id.
+
+        :returns: str with project id
+        """
+        sequence = uuid4().hex
+        LOG.debug("Generated project ID.")
         return sequence

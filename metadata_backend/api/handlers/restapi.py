@@ -1,7 +1,7 @@
 """Handle HTTP methods for server."""
 import json
 from math import ceil
-from typing import AsyncGenerator, Dict, List
+from typing import AsyncGenerator, Dict, List, Tuple
 
 import ujson
 from aiohttp import web
@@ -50,49 +50,63 @@ class RESTAPIHandler:
             raise web.HTTPBadRequest(reason=reason)
         return param
 
-    async def _handle_check_ownedby_user(self, req: Request, collection: str, accession_id: str) -> bool:
-        """Check if object belongs to user.
+    def _get_param(self, req: Request, name: str) -> str:
+        """Extract mandatory query parameter from URL.
+
+        :param req: GET Request
+        :param name: name of query param to get
+        :returns: project ID parameter value
+        """
+        param = req.query.get(name, "")
+        if param == "":
+            reason = f"mandatory query parameter {name} is not set"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        return param
+
+    async def _handle_check_ownership(self, req: Request, collection: str, accession_id: str) -> Tuple[bool, str]:
+        """Check if object belongs to project.
 
         For this we need to check the object is in exactly 1 folder and we need to check
-        that folder belongs to a user. If the folder is published that means it can be
-        browsed by other users as well.
+        that folder belongs to a project.
 
         :param req: HTTP request
         :param collection: collection or schema of document
         :param doc_id: document accession id
         :raises: HTTPUnauthorized if accession id does not belong to user
-        :returns: bool
+        :returns: bool and possible project id
         """
         db_client = req.app["db_client"]
         current_user = get_session(req)["user_info"]
         user_op = UserOperator(db_client)
         _check = False
 
+        project_id = ""
         if collection != "folders":
 
             folder_op = FolderOperator(db_client)
-            check, folder_id, published = await folder_op.check_object_in_folder(collection, accession_id)
-            if published:
-                _check = True
-            elif check:
+            check, folder_id, _ = await folder_op.check_object_in_folder(collection, accession_id)
+            # if published:
+            #     _check = True
+            if check:
                 # if the draft object is found in folder we just need to check if the folder belongs to user
-                _check = await user_op.check_user_has_doc("folders", current_user, folder_id)
+                _check, project_id = await user_op.check_user_has_doc(req, "folders", current_user, folder_id)
             elif collection.startswith("template"):
                 # if collection is template but not found in a folder
                 # we also check if object is in templates of the user
                 # they will be here if they will not be deleted after publish
-                _check = await user_op.check_user_has_doc(collection, current_user, accession_id)
+                _check, project_id = await user_op.check_user_has_doc(req, collection, current_user, accession_id)
             else:
                 _check = False
         else:
-            _check = await user_op.check_user_has_doc(collection, current_user, accession_id)
+            _check, project_id = await user_op.check_user_has_doc(req, collection, current_user, accession_id)
 
         if not _check:
-            reason = f"The ID: {accession_id} does not belong to current user."
+            reason = f"{collection} {accession_id}."
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)
 
-        return _check
+        return _check, project_id
 
     async def _get_collection_objects(
         self, folder_op: AsyncIOMotorClient, collection: str, seq: List
@@ -110,41 +124,6 @@ class RESTAPIHandler:
             result = await folder_op.get_collection_objects(el, collection)
 
             yield result
-
-    async def _handle_user_objects_collection(self, req: Request, collection: str) -> List:
-        """Retrieve list of objects accession ids belonging to user in collection.
-
-        :param req: HTTP request
-        :param collection: collection or schema of document
-        :returns: List
-        """
-        db_client = req.app["db_client"]
-        current_user = get_session(req)["user_info"]
-        user_op = UserOperator(db_client)
-        folder_op = FolderOperator(db_client)
-
-        user = await user_op.read_user(current_user)
-        res = self._get_collection_objects(folder_op, collection, user["folders"])
-
-        dt = []
-        async for r in res:
-            dt.extend(r)
-
-        return dt
-
-    async def _filter_by_user(self, req: Request, collection: str, seq: List) -> AsyncGenerator:
-        """For a list of objects check if these are owned by a user.
-
-        This can be called using a partial from functools.
-
-        :param req: HTTP request
-        :param collection: collection or schema of document
-        :param seq: list of folders
-        :returns: AsyncGenerator
-        """
-        for el in seq:
-            if await self._handle_check_ownedby_user(req, collection, el["accessionId"]):
-                yield el
 
     async def _get_data(self, req: Request) -> Dict:
         """Get the data content from a request.

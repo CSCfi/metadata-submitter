@@ -35,7 +35,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - enum are sorted alphabetically, with the exception of other and unspecified values which are left at the end of the list
   - allow for accession key in `referenceAlignment` & `process sequence` as array, previously all accession keys were converted to `accessionId` which is not correct
   - add default `gender` as `unknown`
-
+- Project ownership #346
+  - added new collection `project`
+  - added new key `projects` to `user`
+  - added new key `projectId` to `folder` and `template-*` collections
+  - new mandatory `/userinfo` value from AAI at login time `sdSubmitProjects`
+    - user is redirected to an info page by AAI if key is missing
+  - new mandatory query parameter `projectId` in `GET /folders`
+  - new mandatory JSON key `projectId` in `POST /folders` and `POST /templates`
+  - new endpoint `GET /templates` to replace `GET /users/current` `{"templates":[...]}`
+  - new JSON keys `index` and `tags` to `PATCH /templates/schema/templateId`, same values as were previously used in `PATCH /user` which is now removed
+  - WARNING: breaking change that requires fresh database, because "project" is new information that did not exist before, and it can't be migrated to existing user-owned hierarchy
 
 ### Changed
 
@@ -68,6 +78,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - Removed `Authlib` dependency #315
+- Project ownership #346
+  - deprecated `folders` and `templates` keys from `GET /users/current`
+    - as a side effect, deprecated `items` query parameter from the same endpoint
+  - deprecated `PATCH /user`
 
 ### Deprecated
 

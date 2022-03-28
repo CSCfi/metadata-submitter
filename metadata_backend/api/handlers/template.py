@@ -8,12 +8,45 @@ from multidict import CIMultiDict
 
 from ...helpers.logger import LOG
 from ..middlewares import get_session
-from ..operators import Operator, UserOperator, XMLOperator
+from ..operators import Operator, ProjectOperator, UserOperator, XMLOperator
 from .restapi import RESTAPIHandler
 
 
 class TemplatesAPIHandler(RESTAPIHandler):
     """API Handler for Templates."""
+
+    async def get_templates(self, req: Request) -> Response:
+        """Get a set of templates owned by the project.
+
+        :param req: GET Request
+        :returns: JSON list of templates available for the user
+        """
+        project_id = self._get_param(req, "projectId")
+        db_client = req.app["db_client"]
+
+        user_operator = UserOperator(db_client)
+        current_user = get_session(req)["user_info"]
+        user = await user_operator.read_user(current_user)
+        user_has_project = await user_operator.check_user_has_project(project_id, user["userId"])
+        if not user_has_project:
+            reason = f"user {user['userId']} is not affiliated with project {project_id}"
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
+
+        operator = Operator(db_client)
+        templates = await operator.query_templates_by_project(project_id)
+
+        result = ujson.dumps(
+            templates,
+            escape_forward_slashes=False,
+        )
+
+        LOG.info(f"Querying for project={project_id} templates resulted in {len(templates)} templates")
+        return web.Response(
+            body=result,
+            status=200,
+            content_type="application/json",
+        )
 
     async def get_template(self, req: Request) -> Response:
         """Get one metadata template by its accession id.
@@ -33,7 +66,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
 
         await operator.check_exists(collection, accession_id)
 
-        await self._handle_check_ownedby_user(req, collection, accession_id)
+        await self._handle_check_ownership(req, collection, accession_id)
 
         data, content_type = await operator.read_metadata_object(collection, accession_id)
 
@@ -57,9 +90,9 @@ class TemplatesAPIHandler(RESTAPIHandler):
         db_client = req.app["db_client"]
         content = await self._get_data(req)
 
+        # Operators
+        project_op = ProjectOperator(db_client)
         user_op = UserOperator(db_client)
-        current_user = get_session(req)["user_info"]
-
         operator = Operator(db_client)
 
         if isinstance(content, list):
@@ -69,11 +102,31 @@ class TemplatesAPIHandler(RESTAPIHandler):
                     reason = f"template key is missing from request body for element: {num}."
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
+
+                # No schema validation, so must check that project is set
+                if "projectId" not in tmpl:
+                    reason = "projectId is a mandatory POST key"
+                    LOG.error(reason)
+                    raise web.HTTPBadRequest(reason=reason)
+
+                # Check that project exists and user is affiliated with it
+                await project_op._check_project_exists(tmpl["projectId"])
+                current_user = get_session(req)["user_info"]
+                user = await user_op.read_user(current_user)
+                user_has_project = await user_op.check_user_has_project(tmpl["projectId"], user["userId"])
+                if not user_has_project:
+                    reason = f"user {user['userId']} is not affiliated with project {tmpl['projectId']}"
+                    LOG.error(reason)
+                    raise web.HTTPUnauthorized(reason=reason)
+
+                # Process template
+                # Move projectId to template structure, so that it is saved in mongo
+                tmpl["template"]["projectId"] = tmpl["projectId"]
                 accession_id, _ = await operator.create_metadata_object(collection, tmpl["template"])
                 data = [{"accessionId": accession_id, "schema": collection}]
                 if "tags" in tmpl:
                     data[0]["tags"] = tmpl["tags"]
-                await user_op.assign_objects(current_user, "templates", data)
+                await project_op.assign_templates(tmpl["projectId"], data)
                 tmpl_list.append({"accessionId": accession_id})
 
             body = ujson.dumps(tmpl_list, escape_forward_slashes=False)
@@ -82,11 +135,31 @@ class TemplatesAPIHandler(RESTAPIHandler):
                 reason = "template key is missing from request body."
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
+
+            # No schema validation, so must check that project is set
+            if "projectId" not in content:
+                reason = "projectId is a mandatory POST key"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+
+            # Check that project exists and user is affiliated with it
+            await project_op._check_project_exists(content["projectId"])
+            current_user = get_session(req)["user_info"]
+            user = await user_op.read_user(current_user)
+            user_has_project = await user_op.check_user_has_project(content["projectId"], user["userId"])
+            if not user_has_project:
+                reason = f"user {user['userId']} is not affiliated with project {content['projectId']}"
+                LOG.error(reason)
+                raise web.HTTPUnauthorized(reason=reason)
+
+            # Process template
+            # Move projectId to template structure, so that it is saved in mongo
+            content["template"]["projectId"] = content["projectId"]
             accession_id, _ = await operator.create_metadata_object(collection, content["template"])
             data = [{"accessionId": accession_id, "schema": collection}]
             if "tags" in content:
                 data[0]["tags"] = content["tags"]
-            await user_op.assign_objects(current_user, "templates", data)
+            await project_op.assign_templates(content["projectId"], data)
 
             body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
 
@@ -120,8 +193,24 @@ class TemplatesAPIHandler(RESTAPIHandler):
 
         await operator.check_exists(collection, accession_id)
 
-        await self._handle_check_ownedby_user(req, collection, accession_id)
+        _, project_id = await self._handle_check_ownership(req, collection, accession_id)
 
+        # Update the templates-list in project-collection
+        if "index" in content and "tags" in content:
+            LOG.debug("update template-list tags")
+            index = content.pop("index")
+            tags = content.pop("tags")
+            update_operation = [
+                {
+                    "op": "replace",
+                    "path": f"/templates/{index}/tags",
+                    "value": tags,
+                }
+            ]
+            project_operator = ProjectOperator(db_client)
+            await project_operator.update_project(project_id, update_operation)
+
+        # Update the actual template data in template-collection
         accession_id = await operator.update_metadata_object(collection, accession_id, content)
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
@@ -139,21 +228,17 @@ class TemplatesAPIHandler(RESTAPIHandler):
         schema_type = req.match_info["schema"]
         self._check_schema_exists(schema_type)
         collection = f"template-{schema_type}"
-
         accession_id = req.match_info["accessionId"]
         db_client = req.app["db_client"]
 
         await Operator(db_client).check_exists(collection, accession_id)
+        project_operator = ProjectOperator(db_client)
 
-        await self._handle_check_ownedby_user(req, collection, accession_id)
-
-        user_op = UserOperator(db_client)
-        current_user = get_session(req)["user_info"]
-        check_user = await user_op.check_user_has_doc(collection, current_user, accession_id)
-        if check_user:
-            await user_op.remove_objects(current_user, "templates", [accession_id])
+        project_ok, project_id = await self._handle_check_ownership(req, collection, accession_id)
+        if project_ok:
+            await project_operator.remove_templates(project_id, [accession_id])
         else:
-            reason = "This template does not seem to belong to any user."
+            reason = "This template does not belong to this project."
             LOG.error(reason)
             raise web.HTTPUnprocessableEntity(reason=reason)
 

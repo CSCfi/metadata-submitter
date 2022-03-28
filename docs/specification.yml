@@ -293,6 +293,11 @@ paths:
         - Submission
       summary: Submit data to a specific schema
       parameters:
+        - in: query
+          name: folder
+          schema:
+            type: string
+          description: The folder ID where object belongs to.
         - name: schema
           in: path
           description: Name of the Metadata schema.
@@ -765,6 +770,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
+  /templates:
+    get:
+      tags:
+        - Query
+      summary: Get templates from selected project
+      parameters:
+        - name: projectId
+          in: query
+          description: project internal ID
+          schema:
+            type: string
+          required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Templates"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
   /templates/{schema}:
     post:
       tags:
@@ -900,6 +936,12 @@ paths:
       summary: List of folders available for the user.
       parameters:
         - in: query
+          name: projectId
+          schema:
+            type: string
+          description: ID of the project the folder belongs to
+          required: true
+        - in: query
           name: page
           schema:
             type: string
@@ -968,10 +1010,13 @@ paths:
               required:
                 - name
                 - description
+                - projectId
               properties:
                 name:
                   type: string
                 description:
+                  type: string
+                projectId:
                   type: string
       responses:
         201:
@@ -1167,11 +1212,6 @@ paths:
           schema:
             type: string
           description: Results per page
-        - in: query
-          name: items
-          schema:
-            type: string
-          description: Item type name
       responses:
         200:
           description: OK
@@ -1344,6 +1384,20 @@ components:
             type: string
             description: URL pointing to the schema source
             example: https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.sample.xsd
+    Templates:
+      type: array
+      items:
+        type: object
+        properties:
+          accessionId:
+            type: string
+            description: internal ID of template
+          displayTitle:
+            type: string
+            description: name of template to be displayed in UI
+          schema:
+            type: string
+            description: database collection name template belongs to
     Object:
       type: object
       required:
@@ -1452,6 +1506,7 @@ components:
       type: object
       required:
         - folderId
+        - projectId
         - name
         - description
         - published
@@ -1464,6 +1519,9 @@ components:
         folderId:
           type: string
           description: Folder id
+        projectId:
+          type: string
+          description: Project ID this folder belongs to
         name:
           type: string
           description: Folder name
@@ -1631,8 +1689,7 @@ components:
       required:
         - userId
         - name
-        - drafts
-        - folders
+        - projects
       additionalProperties: false
       properties:
         userId:
@@ -1641,35 +1698,21 @@ components:
         name:
           type: string
           description: User's Name
-        drafts:
+        projects:
           type: array
           items:
             type: object
             required:
-              - accessionId
-              - schema
+              - projectId
+              - projectNumber
             additionalProperties: false
             properties:
-              accessionId:
+              projectId:
                 type: string
-                description: Accession id generated to identify an object
-              schema:
+                description: Internal accession ID for project
+              projectNumber:
                 type: string
-                description: type of schema this Accession ID relates to and was added in submit
-              tags:
-                type: object
-                description: Different tags to describe the object.
-                additionalProperties: true
-                properties:
-                  submissionType:
-                    type: string
-                    description: Type of submission
-                    enum: ["XML", "Form"]
-        folders:
-          type: array
-          items:
-            type: string
-            description: Folder Id
+                description: Human friendly project number received from AAI
     UserUpdated:
       type: object
       required:

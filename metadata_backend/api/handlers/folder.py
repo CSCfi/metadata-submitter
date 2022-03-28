@@ -3,7 +3,7 @@ import re
 from datetime import date, datetime
 from distutils.util import strtobool
 from math import ceil
-from typing import Any
+from typing import Any, Dict, Union
 
 import ujson
 from aiohttp import web
@@ -15,7 +15,7 @@ from ...helpers.doi import DOIHandler
 from ...helpers.logger import LOG
 from ...helpers.validator import JSONValidator
 from ..middlewares import get_session
-from ..operators import FolderOperator, Operator, UserOperator
+from ..operators import FolderOperator, Operator, UserOperator, ProjectOperator
 from .restapi import RESTAPIHandler
 
 
@@ -80,21 +80,27 @@ class FolderAPIHandler(RESTAPIHandler):
                             raise web.HTTPBadRequest(reason=reason)
 
     async def get_folders(self, req: Request) -> Response:
-        """Get a set of folders owned by the user with pagination values.
+        """Get a set of folders owned by the project with pagination values.
 
         :param req: GET Request
         :returns: JSON list of folders available for the user
         """
         page = self._get_page_param(req, "page", 1)
         per_page = self._get_page_param(req, "per_page", 5)
+        project_id = self._get_param(req, "projectId")
         sort = {"date": True, "score": False}
         db_client = req.app["db_client"]
 
         user_operator = UserOperator(db_client)
         current_user = get_session(req)["user_info"]
         user = await user_operator.read_user(current_user)
+        user_has_project = await user_operator.check_user_has_project(project_id, user["userId"])
+        if not user_has_project:
+            reason = f"user {user['userId']} is not affiliated with project {project_id}"
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
 
-        folder_query = {"folderId": {"$in": user["folders"]}}
+        folder_query: Dict[str, Union[str, Dict[str, Union[str, bool, float]]]] = {"projectId": project_id}
         # Check if only published or draft folders are requestsed
         if "published" in req.query:
             pub_param = req.query.get("published", "").title()
@@ -108,7 +114,7 @@ class FolderAPIHandler(RESTAPIHandler):
         if "name" in req.query:
             name_param = req.query.get("name", "")
             if name_param:
-                folder_query = {"$text": {"$search": name_param}}
+                folder_query["$text"] = {"$search": name_param}
             sort["score"] = True
             sort["date"] = False
 
@@ -152,7 +158,7 @@ class FolderAPIHandler(RESTAPIHandler):
         url = f"{req.scheme}://{req.host}{req.path}"
         link_headers = await self._header_links(url, page, per_page, total_folders)
         LOG.debug(f"Pagination header links: {link_headers}")
-        LOG.info(f"Querying for user's folders resulted in {total_folders} folders")
+        LOG.info(f"Querying for project={project_id} folders resulted in {total_folders} folders")
         return web.Response(
             body=result,
             status=200,
@@ -163,8 +169,6 @@ class FolderAPIHandler(RESTAPIHandler):
     async def post_folder(self, req: Request) -> Response:
         """Save object folder to database.
 
-        Also assigns the folder to the current user.
-
         :param req: POST request
         :returns: JSON response containing folder ID for submitted folder
         """
@@ -173,12 +177,22 @@ class FolderAPIHandler(RESTAPIHandler):
 
         JSONValidator(content, "folders").validate
 
-        operator = FolderOperator(db_client)
-        folder = await operator.create_folder(content)
+        # Check that project exists
+        project_op = ProjectOperator(db_client)
+        await project_op._check_project_exists(content["projectId"])
 
+        # Check that user is affiliated with project
         user_op = UserOperator(db_client)
         current_user = get_session(req)["user_info"]
-        await user_op.assign_objects(current_user, "folders", [folder])
+        user = await user_op.read_user(current_user)
+        user_has_project = await user_op.check_user_has_project(content["projectId"], user["userId"])
+        if not user_has_project:
+            reason = f"user {user['userId']} is not affiliated with project {content['projectId']}"
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
+
+        operator = FolderOperator(db_client)
+        folder = await operator.create_folder(content)
 
         body = ujson.dumps({"folderId": folder}, escape_forward_slashes=False)
 
@@ -200,7 +214,7 @@ class FolderAPIHandler(RESTAPIHandler):
 
         await operator.check_folder_exists(folder_id)
 
-        await self._handle_check_ownedby_user(req, "folders", folder_id)
+        await self._handle_check_ownership(req, "folders", folder_id)
 
         folder = await operator.read_folder(folder_id)
 
@@ -233,7 +247,7 @@ class FolderAPIHandler(RESTAPIHandler):
                 curr_folder["doiInfo"] = op["value"]
                 JSONValidator(curr_folder, "folders").validate
 
-        await self._handle_check_ownedby_user(req, "folders", folder_id)
+        await self._handle_check_ownership(req, "folders", folder_id)
 
         upd_folder = await operator.update_folder(folder_id, patch_ops if isinstance(patch_ops, list) else [patch_ops])
 
@@ -253,7 +267,7 @@ class FolderAPIHandler(RESTAPIHandler):
 
         await operator.check_folder_exists(folder_id)
 
-        await self._handle_check_ownedby_user(req, "folders", folder_id)
+        await self._handle_check_ownership(req, "folders", folder_id)
 
         folder = await operator.read_folder(folder_id)
 
@@ -307,7 +321,7 @@ class FolderAPIHandler(RESTAPIHandler):
         await operator.check_folder_exists(folder_id)
         await operator.check_folder_published(folder_id)
 
-        await self._handle_check_ownedby_user(req, "folders", folder_id)
+        await self._handle_check_ownership(req, "folders", folder_id)
 
         obj_ops = Operator(db_client)
 
@@ -317,10 +331,6 @@ class FolderAPIHandler(RESTAPIHandler):
             await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
 
         _folder_id = await operator.delete_folder(folder_id)
-
-        user_op = UserOperator(db_client)
-        current_user = get_session(req)["user_info"]
-        await user_op.remove_objects(current_user, "folders", [folder_id])
 
         LOG.info(f"DELETE folder with ID {_folder_id} was successful.")
         return web.Response(status=204)

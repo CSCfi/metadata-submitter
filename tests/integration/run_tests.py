@@ -93,6 +93,18 @@ async def login(sess, sub, given, family):
         LOG.debug("Doing mock user login")
 
 
+async def get_user_data(sess):
+    """Get current logged in user's data model.
+
+    :param sess: HTTP session in which request call is made
+    """
+    async with sess.get(f"{base_url}/users/current") as resp:
+        LOG.debug("Get userdata")
+        ans = await resp.json()
+        assert resp.status == 200, f"HTTP Status code error {resp.status} {ans}"
+        return ans
+
+
 async def create_request_data(schema, filename):
     """Create request data from pairs of schemas and filenames.
 
@@ -319,22 +331,44 @@ async def delete_draft(sess, schema, draft_id):
         assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
 
-async def post_template_json(sess, schema, filename):
+async def post_template_json(sess, schema, filename, project_id):
     """Post one metadata object within session, returns accessionId.
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (folder) used for testing
     :param filename: name of the file used for testing.
+    :param project_id: id of the project the template belongs to
     """
     request_data = await create_request_json_data(schema, filename)
+    request_data = json.loads(request_data)
+    if type(request_data) is list:
+        for rd in request_data:
+            rd["projectId"] = project_id
+    else:
+        request_data["projectId"] = project_id
+    request_data = json.dumps(request_data)
     async with sess.post(f"{templates_url}/{schema}", data=request_data) as resp:
         LOG.debug(f"Adding new template object to {schema}, via JSON file {filename}")
-        assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
+        assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
         if isinstance(ans, list):
             return ans
         else:
             return ans["accessionId"]
+
+
+async def get_templates(sess, project_id):
+    """Get templates from project.
+
+    :param sess: HTTP session in which request call is made
+    :param project_id: id of the project the template belongs to
+    """
+    async with sess.get(f"{templates_url}?projectId={project_id}") as resp:
+        LOG.debug(f"Requesting templates from project={project_id}")
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+        ans = await resp.json()
+        LOG.debug(f"Received {len(ans)} templates")
+        return ans
 
 
 async def get_template(sess, schema, template_id):
@@ -463,11 +497,6 @@ async def create_folder(data, user):
     data["metadataObjects"] = []
     try:
         await database["folder"].insert_one(data)
-        find_by_id = {"userId": user}
-        append_op = {"$push": {"folders": {"$each": [folder_id], "$position": 0}}}
-        await database["user"].find_one_and_update(
-            find_by_id, append_op, projection={"_id": False}, return_document=True
-        )
         return folder_id
 
     except Exception as e:
@@ -798,7 +827,7 @@ async def test_getting_all_objects_from_schema_works(sess, folder_id):
         assert ans["page"]["page"] == 1
         assert ans["page"]["size"] == 10
         assert ans["page"]["totalPages"] == 2
-        assert ans["page"]["totalObjects"] == 14
+        assert ans["page"]["totalObjects"] == 16
         assert len(ans["objects"]) == 10
 
     # Test with custom pagination values
@@ -807,8 +836,8 @@ async def test_getting_all_objects_from_schema_works(sess, folder_id):
         ans = await resp.json()
         assert ans["page"]["page"] == 2
         assert ans["page"]["size"] == 3
-        assert ans["page"]["totalPages"] == 5
-        assert ans["page"]["totalObjects"] == 14
+        assert ans["page"]["totalPages"] == 6
+        assert ans["page"]["totalObjects"] == 16
         assert len(ans["objects"]) == 3
 
     # Test with wrong pagination values
@@ -821,13 +850,14 @@ async def test_getting_all_objects_from_schema_works(sess, folder_id):
     await asyncio.gather(*[delete_object(sess, "study", accession_id) for accession_id, _ in files])
 
 
-async def test_crud_folders_works(sess):
+async def test_crud_folders_works(sess, project_id: str):
     """Test folders REST api POST, GET, PATCH, PUBLISH and DELETE reqs.
 
     :param sess: HTTP session in which request call is made
+    :param project_id: id of the project the folder belongs to
     """
     # Create new folder and check its creation succeeded
-    folder_data = {"name": "Mock Folder", "description": "Mock Base folder to folder ops"}
+    folder_data = {"name": "Mock Folder", "description": "Mock Base folder to folder ops", "projectId": project_id}
     folder_id = await post_folder(sess, folder_data)
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was created")
@@ -918,13 +948,14 @@ async def test_crud_folders_works(sess):
         assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
 
 
-async def test_crud_folders_works_no_publish(sess):
+async def test_crud_folders_works_no_publish(sess, project_id):
     """Test folders REST api POST, GET, PATCH, PUBLISH and DELETE reqs.
 
     :param sess: HTTP session in which request call is made
+    :param project_id: id of the project the folder belongs to
     """
     # Create new folder and check its creation succeeded
-    folder_data = {"name": "Mock Unpublished folder", "description": "test umpublished folder"}
+    folder_data = {"name": "Mock Unpublished folder", "description": "test umpublished folder", "projectId": project_id}
     folder_id = await post_folder(sess, folder_data)
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was created")
@@ -991,20 +1022,15 @@ async def test_crud_folders_works_no_publish(sess):
         LOG.debug(f"Checking that folder {folder_id} was deleted")
         assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
 
-    async with sess.get(f"{users_url}/current") as resp:
-        LOG.debug(f"Checking that folder {folder_id} was deleted from current user")
-        res = await resp.json()
-        expected_true = not any(d == accession_id for d in res["folders"])
-        assert expected_true, "folder still exists at user"
 
-
-async def test_adding_doi_info_to_folder_works(sess):
+async def test_adding_doi_info_to_folder_works(sess, project_id):
     """Test that proper DOI info can be added to folder and bad DOI info cannot be.
 
     :param sess: HTTP session in which request call is made
+    :param project_id: id of the project the folder belongs to
     """
     # Create new folder and check its creation succeeded
-    folder_data = {"name": "DOI Folder", "description": "Mock Base folder for adding DOI info"}
+    folder_data = {"name": "DOI Folder", "description": "Mock Base folder for adding DOI info", "projectId": project_id}
     folder_id = await post_folder(sess, folder_data)
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was created")
@@ -1054,13 +1080,14 @@ async def test_adding_doi_info_to_folder_works(sess):
         assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
 
 
-async def test_getting_paginated_folders(sess):
+async def test_getting_paginated_folders(sess, project_id):
     """Check that /folders returns folders with correct paginations.
 
     :param sess: HTTP session in which request call is made
+    :param project_id: id of the project the folder belongs to
     """
     # Test default values
-    async with sess.get(f"{folders_url}") as resp:
+    async with sess.get(f"{folders_url}?projectId={project_id}") as resp:
         # The folders received here are from previous
         # tests where the folders were not deleted
         assert resp.status == 200
@@ -1068,21 +1095,21 @@ async def test_getting_paginated_folders(sess):
         assert ans["page"]["page"] == 1
         assert ans["page"]["size"] == 5
         assert ans["page"]["totalPages"] == 2
-        assert ans["page"]["totalFolders"] == 6
+        assert ans["page"]["totalFolders"] == 7
         assert len(ans["folders"]) == 5
 
     # Test with custom pagination values
-    async with sess.get(f"{folders_url}?page=2&per_page=3") as resp:
+    async with sess.get(f"{folders_url}?page=2&per_page=3&projectId={project_id}") as resp:
         assert resp.status == 200
         ans = await resp.json()
         assert ans["page"]["page"] == 2
         assert ans["page"]["size"] == 3
-        assert ans["page"]["totalPages"] == 2
-        assert ans["page"]["totalFolders"] == 6
+        assert ans["page"]["totalPages"] == 3
+        assert ans["page"]["totalFolders"] == 7
         assert len(ans["folders"]) == 3
 
     # Test querying only published folders
-    async with sess.get(f"{folders_url}?published=true") as resp:
+    async with sess.get(f"{folders_url}?published=true&projectId={project_id}") as resp:
         assert resp.status == 200
         ans = await resp.json()
         assert ans["page"]["page"] == 1
@@ -1092,51 +1119,52 @@ async def test_getting_paginated_folders(sess):
         assert len(ans["folders"]) == 1
 
     # Test querying only draft folders
-    async with sess.get(f"{folders_url}?published=false") as resp:
+    async with sess.get(f"{folders_url}?published=false&projectId={project_id}") as resp:
         assert resp.status == 200
         ans = await resp.json()
         assert ans["page"]["page"] == 1
         assert ans["page"]["size"] == 5
-        assert ans["page"]["totalPages"] == 1
-        assert ans["page"]["totalFolders"] == 5
+        assert ans["page"]["totalPages"] == 2
+        assert ans["page"]["totalFolders"] == 6
         assert len(ans["folders"]) == 5
 
     # Test with wrong pagination values
-    async with sess.get(f"{folders_url}?page=-1") as resp:
+    async with sess.get(f"{folders_url}?page=-1&projectId={project_id}") as resp:
         assert resp.status == 400
-    async with sess.get(f"{folders_url}?per_page=0") as resp:
+    async with sess.get(f"{folders_url}?per_page=0&projectId={project_id}") as resp:
         assert resp.status == 400
-    async with sess.get(f"{folders_url}?published=asdf") as resp:
+    async with sess.get(f"{folders_url}?published=asdf&projectId={project_id}") as resp:
         assert resp.status == 400
 
 
-async def test_getting_folders_filtered_by_name(sess):
+async def test_getting_folders_filtered_by_name(sess, project_id):
     """Check that /folders returns folders filtered by name.
 
     :param sess: HTTP session in which request call is made
+    :param project_id: id of the project the folder belongs to
     """
     names = [" filter new ", "_filter_", "-filter-", "_extra-", "_2021special_"]
     folders = []
     for name in names:
-        folder_data = {"name": f"Test{name}name", "description": "Test filtering name"}
+        folder_data = {"name": f"Test{name}name", "description": "Test filtering name", "projectId": project_id}
         folders.append(await post_folder(sess, folder_data))
 
-    async with sess.get(f"{folders_url}?name=filter") as resp:
+    async with sess.get(f"{folders_url}?name=filter&projectId={project_id}") as resp:
         ans = await resp.json()
         assert resp.status == 200, f"HTTP Status code error {resp.status} {ans}"
         assert ans["page"]["totalFolders"] == 3, f'Shold be 3 returned {ans["page"]["totalFolders"]}'
 
-    async with sess.get(f"{folders_url}?name=extra") as resp:
+    async with sess.get(f"{folders_url}?name=extra&projectId={project_id}") as resp:
         ans = await resp.json()
         assert resp.status == 200, f"HTTP Status code error {resp.status} {ans}"
         assert ans["page"]["totalFolders"] == 1
 
-    async with sess.get(f"{folders_url}?name=2021 special") as resp:
+    async with sess.get(f"{folders_url}?name=2021 special&projectId={project_id}") as resp:
         assert resp.status == 200
         ans = await resp.json()
         assert ans["page"]["totalFolders"] == 0
 
-    async with sess.get(f"{folders_url}?name=new extra") as resp:
+    async with sess.get(f"{folders_url}?name=new extra&projectId={project_id}") as resp:
         assert resp.status == 200
         ans = await resp.json()
         assert ans["page"]["totalFolders"] == 2
@@ -1145,10 +1173,11 @@ async def test_getting_folders_filtered_by_name(sess):
         await delete_folder(sess, folder)
 
 
-async def test_getting_folders_filtered_by_date_created(sess):
+async def test_getting_folders_filtered_by_date_created(sess, project_id):
     """Check that /folders returns folders filtered by date created.
 
     :param sess: HTTP session in which request call is made
+    :param project_id: id of the project the folder belongs to
     """
     async with sess.get(f"{users_url}/current") as resp:
         ans = await resp.json()
@@ -1165,10 +1194,13 @@ async def test_getting_folders_filtered_by_date_created(sess):
             "name": f"Test date {stamp}",
             "description": "Test filtering date",
             "dateCreated": datetime.strptime(stamp, format).timestamp(),
+            "projectId": project_id,
         }
         folders.append(await create_folder(folder_data, user))
 
-    async with sess.get(f"{folders_url}?date_created_start=2015-01-01&date_created_end=2015-12-31") as resp:
+    async with sess.get(
+        f"{folders_url}?date_created_start=2015-01-01&date_created_end=2015-12-31&projectId={project_id}"
+    ) as resp:
         ans = await resp.json()
         assert resp.status == 200, f"returned status {resp.status}, error {ans}"
         assert ans["page"]["totalFolders"] == 2, f'Shold be 2 returned {ans["page"]["totalFolders"]}'
@@ -1181,10 +1213,13 @@ async def test_getting_folders_filtered_by_date_created(sess):
             "name": f"Test date {stamp}",
             "description": "Test filtering date",
             "dateCreated": datetime.strptime(stamp, format).timestamp(),
+            "projectId": project_id,
         }
         folders.append(await create_folder(folder_data, user))
 
-    async with sess.get(f"{folders_url}?date_created_start=2013-02-01&date_created_end=2013-03-30") as resp:
+    async with sess.get(
+        f"{folders_url}?date_created_start=2013-02-01&date_created_end=2013-03-30&projectId={project_id}"
+    ) as resp:
         ans = await resp.json()
         assert resp.status == 200, f"returned status {resp.status}, error {ans}"
         assert ans["page"]["totalFolders"] == 2, f'Shold be 2 returned {ans["page"]["totalFolders"]}'
@@ -1202,16 +1237,21 @@ async def test_getting_folders_filtered_by_date_created(sess):
             "name": f"Test date {stamp}",
             "description": "Test filtering date",
             "dateCreated": datetime.strptime(stamp, format).timestamp(),
+            "projectId": project_id,
         }
         folders.append(await create_folder(folder_data, user))
 
-    async with sess.get(f"{folders_url}?date_created_start=2012-01-15&date_created_end=2012-01-15") as resp:
+    async with sess.get(
+        f"{folders_url}?date_created_start=2012-01-15&date_created_end=2012-01-15&projectId={project_id}"
+    ) as resp:
         ans = await resp.json()
         assert resp.status == 200, f"returned status {resp.status}, error {ans}"
         assert ans["page"]["totalFolders"] == 2, f'Shold be 2 returned {ans["page"]["totalFolders"]}'
 
     # Test parameters date_created_... and name together
-    async with sess.get(f"{folders_url}?name=2013&date_created_start=2012-01-01&date_created_end=2016-12-31") as resp:
+    async with sess.get(
+        f"{folders_url}?name=2013&date_created_start=2012-01-01&date_created_end=2016-12-31&projectId={project_id}"
+    ) as resp:
         ans = await resp.json()
         assert resp.status == 200, f"returned status {resp.status}, error {ans}"
         assert ans["page"]["totalFolders"] == 4, f'Shold be 4 returned {ans["page"]["totalFolders"]}'
@@ -1220,141 +1260,84 @@ async def test_getting_folders_filtered_by_date_created(sess):
         await delete_folder(sess, folder)
 
 
-async def test_getting_user_items(sess):
-    """Test querying user's templates or folders in the user object with GET user request.
-
-    :param sess: HTTP session in which request call is made
-    """
-    # Get real user ID
-    async with sess.get(f"{users_url}/{user_id}") as resp:
-        LOG.debug(f"Reading user {user_id}")
-        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-
-    # Add template to user
-    template_id = await post_template_json(sess, "study", "SRP000539_template.json")
-
-    # Test querying for list of user draft templates
-    async with sess.get(f"{users_url}/{user_id}?items=templates") as resp:
-        LOG.debug(f"Reading user {user_id} templates")
-        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-        ans = await resp.json()
-        assert ans["page"]["page"] == 1
-        assert ans["page"]["size"] == 5
-        assert ans["page"]["totalPages"] == 1
-        assert ans["page"]["totalTemplates"] == 1
-        assert len(ans["templates"]) == 1
-
-    async with sess.get(f"{users_url}/{user_id}?items=templates&per_page=3") as resp:
-        LOG.debug(f"Reading user {user_id} templates")
-        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-        ans = await resp.json()
-        assert ans["page"]["page"] == 1
-        assert ans["page"]["size"] == 3
-        assert len(ans["templates"]) == 1
-
-    await delete_template(sess, "study", template_id)  # Future tests will assume the templates key is empty
-
-    # Test querying for the list of folder IDs
-    async with sess.get(f"{users_url}/{user_id}?items=folders") as resp:
-        LOG.debug(f"Reading user {user_id} folder list")
-        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-        ans = await resp.json()
-        assert ans["page"]["page"] == 1
-        assert ans["page"]["size"] == 5
-        assert ans["page"]["totalPages"] == 2
-        assert ans["page"]["totalFolders"] == 6
-        assert len(ans["folders"]) == 5
-
-    # Test the same with a bad query param
-    async with sess.get(f"{users_url}/{user_id}?items=bad") as resp:
-        LOG.debug(f"Reading user {user_id} but with faulty item descriptor")
-        assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
-
-
-async def test_crud_users_works(sess):
+async def test_crud_users_works(sess, project_id):
     """Test users REST api GET, PATCH and DELETE reqs.
 
     :param sess: HTTP session in which request call is made
+    :param project_id: id of the project the folder belongs to
     """
     # Check user exists in database (requires an user object to be mocked)
     async with sess.get(f"{users_url}/{user_id}") as resp:
         LOG.debug(f"Reading user {user_id}")
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-        response = await resp.json()
-        real_user_id = response["userId"]
 
     # Add user to session and create a patch to add folder to user
-    folder_not_published = {"name": "Mock User Folder", "description": "Mock folder for testing users"}
+    folder_not_published = {
+        "name": "Mock User Folder",
+        "description": "Mock folder for testing users",
+        "projectId": project_id,
+    }
     folder_id = await post_folder(sess, folder_not_published)
 
-    async with sess.get(f"{users_url}/{user_id}") as resp:
+    async with sess.get(f"{folders_url}/{folder_id}?projectId={project_id}") as resp:
         LOG.debug(f"Checking that folder {folder_id} was added")
         res = await resp.json()
-        assert res["userId"] == real_user_id, "user id does not match"
-        assert res["name"] == f"{test_user_given} {test_user_family}", "user name mismatch"
-        assert res["templates"] == [], "user templates content mismatch"
-        assert folder_id in res["folders"], "folder added missing mismatch"
+        assert res["name"] == folder_not_published["name"]
+        assert res["projectId"] == folder_not_published["projectId"]
 
-    folder_published = {"name": "Another test Folder", "description": "Test published folder does not get deleted"}
+    folder_published = {
+        "name": "Another test Folder",
+        "description": "Test published folder does not get deleted",
+        "projectId": project_id,
+    }
     publish_folder_id = await post_folder(sess, folder_published)
     await publish_folder(sess, publish_folder_id)
-    async with sess.get(f"{folders_url}/{publish_folder_id}") as resp:
+    async with sess.get(f"{folders_url}/{publish_folder_id}?projectId={project_id}") as resp:
         LOG.debug(f"Checking that folder {publish_folder_id} was published")
         res = await resp.json()
         assert res["published"] is True, "folder is not published, expected True"
 
-    folder_not_published = {"name": "Delete Folder", "description": "Mock folder to delete while testing users"}
+    folder_not_published = {
+        "name": "Delete Folder",
+        "description": "Mock folder to delete while testing users",
+        "projectId": project_id,
+    }
     delete_folder_id = await post_folder(sess, folder_not_published)
-    patch_delete_folder = [{"op": "add", "path": "/folders/-", "value": [delete_folder_id]}]
-
-    await patch_user(sess, user_id, real_user_id, patch_delete_folder)
-    async with sess.get(f"{users_url}/{user_id}") as resp:
+    async with sess.get(f"{folders_url}/{delete_folder_id}?projectId={project_id}") as resp:
         LOG.debug(f"Checking that folder {delete_folder_id} was added")
         res = await resp.json()
-        assert delete_folder_id in res["folders"], "deleted folder added does not exists"
+        assert res["name"] == folder_not_published["name"]
+        assert res["projectId"] == folder_not_published["projectId"]
     await delete_folder(sess, delete_folder_id)
-    async with sess.get(f"{users_url}/{user_id}") as resp:
+    async with sess.get(f"{folders_url}/{delete_folder_id}?projectId={project_id}") as resp:
         LOG.debug(f"Checking that folder {delete_folder_id} was deleted")
-        res = await resp.json()
-        assert delete_folder_id not in res["folders"], "delete folder still exists at user"
+        assert resp.status == 404
 
-    template_id = await post_template_json(sess, "study", "SRP000539_template.json")
+    template_id = await post_template_json(sess, "study", "SRP000539_template.json", project_id)
     await patch_template(sess, "study", template_id, "patch.json")
-    async with sess.get(f"{users_url}/{user_id}") as resp:
+    async with sess.get(f"{templates_url}/study/{template_id}") as resp:
         LOG.debug(f"Checking that template: {template_id} was added")
         res = await resp.json()
-        assert res["templates"][0]["accessionId"] == template_id, "added template does not exists"
-        assert "tags" not in res["templates"][0]
+        assert res["accessionId"] == template_id
+        assert res["projectId"] == project_id
+        assert res["identifiers"]["primaryId"] == "SRP000539"
 
-    patch_change_tags_object = [
-        {
-            "op": "add",
-            "path": "/templates/0/tags",
-            "value": {"displayTitle": "Test"},
-        }
-    ]
-    await patch_user(sess, user_id, real_user_id, patch_change_tags_object)
-
-    async with sess.get(f"{users_url}/{user_id}") as resp:
-        LOG.debug(f"Checking that template: {template_id} was added")
+    async with sess.get(f"{templates_url}?projectId={project_id}") as resp:
+        LOG.debug("Checking that template display title was updated in separate templates list")
         res = await resp.json()
-        assert res["templates"][0]["accessionId"] == template_id, "added template does not exists"
-        assert res["templates"][0]["tags"]["displayTitle"] == "Test"
+        assert res[0]["tags"]["displayTitle"] == "new name"
 
     await delete_template(sess, "study", template_id)
+    async with sess.get(f"{templates_url}/study/{template_id}") as resp:
+        LOG.debug(f"Checking that template {template_id} was deleted")
+        assert resp.status == 404
 
-    async with sess.get(f"{users_url}/{user_id}") as resp:
-        LOG.debug(f"Checking that template {template_id} was added")
-        res = await resp.json()
-        assert len(res["templates"]) == 0, "template was not deleted from users"
-
-    template_ids = await post_template_json(sess, "study", "SRP000539_list.json")
+    template_ids = await post_template_json(sess, "study", "SRP000539_list.json", project_id)
     assert len(template_ids) == 2, "templates could not be added as batch"
+    templates = await get_templates(sess, project_id)
 
-    async with sess.get(f"{users_url}/{user_id}") as resp:
-        LOG.debug(f"Checking that template {template_id} was added")
-        res = await resp.json()
-        assert res["templates"][1]["tags"]["submissionType"] == "Form"
+    assert len(templates) == 2, f"should be 2 templates, got {len(templates)}"
+    assert templates[0]["schema"] == "template-study", "wrong template schema"
 
     # Delete user
     await delete_user(sess, user_id)
@@ -1365,29 +1348,32 @@ async def test_crud_users_works(sess):
         assert resp.status == 401, f"HTTP Status code error, got {resp.status}"
 
 
-async def test_get_folders(sess, folder_id: str):
+async def test_get_folders(sess, folder_id: str, project_id: str):
     """Test folders REST api GET .
 
     :param sess: HTTP session in which request call is made
     :param folder_id: id of the folder used to group submission objects
+    :param project_id: id of the project the folder belongs to
     """
-    async with sess.get(f"{folders_url}") as resp:
+    async with sess.get(f"{folders_url}?projectId={project_id}") as resp:
         LOG.debug(f"Reading folder {folder_id}")
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         response = await resp.json()
+        LOG.error(response)
         assert len(response["folders"]) == 1
         assert response["page"] == {"page": 1, "size": 5, "totalPages": 1, "totalFolders": 1}
         assert response["folders"][0]["folderId"] == folder_id
 
 
-async def test_get_folders_objects(sess, folder_id: str):
+async def test_get_folders_objects(sess, folder_id: str, project_id: str):
     """Test folders REST api GET with objects.
 
     :param sess: HTTP session in which request call is made
     :param folder_id: id of the folder used to group submission objects
+    :param project_id: id of the project the folder belongs to
     """
     accession_id = await post_object_json(sess, "study", folder_id, "SRP000539.json")
-    async with sess.get(f"{folders_url}") as resp:
+    async with sess.get(f"{folders_url}?projectId={project_id}") as resp:
         LOG.debug(f"Reading folder {folder_id}")
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         response = await resp.json()
@@ -1404,7 +1390,7 @@ async def test_get_folders_objects(sess, folder_id: str):
         }
     ]
     await patch_folder(sess, folder_id, patch_change_tags_object)
-    async with sess.get(f"{folders_url}") as resp:
+    async with sess.get(f"{folders_url}?projectId={project_id}") as resp:
         LOG.debug(f"Reading folder {folder_id}")
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         response = await resp.json()
@@ -1516,6 +1502,8 @@ async def main():
 
         LOG.debug("=== Login other mock user ===")
         await login(sess, other_test_user, other_test_user_given, other_test_user_family)
+        user_data = await get_user_data(sess)
+        project_id = user_data["projects"][0]["projectId"]
 
         # Test add, modify, validate and release action with submissions
         # added to validate that objects belong to a specific user
@@ -1523,21 +1511,25 @@ async def main():
         submission_folder = {
             "name": "submission test 1",
             "description": "submission test folder 1",
+            "projectId": project_id,
         }
         submission_folder_id = await post_folder(sess, submission_folder)
-        await test_get_folders(sess, submission_folder_id)
-        await test_get_folders_objects(sess, submission_folder_id)
+        await test_get_folders(sess, submission_folder_id, project_id)
+        await test_get_folders_objects(sess, submission_folder_id, project_id)
         await test_submissions_work(sess, submission_folder_id)
 
     async with aiohttp.ClientSession() as sess:
         LOG.debug("=== Login mock user ===")
         await login(sess, test_user, test_user_given, test_user_family)
+        user_data = await get_user_data(sess)
+        project_id = user_data["projects"][0]["projectId"]
 
         # Test adding and getting objects
         LOG.debug("=== Testing basic CRUD operations ===")
         basic_folder = {
             "name": "basic test",
             "description": "basic test folder",
+            "projectId": project_id,
         }
         basic_folder_id = await post_folder(sess, basic_folder)
 
@@ -1550,6 +1542,7 @@ async def main():
         put_object_folder = {
             "name": "test put object",
             "description": "put object test folder",
+            "projectId": project_id,
         }
         put_object_folder = await post_folder(sess, put_object_folder)
 
@@ -1560,6 +1553,7 @@ async def main():
         draft_folder = {
             "name": "basic test draft",
             "description": "basic test draft folder",
+            "projectId": project_id,
         }
         draft_folder_id = await post_folder(sess, draft_folder)
         await asyncio.gather(
@@ -1579,6 +1573,7 @@ async def main():
         query_folder = {
             "name": "basic test query",
             "description": "basic test query folder",
+            "projectId": project_id,
         }
         query_folder_id = await post_folder(sess, query_folder)
         await test_querying_works(sess, query_folder_id)
@@ -1588,32 +1583,33 @@ async def main():
         pagination_folder = {
             "name": "basic test pagination",
             "description": "basic test pagination folder",
+            "projectId": project_id,
         }
         pagination_folder_id = await post_folder(sess, pagination_folder)
         await test_getting_all_objects_from_schema_works(sess, pagination_folder_id)
 
         # Test creating, reading, updating and deleting folders
         LOG.debug("=== Testing basic CRUD folder operations ===")
-        await test_crud_folders_works(sess)
-        await test_crud_folders_works_no_publish(sess)
-        await test_adding_doi_info_to_folder_works(sess)
+        await test_crud_folders_works(sess, project_id)
+        await test_crud_folders_works_no_publish(sess, project_id)
+        await test_adding_doi_info_to_folder_works(sess, project_id)
 
         # Test getting a list of folders and draft templates owned by the user
         LOG.debug("=== Testing getting folders, draft folders and draft templates with pagination ===")
-        await test_getting_paginated_folders(sess)
-        await test_getting_user_items(sess)
+        await test_getting_paginated_folders(sess, project_id)
         LOG.debug("=== Testing getting folders filtered with name and date created ===")
-        await test_getting_folders_filtered_by_name(sess)
+        await test_getting_folders_filtered_by_name(sess, project_id)
         # too much of a hassle to make test work with tls db connection in github
         # must be improven in next integration test iteration
         if not TLS:
-            await test_getting_folders_filtered_by_date_created(sess)
+            await test_getting_folders_filtered_by_date_created(sess, project_id)
 
         # Test add, modify, validate and release action with submissions
         LOG.debug("=== Testing actions within submissions ===")
         submission_folder = {
             "name": "submission test",
             "description": "submission test folder",
+            "projectId": project_id,
         }
         submission_folder_id = await post_folder(sess, submission_folder)
         await test_submissions_work(sess, submission_folder_id)
@@ -1625,7 +1621,7 @@ async def main():
         # Test reading, updating and deleting users
         # this needs to be done last as it deletes users
         LOG.debug("=== Testing basic CRUD user operations ===")
-        await test_crud_users_works(sess)
+        await test_crud_users_works(sess, project_id)
 
     # Remove the remaining user in the test database
     async with aiohttp.ClientSession() as sess:

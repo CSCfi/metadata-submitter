@@ -91,6 +91,7 @@ async def init() -> web.Application:
         web.patch("/drafts/{schema}/{accessionId}", _object.patch_object),
         web.delete("/drafts/{schema}/{accessionId}", _object.delete_object),
         # template objects operations
+        web.get("/templates", _template.get_templates),
         web.post("/templates/{schema}", _template.post_template),
         web.get("/templates/{schema}/{accessionId}", _template.get_template),
         web.patch("/templates/{schema}/{accessionId}", _template.patch_template),
@@ -105,7 +106,6 @@ async def init() -> web.Application:
         web.patch("/publish/{folderId}", _folder.publish_folder),
         # users operations
         web.get("/users/{userId}", _user.get_user),
-        web.patch("/users/{userId}", _user.patch_user),
         web.delete("/users/{userId}", _user.delete_user),
         # submit
         web.post("/submit", _submission.submit),

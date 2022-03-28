@@ -91,7 +91,7 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
         """Cleanup mocked stuff."""
         pass
 
-    async def test_set_user(self):
+    async def test_set_user_no_update(self):
         """Test set user success."""
         request = get_request_with_fernet()
         session_id = "session_id"
@@ -103,10 +103,53 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
             "sub": "user@test.fi",
             "given_name": "User",
             "family_name": "Test",
+            "projects": {
+                "projectId": "internal_1000",
+                "projectNumber": "1000",
+            },
+        }
+        old_user_data = {
+            "projects": {
+                "projectId": "internal_1000",
+                "projectNumber": "1000",
+            }
         }
 
         with patch("metadata_backend.api.operators.UserOperator.create_user", return_value=new_user_id):
-            await self.AccessHandler._set_user(request, session_id, user_data)
+            with patch("metadata_backend.api.operators.UserOperator.read_user", return_value=old_user_data):
+                await self.AccessHandler._set_user(request, session_id, user_data)
+
+        self.assertIn("user_info", request.app["Session"][session_id])
+        self.assertEqual(new_user_id, request.app["Session"][session_id]["user_info"])
+
+    async def test_set_user_with_update(self):
+        """Test set user success."""
+        request = get_request_with_fernet()
+        session_id = "session_id"
+        new_user_id = "USR12345"
+
+        request.app["db_client"] = MagicMock()
+        request.app["Session"] = {session_id: {}}
+        user_data = {
+            "sub": "user@test.fi",
+            "given_name": "User",
+            "family_name": "Test",
+            "projects": {
+                "projectId": "internal_1000",
+                "projectNumber": "1000",
+            },
+        }
+        old_user_data = {
+            "projects": {
+                "projectId": "internal_2000",
+                "projectNumber": "2000",
+            }
+        }
+
+        with patch("metadata_backend.api.operators.UserOperator.create_user", return_value=new_user_id):
+            with patch("metadata_backend.api.operators.UserOperator.read_user", return_value=old_user_data):
+                with patch("metadata_backend.api.operators.UserOperator.update_user", return_value=new_user_id):
+                    await self.AccessHandler._set_user(request, session_id, user_data)
 
         self.assertIn("user_info", request.app["Session"][session_id])
         self.assertEqual(new_user_id, request.app["Session"][session_id]["user_info"])
@@ -133,11 +176,18 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
         request.query["code"] = "code"
 
         session = {"iss": "http://auth.domain.com:5430", "auth_request": {}}
-        finalize = {"token": "token", "userinfo": {"sub": "user", "given_name": "name", "family_name": "name"}}
+        finalize = {
+            "token": "token",
+            "userinfo": {"sub": "user", "given_name": "name", "family_name": "name", "sdSubmitProjects": "1000"},
+        }
         with patch("oidcrp.rp_handler.RPHandler.get_session_information", return_value=session):
             with patch("oidcrp.rp_handler.RPHandler.finalize", return_value=finalize):
-                with patch("metadata_backend.api.auth.AccessHandler._set_user", return_value=None):
-                    await self.AccessHandler.callback(request)
+                with patch(
+                    "metadata_backend.api.auth.AccessHandler._process_projects",
+                    return_value=[{"projectId": "internal_1000", "projectNumber": "1000"}],
+                ):
+                    with patch("metadata_backend.api.auth.AccessHandler._set_user", return_value=None):
+                        await self.AccessHandler.callback(request)
 
     async def test_callback_missing_claim(self):
         """Test callback missing claim validation."""
@@ -146,7 +196,10 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
         request.query["code"] = "code"
 
         session = {"iss": "http://auth.domain.com:5430", "auth_request": {}}
-        finalize = {"token": "token", "userinfo": {}}
+        finalize = {
+            "token": "token",
+            "userinfo": {"given_name": "some", "family_name": "one", "sdSubmitProjects": "1000"},
+        }
         with patch("oidcrp.rp_handler.RPHandler.get_session_information", return_value=session):
             with patch("oidcrp.rp_handler.RPHandler.finalize", return_value=finalize):
                 with self.assertRaises(HTTPBadRequest):
@@ -187,3 +240,11 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
 
         with self.assertRaises(HTTPBadRequest):
             await self.AccessHandler.callback(request)
+
+    async def test_process_projects(self):
+        """Test that process projects returns accession IDs."""
+        request = get_request_with_fernet()
+        request.app["db_client"] = MagicMock()
+        with patch("metadata_backend.api.operators.ProjectOperator.create_project", return_value="accession_id"):
+            processed_projects = await self.AccessHandler._process_projects(request, ["1000"])
+            self.assertEqual(processed_projects, [{"projectId": "accession_id", "projectNumber": "1000"}])
