@@ -342,7 +342,6 @@ class TestOperators(IsolatedAsyncioTestCase):
                     {
                         "accessionId": self.accession_id,
                         "dateModified": datetime.datetime(2020, 4, 14),
-                        "metaxIdentifier": {"identifier": 12345},
                     },
                 )
             self.assertEqual(acc["accessionId"], self.accession_id)
