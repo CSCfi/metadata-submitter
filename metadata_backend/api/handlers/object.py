@@ -113,7 +113,6 @@ class ObjectAPIHandler(RESTAPIHandler):
             raise web.HTTPBadRequest(reason=reason)
 
         await self._handle_check_ownership(req, "folders", folder_id)
-        patch_params = {}
 
         self._check_schema_exists(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type

@@ -122,7 +122,7 @@ class HandlersTestCase(AioHTTPTestCase):
             "delete.side_effect": self.fake_doi_delete,
         }
 
-        RESTAPIHandler._handle_check_ownedby_user = make_mocked_coro(True)
+        RESTAPIHandler._handle_check_ownership = make_mocked_coro(True)
         ObjectAPIHandler._delete_metax_dataset = make_mocked_coro()
 
     async def tearDownAsync(self):
