@@ -102,7 +102,6 @@ class MetaxServiceHandler:
                 )
                 metax_id = metax_data["identifier"]
             else:
-                # TODO: how front end should react on this??
                 reason = await resp.text()
                 raise self.process_error(status, reason)
 
@@ -123,7 +122,6 @@ class MetaxServiceHandler:
                     )
                     return metax_id
                 else:
-                    # TODO: how front end should react on this??
                     reason = await resp.text()
                     raise self.process_error(status, reason)
 
@@ -139,7 +137,6 @@ class MetaxServiceHandler:
         :returns: Metax ID for dataset returned by Metax API
         """
         metax_dataset = self.minimal_dataset_template
-        # TODO: should this be changed if person updating data is different from data creator?
         metax_dataset["metadata_provider_user"] = await self.get_metadata_provider_user()
         if collection == "dataset":
             dataset_data = self.create_metax_dataset_data_from_dataset(data)
@@ -161,7 +158,6 @@ class MetaxServiceHandler:
                 LOG.info(f"Updated Metax draft dataset with ID {metax_data['identifier']} with data: {metax_dataset}")
                 return metax_data["identifier"]
             else:
-                # TODO: how front end should react on this??
                 reason = await resp.text()
                 raise self.process_error(status, reason)
 
@@ -179,7 +175,6 @@ class MetaxServiceHandler:
             if status == 204:
                 LOG.info(f"Deleted draft dataset {metax_id} from Metax service")
             else:
-                # TODO: how front end should react on this??
                 reason = await resp.text()
                 raise self.process_error(status, reason)
 
