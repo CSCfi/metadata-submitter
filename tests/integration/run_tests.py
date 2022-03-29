@@ -652,28 +652,29 @@ async def test_csv(sess, folder_id):
     """
     _schema = "sample"
     _filename = "EGAformat.csv"
-    accession_id = await post_object(sess, _schema, folder_id, _filename)
+    samples = await post_object(sess, _schema, folder_id, _filename)
     # there are 3 rows and we expected to get 3rd
-    assert len(accession_id[0]) == 3, f"expected nb of CSV entries does not match, we got: {len(accession_id)}"
-    _first_csv_row_id = accession_id[0][0]["accessionId"]
+    assert len(samples[0]) == 3, f"expected nb of CSV entries does not match, we got: {len(samples[0])}"
+    # _first_csv_row_id = accession_id[0][0]["accessionId"]
+    first_sample = samples[0][0]["accessionId"]
 
-    async with sess.get(f"{objects_url}/{_schema}/{_first_csv_row_id}") as resp:
-        LOG.debug(f"Checking that {_first_csv_row_id} JSON is in {_schema}")
+    async with sess.get(f"{objects_url}/{_schema}/{first_sample}") as resp:
+        LOG.debug(f"Checking that {first_sample} JSON is in {_schema}")
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         res = await resp.json()
         title = res.get("title", "")
-    await check_folders_object_patch(sess, folder_id, _schema, accession_id, title, _filename)
+    await check_folders_object_patch(sess, folder_id, _schema, samples, title, _filename)
 
-    await delete_object(sess, _schema, _first_csv_row_id)
-    async with sess.get(f"{objects_url}/{_schema}/{_first_csv_row_id}") as resp:
-        LOG.debug(f"Checking that JSON object {_first_csv_row_id} was deleted")
+    await delete_object(sess, _schema, first_sample)
+    async with sess.get(f"{objects_url}/{_schema}/{first_sample}") as resp:
+        LOG.debug(f"Checking that JSON object {first_sample} was deleted")
         assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
 
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
-        LOG.debug(f"Checking that object {_first_csv_row_id} was deleted from folder {folder_id}")
+        LOG.debug(f"Checking that object {first_sample} was deleted from folder {folder_id}")
         res = await resp.json()
-        expected_true = not any(d["accessionId"] == _first_csv_row_id for d in res["metadataObjects"])
-        assert expected_true, f"object {_first_csv_row_id} still exists"
+        expected_true = not any(d["accessionId"] == first_sample for d in res["metadataObjects"])
+        assert expected_true, f"object {first_sample} still exists"
 
     _filename = "empty.csv"
     # status should be 400
@@ -681,8 +682,11 @@ async def test_csv(sess, folder_id):
 
     _filename = "EGA_sample_w_issue.csv"
     # status should be 201 but we expect 3 rows, as the CSV has 4 rows one of which is empty
-    accession_id = await post_object_expect_status(sess, _schema, folder_id, _filename, 201)
-    assert len(accession_id[0]) == 3, f"expected nb of CSV entries does not match, we got: {len(accession_id)}"
+    samples_2 = await post_object_expect_status(sess, _schema, folder_id, _filename, 201)
+    assert len(samples_2[0]) == 3, f"expected nb of CSV entries does not match, we got: {len(samples_2[0])}"
+
+    for sample in samples_2[0] + samples[0][1:]:
+        await delete_object(sess, _schema, sample["accessionId"])
 
 
 async def test_put_objects(sess, folder_id):
@@ -706,6 +710,7 @@ async def test_put_objects(sess, folder_id):
         "Highly integrated epigenome maps in Arabidopsis - whole genome shotgun bisulfite sequencing",
         "SRP000539_put.xml",
     )
+    await delete_object(sess, "study", accession_id[0])
 
 
 async def test_crud_drafts_works(sess, schema, orginal_file, update_file, folder_id):
@@ -847,7 +852,7 @@ async def test_getting_all_objects_from_schema_works(sess, folder_id):
         assert ans["page"]["page"] == 1
         assert ans["page"]["size"] == 10
         assert ans["page"]["totalPages"] == 2
-        assert ans["page"]["totalObjects"] == 18, ans["page"]["totalObjects"]
+        assert ans["page"]["totalObjects"] == 13, ans["page"]["totalObjects"]
         assert len(ans["objects"]) == 10
 
     # Test with custom pagination values
@@ -856,8 +861,8 @@ async def test_getting_all_objects_from_schema_works(sess, folder_id):
         ans = await resp.json()
         assert ans["page"]["page"] == 2
         assert ans["page"]["size"] == 3
-        assert ans["page"]["totalPages"] == 6, ans["page"]["totalPages"]
-        assert ans["page"]["totalObjects"] == 18, ans["page"]["totalObjects"]
+        assert ans["page"]["totalPages"] == 5, ans["page"]["totalPages"]
+        assert ans["page"]["totalObjects"] == 13, ans["page"]["totalObjects"]
         assert len(ans["objects"]) == 3
 
     # Test with wrong pagination values
@@ -1028,7 +1033,7 @@ async def test_metax_publish_dataset(sess, folder_id):
             assert metax_res["state"] == "published"
 
 
-async def test_crud_folders_works(sess):
+async def test_crud_folders_works(sess, project_id):
     """Test folders REST api POST, GET, PATCH, PUBLISH and DELETE reqs.
 
     :param sess: HTTP session in which request call is made
@@ -1702,6 +1707,9 @@ async def test_submissions_work(sess, folder_id):
         }
         assert expected_study in res["metadataObjects"], "folder metadataObjects content mismatch"
 
+    await delete_object(sess, "sample", sample_access_id)
+    await delete_object(sess, "study", study_access_id)
+
     # Remove the accession id that was used for testing from test file
     LOG.debug("Sharing the correct accession ID created in this test instance")
     mod_study = testfiles_root / "study" / "SRP000539_modified.xml"
@@ -1839,6 +1847,7 @@ async def main():
         metax_folder = {
             "name": "basic test pagination",
             "description": "basic test pagination folder",
+            "projectId": project_id,
         }
         metax_folder_id = await post_folder(sess, metax_folder)
         await test_metax_crud_with_xml(sess, metax_folder_id)
