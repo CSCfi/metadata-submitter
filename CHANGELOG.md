@@ -77,6 +77,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - JSON schemas #332
    - introduce `keywords` required for Metax in `doiInfo`
    - dataset `description` and study `studyAbstract` are now mandatory
+- `keywords` will be comma separated values, that will require splitting when adding to Metax API
 
 ### Fixed
 
