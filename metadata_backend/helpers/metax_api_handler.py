@@ -41,15 +41,18 @@ class MetaxServiceHandler:
                 "description": {"en": ""},
                 # default
                 "access_rights": {
-                    "access_type": {"identifier": "http://uri.suomi.fi/codelist/fairdata/access_type/code/restricted"},
+                    "access_type": {
+                        "in_scheme": "http://uri.suomi.fi/codelist/fairdata/access_type",
+                        "identifier": "http://uri.suomi.fi/codelist/fairdata/access_type/code/restricted",
+                    }
                 },
                 # default
                 "publisher": {
-                    "@type": "Organization",
                     "name": {
                         "en": "CSC Sensitive Data Services for Research",
                         "fi": "CSC:n Arkaluonteisen datan palveluiden aineistokatalogi",
                     },
+                    "@type": "Organization",
                 },
             },
         }

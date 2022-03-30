@@ -527,16 +527,14 @@ class MetaDataMapper:
         LOG.debug(identifiers)
         self.research_dataset["other_identifier"] = []
         other_identifier: Dict[str, Any] = {
-            "notation": "",
             "type": {
                 "identifier": "",
-                "pref_label": {"en": ""},
                 "in_scheme": "http://uri.suomi.fi/codelist/fairdata/identifier_type",
             },
+            "notation": "",
         }
         for identifier in identifiers:
             other_identifier["notation"] = identifier["alternateIdentifier"]
-            other_identifier["type"]["pref_label"]["en"] = identifier["alternateIdentifierType"]
 
             type = self.identifier_types[identifier["alternateIdentifierType"].lower()]
 
