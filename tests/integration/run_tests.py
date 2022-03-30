@@ -1032,6 +1032,31 @@ async def test_metax_publish_dataset(sess, folder_id):
             metax_res = await metax_resp.json()
             assert metax_res["state"] == "published"
 
+            # this data is synced with /test_files/doi/test_doi.json
+            # if data changes inside the file it must data must be reflected here
+            expected_rd = json.loads(await create_request_json_data("metax", "research_dataset.json"))
+            actual_rd = metax_res["research_dataset"]
+
+            title = res["title"] if schema == "dataset" else res["descriptor"]["studyTitle"]
+            description = res["description"] if schema == "dataset" else res["descriptor"]["studyAbstract"]
+
+            assert actual_rd["title"]["en"] == title
+            assert actual_rd["description"]["en"] == description
+            assert actual_rd["creator"] == expected_rd["creator"]
+            assert (
+                actual_rd["access_rights"]["access_type"]["identifier"]
+                == expected_rd["access_rights"]["access_type"]["identifier"]
+            )
+            assert actual_rd["contributor"] == expected_rd["contributor"]
+            assert actual_rd["curator"] == expected_rd["curator"]
+            assert actual_rd["issued"] == expected_rd["issued"]
+            assert actual_rd["modified"] == expected_rd["modified"]
+            assert actual_rd["other_identifier"][0]["notation"] == expected_rd["other_identifier"][0]["notation"]
+            assert actual_rd["publisher"] == expected_rd["publisher"]
+            assert actual_rd["rights_holder"] == expected_rd["rights_holder"]
+            assert actual_rd["spatial"] == expected_rd["spatial"]
+            assert actual_rd["temporal"] == expected_rd["temporal"]
+
 
 async def test_crud_folders_works(sess, project_id):
     """Test folders REST api POST, GET, PATCH, PUBLISH and DELETE reqs.
