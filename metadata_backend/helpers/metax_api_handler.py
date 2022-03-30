@@ -8,6 +8,7 @@ from ..api.middlewares import get_session
 from ..api.operators import UserOperator
 from ..conf.conf import metax_config
 from .logger import LOG
+from .metax_mapper import MetaDataMapper
 
 
 class MetaxServiceHandler:
@@ -203,12 +204,10 @@ class MetaxServiceHandler:
                     raise self.process_error(status, reason)
 
                 # Map fields from doi info to Metax schema
-
+                mapper = MetaDataMapper(metax_data["research_dataset"], doi_info)
                 # creator is required field
-                metax_data["research_dataset"]["creator"] = self.map_creators(doi_info["creators"])
-                bulk_data.append(
-                    {"identifier": id["metaxIdentifier"], "research_dataset": metax_data["research_dataset"]}
-                )
+                mapped_metax_data = mapper.map_metadata()
+                bulk_data.append({"identifier": id["metaxIdentifier"], "research_dataset": mapped_metax_data})
 
         # for id in metax_ids:
         async with ClientSession() as sess:
