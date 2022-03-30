@@ -75,6 +75,10 @@ class MetaxServiceHandler:
         :raises: HTTPError depending on returned error from Metax
         :returns: Metax ID for dataset returned by Metax API
         """
+        LOG.debug(
+            f"Creating draft dataset to Metax service from Submitter {collection} with accession ID "
+            f"{data['accessionId']}"
+        )
         metax_dataset = self.minimal_dataset_template
         metax_dataset["metadata_provider_user"] = await self.get_metadata_provider_user()
         if collection == "dataset":
@@ -82,10 +86,6 @@ class MetaxServiceHandler:
         else:
             dataset_data = self.create_metax_dataset_data_from_study(data)
         metax_dataset["research_dataset"] = dataset_data
-        LOG.debug(
-            f"Creating draft dataset to Metax service from Submitter {collection} with accession ID "
-            f"{data['accessionId']}"
-        )
         async with ClientSession() as sess:
             resp = await sess.post(
                 f"{self.metax_url}{self.rest_route}",
@@ -96,10 +96,8 @@ class MetaxServiceHandler:
             status = resp.status
             if status == 201:
                 metax_data = await resp.json()
-                LOG.debug(
-                    f"Created Metax draft dataset {metax_data['identifier']} from Submitter {collection} "
-                    f"{data['accessionId']} with data: {metax_dataset}."
-                )
+                LOG.info(f"Created Metax draft dataset {metax_data['identifier']}")
+                LOG.debug(f"Created Metax draft dataset {metax_data['identifier']} with data: {metax_dataset}.")
                 metax_id = metax_data["identifier"]
             else:
                 reason = await resp.text()
@@ -116,6 +114,7 @@ class MetaxServiceHandler:
                 status = resp.status
                 if status == 200:
                     metax_data = await resp.json()
+                    LOG.info("Updated Metax draft dataset with permanent preferred identifier.")
                     LOG.debug(
                         f"Updated Metax draft dataset {metax_data['identifier']} with permanent preferred "
                         "identifier."
@@ -136,6 +135,7 @@ class MetaxServiceHandler:
         :raises: HTTPError depending on returned error from Metax
         :returns: Metax ID for dataset returned by Metax API
         """
+        LOG.info(f"Updating Metax draft dataset {data['metaxIdentifier']}")
         metax_dataset = self.minimal_dataset_template
         metax_dataset["metadata_provider_user"] = await self.get_metadata_provider_user()
         if collection == "dataset":
@@ -143,7 +143,6 @@ class MetaxServiceHandler:
         else:
             dataset_data = self.create_metax_dataset_data_from_study(data)
         metax_dataset["research_dataset"] = dataset_data
-        LOG.info(f"Sending updated {collection} object data to Metax service.")
 
         async with ClientSession() as sess:
             resp = await sess.put(
@@ -155,7 +154,7 @@ class MetaxServiceHandler:
             status = resp.status
             if status == 200:
                 metax_data = await resp.json()
-                LOG.info(f"Updated Metax draft dataset with ID {metax_data['identifier']} with data: {metax_dataset}")
+                LOG.debug(f"Updated Metax draft dataset with ID {metax_data['identifier']} with data: {metax_dataset}")
                 return metax_data["identifier"]
             else:
                 reason = await resp.text()
@@ -166,6 +165,7 @@ class MetaxServiceHandler:
 
         :param metax_id: Identification string pointing to Metax dataset to be deleted
         """
+        LOG.info(f"Deleting Metax draft dataset {metax_id}")
         async with ClientSession() as sess:
             resp = await sess.delete(
                 f"{self.metax_url}{self.rest_route}/{metax_id}",
@@ -173,20 +173,23 @@ class MetaxServiceHandler:
             )
             status = resp.status
             if status == 204:
-                LOG.info(f"Deleted draft dataset {metax_id} from Metax service")
+                LOG.debug(f"Deleted draft dataset {metax_id} from Metax service")
             else:
                 reason = await resp.text()
                 raise self.process_error(status, reason)
 
-    async def update_dataset_with_doi_info(self, doi_info: Dict, metax_ids: List) -> None:
+    async def update_dataset_with_doi_info(self, doi_info: Dict, _metax_ids: List) -> None:
         """Update dataset for publishing.
 
         :param doi_info: Dict containing info to complete metax dataset metadata
         :param metax_id: Metax id of dataset to be updated
         """
-        LOG.info("Updating object metax metadata with doi info")
+        LOG.info(
+            "Updating metadata with datacite info for Metax datasets: "
+            f"{','.join([id['metaxIdentifier'] for id in _metax_ids])}"
+        )
         bulk_data = []
-        for id in metax_ids:
+        for id in _metax_ids:
             async with ClientSession() as sess:
                 resp = await sess.get(
                     f"{self.metax_url}{self.rest_route}/{id['metaxIdentifier']}",
@@ -215,7 +218,7 @@ class MetaxServiceHandler:
                 auth=self.auth,
             )
             if resp.status == 200:
-                LOG.info("Objects metadata are updated to Metax for publishing")
+                LOG.debug("Objects metadata are updated to Metax for publishing")
                 return await resp.json()
             else:
                 reason = await resp.text()
@@ -228,6 +231,7 @@ class MetaxServiceHandler:
 
         :param _metax_ids: List of metax IDs that include study and datasets
         """
+        LOG.info(f"Publishing Metax datasets {','.join([id['metaxIdentifier'] for id in _metax_ids])}")
         for object in _metax_ids:
             metax_id = object["metaxIdentifier"]
             doi = object["doi"]
@@ -252,7 +256,7 @@ class MetaxServiceHandler:
                 else:
                     reason = await resp.text()
                     raise self.process_error(status, reason)
-            LOG.info(f"Metax ID {object['metaxIdentifier']} was published to Metax service.")
+            LOG.debug(f"Metax ID {object['metaxIdentifier']} was published to Metax service.")
 
     def create_metax_dataset_data_from_study(self, data: Dict) -> Dict:
         """Construct Metax dataset's research dataset dictionary from Submitters Study.
@@ -261,7 +265,6 @@ class MetaxServiceHandler:
         :returns: constructed research dataset
         """
         research_dataset = self.minimal_dataset_template["research_dataset"]
-
         research_dataset["preferred_identifier"] = data["doi"]
         research_dataset["title"]["en"] = data["descriptor"]["studyTitle"]
         research_dataset["description"]["en"] = data["descriptor"]["studyAbstract"]

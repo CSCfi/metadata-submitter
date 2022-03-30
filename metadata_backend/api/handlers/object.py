@@ -104,6 +104,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         _allowed_csv = {"sample"}
         _allowed_doi = {"study", "dataset"}
         schema_type = req.match_info["schema"]
+        LOG.debug(f"Creating {schema_type} object")
         filename = ""
         cont_type = ""
 
@@ -213,13 +214,13 @@ class ObjectAPIHandler(RESTAPIHandler):
         :raises: HTTPUnprocessableEntity if object does not belong to current user
         :returns: HTTPNoContent response
         """
+        schema_type = req.match_info["schema"]
+        accession_id = req.match_info["accessionId"]
+        LOG.debug(f"Deleting object {schema_type} {accession_id}")
         _allowed_doi = {"study", "dataset"}
 
-        schema_type = req.match_info["schema"]
         self._check_schema_exists(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
-
-        accession_id = req.match_info["accessionId"]
         db_client = req.app["db_client"]
 
         operator = Operator(db_client)
@@ -256,8 +257,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         # Delete draft dataset from Metax catalog
         if collection in _allowed_doi:
-            metax_service = MetaxServiceHandler(req)
-            await metax_service.delete_draft_dataset(metax_id)
+            await MetaxServiceHandler(req).delete_draft_dataset(metax_id)
             doi_service = DOIHandler()
             await doi_service.delete(doi_id)
 
@@ -274,10 +274,11 @@ class ObjectAPIHandler(RESTAPIHandler):
         :raises: HTTPUnsupportedMediaType if JSON replace is attempted
         :returns: JSON response containing accessionId for submitted object
         """
-        _allowed_doi = {"study", "dataset"}
-
         schema_type = req.match_info["schema"]
         accession_id = req.match_info["accessionId"]
+        LOG.debug(f"Replacing object {schema_type} {accession_id}")
+        _allowed_doi = {"study", "dataset"}
+
         self._check_schema_exists(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
 
@@ -315,8 +316,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         # Update draft dataset to Metax catalog
         if collection in _allowed_doi:
-            metax_service = MetaxServiceHandler(req)
-            await metax_service.update_draft_dataset(collection, data)
+            await MetaxServiceHandler(req).update_draft_dataset(collection, data)
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info(f"PUT object with accession ID {accession_id} in schema {collection} was successful.")
@@ -333,6 +333,8 @@ class ObjectAPIHandler(RESTAPIHandler):
         """
         schema_type = req.match_info["schema"]
         accession_id = req.match_info["accessionId"]
+        LOG.debug(f"Patching object {schema_type} {accession_id}")
+
         self._check_schema_exists(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
 
@@ -372,8 +374,7 @@ class ObjectAPIHandler(RESTAPIHandler):
             object_data, _ = await operator.read_metadata_object(collection, accession_id)
             # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
             if isinstance(object_data, Dict):
-                metax_service = MetaxServiceHandler(req)
-                await metax_service.update_draft_dataset(collection, object_data)
+                await MetaxServiceHandler(req).update_draft_dataset(collection, object_data)
             else:
                 raise ValueError("Object's data must be dictionary")
 
@@ -389,6 +390,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         :param params: addidtional data required for db entry
         :returns: list of patch operations
         """
+        LOG.info("Preparing folder patch for new objects")
         if not cont_type:
             submission_type = "Form"
         else:
@@ -432,6 +434,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         :param title: title to be updated
         :returns: dict with patch operation
         """
+        LOG.info("Preparing folder patch for existing objects")
         if schema.startswith("draft"):
             path = "/drafts"
         else:
@@ -475,11 +478,10 @@ class ObjectAPIHandler(RESTAPIHandler):
         :param folder_id: folder ID where metadata object belongs to
         :returns: Metax ID
         """
-        metax_service = MetaxServiceHandler(req)
-        operator = Operator(req.app["db_client"])
         LOG.info("Creating draft dataset to Metax.")
+        operator = Operator(req.app["db_client"])
         object["doi"] = await self._draft_doi(collection)
-        metax_id = await metax_service.post_dataset_as_draft(collection, object)
+        metax_id = await MetaxServiceHandler(req).post_dataset_as_draft(collection, object)
 
         new_info = {"doi": object["doi"], "metaxIdentifier": metax_id}
         await operator.create_metax_info(collection, object["accessionId"], new_info)
