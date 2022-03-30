@@ -1,5 +1,6 @@
 """Class for mapping Submitter metadata to Metax metadata."""
 from copy import deepcopy
+from datetime import datetime
 from typing import Any, Dict, List
 
 from ..conf.conf import metax_reference_data
@@ -472,9 +473,15 @@ class MetaDataMapper:
         for date in dates:
             date_list: List = list(filter(None, date["date"].split("/")))
             if date["dateType"] == "Issued":
-                self.research_dataset["issued"] = date_list[-1]
+                if not self.research_dataset.get("issued", None) or datetime.strptime(
+                    self.research_dataset["issued"], "%Y-%m-%d"
+                ) > datetime.strptime(date_list[0], "%Y-%m-%d"):
+                    self.research_dataset["issued"] = date_list[0]
             if date["dateType"] == "Updated":
-                self.research_dataset["modified"] = date_list[-1] + "T00:00:00+03:00"
+                if not self.research_dataset.get("modified", None) or datetime.strptime(
+                    self.research_dataset["modified"][:9], "%Y-%m-%d"
+                ) < datetime.strptime(date_list[0], "%Y-%m-%d"):
+                    self.research_dataset["modified"] = date_list[-1] + "T00:00:00+03:00"
             if date["dateType"] == "Collected":
                 temporal_date["start_date"] = date_list[0] + "T00:00:00+03:00"
                 temporal_date["end_date"] = date_list[-1] + "T00:00:00+03:00"
