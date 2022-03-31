@@ -247,7 +247,7 @@ class APIHandlerTestCase(HandlersTestCase):
     """Schema API endpoint class test cases."""
 
     async def test_correct_schema_types_are_returned(self):
-        """Test api endpoint for all schema types."""
+        """Test API endpoint for all schema types."""
         response = await self.client.get("/schemas")
         response_text = await response.text()
         schema_types = [
@@ -266,19 +266,19 @@ class APIHandlerTestCase(HandlersTestCase):
             self.assertIn(schema_type, response_text)
 
     async def test_correct_study_schema_are_returned(self):
-        """Test api endpoint for study schema types."""
+        """Test API endpoint for study schema types."""
         response = await self.client.get("/schemas/study")
         response_text = await response.text()
         self.assertIn("study", response_text)
         self.assertNotIn("submission", response_text)
 
     async def test_raises_invalid_schema(self):
-        """Test api endpoint for study schema types."""
+        """Test API endpoint for study schema types."""
         response = await self.client.get("/schemas/something")
         self.assertEqual(response.status, 404)
 
     async def test_raises_not_found_schema(self):
-        """Test api endpoint for study schema types."""
+        """Test API endpoint for study schema types."""
         response = await self.client.get("/schemas/project")
         self.assertEqual(response.status, 400)
         resp_json = await response.json()
