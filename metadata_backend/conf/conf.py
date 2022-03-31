@@ -55,7 +55,10 @@ from ..helpers.logger import LOG
 
 
 def set_conf() -> Tuple[str, str]:
-    """Set config based on env vars."""
+    """Set config based on env vars.
+
+    :returns: Tuple with Mongo DB url and database name
+    """
     mongo_user = os.getenv("MONGO_USERNAME", "admin")
     mongo_password = os.getenv("MONGO_PASSWORD", "admin")
     mongo_host = os.getenv("MONGO_HOST", "localhost:27017")
