@@ -1,4 +1,5 @@
 aiohttp
+aiohttp_session
 cryptography
 gunicorn
 jsonschema
