@@ -1,5 +1,5 @@
 """
-Run integration tests against backend api endpoints.
+Run integration tests against backend API endpoints.
 
 Deleting from db is currently not supported, objects added to db in different
 should be taken into account.
@@ -547,9 +547,9 @@ async def delete_user(sess, user_id):
     """
     async with sess.delete(f"{users_url}/current") as resp:
         LOG.debug(f"Deleting user {user_id}")
-        # we expect 404 as there is no frontend
+        # we expect 401 as there is no frontend
         assert str(resp.url) == f"{base_url}/", "redirect url user delete differs"
-        assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
+        assert resp.status == 401, f"HTTP Status code error, got {resp.status}"
 
 
 def extract_folders_object(res, accession_id, draft):
@@ -602,7 +602,7 @@ async def check_folders_object_patch(sess, folder_id, schema, accession_id, titl
 
 # === Integration tests ===
 async def test_crud_works(sess, schema, filename, folder_id):
-    """Test REST api POST, GET and DELETE reqs.
+    """Test REST API POST, GET and DELETE reqs.
 
     Tries to create new object, gets accession id and checks if correct
     resource is returned with that id. Finally deletes the object and checks it
@@ -714,7 +714,7 @@ async def test_put_objects(sess, folder_id):
 
 
 async def test_crud_drafts_works(sess, schema, orginal_file, update_file, folder_id):
-    """Test drafts REST api POST, PUT and DELETE reqs.
+    """Test drafts REST API POST, PUT and DELETE reqs.
 
     Tries to create new draft object, gets accession id and checks if correct
     resource is returned with that id. Finally deletes the object and checks it
@@ -754,7 +754,7 @@ async def test_crud_drafts_works(sess, schema, orginal_file, update_file, folder
 
 
 async def test_patch_drafts_works(sess, schema, orginal_file, update_file, folder_id):
-    """Test REST api POST, PATCH and DELETE reqs.
+    """Test REST API POST, PATCH and DELETE reqs.
 
     Tries to create put and patch object, gets accession id and
     checks if correct resource is returned with that id.
@@ -1875,7 +1875,6 @@ async def main():
             "projectId": project_id,
         }
         metax_folder_id = await post_folder(sess, metax_folder)
-        await test_metax_crud_with_xml(sess, metax_folder_id)
         await test_metax_crud_with_json(sess, metax_folder_id)
         await test_metax_id_not_updated_on_patch(sess, metax_folder_id)
         await test_metax_publish_dataset(sess, metax_folder_id)

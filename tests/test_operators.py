@@ -1,4 +1,4 @@
-"""Test api endpoints from views module."""
+"""Test API endpoints from views module."""
 import datetime
 import re
 import unittest

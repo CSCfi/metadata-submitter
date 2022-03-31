@@ -1,17 +1,16 @@
 """Handle Access for request and OIDC workflow."""
 
-import hashlib
-from typing import Dict, Union, List
+import time
+from typing import Dict, List, Union
 
-import ujson
 from aiohttp import web
 from aiohttp.web import Request, Response
 from oidcrp.exception import OidcServiceError
 from oidcrp.rp_handler import RPHandler
 
 from ..helpers.logger import LOG
-from .middlewares import decrypt_cookie, generate_cookie
-from .operators import UserOperator, ProjectOperator
+from .operators import ProjectOperator, UserOperator
+import aiohttp_session
 
 
 class AccessHandler:
@@ -52,6 +51,7 @@ class AccessHandler:
         :param req: A HTTP request instance (unused)
         :raises: HTTPSeeOther redirect to login AAI
         :raises: HTTPInternalServerError if OIDC configuration init failed
+        :returns: HTTPSseeOther redirect to AAI
         """
         LOG.debug("Start login")
 
@@ -76,7 +76,8 @@ class AccessHandler:
         Sets session information such as access_token and user_info.
         Sets encrypted cookie to identify clients.
 
-        :raises: HTTPBadRequest in case login failed
+        :raises: HTTPUnauthorized in case login failed
+        :raises: HTTPBadRequest AAI sends wrong paramters
         :raises: HTTPForbidden in case of bad session
         :param req: A HTTP request instance with callback parameters
         :returns: HTTPSeeOther redirect to home page
@@ -89,7 +90,7 @@ class AccessHandler:
         else:
             reason = f"AAI response is missing mandatory params, received: {req.query}"
             LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
+            raise web.HTTPUnauthorized(reason=reason)
 
         # Verify oidc_state and retrieve auth session
         session = None
@@ -98,7 +99,7 @@ class AccessHandler:
         except KeyError as e:
             # This exception is raised if the RPHandler doesn't have the supplied "state"
             LOG.error(f"Session not initialised: {e}")
-            raise web.HTTPForbidden(reason="Bad user session.")
+            raise web.HTTPUnauthorized(reason="Bad user session.")
 
         # Place authorization_code to session for finalize step
         session["auth_request"]["code"] = params["code"]
@@ -115,39 +116,7 @@ class AccessHandler:
             # 2. token validation failed
             # 3. userinfo request failed
             LOG.error(f"OIDC Callback failed with: {e}")
-            raise web.HTTPBadRequest(reason="Invalid OIDC callback.")
-
-        response = web.HTTPSeeOther(f"{self.redirect}/home")
-
-        cookie, _ = generate_cookie(req)
-
-        cookie["referer"] = req.url.host
-        cookie["signature"] = (
-            hashlib.sha256((cookie["id"] + cookie["referer"] + req.app["Salt"]).encode("utf-8"))
-        ).hexdigest()
-
-        cookie_crypted = req.app["Crypt"].encrypt(ujson.dumps(cookie).encode("utf-8")).decode("utf-8")
-
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        response.headers["Pragma"] = "no-Cache"
-        response.headers["Expires"] = "0"
-
-        trust = False if self.domain.startswith("http://localhost:5430") else True
-
-        response.set_cookie(
-            name="MTD_SESSION",
-            value=cookie_crypted,
-            max_age=3600,
-            secure=trust,  # type: ignore
-            httponly=trust,  # type: ignore
-        )
-
-        # Inject cookie to this request to let _set_user work as expected.
-
-        session_id = cookie["id"]
-
-        req.app["Session"][session_id] = {"oidc_state": params["state"], "access_token": session["token"]}
-        req.app["Cookies"].add(session_id)
+            raise web.HTTPUnauthorized(reason="Invalid OIDC callback.")
 
         # User data is read from AAI /userinfo and is used to create the user model in database
         user_data = {
@@ -167,41 +136,48 @@ class AccessHandler:
             LOG.error(
                 "User was authenticated, but they are missing mandatory claim CSCUserName, remoteUserIdentifier or sub."
             )
-            raise web.HTTPBadRequest(
+            raise web.HTTPUnauthorized(
                 reason="Could not set user, missing claim CSCUserName, remoteUserIdentifier or sub."
             )
 
         # Process project external IDs into the database and return accession IDs back to user_data
         user_data["projects"] = await self._process_projects(req, user_data["projects"])
-        await self._set_user(req, session_id, user_data)
 
+        browser_session = await aiohttp_session.new_session(req)
+        browser_session["at"] = time.time()
+
+        # Inject cookie to this request to let _set_user work as expected.
+        browser_session["oidc_state"] = params["state"]
+        browser_session["access_token"] = session["token"]
+
+        await self._set_user(req, browser_session, user_data)
+
+        await self._set_user(req, browser_session, user_data)
+        response = web.HTTPSeeOther(f"{self.redirect}/home")
+
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-Cache"
+        response.headers["Expires"] = "0"
         # done like this otherwise it will not redirect properly
         response.headers["Location"] = "/home" if self.redirect == self.domain else f"{self.redirect}/home"
-
-        LOG.debug(f"cookie MTD_SESSION set {cookie_crypted}")
         return response
 
     async def logout(self, req: Request) -> Response:
         """Log the user out by revoking tokens.
 
         :param req: A HTTP request instance
-        :raises: HTTPBadRequest in case logout failed
+        :raises: HTTPUnauthorized in case logout failed
         :returns: HTTPSeeOther redirect to login page
         """
         # Revoke token at AAI
         # Implement, when revocation_endpoint is supported by AAI
 
         try:
-            cookie = decrypt_cookie(req)
-            req.app["OIDC_State"].remove(req.app["Session"][cookie["id"]]["oidc_state"])
-        except KeyError:
-            pass
-
-        try:
-            cookie = decrypt_cookie(req)
-            req.app["Session"].pop(cookie["id"])
-        except KeyError:
-            pass
+            session = await aiohttp_session.get_session(req)
+            session.invalidate()
+        except Exception as e:
+            LOG.info(f"Trying to log our an invalidated session: {e}")
+            raise web.HTTPUnauthorized
 
         response = web.HTTPSeeOther(f"{self.redirect}/")
         response.headers["Location"] = "/" if self.redirect == self.domain else f"{self.redirect}/"
@@ -234,13 +210,17 @@ class AccessHandler:
         return new_project_ids
 
     async def _set_user(
-        self, req: Request, session_id: str, user_data: Dict[str, Union[List[Dict[str, str]], str]]
+        self,
+        req: Request,
+        browser_session: aiohttp_session.Session,
+        user_data: Dict[str, Union[List[Dict[str, str]], str]],
     ) -> None:
         """Set user in current session and return user id based on result of create_user.
 
         :raises: HTTPBadRequest in could not get user info from AAI OIDC
         :param req: A HTTP request instance
         :param user_data: user id and given name
+        :returns: None
         """
         LOG.debug("Create and set user to database")
 
@@ -262,4 +242,4 @@ class AccessHandler:
             ]
             user_id = await operator.update_user(user_id, update_operation)
 
-        req.app["Session"][session_id]["user_info"] = user_id
+        browser_session["user_info"] = user_id
