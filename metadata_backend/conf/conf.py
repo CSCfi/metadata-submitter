@@ -174,7 +174,7 @@ metax_config = {
 }
 
 metax_reference_data: Dict = {"identifier_types": {}}
-with open("metadata_backend/conf/metax_references/identifier_types.json", "r") as codes:
+with open(Path(__file__).parent.parent / "conf/metax_references/identifier_types.json", "r") as codes:
     codes_list = json.load(codes)["codes"]
     for code in codes_list:
         metax_reference_data["identifier_types"][code["codeValue"].lower()] = code["uri"]

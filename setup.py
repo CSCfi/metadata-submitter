@@ -41,7 +41,7 @@ setup(
             "frontend/static/media/*",
             "frontend/static/css/*",
             "conf/schemas.json",
-            "conf/metax_references",
+            "conf/metax_references/*.json",
         ]
     },
     include_package_data=True,
