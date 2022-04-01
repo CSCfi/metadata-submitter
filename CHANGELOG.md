@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
 - Submission endpoint update #371
   - Adds mandatory query parameter `folder` for submit endpoint POST 
   - On actions add and modify object is added or updated to folder(submission) where it belongs with it's accession ID, schema, submission type, title and filename
@@ -62,6 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Multilevel add patch objects to support `/extraInfo/datasetIdentifiers/-` which needs dot notation for mongodb to work e.g. `extraInfo.datasetIdentifiers` #332
 
 ### Changed
+
 - Refactor auth.py package by removing custom OIDC code and replacing it with https://github.com/IdentityPython/JWTConnect-Python-OidcRP. #315
   - New mandatory ENV `OIDC_URL`
   - New optional ENVs `OIDC_SCOPE`, `AUTH_METHOD`
@@ -77,6 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - JSON schemas #332
    - introduce `keywords` required for Metax in `doiInfo`
    - dataset `description` and study `studyAbstract` are now mandatory
+- `keywords` will be comma separated values, that will require splitting when adding to Metax API
 
 ### Fixed
 
