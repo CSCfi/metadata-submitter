@@ -22,10 +22,7 @@
       "subjectScheme": "Fields of Science and Technology (FOS)"
     }
   ],
-  "keywords": [
-    "test",
-    "keyword"
-  ],
+  "keywords": "test,keyword",
   "contributors": [
     {
       "name": "Contributor, Test",
