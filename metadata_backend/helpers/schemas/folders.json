@@ -213,13 +213,9 @@
           "uniqueItems": true
         },
         "keywords": {
-          "type": "array",
+          "type": "string",
           "title": "Keywords",
-          "description": "A keyword or tag describing the resources. It is recommended to use a controlled vocabulary, ontology or classification when choosing keywords. At least one keyword is required.",
-          "items": {
-            "minLength": 1,
-            "type": "string"
-          }
+          "description": "A list of keywords or tags describing the resources. It is recommended to use a controlled vocabulary, ontology or classification when choosing keywords. Multiple keywords can be added, separating them by comma."
         },
         "contributors": {
           "type": "array",
