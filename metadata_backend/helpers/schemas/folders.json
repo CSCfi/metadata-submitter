@@ -55,6 +55,10 @@
           "items": {
             "type": "object",
             "title": "Main researcher(s) involved with data or the author(s) of the publication.",
+            "required": [
+              "givenName",
+              "familyName"
+            ],
             "properties": {
               "givenName": {
                 "type": "string",
@@ -225,6 +229,8 @@
             "type": "object",
             "title": "Contributor",
             "required": [
+              "givenName",
+              "familyName",
               "contributorType"
             ],
             "properties": {
