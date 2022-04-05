@@ -30,6 +30,7 @@ services:
       - "DOI_PREFIX=${DOI_PREFIX}"
       - "DOI_USER=${DOI_USER}"
       - "DOI_KEY=${DOI_KEY}"
+      - "DISCOVERY_URL=${DISCOVERY_URL}"
       - "METAX_USER=${METAX_USER}"
       - "METAX_PASS=${METAX_PASS}"
       - "METAX_URL=${METAX_URL}"

@@ -197,6 +197,7 @@ experimentref
 experimenttype
 externalid
 extrainfo
+fairdata
 faire
 familyname
 faroese
