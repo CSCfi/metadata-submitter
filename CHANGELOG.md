@@ -15,7 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Adds metax integration to submit endpoint
 - Integration with Metax service #356
   - Adds new local container for testing against mocked Metax API
-  - Introduces new env vars: METAX_USER, METAX_PASS, METAX_URL
+  - Introduces new env vars: METAX_USER, METAX_PASS, METAX_URL for connection to Metax service
+  - Introduces new env var DISCOVERY_URL for creating link to dataset inside Fairdata SD catalog
   - Adds new key metaxIdentifier to Study and Dataset collections containing metax id returned from Metax API
   - Adds new handler MetaxServiceHandler to take care of mapping Submitter metadata to Metax metadata and to connect to Metax API
 - Add patching of folders after object save and update operations #354

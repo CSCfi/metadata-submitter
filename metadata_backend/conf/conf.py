@@ -160,7 +160,7 @@ doi_config = {
     "key": os.getenv("DOI_KEY", ""),
     "url": os.getenv("DATACITE_URL", "https://doi.org"),
     "publisher": "CSC - IT Center for Science",
-    "discovery_url": "https://etsin.fairdata.fi/dataset/",
+    "discovery_url": os.getenv("DISCOVERY_URL", "https://etsin.fairdata.fi/dataset/"),
 }
 
 metax_config = {
