@@ -16,104 +16,6 @@ class MetaDataMapper:
     """
 
     {
-        "Person": {
-            "properties": {
-                "@type": {"type": "string", "enum": ["Person"]},
-                "identifier": {
-                    "description": "An unambiguous reference to the resource within a given context.",
-                    "type": "string",
-                    "format": "uri",
-                    "example": ["http://orcid.org/0000-0002-1825-0097"],
-                },
-                "name": {
-                    "title": "Name",
-                    "description": (
-                        "This property contains a name of the agent. This property can be repeated for different "
-                        "versions of the name (e.g. the name in different languages)"
-                    ),
-                    "type": "string",
-                },
-                "member_of": {
-                    "description": (
-                        "Indicates that a person is a member of the Organization with no indication of the "
-                        "nature of that membership or the role played."
-                    ),
-                    "type": "object",
-                    "$ref": "#/definitions/Organization",
-                },
-                "contributor_type": {
-                    "description": "Contributor type of the Agent. Reference data from DataCite.",
-                    "type": "array",
-                    "items": {"type": "object", "$ref": "#/definitions/Concept"},
-                },
-            },
-            "required": ["@type", "name", "member_of"],
-        },
-    }
-    {
-        "Organization": {
-            "description": "An organization.",
-            "type": "object",
-            "properties": {
-                "@type": {"type": "string", "enum": ["Organization"]},
-                "identifier": {
-                    "type": "string",
-                    "format": "uri",
-                    "example": ["http://orcid.org/0000-0002-1825-0097"],
-                },
-                "name": {
-                    "type": "object",
-                    "$ref": "#/definitions/langString",
-                },
-                "contributor_type": {
-                    "@id": "http://uri.suomi.fi/datamodel/ns/mrd#contributorType",
-                    "description": (
-                        "Contributor type of the Organization. Based on the subset of the DataCite reference data."
-                    ),
-                    "type": "array",
-                    "items": {"type": "object", "$ref": "#/definitions/Concept"},
-                },
-            },
-            "required": ["@type"],
-        }
-    }
-    {
-        "Concept": {
-            "description": "An idea or notion; a unit of thought.",
-            "type": "object",
-            "properties": {
-                "identifier": {
-                    "description": "This is the IRI identifier for the concept",
-                    "type": "string",
-                    "format": "uri",
-                },
-                "pref_label": {
-                    "description": (
-                        "The preferred lexical label for a resource, in a given language. A resource has no more than "
-                        "one value of skos:prefLabel per language tag, and no more than one value of skos:prefLabel "
-                        "without language tag. The range of skos:prefLabel is the class of RDF plain literals. "
-                        "skos:prefLabel, skos:altLabel and skos:hiddenLabel are pairwise disjoint properties."
-                    ),
-                    "type": "object",
-                    "$ref": "#/definitions/langString",
-                },
-                "definition": {
-                    "description": "A statement or formal explanation of the meaning of a concept.",
-                    "type": "object",
-                    "$ref": "#/definitions/langString",
-                },
-                "in_scheme": {
-                    "description": (
-                        "Relates a resource (for example a concept) to a concept scheme in which it is included."
-                    ),
-                    "type": "string",  # "uri": "http://uri.suomi.fi/codelist/fairdata/identifier_type/code/doi",
-                    "format": "uri",
-                },
-                "required": ["identifier"],
-            },
-        }
-    }
-    {
         "ResearchDataset": {
             # DOI
             "preferred_identifier": {
@@ -183,8 +85,8 @@ class MetaDataMapper:
                 "type": "array",
                 "items": {"type": "object", "$ref": "#/definitions/ResearchAgent"},
             },
-            # TODO: need more info
-            # the only field with FUNDER, study
+            # TODO: will be implemented later
+            # describes study from same folder/submission for mapped datasets
             "is_output_of": {
                 "title": "Producer project",
                 "description": "A project that has caused the dataset to be created",
@@ -192,7 +94,7 @@ class MetaDataMapper:
                 "items": {"type": "object", "$ref": "#/definitions/Project"},
             },
             # contributor - Rights Holder
-            # can this be also organisation?
+            # TODO: This can be an organisation at some point
             "rights_holder": {
                 "type": "array",
                 "items": {"type": "object", "$ref": "#/definitions/ResearchAgent"},
@@ -204,7 +106,7 @@ class MetaDataMapper:
                 "items": {"type": "object", "$ref": "#/definitions/Concept"},
             },
             # language
-            # cannot be mapped to Metax unless we take Lexvo schema in to use
+            # TODO: cannot be mapped as is to Metax unless we take Lexvo schema in to use
             "language": {
                 "type": "array",
                 "items": {
@@ -230,7 +132,7 @@ class MetaDataMapper:
                     },
                 },
             },
-            # geoLocations
+            # geoLocations, MUST be WGS84 coordinates, https://epsg.io/4326
             "spatial": {
                 "geographic_name": {
                     "description": (
@@ -260,7 +162,8 @@ class MetaDataMapper:
                 "type": "array",
                 "items": {"type": "object", "$ref": "#/definitions/PeriodOfTime"},
             },
-            # dataset from same folder/submission ?
+            # TODO: will be implemented later
+            # dataset from same folder/submission
             "relation": {
                 "type": "array",
                 "items": {
@@ -303,17 +206,17 @@ class MetaDataMapper:
                     },
                 },
             },
-            # subject Yrjö Leino
+            # TODO: will be implemented later
             "field_of_science": {
                 "type": "array",
                 "items": {"type": "object", "$ref": "#/definitions/Concept"},
             },
-            # TODO: Needs clarification
+            # TODO: Need clarification on necessarity of this field
             "remote_resources": {
                 "type": "array",
                 "items": {"type": "object", "$ref": "#/definitions/WebResource"},
             },
-            # restricted - ask Metax team for a link to REMS
+            # restricted
             "access_rights": {
                 "type": "object",
                 "$ref": "#/definitions/RightsStatement",
@@ -323,8 +226,7 @@ class MetaDataMapper:
                 "type": "array",
                 "items": {"type": "object", "$ref": "#/definitions/ResearchAgent"},
             },
-            # sizes field need either some indication on incomming type of data or MUST be in bytes
-            # Though now dates schema is array so maybe data type is better solution for multiple object inputs
+            # TODO: will be implemented later
             "total_remote_resources_byte_size": {
                 "type": "integer",
             },
@@ -399,12 +301,7 @@ class MetaDataMapper:
     def _map_contributors(self, contributors: List) -> None:
         """Map contributors.
 
-        contributors (other then Rights Holder,  Data Curator, Distributor)
-                                   -> contributor
-        contributors Rights Holder -> rights_holder
-        contributors Data Curator  -> curator
-
-        :param submitter_data: Contributors data from
+        :param contributors: Contributors data from
         """
         LOG.info("Mapping contributors")
         LOG.debug(contributors)
@@ -449,11 +346,7 @@ class MetaDataMapper:
     def _map_dates(self, dates: List) -> None:
         """Map dates.
 
-        dates Updated  -> modified
-        dates Issued    -> issued
-        dates Collected -> temporal
-
-        :param submitter_data: Dates data from datacite
+        :param dates: Dates data from datacite
         """
         LOG.info("Mapping dates")
         LOG.debug(dates)
@@ -495,9 +388,9 @@ class MetaDataMapper:
 
         If geoLocationPoint or geoLocationBox is comming with location data
         lat lon coordinates will be mapped to wkt geometric presentation.
-        Inputs should be in degrees as geographic coordinate system (GCS) is used here.
+        Inputs MUST be WGS84 degrees coordinates as geographic coordinate system (GCS) is used here.
 
-        :param location: GeoLocations data from datacite
+        :param locations: GeoLocations data from datacite
         """
         LOG.info("Mapping locations")
         LOG.debug(locations)
@@ -528,7 +421,7 @@ class MetaDataMapper:
     def _map_other_identifier(self, identifiers: List) -> None:
         """Map alternateIdentifiers.
 
-        :param location: Alternate identifiers data from datacite
+        :param identifiers: Alternate identifiers data from datacite
         """
         LOG.info("Mapping alternate identifiers")
         LOG.debug(identifiers)

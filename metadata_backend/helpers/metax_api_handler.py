@@ -212,7 +212,6 @@ class MetaxServiceHandler:
                 mapped_metax_data = mapper.map_metadata()
                 bulk_data.append({"identifier": id["metaxIdentifier"], "research_dataset": mapped_metax_data})
 
-        # for id in metax_ids:
         async with ClientSession() as sess:
             resp = await sess.patch(
                 f"{self.metax_url}{self.rest_route}",
