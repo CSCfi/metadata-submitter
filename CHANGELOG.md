@@ -13,12 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Adds mandatory query parameter `folder` for submit endpoint POST 
   - On actions add and modify object is added or updated to folder(submission) where it belongs with it's accession ID, schema, submission type, title and filename
   - Adds metax integration to submit endpoint
-- Integration with Metax service #356
+- Integration with Metax service #356 #387
   - Adds new local container for testing against mocked Metax API
   - Introduces new env vars: METAX_USER, METAX_PASS, METAX_URL for connection to Metax service
   - Introduces new env var DISCOVERY_URL for creating link to dataset inside Fairdata SD catalog
   - Adds new key metaxIdentifier to Study and Dataset collections containing metax id returned from Metax API
   - Adds new handler MetaxServiceHandler to take care of mapping Submitter metadata to Metax metadata and to connect to Metax API
+  - Adds new mapper class to adjust incoming metadata to Metax schema
 - Add patching of folders after object save and update operations #354
   - Adds mandatory query parameter `folder` for objects endpoint POST 
   - Object is added or updated to folder(submission) where it belongs with it's accession ID, schema, submission type, title and filename in the case of CSV and XML upload
