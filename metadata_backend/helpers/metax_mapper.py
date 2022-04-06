@@ -254,7 +254,7 @@ class MetaDataMapper:
         :returns: Research dataset
         """
         LOG.info("Mapping datasite data to Metax metadata")
-        LOG.debug("Data incomming for mapping: ", self.datacite_data)
+        LOG.debug(f"Data incomming for mapping: {self.datacite_data}")
         for key, value in self.datacite_data.items():
             if key == "creators":
                 self._map_creators(value)
