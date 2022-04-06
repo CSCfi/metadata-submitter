@@ -1,0 +1,110 @@
+{
+    "title": {
+        "en": "test"
+    },
+    "issued": "2020-10-10",
+    "creator": [
+        {
+            "name": "Creator, Test",
+            "@type": "Person",
+            "member_of": {
+                "name": {
+                    "en": "affiliation place"
+                },
+                "@type": "Organization",
+                "identifier": "https://ror.org/test1"
+            }
+        }
+    ],
+    "curator": [
+        {
+            "name": "Curator, Test",
+            "@type": "Person",
+            "member_of": {
+                "name": {
+                    "en": "affiliation place"
+                },
+                "@type": "Organization",
+                "identifier": "https://ror.org/test3"
+            }
+        }
+    ],
+    "spatial": [
+        {
+            "geographic_name": "Helsinki"
+        },
+        {
+            "as_wkt": [
+                "POINT(24.9384 60.1699)",
+                "POLYGON((24.8994938494 60.2431299506, 25.1845034857 60.2431299506, 25.1845034857 60.1396430193, 24.8994938494 60.1396430193, 24.8994938494 60.2431299506))"
+            ]
+        }
+    ],
+    "modified": "2022-01-11T00:00:00+03:00",
+    "temporal": [
+        {
+            "end_date": "2022-01-10T00:00:00+03:00",
+            "start_date": "2020-10-10T00:00:00+03:00"
+        }
+    ],
+    "publisher": {
+        "name": {
+            "en": "CSC Sensitive Data Services for Research",
+            "fi": "CSC:n Arkaluonteisen datan palveluiden aineistokatalogi"
+        },
+        "@type": "Organization"
+    },
+    "contributor": [
+        {
+            "name": "Contributor, Test",
+            "@type": "Person",
+            "member_of": {
+                "name": {
+                    "en": "affiliation place"
+                },
+                "@type": "Organization",
+                "identifier": "https://ror.org/test2"
+            }
+        }
+    ],
+    "description": {
+        "en": "some cool test description"
+    },
+    "access_rights": {
+        "access_type": {
+            "in_scheme": "http://uri.suomi.fi/codelist/fairdata/access_type",
+            "identifier": "http://uri.suomi.fi/codelist/fairdata/access_type/code/restricted",
+            "pref_label": {
+                "en": "Restricted use",
+                "fi": "Saatavuutta rajoitettu",
+                "und": "Saatavuutta rajoitettu"
+            }
+        }
+    },
+    "rights_holder": [
+        {
+            "name": "Rights, Holder",
+            "@type": "Person",
+            "member_of": {
+                "name": {
+                    "en": "affiliation place"
+                },
+                "@type": "Organization",
+                "identifier": "https://ror.org/test3"
+            }
+        }
+    ],
+    "other_identifier": [
+        {
+            "type": {
+                "in_scheme": "http://uri.suomi.fi/codelist/fairdata/identifier_type",
+                "identifier": "http://uri.suomi.fi/codelist/fairdata/identifier_type/code/arxiv",
+                "pref_label": {
+                    "en": "arXiv identifer",
+                    "und": "arXiv identifer"
+                }
+            },
+            "notation": "arXiv:9912.12345v2"
+        }
+    ]
+}

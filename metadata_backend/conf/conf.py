@@ -31,10 +31,11 @@ Production version gets frontend SPA from this folder, after it has been built
 and inserted here in projects Dockerfile.
 """
 
+import json
 import os
 from distutils.util import strtobool
 from pathlib import Path
-from typing import Tuple
+from typing import Dict, Tuple
 
 import ujson
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -171,3 +172,9 @@ metax_config = {
     "publish_route": "/rpc/v2/datasets/publish_dataset",
     "catalog_pid": "urn:nbn:fi:att:data-catalog-sd",
 }
+
+metax_reference_data: Dict = {"identifier_types": {}}
+with open(Path(__file__).parent.parent / "conf/metax_references/identifier_types.json", "r") as codes:
+    codes_list = json.load(codes)["codes"]
+    for code in codes_list:
+        metax_reference_data["identifier_types"][code["codeValue"].lower()] = code["uri"]
