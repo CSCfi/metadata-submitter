@@ -10,7 +10,7 @@
   ~ specific language governing permissions and limitations under the License.
   -->
 
-<!-- version:1.8.0 -->
+<!-- version:1.11.0 -->
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
     <xs:complexType name="ID">
         <xs:sequence>
@@ -58,10 +58,14 @@
         <xs:attribute name="status" use="optional">
             <xs:simpleType>
                 <xs:restriction base="xs:string">
+                    <xs:enumeration value="DRAFT"/>
                     <xs:enumeration value="PRIVATE"/>
+                    <xs:enumeration value="CANCELLED"/>
                     <xs:enumeration value="PUBLIC"/>
-                    <xs:enumeration value="KILLED"/>
                     <xs:enumeration value="SUPPRESSED"/>
+                    <xs:enumeration value="KILLED"/>
+                    <xs:enumeration value="TEMPORARY_SUPPRESSED"/>
+                    <xs:enumeration value="TEMPORARY_KILLED"/>
                 </xs:restriction>
             </xs:simpleType>
         </xs:attribute>

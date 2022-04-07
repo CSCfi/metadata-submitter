@@ -2,7 +2,8 @@
 
 import unittest
 from aiohttp import FormData, web
-from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
+from aiohttp.test_utils import AioHTTPTestCase
+from pathlib import Path
 
 from metadata_backend.server import init
 from metadata_backend.api.middlewares import generate_cookie, decrypt_cookie, _check_csrf
@@ -17,7 +18,6 @@ class ErrorMiddlewareTestCase(AioHTTPTestCase):
         """Retrieve web Application for test."""
         return await init()
 
-    @unittest_run_loop
     async def test_bad_HTTP_request_converts_into_json_response(self):
         """Test that middleware reformats 400 error with problem details."""
         data = _create_improper_data()
@@ -29,7 +29,6 @@ class ErrorMiddlewareTestCase(AioHTTPTestCase):
         self.assertIn("There must be a submission.xml file in submission.", resp_dict["detail"])
         self.assertIn("/submit", resp_dict["instance"])
 
-    @unittest_run_loop
     async def test_bad_url_returns_json_response(self):
         """Test that unrouted api url returns a 404 in JSON format."""
         response = await self.client.get("/objects/swagadagamaster")
@@ -40,13 +39,14 @@ class ErrorMiddlewareTestCase(AioHTTPTestCase):
 
 
 def _create_improper_data():
-    """Create request data that produces a 404 error.
+    """Create request data that produces a 400 error.
 
     Submission method in API handlers raises Bad Request (400) error
     if 'submission' is not included on the first field of request
     """
+    path_to_file = Path(__file__).parent / "test_files" / "study" / "SRP000539_invalid.xml"
     data = FormData()
-    data.add_field("study", "content of a file", filename="file", content_type="text/xml")
+    data.add_field("STUDY", open(path_to_file.as_posix(), "r"), filename="file", content_type="text/xml")
     return data
 
 
@@ -97,7 +97,7 @@ class TestConvenienceFunctions(unittest.TestCase):
         """Test check_csrf when skipping referer from auth endpoint."""
         with unittest.mock.patch(
             "metadata_backend.api.middlewares.aai_config",
-            new={"auth_referer": "http://idp:3000"},
+            new={"oidc_url": "http://idp:3000"},
         ):
             testreq = get_request_with_fernet()
             cookie, _ = generate_cookie(testreq)

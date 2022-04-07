@@ -1,9 +1,10 @@
 {
   "type": "object",
-  "title": "Folder schema for user objects",
+  "title": "User object schema",
   "required": [
     "userId",
-    "name"
+    "name",
+    "projects"
   ],
   "properties": {
     "userId": {
@@ -14,50 +15,26 @@
       "type": "string",
       "title": "User Name"
     },
-    "drafts": {
+    "projects": {
       "type": "array",
-      "title": "User templates schema",
+      "title": "User's project affiliations schema",
       "items": {
         "type": "object",
-        "title": "Template objects",
+        "title": "Project objects",
         "required": [
-          "accessionId",
-          "schema"
+          "projectId",
+          "projectNumber"
         ],
         "properties": {
-          "accessionId": {
+          "projectId": {
             "type": "string",
-            "title": "Accession Id"
+            "title": "Project internal accession ID"
           },
-          "schema": {
+          "projectNumber": {
             "type": "string",
-            "title": "Draft object's schema"
-          },
-          "tags": {
-            "type": "object",
-            "title": "Different tags to describe the template object.",
-            "additionalProperties": true,
-            "properties": {
-              "submissionType": {
-                "type": "string",
-                "title": "Type of submission",
-                "enum": [
-                  "XML",
-                  "Form"
-                ]
-              }
-            }
+            "title": "Project human friendly ID"
           }
         }
-      },
-      "uniqueItems": true
-    },
-    "folders": {
-      "type": "array",
-      "title": "The folders schema",
-      "items": {
-        "type": "string",
-        "title": "Folder Id"
       },
       "uniqueItems": true
     }

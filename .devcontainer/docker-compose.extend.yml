@@ -1,0 +1,9 @@
+version: '3'
+services:
+  backend:
+    build:
+      context: .
+      target: local
+    volumes:
+      - .:/workspace:cached
+    command: /bin/sh -c "while sleep 1000; do :; done"

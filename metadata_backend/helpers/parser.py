@@ -1,15 +1,17 @@
-"""Tool to parse XML files to JSON."""
+"""Tool to parse XML and CSV files to JSON."""
 
+import csv
 import re
-from typing import Any, Dict, List, Union
+from io import StringIO
+from typing import Any, Dict, List, Optional, Type, Union
 
 from aiohttp import web
+from pymongo import UpdateOne
 from xmlschema import XMLSchema, XMLSchemaConverter, XMLSchemaException, XsdElement, XsdType
 
 from .logger import LOG
 from .schema_loader import SchemaNotFoundException, XMLSchemaLoader
 from .validator import JSONValidator, XMLValidator
-from pymongo import UpdateOne
 
 
 class MetadataXMLConverter(XMLSchemaConverter):
@@ -21,7 +23,13 @@ class MetadataXMLConverter(XMLSchemaConverter):
     https://github.com/enasequence/schema/tree/master/src/main/resources/uk/ac/ebi/ena/sra/schema
     """
 
-    def __init__(self, namespaces: Any = None, dict_class: dict = None, list_class: list = None, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        namespaces: Any = None,
+        dict_class: Optional[Type[Dict[str, Any]]] = None,
+        list_class: Optional[Type[List[Any]]] = None,
+        **kwargs: Any,
+    ) -> None:
         """Initialize converter and settings.
 
         :param namespaces: Map from namespace prefixes to URI.
@@ -44,7 +52,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
         :param schema_type: XML data
         :returns: XML element flattened.
         """
-        links = [
+        links = {
             "studyLinks",
             "sampleLinks",
             "runLinks",
@@ -56,7 +64,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
             "datasetLinks",
             "assemblyLinks",
             "submissionLinks",
-        ]
+        }
 
         attrs = [
             "studyAttributes",
@@ -74,14 +82,14 @@ class MetadataXMLConverter(XMLSchemaConverter):
             "dataUses",
         ]
 
-        refs = ["analysisRef", "sampleRef", "runRef", "experimentRef"]
+        refs = {"analysisRef", "sampleRef", "runRef", "experimentRef"}
 
-        children = self.dict()
+        children: Any = self.dict()
 
         for key, value, _ in self.map_content(data.content):
             key = self._to_camel(key.lower())
 
-            if key in attrs and len(value) == 1:
+            if key in set(attrs) and len(value) == 1:
                 attrs = list(value.values())
                 children[key] = attrs[0] if isinstance(attrs[0], list) else attrs
                 continue
@@ -98,10 +106,21 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 continue
 
             if "assembly" in key:
-                if next(iter(value)) in ["standard", "custom"]:
+                if next(iter(value)) in {"standard", "custom"}:
                     children[key] = next(iter(value.values()))
+                    if "accessionId" in children[key]:
+                        children[key]["accession"] = children[key].pop("accessionId")
                 else:
                     children[key] = value
+                continue
+
+            if key == "sequence":
+                if "sequence" not in children:
+                    children[key] = list()
+                children[key].append(value)
+                for d in children[key]:
+                    if "accessionId" in d:
+                        d["accession"] = d.pop("accessionId")
                 continue
 
             if "analysisType" in key:
@@ -125,6 +144,21 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 children["files"] = value["files"]
                 continue
 
+            if "processing" in key:
+                if not bool(value):
+                    continue
+
+            if "pipeSection" in key:
+                if "pipeSection" not in children:
+                    children[key] = list()
+                children[key].append(value)
+                continue
+
+            if "prevStepIndex" in key:
+                if not bool(value):
+                    children[key] = None
+                    continue
+
             if "spotDescriptor" in key:
                 children[key] = value["spotDecodeSpec"]
                 continue
@@ -146,6 +180,19 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 reason = "Policy file not supported"
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
+
+            if "processing" in key:
+                if not bool(value):
+                    continue
+
+            if "pipeSection" in key:
+                children[key] = [value]
+                continue
+
+            if "prevStepIndex" in key:
+                if not bool(value):
+                    children[key] = None
+                    continue
 
             if key in links and len(value) == 1:
                 grp = list()
@@ -233,6 +280,11 @@ class MetadataXMLConverter(XMLSchemaConverter):
           selected
         - analysisRef, sampleRef, runRef, experimentRef need to be an array
         - experimentRef in run is an array with maxitems 1
+        - if processing is empty do not show it as it is not required
+        - processing pipeSection should be intepreted as an array
+        - processing pipeSection prevStepIndex can be None if not specified empty
+        - if sampleData does not exist (as it can only be added via forms) we will
+          add it with default gender unknown
         """
         xsd_type = xsd_type or xsd_element.type
 
@@ -245,8 +297,12 @@ class MetadataXMLConverter(XMLSchemaConverter):
 
         if data.attributes:
             tmp = self.dict((self._to_camel(key.lower()), value) for key, value in self.map_attributes(data.attributes))
+            # we add the bool(children) condition as for referenceAlignment
+            # this is to distinguish between the attributes
             if "accession" in tmp:
                 tmp["accessionId"] = tmp.pop("accession")
+            if "sampleName" in tmp and "sampleData" not in tmp:
+                tmp["sampleData"] = {"gender": "unknown"}
             if children is not None:
                 if isinstance(children, dict):
                     for key, value in children.items():
@@ -280,12 +336,15 @@ class XMLToJSONParser:
             reason = "Current request could not be processed as the submitted file was not valid"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        result = schema.to_dict(content, converter=MetadataXMLConverter, decimal_type=float, dict_class=dict)[
-            schema_type.lower()
-        ]
-        if schema_type.lower() != "submission":
-            JSONValidator(result, schema_type.lower()).validate
-        return result
+        # result is of type:
+        # Union[Any, List[Any], Tuple[None, List[XMLSchemaValidationError]],
+        # Tuple[Any, List[XMLSchemaValidationError]], Tuple[List[Any], List[XMLSchemaValidationError]]]
+        # however we expect any type as it is easier to work with
+        result: Any = schema.to_dict(content, converter=MetadataXMLConverter, decimal_type=float, dict_class=dict)
+        _schema_type: str = schema_type.lower()
+        if _schema_type != "submission":
+            JSONValidator(result[_schema_type], _schema_type).validate
+        return result[_schema_type]
 
     @staticmethod
     def _load_schema(schema_type: str) -> XMLSchema:
@@ -305,6 +364,73 @@ class XMLToJSONParser:
         return schema
 
 
+class CSVToJSONParser:
+    """Methods to parse and convert data from CSV files to JSON format."""
+
+    def parse(self, schema_type: str, content: str) -> List:
+        """Parse a CSV file, convert it to JSON and validate against JSON schema.
+
+        :param schema_type: Schema type of the file to be parsed
+        :param content: CSV content to be parsed
+        :returns: CSV parsed to JSON
+        :raises: HTTPBadRequest if error was raised during parsing or validation
+        """
+        csv_reader = csv.DictReader(StringIO(content), delimiter=",", quoting=csv.QUOTE_NONE)
+
+        _sample_list = {
+            "title",
+            "alias",
+            "description",
+            "subjectId",
+            "bioSampleId",
+            "caseOrControl",
+            "gender",
+            "organismPart",
+            "cellLine",
+            "region",
+            "phenotype",
+        }
+
+        if (
+            csv_reader.fieldnames
+            and schema_type == "sample"
+            and all(elem in _sample_list for elem in csv_reader.fieldnames)
+        ):
+            LOG.debug("sample CSV file has the correct header")
+        else:
+            reason = f"{schema_type} does not contain the correct header fields: {_sample_list}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        rows = [row for row in csv_reader]
+
+        if not rows:
+            reason = "CSV file appears to be incomplete. No rows of data were parsed."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        _parsed = []
+        for row in rows:
+            LOG.debug(f"current row: {row}")
+            _tmp: Dict[str, Any] = row
+            # This is required to pass validation against current sample schema
+            if schema_type == "sample" and "sampleName" not in row:
+                # Without TaxonID provided we assume the sample relates to
+                # Homo Sapien which has default TaxonID of 9606
+                _tmp["sampleName"] = {"taxonId": 9606}
+            # if geneder exists we will format it accordingly
+            if not bool(_tmp["gender"]):
+                _tmp["sampleData"] = {"gender": "unknown"}
+            else:
+                _tmp["sampleData"] = {"gender": _tmp["gender"]}
+            _tmp.pop("gender")
+            JSONValidator(_tmp, schema_type.lower()).validate
+            _parsed.append(_tmp)
+
+        LOG.info(f"CSV was successfully converted to {len(_parsed)} JSON object(s).")
+        return _parsed
+
+
 def jsonpatch_mongo(identifier: Dict, json_patch: List[Dict[str, Any]]) -> List:
     """Convert JSONpatch object to mongo query.
 
@@ -320,7 +446,7 @@ def jsonpatch_mongo(identifier: Dict, json_patch: List[Dict[str, Any]]) -> List:
                         identifier,
                         {
                             "$addToSet": {
-                                op["path"][1:-2]: {
+                                op["path"][1:-2].replace("/", "."): {
                                     "$each": op["value"] if isinstance(op["value"], list) else [op["value"]]
                                 },
                             },
@@ -331,6 +457,8 @@ def jsonpatch_mongo(identifier: Dict, json_patch: List[Dict[str, Any]]) -> List:
                 queries.append(UpdateOne(identifier, {"$set": {op["path"][1:].replace("/", "."): op["value"]}}))
         elif op["op"] == "replace":
             path = op["path"][1:-2] if op["path"].endswith("/-") else op["path"][1:].replace("/", ".")
+            if op.get("match", None):
+                identifier.update(op["match"])
             queries.append(UpdateOne(identifier, {"$set": {path: op["value"]}}))
 
     return queries

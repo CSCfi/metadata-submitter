@@ -29,8 +29,8 @@ setup(
     packages=find_packages(exclude=["tests"]),
     install_requires=requirements,
     extras_require={
-        "test": ["coverage==5.5", "coveralls==3.2.0", "pytest==6.2.4", "pytest-cov==2.12.1", "tox==3.24.3"],
-        "docs": ["sphinx >= 1.4", "sphinx_rtd_theme==0.5.2"],
+        "test": ["coverage==6.3.2", "pytest==7.1.1", "pytest-cov==3.0.0", "tox==3.24.5"],
+        "docs": ["sphinx >= 1.4", "sphinx_rtd_theme==1.0.0"],
     },
     package_data={
         "": [
@@ -40,7 +40,8 @@ setup(
             "frontend/static/js/*",
             "frontend/static/media/*",
             "frontend/static/css/*",
-            "conf/ena_schemas.json",
+            "conf/schemas.json",
+            "conf/metax_references/*.json",
         ]
     },
     include_package_data=True,

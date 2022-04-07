@@ -22,6 +22,7 @@
       "subjectScheme": "Fields of Science and Technology (FOS)"
     }
   ],
+  "keywords": "test,keyword",
   "contributors": [
     {
       "name": "Contributor, Test",
@@ -36,14 +37,90 @@
           "affiliationIdentifierScheme": "ROR"
         }
       ],
-      "contributorType": "Researcher",
-      "nameIdentifiers": [
+      "contributorType": "Researcher"
+    },
+    {
+      "name": "Curator, Test",
+      "nameType": "Personal",
+      "givenName": "Test",
+      "familyName": "Curator",
+      "affiliation": [
         {
-          "schemeUri": null,
-          "nameIdentifier": null,
-          "nameIdentifierScheme": null
+          "name": "affiliation place",
+          "schemeUri": "https://ror.org",
+          "affiliationIdentifier": "https://ror.org/test3",
+          "affiliationIdentifierScheme": "ROR"
         }
-      ]
+      ],
+      "contributorType": "Data Curator"
+    },
+    {
+      "name": "Rights, Holder",
+      "nameType": "Personal",
+      "givenName": "Rights",
+      "familyName": "Holder",
+      "affiliation": [
+        {
+          "name": "affiliation place",
+          "schemeUri": "https://ror.org",
+          "affiliationIdentifier": "https://ror.org/test3",
+          "affiliationIdentifierScheme": "ROR"
+        }
+      ],
+      "contributorType": "Rights Holder"
+    }
+  ],
+  "dates": [
+    {
+      "date": "2020-10-10/2022-01-10",
+      "dateType": "Collected"
+    },
+    {
+      "date": "2020-10-10",
+      "dateType": "Issued"
+    },
+    {
+      "date": "2020-10-11",
+      "dateType": "Issued"
+    },
+    {
+      "date": "2022-01-10",
+      "dateType": "Updated"
+    },
+    {
+      "date": "2022-01-11",
+      "dateType": "Updated"
+    },
+    {
+      "date": "2022-01-10",
+      "dateType": "Available"
+    }
+  ],
+  "geoLocations": [
+    {
+      "geoLocationPlace": "Helsinki"
+    },
+    {
+      "geoLocationPoint": {
+        "pointLongitude": "24.9384",
+        "pointLatitude": "60.1699"
+      },
+      "geoLocationBox": {
+        "westBoundLongitude": "24.8994938494",
+        "eastBoundLongitude": "25.1845034857",
+        "southBoundLatitude": "60.1396430193",
+        "northBoundLatitude": "60.2431299506"
+      }
+    }
+  ],
+  "language": "Assamese",
+  "sizes": [
+    "30000"
+  ],
+  "alternateIdentifiers": [
+    {
+      "alternateIdentifier": "arXiv:9912.12345v2",
+      "alternateIdentifierType": "arXiv"
     }
   ]
 }

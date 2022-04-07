@@ -29,7 +29,7 @@ the table below.
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
 | ``MONGO_PASSWORD``             | ``admin``                     | Admin password for MongoDB.                                                       | Yes       |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``MONGO_SSL``                  | ``-``                         | Set to True to enable MONGO TLS connection url.                                   | No        |
+| ``MONGO_SSL``                  | ``-``                         | Set to True to enable MongoDB TLS connection url.                                 | No        |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
 | ``MONGO_SSL_CA``               | ``-``                         | Path to CA file, required if ``MONGO_SSL`` enabled.                               | No        |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
@@ -41,21 +41,17 @@ the table below.
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
 | ``AAI_CLIENT_ID``              | ``secret``                    | OIDC client ID.                                                                   | Yes       |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``AUTH_REFERER``               | ``-``                         | OIDC Provider url that redirects the request to the application.                  | Yes       |
-+--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
 | ``BASE_URL``                   | ``http://localhost:5430``     | base URL of the metadata submitter.                                               | Yes       |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``ISS_URL``                    | ``-``                         | OIDC claim issuer URL.                                                            | Yes       |
+| ``AUTH_METHOD``                | ``code``                      | OIDC Authentication method to use.                                                | No        |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``AUTH_URL``                   | ``-``                         | Set if a special OIDC authorize URL is required,                                  | No        |
-|                                |                               | otherwise use ``"OIDC_URL"/authorize``.                                           |           |
+| ``OIDC_URL``                   | ``-``                         | OIDC URL base URL, MUST resolve to configuration endpoint when appended with      | Yes       |
+|                                |                               | /.well-known/openid-configuration                                                 |           |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``OIDC_URL``                   | ``-``                         | OIDC base URL for constructing OIDC provider endpoint calls.                      | Yes       |
+| ``OIDC_SCOPE``                 | ``openid profile email``      | Claims to request from AAI                                                        | No        |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
 | ``REDIRECT_URL``               | ``-``                         | Required only for testing with front-end on ``localhost`` or change to            | No        |
 |                                |                               | ``http://frontend:3000`` if started using ``docker-compose`` (see :ref:`deploy`). |           |
-+--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``JWK_URL``                    | ``-``                         | JWK OIDC URL for retrieving key for validating ID token.                          | Yes       |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
 | ``LOG_LEVEL``                  | ``INFO``                      | Set logging level, uppercase.                                                     | No        |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
@@ -79,8 +75,8 @@ the table below.
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
 
 
-.. note:: If just ``MONGO_DATABASE`` is specified it will autenticate the user against it.
-          If just ``MONGO_AUTHDB`` is specified it will autenticate the user against it.
+.. note:: If just ``MONGO_DATABASE`` is specified it will authenticate the user against it.
+          If just ``MONGO_AUTHDB`` is specified it will authenticate the user against it.
           If both ``MONGO_DATABASE`` and ``MONGO_AUTHDB`` are specified, the client will attempt to authenticate the specified user to the MONGO_AUTHDB database.
           If both ``MONGO_DATABASE`` and ``MONGO_AUTHDB`` are unspecified, the client will attempt to authenticate the specified user to the admin database.
 
@@ -96,10 +92,10 @@ For installing ``metadata-submitter`` backend do the following:
 
 .. hint:: Before running the application have MongoDB running.
 
-    MongoDB Server expects to find MongoDB instance running, spesified with following environmental variables:
+    MongoDB Server expects to find MongoDB instance running, specified with following environmental variables:
 
-    - ``MONGO_INITDB_ROOT_USERNAME`` (username for admin user to mondogdb instance)
-    - ``MONGO_INITDB_ROOT_PASSWORD`` (password for admin user to mondogdb instance)
+    - ``MONGO_INITDB_ROOT_USERNAME`` (username for admin user to mongodb instance)
+    - ``MONGO_INITDB_ROOT_PASSWORD`` (password for admin user to mongodb instance)
     - ``MONGO_HOST`` (host and port for MongoDB instance, e.g. `localhost:27017`)
 
 To run the backend from command line set the environment variables required and use:
@@ -118,13 +114,11 @@ The Authentication follows the `OIDC Specification <https://openid.net/specs/ope
 We follow the steps of the OpenID Connect protocol.
 
 - The RP (Client) sends a request to the OpenID Provider (OP),
-  for this we require ``AAI_CLIENT_SECRET``, ``AAI_CLIENT_ID``, ``OIDC_URL``, a callback url constructed from ``BASE_URL`` and
-  ``AUTH_URL`` if required.
+  for this we require ``AAI_CLIENT_SECRET``, ``AAI_CLIENT_ID``, ``OIDC_URL`` and a callback url constructed from ``BASE_URL``.
 - The OP authenticates the End-User and obtains authorization.
-- The OP responds with an ID Token and usually an Access Token,
-  we validate the ID Token for which we need ``JWK_URL`` to get the key and ``ISS_URL`` to check the claims issuer is correct.
+- The OP responds with an ID Token and usually an Access Token, which are validated with configuration provided by ``OIDC_URL``.
 - The RP can send a request with the Access Token to the UserInfo Endpoint.
-- The UserInfo Endpoint returns Claims about the End-User, use use some claims ``sub`` and ``eppn`` to identify the user and start a session.
+- The UserInfo Endpoint returns Claims about the End-User, use claims ``sub``, ``CSCUserName`` or ``remoteUserIdentifier`` to identify the user and start a session.
 
 Information related to the OpenID Provider (OP) that needs to be configured is displayed in the table below.
 Most of the information can be retrieved from `OIDC Provider <https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata>`_ metadata
@@ -137,18 +131,14 @@ endpoint ``https://<provider_url>/.well-known/openid-configuration``.
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
 | ``AAI_CLIENT_ID``              | ``secret``                    | OIDC client ID.                                                                   | Yes       |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``AUTH_REFERER``               | ``-``                         | OIDC Provider url that redirects the request to the application.                  | Yes       |
-+--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
 | ``BASE_URL``                   | ``http://localhost:5430``     | base URL of the metadata submitter.                                               | Yes       |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``ISS_URL``                    | ``-``                         | OIDC claim issuer URL.                                                            | Yes       |
+| ``AUTH_METHOD``                | ``code``                      | OIDC Authentication method to use.                                                | No        |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``AUTH_URL``                   | ``-``                         | Set if a special OIDC authorize URL is required,                                  | No        |
-|                                |                               | otherwise use ``"OIDC_URL"/authorize``.                                           |           |
+| ``OIDC_URL``                   | ``-``                         | OIDC URL base URL, MUST resolve to configuration endpoint when appended with      | Yes       |
+|                                |                               | /.well-known/openid-configuration                                                 |           |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``OIDC_URL``                   | ``-``                         | OIDC base URL for constructing OIDC provider endpoint calls.                      | Yes       |
-+--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``JWK_URL``                    | ``-``                         | JWK OIDC URL for retrieving key for validating ID token.                          | Yes       |
+| ``OIDC_SCOPE``                 | ``openid profile email``      | Claims to request from AAI                                                        | No        |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
 
 REST API

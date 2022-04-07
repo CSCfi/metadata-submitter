@@ -12,10 +12,11 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - name: Spell check install
-      run: curl -L https://git.io/misspell | bash
-    - name: Spell check docs
-      run: bin/misspell -error docs/*
+    - uses: actions/checkout@v3
+    - uses: rojopolis/spellcheck-github-actions@0.22.1
+      name: Spellcheck
+      with:
+        config_path: .github/config/.spellcheck.yml
 
   code_docs:
     strategy:
@@ -27,9 +28,9 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
