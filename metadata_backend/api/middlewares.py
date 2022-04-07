@@ -1,5 +1,5 @@
 """Middleware methods for server."""
-import json
+import ujson
 from http import HTTPStatus
 from typing import Callable, Tuple
 from cryptography.fernet import InvalidToken
@@ -18,7 +18,7 @@ from ..conf.conf import aai_config
 def _check_error_page_requested(req: Request, error_code: int) -> web.Response:  # type:ignore
     """Return the correct error page with correct status code."""
     if "Accept" in req.headers and req.headers["Accept"]:
-        if req.headers["Accept"].split(",")[0] in ["text/html", "application/xhtml+xml"]:
+        if req.headers["Accept"].split(",")[0] in {"text/html", "application/xhtml+xml"}:
             raise web.HTTPSeeOther(
                 f"/error{str(error_code)}",
                 headers={
@@ -68,7 +68,7 @@ async def http_error_handler(req: Request, handler: Callable) -> Response:
             raise web.HTTPUnprocessableEntity(text=details, content_type=c_type)
         else:
             _check_error_page_requested(req, 500)
-            raise web.HTTPServerError()
+            raise web.HTTPInternalServerError(text=details, content_type=c_type)
 
 
 @middleware
@@ -84,6 +84,7 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
     controlled_paths = [
         "/schemas",
         "/drafts",
+        "/templates",
         "/validate",
         "/publish",
         "/submit",
@@ -114,7 +115,7 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
     if request.path.startswith(tuple(controlled_paths)) and "OIDC_URL" in os.environ and bool(os.getenv("OIDC_URL")):
         cookie = decrypt_cookie(request)
         session = request.app["Session"].setdefault(cookie["id"], {})
-        if not all(x in ["access_token", "user_info", "oidc_state"] for x in session):
+        if not all(x in {"access_token", "user_info", "oidc_state"} for x in session):
             LOG.debug("checked session parameter")
             response = web.HTTPSeeOther(f"{aai_config['domain']}/aai")
             response.headers["Location"] = "/aai"
@@ -161,7 +162,7 @@ def generate_cookie(request: Request) -> Tuple[dict, str]:
     }
     # Return a tuple of the session as an encrypted JSON string, and the
     # cookie itself
-    return (cookie, request.app["Crypt"].encrypt(json.dumps(cookie).encode("utf-8")).decode("utf-8"))
+    return (cookie, request.app["Crypt"].encrypt(ujson.dumps(cookie).encode("utf-8")).decode("utf-8"))
 
 
 def decrypt_cookie(request: web.Request) -> dict:
@@ -176,7 +177,7 @@ def decrypt_cookie(request: web.Request) -> dict:
         raise web.HTTPUnauthorized()
     try:
         cookie_json = request.app["Crypt"].decrypt(request.cookies["MTD_SESSION"].encode("utf-8")).decode("utf-8")
-        cookie = json.loads(cookie_json)
+        cookie = ujson.loads(cookie_json)
         LOG.debug(f"Decrypted cookie: {cookie}")
         return cookie
     except InvalidToken:
@@ -198,7 +199,7 @@ def _check_csrf(request: web.Request) -> bool:
         if "redirect" in aai_config and request.headers["Referer"].startswith(aai_config["redirect"]):
             LOG.info("Skipping Referer check due to request coming from frontend.")
             return True
-        if "auth_referer" in aai_config and request.headers["Referer"].startswith(aai_config["auth_referer"]):
+        if "oidc_url" in aai_config and request.headers["Referer"].startswith(aai_config["oidc_url"]):
             LOG.info("Skipping Referer check due to request coming from OIDC.")
             return True
         if cookie["referer"] not in request.headers["Referer"]:
@@ -229,7 +230,7 @@ def _json_exception(status: int, exception: web.HTTPException, url: URL) -> str:
     :param url: Request URL that caused the exception
     :returns: Problem detail JSON object as a string
     """
-    body = json.dumps(
+    body = ujson.dumps(
         {
             "type": "about:blank",
             # Replace type value above with an URL to
@@ -237,6 +238,7 @@ def _json_exception(status: int, exception: web.HTTPException, url: URL) -> str:
             "title": HTTPStatus(status).phrase,
             "detail": exception.reason,
             "instance": url.path,  # optional
-        }
+        },
+        escape_forward_slashes=False,
     )
     return body

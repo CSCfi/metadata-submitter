@@ -1,11 +1,10 @@
 """Services that handle database connections. Implemented with MongoDB."""
 from functools import wraps
-from typing import Any, Callable, Dict, Union, List
+from typing import Any, Callable, Dict, List, Union
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
-from pymongo.errors import AutoReconnect, ConnectionFailure
 from pymongo import ReturnDocument
-from pymongo.errors import BulkWriteError
+from pymongo.errors import AutoReconnect, BulkWriteError, ConnectionFailure
 
 from ..conf.conf import serverTimeout
 from ..helpers.logger import LOG
@@ -35,8 +34,8 @@ def auto_reconnect(db_func: Callable) -> Callable:
                     message = f"Connection to database failed after {attempt} tries"
                     raise ConnectionFailure(message=message)
                 LOG.error(
-                    "Connection not successful, trying to reconnect."
-                    f"Reconnection attempt number {attempt}, waiting for {default_timeout} seconds."
+                    "Connection not successful, trying to reconnect. "
+                    + f"Reconnection attempt number {attempt}, waiting for {default_timeout} seconds."
                 )
                 continue
 
@@ -84,7 +83,7 @@ class DBService:
         :param accession_id: ID of the object/folder/user to be searched
         :returns: True if exists and False if it does not
         """
-        id_key = f"{collection}Id" if (collection in ["folder", "user"]) else "accessionId"
+        id_key = f"{collection}Id" if (collection in ["folder", "user", "project"]) else "accessionId"
         projection = {"_id": False, "externalId": False} if collection == "user" else {"_id": False}
         find_by_id = {id_key: accession_id}
         exists = await self.database[collection].find_one(find_by_id, projection)
@@ -92,11 +91,23 @@ class DBService:
         return True if exists else False
 
     @auto_reconnect
+    async def exists_project_by_external_id(self, external_id: str) -> Union[None, str]:
+        """Check project exists by its external id.
+
+        :param external_id: project external id
+        :returns: Id if exists and None if it does not
+        """
+        find_by_id = {"externalId": external_id}
+        project = await self.database["project"].find_one(find_by_id, {"_id": False, "externalId": False})
+        LOG.debug(f"DB check project exists for {external_id} returned {project}.")
+        return project["projectId"] if project else None
+
+    @auto_reconnect
     async def exists_user_by_external_id(self, external_id: str, name: str) -> Union[None, str]:
         """Check user exists by its eppn.
 
         :param eppn: eduPersonPrincipalName to be searched
-        :returns: True if exists and False if it does not
+        :returns: Id if exists and None if it does not
         """
         find_by_id = {"externalId": external_id, "name": name}
         user = await self.database["user"].find_one(find_by_id, {"_id": False, "externalId": False})
@@ -124,7 +135,7 @@ class DBService:
         :param accession_id: ID of the object/folder/user to be searched
         :returns: First document matching the accession_id
         """
-        id_key = f"{collection}Id" if (collection in ["folder", "user"]) else "accessionId"
+        id_key = f"{collection}Id" if (collection in {"folder", "user"}) else "accessionId"
         projection = {"_id": False, "eppn": False} if collection == "user" else {"_id": False}
         find_by_id = {id_key: accession_id}
         LOG.debug(f"DB doc in {collection} read for {accession_id}.")
@@ -151,6 +162,30 @@ class DBService:
             return False
 
     @auto_reconnect
+    async def update_study(self, collection: str, accession_id: str, patch_data: Any) -> bool:
+        """Update and avoid duplicates for study object.
+
+        Currently we don't allow duplicate studies in the same folder,
+        thus we need to check before inserting. Regular Bulkwrite cannot prevent race condition.
+
+        :param collection: Collection where document should be searched from
+        :param accession_id: ID of the object/folder/user to be updated
+        :param patch_data: JSON representing the data that should be
+        updated to object it will update fields.
+        :returns: True if operation was successful
+        """
+        find_by_id = {f"{collection}Id": accession_id, "metadataObjects.schema": {"$ne": "study"}}
+        requests = jsonpatch_mongo(find_by_id, patch_data)
+        for req in requests:
+            result = await self.database[collection].find_one_and_update(
+                find_by_id, req._doc, projection={"_id": False}, return_document=ReturnDocument.AFTER
+            )
+            LOG.debug(f"DB doc in {collection} with data: {patch_data} modified for {accession_id}.")
+            if not result:
+                return False
+        return True
+
+    @auto_reconnect
     async def update(self, collection: str, accession_id: str, data_to_be_updated: Dict) -> bool:
         """Update some elements of object by its accessionId.
 
@@ -160,7 +195,7 @@ class DBService:
         updated to object, can replace previous fields and add new ones.
         :returns: True if operation was successful
         """
-        id_key = f"{collection}Id" if (collection in ["folder", "user"]) else "accessionId"
+        id_key = f"{collection}Id" if (collection in {"folder", "user"}) else "accessionId"
         find_by_id = {id_key: accession_id}
         update_op = {"$set": data_to_be_updated}
         result = await self.database[collection].update_one(find_by_id, update_op)
@@ -177,7 +212,7 @@ class DBService:
         updated to removed.
         :returns: True if operation was successful
         """
-        id_key = f"{collection}Id" if (collection in ["folder", "user"]) else "accessionId"
+        id_key = f"{collection}Id" if (collection in ["folder", "user", "project"]) else "accessionId"
         find_by_id = {id_key: accession_id}
         remove_op = {"$pull": data_to_be_removed}
         result = await self.database[collection].find_one_and_update(
@@ -196,7 +231,7 @@ class DBService:
         updated to removed.
         :returns: True if operation was successful
         """
-        id_key = f"{collection}Id" if (collection in ["folder", "user"]) else "accessionId"
+        id_key = f"{collection}Id" if (collection in ["folder", "user", "project"]) else "accessionId"
         find_by_id = {id_key: accession_id}
         # push vs addtoSet
         # push allows us to specify the postion but it does not check the items are unique
@@ -227,6 +262,9 @@ class DBService:
         old_data = await self.database[collection].find_one(find_by_id)
         if not (len(new_data) == 2 and new_data["content"].startswith("<")):
             new_data["dateCreated"] = old_data["dateCreated"]
+            if collection in {"study", "dataset"}:
+                new_data["metaxIdentifier"] = old_data["metaxIdentifier"]
+                new_data["doi"] = old_data["doi"]
             if "publishDate" in old_data:
                 new_data["publishDate"] = old_data["publishDate"]
         result = await self.database[collection].replace_one(find_by_id, new_data)
@@ -241,13 +279,13 @@ class DBService:
         :param accession_id: ID for object/folder/user to be deleted
         :returns: True if operation was successful
         """
-        id_key = f"{collection}Id" if (collection in ["folder", "user"]) else "accessionId"
+        id_key = f"{collection}Id" if (collection in {"folder", "user"}) else "accessionId"
         find_by_id = {id_key: accession_id}
         result = await self.database[collection].delete_one(find_by_id)
         LOG.debug(f"DB doc in {collection} deleted for {accession_id}.")
         return result.acknowledged
 
-    def query(self, collection: str, query: Dict) -> AsyncIOMotorCursor:
+    def query(self, collection: str, query: Dict, custom_projection: Dict = {}) -> AsyncIOMotorCursor:
         """Query database with given query.
 
         Find() does no I/O and does not require an await expression, hence
@@ -255,10 +293,13 @@ class DBService:
 
         :param collection: Collection where document should be searched from
         :param query: query to be used
+        :param custom_projection: overwrites default projection
         :returns: Async cursor instance which should be awaited when iterating
         """
         LOG.debug(f"DB doc query performed in {collection}.")
         projection = {"_id": False, "eppn": False} if collection == "user" else {"_id": False}
+        if custom_projection:
+            projection = custom_projection
         return self.database[collection].find(query, projection)
 
     @auto_reconnect

@@ -1,10 +1,10 @@
 """Operators for handling database-related operations."""
 import re
+import time
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 from uuid import uuid4
-import time
 
 from aiohttp import web
 from dateutil.relativedelta import relativedelta
@@ -12,11 +12,12 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
 from multidict import MultiDictProxy
 from pymongo.errors import ConnectionFailure, OperationFailure
 
-from ..conf.conf import query_map, mongo_database
+from ..conf.conf import mongo_database, query_map
 from ..database.db_service import DBService, auto_reconnect
 from ..helpers.logger import LOG
 from ..helpers.parser import XMLToJSONParser
 from ..helpers.validator import JSONValidator
+from .middlewares import get_session
 
 
 class BaseOperator(ABC):
@@ -39,7 +40,7 @@ class BaseOperator(ABC):
         self.db_service = DBService(db_name, db_client)
         self.content_type = content_type
 
-    async def create_metadata_object(self, schema_type: str, data: Union[Dict, str]) -> str:
+    async def create_metadata_object(self, schema_type: str, data: Union[Dict, str]) -> Dict:
         """Create new metadata object to database.
 
         Data formatting and addition step for JSON or XML must be implemented
@@ -49,11 +50,13 @@ class BaseOperator(ABC):
         :param data: Data to be saved to database.
         :returns: Accession id for the object inserted to database
         """
-        accession_id = await self._format_data_to_create_and_add_to_db(schema_type, data)
-        LOG.info(f"Inserting object with schema {schema_type} to database succeeded with accession id: {accession_id}")
-        return accession_id
+        data = await self._format_data_to_create_and_add_to_db(schema_type, data)
+        LOG.info(
+            f"Inserting object with schema {schema_type} to database succeeded with accession id: {data['accessionId']}"
+        )
+        return data
 
-    async def replace_metadata_object(self, schema_type: str, accession_id: str, data: Union[Dict, str]) -> str:
+    async def replace_metadata_object(self, schema_type: str, accession_id: str, data: Union[Dict, str]) -> Dict:
         """Replace metadata object from database.
 
         Data formatting and addition step for JSON or XML must be implemented
@@ -64,9 +67,9 @@ class BaseOperator(ABC):
         :param data: Data to be saved to database.
         :returns: Accession id for the object replaced to database
         """
-        await self._format_data_to_replace_and_add_to_db(schema_type, accession_id, data)
+        data = await self._format_data_to_replace_and_add_to_db(schema_type, accession_id, data)
         LOG.info(f"Replacing object with schema {schema_type} to database succeeded with accession id: {accession_id}")
-        return accession_id
+        return data
 
     async def update_metadata_object(self, schema_type: str, accession_id: str, data: Union[Dict, str]) -> str:
         """Update metadata object from database.
@@ -97,11 +100,11 @@ class BaseOperator(ABC):
         try:
             data_raw = await self.db_service.read(schema_type, accession_id)
             if not data_raw:
-                LOG.error(f"Object with {accession_id} not found.")
+                LOG.error(f"Object with {accession_id} not found in schema: {schema_type}.")
                 raise web.HTTPNotFound()
             data = await self._format_read_data(schema_type, data_raw)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting object: {error}"
+            reason = f"Error happened while reading object: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         return data, self.content_type
@@ -127,7 +130,7 @@ class BaseOperator(ABC):
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-    async def _insert_formatted_object_to_db(self, schema_type: str, data: Dict) -> str:
+    async def _insert_formatted_object_to_db(self, schema_type: str, data: Dict) -> bool:
         """Insert formatted metadata object to database.
 
         :param schema_type: Schema type of the object to insert.
@@ -141,14 +144,14 @@ class BaseOperator(ABC):
             reason = f"Error happened while getting object: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        if insert_success:
-            return data["accessionId"]
-        else:
+
+        if not insert_success:
             reason = "Inserting object to database failed for some reason."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
+        return True
 
-    async def _replace_object_from_db(self, schema_type: str, accession_id: str, data: Dict) -> str:
+    async def _replace_object_from_db(self, schema_type: str, accession_id: str, data: Dict) -> bool:
         """Replace formatted metadata object in database.
 
         :param schema_type: Schema type of the object to replace.
@@ -168,12 +171,11 @@ class BaseOperator(ABC):
             reason = f"Error happened while getting object: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        if replace_success:
-            return accession_id
-        else:
+        if not replace_success:
             reason = "Replacing object to database failed for some reason."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
+        return True
 
     async def _update_object_from_db(self, schema_type: str, accession_id: str, data: Dict) -> str:
         """Update formatted metadata object in database.
@@ -249,14 +251,14 @@ class BaseOperator(ABC):
             raise web.HTTPNotFound(reason=reason)
 
     @abstractmethod
-    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: Any) -> str:
+    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: Any) -> Dict:
         """Format and add data to database.
 
         Must be implemented by subclass.
         """
 
     @abstractmethod
-    async def _format_data_to_replace_and_add_to_db(self, schema_type: str, accession_id: str, data: Any) -> str:
+    async def _format_data_to_replace_and_add_to_db(self, schema_type: str, accession_id: str, data: Any) -> Dict:
         """Format and replace data in database.
 
         Must be implemented by subclass.
@@ -291,6 +293,55 @@ class Operator(BaseOperator):
         Application.
         """
         super().__init__(mongo_database, "application/json", db_client)
+
+    async def query_templates_by_project(self, project_id: str) -> List[Dict[str, Union[Dict[str, str], str]]]:
+        """Get templates list from given project ID.
+
+        :param project_id: project internal ID that owns templates
+        :returns: list of templates in project
+        """
+        try:
+            templates_cursor = self.db_service.query(
+                "project", {"projectId": project_id}, custom_projection={"_id": 0, "templates": 1}
+            )
+            templates = [template async for template in templates_cursor]
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting templates from project {project_id}: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        if len(templates) == 1:
+            return templates[0]["templates"]
+        else:
+            return []
+
+    async def get_object_project(self, collection: str, accession_id: str) -> str:
+        """Get the project ID the object is associated to.
+
+        :param collection: database table to look into
+        :param object_id: internal accession ID of object
+        :returns: project ID object is associated to
+        """
+        try:
+            object_cursor = self.db_service.query(collection, {"accessionId": accession_id})
+            objects = [object async for object in object_cursor]
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting object from {collection}: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        if len(objects) == 1:
+            try:
+                return objects[0]["projectId"]
+            except KeyError as error:
+                # This should not be possible and should never happen, if the object was created properly
+                reason = f"{collection} {accession_id} does not have an associated project, err={error}"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+        else:
+            reason = f"{collection} {accession_id} not found"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
 
     async def query_metadata_database(
         self, schema_type: str, que: MultiDictProxy, page_num: int, page_size: int, filter_objects: List
@@ -380,7 +431,32 @@ class Operator(BaseOperator):
         )
         return data, page_num, page_size, total_objects[0]["total"]
 
-    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: Dict) -> str:
+    async def create_metax_info(self, schema_type: str, accession_id: str, data: Dict) -> bool:
+        """Update study or dataset object with metax info.
+
+        :param schema_type: Schema type of the object to replace.
+        :param accession_id: Identifier of object to replace.
+        :param data: Metadata object
+        :returns: True on successed database update
+        """
+        if schema_type not in {"study", "dataset"}:
+            LOG.error("Object schema type must be either study or dataset")
+            return False
+        try:
+            create_success = await self.db_service.update(schema_type, accession_id, data)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while updating object: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        if not create_success:
+            reason = "Updating object to database failed for some reason."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        else:
+            LOG.info(f"Object {schema_type} with id {accession_id} opdated with metax info.")
+            return True
+
+    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: Dict) -> Dict:
         """Format JSON metadata object and add it to db.
 
         Adds necessary additional information to object before adding to db.
@@ -400,24 +476,26 @@ class Operator(BaseOperator):
         if schema_type == "study":
             data["publishDate"] = datetime.utcnow() + relativedelta(months=2)
         LOG.debug(f"Operator formatted data for {schema_type} to add to DB.")
-        return await self._insert_formatted_object_to_db(schema_type, data)
+        await self._insert_formatted_object_to_db(schema_type, data)
+        return data
 
-    async def _format_data_to_replace_and_add_to_db(self, schema_type: str, accession_id: str, data: Dict) -> str:
+    async def _format_data_to_replace_and_add_to_db(self, schema_type: str, accession_id: str, data: Dict) -> Dict:
         """Format JSON metadata object and replace it in db.
 
         Replace information in object before adding to db.
 
-        We will not replace accessionId, publishDate or dateCreated,
+        We will not replace ``accessionId``, ``publishDate`` or ``dateCreated``,
         as these are generated when created.
-
-        We will keep also publisDate and dateCreated from old object.
+        Will not replace ``metaxIdentifier`` and ``doi`` for ``study`` and ``dataset``
+        as it is generated when created.
+        We will keep also ``publisDate`` and ``dateCreated`` from old object.
 
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
         :param data: Metadata object
         :returns: Accession Id for object inserted to database
         """
-        forbidden_keys = ["accessionId", "publishDate", "dateCreated"]
+        forbidden_keys = {"accessionId", "publishDate", "dateCreated", "metaxIdentifier", "doi"}
         if any(i in data for i in forbidden_keys):
             reason = f"Some items (e.g: {', '.join(forbidden_keys)}) cannot be changed."
             LOG.error(reason)
@@ -425,23 +503,28 @@ class Operator(BaseOperator):
         data["accessionId"] = accession_id
         data["dateModified"] = datetime.utcnow()
         LOG.debug(f"Operator formatted data for {schema_type} to add to DB")
-        return await self._replace_object_from_db(schema_type, accession_id, data)
+        await self._replace_object_from_db(schema_type, accession_id, data)
+        return data
 
     async def _format_data_to_update_and_add_to_db(self, schema_type: str, accession_id: str, data: Any) -> str:
         """Format and update data in database.
+
+        Will not allow to update ``metaxIdentifier`` and ``doi`` for ``study`` and ``dataset``
+        as it is generated when created.
 
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
         :param data: Metadata object
         :returns: Accession Id for object inserted to database
         """
-        forbidden_keys = ["accessionId", "publishDate", "dateCreated"]
+        forbidden_keys = {"accessionId", "publishDate", "dateCreated", "metaxIdentifier", "doi"}
         if any(i in data for i in forbidden_keys):
             reason = f"Some items (e.g: {', '.join(forbidden_keys)}) cannot be changed."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         data["accessionId"] = accession_id
         data["dateModified"] = datetime.utcnow()
+
         LOG.debug(f"Operator formatted data for {schema_type} to add to DB")
         return await self._update_object_from_db(schema_type, accession_id, data)
 
@@ -468,7 +551,7 @@ class Operator(BaseOperator):
 
         :param schema_type: Schema type of the object to read.
         :param data_raw: Data from mongodb query, can contain multiple results
-        :returns: Mongodb query result, formatted to readable dicts
+        :returns: MongoDB query result, formatted to readable dicts
         """
         if isinstance(data_raw, dict):
             return self._format_single_dict(schema_type, data_raw)
@@ -513,7 +596,7 @@ class XMLOperator(BaseOperator):
         """
         super().__init__(mongo_database, "text/xml", db_client)
 
-    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: str) -> str:
+    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: str) -> Dict:
         """Format XML metadata object and add it to db.
 
         XML is validated, then parsed to JSON, which is added to database.
@@ -524,16 +607,19 @@ class XMLOperator(BaseOperator):
         :returns: Accession Id for object inserted to database
         """
         db_client = self.db_service.db_client
-        # remove `drafs-` from schema type
+        # remove `draft-` from schema type
         schema = schema_type[6:] if schema_type.startswith("draft") else schema_type
         data_as_json = XMLToJSONParser().parse(schema, data)
-        accession_id = await Operator(db_client)._format_data_to_create_and_add_to_db(schema_type, data_as_json)
+        data_with_id = await Operator(db_client)._format_data_to_create_and_add_to_db(schema_type, data_as_json)
         LOG.debug(f"XMLOperator formatted data for xml-{schema_type} to add to DB")
-        return await self._insert_formatted_object_to_db(
-            f"xml-{schema_type}", {"accessionId": accession_id, "content": data}
+
+        await self._insert_formatted_object_to_db(
+            f"xml-{schema_type}", {"accessionId": data_with_id["accessionId"], "content": data}
         )
 
-    async def _format_data_to_replace_and_add_to_db(self, schema_type: str, accession_id: str, data: str) -> str:
+        return data_with_id
+
+    async def _format_data_to_replace_and_add_to_db(self, schema_type: str, accession_id: str, data: str) -> Dict:
         """Format XML metadata object and add it to db.
 
         XML is validated, then parsed to JSON, which is added to database.
@@ -548,13 +634,14 @@ class XMLOperator(BaseOperator):
         # remove `draft-` from schema type
         schema = schema_type[6:] if schema_type.startswith("draft") else schema_type
         data_as_json = XMLToJSONParser().parse(schema, data)
-        accession_id = await Operator(db_client)._format_data_to_replace_and_add_to_db(
+        data_with_id = await Operator(db_client)._format_data_to_replace_and_add_to_db(
             schema_type, accession_id, data_as_json
         )
         LOG.debug(f"XMLOperator formatted data for xml-{schema_type} to add to DB")
-        return await self._replace_object_from_db(
+        await self._replace_object_from_db(
             f"xml-{schema_type}", accession_id, {"accessionId": accession_id, "content": data}
         )
+        return data_with_id
 
     async def _format_data_to_update_and_add_to_db(self, schema_type: str, accession_id: str, data: str) -> str:
         """Raise not implemented.
@@ -594,6 +681,33 @@ class FolderOperator:
         """
         self.db_service = DBService(mongo_database, db_client)
 
+    async def get_folder_project(self, folder_id: str) -> str:
+        """Get the project ID the folder is associated to.
+
+        :param folder_id: internal accession ID of folder
+        :returns: project ID folder is associated to
+        """
+        try:
+            folder_cursor = self.db_service.query("folder", {"folderId": folder_id})
+            folders = [folder async for folder in folder_cursor]
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting folder: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        if len(folders) == 1:
+            try:
+                return folders[0]["projectId"]
+            except KeyError as error:
+                # This should not be possible and should never happen, if the folder was created properly
+                reason = f"folder {folder_id} does not have an associated project, err={error}"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+        else:
+            reason = f"folder {folder_id} not found"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
     async def check_object_in_folder(self, collection: str, accession_id: str) -> Tuple[bool, str, bool]:
         """Check a object/draft is in a folder.
 
@@ -610,7 +724,7 @@ class FolderOperator:
             )
             folder_check = [folder async for folder in folder_cursor]
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while inserting user: {error}"
+            reason = f"Error happened while checking object in folder: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -630,7 +744,7 @@ class FolderOperator:
         """List objects ids per collection.
 
         :param collection: collection it belongs to, it would be used as path
-        :returns: count of objects
+        :returns: List of objects
         """
         try:
             folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
@@ -640,7 +754,7 @@ class FolderOperator:
             )
             folders = [folder async for folder in folder_cursor]
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while inserting user: {error}"
+            reason = f"Error happened while getting collection objects: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -658,6 +772,7 @@ class FolderOperator:
         """
         folder_id = self._generate_folder_id()
         data["folderId"] = folder_id
+        data["text_name"] = " ".join(re.split("[\\W_]", data["name"]))
         data["published"] = False
         data["dateCreated"] = int(time.time())
         data["metadataObjects"] = data["metadataObjects"] if "metadataObjects" in data else []
@@ -677,21 +792,34 @@ class FolderOperator:
             LOG.info(f"Inserting folder with id {folder_id} to database succeeded.")
             return folder_id
 
-    async def query_folders(self, query: Dict, page_num: int, page_size: int) -> Tuple[List, int]:
+    async def query_folders(
+        self, query: Dict, page_num: int, page_size: int, sort_param: Optional[dict] = None
+    ) -> Tuple[List, int]:
         """Query database based on url query parameters.
 
         :param query: Dict containing query information
         :param page_num: Page number
         :param page_size: Results per page
+        :param sort_param: Sorting options.
         :returns: Paginated query result
         """
         skips = page_size * (page_num - 1)
+
+        if not sort_param:
+            sort = {"dateCreated": -1}
+        elif sort_param["score"] and not sort_param["date"]:
+            sort = {"score": {"$meta": "textScore"}, "dateCreated": -1}  # type: ignore
+        elif sort_param["score"] and sort_param["date"]:
+            sort = {"dateCreated": -1, "score": {"$meta": "textScore"}}  # type: ignore
+        else:
+            sort = {"dateCreated": -1}
+
         _query = [
             {"$match": query},
-            {"$sort": {"dateCreated": -1}},
+            {"$sort": sort},
             {"$skip": skips},
             {"$limit": page_size},
-            {"$project": {"_id": 0}},
+            {"$project": {"_id": 0, "text_name": 0}},
         ]
         data_raw = await self.db_service.do_aggregate("folder", _query)
 
@@ -723,7 +851,7 @@ class FolderOperator:
             raise web.HTTPBadRequest(reason=reason)
         return folder
 
-    async def update_folder(self, folder_id: str, patch: List) -> str:
+    async def update_folder(self, folder_id: str, patch: List, schema: str = "") -> str:
         """Update object folder from database.
 
         Utilizes JSON Patch operations specified at: http://jsonpatch.com/
@@ -734,14 +862,20 @@ class FolderOperator:
         :returns: ID of the folder updated to database
         """
         try:
-            update_success = await self.db_service.patch("folder", folder_id, patch)
+            if schema == "study":
+                update_success = await self.db_service.update_study("folder", folder_id, patch)
+            else:
+                update_success = await self.db_service.patch("folder", folder_id, patch)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting folder: {error}"
+            reason = f"Error happened while updating folder: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
         if not update_success:
-            reason = "Updating folder to database failed for some reason."
+            if schema == "study":
+                reason = "Either there was a request to add another study to a folders or annother error occurred."
+            else:
+                reason = "Updating folder to database failed for some reason."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         else:
@@ -762,7 +896,7 @@ class FolderOperator:
             upd_content = {folder_path: {"accessionId": accession_id}}
             await self.db_service.remove("folder", folder_id, upd_content)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting user: {error}"
+            reason = f"Error happened while removing object from folder: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -842,39 +976,64 @@ class UserOperator:
         """
         self.db_service = DBService(mongo_database, db_client)
 
-    async def check_user_has_doc(self, collection: str, user_id: str, accession_id: str) -> bool:
-        """Check a folder/draft belongs to user.
+    async def check_user_has_doc(
+        self, req: web.Request, collection: str, user_id: str, accession_id: str
+    ) -> Tuple[bool, str]:
+        """Check a folder/template belongs to same project the user is in.
 
         :param collection: collection it belongs to, it would be used as path
         :param user_id: user_id from session
         :param accession_id: document by accession_id
         :raises: HTTPUnprocessableEntity if more users seem to have same folder
-        :returns: True if accession_id belongs to user
+        :returns: True and project_id if accession_id belongs to user, False otherwise
         """
-        try:
-            if collection.startswith("draft"):
-                user_query = {"drafts": {"$elemMatch": {"accessionId": accession_id}}, "userId": user_id}
-            else:
-                user_query = {"folders": {"$elemMatch": {"$eq": accession_id}}, "userId": user_id}
-            user_cursor = self.db_service.query("user", user_query)
-            user_check = [user async for user in user_cursor]
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while inserting user: {error}"
+        LOG.debug(f"check that user {user_id} belongs to same project as {collection} {accession_id}")
+
+        db_client = req.app["db_client"]
+        user_operator = UserOperator(db_client)
+
+        project_id = ""
+        if collection.startswith("template"):
+            object_operator = Operator(db_client)
+            project_id = await object_operator.get_object_project(collection, accession_id)
+        elif collection == "folders":
+            folder_operator = FolderOperator(db_client)
+            project_id = await folder_operator.get_folder_project(accession_id)
+        else:
+            reason = f"collection must be folders or template, received {collection}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        if len(user_check) == 0:
-            LOG.info(f"doc {accession_id} belongs to no user something is off")
-            return False
-        elif len(user_check) > 1:
-            reason = "There seem to be more users with same ID and/or same folders."
-            LOG.error(reason)
-            raise web.HTTPUnprocessableEntity(reason=reason)
-        else:
-            LOG.info(f"found doc {accession_id} at current user")
-            return True
+        current_user = get_session(req)["user_info"]
+        user = await user_operator.read_user(current_user)
+        user_has_project = await user_operator.check_user_has_project(project_id, user["userId"])
+        return user_has_project, project_id
 
-    async def create_user(self, data: Tuple) -> str:
+    async def check_user_has_project(self, project_id: str, user_id: str) -> bool:
+        """Check that user has project affiliation.
+
+        :param project_id: internal project ID
+        :param user_id: internal user ID
+        :raises HTTPBadRequest: on database error
+        :returns: True if user has project, False if user does not have project
+        """
+        try:
+            user_query = {"projects": {"$elemMatch": {"projectId": project_id}}, "userId": user_id}
+            user_cursor = self.db_service.query("user", user_query)
+            user_check = [user async for user in user_cursor]
+            if user_check:
+                LOG.debug(f"user {user_id} has project {project_id} affiliation")
+                return True
+            else:
+                reason = f"user {user_id} does not have project {project_id} affiliation"
+                LOG.debug(reason)
+                return False
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while reading user project affiliation: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+    async def create_user(self, data: Dict[str, Union[list, str]]) -> str:
         """Create new user object to database.
 
         :param data: User Data to identify user
@@ -883,19 +1042,16 @@ class UserOperator:
         """
         user_data: Dict[str, Union[list, str]] = dict()
 
-        external_id = data[0]  # this also can be sub key
-        name = data[1]
         try:
-            existing_user_id = await self.db_service.exists_user_by_external_id(external_id, name)
+            existing_user_id = await self.db_service.exists_user_by_external_id(data["user_id"], data["real_name"])
             if existing_user_id:
-                LOG.info(f"User with identifier: {external_id} exists, no need to create.")
+                LOG.info(f"User with identifier: {data['user_id']} exists, no need to create.")
                 return existing_user_id
             else:
-                user_data["drafts"] = []
-                user_data["folders"] = []
+                user_data["projects"] = data["projects"]
                 user_data["userId"] = user_id = self._generate_user_id()
-                user_data["name"] = name
-                user_data["externalId"] = external_id
+                user_data["name"] = data["real_name"]
+                user_data["externalId"] = data["user_id"]
                 JSONValidator(user_data, "users")
                 insert_success = await self.db_service.create("user", user_data)
                 if not insert_success:
@@ -976,7 +1132,7 @@ class UserOperator:
             await self._check_user_exists(user_id)
             update_success = await self.db_service.patch("user", user_id, patch)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting user: {error}"
+            reason = f"Error happened while updating user: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -991,12 +1147,12 @@ class UserOperator:
     async def assign_objects(self, user_id: str, collection: str, object_ids: List) -> None:
         """Assing object to user.
 
-        An object can be folder(s) or draft(s).
+        An object can be folder(s) or templates(s).
 
         :param user_id: ID of user to update
         :param collection: collection where to remove the id from
         :param object_ids: ID or list of IDs of folder(s) to assign
-        :raises: HTTPBadRequest if assigning drafts/folders to user was not successful
+        :raises: HTTPBadRequest if assigning templates/folders to user was not successful
         returns: None
         """
         try:
@@ -1005,7 +1161,7 @@ class UserOperator:
                 "user", user_id, {collection: {"$each": object_ids, "$position": 0}}
             )
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting user: {error}"
+            reason = f"Error happened while assigning objects to user: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -1019,7 +1175,7 @@ class UserOperator:
     async def remove_objects(self, user_id: str, collection: str, object_ids: List) -> None:
         """Remove object from user.
 
-        An object can be folder(s) or draft(s).
+        An object can be folder(s) or template(s).
 
         :param user_id: ID of user to update
         :param collection: collection where to remove the id from
@@ -1031,8 +1187,8 @@ class UserOperator:
         try:
             await self._check_user_exists(user_id)
             for obj in object_ids:
-                if collection == "drafts":
-                    remove_content = {"drafts": {"accessionId": obj}}
+                if collection == "templates":
+                    remove_content = {"templates": {"accessionId": obj}}
                 else:
                     remove_content = {"folders": obj}
                 await self.db_service.remove("user", user_id, remove_content)
@@ -1085,4 +1241,143 @@ class UserOperator:
         """
         sequence = uuid4().hex
         LOG.debug("Generated user ID.")
+        return sequence
+
+
+class ProjectOperator:
+    """Operator class for handling database operations of project groups.
+
+    Operations are implemented with JSON format.
+    """
+
+    def __init__(self, db_client: AsyncIOMotorClient) -> None:
+        """Init db_service.
+
+        :param db_client: Motor client used for database connections. Should be
+        running on same loop with aiohttp, so needs to be passed from aiohttp
+        Application.
+        """
+        self.db_service = DBService(mongo_database, db_client)
+
+    async def create_project(self, project_number: str) -> str:
+        """Create new object project to database.
+
+        :param project_numer: project external ID received from AAI
+        :raises: HTTPBadRequest if error occurs during the process of insert
+        :returns: Project id for the project inserted to database
+        """
+        project_data: Dict[str, Union[str, List[str]]] = dict()
+
+        try:
+            existing_project_id = await self.db_service.exists_project_by_external_id(project_number)
+            if existing_project_id:
+                LOG.info(f"Project with external ID: {project_number} exists, no need to create.")
+                return existing_project_id
+            else:
+                project_id = self._generate_project_id()
+                project_data["templates"] = []
+                project_data["projectId"] = project_id
+                project_data["externalId"] = project_number
+                insert_success = await self.db_service.create("project", project_data)
+                if not insert_success:
+                    reason = "Inserting project to database failed for some reason."
+                    LOG.error(reason)
+                    raise web.HTTPBadRequest(reason=reason)
+                else:
+                    LOG.info(f"Inserting project with id {project_id} to database succeeded.")
+                    return project_id
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while inserting project: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+    async def _check_project_exists(self, project_id: str) -> None:
+        """Check the existence of a project by its id in the database.
+
+        :param project_id: Identifier of project to find.
+        :raises: HTTPNotFound if project does not exist
+        :returns: None
+        """
+        exists = await self.db_service.exists("project", project_id)
+        if not exists:
+            reason = f"Project with id {project_id} was not found."
+            LOG.error(reason)
+            raise web.HTTPNotFound(reason=reason)
+
+    async def assign_templates(self, project_id: str, object_ids: List) -> None:
+        """Assing templates to project.
+
+        :param project_id: ID of project to update
+        :param object_ids: ID or list of IDs of template(s) to assign
+        :raises: HTTPBadRequest if assigning templates to project was not successful
+        returns: None
+        """
+        try:
+            await self._check_project_exists(project_id)
+            assign_success = await self.db_service.append(
+                "project", project_id, {"templates": {"$each": object_ids, "$position": 0}}
+            )
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting project: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        if not assign_success:
+            reason = "Assigning templates to project failed."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        LOG.info(f"Assigning templates={object_ids} to project={project_id} succeeded.")
+
+    async def remove_templates(self, project_id: str, object_ids: List) -> None:
+        """Remove templates from project.
+
+        :param project_id: ID of project to update
+        :param object_ids: ID or list of IDs of template(s) to remove
+        :raises: HTTPBadRequest if db connection fails
+        returns: None
+        """
+        remove_content: Dict
+        try:
+            await self._check_project_exists(project_id)
+            for obj in object_ids:
+                remove_content = {"templates": {"accessionId": obj}}
+                await self.db_service.remove("project", project_id, remove_content)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while removing templates from project: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        LOG.info(f"Removing templates={object_ids} from project={project_id} succeeded.")
+
+    async def update_project(self, project_id: str, patch: List) -> str:
+        """Update project object in database.
+
+        :param project_id: ID of project to update
+        :param patch: Patch operations determined in the request
+        :returns: ID of the project updated to database
+        """
+        try:
+            await self._check_project_exists(project_id)
+            update_success = await self.db_service.patch("project", project_id, patch)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting project: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        if not update_success:
+            reason = "Updating project in database failed for some reason."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        else:
+            LOG.info(f"Updating project={project_id} to database succeeded.")
+            return project_id
+
+    def _generate_project_id(self) -> str:
+        """Generate random project id.
+
+        :returns: str with project id
+        """
+        sequence = uuid4().hex
+        LOG.debug("Generated project ID.")
         return sequence

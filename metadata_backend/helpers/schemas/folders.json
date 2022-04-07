@@ -3,9 +3,14 @@
   "title": "Folder schema containing submitted metadata objects",
   "required": [
     "name",
-    "description"
+    "description",
+    "projectId"
   ],
   "properties": {
+    "projectId": {
+      "type": "string",
+      "title": "Owner project of the folder"
+    },
     "folderId": {
       "type": "string",
       "title": "Folder Id"
@@ -13,6 +18,10 @@
     "name": {
       "type": "string",
       "title": "Folder Name"
+    },
+    "text_name": {
+      "type": "string",
+      "title": "Searchable Folder Name, used for indexing"
     },
     "description": {
       "type": "string",
@@ -22,70 +31,60 @@
       "type": "integer",
       "title": "Unix time stamp of creation, used for indexing"
     },
+    "datePublished": {
+      "type": "integer",
+      "title": "Unix time stamp of publishing, used for indexing"
+    },
     "published": {
       "type": "boolean",
       "title": "Published Folder"
     },
     "doiInfo": {
       "type": "object",
-      "title": "The DOI info schema",
+      "title": "Datacite DOI Registration Information",
       "required": [
         "creators",
-        "subjects"
+        "subjects",
+        "keywords"
       ],
       "properties": {
         "creators": {
           "type": "array",
-          "title": "List of creators",
+          "title": "Creators",
+          "description": "The main researcher(s) involved in producing the data, or the author(s) of the publication.",
           "items": {
             "type": "object",
-            "title": "Main researchers involved with data or the authors of the publication",
+            "title": "Main researcher(s) involved with data or the author(s) of the publication.",
+            "required": [
+              "givenName",
+              "familyName"
+            ],
             "properties": {
-              "name": {
-                "type": "string",
-                "title": "Full name of creator (format: Family, Given)"
-              },
-              "nameType": {
-                "type": "string",
-                "title": "Type of name"
-              },
               "givenName": {
                 "type": "string",
-                "title": "First name"
+                "title": "Given Name"
               },
               "familyName": {
                 "type": "string",
-                "title": "Last name"
+                "title": "Family Name"
               },
-              "nameIdentifiers": {
-                "type": "array",
-                "title": "List of name identifiers",
-                "items": {
-                  "type": "object",
-                  "title": "Name identifier object",
-                  "properties": {
-                    "schemeUri": {
-                      "type": ["string", "null"],
-                      "title": "URI (location) of the name identifier scheme"
-                    },
-                    "nameIdentifier": {
-                      "type": ["string", "null"],
-                      "title": "URI (location) of name identifier"
-                    },
-                    "nameIdentifierScheme": {
-                      "type": ["string", "null"],
-                      "title": "Name of name identifier scheme"
-                    }
-                  }
-                },
-                "uniqueItems": true
+              "name": {
+                "type": "string",
+                "description": "This field will be constructed based from Given Name and Family Name.",
+                "title": "Full name."
+              },
+              "nameType": {
+                "type": "string",
+                "title": "Type of name",
+                "const": "Personal"
               },
               "affiliation": {
                 "type": "array",
-                "title": "List of affiliations",
+                "title": "Affiliations",
+                "description": "The organizational or institutional affiliation of the creator. Upon filling the form with the organization or institution suggestion will be made from Research Organization Registry (ROR) Community API.",
                 "items": {
                   "type": "object",
-                  "title": "Name affiliation object",
+                  "title": "Affiliation Details",
                   "properties": {
                     "name": {
                       "type": "string",
@@ -93,15 +92,46 @@
                     },
                     "schemeUri": {
                       "type": "string",
+                      "description": "Name identifier scheme. This will default to https://ror.org/ .",
                       "title": "URI (location) of the affiliation scheme"
                     },
                     "affiliationIdentifier": {
                       "type": "string",
+                      "description": "URI location based on the URI scheme of the name identifier this will be pre-filled based on  https://ror.org/name.",
                       "title": "Location of affiliation identifier"
                     },
                     "affiliationIdentifierScheme": {
                       "type": "string",
+                      "description": "Identifier scheme name. This will default to ROR.",
                       "title": "Name of affiliation identifier scheme"
+                    }
+                  }
+                },
+                "uniqueItems": true
+              },
+              "nameIdentifiers": {
+                "type": "array",
+                "title": "Creator Identifiers",
+                "description": "Uniquely identifies the creator, according to various schemas, e.g. ORCID, ROR or ISNI. Use name identifier expressed as URL.",
+                "items": {
+                  "type": "object",
+                  "title": "Creator Name Identifier",
+                  "properties": {
+                    "schemeUri": {
+                      "type": "string",
+                      "description": "Depending on the name identifier scheme e.g. https://isni.org/ or https://orcid.org/ or https://ror.org/ or https://www.grid.ac/ .",
+                      "title": "Scheme of the URI (location) of the name identifier",
+                      "format": "uri"
+                    },
+                    "nameIdentifier": {
+                      "type": "string",
+                      "description": "URI location based on the URI scheme of the name identifier e.g. https://orcid.org/nameIdentifier .",
+                      "title": "URI (location) of name identifier. "
+                    },
+                    "nameIdentifierScheme": {
+                      "type": "string",
+                      "description": "Identifier scheme name e.g. ORCID, ROR or ISNI .",
+                      "title": "Name of identifier scheme."
                     }
                   }
                 },
@@ -114,85 +144,145 @@
         },
         "subjects": {
           "type": "array",
-          "title": "List of subject identifiers specified by FOS",
+          "title": "Subjects",
+          "description": "Subject, classification code, or key phrase describing the resources specified by OECD Fields of Science and Technology (FOS)",
           "items": {
             "type": "object",
-            "title": "Subject objects",
+            "title": "Subjects",
             "required": [
               "subject"
             ],
             "properties": {
               "subject": {
                 "type": "string",
-                "title": "FOS identifier"
+                "title": "FOS identifier",
+                "enum": [
+                  "FOS: Agricultural biotechnology",
+                  "FOS: Agricultural sciences",
+                  "FOS: Agriculture, forestry, and fisheries",
+                  "FOS: Animal and dairy science",
+                  "FOS: Arts (arts, history of arts, performing arts, music)",
+                  "FOS: Basic medicine",
+                  "FOS: Biological sciences",
+                  "FOS: Chemical engineering",
+                  "FOS: Chemical sciences",
+                  "FOS: Civil engineering",
+                  "FOS: Clinical medicine",
+                  "FOS: Computer and information sciences",
+                  "FOS: Earth and related environmental sciences",
+                  "FOS: Economics and business",
+                  "FOS: Educational sciences",
+                  "FOS: Electrical engineering, electronic engineering, information engineering",
+                  "FOS: Engineering and technology",
+                  "FOS: Environmental biotechnology",
+                  "FOS: Environmental engineering",
+                  "FOS: Health sciences",
+                  "FOS: History and archaeology",
+                  "FOS: Humanities",
+                  "FOS: Industrial biotechnology",
+                  "FOS: Languages and literature",
+                  "FOS: Law",
+                  "FOS: Materials engineering",
+                  "FOS: Mathematics",
+                  "FOS: Mechanical engineering",
+                  "FOS: Media and communications",
+                  "FOS: Medical and health sciences",
+                  "FOS: Medical biotechnology",
+                  "FOS: Medical engineering",
+                  "FOS: Nano-technology",
+                  "FOS: Natural sciences",
+                  "FOS: Other agricultural sciences",
+                  "FOS: Other engineering and technologies",
+                  "FOS: Other humanities",
+                  "FOS: Other medical sciences",
+                  "FOS: Other natural sciences",
+                  "FOS: Other social sciences",
+                  "FOS: Philosophy, ethics and religion",
+                  "FOS: Physical sciences",
+                  "FOS: Political science",
+                  "FOS: Psychology",
+                  "FOS: Social and economic geography",
+                  "FOS: Social sciences",
+                  "FOS: Sociology",
+                  "FOS: Veterinary science"
+                ]
               },
               "subjectScheme": {
-                "type": "string",
-                "title": "Subject scheme name"
+                "title": "Fields of Science and Technology (FOS) scheme",
+                "type": "string"
               }
             },
-            "additionalProperties": true
+            "additionalProperties": false
           },
           "uniqueItems": true
         },
+        "keywords": {
+          "type": "string",
+          "title": "Keywords",
+          "description": "A list of keywords or tags describing the resources. It is recommended to use a controlled vocabulary, ontology or classification when choosing keywords. Multiple keywords can be added, separating them by comma."
+        },
         "contributors": {
           "type": "array",
-          "title": "List of contributors",
+          "title": "Contributors",
+          "description": "The person(s) responsible for contributing to the development of the dataset.",
           "items": {
             "type": "object",
-            "title": "The institution or person responsible for contributing to the developement of the dataset",
+            "title": "Contributor",
             "required": [
+              "givenName",
+              "familyName",
               "contributorType"
             ],
             "properties": {
-              "name": {
-                "type": "string",
-                "title": "Full name of contributor (format: Family, Given)"
-              },
-              "nameType": {
-                "type": "string",
-                "title": "Type of name"
-              },
               "givenName": {
                 "type": "string",
-                "title": "First name"
+                "title": "Given Name"
               },
               "familyName": {
                 "type": "string",
-                "title": "Last name"
+                "title": "Family Name"
+              },
+              "name": {
+                "type": "string",
+                "description": "This field will be constructed based from Given Name and Family Name.",
+                "title": "Full name."
+              },
+              "nameType": {
+                "type": "string",
+                "title": "Type of name",
+                "const": "Personal"
               },
               "contributorType": {
                 "type": "string",
-                "title": "Type of contributor"
-              },
-              "nameIdentifiers": {
-                "type": "array",
-                "title": "List of name identifiers",
-                "items": {
-                  "type": "object",
-                  "title": "Name identifier object",
-                  "properties": {
-                    "schemeUri": {
-                      "type": ["string", "null"],
-                      "title": "URI (location) of the name identifier scheme"
-                    },
-                    "nameIdentifier": {
-                      "type": ["string", "null"],
-                      "title": "Location of name identifier"
-                    },
-                    "nameIdentifierScheme": {
-                      "type": ["string", "null"],
-                      "title": "Name of name identifier scheme"
-                    }
-                  }
-                }
+                "title": "Type of contributor",
+                "enum": [
+                  "Contact Person",
+                  "Data Collector",
+                  "Data Curator",
+                  "Data Manager",
+                  "Distributor",
+                  "Editor",
+                  "Producer",
+                  "Project Leader",
+                  "Project Manager",
+                  "Project Member",
+                  "Related Person",
+                  "Research Group",
+                  "Researcher",
+                  "Rights Holder",
+                  "Sponsor",
+                  "Supervisor",
+                  "Work Package Leader",
+                  "Other"
+                ]
               },
               "affiliation": {
                 "type": "array",
-                "title": "List of affiliations",
+                "title": "Affiliations",
+                "description": "The organizational or institutional affiliation of the creator. Upon filling the form with the organization or institution suggestion will be made from Research Organization Registry (ROR) Community API.",
                 "items": {
                   "type": "object",
-                  "title": "Name affiliation object",
+                  "title": "Affiliation Details",
                   "properties": {
                     "name": {
                       "type": "string",
@@ -200,18 +290,50 @@
                     },
                     "schemeUri": {
                       "type": "string",
+                      "description": "Name identifier scheme. This will default to https://ror.org/ .",
                       "title": "URI (location) of the affiliation scheme"
                     },
                     "affiliationIdentifier": {
                       "type": "string",
+                      "description": "URI location based on the URI scheme of the name identifier this will be pre-filled based on  https://ror.org/name.",
                       "title": "Location of affiliation identifier"
                     },
                     "affiliationIdentifierScheme": {
                       "type": "string",
+                      "description": "Identifier scheme name. This will default to ROR.",
                       "title": "Name of affiliation identifier scheme"
                     }
                   }
-                }
+                },
+                "uniqueItems": true
+              },
+              "nameIdentifiers": {
+                "type": "array",
+                "title": "Contributor Identifiers",
+                "description": "Uniquely identifies the contributor, according to various schemas, e.g. ORCID, ROR or ISNI. Use name identifier expressed as URL.",
+                "items": {
+                  "type": "object",
+                  "title": "Contributor Name Identifier",
+                  "properties": {
+                    "schemeUri": {
+                      "type": "string",
+                      "description": "Depending on the name identifier scheme e.g. https://isni.org/ or https://orcid.org/ or https://ror.org/ or https://www.grid.ac/ .",
+                      "title": "Scheme of the URI (location) of the name identifier",
+                      "format": "uri"
+                    },
+                    "nameIdentifier": {
+                      "type": "string",
+                      "description": "URI location based on the URI scheme of the name identifier e.g. https://orcid.org/nameIdentifier .",
+                      "title": "URI (location) of name identifier. "
+                    },
+                    "nameIdentifierScheme": {
+                      "type": "string",
+                      "description": "Identifier scheme name e.g. ORCID, ROR or ISNI .",
+                      "title": "Name of identifier scheme."
+                    }
+                  }
+                },
+                "uniqueItems": true
               }
             },
             "additionalProperties": false
@@ -220,10 +342,11 @@
         },
         "dates": {
           "type": "array",
-          "title": "List of relevant dates to publication",
+          "title": "Dates",
+          "description": "List of relevant dates to publication. The type of date can vary and it is recommended to add information if appropriate to distinguish between dates.",
           "items": {
             "type": "object",
-            "title": "Date object",
+            "title": "Date",
             "required": [
               "date",
               "dateType"
@@ -231,15 +354,31 @@
             "properties": {
               "date": {
                 "type": "string",
-                "title": "A standard format for a date value"
+                "title": "Date",
+                "description": "A standard format for a date value."
               },
               "dateType": {
                 "type": "string",
-                "title": "Relevance of the date"
+                "title": "Date Type",
+                "description": "Relevance of the date for the resources being submitted.",
+                "enum": [
+                  "Accepted",
+                  "Available",
+                  "Collected",
+                  "Copyrighted",
+                  "Created",
+                  "Issued",
+                  "Submitted",
+                  "Updated",
+                  "Valid",
+                  "Withdrawn",
+                  "Other"
+                ]
               },
               "dateInformation": {
                 "type": "string",
-                "title": "Specific event of the date"
+                "title": "Date Information",
+                "description": "Specific information about the date, if appropriate."
               }
             },
             "additionalProperties": false
@@ -248,22 +387,31 @@
         },
         "descriptions": {
           "type": "array",
-          "title": "List of descriptions",
+          "title": "Descriptions",
+          "description": "Additional information about the resources that does not fit in any of the other categories, or general descriptions that are supplemental to the descriptions added for Study or Datasets.",
           "items": {
             "type": "object",
-            "title": "Description object",
+            "title": "description",
             "properties": {
-              "lang": {
-                "type": "string",
-                "title": "Language code of the description"
-              },
               "description": {
                 "type": "string",
-                "title": "Additional information that does not fit in any of the other categories"
+                "title": "description"
               },
               "descriptionType": {
                 "type": "string",
-                "title": "Type of description"
+                "title": "Description Type",
+                "enum": [
+                  "Abstract",
+                  "Methods",
+                  "Series Information",
+                  "Table Of Contents",
+                  "Technical Info",
+                  "Other"
+                ]
+              },
+              "lang": {
+                "type": "string",
+                "title": "Language"
               }
             },
             "additionalProperties": false
@@ -272,18 +420,20 @@
         },
         "geoLocations": {
           "type": "array",
-          "title": "List of GeoLocations",
+          "title": "GeoLocations",
+          "description": "Spatial region or named place where the data was gathered or where the resources are focused.",
           "items": {
             "type": "object",
-            "title": "GeoLocation object",
+            "title": "GeoLocation",
             "properties": {
               "geoLocationPlace": {
                 "type": "string",
-                "title": "Spatial region or named place where the data was gathered"
+                "title": "Geolocation Place"
               },
               "geoLocationPoint": {
                 "type": "object",
-                "title": "A point containing a single latitude-longitude pair",
+                "title": "Geolocation Point",
+                "description": "A point location in space. A point contains a single longitude-latitude pair.",
                 "properties": {
                   "pointLongitude": {
                     "type": "string",
@@ -298,23 +448,24 @@
               },
               "geoLocationBox": {
                 "type": "object",
-                "title": "A box determined by two longitude and two latitude borders",
+                "title": "Geolocation Box",
+                "description": "The spatial limits of a box. A box is defined by two geographic points. Left low corner and right upper corner. Each point is defined by its longitude and latitude.",
                 "properties": {
                   "westBoundLongitude": {
                     "type": "string",
-                    "title": "Longitude coordinate of west bound"
+                    "title": "Longitude coordinate of west bound."
                   },
                   "eastBoundLongitude": {
                     "type": "string",
-                    "title": "Longitude coordinate of east bound"
+                    "title": "Longitude coordinate of east bound."
                   },
                   "southBoundLatitude": {
                     "type": "string",
-                    "title": "Latitude coordinate of south bound"
+                    "title": "Latitude coordinate of south bound."
                   },
                   "northBoundLatitude": {
                     "type": "string",
-                    "title": "Latitude coordinate of north bound"
+                    "title": "Latitude coordinate of north bound."
                   }
                 }
               },
@@ -343,38 +494,202 @@
         },
         "language": {
           "type": "string",
-          "title": "Code of the primary language of the resource"
-        },
-        "alternateIdentifiers": {
-          "type": "array",
-          "title": "List of alternate identifiers",
-          "items": {
-            "type": "object",
-            "title": "An identifier or identifiers other than the primary Identifier of the resource",
-            "required": [
-              "alternateIdentifier",
-              "alternateIdentifierType"
-            ],
-            "properties": {
-              "alternateIdentifier": {
-                "type": "string",
-                "title": "Alternate identifier info"
-              },
-              "alternateIdentifierType": {
-                "type": "string",
-                "title": "Type of alternate identifier"
-              }
-            },
-            "additionalProperties": false
-          },
-          "uniqueItems": true
+          "title": "Language",
+          "description": "Primary language of the submitted resources.",
+          "enum": [
+            "Abkhaz",
+            "Afar",
+            "Afrikaans",
+            "Akan",
+            "Albanian",
+            "Amharic",
+            "Arabic",
+            "Aragonese",
+            "Armenian",
+            "Assamese",
+            "Avaric",
+            "Avestan",
+            "Aymara",
+            "Azerbaijani",
+            "Bambara",
+            "Bashkir",
+            "Basque",
+            "Belarusian",
+            "Bengali",
+            "Bihari",
+            "Bislama",
+            "Bosnian",
+            "Breton",
+            "Bulgarian",
+            "Burmese",
+            "Catalan",
+            "Chamorro",
+            "Chechen",
+            "Chichewa",
+            "Chinese",
+            "Chuvash",
+            "Cornish",
+            "Corsican",
+            "Cree",
+            "Croatian",
+            "Czech",
+            "Danish",
+            "Divehi",
+            "Dutch",
+            "Dzongkha",
+            "English",
+            "Esperanto",
+            "Estonian",
+            "Ewe",
+            "Faroese",
+            "Fijian",
+            "Finnish",
+            "French",
+            "Fula",
+            "Galician",
+            "Ganda",
+            "Georgian",
+            "German",
+            "Greek",
+            "Guaraní",
+            "Gujarati",
+            "Haitian",
+            "Hausa",
+            "Hebrew",
+            "Herero",
+            "Hindi",
+            "Hiri Motu",
+            "Hungarian",
+            "Icelandic",
+            "Ido",
+            "Igbo",
+            "Indonesian",
+            "Interlingua",
+            "Interlingue",
+            "Inuktitut",
+            "Inupiaq",
+            "Irish",
+            "Italian",
+            "Japanese",
+            "Javanese",
+            "Kalaallisut",
+            "Kannada",
+            "Kanuri",
+            "Kashmiri",
+            "Kazakh",
+            "Khmer",
+            "Kikuyu",
+            "Kinyarwanda",
+            "Kirundi",
+            "Komi",
+            "Kongo",
+            "Korean",
+            "Kurdish",
+            "Kwanyama",
+            "Kyrgyz",
+            "Lao",
+            "Latin",
+            "Latvian",
+            "Limburgish",
+            "Lingala",
+            "Lithuanian",
+            "Luba-Katanga",
+            "Luxembourgish",
+            "Macedonian",
+            "Malagasy",
+            "Malay",
+            "Malayalam",
+            "Maltese",
+            "Manx",
+            "Māori",
+            "Marathi",
+            "Marshallese",
+            "Mongolian",
+            "Nauru",
+            "Navajo",
+            "Ndonga",
+            "Nepali",
+            "Northern Ndebele",
+            "Northern Sami",
+            "Norwegian Bokmål",
+            "Norwegian Nynorsk",
+            "Norwegian",
+            "Nuosu",
+            "Occitan",
+            "Ojibwe",
+            "Old Church Slavonic",
+            "Oriya",
+            "Oromo",
+            "Ossetian",
+            "Pāli",
+            "Panjabi",
+            "Pashto",
+            "Persian",
+            "Polish",
+            "Portuguese",
+            "Quechua",
+            "Romanian",
+            "Romansh",
+            "Russian",
+            "Samoan",
+            "Sango",
+            "Sanskrit",
+            "Sardinian",
+            "Scottish Gaelic",
+            "Serbian",
+            "Shona",
+            "Sindhi",
+            "Sinhala",
+            "Slovak",
+            "Slovenian",
+            "Somali",
+            "Southern Ndebele",
+            "Southern Sotho",
+            "Spanish",
+            "Sundanese",
+            "Swahili",
+            "Swati",
+            "Swedish",
+            "Tagalog",
+            "Tahitian",
+            "Tajik",
+            "Tamil",
+            "Tatar",
+            "Telugu",
+            "Thai",
+            "Tibetan",
+            "Tigrinya",
+            "Tonga",
+            "Tsonga",
+            "Tswana",
+            "Turkish",
+            "Turkmen",
+            "Twi",
+            "Ukrainian",
+            "Urdu",
+            "Uyghur",
+            "Uzbek",
+            "Venda",
+            "Vietnamese",
+            "Volapük",
+            "Walloon",
+            "Welsh",
+            "Western Frisian",
+            "Wolof",
+            "Xhosa",
+            "Yiddish",
+            "Yoruba",
+            "Zhuang",
+            "Zulu"
+          ]
         },
         "relatedIdentifiers": {
           "type": "array",
-          "title": "List of related identifiers",
+          "title": "Related Identifiers",
+          "description": "Information about a resource related to the one being registered, primarily used to provide series information or a text citation where the related resource does not have an identifier. It is also optional to provide such an identifier.",
           "items": {
             "type": "object",
-            "title": "Identifier of related resources",
+            "title": "Identifier of related resource",
             "required": [
               "relatedIdentifier",
               "relatedIdentifierType",
@@ -383,31 +698,168 @@
             "properties": {
               "relatedIdentifier": {
                 "type": "string",
-                "title": "Related identifier info"
+                "title": "Identifier",
+                "description": "These must be globally unique identifiers and correspond to the type selected. e.g. 10.2022/example.78m9865 for DOI identifier Type"
               },
               "relatedIdentifierType": {
                 "type": "string",
-                "title": "Type of related identifier"
+                "title": "Identifier Type",
+                "enum": [
+                  "ARK",
+                  "arXiv",
+                  "bibcode",
+                  "DOI",
+                  "EAN13",
+                  "EISSN",
+                  "Handle",
+                  "IGSN",
+                  "ISBN",
+                  "ISSN",
+                  "ISTC",
+                  "LISSN",
+                  "LSID",
+                  "PMID",
+                  "PURL",
+                  "UPC",
+                  "URL",
+                  "URN",
+                  "w3id"
+                ]
               },
               "relationType": {
                 "type": "string",
-                "title": "Specification of the relation"
+                "title": "Relationship Type",
+                "enum": [
+                  "Cites",
+                  "Is Cited By",
+                  "Compiles",
+                  "Is Compiled By",
+                  "Continues",
+                  "Is Continued By",
+                  "Describes",
+                  "Is Described By",
+                  "Documents",
+                  "Is Documented By",
+                  "Is Derived From",
+                  "Is Source Of",
+                  "Has Metadata",
+                  "Is Metadata For",
+                  "Has Part",
+                  "Is Part Of",
+                  "Is Supplemented By",
+                  "Is Supplement To",
+                  "Obsoletes",
+                  "Is Obsoleted By",
+                  "References",
+                  "Is Referenced By",
+                  "Requires",
+                  "Is Required By",
+                  "Reviews",
+                  "Is Reviewed By",
+                  "Has Version",
+                  "Is Version Of",
+                  "Is New version Of",
+                  "Is Previous Version Of",
+                  "Is Published In",
+                  "Is Variant Form Of",
+                  "Is Original Form Of",
+                  "Is Identical To"
+                ]
               },
               "relatedMetadataScheme": {
                 "type": "string",
-                "title": "Scheme of related metadata"
+                "title": "Related Metadata Scheme",
+                "description": "To be used only with this relation pair: (Has Metadata/Is Metadata For). Example DDI-L"
               },
               "schemeUri": {
                 "type": "string",
-                "title": "URI (location) of the related metadata scheme"
+                "title": "Related Metadata Scheme URI",
+                "description": "To be used only with this relation pair: (Has Metadata/Is Metadata For). Example: http://www.ddialliance.org/Specification/DDI-Lifecycle/3.1/XMLSchema/instance.xsd"
               },
               "schemeType": {
                 "type": "string",
-                "title": "Type of the related metadata scheme"
+                "title": "Related Metadata Scheme Type",
+                "description": "To be used only with this relation pair: (Has Metadata/Is Metadata For). Examples: XSD, DDT, Turtle"
               },
               "resourceTypeGeneral": {
                 "type": "string",
-                "title": "Optional general type name"
+                "title": "Resource Type",
+                "enum": [
+                  "Audiovisual",
+                  "Book",
+                  "Book Chapter",
+                  "Collection",
+                  "Computational Notebook",
+                  "Conference Paper",
+                  "Conference Proceeding",
+                  "Data Paper",
+                  "Dataset",
+                  "Dissertation",
+                  "Event",
+                  "Image",
+                  "Interactive Resource",
+                  "Journal",
+                  "Journal Article",
+                  "Model",
+                  "Output Management Plan",
+                  "Peer Review",
+                  "Physical Object",
+                  "Preprint",
+                  "Report",
+                  "Service",
+                  "Software",
+                  "Sound",
+                  "Standard",
+                  "Text",
+                  "Workflow",
+                  "Other"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "uniqueItems": true
+        },
+        "alternateIdentifiers": {
+          "type": "array",
+          "title": "Alternate Identifiers",
+          "description": "An identifier or identifiers other than the primary or related identifier applied to the resources being registered. EGA identifier(s) obtained, that can be used as an alternative to the current resources.",
+          "items": {
+            "type": "object",
+            "title": "Identifier(s) other than the primary identifier of the resources",
+            "required": [
+              "alternateIdentifier",
+              "alternateIdentifierType"
+            ],
+            "properties": {
+              "alternateIdentifier": {
+                "type": "string",
+                "title": "Alternate Identifier"
+              },
+              "alternateIdentifierType": {
+                "type": "string",
+                "title": "Alternate Identifier Type",
+                "enum": [
+                  "ARK",
+                  "arXiv",
+                  "bibcode",
+                  "DOI",
+                  "EAN13",
+                  "EISSN",
+                  "Handle",
+                  "IGSN",
+                  "ISBN",
+                  "ISSN",
+                  "ISTC",
+                  "LISSN",
+                  "LSID",
+                  "PMID",
+                  "PURL",
+                  "UPC",
+                  "URL",
+                  "URN",
+                  "w3id"
+                ]
               }
             },
             "additionalProperties": false
@@ -416,26 +868,29 @@
         },
         "sizes": {
           "type": "array",
-          "title": "List of sizes",
+          "title": "Sizes",
+          "description": "Size (e.g., bytes, pages, inches, etc.) or duration (extent), e.g., hours, minutes, days, etc., of a resources. Examples: '15 pages', '6 MB', '45 minutes'.",
           "items": {
             "type": "string",
-            "title": "Unstructured size information about the resource"
+            "title": "Size"
           }
         },
         "formats": {
           "type": "array",
-          "title": "List of formats",
+          "title": "Formats",
+          "description": "Use file extension or MIME type where possible, e.g., PDF, XML, MPG or application/pdf, text/xml, video/mpeg. We will pre-fill some of them based on what was filled in metadata.",
           "items": {
             "type": "string",
-            "title": "Technical format of the resource"
+            "title": "Format"
           }
         },
         "fundingReferences": {
           "type": "array",
-          "title": "List of funding references",
-          "itmes": {
+          "title": "Funding References",
+          "description": "It is recommended to supply funding information when financial support has been received. The funder will be identified by their Research Organization Registry (ROR).",
+          "items": {
             "type": "object",
-            "title": "Information about financial support for the resource",
+            "title": "Information about financial support for producing the resources",
             "required": [
               "funderName",
               "funderIdentifier",
@@ -444,31 +899,39 @@
             "properties": {
               "funderName": {
                 "type": "string",
-                "title": "Name of the funding provider"
+                "title": "Funder Name"
               },
               "funderIdentifier": {
                 "type": "string",
-                "title": "Unique identifier for funding entity"
+                "title": "Funder Identifier",
+                "description": "Unique identifier for funding entity"
               },
               "funderIdentifierType": {
                 "type": "string",
-                "title": "Type of identifier for funding entity"
-              },
-              "schemeUri": {
-                "type": ["string", "null"],
-                "title": "URI (location) of scheme for funder identifier"
+                "title": "Funder Identity Type",
+                "description": "The type of funder identifier, one of Crossref Funder ID, GRID, ISNI, or ROR.",
+                "enum": [
+                  "Crossref Funder ID",
+                  "GRID",
+                  "ISNI",
+                  "ROR",
+                  "Other"
+                ]
               },
               "awardNumber": {
-                "type": ["string", "null"],
-                "title": "The code assigned by the funder to a sponsored award"
+                "type": "string",
+                "title": "Award Number",
+                "description": "The code assigned by the funder to a sponsored award."
               },
               "awardTitle": {
-                "type": ["string", "null"],
-                "title": "The human readable title of the award"
+                "type": "string",
+                "title": "Award Title",
+                "description": "The human readable title of the award."
               },
               "awardUri": {
-                "type": ["string", "null"],
-                "title": "URI (location) of the award"
+                "type": "string",
+                "title": "Award URI",
+                "description": "The URI leading to a page provided by the funder for more information about the award (grant)."
               }
             },
             "additionalProperties": false
@@ -482,21 +945,76 @@
       "type": "object",
       "title": "The extra DOI info schema",
       "properties": {
-        "identifier": {
+        "studyIdentifier": {
           "type": "object",
-          "title": "identifier object",
           "required": [
-            "identifierType",
-            "doi"
+            "identifier",
+            "url"
           ],
           "properties": {
-            "identifierType": {
-              "type": "string",
-              "title": "Type of identifier (= DOI)"
+            "identifier": {
+              "type": "object",
+              "title": "identifier object",
+              "required": [
+                "identifierType",
+                "doi"
+              ],
+              "properties": {
+                "identifierType": {
+                  "type": "string",
+                  "title": "Type of identifier (= DOI)"
+                },
+                "doi": {
+                  "type": "string",
+                  "title": "A persistent identifier for a resource"
+                }
+              }
             },
-            "doi": {
+            "url": {
               "type": "string",
-              "title": "A persistent identifier for a resource"
+              "title": "URL of the digital location of the object"
+            },
+            "types": {
+              "type": "object",
+              "title": "Type info of the resource. Multiple types can be listed: ResourceTypeGeneral, schemaOrg etc."
+            }
+          }
+        },
+        "datasetIdentifiers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "identifier",
+              "url"
+            ],
+            "properties": {
+              "identifier": {
+                "type": "object",
+                "title": "identifier object",
+                "required": [
+                  "identifierType",
+                  "doi"
+                ],
+                "properties": {
+                  "identifierType": {
+                    "type": "string",
+                    "title": "Type of identifier (= DOI)"
+                  },
+                  "doi": {
+                    "type": "string",
+                    "title": "A persistent identifier for a resource"
+                  }
+                }
+              },
+              "url": {
+                "type": "string",
+                "title": "URL of the digital location of the object"
+              },
+              "types": {
+                "type": "object",
+                "title": "Type info of the resource. Multiple types can be listed: ResourceTypeGeneral, schemaOrg etc."
+              }
             }
           }
         },
@@ -504,28 +1022,9 @@
           "type": "string",
           "title": "Full name of publisher from Research Organization Registry"
         },
-        "resourceType": {
-          "type": "object",
-          "title": "Type info of the resource",
-          "required": [
-            "type",
-            "resourceTypeGeneral"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "title": "Name of resource type"
-            },
-            "resourceTypeGeneral": {
-              "type": "string",
-              "title": "Mandatory general type name"
-            }
-          },
-          "additionalProperties": false
-        },
-        "url": {
-          "type": "string",
-          "title": "URL of the digital location of the object"
+        "publicationYear": {
+          "type": "integer",
+          "title": "Publication Year"
         },
         "version": {
           "type": "string",
@@ -563,6 +1062,7 @@
                 "title": "Type of submission",
                 "enum": [
                   "XML",
+                  "CSV",
                   "Form"
                 ]
               }
@@ -601,6 +1101,7 @@
                 "title": "Type of submission",
                 "enum": [
                   "XML",
+                  "CSV",
                   "Form"
                 ]
               }

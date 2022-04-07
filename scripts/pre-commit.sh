@@ -3,9 +3,11 @@
 # Comment out pre-commit hooks you don't want to use
 
 echo "Running tox as a pre-commit hook"
-cd $(git rev-parse --show-toplevel) && tox -p auto
+root_dir=$(git rev-parse --show-toplevel)
 
-if [ $? -ne 0 ]; then
+cd "$root_dir" || exit 1
+
+if ! tox -r -p auto ; then
     echo "=============================="
     echo "Tests must pass before commit!"
     echo "Note: Tox also checks non-staged changes, so you might need to stash
@@ -13,17 +15,17 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-command -v misspell > /dev/null 2>&1 || echo "Misspell not installed, not running as pre-commit hook" && exit 0
-echo "Running misspell as a pre-commit hook"
-# Checking misspell against files and folder not in .gitignore
-files=$(git ls-tree HEAD | awk '{print $4}' | tr '\n' ' ')
-output=$(cd $(git rev-parse --show-toplevel) && misspell $files)
+if ! command -v pyspelling > /dev/null 2>&1; then
+    echo "pyspelling not installed, not running as pre-commit hook"
+    exit 0
+fi
 
-if [[ $output ]]; then
+echo "Running pyspelling as a pre-commit hook"
+# Checking pyspelling against files and folder not in .gitignore
+
+if ! pyspelling -v -c "$root_dir/.github/config/.spellcheck.yml"; then
     echo "=============================="
     echo "Check your spelling errors before commit!"
-    echo "You had following errors:"
-    echo $output
-    echo "To fix errors with one command, run: misspell -w $files"
+    echo "To fix errors with one command, run: pyspelling -v -c $root_dir/.github/config/.spellcheck.yml"
     exit 1
 fi

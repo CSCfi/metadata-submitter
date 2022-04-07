@@ -1,0 +1,4 @@
+title,alias,description,subjectId,bioSampleId,caseOrControl,gender,organismPart,cellLine,region,phenotype
+test sample,test1,A test sample metadata based on the EGA submitter portal format,123456789abc,,,unknown,,,,some disease state
+another test sample,test2,Another test sample metadata,123456789abc,,,unknown,,,,some disease state
+third test sample,test3,One more test sample metadata,123456789abc,,,unknown,,,,some disease state

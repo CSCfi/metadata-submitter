@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from aiohttp import web
-from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
+from aiohttp.test_utils import AioHTTPTestCase
 
 from metadata_backend.server import init, main
 
@@ -33,19 +33,16 @@ class AppTestCase(AioHTTPTestCase):
         """Retrieve web Application for test."""
         return await init()
 
-    @unittest_run_loop
     async def test_init(self):
         """Test everything works in init()."""
         server = await self.get_application()
         self.assertIs(type(server), web.Application)
 
-    @unittest_run_loop
     async def test_api_routes_are_set(self):
         """Test correct amount of api (no frontend) routes is set."""
         server = await self.get_application()
         self.assertIs(len(server.router.resources()), 19)
 
-    @unittest_run_loop
     async def test_frontend_routes_are_set(self):
         """Test correct routes are set when frontend folder is exists."""
         frontend_static = "metadata_backend.server.frontend_static_files"

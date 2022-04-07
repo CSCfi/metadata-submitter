@@ -7,7 +7,7 @@ Currently in use:
 
 - ``MONGO_USERNAME`` - Username for mongodb
 - ``MONGO_PASSWORD`` - Password for mongodb
-- ``MONGO_HOST`` - Mongodb server hostname, with port specified
+- ``MONGO_HOST`` - MongoDB server hostname, with port specified
 
 Admin access is needed in order to create new databases during runtime.
 Default values are the same that are used in docker-compose file
@@ -22,7 +22,7 @@ module.
 Schema types (such as ``"submission"``, ``"study"``, ``"sample"``) are needed in
 different parts of the application.
 
-3) Mongodb query mappings
+3) MongoDB query mappings
 Mappings are needed to turn incoming REST api queries into mongodb queries.
 Change these if database structure changes.
 
@@ -33,10 +33,11 @@ and inserted here in projects Dockerfile.
 
 import json
 import os
-from pathlib import Path
 from distutils.util import strtobool
-from typing import Tuple
+from pathlib import Path
+from typing import Dict, Tuple
 
+import ujson
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from ..helpers.logger import LOG
@@ -105,9 +106,9 @@ def create_db_client() -> AsyncIOMotorClient:
 
 # 2) Load schema types and descriptions from json
 # Default schemas will be ENA schemas
-path_to_schema_file = Path(__file__).parent / "ena_schemas.json"
+path_to_schema_file = Path(__file__).parent / "schemas.json"
 with open(path_to_schema_file) as schema_file:
-    schema_types = json.load(schema_file)
+    schema_types = ujson.load(schema_file)
 
 
 # 3) Define mapping between url query parameters and mongodb queries
@@ -144,15 +145,36 @@ aai_config = {
     "redirect": f'{os.getenv("REDIRECT_URL")}'
     if bool(os.getenv("REDIRECT_URL"))
     else os.getenv("BASE_URL", "http://localhost:5430"),
-    "scope": "openid profile email",
-    "iss": os.getenv("ISS_URL", ""),
+    "scope": os.getenv("OIDC_SCOPE", "openid profile email"),
     "callback_url": f'{os.getenv("BASE_URL", "http://localhost:5430").rstrip("/")}/callback',
-    "auth_url": f'{os.getenv("AUTH_URL", "")}'
-    if bool(os.getenv("AUTH_URL"))
-    else f'{os.getenv("OIDC_URL", "").rstrip("/")}/authorize',
-    "token_url": f'{os.getenv("OIDC_URL", "").rstrip("/")}/token',
-    "user_info": f'{os.getenv("OIDC_URL", "").rstrip("/")}/userinfo',
-    "revoke_url": f'{os.getenv("OIDC_URL", "").rstrip("/")}/revoke',
-    "jwk_server": f'{os.getenv("JWK_URL", "")}',
-    "auth_referer": f'{os.getenv("AUTH_REFERER", "")}',
+    "oidc_url": os.getenv("OIDC_URL", ""),
+    "auth_method": os.getenv("AUTH_METHOD", "code"),
 }
+
+
+# 6) Set the DataCite REST API values
+
+doi_config = {
+    "api": os.getenv("DOI_API", ""),
+    "prefix": os.getenv("DOI_PREFIX", ""),
+    "user": os.getenv("DOI_USER", ""),
+    "key": os.getenv("DOI_KEY", ""),
+    "url": os.getenv("DATACITE_URL", "https://doi.org"),
+    "publisher": "CSC - IT Center for Science",
+    "discovery_url": os.getenv("DISCOVERY_URL", "https://etsin.fairdata.fi/dataset/"),
+}
+
+metax_config = {
+    "username": os.getenv("METAX_USER", "sd"),
+    "password": os.getenv("METAX_PASS", "test"),
+    "url": os.getenv("METAX_URL", "http://mockmetax:8002"),
+    "rest_route": "/rest/v2/datasets",
+    "publish_route": "/rpc/v2/datasets/publish_dataset",
+    "catalog_pid": "urn:nbn:fi:att:data-catalog-sd",
+}
+
+metax_reference_data: Dict = {"identifier_types": {}}
+with open(Path(__file__).parent.parent / "conf/metax_references/identifier_types.json", "r") as codes:
+    codes_list = json.load(codes)["codes"]
+    for code in codes_list:
+        metax_reference_data["identifier_types"][code["codeValue"].lower()] = code["uri"]

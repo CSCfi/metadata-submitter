@@ -1,0 +1,9 @@
+repos:
+- repo: local
+  hooks:
+    - id: custom-script-file
+      name: custom-script-file
+      entry: ./scripts/pre-commit.sh
+      language: script
+      pass_filenames: false
+      verbose: true

@@ -15,9 +15,9 @@ jobs:
     name: Integration Tests
     
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install requirements
@@ -26,21 +26,31 @@ jobs:
         
     - name: Start Services
       run: |
-        docker-compose up -d --build
+        docker-compose --env-file .env.example up -d --build 
         sleep 30
   
-    - name: Run Integration test
+    - name: Clear database
       run: |
         python tests/integration/clean_db.py
-        python tests/integration/run_tests.py
+      env:
+        MONGO_HOST: localhost:27017
+        MONGO_DATABASE: default
+        MONGO_AUTHDB: admin
 
+    - name: Run Integration test
+      run: |
+        python tests/integration/run_tests.py
+      env:
+        BASE_URL: http://localhost:5430
+        OIDC_URL: http://localhost:8000
+        
     - name: Collect logs from docker
       if: ${{ failure() }}
       run: docker-compose logs --no-color -t > tests/dockerlogs || true
 
     - name: Persist log files
       if: ${{ failure() }}
-      uses: actions/upload-artifact@v2.2.4
+      uses: actions/upload-artifact@v3
       with:
         name: test_debugging_help
         path: tests
@@ -55,13 +65,25 @@ jobs:
 
     - name: Start services with TLS enabled
       run: |
-        docker-compose -f docker-compose-tls.yml up -d
+        docker-compose -f docker-compose-tls.yml --env-file .env.example up -d
         sleep 30
+
+    - name: Clear database
+      run: |
+        python tests/integration/clean_db.py --tls
+      env:
+        MONGO_HOST: localhost:27017
+        MONGO_DATABASE: default
+        MONGO_AUTHDB: admin
+        MONGO_SSL: True
 
     - name: Run Integration test
       run: |
-        python tests/integration/clean_db.py --tls
         python tests/integration/run_tests.py
+      env:
+        BASE_URL: http://localhost:5430
+        OIDC_URL: http://localhost:8000
+        MONGO_SSL: True
 
     - name: Collect logs from docker
       if: ${{ failure() }}
@@ -69,7 +91,7 @@ jobs:
 
     - name: Persist log files
       if: ${{ failure() }}
-      uses: actions/upload-artifact@v2.2.4
+      uses: actions/upload-artifact@v3
       with:
         name: test_debugging_help
         path: tests

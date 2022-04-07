@@ -11,19 +11,23 @@ Service also validates submitted metadata objects against EGA XSD metadata model
 
 ## Install and run
 
-Requirements:
+### Requirements:
 - Python 3.8+
 - MongoDB
 - Docker + docker-compose
 
-For quick testing, launch both server and database with Docker by running `docker-compose up --build` (add `-d` flag to run containers in background). Server can then be found from `http://localhost:5430`.
+### For quick testing:
+- copy the contents of .env.example file to .env file
+- launch both server and database with Docker by running `docker-compose up --build` (add `-d` flag to run containers in background).
 
-For more detailed setup, do following:
+Server can then be found from `http://localhost:5430`.
+
+### For more detailed setup, do following:
 - Install project by running: `pip install .` in project root
 - Setup mongodb and env variables via desired way, details:
   - Server expects to find mongodb instance running, specified with following environment variables:
-    - `MONGO_USERNAME`, username for connecting to mondogdb instance
-    - `MONGO_PASSWORD`, password for connecting to mondogdb instance
+    - `MONGO_USERNAME`, username for connecting to mongodb instance
+    - `MONGO_PASSWORD`, password for connecting to mongodb instance
     - `MONGO_HOST`, host and port for mongodb instance (e.g. `localhost:27017`)
     - `MONGO_DATABASE`, If a specific database is to be used, set the name here. 
     - `MONGO_AUTHDB`, if `MONGO_DATABASE` is set and the user doesn't exists in the database, set this to the database where the user exists (e.g. `admin`)
@@ -31,11 +35,54 @@ For more detailed setup, do following:
   - Suitable mongodb instance can be launched with Docker by running `docker-compose up database`
 - After installing and setting up database, server can be launched with `metadata_submitter`
 
-If you also need frontend for development, check out [frontend repository](https://github.com/CSCfi/metadata-submitter-frontend/).
+If you also need frontend for development, check out [frontend repository](https://github.com/CSCfi/metadata-submitter-frontend/). You will also need to uncomment `REDIRECT_URL` environment variable from .env file.
 
 ## Tests
 
-Tests can be run with tox automation: just run `tox` on project root (remember to install it first with `pip install tox`).
+Tests can be run with tox automation: just run `tox -p auto` on project root (remember to install it first with `pip install tox`).
+
+## Developing
+
+Docker is utilizing the Buildkit builder toolkit. To activate it you might need to update your docker configurations with `{ "features": { "buildkit": true } }` inside the /etc/docker/daemon.json.
+
+If the above is not enough, try:
+```
+$ wget https://github.com/docker/buildx/releases/download/v0.7.0/buildx-v0.7.0.linux-amd64
+$ mkdir -p ~/.docker/cli-plugins
+$ cp ~/Downloads/buildx-v0.7.0.linux-amd64 ~/.docker/cli-plugins/docker-buildx
+$ chmod +x ~/.docker/cli-plugins/docker-buildx
+```
+and add `{ "experimental": "enabled" }` inside the /etc/docker/daemon.json.
+
+### Developing with VS Code
+
+VS Code provides functionality to develop inside the docker container. This mitigates the need to install a development environment and difficulties to make things work with different OSs. Also developing inside a container gives you the ability to see code changes on the fly. 
+
+To start using the VS Code devcontainer:
+- install extension Remote - Containers
+- with CTRL+SHIFT P choose Remote-Container: Reopen in Container
+- to run application and debug F5
+
+Git hooks are activated inside the local development environment which will run tox tests before pushing. To ignore them for fast updates use the flag `--no-verify`.
+
+### Keeping Python requirements up to date
+
+1. Install `pip-tools`:
+    * `pip install pip-tools`
+    * if using docker-compose pip-tools are installed automatically
+
+2. Add new packages to `requirements.in` or `requirements-dev.in`
+
+3. Update `.txt` file for the changed requirements file:
+    * `pip-compile requirements.in`
+    * `pip-compile requirements-dev.in`
+
+4. If you want to update all dependencies to their newest versions, run:
+    * `pip-compile --upgrade requirements.in`
+
+5. To install Python requirements run:
+    * `pip-sync requirements.txt`
+
 
 ## Build and deploy
 
@@ -51,6 +98,6 @@ Frontend is built and added as static files to backend while building.
 
 Metadata submission interface is released under `MIT`, see [LICENSE](LICENSE).
 
-## Contibuting
+## Contributing
 
 If you want to contribute to a project and make it better, your help is very welcome. For more info about how to contribute, see [CONTRIBUTING](CONTRIBUTING.md).
