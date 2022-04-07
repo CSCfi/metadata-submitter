@@ -7,7 +7,9 @@ from aiohttp import web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
+from ...helpers.doi import DOIHandler
 from ...helpers.logger import LOG
+from ...helpers.metax_api_handler import MetaxServiceHandler
 from ...helpers.validator import JSONValidator
 from ..operators import FolderOperator, Operator, XMLOperator
 from .common import multipart_content
@@ -51,7 +53,7 @@ class ObjectAPIHandler(RESTAPIHandler):
             escape_forward_slashes=False,
         )
         url = f"{req.scheme}://{req.host}{req.path}"
-        link_headers = await self._header_links(url, page_num, per_page, total_objects)
+        link_headers = self._header_links(url, page_num, per_page, total_objects)
         LOG.debug(f"Pagination header links: {link_headers}")
         LOG.info(f"Querying for objects in {collection} resulted in {total_objects} objects ")
         return web.Response(
@@ -99,8 +101,12 @@ class ObjectAPIHandler(RESTAPIHandler):
         :param req: POST request
         :returns: JSON response containing accessionId for submitted object
         """
-        _allowed_csv = ["sample"]
+        _allowed_csv = {"sample"}
+        _allowed_doi = {"study", "dataset"}
         schema_type = req.match_info["schema"]
+        LOG.debug(f"Creating {schema_type} object")
+        filename = ""
+        cont_type = ""
 
         folder_id = req.query.get("folder", "")
         if not folder_id:
@@ -108,28 +114,38 @@ class ObjectAPIHandler(RESTAPIHandler):
             raise web.HTTPBadRequest(reason=reason)
 
         await self._handle_check_ownership(req, "folders", folder_id)
-        patch_params = {}
 
         self._check_schema_exists(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
 
         db_client = req.app["db_client"]
-        content: Union[Dict[str, Any], str, List[Tuple[Any, str]]]
+        folder_op = FolderOperator(db_client)
+
+        # we need to check if there is already a study in a folder
+        # we only allow one study per folder
+        # this is not enough to catch duplicate entries if updates happen in parallel
+        # that is why we check in db_service.update_study
+        if not req.path.startswith("/drafts") and schema_type == "study":
+            _ids = await folder_op.get_collection_objects(folder_id, collection)
+            if len(_ids) == 1:
+                reason = "Only one study is allowed per submission."
+                raise web.HTTPBadRequest(reason=reason)
+
+        content: Union[Dict[str, Any], str, List[Tuple[Any, str, str]]]
         operator: Union[Operator, XMLOperator]
         if req.content_type == "multipart/form-data":
             _only_xml = False if schema_type in _allowed_csv else True
-            files, cont_type, filename = await multipart_content(req, extract_one=True, expect_xml=_only_xml)
+            files, cont_type = await multipart_content(req, extract_one=True, expect_xml=_only_xml)
             if cont_type == "xml":
                 # from this tuple we only care about the content
                 # files should be of form (content, schema)
-                content, _ = files[0]
+                content, _, filename = files[0]
             else:
                 # for CSV files we need to treat this as a list of tuples (content, schema)
                 content = files
             # If multipart request contains XML, XML operator is used.
             # Else the multipart request is expected to contain CSV file(s) which are converted into JSON.
             operator = XMLOperator(db_client) if cont_type == "xml" else Operator(db_client)
-            patch_params = {"cont_type": cont_type, "filename": filename}
         else:
             content = await self._get_data(req)
             if not req.path.startswith("/drafts"):
@@ -141,27 +157,35 @@ class ObjectAPIHandler(RESTAPIHandler):
         data: Union[List[Dict[str, str]], Dict[str, str]]
         if isinstance(content, List):
             LOG.debug(f"Inserting multiple objects for {schema_type}.")
-            ids: List[Dict[str, str]] = []
+            objects: List[Tuple[Dict[str, Any], str]] = []
             for item in content:
-                accession_id, title = await operator.create_metadata_object(collection, item[0])
-                ids.append({"accessionId": accession_id, "title": title})
-                LOG.info(f"POST object with accesssion ID {accession_id} in schema {collection} was successful.")
+                json_data = await operator.create_metadata_object(collection, item[0])
+                filename = item[2]
+                objects.append((json_data, filename))
+                LOG.info(
+                    f"POST object with accesssion ID {json_data['accessionId']} in schema {collection} was successful."
+                )
+
             # we format like this to make it consistent with the response from /submit endpoint
-            data = [dict({"accessionId": item["accessionId"]}, **{"schema": schema_type}) for item in ids]
+            data = [dict({"accessionId": item["accessionId"]}, **{"schema": schema_type}) for item, _ in objects]
             # we take the first result if we get multiple
             location_headers = CIMultiDict(Location=f"{url}/{data[0]['accessionId']}")
         else:
-            accession_id, title = await operator.create_metadata_object(collection, content)
-            data = {"accessionId": accession_id}
-            location_headers = CIMultiDict(Location=f"{url}/{accession_id}")
-            LOG.info(f"POST object with accesssion ID {accession_id} in schema {collection} was successful.")
+            json_data = await operator.create_metadata_object(collection, content)
+            data = {"accessionId": json_data["accessionId"]}
+            location_headers = CIMultiDict(Location=f"{url}/{json_data['accessionId']}")
+            LOG.info(
+                f"POST object with accesssion ID {json_data['accessionId']} in schema {collection} was successful."
+            )
+            objects = [(json_data, filename)]
 
         # Gathering data for object to be added to folder
-        if not isinstance(data, List):
-            ids = [dict(data, **{"title": title})]
-        folder_op = FolderOperator(db_client)
-        patch = await self.prepare_folder_patch_new_object(collection, ids, patch_params)
+        patch = self._prepare_folder_patch_new_object(collection, objects, cont_type)
         await folder_op.update_folder(folder_id, patch)
+
+        # Create draft dataset to Metax catalog
+        if collection in _allowed_doi:
+            [await self.create_metax_dataset(req, collection, item) for item, _ in objects]
 
         body = ujson.dumps(data, escape_forward_slashes=False)
 
@@ -191,13 +215,16 @@ class ObjectAPIHandler(RESTAPIHandler):
         :returns: HTTPNoContent response
         """
         schema_type = req.match_info["schema"]
+        accession_id = req.match_info["accessionId"]
+        LOG.debug(f"Deleting object {schema_type} {accession_id}")
+        _allowed_doi = {"study", "dataset"}
+
         self._check_schema_exists(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
-
-        accession_id = req.match_info["accessionId"]
         db_client = req.app["db_client"]
 
-        await Operator(db_client).check_exists(collection, accession_id)
+        operator = Operator(db_client)
+        await operator.check_exists(collection, accession_id)
 
         await self._handle_check_ownership(req, collection, accession_id)
 
@@ -214,7 +241,25 @@ class ObjectAPIHandler(RESTAPIHandler):
             LOG.error(reason)
             raise web.HTTPUnprocessableEntity(reason=reason)
 
-        accession_id = await Operator(db_client).delete_metadata_object(collection, accession_id)
+        metax_id: str = ""
+        doi_id: str = ""
+        if collection in _allowed_doi:
+            try:
+                object_data, _ = await operator.read_metadata_object(collection, accession_id)
+                # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
+                if isinstance(object_data, dict):
+                    metax_id = object_data["metaxIdentifier"]
+                    doi_id = object_data["doi"]
+            except KeyError:
+                LOG.warning(f"MetadataObject {collection} {accession_id} was never added to Metax service.")
+
+        accession_id = await operator.delete_metadata_object(collection, accession_id)
+
+        # Delete draft dataset from Metax catalog
+        if collection in _allowed_doi:
+            await MetaxServiceHandler(req).delete_draft_dataset(metax_id)
+            doi_service = DOIHandler()
+            await doi_service.delete(doi_id)
 
         LOG.info(f"DELETE object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(status=204)
@@ -231,6 +276,9 @@ class ObjectAPIHandler(RESTAPIHandler):
         """
         schema_type = req.match_info["schema"]
         accession_id = req.match_info["accessionId"]
+        LOG.debug(f"Replacing object {schema_type} {accession_id}")
+        _allowed_doi = {"study", "dataset"}
+
         self._check_schema_exists(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
 
@@ -239,8 +287,8 @@ class ObjectAPIHandler(RESTAPIHandler):
         operator: Union[Operator, XMLOperator]
         filename = ""
         if req.content_type == "multipart/form-data":
-            files, _, filename = await multipart_content(req, extract_one=True, expect_xml=True)
-            content, _ = files[0]
+            files, _ = await multipart_content(req, extract_one=True, expect_xml=True)
+            content, _, _ = files[0]
             operator = XMLOperator(db_client)
         else:
             content = await self._get_data(req)
@@ -262,9 +310,13 @@ class ObjectAPIHandler(RESTAPIHandler):
                 LOG.error(reason)
                 raise web.HTTPUnauthorized(reason=reason)
 
-        accession_id, title = await operator.replace_metadata_object(collection, accession_id, content)
-        patch = await self.prepare_folder_patch_update_object(collection, accession_id, title, filename)
+        data = await operator.replace_metadata_object(collection, accession_id, content)
+        patch = self._prepare_folder_patch_update_object(collection, data, filename)
         await folder_op.update_folder(folder_id, patch)
+
+        # Update draft dataset to Metax catalog
+        if collection in _allowed_doi:
+            await MetaxServiceHandler(req).update_draft_dataset(collection, data)
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info(f"PUT object with accession ID {accession_id} in schema {collection} was successful.")
@@ -281,6 +333,8 @@ class ObjectAPIHandler(RESTAPIHandler):
         """
         schema_type = req.match_info["schema"]
         accession_id = req.match_info["accessionId"]
+        LOG.debug(f"Patching object {schema_type} {accession_id}")
+
         self._check_schema_exists(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
 
@@ -309,28 +363,38 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         # If there's changed title it will be updated to folder
         try:
-            title = content["descriptor"]["studyTitle"] if collection == "study" else content["title"]
-            patch = await self.prepare_folder_patch_update_object(collection, accession_id, title)
+            _ = content["descriptor"]["studyTitle"] if collection == "study" else content["title"]
+            patch = self._prepare_folder_patch_update_object(collection, content)
             await folder_op.update_folder(folder_id, patch)
         except (TypeError, KeyError):
             pass
+
+        # Update draft dataset to Metax catalog
+        if collection in {"study", "dataset"}:
+            object_data, _ = await operator.read_metadata_object(collection, accession_id)
+            # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
+            if isinstance(object_data, Dict):
+                await MetaxServiceHandler(req).update_draft_dataset(collection, object_data)
+            else:
+                raise ValueError("Object's data must be dictionary")
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info(f"PATCH object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
-    async def prepare_folder_patch_new_object(self, schema: str, ids: List, params: Dict[str, str]) -> List:
+    def _prepare_folder_patch_new_object(self, schema: str, objects: List, cont_type: str) -> List:
         """Prepare patch operations list for adding an object or objects to a folder.
 
         :param schema: schema of objects to be added to the folder
-        :param ids: object IDs
+        :param objects: metadata objects
         :param params: addidtional data required for db entry
         :returns: list of patch operations
         """
-        if not params.get("cont_type", None):
+        LOG.info("Preparing folder patch for new objects")
+        if not cont_type:
             submission_type = "Form"
         else:
-            submission_type = params["cont_type"].upper()
+            submission_type = cont_type.upper()
 
         if schema.startswith("draft"):
             path = "/drafts/-"
@@ -339,27 +403,30 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         patch = []
         patch_ops: Dict[str, Any] = {}
-        for id in ids:
+        for object, filename in objects:
+            try:
+                title = object["descriptor"]["studyTitle"] if schema in ["study", "draft-study"] else object["title"]
+            except (TypeError, KeyError):
+                title = ""
+
             patch_ops = {
                 "op": "add",
                 "path": path,
                 "value": {
-                    "accessionId": id["accessionId"],
+                    "accessionId": object["accessionId"],
                     "schema": schema,
                     "tags": {
                         "submissionType": submission_type,
-                        "displayTitle": id["title"],
+                        "displayTitle": title,
                     },
                 },
             }
             if submission_type != "Form":
-                patch_ops["value"]["tags"]["fileName"] = params["filename"]
+                patch_ops["value"]["tags"]["fileName"] = filename
             patch.append(patch_ops)
         return patch
 
-    async def prepare_folder_patch_update_object(
-        self, schema: str, accession_id: str, title: str, filename: str = ""
-    ) -> List:
+    def _prepare_folder_patch_update_object(self, schema: str, data: Dict, filename: str = "") -> List:
         """Prepare patch operation for updating object's title in a folder.
 
         :param schema: schema of object to be updated
@@ -367,6 +434,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         :param title: title to be updated
         :returns: dict with patch operation
         """
+        LOG.info("Preparing folder patch for existing objects")
         if schema.startswith("draft"):
             path = "/drafts"
         else:
@@ -374,8 +442,13 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         patch_op = {
             "op": "replace",
-            "match": {path.replace("/", ""): {"$elemMatch": {"schema": schema, "accessionId": accession_id}}},
+            "match": {path.replace("/", ""): {"$elemMatch": {"schema": schema, "accessionId": data["accessionId"]}}},
         }
+        try:
+            title = data["descriptor"]["studyTitle"] if schema in ["study", "draft-study"] else data["title"]
+        except (TypeError, KeyError):
+            title = ""
+
         if not filename:
             patch_op.update(
                 {
@@ -391,3 +464,42 @@ class ObjectAPIHandler(RESTAPIHandler):
                 }
             )
         return [patch_op]
+
+    async def create_metax_dataset(self, req: Request, collection: str, object: Dict) -> str:
+        """Handle connection to Metax api handler for dataset creation.
+
+        Dataset or Study object is assigned with DOI
+        and it's data is sent to Metax api handler.
+        Object database entry is updated with metax ID returned by Metax service.
+
+        :param req: HTTP request
+        :param collection: object's schema
+        :param object: metadata object
+        :param folder_id: folder ID where metadata object belongs to
+        :returns: Metax ID
+        """
+        LOG.info("Creating draft dataset to Metax.")
+        operator = Operator(req.app["db_client"])
+        object["doi"] = await self._draft_doi(collection)
+        metax_id = await MetaxServiceHandler(req).post_dataset_as_draft(collection, object)
+
+        new_info = {"doi": object["doi"], "metaxIdentifier": metax_id}
+        await operator.create_metax_info(collection, object["accessionId"], new_info)
+
+        return metax_id
+
+    async def _draft_doi(self, schema_type: str) -> str:
+        """Create draft DOI for study and dataset.
+
+        The Draft DOI will be created only on POST and the data added to the
+        folder. Any update of this should not be possible.
+
+        :param schema_type: schema can be either study or dataset
+        :returns: Dict with DOI of the study or dataset as well as the types.
+        """
+        doi_ops = DOIHandler()
+        _doi_data = await doi_ops.create_draft(prefix=schema_type)
+
+        LOG.debug(f"doi created with doi: {_doi_data['fullDOI']}")
+
+        return _doi_data["fullDOI"]

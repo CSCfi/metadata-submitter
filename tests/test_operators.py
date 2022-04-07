@@ -209,9 +209,9 @@ class TestOperators(IsolatedAsyncioTestCase):
             "descriptor": {"studyTitle": "Highly", "studyType": "Other"},
         }
         operator.db_service.create.return_value = True
-        accession, _ = await operator.create_metadata_object("study", data)
+        data = await operator.create_metadata_object("study", data)
         operator.db_service.create.assert_called_once()
-        self.assertEqual(accession, self.accession_id)
+        self.assertEqual(data["accessionId"], self.accession_id)
 
     async def test_json_replace_passes_and_returns_accessionId(self):
         """Test replace method for JSON works."""
@@ -223,9 +223,9 @@ class TestOperators(IsolatedAsyncioTestCase):
         operator = Operator(self.client)
         operator.db_service.exists.return_value = True
         operator.db_service.replace.return_value = True
-        accession, _ = await operator.replace_metadata_object("study", self.accession_id, data)
+        data = await operator.replace_metadata_object("study", self.accession_id, data)
         operator.db_service.replace.assert_called_once()
-        self.assertEqual(accession, self.accession_id)
+        self.assertEqual(data["accessionId"], self.accession_id)
 
     async def test_json_replace_raises_if_not_exists(self):
         """Test replace method raises error."""
@@ -282,19 +282,19 @@ class TestOperators(IsolatedAsyncioTestCase):
         operator.db_service.create.return_value = True
         with patch(
             ("metadata_backend.api.operators.Operator._format_data_to_create_and_add_to_db"),
-            return_value=(self.accession_id, "title"),
+            return_value={"accessionId": self.accession_id},
         ):
             with patch("metadata_backend.api.operators.XMLToJSONParser"):
-                accession, _ = await operator.create_metadata_object("study", "<MOCK_ELEM></MOCK_ELEM>")
+                data = await operator.create_metadata_object("study", "<MOCK_ELEM></MOCK_ELEM>")
         operator.db_service.create.assert_called_once()
-        self.assertEqual(accession, self.accession_id)
+        self.assertEqual(data["accessionId"], self.accession_id)
 
     async def test_correct_data_is_set_to_json_when_creating(self):
         """Test operator creates object and adds necessary info."""
         operator = Operator(self.client)
         with patch(
             ("metadata_backend.api.operators.Operator._insert_formatted_object_to_db"),
-            return_value=self.accession_id,
+            return_value=True,
         ) as mocked_insert:
             with patch("metadata_backend.api.operators.datetime") as m_date:
                 m_date.utcnow.return_value = datetime.datetime(2020, 4, 14)
@@ -308,9 +308,9 @@ class TestOperators(IsolatedAsyncioTestCase):
                         "publishDate": datetime.datetime(2020, 6, 14),
                     },
                 )
-            self.assertEqual(acc, self.accession_id)
+            self.assertEqual(acc["accessionId"], self.accession_id)
 
-    async def test_wront_data_is_set_to_json_when_replacing(self):
+    async def test_wrong_data_is_set_to_json_when_replacing(self):
         """Test operator replace catches error."""
         operator = Operator(self.client)
         with patch("metadata_backend.api.operators.Operator._replace_object_from_db", return_value=self.accession_id):
@@ -338,13 +338,17 @@ class TestOperators(IsolatedAsyncioTestCase):
         ) as mocked_insert:
             with patch("metadata_backend.api.operators.datetime") as m_date:
                 m_date.utcnow.return_value = datetime.datetime(2020, 4, 14)
+                self.MockedDbService().read.return_value = {
+                    "accessionId": self.accession_id,
+                    "dateModified": datetime.datetime(2020, 4, 14),
+                }
                 acc = await (operator._format_data_to_replace_and_add_to_db("study", self.accession_id, {}))
                 mocked_insert.assert_called_once_with(
                     "study",
                     self.accession_id,
                     {"accessionId": self.accession_id, "dateModified": datetime.datetime(2020, 4, 14)},
                 )
-            self.assertEqual(acc, self.accession_id)
+            self.assertEqual(acc["accessionId"], self.accession_id)
 
     async def test_correct_data_is_set_to_json_when_updating(self):
         """Test operator updates object and adds necessary info."""
@@ -393,18 +397,18 @@ class TestOperators(IsolatedAsyncioTestCase):
         xml_data = "<MOCK_ELEM></MOCK_ELEM>"
         with patch(
             ("metadata_backend.api.operators.Operator._format_data_to_create_and_add_to_db"),
-            return_value=(self.accession_id, "title"),
+            return_value={"accessionId": self.accession_id},
         ):
             with patch(
                 ("metadata_backend.api.operators.XMLOperator._insert_formatted_object_to_db"),
-                return_value=self.accession_id,
+                return_value=True,
             ) as m_insert:
                 with patch("metadata_backend.api.operators.XMLToJSONParser"):
                     acc = await (operator._format_data_to_create_and_add_to_db("study", xml_data))
                     m_insert.assert_called_once_with(
-                        "xml-study", {"accessionId": self.accession_id, "title": "title", "content": xml_data}
+                        "xml-study", {"accessionId": self.accession_id, "content": xml_data}
                     )
-                    self.assertEqual(acc, self.accession_id)
+                    self.assertEqual(acc["accessionId"], self.accession_id)
 
     async def test_correct_data_is_set_to_xml_when_replacing(self):
         """Test XMLoperator replaces object and adds necessary info."""
@@ -413,7 +417,7 @@ class TestOperators(IsolatedAsyncioTestCase):
         xml_data = "<MOCK_ELEM></MOCK_ELEM>"
         with patch(
             "metadata_backend.api.operators.Operator._format_data_to_replace_and_add_to_db",
-            return_value=(self.accession_id, "title"),
+            return_value={"accessionId": self.accession_id},
         ):
             with patch(
                 "metadata_backend.api.operators.XMLOperator._replace_object_from_db",
@@ -426,7 +430,7 @@ class TestOperators(IsolatedAsyncioTestCase):
                         self.accession_id,
                         {"accessionId": self.accession_id, "content": xml_data},
                     )
-                    self.assertEqual(acc, self.accession_id)
+                    self.assertEqual(acc["accessionId"], self.accession_id)
 
     async def test_deleting_metadata_deletes_json_and_xml(self):
         """Test metadata is deleted."""

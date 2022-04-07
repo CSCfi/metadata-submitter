@@ -5,6 +5,7 @@ from unittest.mock import call, patch
 
 from aiohttp import FormData
 from aiohttp.test_utils import AioHTTPTestCase, make_mocked_coro
+from metadata_backend.api.handlers.object import ObjectAPIHandler
 from metadata_backend.api.handlers.restapi import RESTAPIHandler
 from metadata_backend.api.middlewares import generate_cookie
 from metadata_backend.server import init
@@ -68,11 +69,25 @@ class HandlersTestCase(AioHTTPTestCase):
                 {"accessionId": "EGA123456", "schema": "sample"},
             ],
             "drafts": [],
+            "doiInfo": {"creators": [{"name": "Creator, Test"}]},
         }
         self.user_id = "USR12345678"
         self.test_user = {
             "userId": self.user_id,
             "name": "tester",
+        }
+
+        self._draf_doi_data = {
+            "identifier": {
+                "identifierType": "DOI",
+                "doi": "https://doi.org/10.xxxx/yyyyy",
+            },
+            "types": {
+                "bibtex": "misc",
+                "citeproc": "collection",
+                "schemaOrg": "Collection",
+                "resourceTypeGeneral": "Collection",
+            },
         }
 
         self.operator_config = {
@@ -82,6 +97,7 @@ class HandlersTestCase(AioHTTPTestCase):
             "delete_metadata_object.side_effect": self.fake_operator_delete_metadata_object,
             "update_metadata_object.side_effect": self.fake_operator_update_metadata_object,
             "replace_metadata_object.side_effect": self.fake_operator_replace_metadata_object,
+            "create_metax_info.side_effect": self.fake_operator_create_metax_info,
         }
         self.xmloperator_config = {
             "read_metadata_object.side_effect": self.fake_xmloperator_read_metadata_object,
@@ -100,10 +116,18 @@ class HandlersTestCase(AioHTTPTestCase):
             "filter_user.side_effect": self.fake_useroperator_filter_user,
         }
 
+        self.doi_handler = {
+            "create_draft.side_effect": self.fake_doi_create_draft,
+            "set_state.side_effect": self.fake_doi_set_state,
+            "delete.side_effect": self.fake_doi_delete,
+        }
+
         RESTAPIHandler._handle_check_ownership = make_mocked_coro(True)
+        ObjectAPIHandler._delete_metax_dataset = make_mocked_coro()
 
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
+
         await self.client.close()
 
     def create_submission_data(self, files):
@@ -137,6 +161,18 @@ class HandlersTestCase(AioHTTPTestCase):
             _reader = csv_file.read()
         return _reader
 
+    async def fake_doi_create_draft(self, prefix):
+        """."""
+        return {"fullDOI": "10.xxxx/yyyyy", "dataset": "https://doi.org/10.xxxx/yyyyy"}
+
+    async def fake_doi_set_state(self, data):
+        """."""
+        return {"fullDOI": "10.xxxx/yyyyy", "dataset": "https://doi.org/10.xxxx/yyyyy"}
+
+    async def fake_doi_delete(self, doi):
+        """."""
+        return None
+
     async def fake_operator_read_metadata_object(self, schema_type, accession_id):
         """Fake read operation to return mocked JSON."""
         return (self.metadata_json, "application/json")
@@ -151,15 +187,15 @@ class HandlersTestCase(AioHTTPTestCase):
 
     async def fake_xmloperator_create_metadata_object(self, schema_type, content):
         """Fake create operation to return mocked accessionId."""
-        return self.test_ega_string, "title"
+        return {"accessionId": self.test_ega_string}
 
     async def fake_xmloperator_replace_metadata_object(self, schema_type, accession_id, content):
         """Fake replace operation to return mocked accessionId."""
-        return self.test_ega_string, "title"
+        return {"accessionId": self.test_ega_string}
 
     async def fake_operator_create_metadata_object(self, schema_type, content):
         """Fake create operation to return mocked accessionId."""
-        return self.test_ega_string, "title"
+        return {"accessionId": self.test_ega_string}
 
     async def fake_operator_update_metadata_object(self, schema_type, accession_id, content):
         """Fake update operation to return mocked accessionId."""
@@ -167,10 +203,14 @@ class HandlersTestCase(AioHTTPTestCase):
 
     async def fake_operator_replace_metadata_object(self, schema_type, accession_id, content):
         """Fake replace operation to return mocked accessionId."""
-        return self.test_ega_string, "title"
+        return {"accessionId": self.test_ega_string}
 
     async def fake_operator_delete_metadata_object(self, schema_type, accession_id):
         """Fake delete operation to await successful operation indicator."""
+        return True
+
+    async def fake_operator_create_metax_info(self, schema_type, accession_id, data):
+        """Fake update operation to await successful operation indicator."""
         return True
 
     async def fake_folderoperator_create_folder(self, content):
@@ -357,6 +397,8 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
         await super().setUpAsync()
 
+        self._mock_draft_doi = "metadata_backend.api.handlers.object.ObjectAPIHandler._draft_doi"
+
         class_xmloperator = "metadata_backend.api.handlers.object.XMLOperator"
         self.patch_xmloperator = patch(class_xmloperator, **self.xmloperator_config, spec=True)
         self.MockedXMLOperator = self.patch_xmloperator.start()
@@ -373,6 +415,11 @@ class ObjectHandlerTestCase(HandlersTestCase):
         self.patch_folderoperator = patch(class_folderoperator, **self.folderoperator_config, spec=True)
         self.MockedFolderOperator = self.patch_folderoperator.start()
 
+        class_metaxhandler = "metadata_backend.api.handlers.object.MetaxServiceHandler"
+        self.patch_metaxhandler = patch(class_metaxhandler, spec=True)
+        self.MockedMetaxHandler = self.patch_metaxhandler.start()
+        self.MockedMetaxHandler().post_dataset_as_draft.return_value = "123-456"
+
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
         await super().tearDownAsync()
@@ -380,27 +427,34 @@ class ObjectHandlerTestCase(HandlersTestCase):
         self.patch_csv_parser.stop()
         self.patch_folderoperator.stop()
         self.patch_operator.stop()
+        self.patch_metaxhandler.stop()
 
     async def test_submit_object_works(self):
         """Test that submission is handled, XMLOperator is called."""
         files = [("study", "SRP000539.xml")]
         data = self.create_submission_data(files)
-        response = await self.client.post("/objects/study", params={"folder": "some id"}, data=data)
-        self.assertEqual(response.status, 201)
-        self.assertIn(self.test_ega_string, await response.text())
-        self.MockedXMLOperator().create_metadata_object.assert_called_once()
+        with patch(self._mock_draft_doi, return_value=self._draf_doi_data):
+            response = await self.client.post("/objects/study", params={"folder": "some id"}, data=data)
+            self.assertEqual(response.status, 201)
+            self.assertIn(self.test_ega_string, await response.text())
+            self.MockedXMLOperator().create_metadata_object.assert_called_once()
 
     async def test_submit_object_works_with_json(self):
         """Test that JSON submission is handled, operator is called."""
         json_req = {
             "centerName": "GEO",
             "alias": "GSE10966",
-            "descriptor": {"studyTitle": "Highly", "studyType": "Other"},
+            "descriptor": {
+                "studyTitle": "Highly",
+                "studyType": "Other",
+                "studyAbstract": "abstract description for testing",
+            },
         }
-        response = await self.client.post("/objects/study", params={"folder": "some id"}, json=json_req)
-        self.assertEqual(response.status, 201)
-        self.assertIn(self.test_ega_string, await response.text())
-        self.MockedOperator().create_metadata_object.assert_called_once()
+        with patch(self._mock_draft_doi, return_value=self._draf_doi_data):
+            response = await self.client.post("/objects/study", params={"folder": "some id"}, json=json_req)
+            self.assertEqual(response.status, 201)
+            self.assertIn(self.test_ega_string, await response.text())
+            self.MockedOperator().create_metadata_object.assert_called_once()
 
     async def test_submit_object_missing_field_json(self):
         """Test that JSON has missing property."""
@@ -415,7 +469,11 @@ class ObjectHandlerTestCase(HandlersTestCase):
         json_req = {
             "centerName": "GEO",
             "alias": "GSE10966",
-            "descriptor": {"studyTitle": "Highly", "studyType": "ceva"},
+            "descriptor": {
+                "studyTitle": "Highly",
+                "studyType": "ceva",
+                "studyAbstract": "abstract description for testing",
+            },
         }
         response = await self.client.post("/objects/study", params={"folder": "some id"}, json=json_req)
         reason = "Provided input does not seem correct for field: 'descriptor'"
@@ -427,7 +485,11 @@ class ObjectHandlerTestCase(HandlersTestCase):
         json_req = {
             "centerName": "GEO",
             "alias": "GSE10966",
-            "descriptor": {"studyTitle": "Highly", "studyType": "Other"},
+            "descriptor": {
+                "studyTitle": "Highly",
+                "studyType": "Other",
+                "studyAbstract": "abstract description for testing",
+            },
         }
         response = await self.client.post("/objects/study", params={"folder": "some id"}, data=json_req)
         reason = "JSON is not correctly formatted. See: Expecting value: line 1 column 1"
@@ -441,7 +503,6 @@ class ObjectHandlerTestCase(HandlersTestCase):
         file_content = self.get_file_data("sample", "EGAformat.csv")
         self.MockedCSVParser().parse.return_value = [{}, {}, {}]
         response = await self.client.post("/objects/sample", params={"folder": "some id"}, data=data)
-        print("=== RESP ===", await response.text())
         json_resp = await response.json()
         self.assertEqual(response.status, 201)
         self.assertEqual(self.test_ega_string, json_resp[0]["accessionId"])
@@ -470,7 +531,11 @@ class ObjectHandlerTestCase(HandlersTestCase):
         json_req = {
             "centerName": "GEO",
             "alias": "GSE10966",
-            "descriptor": {"studyTitle": "Highly", "studyType": "Other"},
+            "descriptor": {
+                "studyTitle": "Highly",
+                "studyType": "Other",
+                "studyAbstract": "abstract description for testing",
+            },
         }
         call = "/drafts/study/EGA123456"
         response = await self.client.put(call, data=json_req)
@@ -492,7 +557,11 @@ class ObjectHandlerTestCase(HandlersTestCase):
         json_req = {
             "centerName": "GEO",
             "alias": "GSE10966",
-            "descriptor": {"studyTitle": "Highly", "studyType": "Other"},
+            "descriptor": {
+                "studyTitle": "Highly",
+                "studyType": "Other",
+                "studyAbstract": "abstract description for testing",
+            },
         }
         response = await self.client.post("/drafts/study", params={"folder": "some id"}, json=json_req)
         self.assertEqual(response.status, 201)
@@ -504,7 +573,11 @@ class ObjectHandlerTestCase(HandlersTestCase):
         json_req = {
             "centerName": "GEO",
             "alias": "GSE10966",
-            "descriptor": {"studyTitle": "Highly", "studyType": "Other"},
+            "descriptor": {
+                "studyTitle": "Highly",
+                "studyType": "Other",
+                "studyAbstract": "abstract description for testing",
+            },
         }
         call = "/drafts/study/EGA123456"
         response = await self.client.put(call, json=json_req)
@@ -594,9 +667,10 @@ class ObjectHandlerTestCase(HandlersTestCase):
     async def test_delete_is_called(self):
         """Test query method calls operator and returns status correctly."""
         url = "/objects/study/EGA123456"
-        response = await self.client.delete(url)
-        self.assertEqual(response.status, 204)
-        self.MockedOperator().delete_metadata_object.assert_called_once()
+        with patch("metadata_backend.api.handlers.object.DOIHandler.delete", return_value=None):
+            response = await self.client.delete(url)
+            self.assertEqual(response.status, 204)
+            self.MockedOperator().delete_metadata_object.assert_called_once()
 
     async def test_query_fails_with_xml_format(self):
         """Test query method calls operator and returns status correctly."""
@@ -691,10 +765,11 @@ class FolderHandlerTestCase(HandlersTestCase):
 
         await super().setUpAsync()
 
-        self.test_draft_doi = {"fullDOI": "10.xxxx/yyyyy", "dataset": "https://doi.org/10.xxxx/yyyyy"}
         class_doihandler = "metadata_backend.api.handlers.folder.DOIHandler"
-        self.patch_doihandler = patch(class_doihandler, spec=True)
+        self.patch_doihandler = patch(class_doihandler, **self.doi_handler, spec=True)
         self.MockedDoiHandler = self.patch_doihandler.start()
+
+        self._mock_prepare_doi = "metadata_backend.api.handlers.folder.FolderAPIHandler._prepare_doi_update"
 
         class_folderoperator = "metadata_backend.api.handlers.folder.FolderOperator"
         self.patch_folderoperator = patch(class_folderoperator, **self.folderoperator_config, spec=True)
@@ -708,6 +783,10 @@ class FolderHandlerTestCase(HandlersTestCase):
         self.patch_operator = patch(class_operator, **self.operator_config, spec=True)
         self.MockedOperator = self.patch_operator.start()
 
+        class_metaxhandler = "metadata_backend.api.handlers.folder.MetaxServiceHandler"
+        self.patch_metaxhandler = patch(class_metaxhandler, spec=True)
+        self.MockedMetaxHandler = self.patch_metaxhandler.start()
+
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
         await super().tearDownAsync()
@@ -715,6 +794,7 @@ class FolderHandlerTestCase(HandlersTestCase):
         self.patch_folderoperator.stop()
         self.patch_useroperator.stop()
         self.patch_operator.stop()
+        self.patch_metaxhandler.stop()
 
     async def test_folder_creation_works(self):
         """Test that folder is created and folder ID returned."""
@@ -832,14 +912,25 @@ class FolderHandlerTestCase(HandlersTestCase):
 
     async def test_folder_is_published(self):
         """Test that folder would be published and DOI would be added."""
-        self.MockedDoiHandler().create_draft_doi.return_value = self.test_draft_doi
+        self.MockedDoiHandler().set_state.return_value = None
         self.MockedFolderOperator().update_folder.return_value = self.folder_id
-        response = await self.client.patch("/publish/FOL12345678")
-        self.MockedDoiHandler().create_draft_doi.assert_called_once()
-        self.MockedFolderOperator().update_folder.assert_called_once()
-        self.assertEqual(response.status, 200)
-        json_resp = await response.json()
-        self.assertEqual(json_resp["folderId"], self.folder_id)
+        self.MockedMetaxHandler().update_dataset_with_doi_info.return_value = None
+        self.MockedMetaxHandler().publish_dataset.return_value = None
+        with patch(
+            self._mock_prepare_doi,
+            return_value=(
+                {"id": "prefix/suffix-study", "attributes": {"url": "http://metax_id", "types": {}}},
+                [{"id": "prefix/suffix-dataset", "attributes": {"url": "http://metax_id", "types": {}}}],
+                [
+                    {"doi": "prefix/suffix-study", "metaxIdentifier": "metax_id"},
+                    {"doi": "prefix/suffix-dataset", "metaxIdentifier": "metax_id"},
+                ],
+            ),
+        ):
+            response = await self.client.patch("/publish/FOL12345678")
+            self.assertEqual(response.status, 200)
+            json_resp = await response.json()
+            self.assertEqual(json_resp["folderId"], self.folder_id)
 
     async def test_folder_deletion_is_called(self):
         """Test that folder would be deleted."""

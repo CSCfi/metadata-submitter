@@ -43,10 +43,7 @@ jobs:
       env:
         BASE_URL: http://localhost:5430
         OIDC_URL: http://localhost:8000
-        MONGO_HOST: localhost:27017
-        MONGO_DATABASE: default
-        MONGO_AUTHDB: admin
-
+        
     - name: Collect logs from docker
       if: ${{ failure() }}
       run: docker-compose logs --no-color -t > tests/dockerlogs || true
@@ -78,6 +75,7 @@ jobs:
         MONGO_HOST: localhost:27017
         MONGO_DATABASE: default
         MONGO_AUTHDB: admin
+        MONGO_SSL: True
 
     - name: Run Integration test
       run: |
@@ -86,7 +84,7 @@ jobs:
         BASE_URL: http://localhost:5430
         OIDC_URL: http://localhost:8000
         MONGO_SSL: True
-        
+
     - name: Collect logs from docker
       if: ${{ failure() }}
       run: docker-compose logs --no-color -t > tests/dockerlogs || true

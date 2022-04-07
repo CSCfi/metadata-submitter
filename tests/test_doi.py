@@ -19,7 +19,7 @@ class DOITestCase(unittest.TestCase):
         with patch("aiohttp.ClientSession.post") as mocked_post:
             mocked_post.return_value.status_code = 400
             with self.assertRaises(web.HTTPBadRequest) as err:
-                await self.doi.create_draft_doi()
+                await self.doi.create_draft()
                 self.assertEqual(str(err.exception), "DOI API draft creation request failed with code: 400")
 
     async def test_create_doi_draft_works(self):
@@ -39,7 +39,7 @@ class DOITestCase(unittest.TestCase):
                 }
             }
 
-            output = await self.doi.create_draft_doi()
+            output = await self.doi.create_draft()
             assert mocked_post.called
             result = {"fullDOI": "10.xxxx/yyyyy", "dataset": "https://doi.org/10.xxxx/yyyyy"}
             self.assertEqual(output, result)
