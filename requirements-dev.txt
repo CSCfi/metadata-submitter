@@ -50,7 +50,7 @@ platformdirs==2.5.1
     #   virtualenv
 pluggy==1.0.0
     # via tox
-pre-commit==2.17.0
+pre-commit==2.18.1
     # via -r requirements-dev.in
 py==1.11.0
     # via tox
@@ -78,9 +78,7 @@ tomli==2.0.1
 tox==3.24.5
     # via -r requirements-dev.in
 typing-extensions==4.1.1
-    # via
-    #   black
-    #   mypy
+    # via mypy
 virtualenv==20.14.0
     # via
     #   pre-commit
