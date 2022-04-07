@@ -31,12 +31,13 @@ Production version gets frontend SPA from this folder, after it has been built
 and inserted here in projects Dockerfile.
 """
 
-import ujson
+import json
 import os
-from pathlib import Path
 from distutils.util import strtobool
-from typing import Tuple
+from pathlib import Path
+from typing import Dict, Tuple
 
+import ujson
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from ..helpers.logger import LOG
@@ -153,9 +154,27 @@ aai_config = {
 
 # 6) Set the DataCite REST API values
 
-doi_api = os.getenv("DOI_API", "")
-doi_prefix = os.getenv("DOI_PREFIX", "")
-doi_user = os.getenv("DOI_USER", "")
-doi_key = os.getenv("DOI_KEY", "")
-datacite_url = os.getenv("DATACITE_URL", "https://doi.org")
-publisher = "CSC - IT Center for Science"
+doi_config = {
+    "api": os.getenv("DOI_API", ""),
+    "prefix": os.getenv("DOI_PREFIX", ""),
+    "user": os.getenv("DOI_USER", ""),
+    "key": os.getenv("DOI_KEY", ""),
+    "url": os.getenv("DATACITE_URL", "https://doi.org"),
+    "publisher": "CSC - IT Center for Science",
+    "discovery_url": os.getenv("DISCOVERY_URL", "https://etsin.fairdata.fi/dataset/"),
+}
+
+metax_config = {
+    "username": os.getenv("METAX_USER", "sd"),
+    "password": os.getenv("METAX_PASS", "test"),
+    "url": os.getenv("METAX_URL", "http://mockmetax:8002"),
+    "rest_route": "/rest/v2/datasets",
+    "publish_route": "/rpc/v2/datasets/publish_dataset",
+    "catalog_pid": "urn:nbn:fi:att:data-catalog-sd",
+}
+
+metax_reference_data: Dict = {"identifier_types": {}}
+with open(Path(__file__).parent.parent / "conf/metax_references/identifier_types.json", "r") as codes:
+    codes_list = json.load(codes)["codes"]
+    for code in codes_list:
+        metax_reference_data["identifier_types"][code["codeValue"].lower()] = code["uri"]

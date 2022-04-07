@@ -1,11 +1,10 @@
 """Services that handle database connections. Implemented with MongoDB."""
 from functools import wraps
-from typing import Any, Callable, Dict, Union, List
+from typing import Any, Callable, Dict, List, Union
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
-from pymongo.errors import AutoReconnect, ConnectionFailure
 from pymongo import ReturnDocument
-from pymongo.errors import BulkWriteError
+from pymongo.errors import AutoReconnect, BulkWriteError, ConnectionFailure
 
 from ..conf.conf import serverTimeout
 from ..helpers.logger import LOG
@@ -35,8 +34,8 @@ def auto_reconnect(db_func: Callable) -> Callable:
                     message = f"Connection to database failed after {attempt} tries"
                     raise ConnectionFailure(message=message)
                 LOG.error(
-                    "Connection not successful, trying to reconnect."
-                    f"Reconnection attempt number {attempt}, waiting for {default_timeout} seconds."
+                    "Connection not successful, trying to reconnect. "
+                    + f"Reconnection attempt number {attempt}, waiting for {default_timeout} seconds."
                 )
                 continue
 
@@ -136,7 +135,7 @@ class DBService:
         :param accession_id: ID of the object/folder/user to be searched
         :returns: First document matching the accession_id
         """
-        id_key = f"{collection}Id" if (collection in ["folder", "user"]) else "accessionId"
+        id_key = f"{collection}Id" if (collection in {"folder", "user"}) else "accessionId"
         projection = {"_id": False, "eppn": False} if collection == "user" else {"_id": False}
         find_by_id = {id_key: accession_id}
         LOG.debug(f"DB doc in {collection} read for {accession_id}.")
@@ -163,6 +162,30 @@ class DBService:
             return False
 
     @auto_reconnect
+    async def update_study(self, collection: str, accession_id: str, patch_data: Any) -> bool:
+        """Update and avoid duplicates for study object.
+
+        Currently we don't allow duplicate studies in the same folder,
+        thus we need to check before inserting. Regular Bulkwrite cannot prevent race condition.
+
+        :param collection: Collection where document should be searched from
+        :param accession_id: ID of the object/folder/user to be updated
+        :param patch_data: JSON representing the data that should be
+        updated to object it will update fields.
+        :returns: True if operation was successful
+        """
+        find_by_id = {f"{collection}Id": accession_id, "metadataObjects.schema": {"$ne": "study"}}
+        requests = jsonpatch_mongo(find_by_id, patch_data)
+        for req in requests:
+            result = await self.database[collection].find_one_and_update(
+                find_by_id, req._doc, projection={"_id": False}, return_document=ReturnDocument.AFTER
+            )
+            LOG.debug(f"DB doc in {collection} with data: {patch_data} modified for {accession_id}.")
+            if not result:
+                return False
+        return True
+
+    @auto_reconnect
     async def update(self, collection: str, accession_id: str, data_to_be_updated: Dict) -> bool:
         """Update some elements of object by its accessionId.
 
@@ -172,7 +195,7 @@ class DBService:
         updated to object, can replace previous fields and add new ones.
         :returns: True if operation was successful
         """
-        id_key = f"{collection}Id" if (collection in ["folder", "user"]) else "accessionId"
+        id_key = f"{collection}Id" if (collection in {"folder", "user"}) else "accessionId"
         find_by_id = {id_key: accession_id}
         update_op = {"$set": data_to_be_updated}
         result = await self.database[collection].update_one(find_by_id, update_op)
@@ -239,6 +262,9 @@ class DBService:
         old_data = await self.database[collection].find_one(find_by_id)
         if not (len(new_data) == 2 and new_data["content"].startswith("<")):
             new_data["dateCreated"] = old_data["dateCreated"]
+            if collection in {"study", "dataset"}:
+                new_data["metaxIdentifier"] = old_data["metaxIdentifier"]
+                new_data["doi"] = old_data["doi"]
             if "publishDate" in old_data:
                 new_data["publishDate"] = old_data["publishDate"]
         result = await self.database[collection].replace_one(find_by_id, new_data)
@@ -253,7 +279,7 @@ class DBService:
         :param accession_id: ID for object/folder/user to be deleted
         :returns: True if operation was successful
         """
-        id_key = f"{collection}Id" if (collection in ["folder", "user"]) else "accessionId"
+        id_key = f"{collection}Id" if (collection in {"folder", "user"}) else "accessionId"
         find_by_id = {id_key: accession_id}
         result = await self.database[collection].delete_one(find_by_id)
         LOG.debug(f"DB doc in {collection} deleted for {accession_id}.")

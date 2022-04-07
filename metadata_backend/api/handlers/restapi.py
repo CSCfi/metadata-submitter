@@ -25,7 +25,7 @@ class RESTAPIHandler:
         :param schema_type: schema type.
         :raises: HTTPNotFound if schema does not exist.
         """
-        if schema_type not in schema_types.keys():
+        if schema_type not in set(schema_types.keys()):
             reason = f"Specified schema {schema_type} was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
@@ -174,7 +174,7 @@ class RESTAPIHandler:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-    async def _header_links(self, url: str, page: int, size: int, total_objects: int) -> CIMultiDict[str]:
+    def _header_links(self, url: str, page: int, size: int, total_objects: int) -> CIMultiDict[str]:
         """Create link header for pagination.
 
         :param url: base url for request

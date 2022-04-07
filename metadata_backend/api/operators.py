@@ -12,12 +12,12 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
 from multidict import MultiDictProxy
 from pymongo.errors import ConnectionFailure, OperationFailure
 
-from .middlewares import get_session
 from ..conf.conf import mongo_database, query_map
 from ..database.db_service import DBService, auto_reconnect
 from ..helpers.logger import LOG
 from ..helpers.parser import XMLToJSONParser
 from ..helpers.validator import JSONValidator
+from .middlewares import get_session
 
 
 class BaseOperator(ABC):
@@ -40,7 +40,7 @@ class BaseOperator(ABC):
         self.db_service = DBService(db_name, db_client)
         self.content_type = content_type
 
-    async def create_metadata_object(self, schema_type: str, data: Union[Dict, str]) -> Tuple[str, str]:
+    async def create_metadata_object(self, schema_type: str, data: Union[Dict, str]) -> Dict:
         """Create new metadata object to database.
 
         Data formatting and addition step for JSON or XML must be implemented
@@ -50,13 +50,13 @@ class BaseOperator(ABC):
         :param data: Data to be saved to database.
         :returns: Accession id for the object inserted to database
         """
-        accession_id, title = await self._format_data_to_create_and_add_to_db(schema_type, data)
-        LOG.info(f"Inserting object with schema {schema_type} to database succeeded with accession id: {accession_id}")
-        return accession_id, title
+        data = await self._format_data_to_create_and_add_to_db(schema_type, data)
+        LOG.info(
+            f"Inserting object with schema {schema_type} to database succeeded with accession id: {data['accessionId']}"
+        )
+        return data
 
-    async def replace_metadata_object(
-        self, schema_type: str, accession_id: str, data: Union[Dict, str]
-    ) -> Tuple[str, str]:
+    async def replace_metadata_object(self, schema_type: str, accession_id: str, data: Union[Dict, str]) -> Dict:
         """Replace metadata object from database.
 
         Data formatting and addition step for JSON or XML must be implemented
@@ -67,9 +67,9 @@ class BaseOperator(ABC):
         :param data: Data to be saved to database.
         :returns: Accession id for the object replaced to database
         """
-        accession_id, title = await self._format_data_to_replace_and_add_to_db(schema_type, accession_id, data)
+        data = await self._format_data_to_replace_and_add_to_db(schema_type, accession_id, data)
         LOG.info(f"Replacing object with schema {schema_type} to database succeeded with accession id: {accession_id}")
-        return accession_id, title
+        return data
 
     async def update_metadata_object(self, schema_type: str, accession_id: str, data: Union[Dict, str]) -> str:
         """Update metadata object from database.
@@ -100,11 +100,11 @@ class BaseOperator(ABC):
         try:
             data_raw = await self.db_service.read(schema_type, accession_id)
             if not data_raw:
-                LOG.error(f"Object with {accession_id} not found.")
+                LOG.error(f"Object with {accession_id} not found in schema: {schema_type}.")
                 raise web.HTTPNotFound()
             data = await self._format_read_data(schema_type, data_raw)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting object: {error}"
+            reason = f"Error happened while reading object: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         return data, self.content_type
@@ -130,7 +130,7 @@ class BaseOperator(ABC):
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-    async def _insert_formatted_object_to_db(self, schema_type: str, data: Dict) -> Tuple[str, str]:
+    async def _insert_formatted_object_to_db(self, schema_type: str, data: Dict) -> bool:
         """Insert formatted metadata object to database.
 
         :param schema_type: Schema type of the object to insert.
@@ -144,18 +144,14 @@ class BaseOperator(ABC):
             reason = f"Error happened while getting object: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        if insert_success:
-            try:
-                title = data["descriptor"]["studyTitle"] if schema_type in ["study", "draft-study"] else data["title"]
-            except (TypeError, KeyError):
-                title = ""
-            return data["accessionId"], title
-        else:
+
+        if not insert_success:
             reason = "Inserting object to database failed for some reason."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
+        return True
 
-    async def _replace_object_from_db(self, schema_type: str, accession_id: str, data: Dict) -> Tuple[str, str]:
+    async def _replace_object_from_db(self, schema_type: str, accession_id: str, data: Dict) -> bool:
         """Replace formatted metadata object in database.
 
         :param schema_type: Schema type of the object to replace.
@@ -175,16 +171,11 @@ class BaseOperator(ABC):
             reason = f"Error happened while getting object: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        if replace_success:
-            try:
-                title = data["descriptor"]["studyTitle"] if schema_type in ["study", "draft-study"] else data["title"]
-            except (TypeError, KeyError):
-                title = ""
-            return accession_id, title
-        else:
+        if not replace_success:
             reason = "Replacing object to database failed for some reason."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
+        return True
 
     async def _update_object_from_db(self, schema_type: str, accession_id: str, data: Dict) -> str:
         """Update formatted metadata object in database.
@@ -260,16 +251,14 @@ class BaseOperator(ABC):
             raise web.HTTPNotFound(reason=reason)
 
     @abstractmethod
-    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: Any) -> Tuple[str, str]:
+    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: Any) -> Dict:
         """Format and add data to database.
 
         Must be implemented by subclass.
         """
 
     @abstractmethod
-    async def _format_data_to_replace_and_add_to_db(
-        self, schema_type: str, accession_id: str, data: Any
-    ) -> Tuple[str, str]:
+    async def _format_data_to_replace_and_add_to_db(self, schema_type: str, accession_id: str, data: Any) -> Dict:
         """Format and replace data in database.
 
         Must be implemented by subclass.
@@ -442,7 +431,32 @@ class Operator(BaseOperator):
         )
         return data, page_num, page_size, total_objects[0]["total"]
 
-    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: Dict) -> Tuple[str, str]:
+    async def create_metax_info(self, schema_type: str, accession_id: str, data: Dict) -> bool:
+        """Update study or dataset object with metax info.
+
+        :param schema_type: Schema type of the object to replace.
+        :param accession_id: Identifier of object to replace.
+        :param data: Metadata object
+        :returns: True on successed database update
+        """
+        if schema_type not in {"study", "dataset"}:
+            LOG.error("Object schema type must be either study or dataset")
+            return False
+        try:
+            create_success = await self.db_service.update(schema_type, accession_id, data)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while updating object: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        if not create_success:
+            reason = "Updating object to database failed for some reason."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        else:
+            LOG.info(f"Object {schema_type} with id {accession_id} opdated with metax info.")
+            return True
+
+    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: Dict) -> Dict:
         """Format JSON metadata object and add it to db.
 
         Adds necessary additional information to object before adding to db.
@@ -462,26 +476,26 @@ class Operator(BaseOperator):
         if schema_type == "study":
             data["publishDate"] = datetime.utcnow() + relativedelta(months=2)
         LOG.debug(f"Operator formatted data for {schema_type} to add to DB.")
-        return await self._insert_formatted_object_to_db(schema_type, data)
+        await self._insert_formatted_object_to_db(schema_type, data)
+        return data
 
-    async def _format_data_to_replace_and_add_to_db(
-        self, schema_type: str, accession_id: str, data: Dict
-    ) -> Tuple[str, str]:
+    async def _format_data_to_replace_and_add_to_db(self, schema_type: str, accession_id: str, data: Dict) -> Dict:
         """Format JSON metadata object and replace it in db.
 
         Replace information in object before adding to db.
 
-        We will not replace accessionId, publishDate or dateCreated,
+        We will not replace ``accessionId``, ``publishDate`` or ``dateCreated``,
         as these are generated when created.
-
-        We will keep also publisDate and dateCreated from old object.
+        Will not replace ``metaxIdentifier`` and ``doi`` for ``study`` and ``dataset``
+        as it is generated when created.
+        We will keep also ``publisDate`` and ``dateCreated`` from old object.
 
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
         :param data: Metadata object
         :returns: Accession Id for object inserted to database
         """
-        forbidden_keys = ["accessionId", "publishDate", "dateCreated"]
+        forbidden_keys = {"accessionId", "publishDate", "dateCreated", "metaxIdentifier", "doi"}
         if any(i in data for i in forbidden_keys):
             reason = f"Some items (e.g: {', '.join(forbidden_keys)}) cannot be changed."
             LOG.error(reason)
@@ -489,23 +503,28 @@ class Operator(BaseOperator):
         data["accessionId"] = accession_id
         data["dateModified"] = datetime.utcnow()
         LOG.debug(f"Operator formatted data for {schema_type} to add to DB")
-        return await self._replace_object_from_db(schema_type, accession_id, data)
+        await self._replace_object_from_db(schema_type, accession_id, data)
+        return data
 
     async def _format_data_to_update_and_add_to_db(self, schema_type: str, accession_id: str, data: Any) -> str:
         """Format and update data in database.
+
+        Will not allow to update ``metaxIdentifier`` and ``doi`` for ``study`` and ``dataset``
+        as it is generated when created.
 
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
         :param data: Metadata object
         :returns: Accession Id for object inserted to database
         """
-        forbidden_keys = ["accessionId", "publishDate", "dateCreated"]
+        forbidden_keys = {"accessionId", "publishDate", "dateCreated", "metaxIdentifier", "doi"}
         if any(i in data for i in forbidden_keys):
             reason = f"Some items (e.g: {', '.join(forbidden_keys)}) cannot be changed."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         data["accessionId"] = accession_id
         data["dateModified"] = datetime.utcnow()
+
         LOG.debug(f"Operator formatted data for {schema_type} to add to DB")
         return await self._update_object_from_db(schema_type, accession_id, data)
 
@@ -577,7 +596,7 @@ class XMLOperator(BaseOperator):
         """
         super().__init__(mongo_database, "text/xml", db_client)
 
-    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: str) -> Tuple[str, str]:
+    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: str) -> Dict:
         """Format XML metadata object and add it to db.
 
         XML is validated, then parsed to JSON, which is added to database.
@@ -591,15 +610,16 @@ class XMLOperator(BaseOperator):
         # remove `draft-` from schema type
         schema = schema_type[6:] if schema_type.startswith("draft") else schema_type
         data_as_json = XMLToJSONParser().parse(schema, data)
-        accession_id, title = await Operator(db_client)._format_data_to_create_and_add_to_db(schema_type, data_as_json)
+        data_with_id = await Operator(db_client)._format_data_to_create_and_add_to_db(schema_type, data_as_json)
         LOG.debug(f"XMLOperator formatted data for xml-{schema_type} to add to DB")
-        return await self._insert_formatted_object_to_db(
-            f"xml-{schema_type}", {"accessionId": accession_id, "title": title, "content": data}
+
+        await self._insert_formatted_object_to_db(
+            f"xml-{schema_type}", {"accessionId": data_with_id["accessionId"], "content": data}
         )
 
-    async def _format_data_to_replace_and_add_to_db(
-        self, schema_type: str, accession_id: str, data: str
-    ) -> Tuple[str, str]:
+        return data_with_id
+
+    async def _format_data_to_replace_and_add_to_db(self, schema_type: str, accession_id: str, data: str) -> Dict:
         """Format XML metadata object and add it to db.
 
         XML is validated, then parsed to JSON, which is added to database.
@@ -614,13 +634,14 @@ class XMLOperator(BaseOperator):
         # remove `draft-` from schema type
         schema = schema_type[6:] if schema_type.startswith("draft") else schema_type
         data_as_json = XMLToJSONParser().parse(schema, data)
-        accession_id, title = await Operator(db_client)._format_data_to_replace_and_add_to_db(
+        data_with_id = await Operator(db_client)._format_data_to_replace_and_add_to_db(
             schema_type, accession_id, data_as_json
         )
         LOG.debug(f"XMLOperator formatted data for xml-{schema_type} to add to DB")
-        return await self._replace_object_from_db(
+        await self._replace_object_from_db(
             f"xml-{schema_type}", accession_id, {"accessionId": accession_id, "content": data}
         )
+        return data_with_id
 
     async def _format_data_to_update_and_add_to_db(self, schema_type: str, accession_id: str, data: str) -> str:
         """Raise not implemented.
@@ -703,7 +724,7 @@ class FolderOperator:
             )
             folder_check = [folder async for folder in folder_cursor]
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while inserting user: {error}"
+            reason = f"Error happened while checking object in folder: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -723,7 +744,7 @@ class FolderOperator:
         """List objects ids per collection.
 
         :param collection: collection it belongs to, it would be used as path
-        :returns: count of objects
+        :returns: List of objects
         """
         try:
             folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
@@ -733,7 +754,7 @@ class FolderOperator:
             )
             folders = [folder async for folder in folder_cursor]
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while inserting user: {error}"
+            reason = f"Error happened while getting collection objects: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -830,7 +851,7 @@ class FolderOperator:
             raise web.HTTPBadRequest(reason=reason)
         return folder
 
-    async def update_folder(self, folder_id: str, patch: List) -> str:
+    async def update_folder(self, folder_id: str, patch: List, schema: str = "") -> str:
         """Update object folder from database.
 
         Utilizes JSON Patch operations specified at: http://jsonpatch.com/
@@ -841,14 +862,20 @@ class FolderOperator:
         :returns: ID of the folder updated to database
         """
         try:
-            update_success = await self.db_service.patch("folder", folder_id, patch)
+            if schema == "study":
+                update_success = await self.db_service.update_study("folder", folder_id, patch)
+            else:
+                update_success = await self.db_service.patch("folder", folder_id, patch)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting folder: {error}"
+            reason = f"Error happened while updating folder: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
         if not update_success:
-            reason = "Updating folder to database failed for some reason."
+            if schema == "study":
+                reason = "Either there was a request to add another study to a folders or annother error occurred."
+            else:
+                reason = "Updating folder to database failed for some reason."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         else:
@@ -869,7 +896,7 @@ class FolderOperator:
             upd_content = {folder_path: {"accessionId": accession_id}}
             await self.db_service.remove("folder", folder_id, upd_content)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting user: {error}"
+            reason = f"Error happened while removing object from folder: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -1105,7 +1132,7 @@ class UserOperator:
             await self._check_user_exists(user_id)
             update_success = await self.db_service.patch("user", user_id, patch)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting user: {error}"
+            reason = f"Error happened while updating user: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -1116,6 +1143,61 @@ class UserOperator:
         else:
             LOG.info(f"Updating user with id {user_id} to database succeeded.")
             return user_id
+
+    async def assign_objects(self, user_id: str, collection: str, object_ids: List) -> None:
+        """Assing object to user.
+
+        An object can be folder(s) or templates(s).
+
+        :param user_id: ID of user to update
+        :param collection: collection where to remove the id from
+        :param object_ids: ID or list of IDs of folder(s) to assign
+        :raises: HTTPBadRequest if assigning templates/folders to user was not successful
+        returns: None
+        """
+        try:
+            await self._check_user_exists(user_id)
+            assign_success = await self.db_service.append(
+                "user", user_id, {collection: {"$each": object_ids, "$position": 0}}
+            )
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while assigning objects to user: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        if not assign_success:
+            reason = "Assigning objects to user failed."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        LOG.info(f"Assigning {object_ids} from {user_id} succeeded.")
+
+    async def remove_objects(self, user_id: str, collection: str, object_ids: List) -> None:
+        """Remove object from user.
+
+        An object can be folder(s) or template(s).
+
+        :param user_id: ID of user to update
+        :param collection: collection where to remove the id from
+        :param object_ids: ID or list of IDs of folder(s) to remove
+        :raises: HTTPBadRequest if db connection fails
+        returns: None
+        """
+        remove_content: Dict
+        try:
+            await self._check_user_exists(user_id)
+            for obj in object_ids:
+                if collection == "templates":
+                    remove_content = {"templates": {"accessionId": obj}}
+                else:
+                    remove_content = {"folders": obj}
+                await self.db_service.remove("user", user_id, remove_content)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while removing objects from user: {error}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        LOG.info(f"Removing {object_ids} from {user_id} succeeded.")
 
     async def delete_user(self, user_id: str) -> str:
         """Delete user object from database.

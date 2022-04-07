@@ -4,6 +4,7 @@ services:
     build:
       dockerfile: Dockerfile-dev
       context: .
+      target: develop
     image: cscfi/metadata-submitter-dev
     container_name: "metadata_submitter_backend_dev"
     volumes:
@@ -14,6 +15,7 @@ services:
       - database
       - mockauth
       - mockdoi
+      - mockmetax
     restart: on-failure
     environment:
       - "MONGO_HOST=${MONGO_HOST}"
@@ -34,6 +36,10 @@ services:
       - "DOI_PREFIX=${DOI_PREFIX}"
       - "DOI_USER=${DOI_USER}"
       - "DOI_KEY=${DOI_KEY}"
+      - "DISCOVERY_URL=${DISCOVERY_URL}"
+      - "METAX_USER=${METAX_USER}"
+      - "METAX_PASS=${METAX_PASS}"
+      - "METAX_URL=${METAX_URL}"
   database:
     image: "mongo"
     container_name: "metadata_submitter_database_dev"
@@ -54,6 +60,7 @@ services:
     build:
       dockerfile: Dockerfile-dev
       context: .
+      target: develop
     image: cscfi/metadata-submitter-dev
     environment:
       - "LOG_LEVEL=${LOG_LEVEL}"
@@ -71,6 +78,7 @@ services:
     build:
       dockerfile: Dockerfile-dev
       context: .
+      target: develop
     image: cscfi/metadata-submitter-dev
     hostname: mockdoi
     expose:
@@ -80,5 +88,19 @@ services:
     volumes:
       - ./tests/integration/mock_doi_api.py:/mock_doi_api.py
     entrypoint: ["python", "/mock_doi_api.py", "0.0.0.0", "8001"]
+  mockmetax:
+    build:
+      dockerfile: Dockerfile-dev
+      context: .
+      target: develop
+    image: cscfi/metadata-submitter-dev
+    hostname: mockmetax
+    expose:
+      - 8002
+    ports:
+      - 8002:8002
+    volumes:
+      - ./tests/integration/mock_metax_api.py:/mock_metax_api.py
+    entrypoint: ["python", "/mock_metax_api.py", "0.0.0.0", "8002"]
 volumes:
-  data: 
+  data:

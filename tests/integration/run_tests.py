@@ -47,6 +47,7 @@ test_xml_files = [
 test_json_files = [
     ("study", "SRP000539.json", "SRP000539.json"),
     ("sample", "SRS001433.json", "SRS001433.json"),
+    ("dataset", "dataset.json", "dataset.json"),
     ("run", "ERR000076.json", "ERR000076.json"),
     ("experiment", "ERX000119.json", "ERX000119.json"),
     ("analysis", "ERZ266973.json", "ERZ266973.json"),
@@ -60,6 +61,8 @@ folders_url = f"{base_url}/folders"
 users_url = f"{base_url}/users"
 submit_url = f"{base_url}/submit"
 publish_url = f"{base_url}/publish"
+metax_url = f"{os.getenv('METAX_URL', 'http://localhost:8002')}/rest/v2/datasets"
+auth = aiohttp.BasicAuth(os.getenv("METAX_USER", "sd"), os.getenv("METAX_PASS", "test"))
 # to form direct contact to db with create_folder()
 DATABASE = os.getenv("MONGO_DATABASE", "default")
 AUTHDB = os.getenv("MONGO_AUTHDB", "admin")
@@ -285,6 +288,23 @@ async def put_object_json(sess, schema, accession_id, update_filename):
         assert resp.status == 415, f"HTTP Status code error, got {resp.status}"
 
 
+async def patch_object_json(sess, schema, accession_id, update_filename):
+    """Patch one metadata object within session, returns accessionId.
+
+    :param sess: HTTP session in which request call is made
+    :param schema: name of the schema (folder) used for testing
+    :param draft_id: id of the draft
+    :param update_filename: name of the file used to use for updating data.
+    """
+    request_data = await create_request_json_data(schema, update_filename)
+    async with sess.patch(f"{objects_url}/{schema}/{accession_id}", data=request_data) as resp:
+        LOG.debug(f"Try to patch object in {schema}")
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+        ans_put = await resp.json()
+        assert ans_put["accessionId"] == accession_id, "accession ID error"
+        return ans_put["accessionId"]
+
+
 async def put_object_xml(sess, schema, accession_id, update_filename):
     """Put one metadata object within session, returns accessionId.
 
@@ -421,9 +441,9 @@ async def post_folder(sess, data):
     :param data: data used to update the folder
     """
     async with sess.post(f"{folders_url}", data=json.dumps(data)) as resp:
-        LOG.debug("Adding new folder")
         ans = await resp.json()
         assert resp.status == 201, f"HTTP Status code error {resp.status} {ans}"
+        LOG.debug(f"Adding new folder {ans['folderId']}")
         return ans["folderId"]
 
 
@@ -485,12 +505,12 @@ async def create_folder(data, user):
     :param user: User id to which data is assigned
     :returns: Folder id for the folder inserted to database
     """
-    LOG.info("Creating new folder")
     url = f"mongodb://{AUTHDB}:{AUTHDB}@{HOST}/{DATABASE}?authSource=admin"
     db_client = AsyncIOMotorClient(url, connectTimeoutMS=1000, serverSelectionTimeoutMS=1000)
     database = db_client[DATABASE]
 
     folder_id = uuid4().hex
+    LOG.info(f"Creating new folder {folder_id}")
     data["folderId"] = folder_id
     data["text_name"] = " ".join(re.split("[\\W_]", data["name"]))
     data["drafts"] = []
@@ -632,28 +652,29 @@ async def test_csv(sess, folder_id):
     """
     _schema = "sample"
     _filename = "EGAformat.csv"
-    accession_id = await post_object(sess, _schema, folder_id, _filename)
+    samples = await post_object(sess, _schema, folder_id, _filename)
     # there are 3 rows and we expected to get 3rd
-    assert len(accession_id[0]) == 3, f"expected nb of CSV entries does not match, we got: {len(accession_id)}"
-    _first_csv_row_id = accession_id[0][0]["accessionId"]
+    assert len(samples[0]) == 3, f"expected nb of CSV entries does not match, we got: {len(samples[0])}"
+    # _first_csv_row_id = accession_id[0][0]["accessionId"]
+    first_sample = samples[0][0]["accessionId"]
 
-    async with sess.get(f"{objects_url}/{_schema}/{_first_csv_row_id}") as resp:
-        LOG.debug(f"Checking that {_first_csv_row_id} JSON is in {_schema}")
+    async with sess.get(f"{objects_url}/{_schema}/{first_sample}") as resp:
+        LOG.debug(f"Checking that {first_sample} JSON is in {_schema}")
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         res = await resp.json()
         title = res.get("title", "")
-    await check_folders_object_patch(sess, folder_id, _schema, accession_id, title, _filename)
+    await check_folders_object_patch(sess, folder_id, _schema, samples, title, _filename)
 
-    await delete_object(sess, _schema, _first_csv_row_id)
-    async with sess.get(f"{objects_url}/{_schema}/{_first_csv_row_id}") as resp:
-        LOG.debug(f"Checking that JSON object {_first_csv_row_id} was deleted")
+    await delete_object(sess, _schema, first_sample)
+    async with sess.get(f"{objects_url}/{_schema}/{first_sample}") as resp:
+        LOG.debug(f"Checking that JSON object {first_sample} was deleted")
         assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
 
     async with sess.get(f"{folders_url}/{folder_id}") as resp:
-        LOG.debug(f"Checking that object {_first_csv_row_id} was deleted from folder {folder_id}")
+        LOG.debug(f"Checking that object {first_sample} was deleted from folder {folder_id}")
         res = await resp.json()
-        expected_true = not any(d["accessionId"] == _first_csv_row_id for d in res["metadataObjects"])
-        assert expected_true, f"object {_first_csv_row_id} still exists"
+        expected_true = not any(d["accessionId"] == first_sample for d in res["metadataObjects"])
+        assert expected_true, f"object {first_sample} still exists"
 
     _filename = "empty.csv"
     # status should be 400
@@ -661,8 +682,11 @@ async def test_csv(sess, folder_id):
 
     _filename = "EGA_sample_w_issue.csv"
     # status should be 201 but we expect 3 rows, as the CSV has 4 rows one of which is empty
-    accession_id = await post_object_expect_status(sess, _schema, folder_id, _filename, 201)
-    assert len(accession_id[0]) == 3, f"expected nb of CSV entries does not match, we got: {len(accession_id)}"
+    samples_2 = await post_object_expect_status(sess, _schema, folder_id, _filename, 201)
+    assert len(samples_2[0]) == 3, f"expected nb of CSV entries does not match, we got: {len(samples_2[0])}"
+
+    for sample in samples_2[0] + samples[0][1:]:
+        await delete_object(sess, _schema, sample["accessionId"])
 
 
 async def test_put_objects(sess, folder_id):
@@ -686,6 +710,7 @@ async def test_put_objects(sess, folder_id):
         "Highly integrated epigenome maps in Arabidopsis - whole genome shotgun bisulfite sequencing",
         "SRP000539_put.xml",
     )
+    await delete_object(sess, "study", accession_id[0])
 
 
 async def test_crud_drafts_works(sess, schema, orginal_file, update_file, folder_id):
@@ -818,39 +843,222 @@ async def test_getting_all_objects_from_schema_works(sess, folder_id):
     :param folder_id: id of the folder used to group submission objects
     """
     # Add objects
-    files = await asyncio.gather(*[post_object(sess, "study", folder_id, "SRP000539.xml") for _ in range(13)])
+    files = await asyncio.gather(*[post_object(sess, "sample", folder_id, "SRS001433.xml") for _ in range(13)])
 
     # Test default values
-    async with sess.get(f"{objects_url}/study") as resp:
+    async with sess.get(f"{objects_url}/sample") as resp:
         assert resp.status == 200
         ans = await resp.json()
         assert ans["page"]["page"] == 1
         assert ans["page"]["size"] == 10
         assert ans["page"]["totalPages"] == 2
-        assert ans["page"]["totalObjects"] == 16
+        assert ans["page"]["totalObjects"] == 13, ans["page"]["totalObjects"]
         assert len(ans["objects"]) == 10
 
     # Test with custom pagination values
-    async with sess.get(f"{objects_url}/study?page=2&per_page=3") as resp:
+    async with sess.get(f"{objects_url}/sample?page=2&per_page=3") as resp:
         assert resp.status == 200
         ans = await resp.json()
         assert ans["page"]["page"] == 2
         assert ans["page"]["size"] == 3
-        assert ans["page"]["totalPages"] == 6
-        assert ans["page"]["totalObjects"] == 16
+        assert ans["page"]["totalPages"] == 5, ans["page"]["totalPages"]
+        assert ans["page"]["totalObjects"] == 13, ans["page"]["totalObjects"]
         assert len(ans["objects"]) == 3
 
     # Test with wrong pagination values
-    async with sess.get(f"{objects_url}/study?page=-1") as resp:
+    async with sess.get(f"{objects_url}/sample?page=-1") as resp:
         assert resp.status == 400
-    async with sess.get(f"{objects_url}/study?per_page=0") as resp:
+    async with sess.get(f"{objects_url}/sample?per_page=0") as resp:
         assert resp.status == 400
 
     # Delete objects
-    await asyncio.gather(*[delete_object(sess, "study", accession_id) for accession_id, _ in files])
+    await asyncio.gather(*[delete_object(sess, "sample", accession_id) for accession_id, _ in files])
 
 
-async def test_crud_folders_works(sess, project_id: str):
+async def test_metax_crud_with_xml(sess, folder_id):
+    """Test Metax service with study and dataset xml files POST, PATCH, PUBLISH and DELETE reqs.
+
+    :param sess: HTTP session in which request call is made
+    :param folder_id: id of the folder where objects reside
+    """
+    # POST to object endpoint creates draft dataset in Metax for Study and Dataset
+    ids = []
+    xml_files = set()
+    for schema, filename, update_filename in {
+        ("study", "SRP000539.xml", "SRP000539_put.xml"),
+        ("dataset", "dataset.xml", "dataset_put.xml"),
+    }:
+        accession_id, _ = await post_object(sess, schema, folder_id, filename)
+        xml_files.add((schema, accession_id, update_filename))
+        ids.append([schema, accession_id])
+
+    for object in ids:
+        schema, accession_id = object
+        async with sess.get(f"{objects_url}/{schema}/{accession_id}") as resp:
+            assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+            res = await resp.json()
+            try:
+                metax_id = res["metaxIdentifier"]
+            except KeyError:
+                assert False, "Metax ID was not in response data"
+        object.append(metax_id)
+        async with sess.get(f"{metax_url}/{metax_id}", auth=auth) as metax_resp:
+            assert metax_resp.status == 200, f"HTTP Status code error, got {metax_resp.status}"
+            metax_res = await metax_resp.json()
+            assert (
+                res.get("doi", None) == metax_res["research_dataset"]["preferred_identifier"]
+            ), "Object's DOI was not in Metax response data preferred_identifier"
+
+    # PUT and PATCH to object endpoint updates draft dataset in Metax for Study and Dataset
+    for schema, accession_id, filename in xml_files:
+        await put_object_xml(sess, schema, accession_id, filename)
+
+    for _, _, metax_id in ids:
+        async with sess.get(f"{metax_url}/{metax_id}", auth=auth) as metax_resp:
+            assert metax_resp.status == 200, f"HTTP Status code error, got {metax_resp.status}"
+            metax_res = await metax_resp.json()
+            assert (
+                metax_res.get("date_modified", None) is not None
+            ), f"Object with metax id {metax_res['identifier']} was not updated in Metax"
+
+    # DELETE object from Metax
+    for schema, accession_id, _ in xml_files:
+        await delete_object(sess, schema, accession_id)
+
+    for _, _, metax_id in ids:
+        async with sess.get(f"{metax_url}/{metax_id}", auth=auth) as metax_resp:
+            assert metax_resp.status == 404, f"HTTP Status code error - expected 404 Not Found, got {metax_resp.status}"
+
+
+async def test_metax_crud_with_json(sess, folder_id):
+    """Test Metax service with study and dataset json data POST, PATCH, PUBLISH and DELETE reqs.
+
+    :param sess: HTTP session in which request call is made
+    :param folder_id: id of the folder where objects reside
+    """
+    ids = []
+    json_files = set()
+    for schema, filename, update_filename in {
+        ("study", "SRP000539.json", "patch.json"),
+        ("dataset", "dataset.json", "dataset_patch.json"),
+    }:
+        accession_id = await post_object_json(sess, schema, folder_id, filename)
+        json_files.add((schema, accession_id, filename, update_filename))
+        ids.append([schema, accession_id])
+
+    for object in ids:
+        schema, accession_id = object
+        async with sess.get(f"{objects_url}/{schema}/{accession_id}") as resp:
+            assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+            res = await resp.json()
+            try:
+                metax_id = res["metaxIdentifier"]
+            except KeyError:
+                assert False, "Metax ID was not in response data"
+        object.append(metax_id)
+        async with sess.get(f"{metax_url}/{metax_id}", auth=auth) as metax_resp:
+            assert metax_resp.status == 200, f"HTTP Status code error, got {metax_resp.status}"
+            metax_res = await metax_resp.json()
+            assert (
+                res.get("doi", None) == metax_res["research_dataset"]["preferred_identifier"]
+            ), "Object's DOI was not in Metax response data preferred_identifier"
+
+    for schema, accession_id, filename, _ in json_files:
+        await put_object_json(sess, schema, accession_id, filename)
+    for schema, accession_id, _, filename in json_files:
+        await patch_object_json(sess, schema, accession_id, filename)
+
+    for schema, accession_id, _, _ in json_files:
+        await delete_object(sess, schema, accession_id)
+
+
+async def test_metax_id_not_updated_on_patch(sess, folder_id):
+    """Test that Metax id cannot be sent in patch.
+
+    :param sess: HTTP session in which request call is made
+    :param folder_id: id of the folder where objects reside
+    """
+    for schema, filename in {
+        ("study", "SRP000539.json"),
+        ("dataset", "dataset.json"),
+    }:
+        accession_id = await post_object_json(sess, schema, folder_id, filename)
+        async with sess.patch(f"{objects_url}/{schema}/{accession_id}", data={"metaxIdentifier": "12345"}) as resp:
+            LOG.debug(f"Trying to patch object in {schema}")
+            assert resp.status == 400
+
+            await delete_object(sess, schema, accession_id)
+
+
+async def test_metax_publish_dataset(sess, folder_id):
+    """Test publishing dataset to Metax service after folder(submission) is published.
+
+    :param sess: HTTP session in which request call is made
+    :param folder_id: id of the folder where objects reside
+    """
+    # POST to object endpoint creates draft dataset in Metax for Study and Dataset
+    objects = []
+    for schema, filename in {
+        ("study", "SRP000539.xml"),
+        ("dataset", "dataset.xml"),
+    }:
+        accession_id, _ = await post_object(sess, schema, folder_id, filename)
+        objects.append([schema, accession_id])
+
+    for object in objects:
+        schema, object_id = object
+        async with sess.get(f"{objects_url}/{schema}/{object_id}") as resp:
+            assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+            res = await resp.json()
+            object.append(res["metaxIdentifier"])
+
+    # Publish the folder
+    # add a study and dataset for publishing a folder
+    doi_data_raw = await create_request_json_data("doi", "test_doi.json")
+    doi_data = json.loads(doi_data_raw)
+    patch_add_doi = [{"op": "add", "path": "/doiInfo", "value": doi_data}]
+    folder_id = await patch_folder(sess, folder_id, patch_add_doi)
+
+    await publish_folder(sess, folder_id)
+
+    for schema, object_id, metax_id in objects:
+        async with sess.get(f"{objects_url}/{schema}/{object_id}") as resp:
+            assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+            res = await resp.json()
+            assert res["metaxIdentifier"] == metax_id
+
+        async with sess.get(f"{metax_url}/{metax_id}") as metax_resp:
+            assert metax_resp.status == 200, f"HTTP Status code error, got {metax_resp.status}"
+            metax_res = await metax_resp.json()
+            assert metax_res["state"] == "published"
+
+            # this data is synced with /test_files/doi/test_doi.json
+            # if data changes inside the file it must data must be reflected here
+            expected_rd = json.loads(await create_request_json_data("metax", "research_dataset.json"))
+            actual_rd = metax_res["research_dataset"]
+
+            title = res["title"] if schema == "dataset" else res["descriptor"]["studyTitle"]
+            description = res["description"] if schema == "dataset" else res["descriptor"]["studyAbstract"]
+
+            assert actual_rd["title"]["en"] == title
+            assert actual_rd["description"]["en"] == description
+            assert actual_rd["creator"] == expected_rd["creator"]
+            assert (
+                actual_rd["access_rights"]["access_type"]["identifier"]
+                == expected_rd["access_rights"]["access_type"]["identifier"]
+            )
+            assert actual_rd["contributor"] == expected_rd["contributor"]
+            assert actual_rd["curator"] == expected_rd["curator"]
+            assert actual_rd["issued"] == expected_rd["issued"]
+            assert actual_rd["modified"] == expected_rd["modified"]
+            assert actual_rd["other_identifier"][0]["notation"] == expected_rd["other_identifier"][0]["notation"]
+            assert actual_rd["publisher"] == expected_rd["publisher"]
+            assert actual_rd["rights_holder"] == expected_rd["rights_holder"]
+            assert actual_rd["spatial"] == expected_rd["spatial"]
+            assert actual_rd["temporal"] == expected_rd["temporal"]
+
+
+async def test_crud_folders_works(sess, project_id):
     """Test folders REST api POST, GET, PATCH, PUBLISH and DELETE reqs.
 
     :param sess: HTTP session in which request call is made
@@ -920,6 +1128,15 @@ async def test_crud_folders_works(sess, project_id: str):
         ], "folder metadataObjects content mismatch"
 
     # Publish the folder
+    # add a study and dataset for publishing a folder
+    doi_data_raw = await create_request_json_data("doi", "test_doi.json")
+    doi_data = json.loads(doi_data_raw)
+    patch_add_doi = [{"op": "add", "path": "/doiInfo", "value": doi_data}]
+    folder_id = await patch_folder(sess, folder_id, patch_add_doi)
+
+    await post_object_json(sess, "study", folder_id, "SRP000539.json")
+    await post_object(sess, "dataset", folder_id, "dataset.xml")
+
     folder_id = await publish_folder(sess, folder_id)
 
     await get_draft(sess, "sample", draft_id, 404)  # checking the draft was deleted after publication
@@ -932,13 +1149,7 @@ async def test_crud_folders_works(sess, project_id: str):
         assert "datePublished" in res.keys()
         assert "extraInfo" in res.keys()
         assert res["drafts"] == [], "there are drafts in folder, expected empty"
-        assert res["metadataObjects"] == [
-            {
-                "accessionId": accession_id,
-                "schema": "sample",
-                "tags": {"submissionType": "Form", "displayTitle": "HapMap sample from Homo sapiens"},
-            }
-        ], "folder metadataObjects content mismatch"
+        assert len(res["metadataObjects"]) == 3, "folder metadataObjects content mismatch"
 
     # Delete folder
     await delete_folder_publish(sess, folder_id)
@@ -1291,6 +1502,16 @@ async def test_crud_users_works(sess, project_id):
         "projectId": project_id,
     }
     publish_folder_id = await post_folder(sess, folder_published)
+
+    # add a study and dataset for publishing a folder
+    doi_data_raw = await create_request_json_data("doi", "test_doi.json")
+    doi_data = json.loads(doi_data_raw)
+    patch_add_doi = [{"op": "add", "path": "/doiInfo", "value": doi_data}]
+    await patch_folder(sess, publish_folder_id, patch_add_doi)
+
+    await post_object_json(sess, "study", publish_folder_id, "SRP000539.json")
+    await post_object(sess, "dataset", publish_folder_id, "dataset.xml")
+
     await publish_folder(sess, publish_folder_id)
     async with sess.get(f"{folders_url}/{publish_folder_id}?projectId={project_id}") as resp:
         LOG.debug(f"Checking that folder {publish_folder_id} was published")
@@ -1398,6 +1619,8 @@ async def test_get_folders_objects(sess, folder_id: str, project_id: str):
         assert response["folders"][0]["metadataObjects"][0]["accessionId"] == accession_id
         assert response["folders"][0]["metadataObjects"][0]["tags"]["submissionType"] == "XML"
 
+    await delete_object(sess, "study", accession_id)
+
 
 async def test_submissions_work(sess, folder_id):
     """Test actions in submission XML files.
@@ -1408,7 +1631,8 @@ async def test_submissions_work(sess, folder_id):
     # Post original submission with two 'add' actions
     sub_files = [("submission", "ERA521986_valid.xml"), ("study", "SRP000539.xml"), ("sample", "SRS001433.xml")]
     submission_data = await create_multi_file_request_data(sub_files)
-    async with sess.post(f"{submit_url}", data=submission_data) as resp:
+
+    async with sess.post(f"{submit_url}", params={"folder": folder_id}, data=submission_data) as resp:
         LOG.debug("Checking initial submission worked")
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         res = await resp.json()
@@ -1416,19 +1640,7 @@ async def test_submissions_work(sess, folder_id):
         assert res[0]["schema"] == "study", "expected first element to be study"
         assert res[1]["schema"] == "sample", "expected second element to be sample"
         study_access_id = res[0]["accessionId"]
-        patch = [
-            {
-                "op": "add",
-                "path": "/metadataObjects/-",
-                "value": {"accessionId": res[0]["accessionId"], "schema": res[0]["schema"]},
-            },
-            {
-                "op": "add",
-                "path": "/metadataObjects/-",
-                "value": {"accessionId": res[1]["accessionId"], "schema": res[1]["schema"]},
-            },
-        ]
-        await patch_folder(sess, folder_id, patch)
+        sample_access_id = res[1]["accessionId"]
 
     # Sanity check that the study object was inserted correctly before modifying it
     async with sess.get(f"{objects_url}/study/{study_access_id}") as resp:
@@ -1440,6 +1652,37 @@ async def test_submissions_work(sess, folder_id):
         assert res["descriptor"]["studyTitle"] == (
             "Highly integrated epigenome maps in Arabidopsis - whole genome shotgun bisulfite sequencing"
         ), "study title does not match"
+        metax_id = res.get("metaxIdentifier", None)
+        doi = res.get("doi", None)
+        assert metax_id is not None
+        assert doi is not None
+
+    # check that objects are added to folder
+    async with sess.get(f"{folders_url}/{folder_id}") as resp:
+        LOG.debug(f"Checking that folder {folder_id} was patched")
+        res = await resp.json()
+        expected_study = {
+            "accessionId": study_access_id,
+            "schema": "study",
+            "tags": {
+                "submissionType": "XML",
+                "displayTitle": (
+                    "Highly integrated epigenome maps in Arabidopsis - whole genome shotgun bisulfite sequencing"
+                ),
+                "fileName": "SRP000539.xml",
+            },
+        }
+        assert expected_study in res["metadataObjects"], "folder metadataObjects content mismatch"
+        expected_sample = {
+            "accessionId": sample_access_id,
+            "schema": "sample",
+            "tags": {
+                "submissionType": "XML",
+                "displayTitle": "HapMap sample from Homo sapiens",
+                "fileName": "SRS001433.xml",
+            },
+        }
+        assert expected_sample in res["metadataObjects"], "folder metadataObjects content mismatch"
 
     # Give test file the correct accession id
     LOG.debug("Sharing the correct accession ID created in this test instance")
@@ -1471,6 +1714,26 @@ async def test_submissions_work(sess, folder_id):
         assert res["descriptor"]["studyTitle"] == (
             "Different title for testing purposes"
         ), "updated study title does not match"
+        assert res["metaxIdentifier"] == metax_id
+        assert res["doi"] == doi
+
+    # check that study is updated to folder
+    async with sess.get(f"{folders_url}/{folder_id}") as resp:
+        LOG.debug(f"Checking that folder {folder_id} was patched")
+        res = await resp.json()
+        expected_study = {
+            "accessionId": study_access_id,
+            "schema": "study",
+            "tags": {
+                "submissionType": "XML",
+                "displayTitle": "Different title for testing purposes",
+                "fileName": "SRP000539_modified.xml",
+            },
+        }
+        assert expected_study in res["metadataObjects"], "folder metadataObjects content mismatch"
+
+    await delete_object(sess, "sample", sample_access_id)
+    await delete_object(sess, "study", study_access_id)
 
     # Remove the accession id that was used for testing from test file
     LOG.debug("Sharing the correct accession ID created in this test instance")
@@ -1603,6 +1866,19 @@ async def main():
         # must be improven in next integration test iteration
         if not TLS:
             await test_getting_folders_filtered_by_date_created(sess, project_id)
+
+        # Test objects study and dataset are connecting to metax and saving metax id to db
+        LOG.debug("=== Testing Metax integration related basic CRUD operations for study and dataset ===")
+        metax_folder = {
+            "name": "basic test pagination",
+            "description": "basic test pagination folder",
+            "projectId": project_id,
+        }
+        metax_folder_id = await post_folder(sess, metax_folder)
+        await test_metax_crud_with_xml(sess, metax_folder_id)
+        await test_metax_crud_with_json(sess, metax_folder_id)
+        await test_metax_id_not_updated_on_patch(sess, metax_folder_id)
+        await test_metax_publish_dataset(sess, metax_folder_id)
 
         # Test add, modify, validate and release action with submissions
         LOG.debug("=== Testing actions within submissions ===")

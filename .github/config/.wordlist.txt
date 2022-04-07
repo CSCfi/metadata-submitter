@@ -165,6 +165,7 @@ dockerfile
 docstrings
 doi
 doiinfo
+dois
 dt
 dzongkha
 ean
@@ -196,6 +197,7 @@ experimentref
 experimenttype
 externalid
 extrainfo
+fairdata
 faire
 familyname
 faroese
@@ -342,6 +344,9 @@ metagenomic
 metagenomics
 metatranscriptome
 metatranscriptomic
+metax
+metaxidentifier
+metaxservicehandler
 methylation
 methylcytidine
 mf
@@ -609,6 +614,7 @@ txt
 ui
 ujson
 umi
+uncomment
 unencryptedchecksum
 uniqueitems
 unlocalised

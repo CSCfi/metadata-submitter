@@ -44,7 +44,8 @@
       "title": "Datacite DOI Registration Information",
       "required": [
         "creators",
-        "subjects"
+        "subjects",
+        "keywords"
       ],
       "properties": {
         "creators": {
@@ -54,6 +55,10 @@
           "items": {
             "type": "object",
             "title": "Main researcher(s) involved with data or the author(s) of the publication.",
+            "required": [
+              "givenName",
+              "familyName"
+            ],
             "properties": {
               "givenName": {
                 "type": "string",
@@ -140,7 +145,7 @@
         "subjects": {
           "type": "array",
           "title": "Subjects",
-          "description": "Subject, keyword, classification code, or key phrase describing the resources specified by OECD Fields of Science and Technology (FOS)",
+          "description": "Subject, classification code, or key phrase describing the resources specified by OECD Fields of Science and Technology (FOS)",
           "items": {
             "type": "object",
             "title": "Subjects",
@@ -211,6 +216,11 @@
           },
           "uniqueItems": true
         },
+        "keywords": {
+          "type": "string",
+          "title": "Keywords",
+          "description": "A list of keywords or tags describing the resources. It is recommended to use a controlled vocabulary, ontology or classification when choosing keywords. Multiple keywords can be added, separating them by comma."
+        },
         "contributors": {
           "type": "array",
           "title": "Contributors",
@@ -219,6 +229,8 @@
             "type": "object",
             "title": "Contributor",
             "required": [
+              "givenName",
+              "familyName",
               "contributorType"
             ],
             "properties": {
@@ -775,23 +787,23 @@
                 "enum": [
                   "Audiovisual",
                   "Book",
-                  "BookChapter",
+                  "Book Chapter",
                   "Collection",
-                  "ComputationalNotebook",
-                  "ConferencePaper",
-                  "ConferenceProceeding",
-                  "DataPaper",
+                  "Computational Notebook",
+                  "Conference Paper",
+                  "Conference Proceeding",
+                  "Data Paper",
                   "Dataset",
                   "Dissertation",
                   "Event",
                   "Image",
-                  "InteractiveResource",
+                  "Interactive Resource",
                   "Journal",
-                  "JournalArticle",
+                  "Journal Article",
                   "Model",
-                  "OutputManagementPlan",
-                  "PeerReview",
-                  "PhysicalObject",
+                  "Output Management Plan",
+                  "Peer Review",
+                  "Physical Object",
                   "Preprint",
                   "Report",
                   "Service",
@@ -933,21 +945,76 @@
       "type": "object",
       "title": "The extra DOI info schema",
       "properties": {
-        "identifier": {
+        "studyIdentifier": {
           "type": "object",
-          "title": "identifier object",
           "required": [
-            "identifierType",
-            "doi"
+            "identifier",
+            "url"
           ],
           "properties": {
-            "identifierType": {
-              "type": "string",
-              "title": "Type of identifier (= DOI)"
+            "identifier": {
+              "type": "object",
+              "title": "identifier object",
+              "required": [
+                "identifierType",
+                "doi"
+              ],
+              "properties": {
+                "identifierType": {
+                  "type": "string",
+                  "title": "Type of identifier (= DOI)"
+                },
+                "doi": {
+                  "type": "string",
+                  "title": "A persistent identifier for a resource"
+                }
+              }
             },
-            "doi": {
+            "url": {
               "type": "string",
-              "title": "A persistent identifier for a resource"
+              "title": "URL of the digital location of the object"
+            },
+            "types": {
+              "type": "object",
+              "title": "Type info of the resource. Multiple types can be listed: ResourceTypeGeneral, schemaOrg etc."
+            }
+          }
+        },
+        "datasetIdentifiers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "identifier",
+              "url"
+            ],
+            "properties": {
+              "identifier": {
+                "type": "object",
+                "title": "identifier object",
+                "required": [
+                  "identifierType",
+                  "doi"
+                ],
+                "properties": {
+                  "identifierType": {
+                    "type": "string",
+                    "title": "Type of identifier (= DOI)"
+                  },
+                  "doi": {
+                    "type": "string",
+                    "title": "A persistent identifier for a resource"
+                  }
+                }
+              },
+              "url": {
+                "type": "string",
+                "title": "URL of the digital location of the object"
+              },
+              "types": {
+                "type": "object",
+                "title": "Type info of the resource. Multiple types can be listed: ResourceTypeGeneral, schemaOrg etc."
+              }
             }
           }
         },
@@ -958,14 +1025,6 @@
         "publicationYear": {
           "type": "integer",
           "title": "Publication Year"
-        },
-        "types": {
-          "type": "object",
-          "title": "Type info of the resource. Multiple types can be listed: ResourceTypeGeneral, schemaOrg etc."
-        },
-        "url": {
-          "type": "string",
-          "title": "URL of the digital location of the object"
         },
         "version": {
           "type": "string",
