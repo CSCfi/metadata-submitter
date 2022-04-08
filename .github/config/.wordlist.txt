@@ -568,6 +568,7 @@ sra
 src
 srf
 ssl
+snrna
 ssrna
 stepindex
 studyabstract
