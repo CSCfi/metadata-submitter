@@ -192,7 +192,7 @@
     "properties": {
         "descriptor": {
             "type": "object",
-            "title": "Study Description",
+            "title": "Study Details",
             "required": [
                 "studyTitle",
                 "studyType",
