@@ -16,7 +16,8 @@
                 "title": "Main researcher(s) involved with data or the author(s) of the publication.",
                 "required": [
                     "givenName",
-                    "familyName"
+                    "familyName",
+                    "affiliation"
                 ],
                 "properties": {
                     "givenName": {
@@ -181,7 +182,8 @@
                 "required": [
                     "givenName",
                     "familyName",
-                    "contributorType"
+                    "contributorType",
+                    "affiliation"
                 ],
                 "properties": {
                     "givenName": {
