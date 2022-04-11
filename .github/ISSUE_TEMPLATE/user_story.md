@@ -14,3 +14,7 @@ List of tasks needed for this user story. Technical description is in the tasks.
 
 #### Testing 
 Description how the testing will be done.  
+
+
+#Definition of Done
+Given [some precondition] when I do [some action] then I expect [some result]
