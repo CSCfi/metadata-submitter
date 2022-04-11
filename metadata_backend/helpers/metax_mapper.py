@@ -290,8 +290,6 @@ class MetaDataMapper:
                     metax_creator["member_of"]["identifier"] = affiliation["affiliationIdentifier"]
             # Metax schema accepts only one identifier per creator
             # so we take first one
-            else:
-                del metax_creator["member_of"]
             if creator.get("nameIdentifiers", None) and creator["nameIdentifiers"][0].get("nameIdentifier", None):
                 metax_creator["identifier"] = creator["nameIdentifiers"][0]["nameIdentifier"]
             else:
@@ -319,8 +317,6 @@ class MetaDataMapper:
                 metax_contributor["member_of"]["name"]["en"] = affiliation["name"]
                 if affiliation.get("affiliationIdentifier"):
                     metax_contributor["member_of"]["identifier"] = affiliation["affiliationIdentifier"]
-            else:
-                del metax_contributor["member_of"]
             # Metax schema accepts only one identifier per creator
             # so we take first one
             if contributor.get("nameIdentifiers", None) and contributor["nameIdentifiers"][0].get(
