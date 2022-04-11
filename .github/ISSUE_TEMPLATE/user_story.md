@@ -1,7 +1,7 @@
 ---
 name: User story
 about: Create new user story
-title: ''
+title: 'As a [user], I want to [do something] so that [benefit for the user]'
 labels: story
 assignees: ''
 
@@ -9,4 +9,8 @@ assignees: ''
 
 #### Describe the user story
 <!-- A description of the user story. -->
-As a [user], I want to [do something] so that [benefit for the user].
+List of tasks needed for this user story. Technical description is in the tasks. Additional information, for example a protype, Figma files, pictures are linked here. 
+
+
+#### Testing 
+Description how the testing will be done.  
