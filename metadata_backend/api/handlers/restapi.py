@@ -163,7 +163,11 @@ class RESTAPIHandler:
         self._check_schema_exists(schema_type)
 
         try:
-            schema = JSONSchemaLoader().get_schema(schema_type)
+            if schema_type == "datacite":
+                folder = JSONSchemaLoader().get_schema("folder")
+                schema = folder["properties"]["doiInfo"]
+            else:
+                schema = JSONSchemaLoader().get_schema(schema_type)
             LOG.info(f"{schema_type} schema loaded.")
             return web.Response(
                 body=ujson.dumps(schema, escape_forward_slashes=False), status=200, content_type="application/json"
