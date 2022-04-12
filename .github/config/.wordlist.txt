@@ -375,6 +375,7 @@ mpeg
 mre
 msll
 mypy
+namedtype
 nameidentifier
 nameidentifiers
 nameidentifierscheme
@@ -559,6 +560,7 @@ shona
 sinhala
 sllversion
 snp
+snrna
 solid
 sotho
 southboundlatitude
@@ -568,7 +570,6 @@ sra
 src
 srf
 ssl
-snrna
 ssrna
 stepindex
 studyabstract
@@ -581,6 +582,7 @@ studyref
 studytitle
 studytype
 subjectscheme
+subjectsSchema
 submissionfolder
 submissionfolderslice
 submissiontype
