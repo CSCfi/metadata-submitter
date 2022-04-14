@@ -74,11 +74,6 @@
                 "description": "This field will be constructed based from Given Name and Family Name.",
                 "title": "Full name."
               },
-              "nameType": {
-                "type": "string",
-                "title": "Type of name",
-                "const": "Personal"
-              },
               "affiliation": {
                 "type": "array",
                 "title": "Affiliations",
@@ -139,7 +134,7 @@
                 "uniqueItems": true
               }
             },
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "uniqueItems": true
         },
@@ -207,13 +202,9 @@
                   "FOS: Sociology",
                   "FOS: Veterinary science"
                 ]
-              },
-              "subjectScheme": {
-                "title": "Fields of Science and Technology (FOS) scheme",
-                "type": "string"
               }
             },
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "uniqueItems": true
         },
@@ -248,11 +239,6 @@
                 "type": "string",
                 "description": "This field will be constructed based from Given Name and Family Name.",
                 "title": "Full name."
-              },
-              "nameType": {
-                "type": "string",
-                "title": "Type of name",
-                "const": "Personal"
               },
               "contributorType": {
                 "type": "string",
@@ -338,7 +324,7 @@
                 "uniqueItems": true
               }
             },
-            "additionalProperties": false
+            "additionalProperties": true
           },
           "uniqueItems": true
         },
@@ -940,8 +926,7 @@
           },
           "uniqueItems": true
         }
-      },
-      "additionalProperties": false
+      }
     },
     "extraInfo": {
       "type": "object",
