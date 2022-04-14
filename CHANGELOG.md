@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- remove `datacite.json` to render the form from `folder["doiInfo"]`
+  - we removed `namedtype` for `contributors` and `creators` we therefore allow `additionalProperties`
+  - `subjectsSchema` is a given by frontend thus we allow via `additionalProperties`
+
 ## [0.13.0] - 2022-04-07
 
 ### Added
@@ -17,8 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Adds metax integration to submit endpoint
 - Integration with Metax service #356 #387
   - Adds new local container for testing against mocked Metax API
-  - Introduces new env vars: METAX_USER, METAX_PASS, METAX_URL for connection to Metax service
-  - Introduces new env var DISCOVERY_URL for creating link to dataset inside Fairdata SD catalog
+  - Introduces new env vars: `METAX_USER`, `METAX_PASS`, `METAX_URL` for connection to Metax service
+  - Introduces new env var `DISCOVERY_URL` for creating link to dataset inside Fairdata SD catalog
   - Adds new key metaxIdentifier to Study and Dataset collections containing metax id returned from Metax API
   - Adds new handler MetaxServiceHandler to take care of mapping Submitter metadata to Metax metadata and to connect to Metax API
   - Adds new mapper class to adjust incoming metadata to Metax schema
@@ -92,7 +98,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix spelling mistakes for JSON schemas #323
 - Oidcrp does not allow empty values, prefill them in mockauth so front-end can start #333
 - Fix development environment #336
-  - Add env vars OIDC_URL and OIDC_URL_TEST to mock auth container
+  - Add env vars `OIDC_URL` and `OIDC_URL_TEST` to mock auth container
   - Adds logging configs for mock auth
   - Updates mock auth api's token endpoint with expiration configs
   - Adds config .pre-commit-config.yaml file required by pre-commit library
