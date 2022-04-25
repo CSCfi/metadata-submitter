@@ -1,5 +1,6 @@
 """Class for handling calls to METAX API."""
 
+import asyncio
 from typing import Any, Dict, List
 
 from aiohttp import BasicAuth, ClientConnectorError, ClientSession
@@ -78,6 +79,19 @@ class MetaxServiceHandler:
         user = await user_op.read_user(current_user)
         metadata_provider_user = user["externalId"]
         return metadata_provider_user
+
+    @retry((HTTPRequestTimeout, ClientConnectorError), 5)
+    async def check_connection(self, timeout: int = 2) -> bool:
+        """Check connection for Metax server.
+
+        :param timeout: Request operations timeout
+        """
+        async with ClientSession() as sess:
+            try:
+                await sess.head(self.metax_url, timeout=timeout)
+                return True
+            except asyncio.exceptions.TimeoutError:
+                raise HTTPRequestTimeout(reason=f"Metax server {self.metax_url} is not respondig")
 
     @retry(total_tries=5)
     async def _get(self, metax_id: str) -> str:
@@ -238,6 +252,7 @@ class MetaxServiceHandler:
             f"{data['accessionId']}"
         )
         try:
+            await self.check_connection()
             metax_dataset = self.minimal_dataset_template
             metax_dataset["metadata_provider_user"] = await self.get_metadata_provider_user()
             if collection == "dataset":
@@ -273,6 +288,7 @@ class MetaxServiceHandler:
         """
         LOG.info(f"Updating {collection} object data to Metax service.")
         try:
+            await self.check_connection()
             metax_dataset = self.minimal_dataset_template
             metax_dataset["metadata_provider_user"] = await self.get_metadata_provider_user()
             if collection == "dataset":
@@ -294,6 +310,7 @@ class MetaxServiceHandler:
         """
         LOG.info(f"Deleting Metax draft dataset {metax_id}")
         try:
+            await self.check_connection()
             await self._delete_draft(metax_id)
         except (HTTPRequestTimeout, HTTPServerError, ClientConnectorError) as e:
             LOG.debug(f"Updating draft dataset failed due to: {e}")
@@ -309,6 +326,7 @@ class MetaxServiceHandler:
             "Updating metadata with datacite info for Metax datasets: "
             f"{','.join([id['metaxIdentifier'] for id in _metax_ids])}"
         )
+        await self.check_connection()
         bulk_data = []
         for id in _metax_ids:
             metax_data = await self._get(id["metaxIdentifier"])
@@ -366,42 +384,6 @@ class MetaxServiceHandler:
         research_dataset["description"]["en"] = data["description"]
         LOG.debug(f"Created Metax dataset from Dataset with data: {research_dataset}")
         return research_dataset
-
-    def map_creators(self, creators: List) -> List:
-        """Map creators.
-
-        :param submitter_data: Data comming from metadata submitter
-        :returns: Constructed creator data for Metax
-        """
-
-        metax_creators = []
-        for creator in creators:
-            metax_creator: Dict[str, Any] = {
-                "name": "",
-                "@type": "Person",
-                "member_of": {"name": {"en": ""}, "@type": "Organization"},
-                "identifier": "",
-            }
-            metax_creator["name"] = creator["name"]
-            metax_creator["@type"] = "Person"
-            # Metax schema accepts only one affiliation per creator
-            # so we take first one
-            if creator.get("affiliation", None):
-                affiliation = creator["affiliation"][0]
-                metax_creator["member_of"]["name"]["en"] = affiliation["name"]
-                metax_creator["member_of"]["@type"] = "Organization"
-                if affiliation.get("affiliationIdentifier"):
-                    metax_creator["member_of"]["identifier"] = affiliation["affiliationIdentifier"]
-            else:
-                metax_creator.pop("member_of")
-            # Metax schema accepts only one identifier per creator
-            # so we take first one
-            if creator.get("nameIdentifiers", None) and creator["nameIdentifiers"][0].get("nameIdentifier", None):
-                metax_creator["identifier"] = creator["nameIdentifiers"][0]["nameIdentifier"]
-            else:
-                metax_creator.pop("identifier")
-            metax_creators.append(metax_creator)
-        return metax_creators
 
     # we dont know exactly what is comming from Metax so we try it all
     def metax_error(self, status: int, resp_json: str) -> HTTPError:
