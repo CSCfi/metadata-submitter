@@ -21,8 +21,7 @@ services:
       - "MONGO_HOST=${MONGO_HOST}"
       - "MONGO_SSL=${MONGO_SSL}"
       - "MONGO_SSL_CA=${MONGO_SSL_CA}"
-      - "MONGO_SSL_CLIENT_KEY=${MONGO_SSL_CLIENT_KEY}"
-      - "MONGO_SSL_CLIENT_CERT=${MONGO_SSL_CLIENT_CERT}"
+      - "MONGO_SSL_CLIENT_CERT_KEY=${MONGO_SSL_CLIENT_CERT_KEY}"
       - "AAI_CLIENT_SECRET=${AAI_CLIENT_SECRET}"
       - "AAI_CLIENT_ID=${AAI_CLIENT_ID}"
       - "OIDC_URL=${OIDC_URL}"
@@ -73,7 +72,7 @@ services:
       - 8000:8000
     volumes:
       - ./tests/integration/mock_auth.py:/mock_auth.py
-    entrypoint: ["python", "/mock_auth.py", "0.0.0.0", "8000"]
+    entrypoint: [ "python", "/mock_auth.py", "0.0.0.0", "8000" ]
   mockdoi:
     build:
       dockerfile: Dockerfile-dev
@@ -87,7 +86,7 @@ services:
       - 8001:8001
     volumes:
       - ./tests/integration/mock_doi_api.py:/mock_doi_api.py
-    entrypoint: ["python", "/mock_doi_api.py", "0.0.0.0", "8001"]
+    entrypoint: [ "python", "/mock_doi_api.py", "0.0.0.0", "8001" ]
   mockmetax:
     build:
       dockerfile: Dockerfile-dev
@@ -101,6 +100,6 @@ services:
       - 8002:8002
     volumes:
       - ./tests/integration/mock_metax_api.py:/mock_metax_api.py
-    entrypoint: ["python", "/mock_metax_api.py", "0.0.0.0", "8002"]
+    entrypoint: [ "python", "/mock_metax_api.py", "0.0.0.0", "8002" ]
 volumes:
   data:
