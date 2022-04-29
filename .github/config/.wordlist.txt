@@ -7,6 +7,7 @@ addobjecttofolder
 affiliationidentifier
 affiliationidentifierscheme
 agp
+aiohttp
 ajv
 akan
 allof
@@ -79,6 +80,7 @@ cdd
 cdna
 centername
 centerprojectname
+certfile
 certreqs
 chamorro
 changelog
