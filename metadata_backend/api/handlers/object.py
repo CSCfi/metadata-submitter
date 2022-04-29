@@ -3,6 +3,7 @@ from math import ceil
 from typing import Any, Dict, List, Tuple, Union
 
 import ujson
+from datetime import datetime
 from aiohttp import web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
@@ -236,6 +237,9 @@ class ObjectAPIHandler(RESTAPIHandler):
                 LOG.error(reason)
                 raise web.HTTPUnauthorized(reason=reason)
             await folder_op.remove_object(folder_id, collection, accession_id)
+            _now = int(datetime.now().timestamp())
+            lastModified = {"op": "replace", "path": "/lastModified", "value": _now}
+            await folder_op.update_folder(folder_id, [lastModified])
         else:
             reason = "This object does not seem to belong to any user."
             LOG.error(reason)
@@ -424,6 +428,11 @@ class ObjectAPIHandler(RESTAPIHandler):
             if submission_type != "Form":
                 patch_ops["value"]["tags"]["fileName"] = filename
             patch.append(patch_ops)
+
+        _now = int(datetime.now().timestamp())
+        lastModified = {"op": "replace", "path": "/lastModified", "value": _now}
+        patch.append(lastModified)
+
         return patch
 
     def _prepare_folder_patch_update_object(self, schema: str, data: Dict, filename: str = "") -> List:
@@ -463,7 +472,10 @@ class ObjectAPIHandler(RESTAPIHandler):
                     "value": {"submissionType": "XML", "fileName": filename, "displayTitle": title},
                 }
             )
-        return [patch_op]
+        _now = int(datetime.now().timestamp())
+        lastModified = {"op": "replace", "path": "/lastModified", "value": _now}
+
+        return [patch_op, lastModified]
 
     async def create_metax_dataset(self, req: Request, collection: str, object: Dict) -> str:
         """Handle connection to Metax api handler for dataset creation.

@@ -329,7 +329,7 @@ class FolderAPIHandler(RESTAPIHandler):
         page = self._get_page_param(req, "page", 1)
         per_page = self._get_page_param(req, "per_page", 5)
         project_id = self._get_param(req, "projectId")
-        sort = {"date": True, "score": False}
+        sort = {"date": True, "score": False, "modified": False}
         db_client = req.app["db_client"]
 
         user_operator = UserOperator(db_client)
@@ -361,7 +361,7 @@ class FolderAPIHandler(RESTAPIHandler):
 
         format_incoming = "%Y-%m-%d"
         format_query = "%Y-%m-%d %H:%M:%S"
-        if "date_created_start" in req.query and "date_created_end" in req.query:
+        if "date_created_start" in req.query or "date_created_end" in req.query:
             date_param_start = req.query.get("date_created_start", "")
             date_param_end = req.query.get("date_created_end", "")
 
@@ -376,9 +376,31 @@ class FolderAPIHandler(RESTAPIHandler):
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
 
+        if "date_modified_start" in req.query or "date_modified_end" in req.query:
+            date_param_start = req.query.get("date_modified_start", "")
+            date_param_end = req.query.get("date_modified_end", "")
+
+            if datetime.strptime(date_param_start, format_incoming) and datetime.strptime(
+                date_param_end, format_incoming
+            ):
+                query_start = datetime.strptime(date_param_start + " 00:00:00", format_query).timestamp()
+                query_end = datetime.strptime(date_param_end + " 23:59:59", format_query).timestamp()
+                folder_query["lastModified"] = {"$gte": query_start, "$lte": query_end}
+            else:
+                reason = (
+                    f"'date_modified_start' and 'date_modified_end' parameters must be formated as {format_incoming}"
+                )
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+
         if "name" in req.query and "date_created_start" in req.query:
             sort["score"] = True
             sort["date"] = True
+
+        if "name" in req.query and "date_modified_start" in req.query and "date_created_start" not in req.query:
+            sort["score"] = True
+            sort["modified"] = True
+            sort["date"] = False
 
         folder_operator = FolderOperator(db_client)
         folders, total_folders = await folder_operator.query_folders(folder_query, page, per_page, sort)
@@ -478,7 +500,14 @@ class FolderAPIHandler(RESTAPIHandler):
         await operator.check_folder_exists(folder_id)
 
         # Check patch operations in request are valid
+        # we expect a list for patching
         patch_ops = await self._get_data(req)
+        if isinstance(patch_ops, list):
+            pass
+        else:
+            reason = "Patch folder operations should be provided as list"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
         self._check_patch_folder(patch_ops)
 
         # Validate against folders schema if DOI is being added
@@ -487,6 +516,11 @@ class FolderAPIHandler(RESTAPIHandler):
                 curr_folder = await operator.read_folder(folder_id)
                 curr_folder["doiInfo"] = op["value"]
                 JSONValidator(curr_folder, "folders").validate
+
+        # we update the folder last modified date
+        _now = int(datetime.now().timestamp())
+        lastModified = {"op": "replace", "path": "/lastModified", "value": _now}
+        patch_ops.append(lastModified)
 
         await self._handle_check_ownership(req, "folders", folder_id)
 
@@ -549,10 +583,13 @@ class FolderAPIHandler(RESTAPIHandler):
         await metax_handler.publish_dataset(metax_ids)
 
         # Patch the folder into a published state
+        _now = int(datetime.now().timestamp())
         patch = [
             {"op": "replace", "path": "/published", "value": True},
             {"op": "replace", "path": "/drafts", "value": []},
-            {"op": "add", "path": "/datePublished", "value": int(datetime.now().timestamp())},
+            {"op": "add", "path": "/datePublished", "value": _now},
+            # when we publish the last modified date corresponds to the published date
+            {"op": "replace", "path": "/lastModified", "value": _now},
             {"op": "add", "path": "/extraInfo/publisher", "value": doi_config["publisher"]},
             {"op": "add", "path": "/extraInfo/publicationYear", "value": date.today().year},
             {
