@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 from aiohttp import BasicAuth, ClientSession
 from aiohttp.web import HTTPBadRequest, HTTPError, HTTPForbidden, HTTPNotFound, Request
 
-from ..api.middlewares import get_session
+import aiohttp_session
 from ..api.operators import UserOperator
 from ..conf.conf import metax_config
 from .logger import LOG
@@ -62,7 +62,8 @@ class MetaxServiceHandler:
 
         returns: current users external ID
         """
-        current_user = get_session(self.req)["user_info"]
+        session = await aiohttp_session.get_session(self.req)
+        current_user = session["user_info"]
         user_op = UserOperator(self.db_client)
         user = await user_op.read_user(current_user)
         metadata_provider_user = user["externalId"]
