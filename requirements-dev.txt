@@ -75,7 +75,7 @@ tomli==2.0.1
     #   black
     #   mypy
     #   pep517
-tox==3.24.5
+tox==3.25.0
     # via -r requirements-dev.in
 typing-extensions==4.1.1
     # via mypy
