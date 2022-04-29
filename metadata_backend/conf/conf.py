@@ -66,15 +66,17 @@ def set_conf() -> Tuple[str, str]:
     _base = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}/{mongo_database}"
     if strtobool(os.getenv("MONGO_SSL", "False")):
         _ca = os.getenv("MONGO_SSL_CA", None)
-        _key = os.getenv("MONGO_SSL_CLIENT_KEY", None)
-        _cert = os.getenv("MONGO_SSL_CLIENT_CERT", None)
-        if bool(os.getenv("MONGO_AUTHDB")) and _ca and _key and _cert:
-            tls = f"?tls=true&tlsCAFile={_ca}&ssl_keyfile={_key}&ssl_certfile={_cert}"
+        # Instead of using ssl_certfile and ssl_keyfile to specify
+        # the certificate and private key files respectively, use tlsCertificateKeyFile
+        # https://motor.readthedocs.io/en/stable/migrate-to-motor-3.html?highlight=ssl_certfile#renamed-uri-options
+        _combined_cert_key = os.getenv("MONGO_SSL_CLIENT_CERT_KEY", None)
+        if bool(os.getenv("MONGO_AUTHDB")) and _ca and _combined_cert_key:
+            tls = f"?tls=true&tlsCAFile={_ca}&tlsCertificateKeyFile={_combined_cert_key}"
             _authdb = str(os.getenv("MONGO_AUTHDB"))
             auth = f"&authSource={_authdb}"
             url = f"{_base}{tls}{auth}"
         else:
-            tls = f"?tls=true&tlsCAFile={_ca}&ssl_keyfile={_key}&ssl_certfile={_cert}"
+            tls = f"?tls=true&tlsCAFile={_ca}&tlsCertificateKeyFile={_combined_cert_key}"
             url = f"{_base}{tls}"
     elif bool(os.getenv("MONGO_AUTHDB")):
         _authdb = str(os.getenv("MONGO_AUTHDB"))
