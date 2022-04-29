@@ -176,7 +176,7 @@ class AccessHandler:
             session = await aiohttp_session.get_session(req)
             session.invalidate()
         except Exception as e:
-            LOG.info(f"Trying to log our an invalidated session: {e}")
+            LOG.info(f"Trying to log out an invalidated session: {e}")
             raise web.HTTPUnauthorized
 
         response = web.HTTPSeeOther(f"{self.redirect}/")
