@@ -28,7 +28,7 @@ identify==2.4.12
     # via pre-commit
 mccabe==0.6.1
     # via flake8
-mypy==0.942
+mypy==0.950
     # via -r requirements-dev.in
 mypy-extensions==0.4.3
     # via
