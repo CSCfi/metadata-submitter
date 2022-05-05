@@ -61,8 +61,8 @@ jobs:
       - name: See that the static response is delivered
         run: curl -s -4 http://localhost:5430/
 
-      - name: Verify that the correct content is delivered, database is down
-        run: curl -s -4 http://localhost:5430/health | grep -q -F '{"status":"Down"}'
+      - name: Verify that the correct content is delivered
+        run: curl -s -4 http://localhost:5430/manifest.json | grep -q -F '"short_name"'
 
       - name: Verify that we do not get a 404 when we ask for nonexistant path
         run: curl -s -4 --head http://localhost:5430/notfound.ico | head -1 | grep -q -v -F ' 404 '
@@ -88,8 +88,8 @@ jobs:
       - name: See that the static response is delivered
         run: curl -s -4 --cacert ./config/cacert https://localhost:5430/
 
-      - name: Verify that the correct content is delivered (TLS), database is down
-        run: curl -s -4 --cacert ./config/cacert https://localhost:5430/health | grep -q -F '{"status":"Down"}'
+      - name: Verify that the correct content is delivered (TLS)
+        run: curl -s -4 --cacert ./config/cacert https://localhost:5430/manifest.json | grep -q -F '"short_name"'
 
       - name: Verify that we do not get a 404 when we ask for nonexistant path (TLS)
         run: curl -s -4 --head --cacert ./config/cacert https://localhost:5430/notfound.ico | head -1 | grep -q -v -F ' 404 '

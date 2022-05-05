@@ -1,4 +1,4 @@
-"""Test API endpoints from views module."""
+"""Test api endpoints from views module."""
 import unittest
 from pathlib import Path
 

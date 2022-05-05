@@ -1,6 +1,11 @@
 """Mock-up classes and functions for testing."""
 
+import hashlib
+from os import urandom
 import yarl
+import ujson
+
+import cryptography.fernet
 
 
 class Mock_Request:
@@ -50,3 +55,32 @@ class Mock_Request:
     async def post(self):
         """Return post data."""
         return self.post_data
+
+
+def get_request_with_fernet():
+    """Create a request with a working fernet object."""
+    ret = Mock_Request()
+    ret.app["Session"] = {}
+    ret.app["Cookies"] = set({})
+    ret.app["Crypt"] = cryptography.fernet.Fernet(cryptography.fernet.Fernet.generate_key())
+    ret.app["Salt"] = hashlib.sha256(urandom(512)).hexdigest()
+    return ret
+
+
+def add_csrf_to_cookie(cookie, req, bad_sign=False):
+    """Add specified csrf test variables to cookie."""
+    # Getting options as a set
+    cookie["referer"] = "http://localhost:8080"
+    if bad_sign:
+        cookie["signature"] = "incorrect"
+    else:
+        cookie["signature"] = hashlib.sha256(
+            (cookie["id"] + cookie["referer"] + req.app["Salt"]).encode("utf-8")
+        ).hexdigest()
+    return cookie
+
+
+def encrypt_cookie(cookie, req):
+    """Add encrypted cookie to request."""
+    cookie_crypted = req.app["Crypt"].encrypt(ujson.dumps(cookie).encode("utf-8")).decode("utf-8")
+    req.cookies["MTD_SESSION"] = cookie_crypted

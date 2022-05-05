@@ -66,7 +66,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     url = f"mongodb://{AUTHDB}:{AUTHDB}@{HOST}/{DATABASE}?authSource=admin"
     if args.tls:
-        _params = "?tls=true&tlsCAFile=./config/cacert&tlsCertificateKeyFile=./config/combined"
+        _params = "?tls=true&tlsCAFile=./config/cacert&ssl_keyfile=./config/key&ssl_certfile=./config/cert"
         url = f"mongodb://{AUTHDB}:{AUTHDB}@{HOST}/{DATABASE}{_params}&authSource=admin"
     LOG.debug(f"=== Database url {url} ===")
     asyncio.run(create_indexes(url))

@@ -69,11 +69,7 @@ class XMLValidator:
             raise web.HTTPBadRequest(reason=reason)
 
     def _parse_error_reason(self, error: ParseError) -> str:
-        """Generate better error reason.
-
-        :param error: Parser error
-        :returns: XML error in plain text
-        """
+        """Generate better error reason."""
         reason = str(error).split(":")[0]
         position = (str(error).split(":")[1])[1:]
         return f"Faulty XML file was given, {reason} at {position}"
@@ -92,8 +88,6 @@ def extend_with_default(validator_class: Draft7Validator) -> Draft7Validator:
     unwanted behaviour when submitting a schema.
 
     Source: https://python-jsonschema.readthedocs.io FAQ
-    :param validator_class: JSON Schema Validator
-    :returns: JSON Schema Draft7Validator customised
     """
     validate_properties = validator_class.VALIDATORS["properties"]
 
