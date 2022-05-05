@@ -206,7 +206,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         self._check_schema_exists(schema_type)
         return await self._handle_query(req)
 
-    async def delete_object(self, req: Request) -> web.HTTPNoContent:
+    async def delete_object(self, req: Request) -> Response:
         """Delete metadata object from database.
 
         :param req: DELETE request
@@ -262,7 +262,7 @@ class ObjectAPIHandler(RESTAPIHandler):
             await doi_service.delete(doi_id)
 
         LOG.info(f"DELETE object with accession ID {accession_id} in schema {collection} was successful.")
-        return web.HTTPNoContent()
+        return web.Response(status=204)
 
     async def put_object(self, req: Request) -> Response:
         """Replace metadata object in database.

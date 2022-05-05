@@ -1,7 +1,7 @@
 """Handle health check endpoint."""
 import ujson
 import time
-from typing import Dict, Union
+from typing import Dict, Union, Any
 
 from aiohttp import web
 from aiohttp.web import Request, Response
@@ -48,7 +48,7 @@ class HealthHandler:
         LOG.info("Initialised a new DB client as a test")
         return new_client
 
-    async def try_db_connection(self, db_client: AsyncIOMotorClient) -> Union[float, None]:
+    async def try_db_connection(self, db_client: AsyncIOMotorClient) -> Any:
         """Check the connection to database.
 
         :param db_client: Motor client used for database connections

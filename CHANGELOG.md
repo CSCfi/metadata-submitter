@@ -7,12 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-
-- added `aiohttp_session` as dependency and removed old way of handling cookies
-- fixed function comments and missing information
-- migrated to variables used by motor 3 for ssl https://motor.readthedocs.io/en/stable/migrate-to-motor-3.html?highlight=ssl_certfile#renamed-uri-options
-
 ### Removed
 
 - remove `datacite.json` to render the form from `folder["doiInfo"]`

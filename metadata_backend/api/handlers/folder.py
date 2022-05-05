@@ -6,7 +6,6 @@ from math import ceil
 from typing import Any, Dict, List, Tuple, Union
 
 import ujson
-import aiohttp_session
 from aiohttp import web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
@@ -16,6 +15,7 @@ from ...helpers.doi import DOIHandler
 from ...helpers.logger import LOG
 from ...helpers.metax_api_handler import MetaxServiceHandler
 from ...helpers.validator import JSONValidator
+from ..middlewares import get_session
 from ..operators import FolderOperator, Operator, ProjectOperator, UserOperator
 from .restapi import RESTAPIHandler
 
@@ -326,8 +326,6 @@ class FolderAPIHandler(RESTAPIHandler):
         :param req: GET Request
         :returns: JSON list of folders available for the user
         """
-        session = await aiohttp_session.get_session(req)
-
         page = self._get_page_param(req, "page", 1)
         per_page = self._get_page_param(req, "per_page", 5)
         project_id = self._get_param(req, "projectId")
@@ -335,8 +333,7 @@ class FolderAPIHandler(RESTAPIHandler):
         db_client = req.app["db_client"]
 
         user_operator = UserOperator(db_client)
-
-        current_user = session["user_info"]
+        current_user = get_session(req)["user_info"]
         user = await user_operator.read_user(current_user)
         user_has_project = await user_operator.check_user_has_project(project_id, user["userId"])
         if not user_has_project:
@@ -416,8 +413,6 @@ class FolderAPIHandler(RESTAPIHandler):
         :param req: POST request
         :returns: JSON response containing folder ID for submitted folder
         """
-        session = await aiohttp_session.get_session(req)
-
         db_client = req.app["db_client"]
         content = await self._get_data(req)
 
@@ -429,7 +424,7 @@ class FolderAPIHandler(RESTAPIHandler):
 
         # Check that user is affiliated with project
         user_op = UserOperator(db_client)
-        current_user = session["user_info"]
+        current_user = get_session(req)["user_info"]
         user = await user_op.read_user(current_user)
         user_has_project = await user_op.check_user_has_project(content["projectId"], user["userId"])
         if not user_has_project:
@@ -586,8 +581,6 @@ class FolderAPIHandler(RESTAPIHandler):
         :param req: DELETE request
         :returns: HTTP No Content response
         """
-        await aiohttp_session.get_session(req)
-
         folder_id = req.match_info["folderId"]
         db_client = req.app["db_client"]
         operator = FolderOperator(db_client)
@@ -607,4 +600,4 @@ class FolderAPIHandler(RESTAPIHandler):
         _folder_id = await operator.delete_folder(folder_id)
 
         LOG.info(f"DELETE folder with ID {_folder_id} was successful.")
-        return web.HTTPNoContent()
+        return web.Response(status=204)

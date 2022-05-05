@@ -24,7 +24,7 @@ async def multipart_content(
     :param extract_one: boolean stating whether multiple files should be handled
     :param expect_xml: boolean stating if file can be expected to be XML
     :raises: HTTPBadRequest for multiple different reasons
-    :returns: Tuple with content and schema type for each uploaded file and file type of the upload
+    :returns: content and schema type for each uploaded file and file type of the upload
     """
     xml_files: List[Tuple[str, str, str]] = []
     csv_files: List[Tuple[Dict, str, str]] = []
@@ -80,7 +80,7 @@ async def _extract_upload(part: BodyPartReader) -> Tuple[str, str]:
 
     :param part: Multipart reader for single body part
     :raises: HTTPNotFound if schema was not found
-    :returns: Tuple with content as text and schema type for uploaded file
+    :returns: content as text and schema type for uploaded file
     """
     schema_type = part.name.lower() if part.name else "none"
     if schema_type not in schema_types:
@@ -144,7 +144,7 @@ def _get_content_with_type(
     :param xml_files: List of xml contents with schema types
     :param csv_files: List of csv contents with schema types
     :raises: HTTPBadRequest if both lists are populated or empty
-    :returns: Tuple with List of xml or csv files with string stating which file type
+    :returns: List of xml or csv files with string stating which file type
     """
     if xml_files and csv_files:
         reason = "Request contained both xml and csv file types. Only one file type can be processed in this endpoint."

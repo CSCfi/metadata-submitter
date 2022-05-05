@@ -12,9 +12,8 @@ from multidict import CIMultiDict
 from ...conf.conf import schema_types
 from ...helpers.logger import LOG
 from ...helpers.schema_loader import JSONSchemaLoader, SchemaNotFoundException
-
+from ..middlewares import get_session
 from ..operators import FolderOperator, UserOperator
-import aiohttp_session
 
 
 class RESTAPIHandler:
@@ -77,11 +76,8 @@ class RESTAPIHandler:
         :raises: HTTPUnauthorized if accession id does not belong to user
         :returns: bool and possible project id
         """
-        session = await aiohttp_session.get_session(req)
-
         db_client = req.app["db_client"]
-
-        current_user = session["user_info"]
+        current_user = get_session(req)["user_info"]
         user_op = UserOperator(db_client)
         _check = False
 
