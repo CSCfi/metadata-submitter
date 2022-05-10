@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- connection checking and `retry`-mechanism for calls to Metax-service in case of server and connection errors
 
 ### Added
 
