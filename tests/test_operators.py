@@ -1,25 +1,20 @@
-"""Test api endpoints from views module."""
+"""Test API endpoints from views module."""
 import datetime
 import re
+import time
 import unittest
 from unittest import IsolatedAsyncioTestCase
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 from uuid import uuid4
 
-from aiohttp.web import HTTPBadRequest, HTTPNotFound, HTTPUnprocessableEntity
+import aiohttp_session
 from aiohttp.test_utils import make_mocked_coro
+from aiohttp.web import HTTPBadRequest, HTTPNotFound, HTTPUnprocessableEntity
+from metadata_backend.api.operators import FolderOperator, Operator, ProjectOperator, UserOperator, XMLOperator
 from multidict import MultiDict, MultiDictProxy
 from pymongo.errors import ConnectionFailure, OperationFailure
 
-from metadata_backend.api.operators import (
-    FolderOperator,
-    Operator,
-    XMLOperator,
-    UserOperator,
-    ProjectOperator,
-)
-
-from .mockups import get_request_with_fernet
+from .mockups import Mock_Request
 
 
 class AsyncIterator:
@@ -129,6 +124,24 @@ class TestOperators(IsolatedAsyncioTestCase):
             autospec=True,
         )
         self.patch_project.start()
+
+        self.session_return = aiohttp_session.Session(
+            "test-identity",
+            new=True,
+            data={},
+        )
+
+        self.session_return["access_token"] = "not-really-a-token"  # nosec
+        self.session_return["at"] = time.time()
+        self.session_return["user_info"] = "value"
+        self.session_return["oidc_state"] = "state"
+
+        self.aiohttp_session_get_session_mock = AsyncMock()
+        self.aiohttp_session_get_session_mock.return_value = self.session_return
+        self.p_get_sess_restapi = patch(
+            "metadata_backend.api.handlers.restapi.aiohttp_session.get_session",
+            self.aiohttp_session_get_session_mock,
+        )
 
     def tearDown(self):
         """Stop patchers."""
@@ -943,42 +956,48 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     async def test_check_user_doc_fails(self):
         """Test check user doc fails."""
-        request = get_request_with_fernet()
-        request.app["db_client"] = MagicMock()
-        operator = UserOperator(self.client)
-        with self.assertRaises(HTTPBadRequest):
-            await operator.check_user_has_doc(request, "something", self.user_generated_id, self.folder_id)
+        request = Mock_Request()
+        db_client = MagicMock()
+        db_database = MagicMock()
+        db_collection = AsyncMock()
+        db_client.__getitem__.return_value = db_database
+        db_database.__getitem__.return_value = db_collection
+
+        request.app["db_client"] = db_client
+        with self.p_get_sess_restapi:
+            operator = UserOperator(self.client)
+            with self.assertRaises(HTTPBadRequest):
+                await operator.check_user_has_doc(request, "something", self.user_generated_id, self.folder_id)
 
     async def test_check_user_doc_passes(self):
         """Test check user doc passes when object has same project id and user."""
         UserOperator.check_user_has_doc = make_mocked_coro(True)
-        request = get_request_with_fernet()
-        request.app["db_client"] = MagicMock()
+        request = Mock_Request()
+        db_client = MagicMock()
+        db_database = MagicMock()
+        db_collection = AsyncMock()
+        db_client.__getitem__.return_value = db_database
+        db_database.__getitem__.return_value = db_collection
+
+        request.app["db_client"] = db_client
         operator = UserOperator(self.client)
         with patch(
             "metadata_backend.api.operators.FolderOperator.get_folder_project",
             return_value=self.project_generated_id,
         ):
-            with patch(
-                "metadata_backend.api.middlewares.decrypt_cookie",
-                return_value={"id": "test"},
-            ):
+            with self.p_get_sess_restapi:
                 with patch(
-                    "metadata_backend.api.middlewares.get_session",
-                    return_value={"user_info": {}},
+                    "metadata_backend.api.operators.UserOperator.read_user",
+                    return_value={"userId": "test"},
                 ):
                     with patch(
-                        "metadata_backend.api.operators.UserOperator.read_user",
-                        return_value={"userId": "test"},
+                        "metadata_backend.api.operators.UserOperator.check_user_has_project",
+                        return_value=True,
                     ):
-                        with patch(
-                            "metadata_backend.api.operators.UserOperator.check_user_has_project",
-                            return_value=True,
-                        ):
-                            result = await operator.check_user_has_doc(
-                                request, "folders", self.user_generated_id, self.folder_id
-                            )
-                            self.assertTrue(result)
+                        result = await operator.check_user_has_doc(
+                            request, "folders", self.user_generated_id, self.folder_id
+                        )
+                        self.assertTrue(result)
 
     async def test_create_user_works_existing_userId(self):
         """Test create method for existing user."""

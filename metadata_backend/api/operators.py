@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple, Union
 from uuid import uuid4
 
+import aiohttp_session
 from aiohttp import web
 from dateutil.relativedelta import relativedelta
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
@@ -17,7 +18,6 @@ from ..database.db_service import DBService, auto_reconnect
 from ..helpers.logger import LOG
 from ..helpers.parser import XMLToJSONParser
 from ..helpers.validator import JSONValidator
-from .middlewares import get_session
 
 
 class BaseOperator(ABC):
@@ -987,6 +987,7 @@ class UserOperator:
         :raises: HTTPUnprocessableEntity if more users seem to have same folder
         :returns: True and project_id if accession_id belongs to user, False otherwise
         """
+        session = await aiohttp_session.get_session(req)
         LOG.debug(f"check that user {user_id} belongs to same project as {collection} {accession_id}")
 
         db_client = req.app["db_client"]
@@ -1004,7 +1005,7 @@ class UserOperator:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        current_user = get_session(req)["user_info"]
+        current_user = session["user_info"]
         user = await user_operator.read_user(current_user)
         user_has_project = await user_operator.check_user_has_project(project_id, user["userId"])
         return user_has_project, project_id
