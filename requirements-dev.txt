@@ -50,7 +50,7 @@ platformdirs==2.5.1
     #   virtualenv
 pluggy==1.0.0
     # via tox
-pre-commit==2.18.1
+pre-commit==2.19.0
     # via -r requirements-dev.in
 py==1.11.0
     # via tox
