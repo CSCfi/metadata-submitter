@@ -1,5 +1,5 @@
 """
-Run integration tests against backend api endpoints.
+Run integration tests against backend API endpoints.
 
 Deleting from db is currently not supported, objects added to db in different
 should be taken into account.
@@ -543,9 +543,9 @@ async def delete_user(sess, user_id):
     """
     async with sess.delete(f"{users_url}/current") as resp:
         LOG.debug(f"Deleting user {user_id}")
-        # we expect 404 as there is no frontend
+        # we expect 401 as there is no frontend
         assert str(resp.url) == f"{base_url}/", "redirect url user delete differs"
-        assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
+        assert resp.status == 401, f"HTTP Status code error, got {resp.status}"
 
 
 def extract_folders_object(res, accession_id, draft):
@@ -598,7 +598,7 @@ async def check_folders_object_patch(sess, folder_id, schema, accession_id, titl
 
 # === Integration tests ===
 async def test_crud_works(sess, schema, filename, folder_id):
-    """Test REST api POST, GET and DELETE reqs.
+    """Test REST API POST, GET and DELETE reqs.
 
     Tries to create new object, gets accession id and checks if correct
     resource is returned with that id. Finally deletes the object and checks it
@@ -710,7 +710,7 @@ async def test_put_objects(sess, folder_id):
 
 
 async def test_crud_drafts_works(sess, schema, orginal_file, update_file, folder_id):
-    """Test drafts REST api POST, PUT and DELETE reqs.
+    """Test drafts REST API POST, PUT and DELETE reqs.
 
     Tries to create new draft object, gets accession id and checks if correct
     resource is returned with that id. Finally deletes the object and checks it
@@ -750,7 +750,7 @@ async def test_crud_drafts_works(sess, schema, orginal_file, update_file, folder
 
 
 async def test_patch_drafts_works(sess, schema, orginal_file, update_file, folder_id):
-    """Test REST api POST, PATCH and DELETE reqs.
+    """Test REST API POST, PATCH and DELETE reqs.
 
     Tries to create put and patch object, gets accession id and
     checks if correct resource is returned with that id.
@@ -1055,7 +1055,7 @@ async def test_metax_publish_dataset(sess, folder_id):
 
 
 async def test_crud_folders_works(sess, project_id):
-    """Test folders REST api POST, GET, PATCH, PUBLISH and DELETE reqs.
+    """Test folders REST API POST, GET, PATCH, PUBLISH and DELETE reqs.
 
     :param sess: HTTP session in which request call is made
     :param project_id: id of the project the folder belongs to
@@ -1156,7 +1156,7 @@ async def test_crud_folders_works(sess, project_id):
 
 
 async def test_crud_folders_works_no_publish(sess, project_id):
-    """Test folders REST api POST, GET, PATCH, PUBLISH and DELETE reqs.
+    """Test folders REST API POST, GET, PATCH, PUBLISH and DELETE reqs.
 
     :param sess: HTTP session in which request call is made
     :param project_id: id of the project the folder belongs to
@@ -1464,7 +1464,7 @@ async def test_getting_folders_filtered_by_date_created(sess, database, project_
 
 
 async def test_crud_users_works(sess, project_id):
-    """Test users REST api GET, PATCH and DELETE reqs.
+    """Test users REST API GET, PATCH and DELETE reqs.
 
     :param sess: HTTP session in which request call is made
     :param project_id: id of the project the folder belongs to
@@ -1562,7 +1562,7 @@ async def test_crud_users_works(sess, project_id):
 
 
 async def test_get_folders(sess, folder_id: str, project_id: str):
-    """Test folders REST api GET .
+    """Test folders REST API GET .
 
     :param sess: HTTP session in which request call is made
     :param folder_id: id of the folder used to group submission objects
@@ -1579,7 +1579,7 @@ async def test_get_folders(sess, folder_id: str, project_id: str):
 
 
 async def test_get_folders_objects(sess, folder_id: str, project_id: str):
-    """Test folders REST api GET with objects.
+    """Test folders REST API GET with objects.
 
     :param sess: HTTP session in which request call is made
     :param folder_id: id of the folder used to group submission objects

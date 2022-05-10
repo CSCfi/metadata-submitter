@@ -3,6 +3,7 @@
 import time
 from typing import Dict, List, Union
 
+import aiohttp_session
 from aiohttp import web
 from aiohttp.web import Request, Response
 from oidcrp.exception import OidcServiceError
@@ -10,7 +11,6 @@ from oidcrp.rp_handler import RPHandler
 
 from ..helpers.logger import LOG
 from .operators import ProjectOperator, UserOperator
-import aiohttp_session
 
 
 class AccessHandler:
@@ -176,7 +176,7 @@ class AccessHandler:
             session = await aiohttp_session.get_session(req)
             session.invalidate()
         except Exception as e:
-            LOG.info(f"Trying to log our an invalidated session: {e}")
+            LOG.info(f"Trying to log out an invalidated session: {e}")
             raise web.HTTPUnauthorized
 
         response = web.HTTPSeeOther(f"{self.redirect}/")

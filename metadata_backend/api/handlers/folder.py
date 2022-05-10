@@ -580,7 +580,7 @@ class FolderAPIHandler(RESTAPIHandler):
         LOG.info(f"Patching folder with ID {new_folder} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
-    async def delete_folder(self, req: Request) -> Response:
+    async def delete_folder(self, req: Request) -> web.HTTPNoContent:
         """Delete object folder from database.
 
         :param req: DELETE request
@@ -607,4 +607,4 @@ class FolderAPIHandler(RESTAPIHandler):
         _folder_id = await operator.delete_folder(folder_id)
 
         LOG.info(f"DELETE folder with ID {_folder_id} was successful.")
-        return web.Response(status=204)
+        return web.HTTPNoContent()
