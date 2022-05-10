@@ -6,13 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+
+### Changed
+- migrated to variables used by motor 3 for ssl https://motor.readthedocs.io/en/stable/migrate-to-motor-3.html?highlight=ssl_certfile#renamed-uri-options
+  - env vars `MONGO_SSL_CLIENT_KEY` and `MONGO_SSL_CLIENT_CERT` are replaced with `MONGO_SSL_CLIENT_CERT_KEY`
 
 ### Removed
 
 - remove `datacite.json` to render the form from `folder["doiInfo"]`
   - we removed `namedtype` for `contributors` and `creators` we therefore allow `additionalProperties`
   - `subjectsSchema` is a given by frontend thus we allow via `additionalProperties`
-
+  
 ## [0.13.0] - 2022-04-07
 
 ### Added

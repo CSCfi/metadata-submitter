@@ -42,10 +42,11 @@ async def create_indexes(url: str) -> None:
         except pymongo.errors.CollectionInvalid as e:
             LOG.debug(f"=== Collection {col} not created due to {str(e)} ===")
             pass
-    LOG.debug("=== Create indexes ===")
+    LOG.info("=== Create indexes ===")
 
     indexes = [
         db.folder.create_index([("dateCreated", -1)]),
+        db.folder.create_index([("datePublished", -1)]),
         db.folder.create_index([("folderId", 1)], unique=True),
         db.folder.create_index([("text_name", TEXT)]),
         db.user.create_index([("userId", 1)], unique=True),
@@ -57,7 +58,9 @@ async def create_indexes(url: str) -> None:
         except Exception as e:
             LOG.debug(f"=== Indexes not created due to {str(e)} ===")
             pass
-    LOG.debug("=== DONE ===")
+    ind = await db.folder.index_information()
+    LOG.info("=== DONE ===")
+    LOG.debug(f"==== Indexes created ==== {ind}")
 
 
 if __name__ == "__main__":
@@ -66,7 +69,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     url = f"mongodb://{AUTHDB}:{AUTHDB}@{HOST}/{DATABASE}?authSource=admin"
     if args.tls:
-        _params = "?tls=true&tlsCAFile=./config/cacert&ssl_keyfile=./config/key&ssl_certfile=./config/cert"
+        _params = "?tls=true&tlsCAFile=./config/cacert&tlsCertificateKeyFile=./config/combined"
         url = f"mongodb://{AUTHDB}:{AUTHDB}@{HOST}/{DATABASE}{_params}&authSource=admin"
     LOG.debug(f"=== Database url {url} ===")
     asyncio.run(create_indexes(url))
