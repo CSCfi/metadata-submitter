@@ -48,7 +48,7 @@ class BaseOperator(ABC):
 
         :param schema_type: Schema type of the object to create.
         :param data: Data to be saved to database.
-        :returns: Accession id for the object inserted to database
+        :returns: Tuple of Accession id for the object inserted to database and its title
         """
         data = await self._format_data_to_create_and_add_to_db(schema_type, data)
         LOG.info(
@@ -65,7 +65,7 @@ class BaseOperator(ABC):
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
         :param data: Data to be saved to database.
-        :returns: Accession id for the object replaced to database
+        :returns: Tuple of Accession id for the object replaced to database and its title
         """
         data = await self._format_data_to_replace_and_add_to_db(schema_type, accession_id, data)
         LOG.info(f"Replacing object with schema {schema_type} to database succeeded with accession id: {accession_id}")
@@ -95,7 +95,7 @@ class BaseOperator(ABC):
         :param schema_type: Schema type of the object to read.
         :param accession_id: Accession Id of the object to read.
         :raises: HTTPBadRequest if reading was not successful, HTTPNotFound if no data found
-        :returns: Metadata object formatted to JSON or XML, content type
+        :returns: Tuple of Metadata object formatted to JSON or XML, content type
         """
         try:
             data_raw = await self.db_service.read(schema_type, accession_id)
@@ -118,6 +118,7 @@ class BaseOperator(ABC):
         :param schema_type: Schema type of the object to delete.
         :param accession_id: Accession Id of the object to delete.
         :raises: HTTPBadRequest if deleting was not successful
+        :returns: Accession id for the object deleted from the database
         """
         db_client = self.db_service.db_client
         JSON_deletion_success = await self._remove_object_from_db(Operator(db_client), schema_type, accession_id)
@@ -137,6 +138,7 @@ class BaseOperator(ABC):
         :param data: Single document formatted as JSON
         :returns: Accession Id for object inserted to database
         :raises: HTTPBadRequest if reading was not successful
+        :returns: Tuple of Accession id for the object deleted from the database and its title
         """
         try:
             insert_success = await self.db_service.create(schema_type, data)
@@ -158,7 +160,7 @@ class BaseOperator(ABC):
         :param accession_id: Identifier of object to replace.
         :param data: Single document formatted as JSON
         :raises: HTTPBadRequest if reading was not successful, HTTPNotFound if no data found
-        :returns: Accession Id for object inserted to database
+        :returns: Tuple of Accession Id for object inserted to database and its title
         """
         try:
             check_exists = await self.db_service.exists(schema_type, accession_id)
@@ -188,7 +190,7 @@ class BaseOperator(ABC):
         :param accession_id: Identifier of object to update.
         :param data: Single document formatted as JSON
         :raises: HTTPBadRequest if reading was not successful, HTTPNotFound if no data found
-        :returns: Accession Id for object inserted to database
+        :returns: Accession Id for object updated to database
         """
         try:
             check_exists = await self.db_service.exists(schema_type, accession_id)
@@ -218,7 +220,7 @@ class BaseOperator(ABC):
         :param accession_id: Identifier of object to delete.
         :param data: Single document formatted as JSON
         :raises: HTTPBadRequest if reading was not successful, HTTPNotFound if no data found
-        :returns: None
+        :returns: True or False if object deleted from the database
         """
         try:
             check_exists = await operator.db_service.exists(schema_type, accession_id)
@@ -358,7 +360,7 @@ class Operator(BaseOperator):
         :param filter_objects: List of objects belonging to a user
         :raises: HTTPBadRequest if error happened when connection to database
         and HTTPNotFound error if object with given accession id is not found.
-        :returns: Query result with pagination numbers
+        :returns: Tuple of query result with pagination numbers
         """
         # Redact the query by checking the accessionId belongs to user
         redacted_content = {
@@ -467,7 +469,7 @@ class Operator(BaseOperator):
 
         :param schema_type: Schema type of the object to create.
         :param data: Metadata object
-        :returns: Accession Id for object inserted to database
+        :returns: Tuple of Accession Id for object inserted to database and its title
         """
         accession_id = self._generate_accession_id()
         data["accessionId"] = accession_id
@@ -493,7 +495,7 @@ class Operator(BaseOperator):
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
         :param data: Metadata object
-        :returns: Accession Id for object inserted to database
+        :returns: Tuple of Accession Id for object replaced in database and its title
         """
         forbidden_keys = {"accessionId", "publishDate", "dateCreated", "metaxIdentifier", "doi"}
         if any(i in data for i in forbidden_keys):
@@ -515,7 +517,7 @@ class Operator(BaseOperator):
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
         :param data: Metadata object
-        :returns: Accession Id for object inserted to database
+        :returns: Accession Id for object updated in database
         """
         forbidden_keys = {"accessionId", "publishDate", "dateCreated", "metaxIdentifier", "doi"}
         if any(i in data for i in forbidden_keys):
@@ -604,7 +606,7 @@ class XMLOperator(BaseOperator):
 
         :param schema_type: Schema type of the object to read.
         :param data: Original XML content
-        :returns: Accession Id for object inserted to database
+        :returns: Tuple of Accession Id for object inserted to database and its title
         """
         db_client = self.db_service.db_client
         # remove `draft-` from schema type
@@ -714,7 +716,7 @@ class FolderOperator:
         :param collection: collection it belongs to, it would be used as path
         :param accession_id: document by accession_id
         :raises: HTTPUnprocessableEntity if error occurs during the process and object in more than 1 folder
-        :returns: True for the check, folder id and if published or not
+        :returns: Tuple with True for the check, folder id and if published or not
         """
         try:
             folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
@@ -801,7 +803,7 @@ class FolderOperator:
         :param page_num: Page number
         :param page_size: Results per page
         :param sort_param: Sorting options.
-        :returns: Paginated query result
+        :returns: Tuple with Paginated query result
         """
         skips = page_size * (page_num - 1)
 
@@ -859,7 +861,7 @@ class FolderOperator:
         :param folder_id: ID of folder to update
         :param patch: JSON Patch operations determined in the request
         :raises: HTTPBadRequest if updating was not successful
-        :returns: ID of the folder updated to database
+        :returns: Folder Id updated to database
         """
         try:
             if schema == "study":
@@ -907,7 +909,7 @@ class FolderOperator:
 
         :param folder_id: ID of the folder to delete.
         :raises: HTTPBadRequest if deleting was not successful
-        :returns: ID of the folder deleted from database
+        :returns: Folder Id deleted from database
         """
         try:
             published = await self.db_service.published_folder(folder_id)
@@ -1089,7 +1091,7 @@ class UserOperator:
         :param query: Dict containing query information
         :param page_num: Page number
         :param page_size: Results per page
-        :returns: Paginated query result
+        :returns: Tuple with Paginated query result
         """
         skips = page_size * (page_num - 1)
         _query = [
@@ -1127,7 +1129,7 @@ class UserOperator:
 
         :param user_id: ID of user to update
         :param patch: Patch operations determined in the request
-        :returns: ID of the user updated to database
+        :returns: User Id updated to database
         """
         try:
             await self._check_user_exists(user_id)
@@ -1205,7 +1207,7 @@ class UserOperator:
 
         :param user_id: ID of the user to delete.
         :raises: HTTPBadRequest if deleting user was not successful
-        :returns: ID of the user deleted from database
+        :returns: User Id deleted from database
         """
         try:
             await self._check_user_exists(user_id)

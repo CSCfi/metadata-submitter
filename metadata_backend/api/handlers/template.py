@@ -221,7 +221,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
         LOG.info(f"PATCH template with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
-    async def delete_template(self, req: Request) -> Response:
+    async def delete_template(self, req: Request) -> web.HTTPNoContent:
         """Delete metadata template from database.
 
         :param req: DELETE request
@@ -251,4 +251,4 @@ class TemplatesAPIHandler(RESTAPIHandler):
         accession_id = await Operator(db_client).delete_metadata_object(collection, accession_id)
 
         LOG.info(f"DELETE template with accession ID {accession_id} in schema {collection} was successful.")
-        return web.Response(status=204)
+        return web.HTTPNoContent()
