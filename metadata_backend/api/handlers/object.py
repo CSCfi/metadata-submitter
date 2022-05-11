@@ -320,10 +320,10 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         # Update draft dataset to Metax catalog
         if collection in _allowed_doi:
-            if not data.get("metaxIdentifier", None):
-                await self.create_metax_dataset(req, collection, data, create_draft_doi=False)
-            else:
+            if data.get("metaxIdentifier", None):
                 await MetaxServiceHandler(req).update_draft_dataset(collection, data)
+            else:
+                await self.create_metax_dataset(req, collection, data, create_draft_doi=False)
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info(f"PUT object with accession ID {accession_id} in schema {collection} was successful.")
@@ -381,10 +381,10 @@ class ObjectAPIHandler(RESTAPIHandler):
             object_data, _ = await operator.read_metadata_object(collection, accession_id)
             # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
             if isinstance(object_data, Dict):
-                if not object_data.get("metaxIdentifier", None):
-                    await self.create_metax_dataset(req, collection, object_data, create_draft_doi=False)
-                else:
+                if object_data.get("metaxIdentifier", None):
                     await MetaxServiceHandler(req).update_draft_dataset(collection, object_data)
+                else:
+                    await self.create_metax_dataset(req, collection, object_data, create_draft_doi=False)
             else:
                 raise ValueError("Object's data must be dictionary")
 

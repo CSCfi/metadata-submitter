@@ -501,7 +501,7 @@ async def delete_folder_publish(sess, folder_id):
 async def create_folder(database, data):
     """Create new object folder to database.
 
-    :param database: database connection
+    :param database: database client to perform db operations
     :param data: Data as dict to be saved to database
     :returns: Folder id for the folder inserted to database
     """
@@ -522,8 +522,11 @@ async def create_folder(database, data):
 async def delete_objects_metax_id(sess, database, collection, accession_id, metax_id):
     """Remove study or dataset metax ID from database and mocked Metax service.
 
+    :param sess: HTTP session in which request call is made
+    :param database: database client to perform db operations
     :param collection: Collection of the object to be manipulated
     :param accession_id: Accession id of the object to be manipulated
+    :param metax_id: ID of metax dataset to be deleted
     """
     try:
         await database[collection].find_one_and_update({"accessionId": accession_id}, {"$set": {"metaxIdentifier": ""}})
@@ -1447,6 +1450,7 @@ async def test_getting_folders_filtered_by_date_created(sess, database, project_
     """Check that /folders returns folders filtered by date created.
 
     :param sess: HTTP session in which request call is made
+    :param database: database client to perform db operations
     :param project_id: id of the project the folder belongs to
     """
     folders = []
