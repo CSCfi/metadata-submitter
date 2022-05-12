@@ -25,6 +25,8 @@ filelock==3.6.0
 flake8==4.0.1
     # via -r requirements-dev.in
 identify==2.4.12
+honcho==1.1.0
+    # via -r requirements-dev.in
     # via pre-commit
 mccabe==0.6.1
     # via flake8
