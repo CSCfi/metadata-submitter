@@ -1,0 +1,15 @@
+.tox
+.*_cache
+build
+htmlcov
+venv
+.venv
+.git
+*.egg-info
+
+**/__pycache__
+**/build
+**/bindings
+
+**/*.zip
+**/*.tar*
