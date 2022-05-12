@@ -3,6 +3,7 @@
 from pathlib import Path
 from unittest.mock import call, patch
 
+import ujson
 from aiohttp import FormData
 from aiohttp.test_utils import AioHTTPTestCase, make_mocked_coro
 from metadata_backend.api.handlers.object import ObjectAPIHandler
@@ -59,7 +60,9 @@ class HandlersTestCase(AioHTTPTestCase):
         self.metadata_xml = path_to_xml_file.read_text()
         self.accession_id = "EGA123456"
         self.folder_id = "FOL12345678"
+        self.project_id = "1001"
         self.test_folder = {
+            "projectId": self.project_id,
             "folderId": self.folder_id,
             "name": "mock folder",
             "description": "test mock folder",
@@ -939,3 +942,18 @@ class FolderHandlerTestCase(HandlersTestCase):
         self.MockedFolderOperator().read_folder.assert_called_once()
         self.MockedFolderOperator().delete_folder.assert_called_once()
         self.assertEqual(response.status, 204)
+
+    async def test_put_folder_doi_passes_and_returns_id(self):
+        """Test put method for folder doi works."""
+        self.MockedFolderOperator().update_folder.return_value = self.folder_id
+        data = ujson.load(open(self.TESTFILES_ROOT / "doi" / "test_doi.json"))
+
+        response = await self.client.put("/folders/FOL12345678/doi", json=data)
+        self.assertEqual(response.status, 200)
+        json_resp = await response.json()
+        self.assertEqual(json_resp["folderId"], self.folder_id)
+
+        response = await self.client.get(f"/folders/{self.folder_id}")
+        self.assertEqual(response.status, 200)
+        json_resp = await response.json()
+        self.assertIn("doiInfo", json_resp)
