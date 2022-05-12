@@ -348,7 +348,7 @@ def validate_data(data: Dict, draft=True) -> None:
         raise web.HTTPBadRequest(reason=reason, content_type="application/json")
 
 
-def init() -> web.Application:
+async def init() -> web.Application:
     """Start server."""
     app = web.Application()
     api_routes = [

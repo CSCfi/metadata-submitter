@@ -249,7 +249,7 @@ async def oidc_config(request: web.Request) -> web.Response:
     return web.json_response(oidc_config_json)
 
 
-def init() -> web.Application:
+async def init() -> web.Application:
     """Start server."""
     app = web.Application()
     app.router.add_get("/setmock", setmock)
