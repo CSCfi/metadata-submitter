@@ -1,6 +1,5 @@
 """Operators for handling database-related operations."""
 import re
-import time
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -771,10 +770,13 @@ class FolderOperator:
         :returns: Folder id for the folder inserted to database
         """
         folder_id = self._generate_folder_id()
+        _now = int(datetime.now().timestamp())
         data["folderId"] = folder_id
         data["text_name"] = " ".join(re.split("[\\W_]", data["name"]))
         data["published"] = False
-        data["dateCreated"] = int(time.time())
+        data["dateCreated"] = _now
+        # when we create a folder the last modified should correspond to dateCreated
+        data["lastModified"] = _now
         data["metadataObjects"] = data["metadataObjects"] if "metadataObjects" in data else []
         data["drafts"] = data["drafts"] if "drafts" in data else []
         try:
@@ -807,10 +809,12 @@ class FolderOperator:
 
         if not sort_param:
             sort = {"dateCreated": -1}
-        elif sort_param["score"] and not sort_param["date"]:
+        elif sort_param["score"] and not sort_param["date"] and not sort_param["modified"]:
             sort = {"score": {"$meta": "textScore"}, "dateCreated": -1}  # type: ignore
         elif sort_param["score"] and sort_param["date"]:
             sort = {"dateCreated": -1, "score": {"$meta": "textScore"}}  # type: ignore
+        elif sort_param["score"] and sort_param["modified"]:
+            sort = {"lastModified": -1, "score": {"$meta": "textScore"}}  # type: ignore
         else:
             sort = {"dateCreated": -1}
 

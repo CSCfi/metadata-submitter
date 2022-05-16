@@ -303,6 +303,7 @@ kubernetes
 kwanyama
 kyrgyz
 lang
+lastmodified
 leaveaspool
 lexically
 libraryconstructionprotocol
@@ -470,8 +471,8 @@ primaryid
 probeset
 processedreads
 processingtype
-projectId
-projectNumber
+projectid
+projectnumber
 promethion
 proteinclusters
 protfam
@@ -542,7 +543,7 @@ schemeuri
 scientificname
 sda
 sdev
-sdSubmitProjects
+sdsubmitprojects
 se
 secondaryid
 sectionname
@@ -601,7 +602,7 @@ taxonomicreferenceset
 taxonomysystem
 taxonomysystemversion
 telephonenumber
-templateId
+templateid
 tigrinya
 tls
 toctree
