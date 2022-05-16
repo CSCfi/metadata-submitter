@@ -90,7 +90,7 @@ urllib3==1.26.9
     #   responses
 uvloop==0.16.0
     # via -r requirements.in
-xmlschema==1.10.0
+xmlschema==1.11.0
     # via -r requirements.in
 yarl==1.7.2
     # via aiohttp
