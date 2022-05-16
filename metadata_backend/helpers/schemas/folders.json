@@ -35,6 +35,10 @@
       "type": "integer",
       "title": "Unix time stamp of publishing, used for indexing"
     },
+    "lastModified": {
+      "type": "integer",
+      "title": "Unix time stamp of when objects in folder were last modified"
+    },
     "published": {
       "type": "boolean",
       "title": "Published Folder"

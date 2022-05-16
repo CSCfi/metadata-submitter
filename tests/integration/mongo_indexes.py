@@ -47,6 +47,7 @@ async def create_indexes(url: str) -> None:
     indexes = [
         db.folder.create_index([("dateCreated", -1)]),
         db.folder.create_index([("datePublished", -1)]),
+        db.folder.create_index([("lastModified", -1)]),
         db.folder.create_index([("folderId", 1)], unique=True),
         db.folder.create_index([("text_name", TEXT)]),
         db.user.create_index([("userId", 1)], unique=True),

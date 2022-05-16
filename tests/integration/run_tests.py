@@ -63,7 +63,7 @@ submit_url = f"{base_url}/submit"
 publish_url = f"{base_url}/publish"
 metax_url = f"{os.getenv('METAX_URL', 'http://localhost:8002')}/rest/v2/datasets"
 auth = aiohttp.BasicAuth(os.getenv("METAX_USER", "sd"), os.getenv("METAX_PASS", "test"))
-# to form direct contact to db with create_folder()
+# to form direct contact to db with eg create_folder()
 DATABASE = os.getenv("MONGO_DATABASE", "default")
 AUTHDB = os.getenv("MONGO_AUTHDB", "admin")
 HOST = os.getenv("MONGO_HOST", "localhost:27017")
@@ -501,8 +501,8 @@ async def delete_folder_publish(sess, folder_id):
 async def create_folder(database, data):
     """Create new object folder to database.
 
+    :param database: database connection
     :param data: Data as dict to be saved to database
-    :param user: User id to which data is assigned
     :returns: Folder id for the folder inserted to database
     """
     folder_id = uuid4().hex
@@ -1463,6 +1463,89 @@ async def test_getting_folders_filtered_by_date_created(sess, database, project_
         await delete_folder(sess, folder)
 
 
+async def test_getting_folders_filtered_by_date_modified(sess, database, project_id):
+    """Check that /folders returns folders filtered by date modified.
+
+    :param sess: HTTP session in which request call is made
+    :param project_id: id of the project the folder belongs to
+    """
+    folders = []
+    format = "%Y-%m-%d %H:%M:%S"
+
+    # Test lastModified within a year
+    # Create folders with different lastModified
+    timestamps = ["2014-12-31 00:00:00", "2015-01-01 00:00:00", "2015-07-15 00:00:00", "2016-01-01 00:00:00"]
+    for stamp in timestamps:
+        folder_data = {
+            "name": f"Test date {stamp}",
+            "description": "Test filtering date",
+            "lastModified": datetime.strptime(stamp, format).timestamp(),
+            "projectId": project_id,
+        }
+        folders.append(await create_folder(database, folder_data))
+
+    async with sess.get(
+        f"{folders_url}?date_modified_start=2015-01-01&date_modified_end=2015-12-31&projectId={project_id}"
+    ) as resp:
+        ans = await resp.json()
+        assert resp.status == 200, f"returned status {resp.status}, error {ans}"
+        assert ans["page"]["totalFolders"] == 2, f'Shold be 2 returned {ans["page"]["totalFolders"]}'
+
+    # Test lastModified within a month
+    # Create folders with different lastModified
+    timestamps = ["2013-01-31 00:00:00", "2013-02-02 00:00:00", "2013-03-29 00:00:00", "2013-04-01 00:00:00"]
+    for stamp in timestamps:
+        folder_data = {
+            "name": f"Test date {stamp}",
+            "description": "Test filtering date",
+            "lastModified": datetime.strptime(stamp, format).timestamp(),
+            "projectId": project_id,
+        }
+        folders.append(await create_folder(database, folder_data))
+
+    async with sess.get(
+        f"{folders_url}?date_modified_start=2013-02-01&date_modified_end=2013-03-30&projectId={project_id}"
+    ) as resp:
+        ans = await resp.json()
+        assert resp.status == 200, f"returned status {resp.status}, error {ans}"
+        assert ans["page"]["totalFolders"] == 2, f'Shold be 2 returned {ans["page"]["totalFolders"]}'
+
+    # Test lastModified within a day
+    # Create folders with different lastModified
+    timestamps = [
+        "2012-01-14 23:59:59",
+        "2012-01-15 00:00:01",
+        "2012-01-15 23:59:59",
+        "2012-01-16 00:00:01",
+    ]
+    for stamp in timestamps:
+        folder_data = {
+            "name": f"Test date {stamp}",
+            "description": "Test filtering date",
+            "lastModified": datetime.strptime(stamp, format).timestamp(),
+            "projectId": project_id,
+        }
+        folders.append(await create_folder(database, folder_data))
+
+    async with sess.get(
+        f"{folders_url}?date_modified_start=2012-01-15&date_modified_end=2012-01-15&projectId={project_id}"
+    ) as resp:
+        ans = await resp.json()
+        assert resp.status == 200, f"returned status {resp.status}, error {ans}"
+        assert ans["page"]["totalFolders"] == 2, f'Shold be 2 returned {ans["page"]["totalFolders"]}'
+
+    # Test parameters date_created_... and name together
+    async with sess.get(
+        f"{folders_url}?name=2013&date_modified_start=2012-01-01&date_modified_end=2016-12-31&projectId={project_id}"
+    ) as resp:
+        ans = await resp.json()
+        assert resp.status == 200, f"returned status {resp.status}, error {ans}"
+        assert ans["page"]["totalFolders"] == 4, f'Shold be 4 returned {ans["page"]["totalFolders"]}'
+
+    for folder in folders:
+        await delete_folder(sess, folder)
+
+
 async def test_crud_users_works(sess, project_id):
     """Test users REST api GET, PATCH and DELETE reqs.
 
@@ -1862,10 +1945,8 @@ async def main():
         await test_getting_paginated_folders(sess, project_id)
         LOG.debug("=== Testing getting folders filtered with name and date created ===")
         await test_getting_folders_filtered_by_name(sess, project_id)
-        # too much of a hassle to make test work with tls db connection in github
-        # must be improven in next integration test iteration
-        if not TLS:
-            await test_getting_folders_filtered_by_date_created(sess, database, project_id)
+        await test_getting_folders_filtered_by_date_created(sess, database, project_id)
+        await test_getting_folders_filtered_by_date_modified(sess, database, project_id)
 
         # Test objects study and dataset are connecting to metax and saving metax id to db
         LOG.debug("=== Testing Metax integration related basic CRUD operations for study and dataset ===")
