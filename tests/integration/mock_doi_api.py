@@ -156,7 +156,7 @@ async def delete(req: web.Request) -> web.Response:
     return web.json_response(status=204)
 
 
-def init() -> web.Application:
+async def init() -> web.Application:
     """Start server."""
     app = web.Application()
     app.router.add_post("/dois", create)

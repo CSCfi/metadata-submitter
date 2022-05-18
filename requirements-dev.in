@@ -1,8 +1,19 @@
 aiofiles  # to run integration tests
+authlib
+bandit
 black
 certifi
 flake8
+honcho  # Runs Procfile
 mypy
 pip-tools  # pip depedencies management
 pre-commit
-tox
+pyspelling
+pytest
+pytest-cov
+sphinx
+sphinx_rtd_theme
+tox    
+types-python-dateutil
+types-ujson
+types-requests
