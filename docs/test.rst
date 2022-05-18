@@ -57,9 +57,9 @@ running the following commands in the repository root directory will run differe
 
 .. code-block:: console
 
-    $ # run tests that post objects/folders
+    $ # run tests that post objects/submissions
     $ locust --tags post
-    $ # run tests that query for objects/folders
+    $ # run tests that query for objects/submissions
     $ locust --tags query
 
 The configuration values for running performance tests are predefined in the ``locust.conf`` file in the repository root directory.

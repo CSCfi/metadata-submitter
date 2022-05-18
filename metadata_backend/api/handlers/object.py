@@ -12,7 +12,7 @@ from ...helpers.doi import DOIHandler
 from ...helpers.logger import LOG
 from ...helpers.metax_api_handler import MetaxServiceHandler
 from ...helpers.validator import JSONValidator
-from ..operators import FolderOperator, Operator, XMLOperator
+from ..operators import SubmissionOperator, Operator, XMLOperator
 from .common import multipart_content
 from .restapi import RESTAPIHandler
 
@@ -36,7 +36,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         per_page = self._get_page_param(req, "per_page", 10)
         db_client = req.app["db_client"]
 
-        filter_list: List = []  # DEPRECATED, users don't own folders anymore
+        filter_list: List = []  # DEPRECATED, users don't own submissions anymore
         data, page_num, page_size, total_objects = await Operator(db_client).query_metadata_database(
             collection, req.query, page, per_page, filter_list
         )
@@ -109,25 +109,25 @@ class ObjectAPIHandler(RESTAPIHandler):
         filename = ""
         cont_type = ""
 
-        folder_id = req.query.get("folder", "")
-        if not folder_id:
-            reason = "Folder is required query parameter. Please provide folder id where object is added to."
+        submission_id = req.query.get("submission", "")
+        if not submission_id:
+            reason = "Submission is required query parameter. Please provide submission id where object is added to."
             raise web.HTTPBadRequest(reason=reason)
 
-        await self._handle_check_ownership(req, "folders", folder_id)
+        await self._handle_check_ownership(req, "submissions", submission_id)
 
         self._check_schema_exists(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
 
         db_client = req.app["db_client"]
-        folder_op = FolderOperator(db_client)
+        submission_op = SubmissionOperator(db_client)
 
-        # we need to check if there is already a study in a folder
-        # we only allow one study per folder
+        # we need to check if there is already a study in a submission
+        # we only allow one study per submission
         # this is not enough to catch duplicate entries if updates happen in parallel
         # that is why we check in db_service.update_study
         if not req.path.startswith("/drafts") and schema_type == "study":
-            _ids = await folder_op.get_collection_objects(folder_id, collection)
+            _ids = await submission_op.get_collection_objects(submission_id, collection)
             if len(_ids) == 1:
                 reason = "Only one study is allowed per submission."
                 raise web.HTTPBadRequest(reason=reason)
@@ -180,9 +180,9 @@ class ObjectAPIHandler(RESTAPIHandler):
             )
             objects = [(json_data, filename)]
 
-        # Gathering data for object to be added to folder
-        patch = self._prepare_folder_patch_new_object(collection, objects, cont_type)
-        await folder_op.update_folder(folder_id, patch)
+        # Gathering data for object to be added to submission
+        patch = self._prepare_submission_patch_new_object(collection, objects, cont_type)
+        await submission_op.update_submission(submission_id, patch)
 
         # Create draft dataset to Metax catalog
         if collection in _allowed_doi:
@@ -211,7 +211,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         """Delete metadata object from database.
 
         :param req: DELETE request
-        :raises: HTTPUnauthorized if folder published
+        :raises: HTTPUnauthorized if submission published
         :raises: HTTPUnprocessableEntity if object does not belong to current user
         :returns: HTTPNoContent response
         """
@@ -229,17 +229,17 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         await self._handle_check_ownership(req, collection, accession_id)
 
-        folder_op = FolderOperator(db_client)
-        exists, folder_id, published = await folder_op.check_object_in_folder(collection, accession_id)
+        submission_op = SubmissionOperator(db_client)
+        exists, submission_id, published = await submission_op.check_object_in_submission(collection, accession_id)
         if exists:
             if published:
                 reason = "published objects cannot be deleted."
                 LOG.error(reason)
                 raise web.HTTPUnauthorized(reason=reason)
-            await folder_op.remove_object(folder_id, collection, accession_id)
+            await submission_op.remove_object(submission_id, collection, accession_id)
             _now = int(datetime.now().timestamp())
             lastModified = {"op": "replace", "path": "/lastModified", "value": _now}
-            await folder_op.update_folder(folder_id, [lastModified])
+            await submission_op.update_submission(submission_id, [lastModified])
         else:
             reason = "This object does not seem to belong to any user."
             LOG.error(reason)
@@ -306,8 +306,8 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         await self._handle_check_ownership(req, collection, accession_id)
 
-        folder_op = FolderOperator(db_client)
-        exists, folder_id, published = await folder_op.check_object_in_folder(collection, accession_id)
+        submission_op = SubmissionOperator(db_client)
+        exists, submission_id, published = await submission_op.check_object_in_submission(collection, accession_id)
         if exists:
             if published:
                 reason = "Published objects cannot be updated."
@@ -315,8 +315,8 @@ class ObjectAPIHandler(RESTAPIHandler):
                 raise web.HTTPUnauthorized(reason=reason)
 
         data = await operator.replace_metadata_object(collection, accession_id, content)
-        patch = self._prepare_folder_patch_update_object(collection, data, filename)
-        await folder_op.update_folder(folder_id, patch)
+        patch = self._prepare_submission_patch_update_object(collection, data, filename)
+        await submission_op.update_submission(submission_id, patch)
 
         # Update draft dataset to Metax catalog
         if collection in _allowed_doi:
@@ -335,7 +335,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         We do not support patch for XML.
 
         :param req: PATCH request
-        :raises: HTTPUnauthorized if object is in published folder
+        :raises: HTTPUnauthorized if object is in published submission
         :returns: JSON response containing accessionId for submitted object
         """
         schema_type = req.match_info["schema"]
@@ -358,8 +358,8 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         await self._handle_check_ownership(req, collection, accession_id)
 
-        folder_op = FolderOperator(db_client)
-        exists, folder_id, published = await folder_op.check_object_in_folder(collection, accession_id)
+        submission_op = SubmissionOperator(db_client)
+        exists, submission_id, published = await submission_op.check_object_in_submission(collection, accession_id)
         if exists:
             if published:
                 reason = "Published objects cannot be updated."
@@ -368,11 +368,11 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         accession_id = await operator.update_metadata_object(collection, accession_id, content)
 
-        # If there's changed title it will be updated to folder
+        # If there's changed title it will be updated to submission
         try:
             _ = content["descriptor"]["studyTitle"] if collection == "study" else content["title"]
-            patch = self._prepare_folder_patch_update_object(collection, content)
-            await folder_op.update_folder(folder_id, patch)
+            patch = self._prepare_submission_patch_update_object(collection, content)
+            await submission_op.update_submission(submission_id, patch)
         except (TypeError, KeyError):
             pass
 
@@ -392,15 +392,15 @@ class ObjectAPIHandler(RESTAPIHandler):
         LOG.info(f"PATCH object with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
-    def _prepare_folder_patch_new_object(self, schema: str, objects: List, cont_type: str) -> List:
-        """Prepare patch operations list for adding an object or objects to a folder.
+    def _prepare_submission_patch_new_object(self, schema: str, objects: List, cont_type: str) -> List:
+        """Prepare patch operations list for adding an object or objects to a submission.
 
-        :param schema: schema of objects to be added to the folder
+        :param schema: schema of objects to be added to the submission
         :param objects: metadata objects
         :param params: addidtional data required for db entry
         :returns: list of patch operations
         """
-        LOG.info("Preparing folder patch for new objects")
+        LOG.info("Preparing submission patch for new objects")
         if not cont_type:
             submission_type = "Form"
         else:
@@ -441,15 +441,15 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         return patch
 
-    def _prepare_folder_patch_update_object(self, schema: str, data: Dict, filename: str = "") -> List:
-        """Prepare patch operation for updating object's title in a folder.
+    def _prepare_submission_patch_update_object(self, schema: str, data: Dict, filename: str = "") -> List:
+        """Prepare patch operation for updating object's title in a submission.
 
         :param schema: schema of object to be updated
         :param accession_id: object ID
         :param title: title to be updated
         :returns: dict with patch operation
         """
-        LOG.info("Preparing folder patch for existing objects")
+        LOG.info("Preparing submission patch for existing objects")
         if schema.startswith("draft"):
             path = "/drafts"
         else:
@@ -495,7 +495,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         :param req: HTTP request
         :param collection: object's schema
         :param object: metadata object
-        :param folder_id: folder ID where metadata object belongs to
+        :param submission_id: submission ID where metadata object belongs to
         :returns: Metax ID
         """
         LOG.info("Creating draft dataset to Metax.")
@@ -514,7 +514,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         """Create draft DOI for study and dataset.
 
         The Draft DOI will be created only on POST and the data added to the
-        folder. Any update of this should not be possible.
+        submission. Any update of this should not be possible.
 
         :param schema_type: schema can be either study or dataset
         :returns: Dict with DOI of the study or dataset as well as the types.

@@ -44,7 +44,7 @@ class AppTestCase(AioHTTPTestCase):
         self.assertIs(len(server.router.resources()), 21)
 
     async def test_frontend_routes_are_set(self):
-        """Test correct routes are set when frontend folder is exists."""
+        """Test correct routes are set when frontend submission exists."""
         frontend_static = "metadata_backend.server.frontend_static_files"
         with tempfile.TemporaryDirectory() as tempdir:
             temppath = Path(tempdir)
