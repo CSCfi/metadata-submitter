@@ -99,6 +99,7 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
         "/aai",
         "/callback",
         "/static",
+        "/swagger",
         "/health",
         "/error400",
         "/error401",
