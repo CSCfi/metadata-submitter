@@ -100,6 +100,7 @@ async def init() -> web.Application:
         web.get("/folders", _folder.get_folders),
         web.post("/folders", _folder.post_folder),
         web.get("/folders/{folderId}", _folder.get_folder),
+        web.put("/folders/{folderId}/doi", _folder.put_folder_doi),
         web.patch("/folders/{folderId}", _folder.patch_folder),
         web.delete("/folders/{folderId}", _folder.delete_folder),
         # publish submissions

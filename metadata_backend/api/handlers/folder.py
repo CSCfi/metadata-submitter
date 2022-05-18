@@ -654,3 +654,33 @@ class FolderAPIHandler(RESTAPIHandler):
 
         LOG.info(f"DELETE folder with ID {_folder_id} was successful.")
         return web.Response(status=204)
+
+    async def put_folder_doi(self, req: Request) -> Response:
+        """Put or replace DOI metadata to a folder.
+
+        :param req: PUT request with DOI schema in the body
+        :returns: HTTP No Content response
+        """
+        folder_id = req.match_info["folderId"]
+        db_client = req.app["db_client"]
+        operator = FolderOperator(db_client)
+
+        await operator.check_folder_exists(folder_id)
+        await self._handle_check_ownership(req, "folders", folder_id)
+
+        folder = await operator.read_folder(folder_id)
+        doi_info = await self._get_data(req)
+        folder["doiInfo"] = doi_info
+        JSONValidator(folder, "folders").validate
+
+        op = "add"
+        if "doiInfo" in folder:
+            op = "replace"
+        patch = [
+            {"op": op, "path": "/doiInfo", "value": doi_info},
+        ]
+        upd_folder = await operator.update_folder(folder_id, patch)
+
+        body = ujson.dumps({"folderId": upd_folder}, escape_forward_slashes=False)
+        LOG.info(f"PUT folder with ID {folder_id} was successful.")
+        return web.Response(body=body, status=200, content_type="application/json")

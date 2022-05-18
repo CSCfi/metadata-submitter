@@ -498,6 +498,20 @@ async def delete_folder_publish(sess, folder_id):
         assert resp.status == 401, f"HTTP Status code error, got {resp.status}"
 
 
+async def put_folder_doi(sess, schema, folder_id, filename):
+    """Put doi into folder within session, returns folderId.
+
+    :param sess: HTTP session in which request call is made
+    :param doi_data: doi data used to update the folder
+    """
+    request_data = await create_request_json_data(schema, filename)
+    async with sess.put(f"{folders_url}/{folder_id}/doi", data=request_data) as resp:
+        ans = await resp.json()
+        assert resp.status == 200, f"HTTP Status code error {resp.status} {ans}"
+        LOG.debug(f"Adding doi to folder {ans['folderId']}")
+        return ans["folderId"]
+
+
 async def create_folder(database, data):
     """Create new object folder to database.
 
@@ -1368,7 +1382,7 @@ async def test_getting_paginated_folders(sess, project_id):
         assert ans["page"]["page"] == 1
         assert ans["page"]["size"] == 5
         assert ans["page"]["totalPages"] == 2
-        assert ans["page"]["totalFolders"] == 7
+        assert ans["page"]["totalFolders"] == 8
         assert len(ans["folders"]) == 5
 
     # Test with custom pagination values
@@ -1378,7 +1392,7 @@ async def test_getting_paginated_folders(sess, project_id):
         assert ans["page"]["page"] == 2
         assert ans["page"]["size"] == 3
         assert ans["page"]["totalPages"] == 3
-        assert ans["page"]["totalFolders"] == 7
+        assert ans["page"]["totalFolders"] == 8
         assert len(ans["folders"]) == 3
 
     # Test querying only published folders
@@ -1388,8 +1402,8 @@ async def test_getting_paginated_folders(sess, project_id):
         assert ans["page"]["page"] == 1
         assert ans["page"]["size"] == 5
         assert ans["page"]["totalPages"] == 1
-        assert ans["page"]["totalFolders"] == 1
-        assert len(ans["folders"]) == 1
+        assert ans["page"]["totalFolders"] == 2
+        assert len(ans["folders"]) == 2
 
     # Test querying only draft folders
     async with sess.get(f"{folders_url}?published=false&projectId={project_id}") as resp:
@@ -1887,6 +1901,30 @@ async def test_submissions_work(sess, folder_id):
     tree.write(mod_study, encoding="utf-8")
 
 
+async def test_minimal_json_publication(sess, project_id):
+    """Test minimal publication workflow with json submissions.
+
+    :param sess: HTTP session in which request call is made
+    :param project_id: id of the project the folder belongs to
+    """
+    folder = {
+        "name": "Minimal json publication",
+        "description": "Testing json publication with new doi endpoint",
+        "projectId": project_id,
+    }
+    folder_id = await post_folder(sess, folder)
+
+    await post_object_json(sess, "study", folder_id, "SRP000539.json")
+    await put_folder_doi(sess, "doi", folder_id, "test_doi.json")
+    await publish_folder(sess, folder_id)
+
+    async with sess.get(f"{folders_url}/{folder_id}") as resp:
+        LOG.debug(f"Checking that folder {folder_id} was published")
+        res = await resp.json()
+        assert res["folderId"] == folder_id, "expected folder id does not match"
+        assert res["published"] is True, "folder is published, expected False"
+
+
 async def test_health_check(sess):
     """Test the health check endpoint.
 
@@ -2006,6 +2044,10 @@ async def main():
         await test_crud_folders_works(sess, project_id)
         await test_crud_folders_works_no_publish(sess, project_id)
         await test_adding_doi_info_to_folder_works(sess, project_id)
+
+        # Test creating a folder, with minimal required objects + DOI for publishing
+        LOG.debug("=== Testing minimal JSON submission ===")
+        await test_minimal_json_publication(sess, project_id)
 
         # Test getting a list of folders and draft templates owned by the user
         LOG.debug("=== Testing getting folders, draft folders and draft templates with pagination ===")
