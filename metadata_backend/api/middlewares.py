@@ -15,21 +15,6 @@ from ..helpers.logger import LOG
 from ..conf.conf import aai_config
 
 
-def _check_error_page_requested(req: Request, error_code: int) -> web.Response:  # type:ignore
-    """Return the correct error page with correct status code."""
-    if "Accept" in req.headers and req.headers["Accept"]:
-        if req.headers["Accept"].split(",")[0] in {"text/html", "application/xhtml+xml"}:
-            raise web.HTTPSeeOther(
-                f"/error{str(error_code)}",
-                headers={
-                    "Cache-Control": "no-cache, no-store, must-revalidate",
-                    "Pragma": "no-cache",
-                    "Expires": "0",
-                    "Location": f"/error{str(error_code)}",
-                },
-            )
-
-
 @middleware
 async def http_error_handler(req: Request, handler: Callable) -> Response:
     """Middleware for handling exceptions received from the API methods.
@@ -43,32 +28,20 @@ async def http_error_handler(req: Request, handler: Callable) -> Response:
         response = await handler(req)
         return response
     except web.HTTPError as error:
-        details = _json_exception(error.status, error, req.url)
-        LOG.error(details)
+        LOG.error(error)
+        problem = _json_problem(error, req.url)
+        LOG.info(problem)
         c_type = "application/problem+json"
-        if error.status == 400:
-            _check_error_page_requested(req, 400)
-            raise web.HTTPBadRequest(text=details, content_type=c_type)
-        elif error.status == 401:
-            _check_error_page_requested(req, 401)
-            raise web.HTTPUnauthorized(
-                headers={"WWW-Authenticate": 'OAuth realm="/", charset="UTF-8"'}, text=details, content_type=c_type
-            )
-        elif error.status == 403:
-            _check_error_page_requested(req, 403)
-            raise web.HTTPForbidden(text=details, content_type=c_type)
-        elif error.status == 404:
-            _check_error_page_requested(req, 404)
-            raise web.HTTPNotFound(text=details, content_type=c_type)
-        elif error.status == 415:
-            _check_error_page_requested(req, 400)
-            raise web.HTTPUnsupportedMediaType(text=details, content_type=c_type)
-        elif error.status == 422:
-            _check_error_page_requested(req, 400)
-            raise web.HTTPUnprocessableEntity(text=details, content_type=c_type)
+        if error.status in {400, 401, 403, 404, 415, 422}:
+            if error.status == 401:
+                raise web.HTTPUnauthorized(
+                    headers={"WWW-Authenticate": 'OAuth realm="/", charset="UTF-8"'}, text=problem, content_type=c_type
+                )
+            error.content_type = c_type
+            error.text = problem
+            raise error
         else:
-            _check_error_page_requested(req, 500)
-            raise web.HTTPInternalServerError(text=details, content_type=c_type)
+            raise web.HTTPInternalServerError(text=problem, content_type=c_type)
 
 
 @middleware
@@ -219,24 +192,25 @@ def _check_csrf(request: web.Request) -> bool:
     return True
 
 
-def _json_exception(status: int, exception: web.HTTPException, url: URL) -> str:
+def _json_problem(exception: web.HTTPError, url: URL, _type: str = "about:blank") -> str:
     """Convert an HTTP exception into a problem detailed JSON object.
 
     The problem details are in accordance with RFC 7807.
     (https://tools.ietf.org/html/rfc7807)
 
-    :param status: Status code of the HTTP exception
-    :param exception: Exception content
+    :param exception: an HTTPError exception
     :param url: Request URL that caused the exception
+    :param _type: Url to a document describing the error
     :returns: Problem detail JSON object as a string
     """
     body = ujson.dumps(
         {
-            "type": "about:blank",
-            # Replace type value above with an URL to
+            # Replace type value with an URL to
             # a custom error document when one exists
-            "title": HTTPStatus(status).phrase,
+            "type": _type,
+            "title": HTTPStatus(exception.status).phrase,
             "detail": exception.reason,
+            "status": exception.status,
             "instance": url.path,  # optional
         },
         escape_forward_slashes=False,
