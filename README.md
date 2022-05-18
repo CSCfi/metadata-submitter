@@ -43,16 +43,15 @@ Tests can be run with tox automation: just run `tox -p auto` on project root (re
 
 ## Developing
 
-Docker is utilizing the Buildkit builder toolkit. To activate it you might need to update your docker configurations with `{ "features": { "buildkit": true } }` inside the /etc/docker/daemon.json.
+Clone the repository
+```bash
+git clone -b develop git@github.com:CSCfi/metadata-submitter.git
+cd metadata-submitter
+```
 
-If the above is not enough, try:
-```
-$ wget https://github.com/docker/buildx/releases/download/v0.7.0/buildx-v0.7.0.linux-amd64
-$ mkdir -p ~/.docker/cli-plugins
-$ cp ~/Downloads/buildx-v0.7.0.linux-amd64 ~/.docker/cli-plugins/docker-buildx
-$ chmod +x ~/.docker/cli-plugins/docker-buildx
-```
-and add `{ "experimental": "enabled" }` inside the /etc/docker/daemon.json.
+Git hooks are activated inside the local development environment which will run tox tests before pushing. To ignore them for fast updates use `git` with the flag `--no-verify`.
+
+Below we provide two alternative ways of developing, with _VS Code dev containers_ or with _Python virtual environment using a Procfile_.
 
 ### Developing with VS Code
 
@@ -63,7 +62,48 @@ To start using the VS Code devcontainer:
 - with CTRL+SHIFT P choose Remote-Container: Reopen in Container
 - to run application and debug F5
 
-Git hooks are activated inside the local development environment which will run tox tests before pushing. To ignore them for fast updates use the flag `--no-verify`.
+#### Docker setup
+
+Docker is utilizing the Buildkit builder toolkit. To activate it you might need to update your docker configurations with `{ "features": { "buildkit": true } }` inside the /etc/docker/daemon.json.
+
+If the above is not enough, try:
+```bash
+$ wget https://github.com/docker/buildx/releases/download/v0.7.0/buildx-v0.7.0.linux-amd64
+$ mkdir -p ~/.docker/cli-plugins
+$ cp ~/Downloads/buildx-v0.7.0.linux-amd64 ~/.docker/cli-plugins/docker-buildx
+$ chmod +x ~/.docker/cli-plugins/docker-buildx
+```
+and add `{ "experimental": "enabled" }` inside the /etc/docker/daemon.json.
+
+### Developing with Python virtual environment
+
+Install python dependencies, optionally in a virtual environment.
+
+```bash
+$ python3 -m venv venv --prompt submitter  # Optional step, creates python virtual environment
+$ source venv/bin/activate  # activates virtual environment
+$ pip install -U pip
+$ pip install -Ue .
+$ pip install -r requirements-dev.txt
+```
+
+Copy `.env` file and set up the environment variables.
+The example file has hostnames for development with VS Code dev containers. You will have to change the hostnames to `localhost`. 
+
+```bash
+$ cp .env.example .env  # Make any changes you need to the file
+```
+
+Start the servers with code reloading enabled, so any code changes restarts the servers automatically.
+
+```bash
+$ honcho start
+```
+
+Now you should be able to access the development server at `localhost:5430`.
+If it doesn't work right away, check your settings in `.env` and restart the servers manually if you make changes to `.env` file.
+
+**Note**: This approach uses Docker to run MongoDB. You can comment it out in the `Procfile` if you don't want to use Docker.
 
 ### Keeping Python requirements up to date
 
@@ -87,9 +127,9 @@ Git hooks are activated inside the local development environment which will run 
 ## Build and deploy
 
 Production version can be built and run with following docker commands:
-```
-docker build --no-cache . -t metadata-submitter
-docker run -p 5430:5430 metadata-submitter
+```bash
+$ docker build --no-cache . -t metadata-submitter
+$ docker run -p 5430:5430 metadata-submitter
 ```
 
 Frontend is built and added as static files to backend while building. 
