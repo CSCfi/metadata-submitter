@@ -264,6 +264,7 @@ hotfix
 hq
 html
 http
+httperror
 https
 identifiertype
 identitypython

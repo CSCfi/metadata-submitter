@@ -1360,10 +1360,11 @@ components:
   schemas:
     ErrorModel:
       type: object
-      description: Response when some error(s) occurred in one of the endpoints
+      description: JSON Problem object (IETF RFC 7807) for HTTP (4xx, 5xx) error response body
       required:
         - title
         - detail
+        - status
       properties:
         type:
           type: string
@@ -1374,6 +1375,9 @@ components:
         detail:
           type: string
           description: details about what error occurred while processing the request
+        status:
+          type: integer
+          description: HTTP status code
         instance:
           type: string
           description: reference to the specific occurrence of the problem
