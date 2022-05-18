@@ -3,7 +3,7 @@ abkhaz
 accessionid
 additionalproperties
 addobjecttodrafts
-addobjecttofolder
+addobjecttosubmission
 affiliationidentifier
 affiliationidentifierscheme
 agp
@@ -107,7 +107,7 @@ cpg
 crai
 createfromjson
 createfromxml
-createnewdraftfolder
+createnewdraftsubmission
 createslice
 crna
 crossref
@@ -210,7 +210,7 @@ filetype
 flatfile
 flx
 flybase
-folderid
+submissionid
 followsreadindex
 formdata
 fos
@@ -406,8 +406,8 @@ nuccore
 nuosu
 nynorsk
 objectdetails
-objectinsidefolder
-objectinsidefolderwithtags
+objectinsidesubmission
+objectinsidesubmissionwithtags
 objectstatus
 objectsubmissiontypes
 objecttags
@@ -587,8 +587,8 @@ studytitle
 studytype
 subjectscheme
 subjectsSchema
-submissionfolder
-submissionfolderslice
+submissionsubmission
+submissionslice
 submissiontype
 submitterdemultiplexed
 submitterid
@@ -655,7 +655,7 @@ wizardsavedobjectslist
 wizardsavedobjectslistprops
 wizardshowsummarystep
 wizardsteps
-wizardsubmissionfolderslice
+wizardsubmissionslice
 wolof
 wordlist
 wxs
