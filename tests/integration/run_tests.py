@@ -515,7 +515,7 @@ async def put_folder_doi(sess, schema, folder_id, filename):
 async def create_folder(database, data):
     """Create new object folder to database.
 
-    :param database: database connection
+    :param database: database client to perform db operations
     :param data: Data as dict to be saved to database
     :returns: Folder id for the folder inserted to database
     """
@@ -531,6 +531,25 @@ async def create_folder(database, data):
 
     except Exception as e:
         LOG.error(f"Folder creation failed due to {str(e)}")
+
+
+async def delete_objects_metax_id(sess, database, collection, accession_id, metax_id):
+    """Remove study or dataset metax ID from database and mocked Metax service.
+
+    :param sess: HTTP session in which request call is made
+    :param database: database client to perform db operations
+    :param collection: Collection of the object to be manipulated
+    :param accession_id: Accession id of the object to be manipulated
+    :param metax_id: ID of metax dataset to be deleted
+    """
+    try:
+        await database[collection].find_one_and_update({"accessionId": accession_id}, {"$set": {"metaxIdentifier": ""}})
+    except Exception as e:
+        LOG.error(f"Object update failed due to {str(e)}")
+    try:
+        await sess.delete(f"{metax_url}/{metax_id}")
+    except Exception as e:
+        LOG.error(f"Object deletion from mmocked Metax failed due to {str(e)}")
 
 
 async def patch_user(sess, user_id, real_user_id, json_patch):
@@ -1066,6 +1085,53 @@ async def test_metax_publish_dataset(sess, folder_id):
             assert actual_rd["rights_holder"] == expected_rd["rights_holder"]
             assert actual_rd["spatial"] == expected_rd["spatial"]
             assert actual_rd["temporal"] == expected_rd["temporal"]
+
+    for _, _, metax_id in objects:
+        # delete of published metax datasets is possible only from mocked metax for testing purpose
+        # Metax service does not allow deleting published datasets
+        await sess.delete(f"{metax_url}/{metax_id}", params={"test": "true"})
+
+
+async def test_metax_publish_dataset_with_missing_metax_id(sess, database, folder_id):
+    """Test publishing dataset to Metax service after folder(submission) is failed to create Metax draft dataset.
+
+    Test will create study and dataset normally. After that imitating missing Metax connection will be done
+    with deleting object's metax ID and making call to mocked Metax service to remove Metax dataset from drafts.
+    Then objects will be published in metadata-submitter which should start a flow of creating draft dataset to Metax
+    and only then publishing it.
+
+    :param sess: HTTP session in which request call is made
+    :param folder_id: id of the folder where objects reside
+    """
+    objects = []
+    for schema, filename in {
+        ("study", "SRP000539.xml"),
+        ("dataset", "dataset.xml"),
+    }:
+        accession_id, _ = await post_object(sess, schema, folder_id, filename)
+        async with sess.get(f"{objects_url}/{schema}/{accession_id}") as resp:
+            res = await resp.json()
+            metax_id = res["metaxIdentifier"]
+        objects.append([schema, accession_id])
+        await delete_objects_metax_id(sess, database, schema, accession_id, metax_id)
+        async with sess.get(f"{objects_url}/{schema}/{accession_id}") as resp:
+            res = await resp.json()
+            assert res["metaxIdentifier"] == ""
+
+    # Publish the folder
+    # add a study and dataset for publishing a folder
+    doi_data_raw = await create_request_json_data("doi", "test_doi.json")
+    doi_data = json.loads(doi_data_raw)
+    patch_add_doi = [{"op": "add", "path": "/doiInfo", "value": doi_data}]
+    folder_id = await patch_folder(sess, folder_id, patch_add_doi)
+
+    await publish_folder(sess, folder_id)
+
+    for schema, accession_id in objects:
+        async with sess.get(f"{objects_url}/{schema}/{accession_id}") as resp:
+            assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+            res = await resp.json()
+            assert res["metaxIdentifier"] != ""
 
 
 async def test_crud_folders_works(sess, project_id):
@@ -1994,8 +2060,8 @@ async def main():
         # Test objects study and dataset are connecting to metax and saving metax id to db
         LOG.debug("=== Testing Metax integration related basic CRUD operations for study and dataset ===")
         metax_folder = {
-            "name": "basic test pagination",
-            "description": "basic test pagination folder",
+            "name": "Metax testing folder",
+            "description": "Metax crud testing folder",
             "projectId": project_id,
         }
         metax_folder_id = await post_folder(sess, metax_folder)
@@ -2003,6 +2069,13 @@ async def main():
         await test_metax_crud_with_json(sess, metax_folder_id)
         await test_metax_id_not_updated_on_patch(sess, metax_folder_id)
         await test_metax_publish_dataset(sess, metax_folder_id)
+        metax_folder = {
+            "name": "Metax testing publishing folder",
+            "description": "Metax publishing testing folder",
+            "projectId": project_id,
+        }
+        metax_folder_id = await post_folder(sess, metax_folder)
+        await test_metax_publish_dataset_with_missing_metax_id(sess, database, metax_folder_id)
 
         # Test add, modify, validate and release action with submissions
         LOG.debug("=== Testing actions within submissions ===")

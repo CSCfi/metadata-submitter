@@ -17,6 +17,7 @@ from ...helpers.metax_api_handler import MetaxServiceHandler
 from ...helpers.validator import JSONValidator
 from ..middlewares import get_session
 from ..operators import FolderOperator, Operator, ProjectOperator, UserOperator
+from .object import ObjectAPIHandler
 from .restapi import RESTAPIHandler
 
 
@@ -151,7 +152,7 @@ class FolderAPIHandler(RESTAPIHandler):
 
         return dataset
 
-    async def _prepare_doi_update(self, obj_op: Operator, folder: Dict) -> Tuple[Dict, List, List]:
+    async def _prepare_doi_update(self, req: Request, obj_op: Operator, folder: Dict) -> Tuple[Dict, List, List]:
         """Prepare dictionary with values for the Datacite DOI update.
 
         We need to prepare data for Study and Datasets, publish doi for each,
@@ -168,6 +169,7 @@ class FolderAPIHandler(RESTAPIHandler):
         metax_ids = []
         study = {}
         datasets: List = []
+        obj_handler = ObjectAPIHandler()
 
         # we need to re-format these for Datacite, as in the JSON schemas
         # we split the words so that front-end will display them nicely
@@ -208,6 +210,12 @@ class FolderAPIHandler(RESTAPIHandler):
 
                         _study_doi = study_data["doi"]
 
+                        # in case object is not added to metax due to server error
+                        if not study_data["metaxIdentifier"]:
+                            study_data["metaxIdentifier"] = await obj_handler.create_metax_dataset(
+                                req, "study", study_data, create_draft_doi=False
+                            )
+
                         metax_ids.append({"doi": study_data["doi"], "metaxIdentifier": study_data["metaxIdentifier"]})
 
                         # there are cases where datasets are added first
@@ -235,6 +243,13 @@ class FolderAPIHandler(RESTAPIHandler):
                         dataset = self._prepare_published_dataset(_study_doi, ds_data, _info)
 
                         datasets.append(dataset)
+
+                        # in case object is not added to metax due to server error
+                        if not ds_data["metaxIdentifier"]:
+                            ds_data["metaxIdentifier"] = await obj_handler.create_metax_dataset(
+                                req, "dataset", ds_data, create_draft_doi=False
+                            )
+
                         metax_ids.append({"doi": ds_data["doi"], "metaxIdentifier": ds_data["metaxIdentifier"]})
 
                         # A Study describes a Dataset
@@ -539,16 +554,19 @@ class FolderAPIHandler(RESTAPIHandler):
         folder_id = req.match_info["folderId"]
         db_client = req.app["db_client"]
         operator = FolderOperator(db_client)
+        metax_handler = MetaxServiceHandler(req)
 
         await operator.check_folder_exists(folder_id)
 
         await self._handle_check_ownership(req, "folders", folder_id)
 
+        await metax_handler.check_connection()
+
         folder = await operator.read_folder(folder_id)
 
         # we first try to publish the DOI before actually publishing the folder
         obj_ops = Operator(db_client)
-        study, datasets, metax_ids = await self._prepare_doi_update(obj_ops, folder)
+        study, datasets, metax_ids = await self._prepare_doi_update(req, obj_ops, folder)
 
         doi_ops = DOIHandler()
 
@@ -572,13 +590,11 @@ class FolderAPIHandler(RESTAPIHandler):
             }
             datasets_patch.append(patch_ds)
 
-        # Create draft DOI and delete draft objects from the folder
-
+        # Create draft DOI ??? and delete draft objects from the folder
         for obj in folder["drafts"]:
             await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
 
         # update study to metax with data comming from doi info
-        metax_handler = MetaxServiceHandler(req)
         await metax_handler.update_dataset_with_doi_info(folder["doiInfo"], metax_ids)
         await metax_handler.publish_dataset(metax_ids)
 
