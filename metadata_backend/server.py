@@ -11,9 +11,9 @@ from cryptography.fernet import Fernet
 from .api.auth import AccessHandler
 from .api.handlers.restapi import RESTAPIHandler
 from .api.handlers.static import StaticHandler
-from .api.handlers.folder import FolderAPIHandler
-from .api.handlers.object import ObjectAPIHandler
 from .api.handlers.submission import SubmissionAPIHandler
+from .api.handlers.object import ObjectAPIHandler
+from .api.handlers.xml_submission import XMLSubmissionAPIHandler
 from .api.handlers.template import TemplatesAPIHandler
 from .api.handlers.user import UserAPIHandler
 from .api.health import HealthHandler
@@ -69,9 +69,9 @@ async def init() -> web.Application:
     server.middlewares.append(check_login)
     _schema = RESTAPIHandler()
     _object = ObjectAPIHandler()
-    _folder = FolderAPIHandler()
-    _user = UserAPIHandler()
     _submission = SubmissionAPIHandler()
+    _user = UserAPIHandler()
+    _xml_submission = XMLSubmissionAPIHandler()
     _template = TemplatesAPIHandler()
     api_routes = [
         # retrieve schema and informations about it
@@ -96,22 +96,22 @@ async def init() -> web.Application:
         web.get("/templates/{schema}/{accessionId}", _template.get_template),
         web.patch("/templates/{schema}/{accessionId}", _template.patch_template),
         web.delete("/templates/{schema}/{accessionId}", _template.delete_template),
-        # folders/submissions operations
-        web.get("/folders", _folder.get_folders),
-        web.post("/folders", _folder.post_folder),
-        web.get("/folders/{folderId}", _folder.get_folder),
-        web.put("/folders/{folderId}/doi", _folder.put_folder_doi),
-        web.patch("/folders/{folderId}", _folder.patch_folder),
-        web.delete("/folders/{folderId}", _folder.delete_folder),
+        # submissions/submissions operations
+        web.get("/submissions", _submission.get_submissions),
+        web.post("/submissions", _submission.post_submission),
+        web.get("/submissions/{submissionId}", _submission.get_submission),
+        web.put("/submissions/{submissionId}/doi", _submission.put_submission_doi),
+        web.patch("/submissions/{submissionId}", _submission.patch_submission),
+        web.delete("/submissions/{submissionId}", _submission.delete_submission),
         # publish submissions
-        web.patch("/publish/{folderId}", _folder.publish_folder),
+        web.patch("/publish/{submissionId}", _submission.publish_submission),
         # users operations
         web.get("/users/{userId}", _user.get_user),
         web.delete("/users/{userId}", _user.delete_user),
         # submit
-        web.post("/submit", _submission.submit),
+        web.post("/submit", _xml_submission.submit),
         # validate
-        web.post("/validate", _submission.validate),
+        web.post("/validate", _xml_submission.validate),
     ]
     server.router.add_routes(api_routes)
     LOG.info("Server configurations and routes loaded")

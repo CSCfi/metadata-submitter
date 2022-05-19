@@ -11,7 +11,7 @@
 
 
 @project_id = {{user_data_req.response.body.projects[0].projectId}}
-@folder_id = {{folder_id_req.response.body.folderId}}
+@submission_id = {{submission_id_req.response.body.submissionId}}
 
 ### Mock athentication
 GET {{auth_url}}/setmock
@@ -28,33 +28,33 @@ GET {{backend_url}}/users/current
 
 
 
-### Create folder
-# @name folder_id_req
-POST {{backend_url}}/folders
+### Create submission
+# @name submission_id_req
+POST {{backend_url}}/submissions
 
 {
-    "name": "folder test 1",
-    "description": "folder test 1",
+    "name": "submission test 1",
+    "description": "submission test 1",
     "projectId": "{{project_id}}"
 }
 
-### List folders
-GET {{backend_url}}/folders
+### List submissions
+GET {{backend_url}}/submissions
     ?projectId={{project_id}}
 
-### Get folder
-GET {{backend_url}}/folders/{{folder_id}}
+### Get submission
+GET {{backend_url}}/submissions/{{submission_id}}
 
-### Add study to folder
+### Add study to submission
 POST {{backend_url}}/objects/study
-    ?folder={{folder_id}}
+    ?submission={{submission_id}}
 
 < ../test_files/study/SRP000539.json
 
-### Add DOI to folder
-PUT {{backend_url}}/folders/{{folder_id}}/doi
+### Add DOI to submission
+PUT {{backend_url}}/submissions/{{submission_id}}/doi
 
 < ../test_files/doi/test_doi.json
 
-### Publish folder
-PATCH {{backend_url}}/publish/{{folder_id}}
+### Publish submission
+PATCH {{backend_url}}/publish/{{submission_id}}
