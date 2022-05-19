@@ -14,6 +14,8 @@ import hashlib
 from ..helpers.logger import LOG
 from ..conf.conf import aai_config
 
+HTTP_ERROR_MESSAGE = "HTTP %r request to %r raised an HTTP %d exception."
+
 
 @middleware
 async def http_error_handler(req: Request, handler: Callable) -> Response:
@@ -28,15 +30,17 @@ async def http_error_handler(req: Request, handler: Callable) -> Response:
         response = await handler(req)
         return response
     except web.HTTPError as error:
-        LOG.error(error)
+        LOG.info(HTTP_ERROR_MESSAGE, req.method, req.path, error.status)
         problem = _json_problem(error, req.url)
-        LOG.info(problem)
+        LOG.debug("Response payload is %r", problem)
         c_type = "application/problem+json"
+
         if error.status in {400, 401, 403, 404, 415, 422}:
             error.content_type = c_type
             error.text = problem
             raise error
         else:
+            LOG.exception(HTTP_ERROR_MESSAGE + " This IS a bug.", req.method, req.path, error.status)
             raise web.HTTPInternalServerError(text=problem, content_type=c_type)
 
 
