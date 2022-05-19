@@ -33,10 +33,6 @@ async def http_error_handler(req: Request, handler: Callable) -> Response:
         LOG.info(problem)
         c_type = "application/problem+json"
         if error.status in {400, 401, 403, 404, 415, 422}:
-            if error.status == 401:
-                raise web.HTTPUnauthorized(
-                    headers={"WWW-Authenticate": 'OAuth realm="/", charset="UTF-8"'}, text=problem, content_type=c_type
-                )
             error.content_type = c_type
             error.text = problem
             raise error
