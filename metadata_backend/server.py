@@ -10,7 +10,7 @@ from cryptography.fernet import Fernet
 
 from .api.auth import AccessHandler
 from .api.handlers.restapi import RESTAPIHandler
-from .api.handlers.static import StaticHandler
+from .api.handlers.static import StaticHandler, html_handler_factory
 from .api.handlers.submission import SubmissionAPIHandler
 from .api.handlers.object import ObjectAPIHandler
 from .api.handlers.xml_submission import XMLSubmissionAPIHandler
@@ -18,7 +18,7 @@ from .api.handlers.template import TemplatesAPIHandler
 from .api.handlers.user import UserAPIHandler
 from .api.health import HealthHandler
 from .api.middlewares import check_login, http_error_handler
-from .conf.conf import aai_config, create_db_client, frontend_static_files
+from .conf.conf import aai_config, create_db_client, frontend_static_files, swagger_static_path
 from .helpers.logger import LOG
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -129,6 +129,10 @@ async def init() -> web.Application:
     ]
     server.router.add_routes(health_routes)
     LOG.info("Health routes loaded")
+    if swagger_static_path.exists():
+        swagger_handler = html_handler_factory(swagger_static_path)
+        server.router.add_get("/swagger", swagger_handler)
+        LOG.info("Swagger routes loaded")
     if frontend_static_files.exists():
         _static = StaticHandler(frontend_static_files)
         frontend_routes = [

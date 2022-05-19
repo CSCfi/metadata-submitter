@@ -42,6 +42,7 @@ setup(
             "frontend/static/css/*",
             "conf/schemas.json",
             "conf/metax_references/*.json",
+            "swagger/*",
         ]
     },
     include_package_data=True,

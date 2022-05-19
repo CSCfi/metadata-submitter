@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `lastModified` to folder to keep track when a folder or the objects in a folder change and be able to filter via the `lastModified`
 - connection checking and `retry`-mechanism for calls to Metax-service in case of server and connection errors
 - Endpoint for submitting DOI information. #389
+- Endpoint with swagger documentation `/swagger`
 
 ### Changed
 - migrated to variables used by motor 3 for ssl https://motor.readthedocs.io/en/stable/migrate-to-motor-3.html?highlight=ssl_certfile#renamed-uri-options
