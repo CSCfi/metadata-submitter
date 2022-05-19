@@ -22,13 +22,13 @@ paths:
         - Submission
       summary: XML submission endpoint, will also trigger validation.
       parameters:
-        - name: folder
+        - name: submission
           in: query
           schema:
             type: string
-          description: The folder ID where object belongs to.
+          description: The submission ID where object belongs to.
           required: true
-          example: "folder=12345"
+          example: "submission=12345"
       requestBody:
         content:
           multipart/form-data:
@@ -307,13 +307,13 @@ paths:
           schema:
             type: string
           required: true
-        - name: folder
+        - name: submission
           in: query
           schema:
             type: string
-          description: The folder ID where object belongs to.
+          description: The submission ID where object belongs to.
           required: true
-          example: "folder=12345"
+          example: "submission=12345"
       requestBody:
         content:
           multipart/form-data::
@@ -550,13 +550,13 @@ paths:
           schema:
             type: string
           required: true
-        - name: folder
+        - name: submission
           in: query
           schema:
             type: string
-          description: The folder ID where object belongs to.
+          description: The submission ID where object belongs to.
           required: true
-          example: "folder=12345"
+          example: "submission=12345"
       requestBody:
         content:
           multipart/form-data::
@@ -932,17 +932,17 @@ paths:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
   
-  /folders:
+  /submissions:
     get:
       tags:
         - Query
-      summary: List of folders available for the user.
+      summary: List of submissions available for the user.
       parameters:
         - in: query
           name: projectId
           schema:
             type: string
-          description: ID of the project the folder belongs to
+          description: ID of the project the submission belongs to
           required: true
         - in: query
           name: page
@@ -959,20 +959,20 @@ paths:
           schema:
             type: string
           example: true
-          description: Return folders based on the folder published value. Should be 'true' or 'false'
+          description: Return submissions based on the submission published value. Should be 'true' or 'false'
         - in: query
           name: name
           schema:
             type: string
-          example: test folder
-          description: Return folders containing filtered string[s] in their name
+          example: test submission
+          description: Return submissions containing filtered string[s] in their name
         - in: query
           name: date_created_start
           schema:
             type: string
           example: "2015-01-01"
           description: |
-            Returns folders created between provided dates.
+            Returns submissions created between provided dates.
             MUST be used with parameter 'date_created_end'.
         - in: query
           name: date_created_end
@@ -980,7 +980,7 @@ paths:
             type: string
           example: "2015-12-31"
           description: |
-            Returns folders created between provided dates.
+            Returns submissions created between provided dates.
             MUST be used with parameter 'date_created_start'.
       responses:
         200:
@@ -988,7 +988,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/FolderList"
+                $ref: "#/components/schemas/SubmissionList"
         401:
           description: Unauthorized
           content:
@@ -1004,7 +1004,7 @@ paths:
     post:
       tags:
         - Submission
-      summary: Create a new folder for the user.
+      summary: Create a new submission for the user.
       requestBody:
         content:
           application/json:
@@ -1027,7 +1027,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/FolderCreated"
+                $ref: "#/components/schemas/SubmissionCreated"
         400:
           description: Bad Request
           content:
@@ -1046,15 +1046,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
-  /folders/{folderId}:
+  /submissions/{submissionId}:
     get:
       tags:
         - Query
-      summary: Object folder by its folder ID.
+      summary: Object submission by its submission ID.
       parameters:
-        - name: folderId
+        - name: submissionId
           in: path
-          description: ID of the object folder.
+          description: ID of the object submission.
           schema:
             type: string
           required: true
@@ -1064,7 +1064,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Folder"
+                $ref: "#/components/schemas/Submission"
         400:
           description: Bad Request
           content:
@@ -1086,16 +1086,16 @@ paths:
     patch:
       tags:
         - Manage
-      summary: Update information of an object folder.
+      summary: Update information of an object submission.
       requestBody:
         content:
           application/json-patch+json:
             schema:
               $ref: "#/components/schemas/JSONPatch"
       parameters:
-        - name: folderId
+        - name: submissionId
           in: path
-          description: ID of the object folder.
+          description: ID of the object submission.
           schema:
             type: string
           required: true
@@ -1105,7 +1105,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/FolderCreated"
+                $ref: "#/components/schemas/SubmissionCreated"
         400:
           description: Bad Request
           content:
@@ -1127,11 +1127,11 @@ paths:
     delete:
       tags:
         - Manage
-      summary: Delete an object folder with a specified folder ID.
+      summary: Delete an object submission with a specified submission ID.
       parameters:
-        - name: folderId
+        - name: submissionId
           in: path
-          description: ID of the object folder.
+          description: ID of the object submission.
           schema:
             type: string
           required: true
@@ -1156,15 +1156,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
-  /folders/{folderId}/doi:
+  /submissions/{submissionId}/doi:
     put:
       tags:
         - Manage
-      summary: Delete an object folder with a specified folder ID.
+      summary: Delete an object submission with a specified submission ID.
       parameters:
-        - name: folderId
+        - name: submissionId
           in: path
-          description: ID of the object folder.
+          description: ID of the object submission.
           schema:
             type: string
           required: true
@@ -1179,7 +1179,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/FolderCreated"
+                $ref: "#/components/schemas/SubmissionCreated"
         400:
           description: Bad Request
           content:
@@ -1198,15 +1198,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
-  /publish/{folderId}:
+  /publish/{submissionId}:
     patch:
       tags:
         - Manage
-      summary: Update object folder into published state.
+      summary: Update object submission into published state.
       parameters:
-        - name: folderId
+        - name: submissionId
           in: path
-          description: ID of the object folder.
+          description: ID of the object submission.
           schema:
             type: string
           required: true
@@ -1216,7 +1216,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/FolderCreated"
+                $ref: "#/components/schemas/SubmissionCreated"
         400:
           description: Bad Request
           content:
@@ -1285,7 +1285,7 @@ paths:
     patch:
       tags:
         - Manage
-      summary: Update user's folder related information.
+      summary: Update user's submission related information.
       requestBody:
         content:
           application/json-patch+json:
@@ -1543,18 +1543,18 @@ components:
             instance:
               type: string
               description: specific element(s) where error occurred
-    FolderCreated:
+    SubmissionCreated:
       type: object
       required:
-        - folderId
+        - submissionId
       properties:
-        folderId:
+        submissionId:
           type: string
-          description: Custom generated ID for the object folder.
-    Folder:
+          description: Custom generated ID for the object submission.
+    Submission:
       type: object
       required:
-        - folderId
+        - submissionId
         - projectId
         - name
         - description
@@ -1565,21 +1565,21 @@ components:
         - extraInfo
       additionalProperties: false
       properties:
-        folderId:
+        submissionId:
           type: string
-          description: Folder id
+          description: Submission id
         projectId:
           type: string
-          description: Project ID this folder belongs to
+          description: Project ID this submission belongs to
         name:
           type: string
-          description: Folder name
+          description: Submission name
         description:
           type: string
-          description: Folder description
+          description: Submission description
         published:
           type: boolean
-          description: If folder is published or not
+          description: If submission is published or not
         doiInfo:
           $ref: "#/components/schemas/DoiInfo"
         extraInfo:
@@ -1673,19 +1673,19 @@ components:
                     type: string
                     description: Type of submission
                     enum: ["XML", "Form"]
-    FolderList:
+    SubmissionList:
       type: object
       required:
         - page
-        - folders
+        - submissions
       additionalProperties: false
       properties:
         page:
           $ref: "#/components/schemas/Pagination"
-        folders:
+        submissions:
           type: array
           items:
-            $ref: "#/components/schemas/Folder"
+            $ref: "#/components/schemas/Submission"
     User:
       type: object
       required:

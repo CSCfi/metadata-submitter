@@ -11,9 +11,10 @@ pre-commit
 pyspelling
 pytest
 pytest-cov
+PyYAML  # for building swagger html
 sphinx
 sphinx_rtd_theme
-tox    
+tox
 types-python-dateutil
-types-ujson
 types-requests
+types-ujson
