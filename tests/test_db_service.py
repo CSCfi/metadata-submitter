@@ -42,10 +42,10 @@ class DatabaseTestCase(IsolatedAsyncioTestCase):
             "dateCreated": "2020-07-26T20:59:35.177Z",
         }
         self.f_id_stub = "FOL12345678"
-        self.folder_stub = {
-            "folderId": self.f_id_stub,
+        self.submission_stub = {
+            "submissionId": self.f_id_stub,
             "name": "test",
-            "description": "test folder",
+            "description": "test submission",
             "metadata_objects": ["EGA123456"],
         }
 
@@ -134,28 +134,28 @@ class DatabaseTestCase(IsolatedAsyncioTestCase):
                 await self.test_service.create("testcollection", self.data_stub)
         self.assertEqual(self.collection.insert_one.call_count, 6)
 
-    async def test_create_folder_inserts_folder(self):
-        """Test that create method works for folder and returns success."""
+    async def test_create_submission_inserts_submission(self):
+        """Test that create method works for submission and returns success."""
         self.collection.insert_one.return_value = InsertOneResult(ObjectId("0000000000aa1111111111bb"), True)
-        folder = await self.test_service.create("folder", self.folder_stub)
-        self.collection.insert_one.assert_called_once_with(self.folder_stub)
-        self.assertTrue(folder)
+        submission = await self.test_service.create("submission", self.submission_stub)
+        self.collection.insert_one.assert_called_once_with(self.submission_stub)
+        self.assertTrue(submission)
 
-    async def test_read_folder_returns_data(self):
-        """Test that read method works for folder and returns folder."""
-        self.collection.find_one.return_value = self.folder_stub
-        found_folder = await self.test_service.read("folder", self.f_id_stub)
-        self.collection.find_one.assert_called_once_with({"folderId": self.f_id_stub}, {"_id": False})
-        self.assertEqual(found_folder, self.folder_stub)
+    async def test_read_submission_returns_data(self):
+        """Test that read method works for submission and returns submission."""
+        self.collection.find_one.return_value = self.submission_stub
+        found_submission = await self.test_service.read("submission", self.f_id_stub)
+        self.collection.find_one.assert_called_once_with({"submissionId": self.f_id_stub}, {"_id": False})
+        self.assertEqual(found_submission, self.submission_stub)
 
-    async def test_published_folder_returns_data(self):
-        """Test that published folder checks if folder is published."""
-        self.collection.find_one.return_value = self.folder_stub
-        found_folder = await self.test_service.published_folder(self.f_id_stub)
+    async def test_published_submission_returns_data(self):
+        """Test that published submission checks if submission is published."""
+        self.collection.find_one.return_value = self.submission_stub
+        found_submission = await self.test_service.published_submission(self.f_id_stub)
         self.collection.find_one.assert_called_once_with(
-            {"published": True, "folderId": self.f_id_stub}, {"_id": False}
+            {"published": True, "submissionId": self.f_id_stub}, {"_id": False}
         )
-        self.assertEqual(found_folder, True)
+        self.assertEqual(found_submission, True)
 
     async def test_external_id_exists_returns_false(self):
         """Test that externalId exists method works and returns None."""
