@@ -86,7 +86,7 @@ class MetaDataMapper:
                 "items": {"type": "object", "$ref": "#/definitions/ResearchAgent"},
             },
             # TODO: will be implemented later
-            # describes study from same folder/submission for mapped datasets
+            # describes study from same submission for mapped datasets
             "is_output_of": {
                 "title": "Producer project",
                 "description": "A project that has caused the dataset to be created",
@@ -163,7 +163,7 @@ class MetaDataMapper:
                 "items": {"type": "object", "$ref": "#/definitions/PeriodOfTime"},
             },
             # TODO: will be implemented later
-            # dataset from same folder/submission
+            # dataset from same submission
             "relation": {
                 "type": "array",
                 "items": {

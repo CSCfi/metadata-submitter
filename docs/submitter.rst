@@ -149,7 +149,7 @@ in swagger editor.
 The REST API is structured as follows:
 
 - `Submission Endpoints` used in submitting data, mostly ``POST`` endpoints;
-- `Query Endpoints` used for data retrieval (``folders``, ``objects``, ``users``) uses HTTP ``GET``;
+- `Query Endpoints` used for data retrieval (``submissions``, ``objects``, ``users``) uses HTTP ``GET``;
 - `Management Endpoints` used for handling data updates and deletion, makes use of HTTP ``PUT``, ``PATCH`` and ``DELETE``.
 
 .. important:: A logged in user can only perform operations on the data it has associated.

@@ -65,7 +65,7 @@ class DBService:
 
     @auto_reconnect
     async def create(self, collection: str, document: Dict) -> bool:
-        """Insert document or a folder to collection in database.
+        """Insert document or a submission to collection in database.
 
         :param collection: Collection where document should be inserted
         :param document: Document to be inserted
@@ -77,13 +77,13 @@ class DBService:
 
     @auto_reconnect
     async def exists(self, collection: str, accession_id: str) -> bool:
-        """Check object, folder or user exists by its generated ID.
+        """Check object, submission or user exists by its generated ID.
 
         :param collection: Collection where document should be searched from
-        :param accession_id: ID of the object/folder/user to be searched
+        :param accession_id: ID of the object/submission/user to be searched
         :returns: True if exists and False if it does not
         """
-        id_key = f"{collection}Id" if (collection in ["folder", "user", "project"]) else "accessionId"
+        id_key = f"{collection}Id" if (collection in ["submission", "user", "project"]) else "accessionId"
         projection = {"_id": False, "externalId": False} if collection == "user" else {"_id": False}
         find_by_id = {id_key: accession_id}
         exists = await self.database[collection].find_one(find_by_id, projection)
@@ -115,27 +115,27 @@ class DBService:
         return user["userId"] if user else None
 
     @auto_reconnect
-    async def published_folder(self, folder_id: str) -> bool:
-        """Check folder is published.
+    async def published_submission(self, submission_id: str) -> bool:
+        """Check submission is published.
 
-        :param folder_id: folder ID to be searched
+        :param submission_id: submission ID to be searched
         :returns: True if exists and False if it does not
         """
-        find_published = {"published": True, "folderId": folder_id}
-        exists = await self.database["folder"].find_one(find_published, {"_id": False})
+        find_published = {"published": True, "submissionId": submission_id}
+        exists = await self.database["submission"].find_one(find_published, {"_id": False})
         check = True if exists else False
-        LOG.debug(f"DB check folder {folder_id} published, result: {check}.")
+        LOG.debug(f"DB check submission {submission_id} published, result: {check}.")
         return check
 
     @auto_reconnect
     async def read(self, collection: str, accession_id: str) -> Dict:
-        """Find object, folder or user by its generated ID.
+        """Find object, submission or user by its generated ID.
 
         :param collection: Collection where document should be searched from
-        :param accession_id: ID of the object/folder/user to be searched
+        :param accession_id: ID of the object/submission/user to be searched
         :returns: First document matching the accession_id
         """
-        id_key = f"{collection}Id" if (collection in {"folder", "user"}) else "accessionId"
+        id_key = f"{collection}Id" if (collection in {"submission", "user"}) else "accessionId"
         projection = {"_id": False, "eppn": False} if collection == "user" else {"_id": False}
         find_by_id = {id_key: accession_id}
         LOG.debug(f"DB doc in {collection} read for {accession_id}.")
@@ -146,7 +146,7 @@ class DBService:
         """Patch some elements of object by its accessionId.
 
         :param collection: Collection where document should be searched from
-        :param accession_id: ID of the object/folder/user to be updated
+        :param accession_id: ID of the object/submission/user to be updated
         :param patch_data: JSON representing the data that should be
         updated to object it will update fields.
         :returns: True if operation was successful
@@ -165,11 +165,11 @@ class DBService:
     async def update_study(self, collection: str, accession_id: str, patch_data: Any) -> bool:
         """Update and avoid duplicates for study object.
 
-        Currently we don't allow duplicate studies in the same folder,
+        Currently we don't allow duplicate studies in the same submission,
         thus we need to check before inserting. Regular Bulkwrite cannot prevent race condition.
 
         :param collection: Collection where document should be searched from
-        :param accession_id: ID of the object/folder/user to be updated
+        :param accession_id: ID of the object/submission/user to be updated
         :param patch_data: JSON representing the data that should be
         updated to object it will update fields.
         :returns: True if operation was successful
@@ -190,12 +190,12 @@ class DBService:
         """Update some elements of object by its accessionId.
 
         :param collection: Collection where document should be searched from
-        :param accession_id: ID of the object/folder/user to be updated
+        :param accession_id: ID of the object/submission/user to be updated
         :param data_to_be_updated: JSON representing the data that should be
         updated to object, can replace previous fields and add new ones.
         :returns: True if operation was successful
         """
-        id_key = f"{collection}Id" if (collection in {"folder", "user"}) else "accessionId"
+        id_key = f"{collection}Id" if (collection in {"submission", "user"}) else "accessionId"
         find_by_id = {id_key: accession_id}
         update_op = {"$set": data_to_be_updated}
         result = await self.database[collection].update_one(find_by_id, update_op)
@@ -207,12 +207,12 @@ class DBService:
         """Remove element of object by its accessionId.
 
         :param collection: Collection where document should be searched from
-        :param accession_id: ID of the object/folder/user to be updated
+        :param accession_id: ID of the object/submission/user to be updated
         :param data_to_be_removed: str or JSON representing the data that should be
         updated to removed.
         :returns: True if operation was successful
         """
-        id_key = f"{collection}Id" if (collection in ["folder", "user", "project"]) else "accessionId"
+        id_key = f"{collection}Id" if (collection in ["submission", "user", "project"]) else "accessionId"
         find_by_id = {id_key: accession_id}
         remove_op = {"$pull": data_to_be_removed}
         result = await self.database[collection].find_one_and_update(
@@ -226,12 +226,12 @@ class DBService:
         """Append data by to object with accessionId in collection.
 
         :param collection: Collection where document should be searched from
-        :param accession_id: ID of the object/folder/user to be appended to
+        :param accession_id: ID of the object/submission/user to be appended to
         :param data_to_be_addded: str or JSON representing the data that should be
         updated to removed.
         :returns: True if operation was successful
         """
-        id_key = f"{collection}Id" if (collection in ["folder", "user", "project"]) else "accessionId"
+        id_key = f"{collection}Id" if (collection in ["submission", "user", "project"]) else "accessionId"
         find_by_id = {id_key: accession_id}
         # push vs addtoSet
         # push allows us to specify the postion but it does not check the items are unique
@@ -273,13 +273,13 @@ class DBService:
 
     @auto_reconnect
     async def delete(self, collection: str, accession_id: str) -> bool:
-        """Delete object, folder or user by its generated ID.
+        """Delete object, submission or user by its generated ID.
 
         :param collection: Collection where document should be searched from
-        :param accession_id: ID for object/folder/user to be deleted
+        :param accession_id: ID for object/submission/user to be deleted
         :returns: True if operation was successful
         """
-        id_key = f"{collection}Id" if (collection in {"folder", "user"}) else "accessionId"
+        id_key = f"{collection}Id" if (collection in {"submission", "user"}) else "accessionId"
         find_by_id = {id_key: accession_id}
         result = await self.database[collection].delete_one(find_by_id)
         LOG.debug(f"DB doc in {collection} deleted for {accession_id}.")
