@@ -59,7 +59,7 @@ Form components
 
 Form components are crucial part of the application:
 
-- All submissions and folder creation are made with `react-hook-form <https://react-hook-form.com/>`_. 
+- All submissions are made with `react-hook-form <https://react-hook-form.com/>`_.
   Latter uses form as a reference so submission can be triggered outside the form. JSON schema based forms are created with custom JSON schema parser, which builds 
   ``react-hook-form`` based forms from given schema. The forms are validated against the JSON schema with ``Ajv``. 
   React-hook-form is used for performance reasons: it uses uncontrolled components so adding a lot of fields to array doesn't slow rendering of the application.
@@ -113,7 +113,7 @@ Example of defining and using a constant:
 Commonly used data types
 ------------------------
 
-All commonly used data types of variables are defined in the file ``index.js`` in folder ``src/types``. The purposes are:
+All commonly used data types of variables are defined in the file ``index.js`` in submission ``src/types``. The purposes are:
 
 - to avoid hard coding the same data types frequently in different files
 - to keep track and consistency of the data types across different files
@@ -124,7 +124,7 @@ For example:
 
 .. code-block:: javascript
 
-    export type ObjectInsideFolder = {
+    export type ObjectInsideSubmission = {
     accessionId: string,
     schema: string,
     }
@@ -134,41 +134,41 @@ For example:
     fileName?: string,
     }
 
-    export type ObjectInsideFolderWithTags = ObjectInsideFolder & { tags: ObjectTags }
+    export type ObjectInsideSubmissionWithTags = ObjectInsideSubmission & { tags: ObjectTags }
 
 
 - import and reuse the data types in different files:
-- Reuse type ``ObjectInsideFolder`` in ``features/wizardSubmissionFolderSlice.js``:
+- Reuse type ``ObjectInsideSubmission`` in ``features/wizardSubmissionSlice.js``:
 
 .. code-block:: javascript
 
-    import type { ObjectInsideFolder } from "types"
+    import type { ObjectInsideSubmission } from "types"
 
-    export const addObjectToFolder = (
-    folderID: string,
-    objectDetails: ObjectInsideFolder
+    export const addObjectToSubmission = (
+    submissionID: string,
+    objectDetails: ObjectInsideSubmission
     ) => {}
 
     export const addObjectToDrafts = (
-    folderID: string,
-    objectDetails: ObjectInsideFolder
+    submissionID: string,
+    objectDetails: ObjectInsideSubmission
     ) => {}
 
 
-- Reuse type ``ObjectInsideFolderWithTags`` consequently in both ``WizardComponents/WizardSavedObjectsList.js`` and ``WizardSteps/WizardShowSummaryStep.js``:
+- Reuse type ``ObjectInsideSubmissionWithTags`` consequently in both ``WizardComponents/WizardSavedObjectsList.js`` and ``WizardSteps/WizardShowSummaryStep.js``:
 
 .. code-block:: javascript
 
-    import type { ObjectInsideFolderWithTags } from "types"
+    import type { ObjectInsideSubmissionWithTags } from "types"
 
-    type WizardSavedObjectsListProps = { submissions: Array<ObjectInsideFolderWithTags> }
+    type WizardSavedObjectsListProps = { submissions: Array<ObjectInsideSubmissionWithTags> }
 
 
 .. code-block:: javascript
 
-    import type { ObjectInsideFolderWithTags } from "types"
+    import type { ObjectInsideSubmissionWithTags } from "types"
 
-    type GroupedBySchema = {| [Schema]: Array<ObjectInsideFolderWithTags> |}
+    type GroupedBySchema = {| [Schema]: Array<ObjectInsideSubmissionWithTags> |}
 
 
 Redux store
@@ -179,33 +179,33 @@ Redux is handled with `Redux Toolkit <https://redux-toolkit.js.org/>`_ and app i
 - Store, global app state, configured in ``store.js``
 - Root reducer, combining all reducers to one, configured in ``rootReducer.js``
 - Slices with ``createSlice``-api, defining all reducer functions, state values and actions without extra boilerplate.
-  - Slices are configured for different features in ``features/`` -folder.
+  - Slices are configured for different features in ``features/`` -submission.
   - Async reducer functions are also configured inside slices.
 
-Examples for storing and dispatching with async folder function:
+Examples for storing and dispatching with async submission function:
 
 .. code-block:: javascript
 
     import { useSelector, useDispatch } from "react-redux"
-    import { createNewDraftFolder } from "features/submissionFolderSlice"
+    import { createNewDraftSubmission } from "features/SubmissionSlice"
 
-    // Create base folder (normally from form)
-    const folder = {
+    // Create base submission (normally from form)
+    const submission = {
     name: "Test",
-    description: "Test description for very best folder."
+    description: "Test description for very best submission."
     }
 
     // Initialize dispatch with hook
     const dispatch = useDispatch()
 
-    // Dispatch the action with folder
-    dispatch(createNewDraftFolder(folder))
+    // Dispatch the action with submission
+    dispatch(createNewDraftSubmission(submission))
 
-    // Folder is now submitted to backend and added to redux store
+    // Submission is now submitted to backend and added to redux store
 
-    // Take folder from redux state, destructure and log values
-    const folder = useSelector(state => state.submissionFolder)
-    const { id, name, description, metadataObjects } = folder
+    // Take submission from redux state, destructure and log values
+    const submission = useSelector(state => state.Submission)
+    const { id, name, description, metadataObjects } = submission
     console.log(id) // Should be id generated in backend
     console.log(name) // Should be name we set earlier
     console.log(description) // Should be description we set earlier

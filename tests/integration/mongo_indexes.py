@@ -36,7 +36,7 @@ async def create_indexes(url: str) -> None:
     db = client[DATABASE]
     LOG.debug(f"Current database: {db}")
     LOG.debug("=== Create collections ===")
-    for col in {"folder", "user"}:
+    for col in {"submission", "user"}:
         try:
             await db.create_collection(col)
         except pymongo.errors.CollectionInvalid as e:
@@ -45,11 +45,11 @@ async def create_indexes(url: str) -> None:
     LOG.info("=== Create indexes ===")
 
     indexes = [
-        db.folder.create_index([("dateCreated", -1)]),
-        db.folder.create_index([("datePublished", -1)]),
-        db.folder.create_index([("lastModified", -1)]),
-        db.folder.create_index([("folderId", 1)], unique=True),
-        db.folder.create_index([("text_name", TEXT)]),
+        db.submission.create_index([("dateCreated", -1)]),
+        db.submission.create_index([("datePublished", -1)]),
+        db.submission.create_index([("lastModified", -1)]),
+        db.submission.create_index([("submissionId", 1)], unique=True),
+        db.submission.create_index([("text_name", TEXT)]),
         db.user.create_index([("userId", 1)], unique=True),
     ]
 
@@ -59,7 +59,7 @@ async def create_indexes(url: str) -> None:
         except Exception as e:
             LOG.debug(f"=== Indexes not created due to {str(e)} ===")
             pass
-    ind = await db.folder.index_information()
+    ind = await db.submission.index_information()
     LOG.info("=== DONE ===")
     LOG.debug(f"==== Indexes created ==== {ind}")
 
