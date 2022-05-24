@@ -93,9 +93,18 @@
     "priority": 11,
     "description": {
       "title": "Datacite DOI schema",
-      "detail": "Derived from the DataCite Metadata Schema whihc is a list of core metadata properties chosen for an accurate and consistent identification of a resource for citation and retrieval purposes, along with recommended use instructions. We only work with a subset of them for this schema.",
+      "detail": "Derived from the DataCite Metadata Schema which is a list of core metadata properties chosen for an accurate and consistent identification of a resource for citation and retrieval purposes, along with recommended use instructions. We only work with a subset of them for this schema.",
       "url": "http://schema.datacite.org/"
     },
     "provider": "Datacite"
+  },
+  "bp_image": {
+    "priority": 12,
+    "description": {
+      "title": "BP Image",
+      "detail": "A BP image object captures image objects.",
+      "url": "https://github.com/imi-bigpicture/metadata-schema/blob/968589ba6a340f9355f6187b863eabad136ec4c4/src/BP.image.xsd"
+    },
+    "provider": "BP"
   }
 }
