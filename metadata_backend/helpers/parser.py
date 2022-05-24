@@ -254,7 +254,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
           when there are multiple children with same name - then to list.
         - All "accession" keys are converted to "accesionId", key used by
           this program
-        - default value if tag is empty is empty string
+        - default value if tag is empty string
         Corner cases:
         - If possible, self-closing XML tag is elevated as an attribute to its
           parent, otherwise "true" is added as its value.
