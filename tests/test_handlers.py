@@ -900,13 +900,20 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         response = await self.client.patch("/submissions/FOL12345678", json=data)
         self.assertEqual(response.status, 400)
         json_resp = await response.json()
-        reason = "Request contains '/objects' key that cannot be updated to submissions."
+        reason = "Patch submission operation should be provided as a JSON object"
+        self.assertEqual(reason, json_resp["detail"])
+
+        data = {"doiInfo": {}}
+        response = await self.client.patch("/submissions/FOL12345678", json=data)
+        self.assertEqual(response.status, 400)
+        json_resp = await response.json()
+        reason = "Patch submission operation only accept the fields 'name', or 'description'. Provided 'doiInfo'"
         self.assertEqual(reason, json_resp["detail"])
 
     async def test_update_submission_passes(self):
         """Test that submission would update with correct keys."""
         self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
-        data = [{"op": "replace", "path": "/name", "value": "test2"}]
+        data = {"name": "test2"}
         response = await self.client.patch("/submissions/FOL12345678", json=data)
         self.MockedSubmissionOperator().update_submission.assert_called_once()
         self.assertEqual(response.status, 200)
