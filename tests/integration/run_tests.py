@@ -447,14 +447,14 @@ async def post_submission(sess, data):
         return ans["submissionId"]
 
 
-async def patch_submission(sess, submission_id, json_patch):
+async def patch_submission(sess, submission_id, data):
     """Patch one object submission within session, return submissionId.
 
     :param sess: HTTP session in which request call is made
     :param submission_id: id of the submission
-    :param json_patch: JSON Patch object to use in PATCH call
+    :param data: JSON object to use in PATCH call
     """
-    async with sess.patch(f"{submissions_url}/{submission_id}", data=json.dumps(json_patch)) as resp:
+    async with sess.patch(f"{submissions_url}/{submission_id}", data=json.dumps(data)) as resp:
         LOG.debug(f"Updating submission {submission_id}")
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         ans_patch = await resp.json()
@@ -498,14 +498,15 @@ async def delete_submission_publish(sess, submission_id):
         assert resp.status == 401, f"HTTP Status code error, got {resp.status}"
 
 
-async def put_submission_doi(sess, schema, submission_id, filename):
+async def put_submission_doi(sess, submission_id, data):
     """Put doi into submission within session, returns submissionId.
 
     :param sess: HTTP session in which request call is made
-    :param doi_data: doi data used to update the submission
+    :param submission_id: id of the submission
+    :param data: doi data used to update the submission
+    :returns: Submission id for the submission inserted to database
     """
-    request_data = await create_request_json_data(schema, filename)
-    async with sess.put(f"{submissions_url}/{submission_id}/doi", data=request_data) as resp:
+    async with sess.put(f"{submissions_url}/{submission_id}/doi", data=data) as resp:
         ans = await resp.json()
         assert resp.status == 200, f"HTTP Status code error {resp.status} {ans}"
         LOG.debug(f"Adding doi to submission {ans['submissionId']}")
@@ -1041,13 +1042,9 @@ async def test_metax_publish_dataset(sess, submission_id):
             res = await resp.json()
             object.append(res["metaxIdentifier"])
 
-    # Publish the submission
-    # add a study and dataset for publishing a submission
+    # Add DOI and publish the submission
     doi_data_raw = await create_request_json_data("doi", "test_doi.json")
-    doi_data = json.loads(doi_data_raw)
-    patch_add_doi = [{"op": "add", "path": "/doiInfo", "value": doi_data}]
-    submission_id = await patch_submission(sess, submission_id, patch_add_doi)
-
+    await put_submission_doi(sess, submission_id, doi_data_raw)
     await publish_submission(sess, submission_id)
 
     for schema, object_id, metax_id in objects:
@@ -1118,13 +1115,9 @@ async def test_metax_publish_dataset_with_missing_metax_id(sess, database, submi
             res = await resp.json()
             assert res["metaxIdentifier"] == ""
 
-    # Publish the submission
-    # add a study and dataset for publishing a submission
+    # Add DOI and publish the submission
     doi_data_raw = await create_request_json_data("doi", "test_doi.json")
-    doi_data = json.loads(doi_data_raw)
-    patch_add_doi = [{"op": "add", "path": "/doiInfo", "value": doi_data}]
-    submission_id = await patch_submission(sess, submission_id, patch_add_doi)
-
+    await put_submission_doi(sess, submission_id, doi_data_raw)
     await publish_submission(sess, submission_id)
 
     for schema, accession_id in objects:
@@ -1207,13 +1200,11 @@ async def test_crud_submissions_works(sess, project_id):
             }
         ], "submission metadataObjects content mismatch"
 
-    # Publish the submission
-    # add a study and dataset for publishing a submission
+    # Add DOI for publishing the submission
     doi_data_raw = await create_request_json_data("doi", "test_doi.json")
-    doi_data = json.loads(doi_data_raw)
-    patch_add_doi = [{"op": "add", "path": "/doiInfo", "value": doi_data}]
-    submission_id = await patch_submission(sess, submission_id, patch_add_doi)
+    await put_submission_doi(sess, submission_id, doi_data_raw)
 
+    # add a study and dataset for publishing a submission
     await post_object_json(sess, "study", submission_id, "SRP000539.json")
     await post_object(sess, "dataset", submission_id, "dataset.xml")
 
@@ -1338,8 +1329,7 @@ async def test_adding_doi_info_to_submission_works(sess, project_id):
     # Get correctly formatted DOI info and patch it into the new submission successfully
     doi_data_raw = await create_request_json_data("doi", "test_doi.json")
     doi_data = json.loads(doi_data_raw)
-    patch_add_doi = [{"op": "add", "path": "/doiInfo", "value": doi_data}]
-    submission_id = await patch_submission(sess, submission_id, patch_add_doi)
+    await put_submission_doi(sess, submission_id, doi_data_raw)
 
     async with sess.get(f"{submissions_url}/{submission_id}") as resp:
         LOG.debug(f"Checking that submission {submission_id} was patched")
@@ -1351,8 +1341,8 @@ async def test_adding_doi_info_to_submission_works(sess, project_id):
         assert res["doiInfo"] == doi_data, "submission doi does not match"
 
     # Test that an incomplete DOI object fails to patch into the submission
-    patch_add_bad_doi = [{"op": "add", "path": "/doiInfo", "value": {"identifier": {}}}]
-    async with sess.patch(f"{submissions_url}/{submission_id}", data=json.dumps(patch_add_bad_doi)) as resp:
+    put_bad_doi = {"identifier": {}}
+    async with sess.put(f"{submissions_url}/{submission_id}/doi", data=json.dumps(put_bad_doi)) as resp:
         LOG.debug(f"Tried updating submission {submission_id}")
         assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
         res = await resp.json()
@@ -1370,9 +1360,10 @@ async def test_adding_doi_info_to_submission_works(sess, project_id):
         LOG.debug(f"Tried updating submission {submission_id}")
         assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
         res = await resp.json()
+        detail = res["detail"]
         assert (
-            res["detail"] == "Request contains '/extraInfo' key that cannot be updated to submissions."
-        ), "error mismatch"
+            detail == "Patch submission operation should be provided as a JSON object"
+        ), f"error mismatch, got '{detail}'"
 
     # Delete submission
     await delete_submission(sess, submission_id)
@@ -1382,7 +1373,7 @@ async def test_adding_doi_info_to_submission_works(sess, project_id):
 
 
 async def test_getting_paginated_submissions(sess, project_id):
-    """Check that /submissions returns submissions with correct paginations.
+    """Check that /submissions returns submissions with correct pagination.
 
     :param sess: HTTP session in which request call is made
     :param project_id: id of the project the submission belongs to
@@ -1674,12 +1665,11 @@ async def test_crud_users_works(sess, project_id):
     }
     publish_submission_id = await post_submission(sess, submission_published)
 
-    # add a study and dataset for publishing a submission
+    # Add DOI for publishing the submission
     doi_data_raw = await create_request_json_data("doi", "test_doi.json")
-    doi_data = json.loads(doi_data_raw)
-    patch_add_doi = [{"op": "add", "path": "/doiInfo", "value": doi_data}]
-    await patch_submission(sess, publish_submission_id, patch_add_doi)
+    await put_submission_doi(sess, publish_submission_id, doi_data_raw)
 
+    # add a study and dataset for publishing a submission
     await post_object_json(sess, "study", publish_submission_id, "SRP000539.json")
     await post_object(sess, "dataset", publish_submission_id, "dataset.xml")
 
@@ -1773,22 +1763,6 @@ async def test_get_submissions_objects(sess, submission_id: str, project_id: str
         assert response["submissions"][0]["metadataObjects"][0]["accessionId"] == accession_id
         assert "tags" in response["submissions"][0]["metadataObjects"][0]
         assert response["submissions"][0]["metadataObjects"][0]["tags"]["submissionType"] == "Form"
-
-    patch_change_tags_object = [
-        {
-            "op": "replace",
-            "path": "/metadataObjects/0/tags",
-            "value": {"submissionType": "XML"},
-        }
-    ]
-    await patch_submission(sess, submission_id, patch_change_tags_object)
-    async with sess.get(f"{submissions_url}?projectId={project_id}") as resp:
-        LOG.debug(f"Reading submission {submission_id}")
-        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-        response = await resp.json()
-        assert len(response["submissions"]) == 1
-        assert response["submissions"][0]["metadataObjects"][0]["accessionId"] == accession_id
-        assert response["submissions"][0]["metadataObjects"][0]["tags"]["submissionType"] == "XML"
 
     await delete_object(sess, "study", accession_id)
 
@@ -1930,7 +1904,8 @@ async def test_minimal_json_publication(sess, project_id):
     submission_id = await post_submission(sess, submission)
 
     await post_object_json(sess, "study", submission_id, "SRP000539.json")
-    await put_submission_doi(sess, "doi", submission_id, "test_doi.json")
+    doi_data_raw = await create_request_json_data("doi", "test_doi.json")
+    await put_submission_doi(sess, submission_id, doi_data_raw)
     await publish_submission(sess, submission_id)
 
     async with sess.get(f"{submissions_url}/{submission_id}") as resp:
