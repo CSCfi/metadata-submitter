@@ -35,7 +35,7 @@ async def http_error_handler(req: Request, handler: Callable) -> Response:
         LOG.debug("Response payload is %r", problem)
         c_type = "application/problem+json"
 
-        if error.status in {400, 401, 403, 404, 415, 422}:
+        if error.status in {400, 401, 403, 404, 415, 422, 502, 504}:
             error.content_type = c_type
             error.text = problem
             raise error

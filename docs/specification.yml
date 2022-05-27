@@ -1246,6 +1246,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
+        502:
+          description: Bad Gateway
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/502BadGateway"
+        504:
+          description: Gateway Timeout
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/504GatewayTimeout"
   /users/{userId}:
     get:
       tags:
@@ -1424,6 +1436,22 @@ components:
           example: Forbidden
         detail:
           example: the request does not contain the right permissions
+    502BadGateway:
+      allOf:
+        - $ref: "#/components/schemas/ErrorModel"
+      properties:
+        title:
+          example: Bad Gateway
+        detail:
+          example: "Metax error: metax service provider couldn't process request"
+    504GatewayTimeout:
+      allOf:
+        - $ref: "#/components/schemas/ErrorModel"
+      properties:
+        title:
+          example: Gateway Timeout
+        detail:
+          example: "Metax error: could not reach the metax service provider"
     SchemasList:
       type: array
       items:
