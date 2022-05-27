@@ -74,11 +74,6 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
         "/static",
         "/swagger",
         "/health",
-        "/error400",
-        "/error401",
-        "/error403",
-        "/error404",
-        "/error500",
     ]
     if (
         request.path.startswith(tuple(main_paths))
