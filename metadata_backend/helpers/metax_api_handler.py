@@ -80,18 +80,9 @@ class MetaxServiceHandler:
         metadata_provider_user = user["externalId"]
         return metadata_provider_user
 
-    @retry((HTTPRequestTimeout, ClientConnectorError), 5)
-    async def check_connection(self, timeout: int = 2) -> bool:
-        """Check connection for Metax server.
-
-        :param timeout: Request operations timeout
         """
         async with ClientSession() as sess:
             try:
-                await sess.head(self.metax_url, timeout=timeout)
-                return True
-            except asyncio.exceptions.TimeoutError:
-                raise HTTPRequestTimeout(reason=f"Metax server {self.metax_url} is not respondig")
 
     @retry(total_tries=5)
     async def _get(self, metax_id: str) -> str:
@@ -252,7 +243,6 @@ class MetaxServiceHandler:
             f"{data['accessionId']}"
         )
         try:
-            await self.check_connection()
             metax_dataset = self.minimal_dataset_template
             metax_dataset["metadata_provider_user"] = await self.get_metadata_provider_user()
             if collection == "dataset":

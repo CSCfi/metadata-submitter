@@ -500,8 +500,6 @@ class SubmissionAPIHandler(RESTAPIHandler):
 
         await self._handle_check_ownership(req, "submissions", submission_id)
 
-        await metax_handler.check_connection()
-
         submission = await operator.read_submission(submission_id)
 
         # we first try to publish the DOI before actually publishing the submission
