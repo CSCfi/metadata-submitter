@@ -24,7 +24,7 @@ from .retry import retry
 
 
 class MetaxServiceHandler:
-    """API handler for uploading submitter's metadata to METAX service."""
+    """API handler for uploading submitters' metadata to METAX service."""
 
     def __init__(self, req: Request) -> None:
         """Define variables and paths.
@@ -206,10 +206,9 @@ class MetaxServiceHandler:
 
     @retry(total_tries=5)
     async def _publish(self, metax_id: str) -> str:
-        """Post call to Metax RPC publish endpoint.
+        """Post a call to Metax RPC publish endpoint.
 
         :param metax_id: ID of dataset to be updated
-        :param json_data: Dict with request data
         :returns: Dict with full Metax dataset
         """
         async with ClientSession() as sess:
@@ -233,7 +232,7 @@ class MetaxServiceHandler:
         Construct Metax dataset data from submitters' Study or Dataset and
         send it as new draft dataset to Metax Dataset API.
 
-        :param collection: Schema of incomming submitters metadata
+        :param collection: Schema of incoming submitters' metadata
         :param data: Validated Study or Dataset data dict
         :raises: HTTPError depending on returned error from Metax
         :returns: Metax ID for dataset returned by Metax API
@@ -271,7 +270,7 @@ class MetaxServiceHandler:
         Construct Metax draft dataset data from submitters' Study or Dataset and
         send it to Metax Dataset API for update.
 
-        :param collection: Schema of incomming submitters metadata
+        :param collection: Schema of incoming submitters' metadata
         :param data: Validated Study or Dataset data dict
         :raises: HTTPError depending on returned error from Metax
         :returns: Metax ID for dataset returned by Metax API
@@ -310,7 +309,7 @@ class MetaxServiceHandler:
         """Update dataset for publishing.
 
         :param doi_info: Dict containing info to complete metax dataset metadata
-        :param metax_id: Metax id of dataset to be updated
+        :param _metax_ids: List of Metax id of dataset to be updated
         """
         LOG.info(
             "Updating metadata with datacite info for Metax datasets: "
