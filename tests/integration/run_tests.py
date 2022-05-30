@@ -498,17 +498,13 @@ async def delete_folder_publish(sess, folder_id):
         assert resp.status == 401, f"HTTP Status code error, got {resp.status}"
 
 
-async def create_folder(data, user):
+async def create_folder(database, data):
     """Create new object folder to database.
 
     :param data: Data as dict to be saved to database
     :param user: User id to which data is assigned
     :returns: Folder id for the folder inserted to database
     """
-    url = f"mongodb://{AUTHDB}:{AUTHDB}@{HOST}/{DATABASE}?authSource=admin"
-    db_client = AsyncIOMotorClient(url, connectTimeoutMS=1000, serverSelectionTimeoutMS=1000)
-    database = db_client[DATABASE]
-
     folder_id = uuid4().hex
     LOG.info(f"Creating new folder {folder_id}")
     data["folderId"] = folder_id
@@ -1384,16 +1380,12 @@ async def test_getting_folders_filtered_by_name(sess, project_id):
         await delete_folder(sess, folder)
 
 
-async def test_getting_folders_filtered_by_date_created(sess, project_id):
+async def test_getting_folders_filtered_by_date_created(sess, database, project_id):
     """Check that /folders returns folders filtered by date created.
 
     :param sess: HTTP session in which request call is made
     :param project_id: id of the project the folder belongs to
     """
-    async with sess.get(f"{users_url}/current") as resp:
-        ans = await resp.json()
-        user = ans["userId"]
-
     folders = []
     format = "%Y-%m-%d %H:%M:%S"
 
@@ -1407,7 +1399,7 @@ async def test_getting_folders_filtered_by_date_created(sess, project_id):
             "dateCreated": datetime.strptime(stamp, format).timestamp(),
             "projectId": project_id,
         }
-        folders.append(await create_folder(folder_data, user))
+        folders.append(await create_folder(database, folder_data))
 
     async with sess.get(
         f"{folders_url}?date_created_start=2015-01-01&date_created_end=2015-12-31&projectId={project_id}"
@@ -1426,7 +1418,7 @@ async def test_getting_folders_filtered_by_date_created(sess, project_id):
             "dateCreated": datetime.strptime(stamp, format).timestamp(),
             "projectId": project_id,
         }
-        folders.append(await create_folder(folder_data, user))
+        folders.append(await create_folder(database, folder_data))
 
     async with sess.get(
         f"{folders_url}?date_created_start=2013-02-01&date_created_end=2013-03-30&projectId={project_id}"
@@ -1450,7 +1442,7 @@ async def test_getting_folders_filtered_by_date_created(sess, project_id):
             "dateCreated": datetime.strptime(stamp, format).timestamp(),
             "projectId": project_id,
         }
-        folders.append(await create_folder(folder_data, user))
+        folders.append(await create_folder(database, folder_data))
 
     async with sess.get(
         f"{folders_url}?date_created_start=2012-01-15&date_created_end=2012-01-15&projectId={project_id}"
@@ -1760,6 +1752,14 @@ async def test_health_check(sess):
 
 async def main():
     """Launch different test tasks and run them."""
+    if TLS:
+        _params = "?tls=true&tlsCAFile=./config/cacert&tlsCertificateKeyFile=./config/combined"
+        url = f"mongodb://{AUTHDB}:{AUTHDB}@{HOST}/{DATABASE}{_params}&authSource=admin"
+    else:
+        url = f"mongodb://{AUTHDB}:{AUTHDB}@{HOST}/{DATABASE}?authSource=admin"
+
+    db_client = AsyncIOMotorClient(url, connectTimeoutMS=1000, serverSelectionTimeoutMS=1000)
+    database = db_client[DATABASE]
 
     async with aiohttp.ClientSession() as sess:
 
@@ -1865,7 +1865,7 @@ async def main():
         # too much of a hassle to make test work with tls db connection in github
         # must be improven in next integration test iteration
         if not TLS:
-            await test_getting_folders_filtered_by_date_created(sess, project_id)
+            await test_getting_folders_filtered_by_date_created(sess, database, project_id)
 
         # Test objects study and dataset are connecting to metax and saving metax id to db
         LOG.debug("=== Testing Metax integration related basic CRUD operations for study and dataset ===")
