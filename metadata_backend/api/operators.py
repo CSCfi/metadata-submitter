@@ -453,7 +453,7 @@ class Operator(BaseOperator):
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         else:
-            LOG.info(f"Object {schema_type} with id {accession_id} opdated with metax info.")
+            LOG.info(f"Object {schema_type} with id {accession_id} metax info updated.")
             return True
 
     async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: Dict) -> Dict:

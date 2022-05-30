@@ -76,6 +76,8 @@ jobs:
         MONGO_DATABASE: default
         MONGO_AUTHDB: admin
         MONGO_SSL: True
+        MONGO_SSL_CA: /tls/cacert
+        MONGO_SSL_CLIENT_CERT_KEY: /tls/combined
 
     - name: Run Integration test
       run: |
