@@ -191,7 +191,7 @@ types-python-dateutil==2.8.16
     # via -r requirements-dev.in
 types-requests==2.27.27
     # via -r requirements-dev.in
-types-ujson==4.2.1
+types-ujson==5.2.0
     # via -r requirements-dev.in
 types-urllib3==1.26.14
     # via types-requests
