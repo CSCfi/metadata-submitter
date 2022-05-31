@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - migrated to variables used by motor 3 for ssl https://motor.readthedocs.io/en/stable/migrate-to-motor-3.html?highlight=ssl_certfile#renamed-uri-options
   - env vars `MONGO_SSL_CLIENT_KEY` and `MONGO_SSL_CLIENT_CERT` are replaced with `MONGO_SSL_CLIENT_CERT_KEY`
 - Refactor **folder** to **submission**
+- HTTP PATCH for submissions has changed to only accept 'name' and 'description' in a flat JSON object.
 
 ### Removed
 
