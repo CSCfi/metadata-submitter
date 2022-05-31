@@ -1,6 +1,6 @@
 {
   "type": "object",
-  "title": "Folder schema containing submitted metadata objects",
+  "title": "Submission schema containing submitted metadata objects",
   "required": [
     "name",
     "description",
@@ -9,23 +9,23 @@
   "properties": {
     "projectId": {
       "type": "string",
-      "title": "Owner project of the folder"
+      "title": "Owner project of the submission"
     },
-    "folderId": {
+    "submissionId": {
       "type": "string",
-      "title": "Folder Id"
+      "title": "Submission Id"
     },
     "name": {
       "type": "string",
-      "title": "Folder Name"
+      "title": "Submission Name"
     },
     "text_name": {
       "type": "string",
-      "title": "Searchable Folder Name, used for indexing"
+      "title": "Searchable Submission Name, used for indexing"
     },
     "description": {
       "type": "string",
-      "title": "Folder Description"
+      "title": "Submission Description"
     },
     "dateCreated": {
       "type": "integer",
@@ -35,9 +35,13 @@
       "type": "integer",
       "title": "Unix time stamp of publishing, used for indexing"
     },
+    "lastModified": {
+      "type": "integer",
+      "title": "Unix time stamp of when objects in submission were last modified"
+    },
     "published": {
       "type": "boolean",
-      "title": "Published Folder"
+      "title": "Published Submission"
     },
     "doiInfo": {
       "type": "object",
@@ -1025,7 +1029,7 @@
       "title": "The metadataObjects schema",
       "items": {
         "type": "object",
-        "title": "Folder objects",
+        "title": "Submission objects",
         "required": [
           "accessionId",
           "schema"
@@ -1064,7 +1068,7 @@
       "title": "The drafts schema",
       "items": {
         "type": "object",
-        "title": "Folder objects",
+        "title": "Submission objects",
         "required": [
           "accessionId",
           "schema"

@@ -10,9 +10,16 @@ from uuid import uuid4
 import aiohttp_session
 from aiohttp.test_utils import make_mocked_coro
 from aiohttp.web import HTTPBadRequest, HTTPNotFound, HTTPUnprocessableEntity
-from metadata_backend.api.operators import FolderOperator, Operator, ProjectOperator, UserOperator, XMLOperator
 from multidict import MultiDict, MultiDictProxy
 from pymongo.errors import ConnectionFailure, OperationFailure
+
+from metadata_backend.api.operators import (
+    SubmissionOperator,
+    Operator,
+    XMLOperator,
+    UserOperator,
+    ProjectOperator,
+)
 
 from .mockups import Mock_Request
 
@@ -75,19 +82,19 @@ class TestOperators(IsolatedAsyncioTestCase):
         self.project_id = "project_1000"
         self.project_generated_id = "64fbdce1c69b436e8d6c91fd746064d4"
         self.accession_id = uuid4().hex
-        self.folder_id = uuid4().hex
-        self.test_folder = {
-            "folderId": self.folder_id,
+        self.submission_id = uuid4().hex
+        self.test_submission = {
+            "submissionId": self.submission_id,
             "projectId": self.project_generated_id,
-            "name": "Mock folder",
-            "description": "test mock folder",
+            "name": "Mock submission",
+            "description": "test mock submission",
             "published": False,
             "metadataObjects": [{"accessionId": "EGA1234567", "schema": "study"}],
         }
-        self.test_folder_no_project = {
-            "folderId": self.folder_id,
-            "name": "Mock folder",
-            "description": "test mock folder",
+        self.test_submission_no_project = {
+            "submissionId": self.submission_id,
+            "name": "Mock submission",
+            "description": "test mock submission",
             "published": False,
             "metadataObjects": [{"accessionId": "EGA1234567", "schema": "study"}],
         }
@@ -106,12 +113,12 @@ class TestOperators(IsolatedAsyncioTestCase):
             autospec=True,
         )
         self.patch_accession.start()
-        self.patch_folder = patch(
-            ("metadata_backend.api.operators.FolderOperator._generate_folder_id"),
-            return_value=self.folder_id,
+        self.patch_submission = patch(
+            ("metadata_backend.api.operators.SubmissionOperator._generate_submission_id"),
+            return_value=self.submission_id,
             autospec=True,
         )
-        self.patch_folder.start()
+        self.patch_submission.start()
         self.patch_user = patch(
             ("metadata_backend.api.operators.UserOperator._generate_user_id"),
             return_value=self.user_generated_id,
@@ -147,7 +154,7 @@ class TestOperators(IsolatedAsyncioTestCase):
         """Stop patchers."""
         self.patch_dbservice.stop()
         self.patch_accession.stop()
-        self.patch_folder.stop()
+        self.patch_submission.stop()
         self.patch_user.stop()
         self.patch_project.stop()
 
@@ -667,7 +674,7 @@ class TestOperators(IsolatedAsyncioTestCase):
     async def test_get_object_project_passes(self):
         """Test get object project returns project id."""
         operator = Operator(self.client)
-        operator.db_service.query.return_value = AsyncIterator([self.test_folder])
+        operator.db_service.query.return_value = AsyncIterator([self.test_submission])
         result = await operator.get_object_project("template", self.accession_id)
         operator.db_service.query.assert_called_once_with("template", {"accessionId": self.accession_id})
         self.assertEqual(result, self.project_generated_id)
@@ -682,7 +689,7 @@ class TestOperators(IsolatedAsyncioTestCase):
     async def test_get_object_project_fails_missing_project(self):
         """Test get object project returns faulty object record that is missing project id."""
         operator = Operator(self.client)
-        operator.db_service.query.return_value = AsyncIterator([self.test_folder_no_project])
+        operator.db_service.query.return_value = AsyncIterator([self.test_submission_no_project])
         with self.assertRaises(HTTPBadRequest):
             await operator.get_object_project("template", self.accession_id)
 
@@ -693,246 +700,248 @@ class TestOperators(IsolatedAsyncioTestCase):
         with self.assertRaises(HTTPBadRequest):
             await operator.get_object_project("something", self.accession_id)
 
-    async def test_get_folder_project_connfail(self):
-        """Test get folder project, db connection failure."""
-        operator = FolderOperator(self.client)
+    async def test_get_submission_project_connfail(self):
+        """Test get submission project, db connection failure."""
+        operator = SubmissionOperator(self.client)
         operator.db_service.query.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
-            await operator.get_folder_project(self.folder_id)
+            await operator.get_submission_project(self.submission_id)
 
-    async def test_get_folder_project_opfail(self):
-        """Test get folder project, db operation failure."""
-        operator = FolderOperator(self.client)
+    async def test_get_submission_project_opfail(self):
+        """Test get submission project, db operation failure."""
+        operator = SubmissionOperator(self.client)
         operator.db_service.query.side_effect = OperationFailure("err")
         with self.assertRaises(HTTPBadRequest):
-            await operator.get_folder_project(self.folder_id)
+            await operator.get_submission_project(self.submission_id)
 
-    async def test_get_folder_project_passes(self):
-        """Test get folder project returns project id."""
-        operator = FolderOperator(self.client)
-        operator.db_service.query.return_value = AsyncIterator([self.test_folder])
-        result = await operator.get_folder_project(self.folder_id)
-        operator.db_service.query.assert_called_once_with("folder", {"folderId": self.folder_id})
+    async def test_get_submission_project_passes(self):
+        """Test get submission project returns project id."""
+        operator = SubmissionOperator(self.client)
+        operator.db_service.query.return_value = AsyncIterator([self.test_submission])
+        result = await operator.get_submission_project(self.submission_id)
+        operator.db_service.query.assert_called_once_with("submission", {"submissionId": self.submission_id})
         self.assertEqual(result, self.project_generated_id)
 
-    async def test_get_folder_project_fails(self):
-        """Test get folder project returns nothing and raises an error."""
-        operator = FolderOperator(self.client)
+    async def test_get_submission_project_fails(self):
+        """Test get submission project returns nothing and raises an error."""
+        operator = SubmissionOperator(self.client)
         operator.db_service.query.return_value = AsyncIterator([])
         with self.assertRaises(HTTPBadRequest):
-            await operator.get_folder_project(self.folder_id)
+            await operator.get_submission_project(self.submission_id)
 
-    async def test_get_folder_project_fails_missing_project(self):
-        """Test get folder project returns faulty folder record that is missing project id."""
-        operator = FolderOperator(self.client)
-        operator.db_service.query.return_value = AsyncIterator([self.test_folder_no_project])
+    async def test_get_submission_project_fails_missing_project(self):
+        """Test get submission project returns faulty submission record that is missing project id."""
+        operator = SubmissionOperator(self.client)
+        operator.db_service.query.return_value = AsyncIterator([self.test_submission_no_project])
         with self.assertRaises(HTTPBadRequest):
-            await operator.get_folder_project(self.folder_id)
+            await operator.get_submission_project(self.submission_id)
 
-    async def test_get_folder_project_fails_invalid_collection(self):
-        """Test get folder project raises bad request on invalid collection."""
-        operator = FolderOperator(self.client)
+    async def test_get_submission_project_fails_invalid_collection(self):
+        """Test get submission project raises bad request on invalid collection."""
+        operator = SubmissionOperator(self.client)
         operator.db_service.query.return_value = AsyncIterator([])
         with self.assertRaises(HTTPBadRequest):
-            await operator.get_folder_project(self.folder_id)
+            await operator.get_submission_project(self.submission_id)
 
-    async def test_create_folder_works_and_returns_folderId(self):
-        """Test create method for folders work."""
-        operator = FolderOperator(self.client)
-        data = {"name": "Mock folder", "description": "test mock folder"}
+    async def test_create_submission_works_and_returns_submissionId(self):
+        """Test create method for submissions work."""
+        operator = SubmissionOperator(self.client)
+        data = {"name": "Mock submission", "description": "test mock submission"}
         operator.db_service.create.return_value = True
-        folder = await operator.create_folder(data)
+        submission = await operator.create_submission(data)
         operator.db_service.create.assert_called_once()
-        self.assertEqual(folder, self.folder_id)
+        self.assertEqual(submission, self.submission_id)
 
-    async def test_create_folder_fails(self):
-        """Test create method for folders fails."""
-        operator = FolderOperator(self.client)
-        data = {"name": "Mock folder", "description": "test mock folder"}
+    async def test_create_submission_fails(self):
+        """Test create method for submissions fails."""
+        operator = SubmissionOperator(self.client)
+        data = {"name": "Mock submission", "description": "test mock submission"}
         operator.db_service.create.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
-            await operator.create_folder(data)
+            await operator.create_submission(data)
 
-    async def test_create_folder_db_create_fails(self):
-        """Test create method for folders db create fails."""
-        operator = FolderOperator(self.client)
-        data = {"name": "Mock folder", "description": "test mock folder"}
+    async def test_create_submission_db_create_fails(self):
+        """Test create method for submissions db create fails."""
+        operator = SubmissionOperator(self.client)
+        data = {"name": "Mock submission", "description": "test mock submission"}
         operator.db_service.create.return_value = False
         with self.assertRaises(HTTPBadRequest):
-            await operator.create_folder(data)
+            await operator.create_submission(data)
 
-    async def test_query_folders_empty_list(self):
+    async def test_query_submissions_empty_list(self):
         """Test query returns empty list."""
-        operator = FolderOperator(self.client)
+        operator = SubmissionOperator(self.client)
         operator.db_service.do_aggregate.side_effect = ([], [{"total": 0}])
-        folders = await operator.query_folders({}, 1, 5)
+        submissions = await operator.query_submissions({}, 1, 5)
         operator.db_service.do_aggregate.assert_called()
-        self.assertEqual(folders, ([], 0))
+        self.assertEqual(submissions, ([], 0))
 
-    async def test_query_folders_1_item(self):
+    async def test_query_submissions_1_item(self):
         """Test query returns a list with item."""
-        operator = FolderOperator(self.client)
-        operator.db_service.do_aggregate.side_effect = ([{"name": "folder"}], [{"total": 1}])
-        folders = await operator.query_folders({}, 1, 5)
+        operator = SubmissionOperator(self.client)
+        operator.db_service.do_aggregate.side_effect = ([{"name": "submission"}], [{"total": 1}])
+        submissions = await operator.query_submissions({}, 1, 5)
         operator.db_service.do_aggregate.assert_called()
-        self.assertEqual(folders, ([{"name": "folder"}], 1))
+        self.assertEqual(submissions, ([{"name": "submission"}], 1))
 
-    async def test_check_object_folder_fails(self):
-        """Test check object folder fails."""
-        operator = FolderOperator(self.client)
+    async def test_check_object_submission_fails(self):
+        """Test check object submission fails."""
+        operator = SubmissionOperator(self.client)
         operator.db_service.query.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
-            await operator.check_object_in_folder("study", self.accession_id)
+            await operator.check_object_in_submission("study", self.accession_id)
 
-    async def test_check_object_folder_passes(self):
-        """Test check object folder returns proper data."""
-        operator = FolderOperator(self.client)
-        operator.db_service.query.return_value = AsyncIterator([self.test_folder])
-        result = await operator.check_object_in_folder("study", self.accession_id)
+    async def test_check_object_submission_passes(self):
+        """Test check object submission returns proper data."""
+        operator = SubmissionOperator(self.client)
+        operator.db_service.query.return_value = AsyncIterator([self.test_submission])
+        result = await operator.check_object_in_submission("study", self.accession_id)
         operator.db_service.query.assert_called_once_with(
-            "folder", {"metadataObjects": {"$elemMatch": {"accessionId": self.accession_id, "schema": "study"}}}
+            "submission", {"metadataObjects": {"$elemMatch": {"accessionId": self.accession_id, "schema": "study"}}}
         )
-        self.assertEqual(result, (True, self.folder_id, False))
+        self.assertEqual(result, (True, self.submission_id, False))
 
-    async def test_check_object_folder_multiple_objects_fails(self):
-        """Test check object folder returns multiple unique folders."""
-        operator = FolderOperator(self.client)
-        operator.db_service.query.return_value = AsyncIterator([self.test_folder, self.test_folder])
+    async def test_check_object_submission_multiple_objects_fails(self):
+        """Test check object submission returns multiple unique submissions."""
+        operator = SubmissionOperator(self.client)
+        operator.db_service.query.return_value = AsyncIterator([self.test_submission, self.test_submission])
         with self.assertRaises(HTTPUnprocessableEntity):
-            await operator.check_object_in_folder("study", self.accession_id)
+            await operator.check_object_in_submission("study", self.accession_id)
             operator.db_service.query.assert_called_once_with(
-                "folder", {"metadataObjects": {"$elemMatch": {"accessionId": self.accession_id, "schema": "study"}}}
+                "submission", {"metadataObjects": {"$elemMatch": {"accessionId": self.accession_id, "schema": "study"}}}
             )
 
-    async def test_check_object_folder_no_data(self):
-        """Test check object folder returns no data."""
-        operator = FolderOperator(self.client)
+    async def test_check_object_submission_no_data(self):
+        """Test check object submission returns no data."""
+        operator = SubmissionOperator(self.client)
         operator.db_service.query.return_value = AsyncIterator([])
-        result = await operator.check_object_in_folder("study", self.accession_id)
+        result = await operator.check_object_in_submission("study", self.accession_id)
         operator.db_service.query.assert_called_once_with(
-            "folder", {"metadataObjects": {"$elemMatch": {"accessionId": self.accession_id, "schema": "study"}}}
+            "submission", {"metadataObjects": {"$elemMatch": {"accessionId": self.accession_id, "schema": "study"}}}
         )
         self.assertEqual(result, (False, "", False))
 
-    async def test_get_objects_folder_fails(self):
-        """Test check object folder fails."""
-        operator = FolderOperator(self.client)
+    async def test_get_objects_submission_fails(self):
+        """Test check object submission fails."""
+        operator = SubmissionOperator(self.client)
         operator.db_service.query.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
-            await operator.get_collection_objects(self.folder_id, "study")
+            await operator.get_collection_objects(self.submission_id, "study")
 
-    async def test_get_objects_folder_passes(self):
-        """Test get objects from folder returns proper data."""
-        operator = FolderOperator(self.client)
-        operator.db_service.query.return_value = AsyncIterator([self.test_folder])
-        result = await operator.get_collection_objects(self.folder_id, "study")
+    async def test_get_objects_submission_passes(self):
+        """Test get objects from submission returns proper data."""
+        operator = SubmissionOperator(self.client)
+        operator.db_service.query.return_value = AsyncIterator([self.test_submission])
+        result = await operator.get_collection_objects(self.submission_id, "study")
         operator.db_service.query.assert_called_once_with(
-            "folder", {"$and": [{"metadataObjects": {"$elemMatch": {"schema": "study"}}}, {"folderId": self.folder_id}]}
+            "submission",
+            {"$and": [{"metadataObjects": {"$elemMatch": {"schema": "study"}}}, {"submissionId": self.submission_id}]},
         )
         self.assertEqual(result, ["EGA1234567"])
 
-    async def test_get_objects_folder_no_data(self):
-        """Test get objects from folder returns no data."""
-        operator = FolderOperator(self.client)
+    async def test_get_objects_submission_no_data(self):
+        """Test get objects from submission returns no data."""
+        operator = SubmissionOperator(self.client)
         operator.db_service.query.return_value = AsyncIterator([])
-        result = await operator.get_collection_objects(self.folder_id, "study")
+        result = await operator.get_collection_objects(self.submission_id, "study")
         operator.db_service.query.assert_called_once_with(
-            "folder", {"$and": [{"metadataObjects": {"$elemMatch": {"schema": "study"}}}, {"folderId": self.folder_id}]}
+            "submission",
+            {"$and": [{"metadataObjects": {"$elemMatch": {"schema": "study"}}}, {"submissionId": self.submission_id}]},
         )
         self.assertEqual(result, [])
 
-    async def test_reading_folder_works(self):
-        """Test folder is read from db correctly."""
-        operator = FolderOperator(self.client)
-        operator.db_service.read.return_value = self.test_folder
-        read_data = await operator.read_folder(self.folder_id)
-        operator.db_service.read.assert_called_once_with("folder", self.folder_id)
-        self.assertEqual(read_data, self.test_folder)
+    async def test_reading_submission_works(self):
+        """Test submission is read from db correctly."""
+        operator = SubmissionOperator(self.client)
+        operator.db_service.read.return_value = self.test_submission
+        read_data = await operator.read_submission(self.submission_id)
+        operator.db_service.read.assert_called_once_with("submission", self.submission_id)
+        self.assertEqual(read_data, self.test_submission)
 
-    async def test_folder_object_read_fails(self):
-        """Test folder read fails."""
-        operator = FolderOperator(self.client)
+    async def test_submission_object_read_fails(self):
+        """Test submission read fails."""
+        operator = SubmissionOperator(self.client)
         operator.db_service.read.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
-            await operator.read_folder(self.folder_id)
+            await operator.read_submission(self.submission_id)
 
-    async def test_folder_update_passes_and_returns_id(self):
-        """Test update method for folders works."""
+    async def test_submission_update_passes_and_returns_id(self):
+        """Test update method for submissions works."""
         patch = [{"op": "add", "path": "/name", "value": "test2"}]
-        operator = FolderOperator(self.client)
+        operator = SubmissionOperator(self.client)
         operator.db_service.patch.return_value = True
-        folder = await operator.update_folder(self.test_folder, patch)
+        submission = await operator.update_submission(self.test_submission, patch)
         operator.db_service.patch.assert_called_once()
-        self.assertEqual(folder["folderId"], self.folder_id)
+        self.assertEqual(submission["submissionId"], self.submission_id)
 
-    async def test_folder_update_fails_with_bad_patch(self):
-        """Test folder update raises error with improper JSON Patch."""
+    async def test_submission_update_fails_with_bad_patch(self):
+        """Test submission update raises error with improper JSON Patch."""
         patch = [{"op": "replace", "path": "/nothing"}]
-        operator = FolderOperator(self.client)
+        operator = SubmissionOperator(self.client)
         operator.db_service.patch.return_value = False
         with self.assertRaises(HTTPBadRequest):
-            await operator.update_folder(self.test_folder, patch)
+            await operator.update_submission(self.test_submission, patch)
 
-    async def test_folder_object_update_fails(self):
-        """Test folder update fails."""
-        operator = FolderOperator(self.client)
+    async def test_submission_object_update_fails(self):
+        """Test submission update fails."""
+        operator = SubmissionOperator(self.client)
         operator.db_service.patch.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
-            await operator.update_folder(self.test_folder, [])
+            await operator.update_submission(self.test_submission, [])
 
-    async def test_folder_object_remove_passes(self):
-        """Test remove object method for folders works."""
-        operator = FolderOperator(self.client)
-        operator.db_service.remove.return_value = self.test_folder
-        await operator.remove_object(self.test_folder, "study", self.accession_id)
+    async def test_submission_object_remove_passes(self):
+        """Test remove object method for submissions works."""
+        operator = SubmissionOperator(self.client)
+        operator.db_service.remove.return_value = self.test_submission
+        await operator.remove_object(self.test_submission, "study", self.accession_id)
         operator.db_service.remove.assert_called_once()
         self.assertEqual(len(operator.db_service.remove.mock_calls), 1)
 
-    async def test_folder_object_remove_fails(self):
-        """Test folder remove object fails."""
-        operator = FolderOperator(self.client)
+    async def test_submission_object_remove_fails(self):
+        """Test submission remove object fails."""
+        operator = SubmissionOperator(self.client)
         operator.db_service.remove.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
-            await operator.remove_object(self.test_folder, "study", self.accession_id)
+            await operator.remove_object(self.test_submission, "study", self.accession_id)
 
-    async def test_check_folder_exists_passes(self):
+    async def test_check_submission_exists_passes(self):
         """Test fails exists passes."""
-        operator = FolderOperator(self.client)
+        operator = SubmissionOperator(self.client)
         operator.db_service.exists.return_value = True
-        await operator.check_folder_exists(self.folder_id)
+        await operator.check_submission_exists(self.submission_id)
         operator.db_service.exists.assert_called_once()
 
-    async def test_check_folder_exists_fails(self):
+    async def test_check_submission_exists_fails(self):
         """Test fails exists fails."""
-        operator = FolderOperator(self.client)
+        operator = SubmissionOperator(self.client)
         operator.db_service.exists.return_value = False
         with self.assertRaises(HTTPNotFound):
-            await operator.check_folder_exists(self.folder_id)
+            await operator.check_submission_exists(self.submission_id)
             operator.db_service.exists.assert_called_once()
 
-    async def test_deleting_folder_passes(self):
-        """Test folder is deleted correctly, if not published."""
-        operator = FolderOperator(self.client)
-        operator.db_service.published_folder.return_value = False
+    async def test_deleting_submission_passes(self):
+        """Test submission is deleted correctly, if not published."""
+        operator = SubmissionOperator(self.client)
+        operator.db_service.published_submission.return_value = False
         operator.db_service.delete.return_value = True
-        await operator.delete_folder(self.folder_id)
-        operator.db_service.delete.assert_called_with("folder", self.folder_id)
+        await operator.delete_submission(self.submission_id)
+        operator.db_service.delete.assert_called_with("submission", self.submission_id)
 
-    async def test_deleting_folder_fails_on_delete(self):
-        """Test folder fails on db delete, if not published."""
-        operator = FolderOperator(self.client)
-        operator.db_service.published_folder.return_value = False
+    async def test_deleting_submission_fails_on_delete(self):
+        """Test submission fails on db delete, if not published."""
+        operator = SubmissionOperator(self.client)
+        operator.db_service.published_submission.return_value = False
         operator.db_service.delete.return_value = False
         with self.assertRaises(HTTPBadRequest):
-            await operator.delete_folder(self.folder_id)
-            operator.db_service.delete.assert_called_with("folder", self.folder_id)
+            await operator.delete_submission(self.submission_id)
+            operator.db_service.delete.assert_called_with("submission", self.submission_id)
 
-    async def test_delete_folder_fails(self):
-        """Test folder delete fails."""
-        operator = FolderOperator(self.client)
-        operator.db_service.published_folder.side_effect = ConnectionFailure
+    async def test_delete_submission_fails(self):
+        """Test submission delete fails."""
+        operator = SubmissionOperator(self.client)
+        operator.db_service.published_submission.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
-            await operator.delete_folder(self.folder_id)
+            await operator.delete_submission(self.submission_id)
 
     async def test_create_user_works_and_returns_userId(self):
         """Test create method for users work."""
@@ -967,7 +976,7 @@ class TestOperators(IsolatedAsyncioTestCase):
         with self.p_get_sess_restapi:
             operator = UserOperator(self.client)
             with self.assertRaises(HTTPBadRequest):
-                await operator.check_user_has_doc(request, "something", self.user_generated_id, self.folder_id)
+                await operator.check_user_has_doc(request, "something", self.user_generated_id, self.submission_id)
 
     async def test_check_user_doc_passes(self):
         """Test check user doc passes when object has same project id and user."""
@@ -982,7 +991,7 @@ class TestOperators(IsolatedAsyncioTestCase):
         request.app["db_client"] = db_client
         operator = UserOperator(self.client)
         with patch(
-            "metadata_backend.api.operators.FolderOperator.get_folder_project",
+            "metadata_backend.api.operators.SubmissionOperator.get_submission_project",
             return_value=self.project_generated_id,
         ):
             with self.p_get_sess_restapi:
@@ -995,7 +1004,7 @@ class TestOperators(IsolatedAsyncioTestCase):
                         return_value=True,
                     ):
                         result = await operator.check_user_has_doc(
-                            request, "folders", self.user_generated_id, self.folder_id
+                            request, "submissions", self.user_generated_id, self.submission_id
                         )
                         self.assertTrue(result)
 

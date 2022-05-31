@@ -41,10 +41,10 @@ class AppTestCase(AioHTTPTestCase):
     async def test_api_routes_are_set(self):
         """Test correct amount of API (no frontend) routes is set."""
         server = await self.get_application()
-        self.assertIs(len(server.router.resources()), 19)
+        self.assertIs(len(server.router.resources()), 21)
 
     async def test_frontend_routes_are_set(self):
-        """Test correct routes are set when frontend folder is exists."""
+        """Test correct routes are set when frontend folder exists."""
         frontend_static = "metadata_backend.server.frontend_static_files"
         with tempfile.TemporaryDirectory() as tempdir:
             temppath = Path(tempdir)
@@ -54,3 +54,15 @@ class AppTestCase(AioHTTPTestCase):
                 routes = str([x for x in server.router.resources()])
                 self.assertIn(f"{tempdir}/static", routes)
                 self.assertIn("DynamicResource  /{path}", routes)
+
+    async def test_swagger_route_is_set(self):
+        """Test correct routes are set when swagger folder exists."""
+        swagger_static = "metadata_backend.server.swagger_static_path"
+        with tempfile.TemporaryDirectory() as tempdir:
+            temppath = Path(tempdir)
+            Path(temppath / "swagger").mkdir()
+            with patch(swagger_static, temppath):
+                server = await self.get_application()
+                routes = str([x for x in server.router.resources()])
+                self.assertIn("/swagger", routes)
+                self.assertIn("PlainResource  /swagger", routes)

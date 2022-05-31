@@ -181,7 +181,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
         """Update metadata template in database.
 
         :param req: PATCH request
-        :raises: HTTPUnauthorized if template is in published folder
+        :raises: HTTPUnauthorized if template is in published submission
         :returns: JSON response containing accessionId for submitted template
         """
         schema_type = req.match_info["schema"]
@@ -225,7 +225,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
         """Delete metadata template from database.
 
         :param req: DELETE request
-        :raises: HTTPUnauthorized if folder published
+        :raises: HTTPUnauthorized if submission published
         :raises: HTTPUnprocessableEntity if template does not belong to current user
         :returns: HTTPNoContent response
         """

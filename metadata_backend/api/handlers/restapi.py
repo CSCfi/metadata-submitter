@@ -12,8 +12,7 @@ from multidict import CIMultiDict
 from ...conf.conf import schema_types
 from ...helpers.logger import LOG
 from ...helpers.schema_loader import JSONSchemaLoader, SchemaNotFoundException
-
-from ..operators import FolderOperator, UserOperator
+from ..operators import SubmissionOperator, UserOperator
 import aiohttp_session
 
 
@@ -68,8 +67,8 @@ class RESTAPIHandler:
     async def _handle_check_ownership(self, req: Request, collection: str, accession_id: str) -> Tuple[bool, str]:
         """Check if object belongs to project.
 
-        For this we need to check the object is in exactly 1 folder and we need to check
-        that folder belongs to a project.
+        For this we need to check the object is in exactly 1 submission and we need to check
+        that submission belongs to a project.
 
         :param req: HTTP request
         :param collection: collection or schema of document
@@ -86,17 +85,17 @@ class RESTAPIHandler:
         _check = False
 
         project_id = ""
-        if collection != "folders":
+        if collection != "submissions":
 
-            folder_op = FolderOperator(db_client)
-            check, folder_id, _ = await folder_op.check_object_in_folder(collection, accession_id)
+            submission_op = SubmissionOperator(db_client)
+            check, submission_id, _ = await submission_op.check_object_in_submission(collection, accession_id)
             # if published:
             #     _check = True
             if check:
-                # if the draft object is found in folder we just need to check if the folder belongs to user
-                _check, project_id = await user_op.check_user_has_doc(req, "folders", current_user, folder_id)
+                # if the draft object is found in submission we just need to check if the submission belongs to user
+                _check, project_id = await user_op.check_user_has_doc(req, "submissions", current_user, submission_id)
             elif collection.startswith("template"):
-                # if collection is template but not found in a folder
+                # if collection is template but not found in a submission
                 # we also check if object is in templates of the user
                 # they will be here if they will not be deleted after publish
                 _check, project_id = await user_op.check_user_has_doc(req, collection, current_user, accession_id)
@@ -113,19 +112,19 @@ class RESTAPIHandler:
         return _check, project_id
 
     async def _get_collection_objects(
-        self, folder_op: AsyncIOMotorClient, collection: str, seq: List
+        self, submission_op: AsyncIOMotorClient, collection: str, seq: List
     ) -> AsyncGenerator:
-        """Get objects ids based on folder and collection.
+        """Get objects ids based on submission and collection.
 
         Considering that many objects will be returned good to have a generator.
 
         :param req: HTTP request
         :param collection: collection or schema of document
-        :param seq: list of folders
+        :param seq: list of submissions
         :returns: AsyncGenerator
         """
         for el in seq:
-            result = await folder_op.get_collection_objects(el, collection)
+            result = await submission_op.get_collection_objects(el, collection)
 
             yield result
 
@@ -168,8 +167,8 @@ class RESTAPIHandler:
 
         try:
             if schema_type == "datacite":
-                folder = JSONSchemaLoader().get_schema("folder")
-                schema = folder["properties"]["doiInfo"]
+                submission = JSONSchemaLoader().get_schema("submission")
+                schema = submission["properties"]["doiInfo"]
             else:
                 schema = JSONSchemaLoader().get_schema(schema_type)
             LOG.info(f"{schema_type} schema loaded.")

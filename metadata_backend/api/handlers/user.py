@@ -22,7 +22,7 @@ class UserAPIHandler(RESTAPIHandler):
     def _check_patch_user(self, patch_ops: Any) -> None:
         """Check patch operations in request are valid.
 
-        We check that ``folders`` have string values (one or a list)
+        We check that ``submissions`` have string values (one or a list)
         and ``drafts`` have ``_required_values``.
         For tags we check that the ``submissionType`` takes either ``XML`` or
         ``Form`` as values.
@@ -31,12 +31,12 @@ class UserAPIHandler(RESTAPIHandler):
         :raises: HTTPUnauthorized if request tries to do anything else than add or replace
         :returns: None
         """
-        _arrays = {"/templates/-", "/folders/-"}
+        _arrays = {"/templates/-", "/submissions/-"}
         _required_values = {"schema", "accessionId"}
         _tags = re.compile("^/(templates)/[0-9]*/(tags)$")
         for op in patch_ops:
             if _tags.match(op["path"]):
-                LOG.info(f"{op['op']} on tags in folder")
+                LOG.info(f"{op['op']} on tags in submission")
                 if "submissionType" in op["value"].keys() and op["value"]["submissionType"] not in {
                     "XML",
                     "CSV",
@@ -55,9 +55,9 @@ class UserAPIHandler(RESTAPIHandler):
                     reason = f"{op['op']} on {op['path']} is not allowed."
                     LOG.error(reason)
                     raise web.HTTPUnauthorized(reason=reason)
-                if op["path"] == "/folders/-":
+                if op["path"] == "/submissions/-":
                     if not (isinstance(op["value"], str) or isinstance(op["value"], list)):
-                        reason = "We only accept string folder IDs."
+                        reason = "We only accept string submission IDs."
                         LOG.error(reason)
                         raise web.HTTPBadRequest(reason=reason)
                 if op["path"] == "/templates/-":
@@ -81,7 +81,7 @@ class UserAPIHandler(RESTAPIHandler):
 
         :param req: GET request
         :raises: HTTPUnauthorized if not current user
-        :returns: JSON response containing user object or list of user templates or user folders by id
+        :returns: JSON response containing user object or list of user templates or user submissions by id
         """
         session = await aiohttp_session.get_session(req)
 
@@ -92,7 +92,7 @@ class UserAPIHandler(RESTAPIHandler):
 
         current_user = session["user_info"]
 
-        # Return whole user object if templates or folders are not specified in query
+        # Return whole user object if templates or submissions are not specified in query
         db_client = req.app["db_client"]
         operator = UserOperator(db_client)
         user = await operator.read_user(current_user)
@@ -136,13 +136,13 @@ class UserAPIHandler(RESTAPIHandler):
 
         :param req: GET request
         :param user: User object
-        :param item_type: Name of the items ("templates" or "folders")
+        :param item_type: Name of the items ("templates" or "submissions")
         :raises: HTTPUnauthorized if not current user
         :returns: Tuple with paginated list of user draft templates and link headers
         """
         # Check item_type parameter is not faulty
-        if item_type not in {"templates", "folders"}:
-            reason = f"{item_type} is a faulty item parameter. Should be either folders or templates"
+        if item_type not in {"templates", "submissions"}:
+            reason = f"{item_type} is a faulty item parameter. Should be either submissions or templates"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 

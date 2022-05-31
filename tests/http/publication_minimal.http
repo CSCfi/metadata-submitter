@@ -1,0 +1,60 @@
+# https://github.com/Huachao/vscode-restclient
+# https://jsonpath.com/
+
+
+@backend_url = http://localhost:5430
+@auth_url = http://localhost:8000
+@doi_url = http://localhost:8001
+@metax_url = http://localhost:8002
+
+@auth_email = mock_user@test.what
+
+
+@project_id = {{user_data_req.response.body.projects[0].projectId}}
+@submission_id = {{submission_id_req.response.body.submissionId}}
+
+### Mock athentication
+GET {{auth_url}}/setmock
+    ?sub={{auth_email}}
+    &given=Mock
+    &family=Family
+
+###
+GET {{backend_url}}/aai
+
+### Get user data
+# @name user_data_req
+GET {{backend_url}}/users/current
+
+
+
+### Create submission
+# @name submission_id_req
+POST {{backend_url}}/submissions
+
+{
+    "name": "submission test 1",
+    "description": "submission test 1",
+    "projectId": "{{project_id}}"
+}
+
+### List submissions
+GET {{backend_url}}/submissions
+    ?projectId={{project_id}}
+
+### Get submission
+GET {{backend_url}}/submissions/{{submission_id}}
+
+### Add study to submission
+POST {{backend_url}}/objects/study
+    ?submission={{submission_id}}
+
+< ../test_files/study/SRP000539.json
+
+### Update DOI in submission
+PUT {{backend_url}}/submissions/{{submission_id}}/doi
+
+< ../test_files/doi/test_doi.json
+
+### Publish submission
+PATCH {{backend_url}}/publish/{{submission_id}}

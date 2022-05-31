@@ -48,11 +48,11 @@ async def get_dataset(req: web.Request) -> web.Response:
         raise web.HTTPBadRequest(
             reason={
                 "detail": ["Query params missing Metax ID."],
-                "error_identifier": datetime.now(),
+                "error_identifier": str(datetime.now()),
             }
         )
-    stuff = list(drafts.keys()) + list(published.keys())
-    if metax_id not in stuff:
+    datasets = list(drafts.keys()) + list(published.keys())
+    if metax_id not in datasets:
         LOG.error(f"No dataset found with identifier {metax_id}")
         raise web.HTTPNotFound(reason={"detail": "Not found."})
     try:
@@ -83,7 +83,7 @@ async def post_dataset(req: web.Request) -> web.Response:
         raise web.HTTPBadRequest(
             reason={
                 "detail": reason,
-                "error_identifier": datetime.now(),
+                "error_identifier": str(datetime.now()),
             }
         )
     validate_data(content)
@@ -123,7 +123,7 @@ async def update_dataset(req: web.Request) -> web.Response:
         raise web.HTTPBadRequest(
             reason={
                 "detail": ["Query params missing Metax ID."],
-                "error_identifier": datetime.now(),
+                "error_identifier": str(datetime.now()),
             }
         )
     if metax_id not in drafts.keys():
@@ -138,7 +138,7 @@ async def update_dataset(req: web.Request) -> web.Response:
         raise web.HTTPBadRequest(
             reason={
                 "detail": reason,
-                "error_identifier": datetime.now(),
+                "error_identifier": str(datetime.now()),
             }
         )
     validate_data(content)
@@ -174,7 +174,7 @@ async def patch_datasets(req: web.Request) -> web.Response:
         raise web.HTTPBadRequest(
             reason={
                 "detail": reason,
-                "error_identifier": datetime.now(),
+                "error_identifier": str(datetime.now()),
             }
         )
     for dataset in content:
@@ -185,7 +185,7 @@ async def patch_datasets(req: web.Request) -> web.Response:
             raise web.HTTPBadRequest(
                 reason={
                     "detail": "Dataset is missing required identifiers",
-                    "error_identifier": datetime.now(),
+                    "error_identifier": str(datetime.now()),
                 }
             )
         if metax_id not in drafts.keys():
@@ -195,7 +195,7 @@ async def patch_datasets(req: web.Request) -> web.Response:
                 {
                     "object": {
                         "detail": reason,
-                        "error_identifier": datetime.now(),
+                        "error_identifier": str(datetime.now()),
                     }
                 }
             )
@@ -228,7 +228,7 @@ async def patch_dataset(req: web.Request) -> web.Response:
         raise web.HTTPBadRequest(
             reason={
                 "detail": ["Query params missing Metax ID."],
-                "error_identifier": datetime.now(),
+                "error_identifier": str(datetime.now()),
             }
         )
     if metax_id not in drafts.keys():
@@ -243,7 +243,7 @@ async def patch_dataset(req: web.Request) -> web.Response:
         raise web.HTTPBadRequest(
             reason={
                 "detail": reason,
-                "error_identifier": datetime.now(),
+                "error_identifier": str(datetime.now()),
             }
         )
     for key, value in content.items():
@@ -272,12 +272,12 @@ async def publish_dataset(req: web.Request) -> web.Response:
         raise web.HTTPBadRequest(
             reason={
                 "detail": ["Query params missing Metax ID."],
-                "error_identifier": datetime.now(),
+                "error_identifier": str(datetime.now()),
             }
         )
     if metax_id in published:
         LOG.error(f"Dataset {metax_id} is already published.")
-        reason = {"detail": ["Dataset is already published."], "error_identifier": datetime.now()}
+        reason = {"detail": ["Dataset is already published."], "error_identifier": str(datetime.now())}
         raise web.HTTPBadRequest(reason=reason)
     if metax_id not in drafts.keys():
         LOG.error(f"No dataset found with identifier {metax_id}")
@@ -305,13 +305,14 @@ async def delete_dataset(req: web.Request) -> web.Response:
     :params req: HTTP request with Metax dataset id
     :return: HTTP response with HTTP status
     """
-    LOG.info("Deleting Metax dataset")
     metax_id = req.match_info["metax_id"]
+    LOG.debug(f"Deleting Metax dataset {metax_id}")
+
     if not metax_id:
         raise web.HTTPBadRequest(
             reason={
                 "detail": ["Query params missing Metax ID."],
-                "error_identifier": datetime.now(),
+                "error_identifier": str(datetime.now()),
             }
         )
     if metax_id not in drafts.keys():
@@ -347,7 +348,7 @@ def validate_data(data: Dict, draft=True) -> None:
         raise web.HTTPBadRequest(reason=reason, content_type="application/json")
 
 
-def init() -> web.Application:
+async def init() -> web.Application:
     """Start server."""
     app = web.Application()
     api_routes = [
