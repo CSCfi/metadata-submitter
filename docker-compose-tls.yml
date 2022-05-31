@@ -1,4 +1,4 @@
-version: "3"
+version: "3.4"
 services:
   backend:
     build:
@@ -10,7 +10,7 @@ services:
     volumes:
       - ./config:/tls
     ports:
-      - 5430:5430
+      - "5430:5430"
     depends_on:
       - database
       - mockauth
@@ -54,7 +54,7 @@ services:
     expose:
       - 27017
     ports:
-      - 27017:27017
+      - "27017:27017"
   mockauth:
     build:
       dockerfile: Dockerfile-dev
@@ -83,7 +83,7 @@ services:
     expose:
       - 8001
     ports:
-      - 8001:8001
+      - "8001:8001"
     volumes:
       - ./tests/integration/mock_doi_api.py:/mock_doi_api.py
     entrypoint: ["python", "/mock_doi_api.py", "0.0.0.0", "8001"]
@@ -97,7 +97,7 @@ services:
     expose:
       - 8002
     ports:
-      - 8002:8002
+      - "8002:8002"
     volumes:
       - ./tests/integration/mock_metax_api.py:/mock_metax_api.py
     entrypoint: ["python", "/mock_metax_api.py", "0.0.0.0", "8002"]

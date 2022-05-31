@@ -3,7 +3,7 @@ abkhaz
 accessionid
 additionalproperties
 addobjecttodrafts
-addobjecttofolder
+addobjecttosubmission
 affiliationidentifier
 affiliationidentifierscheme
 agp
@@ -108,7 +108,7 @@ cpg
 crai
 createfromjson
 createfromxml
-createnewdraftfolder
+createnewdraftsubmission
 createslice
 crna
 crossref
@@ -211,7 +211,7 @@ filetype
 flatfile
 flx
 flybase
-folderid
+submissionid
 followsreadindex
 formdata
 fos
@@ -260,10 +260,12 @@ histone
 hmpr
 homologene
 hostname
+hostnames
 hotfix
 hq
 html
 http
+httperror
 https
 identifiertype
 identitypython
@@ -304,6 +306,7 @@ kubernetes
 kwanyama
 kyrgyz
 lang
+lastmodified
 leaveaspool
 lexically
 libraryconstructionprotocol
@@ -405,8 +408,8 @@ nuccore
 nuosu
 nynorsk
 objectdetails
-objectinsidefolder
-objectinsidefolderwithtags
+objectinsidesubmission
+objectinsidesubmissionwithtags
 objectstatus
 objectsubmissiontypes
 objecttags
@@ -471,8 +474,9 @@ primaryid
 probeset
 processedreads
 processingtype
-projectId
-projectNumber
+procfile
+projectid
+projectnumber
 promethion
 proteinclusters
 protfam
@@ -543,7 +547,7 @@ schemeuri
 scientificname
 sda
 sdev
-sdSubmitProjects
+sdsubmitprojects
 se
 secondaryid
 sectionname
@@ -585,12 +589,12 @@ studytitle
 studytype
 subjectscheme
 subjectsSchema
-submissionfolder
-submissionfolderslice
+submissionsubmission
+submissionslice
 submissiontype
-submitter's
 submitterdemultiplexed
 submitterid
+submitter's
 submitters
 svg
 swati
@@ -602,7 +606,7 @@ taxonomicreferenceset
 taxonomysystem
 taxonomysystemversion
 telephonenumber
-templateId
+templateid
 tigrinya
 tls
 toctree
@@ -616,6 +620,7 @@ tsonga
 turkmen
 twi
 txt
+ue
 ui
 ujson
 umi
@@ -636,6 +641,7 @@ uyghur
 validator
 vcf
 venda
+venv
 volapük
 vscode
 wcs
@@ -651,7 +657,7 @@ wizardsavedobjectslist
 wizardsavedobjectslistprops
 wizardshowsummarystep
 wizardsteps
-wizardsubmissionfolderslice
+wizardsubmissionslice
 wolof
 wordlist
 wxs

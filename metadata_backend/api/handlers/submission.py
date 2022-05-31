@@ -1,253 +1,631 @@
 """Handle HTTP methods for server."""
-from collections import Counter
-from typing import Dict, List
+from datetime import date, datetime
+from distutils.util import strtobool
+from math import ceil
+from typing import Dict, List, Tuple, Union
 
+import aiohttp_session
 import ujson
 from aiohttp import web
 from aiohttp.web import Request, Response
-from multidict import MultiDict, MultiDictProxy
-from xmlschema import XMLSchemaException
+from multidict import CIMultiDict
 
+from ...conf.conf import doi_config
+from ...helpers.doi import DOIHandler
 from ...helpers.logger import LOG
 from ...helpers.metax_api_handler import MetaxServiceHandler
-from ...helpers.parser import XMLToJSONParser
-from ...helpers.schema_loader import SchemaNotFoundException, XMLSchemaLoader
-from ...helpers.validator import XMLValidator
-from ..operators import FolderOperator, Operator, XMLOperator
-from .common import multipart_content
+from ...helpers.validator import JSONValidator
+from ..operators import SubmissionOperator, Operator, ProjectOperator, UserOperator
 from .object import ObjectAPIHandler
+from .restapi import RESTAPIHandler
 
 
-class SubmissionAPIHandler(ObjectAPIHandler):
-    """Handler for non-rest API methods."""
+class SubmissionAPIHandler(RESTAPIHandler):
+    """API Handler for submissions."""
 
-    async def submit(self, req: Request) -> Response:
-        """Handle submission.xml containing submissions to server.
+    def _prepare_published_study(self, study_data: Dict, general_info: Dict) -> Dict:
+        """Prepare Study object for publishing.
 
-        First submission info is parsed and then for every action in submission
-        (add/modify/validate) corresponding operation is performed.
-        Finally submission info itself is added.
-
-        :param req: Multipart POST request with submission.xml and files
-        :raises: HTTPBadRequest if request is missing some parameters or cannot be processed
-        :returns: XML-based receipt from submission
+        :param study_data: Study Object read from the database
+        :param general_info: General information that is captured in front-end and set in ``doiInfo`` key
+        :returns: Study Object ready to publish to Datacite
         """
-        files, _ = await multipart_content(req, expect_xml=True)
-        schema_types = Counter(file[1] for file in files)
-        if "submission" not in schema_types:
-            reason = "There must be a submission.xml file in submission."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-        if schema_types["submission"] > 1:
-            reason = "You should submit only one submission.xml file."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-        submission_xml = files[0][0]
-        submission_json = XMLToJSONParser().parse("submission", submission_xml)
 
-        # Check what actions should be performed, collect them to dictionary
-        actions: Dict[str, List] = {}
-        for action_set in submission_json["actions"]["action"]:
-            for action, attr in action_set.items():
-                if not attr:
-                    reason = f"""You also need to provide necessary
-                                  information for submission action.
-                                  Now {action} was provided without any
-                                  extra information."""
-                    LOG.error(reason)
-                    raise web.HTTPBadRequest(reason=reason)
-                LOG.debug(f"submission has action {action}")
-                if attr["schema"] in actions:
-                    set = []
-                    set.append(actions[attr["schema"]])
-                    set.append(action)
-                    actions[attr["schema"]] = set
+        study = {
+            "attributes": {
+                "publisher": doi_config["publisher"],
+                "publicationYear": date.today().year,
+                "event": "publish",
+                "schemaVersion": "https://schema.datacite.org/meta/kernel-4",
+                "doi": study_data["doi"],
+                "prefix": study_data["doi"].split("/")[0],
+                "suffix": study_data["doi"].split("/")[1],
+                "types": {
+                    "bibtex": "misc",
+                    "citeproc": "collection",
+                    "schemaOrg": "Collection",
+                    "resourceTypeGeneral": "Collection",
+                },
+                "url": f"{doi_config['discovery_url']}{study_data['metaxIdentifier']}",
+                "identifiers": [
+                    {
+                        "identifierType": "DOI",
+                        "doi": study_data["doi"],
+                    }
+                ],
+                "descriptions": [],
+                "titles": [],
+            },
+            "id": study_data["doi"],
+            "type": "dois",
+        }
+
+        study["attributes"]["titles"].append(
+            {"lang": None, "title": study_data["descriptor"]["studyTitle"], "titleType": None},
+        )
+
+        study["attributes"]["descriptions"].append(
+            {
+                "lang": None,
+                "description": study_data["descriptor"]["studyAbstract"],
+                "descriptionType": "Abstract",
+            }
+        )
+
+        if "studyDescription" in study_data:
+            study["attributes"]["descriptions"].append(
+                {"lang": None, "description": study_data["studyDescription"], "descriptionType": "Other"}
+            )
+
+        study["attributes"].update(general_info)
+        LOG.debug(f"prepared study info: {study}")
+
+        return study
+
+    def _prepare_published_dataset(self, study_doi: str, dataset_data: Dict, general_info: Dict) -> Dict:
+        """Prepare Dataset object for publishing.
+
+        :param study_doi: Study DOI to link dataset to study at Datacite
+        :param dataset_data: Dataset Object read from the database
+        :param general_info: General information that is captured in front-end and set in `doiInfo` key
+        :returns: Dataset Object ready to publish to Datacite
+        """
+
+        dataset = {
+            "attributes": {
+                "publisher": doi_config["publisher"],
+                "publicationYear": date.today().year,
+                "event": "publish",
+                "schemaVersion": "https://schema.datacite.org/meta/kernel-4",
+                "doi": dataset_data["doi"],
+                "prefix": dataset_data["doi"].split("/")[0],
+                "suffix": dataset_data["doi"].split("/")[1],
+                "types": {
+                    "ris": "DATA",
+                    "bibtex": "misc",
+                    "citeproc": "dataset",
+                    "schemaOrg": "Dataset",
+                    "resourceTypeGeneral": "Dataset",
+                },
+                "url": f"{doi_config['discovery_url']}{dataset_data['metaxIdentifier']}",
+                "identifiers": [
+                    {
+                        "identifierType": "DOI",
+                        "doi": dataset_data["doi"],
+                    }
+                ],
+                "descriptions": [],
+                "titles": [],
+            },
+            "id": dataset_data["doi"],
+            "type": "dois",
+        }
+
+        dataset["attributes"]["titles"].append(
+            {"lang": None, "title": dataset_data["title"], "titleType": None},
+        )
+
+        dataset["attributes"]["descriptions"].append(
+            {
+                "lang": None,
+                "description": dataset_data["description"],
+                "descriptionType": "Other",
+            }
+        )
+
+        # A Dataset is described by a Study
+        if "relatedIdentifiers" not in dataset["attributes"]:
+            dataset["attributes"]["relatedIdentifiers"] = []
+
+        dataset["attributes"]["relatedIdentifiers"].append(
+            {
+                "relationType": "IsDescribedBy",
+                "relatedIdentifier": study_doi,
+                "resourceTypeGeneral": "Collection",
+                "relatedIdentifierType": "DOI",
+            }
+        )
+
+        dataset["attributes"].update(general_info)
+        LOG.debug(f"prepared dataset info: {dataset}")
+
+        return dataset
+
+    async def _prepare_doi_update(self, req: Request, obj_op: Operator, submission: Dict) -> Tuple[Dict, List, List]:
+        """Prepare dictionary with values for the Datacite DOI update.
+
+        We need to prepare data for Study and Datasets, publish doi for each,
+        and create links (relatedIdentifiers) between Study and Datasets.
+        All the required information should be in the submission ``doiInfo``,
+        as well as ``extraInfo`` which contains the draft DOIs created for the Study
+        and each Dataset.
+
+        :param obj_op: Operator for reading objects from database.
+        :param submission: Submission data
+        :returns: Tuple with the Study and list of Datasets and list of identifiers for publishing to Metax
+        """
+
+        metax_ids = []
+        study = {}
+        datasets: List = []
+        obj_handler = ObjectAPIHandler()
+
+        # we need to re-format these for Datacite, as in the JSON schemas
+        # we split the words so that front-end will display them nicely
+        _info = submission["doiInfo"]
+        if "relatedIdentifiers" in _info:
+            for d in _info["relatedIdentifiers"]:
+                d.update((k, "".join(v.split())) for k, v in d.items() if k in {"resourceTypeGeneral", "relationType"})
+
+        if "contributors" in _info:
+            for d in _info["contributors"]:
+                d.update((k, "".join(v.split())) for k, v in d.items() if k == "contributorType")
+
+        if "descriptions" in _info:
+            for d in _info["descriptions"]:
+                d.update((k, "".join(v.split())) for k, v in d.items() if k == "descriptionType")
+
+        if "fundingReferences" in _info:
+            for d in _info["fundingReferences"]:
+                d.update((k, "".join(v.split())) for k, v in d.items() if k == "funderIdentifierType")
+
+        try:
+            # keywords are only required for Metax integration
+            # thus we remove them
+            _info.pop("keywords", None)
+
+            _study_doi = ""
+
+            for _obj in submission["metadataObjects"]:
+
+                if _obj["schema"] == "study":
+
+                    # we need the study for the title, abstract and description
+                    study_data, _ = await obj_op.read_metadata_object("study", _obj["accessionId"])
+
+                    if isinstance(study_data, dict):
+
+                        study = self._prepare_published_study(study_data, _info)
+
+                        _study_doi = study_data["doi"]
+
+                        # in case object is not added to metax due to server error
+                        if not study_data["metaxIdentifier"]:
+                            study_data["metaxIdentifier"] = await obj_handler.create_metax_dataset(
+                                req, "study", study_data, create_draft_doi=False
+                            )
+
+                        metax_ids.append({"doi": study_data["doi"], "metaxIdentifier": study_data["metaxIdentifier"]})
+
+                        # there are cases where datasets are added first
+                        if len(datasets) > 0:
+                            LOG.info(datasets)
+                            for ds in datasets:
+                                if "relatedIdentifiers" not in study["attributes"]:
+                                    study["attributes"]["relatedIdentifiers"] = []
+
+                                study["attributes"]["relatedIdentifiers"].append(
+                                    {
+                                        "relationType": "Describes",
+                                        "relatedIdentifier": ds["attributes"]["doi"],
+                                        "resourceTypeGeneral": "Dataset",
+                                        "relatedIdentifierType": "DOI",
+                                    }
+                                )
+
+                elif _obj["schema"] == "dataset":
+
+                    # we need the dataset title and description
+                    ds_data, _ = await obj_op.read_metadata_object("dataset", _obj["accessionId"])
+
+                    if isinstance(ds_data, dict):
+                        dataset = self._prepare_published_dataset(_study_doi, ds_data, _info)
+
+                        datasets.append(dataset)
+
+                        # in case object is not added to metax due to server error
+                        if not ds_data["metaxIdentifier"]:
+                            ds_data["metaxIdentifier"] = await obj_handler.create_metax_dataset(
+                                req, "dataset", ds_data, create_draft_doi=False
+                            )
+
+                        metax_ids.append({"doi": ds_data["doi"], "metaxIdentifier": ds_data["metaxIdentifier"]})
+
+                        # A Study describes a Dataset
+                        # there are cases where datasets are added first
+                        if "attributes" in study:
+                            if "relatedIdentifiers" not in study["attributes"]:
+                                study["attributes"]["relatedIdentifiers"] = []
+
+                            study["attributes"]["relatedIdentifiers"].append(
+                                {
+                                    "relationType": "Describes",
+                                    "relatedIdentifier": ds_data["doi"],
+                                    "resourceTypeGeneral": "Dataset",
+                                    "relatedIdentifierType": "DOI",
+                                }
+                            )
                 else:
-                    actions[attr["schema"]] = action
+                    pass
+        # we catch all errors, if we missed even a key, that means some information is not
+        # properly recorded
+        except Exception as e:
+            reason = f"Could not construct DOI data, reason: {e}"
+            LOG.error(reason)
+            raise web.HTTPInternalServerError(reason=reason)
 
-        # Go through parsed files and do the actual action
-        results: List[Dict] = []
-        for file in files:
-            content_xml = file[0]
-            schema_type = file[1]
-            filename = file[2]
-            if schema_type == "submission":
-                LOG.debug("file has schema of submission type, continuing ...")
-                continue  # No need to use submission xml
-            action = actions[schema_type]
-            if isinstance(action, List):
-                for item in action:
-                    result = await self._execute_action(req, schema_type, content_xml, item, filename)
-                    results.append(result)
+        return (study, datasets, metax_ids)
+
+    async def get_submissions(self, req: Request) -> Response:
+        """Get a set of submissions owned by the project with pagination values.
+
+        :param req: GET Request
+        :returns: JSON list of submissions available for the user
+        """
+        session = await aiohttp_session.get_session(req)
+
+        page = self._get_page_param(req, "page", 1)
+        per_page = self._get_page_param(req, "per_page", 5)
+        project_id = self._get_param(req, "projectId")
+        sort = {"date": True, "score": False, "modified": False}
+        db_client = req.app["db_client"]
+
+        user_operator = UserOperator(db_client)
+
+        current_user = session["user_info"]
+        user = await user_operator.read_user(current_user)
+        user_has_project = await user_operator.check_user_has_project(project_id, user["userId"])
+        if not user_has_project:
+            reason = f"user {user['userId']} is not affiliated with project {project_id}"
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
+
+        submission_query: Dict[str, Union[str, Dict[str, Union[str, bool, float]]]] = {"projectId": project_id}
+        # Check if only published or draft submissions are requestsed
+        if "published" in req.query:
+            pub_param = req.query.get("published", "").title()
+            if pub_param in {"True", "False"}:
+                submission_query["published"] = {"$eq": bool(strtobool(pub_param))}
             else:
-                result = await self._execute_action(req, schema_type, content_xml, action, filename)
-                results.append(result)
+                reason = "'published' parameter must be either 'true' or 'false'"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
 
-        body = ujson.dumps(results, escape_forward_slashes=False)
-        LOG.info(f"Processed a submission of {len(results)} actions.")
+        if "name" in req.query:
+            name_param = req.query.get("name", "")
+            if name_param:
+                submission_query["$text"] = {"$search": name_param}
+            sort["score"] = True
+            sort["date"] = False
+
+        format_incoming = "%Y-%m-%d"
+        format_query = "%Y-%m-%d %H:%M:%S"
+        if "date_created_start" in req.query or "date_created_end" in req.query:
+            date_param_start = req.query.get("date_created_start", "")
+            date_param_end = req.query.get("date_created_end", "")
+
+            if datetime.strptime(date_param_start, format_incoming) and datetime.strptime(
+                date_param_end, format_incoming
+            ):
+                query_start = datetime.strptime(date_param_start + " 00:00:00", format_query).timestamp()
+                query_end = datetime.strptime(date_param_end + " 23:59:59", format_query).timestamp()
+                submission_query["dateCreated"] = {"$gte": query_start, "$lte": query_end}
+            else:
+                reason = f"'date_created_start' and 'date_created_end' parameters must be formated as {format_incoming}"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+
+        if "date_modified_start" in req.query or "date_modified_end" in req.query:
+            date_param_start = req.query.get("date_modified_start", "")
+            date_param_end = req.query.get("date_modified_end", "")
+
+            if datetime.strptime(date_param_start, format_incoming) and datetime.strptime(
+                date_param_end, format_incoming
+            ):
+                query_start = datetime.strptime(date_param_start + " 00:00:00", format_query).timestamp()
+                query_end = datetime.strptime(date_param_end + " 23:59:59", format_query).timestamp()
+                submission_query["lastModified"] = {"$gte": query_start, "$lte": query_end}
+            else:
+                reason = (
+                    f"'date_modified_start' and 'date_modified_end' parameters must be formated as {format_incoming}"
+                )
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+
+        if "name" in req.query and "date_created_start" in req.query:
+            sort["score"] = True
+            sort["date"] = True
+
+        if "name" in req.query and "date_modified_start" in req.query and "date_created_start" not in req.query:
+            sort["score"] = True
+            sort["modified"] = True
+            sort["date"] = False
+
+        submission_operator = SubmissionOperator(db_client)
+        submissions, total_submissions = await submission_operator.query_submissions(
+            submission_query, page, per_page, sort
+        )
+
+        result = ujson.dumps(
+            {
+                "page": {
+                    "page": page,
+                    "size": per_page,
+                    "totalPages": ceil(total_submissions / per_page),
+                    "totalSubmissions": total_submissions,
+                },
+                "submissions": submissions,
+            },
+            escape_forward_slashes=False,
+        )
+
+        url = f"{req.scheme}://{req.host}{req.path}"
+        link_headers = self._header_links(url, page, per_page, total_submissions)
+        LOG.debug(f"Pagination header links: {link_headers}")
+        LOG.info(f"Querying for project={project_id} submissions resulted in {total_submissions} submissions")
+        return web.Response(
+            body=result,
+            status=200,
+            headers=link_headers,
+            content_type="application/json",
+        )
+
+    async def post_submission(self, req: Request) -> Response:
+        """Save object submission to database.
+
+        :param req: POST request
+        :returns: JSON response containing submission ID for submitted submission
+        """
+        session = await aiohttp_session.get_session(req)
+
+        db_client = req.app["db_client"]
+        content = await self._get_data(req)
+
+        JSONValidator(content, "submissions").validate
+
+        # Check that project exists
+        project_op = ProjectOperator(db_client)
+        await project_op._check_project_exists(content["projectId"])
+
+        # Check that user is affiliated with project
+        user_op = UserOperator(db_client)
+        current_user = session["user_info"]
+        user = await user_op.read_user(current_user)
+        user_has_project = await user_op.check_user_has_project(content["projectId"], user["userId"])
+        if not user_has_project:
+            reason = f"user {user['userId']} is not affiliated with project {content['projectId']}"
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
+
+        operator = SubmissionOperator(db_client)
+        submission = await operator.create_submission(content)
+
+        body = ujson.dumps({"submissionId": submission}, escape_forward_slashes=False)
+
+        url = f"{req.scheme}://{req.host}{req.path}"
+        location_headers = CIMultiDict(Location=f"{url}/{submission}")
+        LOG.info(f"POST new submission with ID {submission} was successful.")
+        return web.Response(body=body, status=201, headers=location_headers, content_type="application/json")
+
+    async def get_submission(self, req: Request) -> Response:
+        """Get one object submission by its submission id.
+
+        :param req: GET request
+        :raises: HTTPNotFound if submission not owned by user
+        :returns: JSON response containing object submission
+        """
+        submission_id = req.match_info["submissionId"]
+        db_client = req.app["db_client"]
+        operator = SubmissionOperator(db_client)
+
+        await operator.check_submission_exists(submission_id)
+
+        await self._handle_check_ownership(req, "submissions", submission_id)
+
+        submission = await operator.read_submission(submission_id)
+
+        LOG.info(f"GET submission with ID {submission_id} was successful.")
+        return web.Response(
+            body=ujson.dumps(submission, escape_forward_slashes=False), status=200, content_type="application/json"
+        )
+
+    async def patch_submission(self, req: Request) -> Response:
+        """Update object submission with a specific submission id.
+
+        Submission only allows the 'name' and 'description' values to be patched.
+
+        :param req: PATCH request
+        :returns: JSON response containing submission ID for updated submission
+        """
+        submission_id = req.match_info["submissionId"]
+        db_client = req.app["db_client"]
+
+        operator = SubmissionOperator(db_client)
+
+        await operator.check_submission_exists(submission_id)
+
+        # Check patch operations in request are valid
+        data = await self._get_data(req)
+        if not isinstance(data, dict):
+            reason = "Patch submission operation should be provided as a JSON object"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        patch_ops = []
+        for key, value in data.items():
+            if key not in {"name", "description"}:
+                reason = f"Patch submission operation only accept the fields 'name', or 'description'. Provided '{key}'"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+            patch_ops.append({"op": "replace", "path": f"/{key}", "value": value})
+        # we update the submission last modified date
+        _now = int(datetime.now().timestamp())
+        patch_ops.append({"op": "replace", "path": "/lastModified", "value": _now})
+
+        await self._handle_check_ownership(req, "submissions", submission_id)
+
+        upd_submission = await operator.update_submission(submission_id, patch_ops)
+
+        body = ujson.dumps({"submissionId": upd_submission}, escape_forward_slashes=False)
+        LOG.info(f"PATCH submission with ID {upd_submission} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
-    async def validate(self, req: Request) -> Response:
-        """Handle validating an XML file sent to endpoint.
+    async def publish_submission(self, req: Request) -> Response:
+        """Update object submission specifically into published state.
 
-        :param req: Multipart POST request with submission.xml and files
-        :returns: JSON response indicating if validation was successful or not
+        :param req: PATCH request
+        :returns: JSON response containing submission ID for updated submission
         """
-        files, _ = await multipart_content(req, extract_one=True, expect_xml=True)
-        xml_content, schema_type, _ = files[0]
-        validator = await self._perform_validation(schema_type, xml_content)
-        return web.Response(body=validator.resp_body, content_type="application/json")
-
-    async def _perform_validation(self, schema_type: str, xml_content: str) -> XMLValidator:
-        """Validate an xml.
-
-        :param schema_type: Schema type of the object to validate.
-        :param xml_content: Metadata object
-        :raises: HTTPBadRequest if schema load fails
-        :returns: JSON response indicating if validation was successful or not
-        """
-        try:
-            schema = XMLSchemaLoader().get_schema(schema_type)
-            LOG.info(f"{schema_type} schema loaded.")
-            return XMLValidator(schema, xml_content)
-
-        except (SchemaNotFoundException, XMLSchemaException) as error:
-            reason = f"{error} ({schema_type})"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-    async def _execute_action(self, req: Request, schema: str, content: str, action: str, filename: str) -> Dict:
-        """Complete the command in the action set of the submission file.
-
-        Only "add/modify/validate" actions are supported.
-
-        :param req: Multipart POST request
-        :param schema: Schema type of the object in question
-        :param content: Metadata object referred to in submission
-        :param action: Type of action to be done
-        :param filename: Name of file being processed
-        :raises: HTTPBadRequest if an incorrect or non-supported action is called
-        :returns: Dict containing specific action that was completed
-        """
-        if action == "add":
-            return await self._execute_action_add(req, schema, content, filename)
-
-        elif action == "modify":
-            return await self._execute_action_modify(req, schema, content, filename)
-
-        elif action == "validate":
-            validator = await self._perform_validation(schema, content)
-            return ujson.loads(validator.resp_body)
-
-        else:
-            reason = f"Action {action} in XML is not supported."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-    async def _execute_action_add(self, req: Request, schema: str, content: str, filename: str) -> Dict:
-        """Complete the add action.
-
-        :param req: Multipart POST request
-        :param schema: Schema type of the object in question
-        :param content: Metadata object referred to in submission
-        :param filename: Name of file being processed
-        :raises: HTTPBadRequest if an incorrect or non-supported action is called
-        :returns: Dict containing specific action that was completed
-        """
-        _allowed_doi = {"study", "dataset"}
+        submission_id = req.match_info["submissionId"]
         db_client = req.app["db_client"]
-        folder_op = FolderOperator(db_client)
+        operator = SubmissionOperator(db_client)
+        metax_handler = MetaxServiceHandler(req)
 
-        folder_id = req.query.get("folder", "")
-        if not folder_id:
-            reason = "Folder is required query parameter. Please provide folder id where object is added to."
-            raise web.HTTPBadRequest(reason=reason)
+        await operator.check_submission_exists(submission_id)
 
-        # we need to check if there is already a study in a folder
-        # we only allow one study per folder
-        # this is not enough to catch duplicate entries if updates happen in parallel
-        # that is why we check in db_service.update_study
-        if not req.path.startswith("/drafts") and schema == "study":
-            _ids = await folder_op.get_collection_objects(folder_id, schema)
-            if len(_ids) == 1:
-                reason = "Only one study is allowed per submission."
-                raise web.HTTPBadRequest(reason=reason)
+        await self._handle_check_ownership(req, "submissions", submission_id)
 
-        json_data = await XMLOperator(db_client).create_metadata_object(schema, content)
+        submission = await operator.read_submission(submission_id)
 
-        result = {
-            "accessionId": json_data["accessionId"],
-            "schema": schema,
-        }
-        LOG.debug(f"added some content in {schema} ...")
+        # we first try to publish the DOI before actually publishing the submission
+        obj_ops = Operator(db_client)
+        study, datasets, metax_ids = await self._prepare_doi_update(req, obj_ops, submission)
 
-        # Gathering data for object to be added to folder
-        patch = self._prepare_folder_patch_new_object(schema, [(json_data, filename)], "xml")
-        await folder_op.update_folder(folder_id, patch)
+        doi_ops = DOIHandler()
 
-        # Create draft dataset to Metax catalog
-        if schema in _allowed_doi:
-            await self.create_metax_dataset(req, schema, json_data)
+        datasets_patch = []
 
-        return result
+        await doi_ops.set_state(study)
 
-    async def _execute_action_modify(self, req: Request, schema: str, content: str, filename: str) -> Dict:
-        """Complete the modify action.
+        for ds in datasets:
+            await doi_ops.set_state(ds)
+            patch_ds = {
+                "op": "add",
+                "path": "/extraInfo/datasetIdentifiers/-",
+                "value": {
+                    "identifier": {
+                        "identifierType": "DOI",
+                        "doi": ds["id"],
+                    },
+                    "url": ds["attributes"]["url"],
+                    "types": ds["attributes"]["types"],
+                },
+            }
+            datasets_patch.append(patch_ds)
 
-        :param req: Multipart POST request
-        :param schema: Schema type of the object in question
-        :param content: Metadata object referred to in submission
-        :param filename: Name of file being processed
-        :raises: HTTPBadRequest if an incorrect or non-supported action is called
-        :returns: Dict containing specific action that was completed
+        # Create draft DOI ??? and delete draft objects from the submission
+        for obj in submission["drafts"]:
+            await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
+
+        # update study to metax with data comming from doi info
+        await metax_handler.update_dataset_with_doi_info(submission["doiInfo"], metax_ids)
+        await metax_handler.publish_dataset(metax_ids)
+
+        # Patch the submission into a published state
+        _now = int(datetime.now().timestamp())
+        patch = [
+            {"op": "replace", "path": "/published", "value": True},
+            {"op": "replace", "path": "/drafts", "value": []},
+            {"op": "add", "path": "/datePublished", "value": _now},
+            # when we publish the last modified date corresponds to the published date
+            {"op": "replace", "path": "/lastModified", "value": _now},
+            {"op": "add", "path": "/extraInfo/publisher", "value": doi_config["publisher"]},
+            {"op": "add", "path": "/extraInfo/publicationYear", "value": date.today().year},
+            {
+                "op": "add",
+                "path": "/extraInfo/studyIdentifier",
+                "value": {
+                    "identifier": {
+                        "identifierType": "DOI",
+                        "doi": study["id"],
+                    },
+                    "url": study["attributes"]["url"],
+                    "types": study["attributes"]["types"],
+                },
+            },
+        ]
+        patch.extend(datasets_patch)
+        new_submission = await operator.update_submission(submission_id, patch)
+
+        body = ujson.dumps({"submissionId": new_submission}, escape_forward_slashes=False)
+        LOG.info(f"Patching submission with ID {new_submission} was successful.")
+        return web.Response(body=body, status=200, content_type="application/json")
+
+    async def delete_submission(self, req: Request) -> web.HTTPNoContent:
+        """Delete object submission from database.
+
+        :param req: DELETE request
+        :returns: HTTP No Content response
         """
-        _allowed_doi = {"study", "dataset"}
+        await aiohttp_session.get_session(req)
+
+        submission_id = req.match_info["submissionId"]
         db_client = req.app["db_client"]
-        folder_op = FolderOperator(db_client)
-        operator = Operator(db_client)
-        data_as_json = XMLToJSONParser().parse(schema, content)
-        if "accessionId" in data_as_json:
-            accession_id = data_as_json["accessionId"]
-        else:
-            alias = data_as_json["alias"]
-            query = MultiDictProxy(MultiDict([("alias", alias)]))
-            data, _, _, _ = await operator.query_metadata_database(schema, query, 1, 1, [])
-            if len(data) > 1:
-                reason = "Alias in provided XML file corresponds with more than one existing metadata object."
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
-            accession_id = data[0]["accessionId"]
-        data_as_json.pop("accessionId", None)
-        result = {
-            # should here be replace_metadata_object ??
-            "accessionId": await operator.update_metadata_object(schema, accession_id, data_as_json),
-            "schema": schema,
-        }
+        operator = SubmissionOperator(db_client)
 
-        exists, folder_id, published = await folder_op.check_object_in_folder(schema, result["accessionId"])
-        if exists:
-            if published:
-                reason = "Published objects cannot be updated."
-                LOG.error(reason)
-                raise web.HTTPUnauthorized(reason=reason)
+        await operator.check_submission_exists(submission_id)
+        await operator.check_submission_published(submission_id)
 
-        # If there's changed title it will be updated to folder
-        try:
-            _ = data_as_json["descriptor"]["studyTitle"] if schema == "study" else data_as_json["title"]
-            # should we overwrite filename as it is the name of file with partial update data
-            patch = self._prepare_folder_patch_update_object(schema, data_as_json, filename)
-            await folder_op.update_folder(folder_id, patch)
-        except (TypeError, KeyError):
-            pass
+        await self._handle_check_ownership(req, "submissions", submission_id)
 
-        # Update draft dataset to Metax catalog
-        if schema in _allowed_doi:
-            object_data, _ = await operator.read_metadata_object(schema, accession_id)
-            # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
-            if isinstance(object_data, Dict):
-                await MetaxServiceHandler(req).update_draft_dataset(schema, object_data)
-            else:
-                raise ValueError("Object's data must be dictionary")
+        obj_ops = Operator(db_client)
 
-        LOG.debug(f"modified some content in {schema} ...")
-        return result
+        submission = await operator.read_submission(submission_id)
+
+        for obj in submission["drafts"] + submission["metadataObjects"]:
+            await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
+
+        _submission_id = await operator.delete_submission(submission_id)
+
+        LOG.info(f"DELETE submission with ID {_submission_id} was successful.")
+        return web.HTTPNoContent()
+
+    async def put_submission_doi(self, req: Request) -> Response:
+        """Put or replace DOI metadata to a submission.
+
+        :param req: PUT request with DOI schema in the body
+        :returns: HTTP No Content response
+        """
+        submission_id = req.match_info["submissionId"]
+        db_client = req.app["db_client"]
+        operator = SubmissionOperator(db_client)
+
+        await operator.check_submission_exists(submission_id)
+        await self._handle_check_ownership(req, "submissions", submission_id)
+
+        submission = await operator.read_submission(submission_id)
+        doi_info = await self._get_data(req)
+        submission["doiInfo"] = doi_info
+        JSONValidator(submission, "submissions").validate
+
+        op = "add"
+        if "doiInfo" in submission:
+            op = "replace"
+        patch = [
+            {"op": op, "path": "/doiInfo", "value": doi_info},
+        ]
+        upd_submission = await operator.update_submission(submission_id, patch)
+
+        body = ujson.dumps({"submissionId": upd_submission}, escape_forward_slashes=False)
+        LOG.info(f"PUT submission with ID {submission_id} was successful.")
+        return web.Response(body=body, status=200, content_type="application/json")

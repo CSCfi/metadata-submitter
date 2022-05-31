@@ -137,6 +137,9 @@ query_map = {
 # 4) Set frontend folder to be inside metadata_backend modules root
 frontend_static_files = Path(__file__).parent.parent / "frontend"
 
+# 4.1) Path to swagger HTML file
+swagger_static_path = Path(__file__).parent.parent / "swagger" / "index.html"
+
 
 # 5) Set up configurations for AAI server
 

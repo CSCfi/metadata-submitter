@@ -1,8 +1,20 @@
 aiofiles  # to run integration tests
+authlib
+bandit
 black
 certifi
 flake8
+honcho  # Runs Procfile
 mypy
 pip-tools  # pip depedencies management
 pre-commit
+pyspelling
+pytest
+pytest-cov
+PyYAML  # for building swagger html
+sphinx
+sphinx_rtd_theme
 tox
+types-python-dateutil
+types-requests
+types-ujson

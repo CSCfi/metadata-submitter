@@ -1,6 +1,5 @@
 """Operators for handling database-related operations."""
 import re
-import time
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -24,7 +23,7 @@ class BaseOperator(ABC):
     """Base class for operators, implements shared functionality.
 
     This BaseOperator is mainly addressed for working with objects owned by
-    a user and that are clustered by folder.
+    a user and that are clustered by submission.
     :param ABC: The abstract base class
     """
 
@@ -668,8 +667,8 @@ class XMLOperator(BaseOperator):
         return data_raw["content"]
 
 
-class FolderOperator:
-    """Operator class for handling database operations of folders.
+class SubmissionOperator:
+    """Operator class for handling database operations of submissions.
 
     Operations are implemented with JSON format.
     """
@@ -683,118 +682,122 @@ class FolderOperator:
         """
         self.db_service = DBService(mongo_database, db_client)
 
-    async def get_folder_project(self, folder_id: str) -> str:
-        """Get the project ID the folder is associated to.
+    async def get_submission_project(self, submission_id: str) -> str:
+        """Get the project ID the submission is associated to.
 
-        :param folder_id: internal accession ID of folder
-        :returns: project ID folder is associated to
+        :param submission_id: internal accession ID of submission
+        :returns: project ID submission is associated to
         """
         try:
-            folder_cursor = self.db_service.query("folder", {"folderId": folder_id})
-            folders = [folder async for folder in folder_cursor]
+            submission_cursor = self.db_service.query("submission", {"submissionId": submission_id})
+            submissions = [submission async for submission in submission_cursor]
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting folder: {error}"
+            reason = f"Error happened while getting submission: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        if len(folders) == 1:
+        if len(submissions) == 1:
             try:
-                return folders[0]["projectId"]
+                return submissions[0]["projectId"]
             except KeyError as error:
-                # This should not be possible and should never happen, if the folder was created properly
-                reason = f"folder {folder_id} does not have an associated project, err={error}"
+                # This should not be possible and should never happen, if the submission was created properly
+                reason = f"submission {submission_id} does not have an associated project, err={error}"
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
         else:
-            reason = f"folder {folder_id} not found"
+            reason = f"submission {submission_id} not found"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-    async def check_object_in_folder(self, collection: str, accession_id: str) -> Tuple[bool, str, bool]:
-        """Check a object/draft is in a folder.
+    async def check_object_in_submission(self, collection: str, accession_id: str) -> Tuple[bool, str, bool]:
+        """Check a object/draft is in a submission.
 
         :param collection: collection it belongs to, it would be used as path
         :param accession_id: document by accession_id
-        :raises: HTTPUnprocessableEntity if error occurs during the process and object in more than 1 folder
-        :returns: Tuple with True for the check, folder id and if published or not
+        :raises: HTTPUnprocessableEntity if error occurs during the process and object in more than 1 submission
+        :returns: Tuple with True for the check, submission id and if published or not
         """
         try:
-            folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
+            submission_path = "drafts" if collection.startswith("draft") else "metadataObjects"
 
-            folder_cursor = self.db_service.query(
-                "folder", {folder_path: {"$elemMatch": {"accessionId": accession_id, "schema": collection}}}
+            submission_cursor = self.db_service.query(
+                "submission", {submission_path: {"$elemMatch": {"accessionId": accession_id, "schema": collection}}}
             )
-            folder_check = [folder async for folder in folder_cursor]
+            submission_check = [submission async for submission in submission_cursor]
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while checking object in folder: {error}"
+            reason = f"Error happened while checking object in submission: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        if len(folder_check) == 0:
-            LOG.info(f"doc {accession_id} belongs to no folder something is off")
+        if len(submission_check) == 0:
+            LOG.info(f"doc {accession_id} belongs to no submission something is off")
             return False, "", False
-        elif len(folder_check) > 1:
-            reason = f"The {accession_id} is in more than 1 folder."
+        elif len(submission_check) > 1:
+            reason = f"The {accession_id} is in more than 1 submission."
             LOG.error(reason)
             raise web.HTTPUnprocessableEntity(reason=reason)
         else:
-            folder_id = folder_check[0]["folderId"]
-            LOG.info(f"found doc {accession_id} in {folder_id}")
-            return True, folder_id, folder_check[0]["published"]
+            submission_id = submission_check[0]["submissionId"]
+            LOG.info(f"found doc {accession_id} in {submission_id}")
+            return True, submission_id, submission_check[0]["published"]
 
-    async def get_collection_objects(self, folder_id: str, collection: str) -> List:
+    async def get_collection_objects(self, submission_id: str, collection: str) -> List:
         """List objects ids per collection.
 
         :param collection: collection it belongs to, it would be used as path
         :returns: List of objects
         """
         try:
-            folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
+            submission_path = "drafts" if collection.startswith("draft") else "metadataObjects"
 
-            folder_cursor = self.db_service.query(
-                "folder", {"$and": [{folder_path: {"$elemMatch": {"schema": collection}}}, {"folderId": folder_id}]}
+            submission_cursor = self.db_service.query(
+                "submission",
+                {"$and": [{submission_path: {"$elemMatch": {"schema": collection}}}, {"submissionId": submission_id}]},
             )
-            folders = [folder async for folder in folder_cursor]
+            submissions = [submission async for submission in submission_cursor]
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting collection objects: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        if len(folders) >= 1:
-            return [i["accessionId"] for i in folders[0][folder_path]]
+        if len(submissions) >= 1:
+            return [i["accessionId"] for i in submissions[0][submission_path]]
         else:
             return []
 
-    async def create_folder(self, data: Dict) -> str:
-        """Create new object folder to database.
+    async def create_submission(self, data: Dict) -> str:
+        """Create new object submission to database.
 
         :param data: Data to be saved to database
         :raises: HTTPBadRequest if error occurs during the process of insert
-        :returns: Folder id for the folder inserted to database
+        :returns: Submission id for the submission inserted to database
         """
-        folder_id = self._generate_folder_id()
-        data["folderId"] = folder_id
+        submission_id = self._generate_submission_id()
+        _now = int(datetime.now().timestamp())
+        data["submissionId"] = submission_id
         data["text_name"] = " ".join(re.split("[\\W_]", data["name"]))
         data["published"] = False
-        data["dateCreated"] = int(time.time())
+        data["dateCreated"] = _now
+        # when we create a submission the last modified should correspond to dateCreated
+        data["lastModified"] = _now
         data["metadataObjects"] = data["metadataObjects"] if "metadataObjects" in data else []
         data["drafts"] = data["drafts"] if "drafts" in data else []
         try:
-            insert_success = await self.db_service.create("folder", data)
+            insert_success = await self.db_service.create("submission", data)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while inserting folder: {error}"
+            reason = f"Error happened while inserting submission: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
         if not insert_success:
-            reason = "Inserting folder to database failed for some reason."
+            reason = "Inserting submission to database failed for some reason."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         else:
-            LOG.info(f"Inserting folder with id {folder_id} to database succeeded.")
-            return folder_id
+            LOG.info(f"Inserting submission with id {submission_id} to database succeeded.")
+            return submission_id
 
-    async def query_folders(
+    async def query_submissions(
         self, query: Dict, page_num: int, page_size: int, sort_param: Optional[dict] = None
     ) -> Tuple[List, int]:
         """Query database based on url query parameters.
@@ -809,10 +812,12 @@ class FolderOperator:
 
         if not sort_param:
             sort = {"dateCreated": -1}
-        elif sort_param["score"] and not sort_param["date"]:
+        elif sort_param["score"] and not sort_param["date"] and not sort_param["modified"]:
             sort = {"score": {"$meta": "textScore"}, "dateCreated": -1}  # type: ignore
         elif sort_param["score"] and sort_param["date"]:
             sort = {"dateCreated": -1, "score": {"$meta": "textScore"}}  # type: ignore
+        elif sort_param["score"] and sort_param["modified"]:
+            sort = {"lastModified": -1, "score": {"$meta": "textScore"}}  # type: ignore
         else:
             sort = {"dateCreated": -1}
 
@@ -823,7 +828,7 @@ class FolderOperator:
             {"$limit": page_size},
             {"$project": {"_id": 0, "text_name": 0}},
         ]
-        data_raw = await self.db_service.do_aggregate("folder", _query)
+        data_raw = await self.db_service.do_aggregate("submission", _query)
 
         if not data_raw:
             data = []
@@ -831,135 +836,135 @@ class FolderOperator:
             data = [doc for doc in data_raw]
 
         count_query = [{"$match": query}, {"$count": "total"}]
-        total_folders = await self.db_service.do_aggregate("folder", count_query)
+        total_submissions = await self.db_service.do_aggregate("submission", count_query)
 
-        if not total_folders:
-            total_folders = [{"total": 0}]
+        if not total_submissions:
+            total_submissions = [{"total": 0}]
 
-        return data, total_folders[0]["total"]
+        return data, total_submissions[0]["total"]
 
-    async def read_folder(self, folder_id: str) -> Dict:
-        """Read object folder from database.
+    async def read_submission(self, submission_id: str) -> Dict:
+        """Read object submission from database.
 
-        :param folder_id: Folder ID of the object to read
+        :param submission_id: Submission ID of the object to read
         :raises: HTTPBadRequest if reading was not successful
-        :returns: Object folder formatted to JSON
+        :returns: Object submission formatted to JSON
         """
         try:
-            folder = await self.db_service.read("folder", folder_id)
+            submission = await self.db_service.read("submission", submission_id)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting folder: {error}"
+            reason = f"Error happened while getting submission: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        return folder
+        return submission
 
-    async def update_folder(self, folder_id: str, patch: List, schema: str = "") -> str:
-        """Update object folder from database.
+    async def update_submission(self, submission_id: str, patch: List, schema: str = "") -> str:
+        """Update object submission from database.
 
         Utilizes JSON Patch operations specified at: http://jsonpatch.com/
 
-        :param folder_id: ID of folder to update
+        :param submission_id: ID of submission to update
         :param patch: JSON Patch operations determined in the request
         :raises: HTTPBadRequest if updating was not successful
-        :returns: Folder Id updated to database
+        :returns: ID of the submission updated to database
         """
         try:
             if schema == "study":
-                update_success = await self.db_service.update_study("folder", folder_id, patch)
+                update_success = await self.db_service.update_study("submission", submission_id, patch)
             else:
-                update_success = await self.db_service.patch("folder", folder_id, patch)
+                update_success = await self.db_service.patch("submission", submission_id, patch)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while updating folder: {error}"
+            reason = f"Error happened while updating submission: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
         if not update_success:
             if schema == "study":
-                reason = "Either there was a request to add another study to a folders or annother error occurred."
+                reason = "Either there was a request to add another study to a submissions or annother error occurred."
             else:
-                reason = "Updating folder to database failed for some reason."
+                reason = "Updating submission to database failed for some reason."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         else:
-            LOG.info(f"Updating folder with id {folder_id} to database succeeded.")
-            return folder_id
+            LOG.info(f"Updating submission with id {submission_id} to database succeeded.")
+            return submission_id
 
-    async def remove_object(self, folder_id: str, collection: str, accession_id: str) -> None:
-        """Remove object from folders in the database.
+    async def remove_object(self, submission_id: str, collection: str, accession_id: str) -> None:
+        """Remove object from submissions in the database.
 
-        :param folder_id: ID of folder to update
+        :param submission_id: ID of submission to update
         :param accession_id: ID of object to remove
         :param collection: collection where to remove the id from
         :raises: HTTPBadRequest if db connection fails
         :returns: None
         """
         try:
-            folder_path = "drafts" if collection.startswith("draft") else "metadataObjects"
-            upd_content = {folder_path: {"accessionId": accession_id}}
-            await self.db_service.remove("folder", folder_id, upd_content)
+            submission_path = "drafts" if collection.startswith("draft") else "metadataObjects"
+            upd_content = {submission_path: {"accessionId": accession_id}}
+            await self.db_service.remove("submission", submission_id, upd_content)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while removing object from folder: {error}"
+            reason = f"Error happened while removing object from submission: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        LOG.info(f"Removing object {accession_id} from {folder_id} succeeded.")
+        LOG.info(f"Removing object {accession_id} from {submission_id} succeeded.")
 
-    async def delete_folder(self, folder_id: str) -> Union[str, None]:
-        """Delete object folder from database.
+    async def delete_submission(self, submission_id: str) -> Union[str, None]:
+        """Delete object submission from database.
 
-        :param folder_id: ID of the folder to delete.
+        :param submission_id: ID of the submission to delete.
         :raises: HTTPBadRequest if deleting was not successful
-        :returns: Folder Id deleted from database
+        :returns: ID of the submission deleted from database
         """
         try:
-            published = await self.db_service.published_folder(folder_id)
+            published = await self.db_service.published_submission(submission_id)
             if not published:
-                delete_success = await self.db_service.delete("folder", folder_id)
+                delete_success = await self.db_service.delete("submission", submission_id)
             else:
                 return None
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while deleting folder: {error}"
+            reason = f"Error happened while deleting submission: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         if not delete_success:
-            reason = f"Deleting for {folder_id} from database failed."
+            reason = f"Deleting for {submission_id} from database failed."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         else:
-            LOG.info(f"Deleting folder with id {folder_id} to database succeeded.")
-            return folder_id
+            LOG.info(f"Deleting submission with id {submission_id} to database succeeded.")
+            return submission_id
 
-    async def check_folder_exists(self, folder_id: str) -> None:
-        """Check the existance of a folder by its id in the database.
+    async def check_submission_exists(self, submission_id: str) -> None:
+        """Check the existance of a submission by its id in the database.
 
-        :raises: HTTPNotFound if folder does not exist
+        :raises: HTTPNotFound if submission does not exist
         :returns: None
         """
-        exists = await self.db_service.exists("folder", folder_id)
+        exists = await self.db_service.exists("submission", submission_id)
         if not exists:
-            reason = f"Folder with id {folder_id} was not found."
+            reason = f"Submission with id {submission_id} was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
 
-    async def check_folder_published(self, folder_id: str) -> None:
-        """Check the existance of a folder by its id in the database.
+    async def check_submission_published(self, submission_id: str) -> None:
+        """Check the existance of a submission by its id in the database.
 
-        :raises: HTTPNotFound if folder does not exist
+        :raises: HTTPNotFound if submission does not exist
         :returns: None
         """
-        published = await self.db_service.published_folder(folder_id)
+        published = await self.db_service.published_submission(submission_id)
         if published:
-            reason = f"Folder with id {folder_id} is published and cannot be deleted."
+            reason = f"Submission with id {submission_id} is published and cannot be deleted."
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)
 
-    def _generate_folder_id(self) -> str:
-        """Generate random folder id.
+    def _generate_submission_id(self) -> str:
+        """Generate random submission id.
 
-        :returns: str with folder id
+        :returns: str with submission id
         """
         sequence = uuid4().hex
-        LOG.debug("Generated folder ID.")
+        LOG.debug("Generated submission ID.")
         return sequence
 
 
@@ -981,12 +986,12 @@ class UserOperator:
     async def check_user_has_doc(
         self, req: web.Request, collection: str, user_id: str, accession_id: str
     ) -> Tuple[bool, str]:
-        """Check a folder/template belongs to same project the user is in.
+        """Check a submission/template belongs to same project the user is in.
 
         :param collection: collection it belongs to, it would be used as path
         :param user_id: user_id from session
         :param accession_id: document by accession_id
-        :raises: HTTPUnprocessableEntity if more users seem to have same folder
+        :raises: HTTPUnprocessableEntity if more users seem to have same submission
         :returns: True and project_id if accession_id belongs to user, False otherwise
         """
         session = await aiohttp_session.get_session(req)
@@ -999,11 +1004,11 @@ class UserOperator:
         if collection.startswith("template"):
             object_operator = Operator(db_client)
             project_id = await object_operator.get_object_project(collection, accession_id)
-        elif collection == "folders":
-            folder_operator = FolderOperator(db_client)
-            project_id = await folder_operator.get_folder_project(accession_id)
+        elif collection == "submissions":
+            submission_operator = SubmissionOperator(db_client)
+            project_id = await submission_operator.get_submission_project(accession_id)
         else:
-            reason = f"collection must be folders or template, received {collection}"
+            reason = f"collection must be submissions or template, received {collection}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -1150,12 +1155,12 @@ class UserOperator:
     async def assign_objects(self, user_id: str, collection: str, object_ids: List) -> None:
         """Assing object to user.
 
-        An object can be folder(s) or templates(s).
+        An object can be submission(s) or templates(s).
 
         :param user_id: ID of user to update
         :param collection: collection where to remove the id from
-        :param object_ids: ID or list of IDs of folder(s) to assign
-        :raises: HTTPBadRequest if assigning templates/folders to user was not successful
+        :param object_ids: ID or list of IDs of submission(s) to assign
+        :raises: HTTPBadRequest if assigning templates/submissions to user was not successful
         returns: None
         """
         try:
@@ -1178,11 +1183,11 @@ class UserOperator:
     async def remove_objects(self, user_id: str, collection: str, object_ids: List) -> None:
         """Remove object from user.
 
-        An object can be folder(s) or template(s).
+        An object can be submission(s) or template(s).
 
         :param user_id: ID of user to update
         :param collection: collection where to remove the id from
-        :param object_ids: ID or list of IDs of folder(s) to remove
+        :param object_ids: ID or list of IDs of submission(s) to remove
         :raises: HTTPBadRequest if db connection fails
         returns: None
         """
@@ -1193,7 +1198,7 @@ class UserOperator:
                 if collection == "templates":
                     remove_content = {"templates": {"accessionId": obj}}
                 else:
-                    remove_content = {"folders": obj}
+                    remove_content = {"submissions": obj}
                 await self.db_service.remove("user", user_id, remove_content)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while removing objects from user: {error}"

@@ -12,23 +12,9 @@ from yarl import URL
 from ..helpers.logger import LOG
 from ..conf.conf import aai_config
 
+HTTP_ERROR_MESSAGE = "HTTP %r request to %r raised an HTTP %d exception."
 
 AiohttpHandler = Callable[[web.Request], Coroutine[Awaitable, Any, web.Response]]
-
-
-def _check_error_page_requested(req: Request, error_code: int) -> web.Response:  # type:ignore
-    """Return the correct error page with correct status code."""
-    if "Accept" in req.headers and req.headers["Accept"]:
-        if req.headers["Accept"].split(",")[0] in {"text/html", "application/xhtml+xml"}:
-            raise web.HTTPSeeOther(
-                f"/error{str(error_code)}",
-                headers={
-                    "Cache-Control": "no-cache, no-store, must-revalidate",
-                    "Pragma": "no-cache",
-                    "Expires": "0",
-                    "Location": f"/error{str(error_code)}",
-                },
-            )
 
 
 @middleware
@@ -40,36 +26,33 @@ async def http_error_handler(req: Request, handler: AiohttpHandler) -> Response:
     :raises: Reformatted HTTP Exceptions
     :returns: Successful requests unaffected
     """
+    c_type = "application/problem+json"
     try:
         response = await handler(req)
         return response
+    except (web.HTTPSuccessful, web.HTTPRedirection):
+        # Catches 200s and 300s
+        raise
     except web.HTTPError as error:
-        details = _json_exception(error.status, error, req.url)
-        LOG.error(details)
-        c_type = "application/problem+json"
-        if error.status == 400:
-            _check_error_page_requested(req, 400)
-            raise web.HTTPBadRequest(text=details, content_type=c_type)
-        elif error.status == 401:
-            _check_error_page_requested(req, 401)
-            raise web.HTTPUnauthorized(
-                headers={"WWW-Authenticate": 'OAuth realm="/", charset="UTF-8"'}, text=details, content_type=c_type
-            )
-        elif error.status == 403:
-            _check_error_page_requested(req, 403)
-            raise web.HTTPForbidden(text=details, content_type=c_type)
-        elif error.status == 404:
-            _check_error_page_requested(req, 404)
-            raise web.HTTPNotFound(text=details, content_type=c_type)
-        elif error.status == 415:
-            _check_error_page_requested(req, 400)
-            raise web.HTTPUnsupportedMediaType(text=details, content_type=c_type)
-        elif error.status == 422:
-            _check_error_page_requested(req, 400)
-            raise web.HTTPUnprocessableEntity(text=details, content_type=c_type)
+        # Catch 400s and 500s
+        LOG.info(HTTP_ERROR_MESSAGE, req.method, req.path, error.status)
+        problem = _json_problem(error, req.url)
+        LOG.debug("Response payload is %r", problem)
+
+        if error.status in {400, 401, 403, 404, 415, 422, 502, 504}:
+            error.content_type = c_type
+            error.text = problem
+            raise error
         else:
-            _check_error_page_requested(req, 500)
-            raise web.HTTPInternalServerError(text=details, content_type=c_type)
+            LOG.exception(HTTP_ERROR_MESSAGE + " This IS a bug.", req.method, req.path, error.status)
+            raise web.HTTPInternalServerError(text=problem, content_type=c_type)
+    except Exception:
+        # We don't expect any other errors, so we log it and return a nice message instead of letting server crash
+        LOG.exception("HTTP %r request to %r raised an unexpected exception. This IS a bug.", req.method, req.path)
+        exception = web.HTTPInternalServerError(reason="Server ran into an unexpected error", content_type=c_type)
+        problem = _json_problem(exception, req.url)
+        exception.text = problem
+        raise exception
 
 
 @middleware
@@ -88,11 +71,8 @@ async def check_session_at(
         "/aai",
         "/callback",
         "/static",
+        "/swagger",
         "/health",
-        "/error401",
-        "/error403",
-        "/error404",
-        "/error500",
     }
     try:
         session = await aiohttp_session.get_session(req)
@@ -121,24 +101,25 @@ async def check_session_at(
     return await handler(req)
 
 
-def _json_exception(status: int, exception: web.HTTPException, url: URL) -> str:
+def _json_problem(exception: web.HTTPError, url: URL, _type: str = "about:blank") -> str:
     """Convert an HTTP exception into a problem detailed JSON object.
 
     The problem details are in accordance with RFC 7807.
     (https://tools.ietf.org/html/rfc7807)
 
-    :param status: Status code of the HTTP exception
-    :param exception: Exception content
+    :param exception: an HTTPError exception
     :param url: Request URL that caused the exception
+    :param _type: Url to a document describing the error
     :returns: Problem detail JSON object as a string
     """
     body = ujson.dumps(
         {
-            "type": "about:blank",
-            # Replace type value above with an URL to
+            # Replace type value with an URL to
             # a custom error document when one exists
-            "title": HTTPStatus(status).phrase,
+            "type": _type,
+            "title": HTTPStatus(exception.status).phrase,
             "detail": exception.reason,
+            "status": exception.status,
             "instance": url.path,  # optional
         },
         escape_forward_slashes=False,
