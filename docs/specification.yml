@@ -1089,9 +1089,20 @@ paths:
       summary: Update information of an object submission.
       requestBody:
         content:
-          application/json-patch+json:
+          application/json:
             schema:
-              $ref: "#/components/schemas/JSONPatch"
+              type: object
+              description: JSON object containing a new 'name' and / or 'description'.
+              properties:
+                name:
+                  type: string
+                  description: Name of the submission.
+                  example: "Research project submission #2"
+                description:
+                  type: string
+                  description: A longer description of the submission.
+                  example: "As part of the research project we produced this submission with our initial research results."
+
       parameters:
         - name: submissionId
           in: path

@@ -1,9 +1,8 @@
 """Handle HTTP methods for server."""
-import re
 from datetime import date, datetime
 from distutils.util import strtobool
 from math import ceil
-from typing import Any, Dict, List, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 import ujson
 from aiohttp import web
@@ -277,64 +276,6 @@ class SubmissionAPIHandler(RESTAPIHandler):
 
         return (study, datasets, metax_ids)
 
-    def _check_patch_submission(self, patch_ops: Any) -> None:
-        """Check patch operations in request are valid.
-
-        We check that ``metadataObjects`` and ``drafts`` have ``_required_values``.
-        For tags we check that the ``submissionType`` takes either ``CSV``, ``XML`` or
-        ``Form`` as values.
-
-        :param patch_ops: JSON patch request
-        :raises: HTTPBadRequest if request does not fullfil one of requirements
-        :raises: HTTPUnauthorized if request tries to do anything else than add or replace
-        :returns: None
-        """
-        _required_paths = {"/name", "/description"}
-        _required_values = {"schema", "accessionId"}
-        _arrays = {"/metadataObjects/-", "/drafts/-", "/doiInfo"}
-        _tags = re.compile("^/(metadataObjects|drafts)/[0-9]*/(tags)$")
-
-        for op in patch_ops:
-            if _tags.match(op["path"]):
-                LOG.info(f"{op['op']} on tags in submission")
-                if "submissionType" in op["value"].keys() and op["value"]["submissionType"] not in {
-                    "XML",
-                    "CSV",
-                    "Form",
-                }:
-                    reason = "submissionType is restricted to either 'CSV', 'XML' or 'Form' values."
-                    LOG.error(reason)
-                    raise web.HTTPBadRequest(reason=reason)
-                pass
-            else:
-                if all(i not in op["path"] for i in set.union(_required_paths, _arrays)):
-                    reason = f"Request contains '{op['path']}' key that cannot be updated to submissions."
-                    LOG.error(reason)
-                    raise web.HTTPBadRequest(reason=reason)
-                if op["op"] in {"remove", "copy", "test", "move"}:
-                    reason = f"{op['op']} on {op['path']} is not allowed."
-                    LOG.error(reason)
-                    raise web.HTTPUnauthorized(reason=reason)
-                if op["op"] == "replace" and op["path"] in _arrays:
-                    reason = f"{op['op']} on {op['path']}; replacing all objects is not allowed."
-                    LOG.error(reason)
-                    raise web.HTTPUnauthorized(reason=reason)
-                if op["path"] in _arrays and op["path"] != "/doiInfo":
-                    _ops = op["value"] if isinstance(op["value"], list) else [op["value"]]
-                    for item in _ops:
-                        if not all(key in item.keys() for key in _required_values):
-                            reason = "accessionId and schema are required fields."
-                            LOG.error(reason)
-                            raise web.HTTPBadRequest(reason=reason)
-                        if (
-                            "tags" in item
-                            and "submissionType" in item["tags"]
-                            and item["tags"]["submissionType"] not in {"XML", "CSV", "Form"}
-                        ):
-                            reason = "submissionType is restricted to either 'XML' or 'Form' values."
-                            LOG.error(reason)
-                            raise web.HTTPBadRequest(reason=reason)
-
     async def get_submissions(self, req: Request) -> Response:
         """Get a set of submissions owned by the project with pagination values.
 
@@ -506,6 +447,8 @@ class SubmissionAPIHandler(RESTAPIHandler):
     async def patch_submission(self, req: Request) -> Response:
         """Update object submission with a specific submission id.
 
+        Submission only allows the 'name' and 'description' values to be patched.
+
         :param req: PATCH request
         :returns: JSON response containing submission ID for updated submission
         """
@@ -517,33 +460,26 @@ class SubmissionAPIHandler(RESTAPIHandler):
         await operator.check_submission_exists(submission_id)
 
         # Check patch operations in request are valid
-        # we expect a list for patching
-        patch_ops = await self._get_data(req)
-        if isinstance(patch_ops, list):
-            pass
-        else:
-            reason = "Patch submission operations should be provided as list"
+        data = await self._get_data(req)
+        if not isinstance(data, dict):
+            reason = "Patch submission operation should be provided as a JSON object"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        self._check_patch_submission(patch_ops)
 
-        # Validate against submissions schema if DOI is being added
-        for op in patch_ops:
-            if op["path"] == "/doiInfo":
-                curr_submission = await operator.read_submission(submission_id)
-                curr_submission["doiInfo"] = op["value"]
-                JSONValidator(curr_submission, "submissions").validate
-
+        patch_ops = []
+        for key, value in data.items():
+            if key not in {"name", "description"}:
+                reason = f"Patch submission operation only accept the fields 'name', or 'description'. Provided '{key}'"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+            patch_ops.append({"op": "replace", "path": f"/{key}", "value": value})
         # we update the submission last modified date
         _now = int(datetime.now().timestamp())
-        lastModified = {"op": "replace", "path": "/lastModified", "value": _now}
-        patch_ops.append(lastModified)
+        patch_ops.append({"op": "replace", "path": "/lastModified", "value": _now})
 
         await self._handle_check_ownership(req, "submissions", submission_id)
 
-        upd_submission = await operator.update_submission(
-            submission_id, patch_ops if isinstance(patch_ops, list) else [patch_ops]
-        )
+        upd_submission = await operator.update_submission(submission_id, patch_ops)
 
         body = ujson.dumps({"submissionId": upd_submission}, escape_forward_slashes=False)
         LOG.info(f"PATCH submission with ID {upd_submission} was successful.")

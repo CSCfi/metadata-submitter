@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - env vars `MONGO_SSL_CLIENT_KEY` and `MONGO_SSL_CLIENT_CERT` are replaced with `MONGO_SSL_CLIENT_CERT_KEY`
 - Refactor **folder** to **submission** #411
 - HTTPError exceptions return a response with JSON Problem instead of an HTML page #382
+- HTTP PATCH for submissions has changed to only accept 'name' and 'description' in a flat JSON object.
 
 ### Removed
 
