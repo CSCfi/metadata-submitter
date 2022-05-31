@@ -7,7 +7,6 @@ from unittest.mock import patch
 
 from aiohttp import web
 from aiohttp.test_utils import AioHTTPTestCase
-
 from metadata_backend.server import init, main
 
 
@@ -39,7 +38,17 @@ class AppTestCase(AioHTTPTestCase):
         self.assertIs(type(server), web.Application)
 
     async def test_api_routes_are_set(self):
-        """Test correct amount of api (no frontend) routes is set."""
+        """Test correct amount of api (no frontend) routes is set.
+
+        routes considered to be separate are eg.:
+        - /submissions
+        - /submissions/{submissionId}
+        - /submissions/{submissionId}/doi
+
+        NOTE: If there's swagger or frontend folder generated in metadata_backend
+        tests will see 22 or 23 routes
+
+        """
         server = await self.get_application()
         self.assertIs(len(server.router.resources()), 21)
 
