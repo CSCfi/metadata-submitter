@@ -103,7 +103,25 @@
     "description": {
       "title": "BP Image",
       "detail": "A BP image object captures image objects.",
-      "url": "https://github.com/imi-bigpicture/metadata-schema/blob/968589ba6a340f9355f6187b863eabad136ec4c4/src/BP.image.xsd"
+      "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.1.0/src/BP.image.xsd"
+    },
+    "provider": "BP"
+  },
+  "bp_ds": {
+    "priority": 13,
+    "description": {
+      "title": "BP Dataset",
+      "detail": "A BP dataset.",
+      "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.1.0/src/BP.dataset.xsd"
+    },
+    "provider": "BP"
+  },
+  "bp_smpl": {
+    "priority": 14,
+    "description": {
+      "title": "BP Sample",
+      "detail": "A BP sample.",
+      "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.1.0/src/BP.sample.xsd"
     },
     "provider": "BP"
   }

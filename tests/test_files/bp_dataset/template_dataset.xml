@@ -1,0 +1,32 @@
+<BPDATASETS>
+    <BPDATASET alias="Dataset_odnXEZzppl">
+        <DESCRIPTION>text</DESCRIPTION>
+        <DATASET_TYPE>Whole slide imaging</DATASET_TYPE>
+        <POLICY_REF refname="Policy_xctDgqiJNf"/>
+        <DATASET_TYPE>Whole slide imaging</DATASET_TYPE>
+        <IMAGE_REF refname="Image_uZrcjFyPzz"/>
+        <IMAGE_REF refname="Image_JZWIbOQazz"/>
+        <ATTRIBUTES>
+            <ATTRIBUTE>
+                <TAG>description</TAG>
+                <VALUE>text</VALUE>
+            </ATTRIBUTE>
+            <ATTRIBUTE>
+                <TAG>version</TAG>
+                <VALUE>1</VALUE>
+            </ATTRIBUTE>
+            <ATTRIBUTE>
+                <TAG>metadata_standard</TAG>
+                <VALUE>MSMdad_v0.1.0</VALUE>
+            </ATTRIBUTE>
+            <ATTRIBUTE>
+                <TAG>ethical_approval</TAG>
+                <VALUE>ethical approval</VALUE>
+            </ATTRIBUTE>
+            <ATTRIBUTE>
+                <TAG>contains_personal_data</TAG>
+                <VALUE>False</VALUE>
+            </ATTRIBUTE>
+        </ATTRIBUTES>
+    </BPDATASET>
+</BPDATASETS>
