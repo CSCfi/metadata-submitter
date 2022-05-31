@@ -18,6 +18,9 @@ fi
 if ! command -v pyspelling > /dev/null 2>&1; then
     echo "pyspelling not installed, not running as pre-commit hook"
     exit 0
+elif ! aspell -v > /dev/null 2>&1; then
+    echo "aspell is not installed, not running as pre-commit hook"
+    exit 0
 fi
 
 echo "Running pyspelling as a pre-commit hook"
