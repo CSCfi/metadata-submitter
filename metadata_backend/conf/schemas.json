@@ -98,12 +98,12 @@
     },
     "provider": "Datacite"
   },
-  "bp_image": {
+  "image": {
     "priority": 12,
     "description": {
       "title": "BP Image",
       "detail": "A BP image object captures image objects.",
-      "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.1.0/src/BP.image.xsd"
+      "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.1.1/src/BP.image.xsd"
     },
     "provider": "BP"
   },
@@ -112,7 +112,7 @@
     "description": {
       "title": "BP Dataset",
       "detail": "A BP dataset.",
-      "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.1.0/src/BP.dataset.xsd"
+      "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.1.1/src/BP.dataset.xsd"
     },
     "provider": "BP"
   },
@@ -121,7 +121,7 @@
     "description": {
       "title": "BP Sample",
       "detail": "A BP sample.",
-      "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.1.0/src/BP.sample.xsd"
+      "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.1.1/src/BP.sample.xsd"
     },
     "provider": "BP"
   }
