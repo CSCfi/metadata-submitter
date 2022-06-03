@@ -116,6 +116,8 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         await self._handle_check_ownership(req, "submissions", submission_id)
 
+        await MetaxServiceHandler(req).check_connection()
+
         self._check_schema_exists(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
 
@@ -229,6 +231,9 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         await self._handle_check_ownership(req, collection, accession_id)
 
+        metax_handler = MetaxServiceHandler(req)
+        await metax_handler.check_connection()
+
         submission_op = SubmissionOperator(db_client)
         exists, submission_id, published = await submission_op.check_object_in_submission(collection, accession_id)
         if exists:
@@ -261,7 +266,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         # Delete draft dataset from Metax catalog
         if collection in _allowed_doi:
-            await MetaxServiceHandler(req).delete_draft_dataset(metax_id)
+            await metax_handler.delete_draft_dataset(metax_id)
             doi_service = DOIHandler()
             await doi_service.delete(doi_id)
 
@@ -306,6 +311,9 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         await self._handle_check_ownership(req, collection, accession_id)
 
+        metax_handler = MetaxServiceHandler(req)
+        await metax_handler.check_connection()
+
         submission_op = SubmissionOperator(db_client)
         exists, submission_id, published = await submission_op.check_object_in_submission(collection, accession_id)
         if exists:
@@ -321,7 +329,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         # Update draft dataset to Metax catalog
         if collection in _allowed_doi:
             if data.get("metaxIdentifier", None):
-                await MetaxServiceHandler(req).update_draft_dataset(collection, data)
+                await metax_handler.update_draft_dataset(collection, data)
             else:
                 await self.create_metax_dataset(req, collection, data, create_draft_doi=False)
 
@@ -358,6 +366,9 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         await self._handle_check_ownership(req, collection, accession_id)
 
+        metax_handler = MetaxServiceHandler(req)
+        await metax_handler.check_connection()
+
         submission_op = SubmissionOperator(db_client)
         exists, submission_id, published = await submission_op.check_object_in_submission(collection, accession_id)
         if exists:
@@ -382,7 +393,7 @@ class ObjectAPIHandler(RESTAPIHandler):
             # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
             if isinstance(object_data, Dict):
                 if object_data.get("metaxIdentifier", None):
-                    await MetaxServiceHandler(req).update_draft_dataset(collection, object_data)
+                    await metax_handler.update_draft_dataset(collection, object_data)
                 else:
                     await self.create_metax_dataset(req, collection, object_data, create_draft_doi=False)
             else:

@@ -114,6 +114,15 @@ class MetaxServiceHandler:
         metadata_provider_user = user["externalId"]
         return metadata_provider_user
 
+    async def check_connection(self, timeout: int = 2) -> None:
+        """Check connection for Metax server.
+
+        The request should raise exceptions if it fails, and interrupt code execution.
+
+        :param timeout: Request operations timeout
+        """
+        await self._request(method="HEAD", url=self.metax_url, timeout=2)
+
     @retry(total_tries=5)
     async def _request(
         self,
@@ -122,7 +131,7 @@ class MetaxServiceHandler:
         metax_id: str = None,
         params: Union[str, dict] = None,
         json_data: Any = None,
-        timeout: int = 5,
+        timeout: int = 10,
     ) -> Union[str, dict]:
         """Request to Metax REST API.
 
@@ -134,7 +143,7 @@ class MetaxServiceHandler:
         :param timeout: Request timeout
         :returns: Response body parsed as JSON
         """
-        if method not in {"GET", "POST", "PUT", "DELETE", "PATCH"}:
+        if method not in {"HEAD", "GET", "POST", "PUT", "DELETE", "PATCH"}:
             message = f"{method} request to Metax is not supported."
             LOG.error(message)
             raise HTTPInternalServerError(reason=message)
@@ -273,6 +282,7 @@ class MetaxServiceHandler:
             f"Creating draft dataset to Metax service from Submitter {collection} with accession ID "
             f"{data['accessionId']}"
         )
+        await self.check_connection()
         metax_dataset = self.minimal_dataset_template
         metax_dataset["metadata_provider_user"] = await self.get_metadata_provider_user()
         if collection == "dataset":
@@ -305,6 +315,7 @@ class MetaxServiceHandler:
         :returns: Metax ID for dataset returned by Metax API
         """
         LOG.info(f"Updating {collection} object data to Metax service.")
+        await self.check_connection()
         metax_dataset = self.minimal_dataset_template
         metax_dataset["metadata_provider_user"] = await self.get_metadata_provider_user()
         if collection == "dataset":
