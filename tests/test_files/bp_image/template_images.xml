@@ -112,6 +112,8 @@
         <IMAGE_TYPE>
             <WSI_IMAGE>WSI</WSI_IMAGE>
         </IMAGE_TYPE>
+        <FILES>
+          <FILE filename="asdf" checksum_method="SHA256" checksum="asdf" filetype="dcm"/>
         <FILES/>
     </IMAGE>
     <IMAGE alias="Image_ReLyCtLAWo">
