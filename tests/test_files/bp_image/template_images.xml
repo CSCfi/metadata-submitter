@@ -1,5 +1,5 @@
 <IMAGE_SET>
-    <IMAGE alias="Image_uZrcjFyPzz">
+    <IMAGE alias="Image_tSQsAkvutz">
         <ATTRIBUTES>
             <ATTRIBUTE>
                 <TAG>acquisition_date_time</TAG>
@@ -35,14 +35,14 @@
                     <TAG>manufacturers_model_name</TAG>
                     <VALUE>PANNORAMIC 250 Flash III DX</VALUE>
                 </ATTRIBUTE>
-                <NUMERIC_ATTRIBUTE>
+                <ATTRIBUTE>
                     <TAG>device_serial_number</TAG>
                     <VALUE>nan</VALUE>
-                </NUMERIC_ATTRIBUTE>
-                <NUMERIC_ATTRIBUTE>
+                </ATTRIBUTE>
+                <ATTRIBUTE>
                     <TAG>software_versions</TAG>
-                    <VALUE>nan</VALUE>
-                </NUMERIC_ATTRIBUTE>
+                    <VALUE>2.1.1.100094</VALUE>
+                </ATTRIBUTE>
             </ATTRIBUTE_SET>
             <ATTRIBUTE_SET>
                 <TAG>imaging_setting</TAG>
@@ -50,10 +50,6 @@
                     <TAG>image_resolution</TAG>
                     <VALUE>0.242797397769517, 0.242797397769517</VALUE>
                 </ATTRIBUTE>
-                <NUMERIC_ATTRIBUTE>
-                    <TAG>depth_of_field</TAG>
-                    <VALUE>nan</VALUE>
-                </NUMERIC_ATTRIBUTE>
                 <ATTRIBUTE_SET>
                     <TAG>optical_paths</TAG>
                     <ATTRIBUTE>
@@ -118,7 +114,7 @@
         </IMAGE_TYPE>
         <FILES/>
     </IMAGE>
-    <IMAGE alias="Image_JZWIbOQazz">
+    <IMAGE alias="Image_ReLyCtLAWo">
         <ATTRIBUTES>
             <ATTRIBUTE>
                 <TAG>acquisition_date_time</TAG>
@@ -154,14 +150,14 @@
                     <TAG>manufacturers_model_name</TAG>
                     <VALUE>PANNORAMIC 250 Flash III DX</VALUE>
                 </ATTRIBUTE>
-                <NUMERIC_ATTRIBUTE>
+                <ATTRIBUTE>
                     <TAG>device_serial_number</TAG>
                     <VALUE>nan</VALUE>
-                </NUMERIC_ATTRIBUTE>
-                <NUMERIC_ATTRIBUTE>
+                </ATTRIBUTE>
+                <ATTRIBUTE>
                     <TAG>software_versions</TAG>
-                    <VALUE>nan</VALUE>
-                </NUMERIC_ATTRIBUTE>
+                    <VALUE>2.1.1.100094</VALUE>
+                </ATTRIBUTE>
             </ATTRIBUTE_SET>
             <ATTRIBUTE_SET>
                 <TAG>imaging_setting</TAG>
@@ -169,10 +165,6 @@
                     <TAG>image_resolution</TAG>
                     <VALUE>0.242797397769517, 0.242797397769517</VALUE>
                 </ATTRIBUTE>
-                <NUMERIC_ATTRIBUTE>
-                    <TAG>depth_of_field</TAG>
-                    <VALUE>nan</VALUE>
-                </NUMERIC_ATTRIBUTE>
                 <ATTRIBUTE_SET>
                     <TAG>optical_paths</TAG>
                     <ATTRIBUTE>

@@ -1,16 +1,6 @@
 <BPDATASETS>
-    <BPDATASET alias="Dataset_odnXEZzppl">
-        <DESCRIPTION>text</DESCRIPTION>
-        <DATASET_TYPE>Whole slide imaging</DATASET_TYPE>
-        <POLICY_REF refname="Policy_xctDgqiJNf"/>
-        <DATASET_TYPE>Whole slide imaging</DATASET_TYPE>
-        <IMAGE_REF refname="Image_uZrcjFyPzz"/>
-        <IMAGE_REF refname="Image_JZWIbOQazz"/>
+    <BPDATASET alias="Dataset_QoRIPbAPlP">
         <ATTRIBUTES>
-            <ATTRIBUTE>
-                <TAG>description</TAG>
-                <VALUE>text</VALUE>
-            </ATTRIBUTE>
             <ATTRIBUTE>
                 <TAG>version</TAG>
                 <VALUE>1</VALUE>
@@ -28,5 +18,11 @@
                 <VALUE>False</VALUE>
             </ATTRIBUTE>
         </ATTRIBUTES>
+        <TITLE>title</TITLE>
+        <DESCRIPTION>text</DESCRIPTION>
+        <DATASET_TYPE>Whole slide imaging</DATASET_TYPE>
+        <POLICY_REF refname="Policy_rvxRDmjYyo"/>
+        <IMAGE_REF refname="Image_tSQsAkvutz"/>
+        <IMAGE_REF refname="Image_ReLyCtLAWo"/>
     </BPDATASET>
 </BPDATASETS>
