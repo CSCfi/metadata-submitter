@@ -49,7 +49,7 @@ idna==3.3
     #   yarl
 importlib-resources==5.7.1
     # via jsonschema
-jsonschema==4.5.1
+jsonschema==4.6.0
     # via -r requirements.in
 motor==3.0.0
     # via -r requirements.in
