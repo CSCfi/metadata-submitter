@@ -154,7 +154,7 @@ soupsieve==2.3.2.post1
     # via
     #   beautifulsoup4
     #   pyspelling
-sphinx==5.0.0
+sphinx==5.0.1
     # via
     #   -r requirements-dev.in
     #   sphinx-rtd-theme
@@ -189,7 +189,7 @@ tox==3.25.0
     # via -r requirements-dev.in
 types-python-dateutil==2.8.17
     # via -r requirements-dev.in
-types-requests==2.27.29
+types-requests==2.27.30
     # via -r requirements-dev.in
 types-ujson==5.2.0
     # via -r requirements-dev.in
