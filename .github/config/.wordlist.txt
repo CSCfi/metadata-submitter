@@ -25,6 +25,7 @@ analysislinks
 analysisref
 analysistype
 annotinfo
+annotationref
 anonymized
 antibiogram
 api
@@ -59,6 +60,7 @@ bgiseq
 bibcode
 bihari
 biocollections
+biologicalbeing
 biome
 biomes
 bionano
@@ -93,6 +95,7 @@ clinvar
 cloneend
 codeql
 commonname
+complementsdatasetref
 computationalnotebook
 conf
 conferencepaper
@@ -145,6 +148,7 @@ datepublished
 datetype
 dbprobe
 dbvar
+dcm
 ddi
 ddialliance
 de
@@ -205,6 +209,7 @@ faroese
 fasta
 fastq
 fbtr
+filebase
 filename
 filetype
 flatfile
@@ -275,6 +280,11 @@ igbo
 igsn
 iix
 illumina
+imagefile
+imagefiletype
+imageof
+imageref
+imagetype
 ini
 insdc
 interactiveresource
@@ -324,12 +334,14 @@ linux
 lissn
 localhost
 locusname
+lossy
 lsid
 lt
 luba
 luxembourgish
 maincontact
 makestyles
+manufactors
 marshallese
 matchedge
 matk
@@ -414,6 +426,7 @@ objectsubmissiontypes
 objecttags
 objecttype
 objecttypes
+observationsref
 occitan
 oecd
 oidc
@@ -608,6 +621,7 @@ telephonenumber
 templateid
 tigrinya
 tls
+tma
 toctree
 tox
 tpa
@@ -624,6 +638,7 @@ ui
 ujson
 umi
 uncomment
+unencrypted
 unencryptedchecksum
 uniqueitems
 unlocalised
@@ -659,6 +674,7 @@ wizardsteps
 wizardsubmissionslice
 wolof
 wordlist
+wsi
 wxs
 xl
 xml

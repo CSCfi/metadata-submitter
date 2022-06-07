@@ -1,0 +1,105 @@
+{
+    "title": "Sample",
+    "definitions": {
+        "Block": {
+            "$id": "#/definitions/Block",
+            "title": "Block",
+            "type": "object",
+            "properties": {
+                "sample_preparation": {
+                    "type": "string",
+                    "title": "Sample Preparation"
+                }
+            }
+        },
+        "Stain": {
+            "$id": "#/definitions/Stain",
+            "title": "Stain",
+            "type": "object",
+            "properties": {
+                "staining_compound": {
+                    "title": "Staining Compound",
+                    "type": "string"
+                },
+                "staining_method": {
+                    "title": "Staining Method",
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "type": "object",
+    "required": [
+        "biologicalBeing",
+        "specimen",
+        "block",
+        "slide"
+    ],
+    "properties": {
+        "biologicalBeing": {
+            "title": "Biological Being Type",
+            "description": "A human being or animal.",
+            "type": "object",
+            "properties": {
+                "gender": {
+                    "title": "Gender",
+                    "type": "string",
+                    "enum": [
+                        "male",
+                        "female",
+                        "unknown"
+                    ]
+                },
+                "animal_species": {
+                    "title": "Animal Species",
+                    "type": "string"
+                }
+            }
+        },
+        "specimen": {
+            "title": "Specimen Type",
+            "description": "A removed part of a human/animal being.",
+            "type": "object",
+            "properties": {
+                "specimen_type": {
+                    "title": "Specimen Type",
+                    "type": "string"
+                },
+                "age_at_extraction": {
+                    "title": "Age At Extraction",
+                    "type": "integer"
+                },
+                "extraction_method": {
+                    "title": "Extraction Method",
+                    "type": "string"
+                },
+                "anatomical_site": {
+                    "title": "Anatomical Site",
+                    "type": "string"
+                }
+            }
+        },
+        "block": {
+            "title": "Block Type",
+            "description": "A part or a collection of parts of one or many Specimens that has/have been sampled and processed for further investigation.",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/Block"
+            }
+        },
+        "slide": {
+            "title": "Slide Type",
+            "description": "A physical slide that has been created out of one or more Blocks.",
+            "type": "object",
+            "properties": {
+                "staining_information": {
+                    "title": "Staining Information",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Stain"
+                    }
+                }
+            }
+        }
+    }
+}
