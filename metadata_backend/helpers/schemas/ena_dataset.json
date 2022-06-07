@@ -239,7 +239,7 @@
         }
     },
     "type": "object",
-    "description": "Describes an object that contains data access policy information.",
+    "description": "Describes an object that contains the samples in the data set.",
     "required": [
         "title",
         "description"
