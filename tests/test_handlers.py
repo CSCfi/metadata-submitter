@@ -10,6 +10,8 @@ from aiohttp.test_utils import AioHTTPTestCase, make_mocked_coro
 from metadata_backend.api.handlers.object import ObjectAPIHandler
 from metadata_backend.api.handlers.restapi import RESTAPIHandler
 import aiohttp_session
+
+from metadata_backend.conf.conf import API_PREFIX
 from metadata_backend.server import init
 
 
@@ -87,7 +89,7 @@ class HandlersTestCase(AioHTTPTestCase):
             "name": "tester",
         }
 
-        self._draf_doi_data = {
+        self._draft_doi_data = {
             "identifier": {
                 "identifierType": "DOI",
                 "doi": "https://doi.org/10.xxxx/yyyyy",
@@ -259,7 +261,7 @@ class APIHandlerTestCase(HandlersTestCase):
     async def test_correct_schema_types_are_returned(self):
         """Test API endpoint for all schema types."""
         with self.p_get_sess_restapi:
-            response = await self.client.get("/schemas")
+            response = await self.client.get(f"{API_PREFIX}/schemas")
             response_text = await response.text()
             schema_types = [
                 "submission",
@@ -280,7 +282,7 @@ class APIHandlerTestCase(HandlersTestCase):
     async def test_correct_study_schema_are_returned(self):
         """Test API endpoint for study schema types."""
         with self.p_get_sess_restapi:
-            response = await self.client.get("/schemas/study")
+            response = await self.client.get(f"{API_PREFIX}/schemas/study")
             response_text = await response.text()
             self.assertIn("study", response_text)
             self.assertNotIn("submission", response_text)
@@ -288,13 +290,13 @@ class APIHandlerTestCase(HandlersTestCase):
     async def test_raises_invalid_schema(self):
         """Test API endpoint for study schema types."""
         with self.p_get_sess_restapi:
-            response = await self.client.get("/schemas/something")
+            response = await self.client.get(f"{API_PREFIX}/schemas/something")
             self.assertEqual(response.status, 404)
 
     async def test_raises_not_found_schema(self):
         """Test API endpoint for study schema types."""
         with self.p_get_sess_restapi:
-            response = await self.client.get("/schemas/project")
+            response = await self.client.get(f"{API_PREFIX}/schemas/project")
             self.assertEqual(response.status, 400)
             resp_json = await response.json()
             self.assertEqual(resp_json["detail"], "The provided schema type could not be found. (project)")
@@ -330,7 +332,7 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
         with self.p_get_sess_restapi:
             files = [("submission", "ERA521986_valid.xml")]
             data = self.create_submission_data(files)
-            response = await self.client.post("/submit", data=data)
+            response = await self.client.post(f"{API_PREFIX}/submit", data=data)
             self.assertEqual(response.status, 200)
             self.assertEqual(response.content_type, "application/json")
 
@@ -342,7 +344,7 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
         with self.p_get_sess_restapi:
             files = [("analysis", "ERZ266973.xml")]
             data = self.create_submission_data(files)
-            response = await self.client.post("/submit", data=data)
+            response = await self.client.post(f"{API_PREFIX}/submit", data=data)
             failure_text = "There must be a submission.xml file in submission."
             self.assertEqual(response.status, 400)
             self.assertIn(failure_text, await response.text())
@@ -355,7 +357,7 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
         with self.p_get_sess_restapi:
             files = [("submission", "ERA521986_valid.xml"), ("submission", "ERA521986_valid2.xml")]
             data = self.create_submission_data(files)
-            response = await self.client.post("/submit", data=data)
+            response = await self.client.post(f"{API_PREFIX}/submit", data=data)
             failure_text = "You should submit only one submission.xml file."
             self.assertEqual(response.status, 400)
             self.assertIn(failure_text, await response.text())
@@ -365,7 +367,7 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
         with self.p_get_sess_restapi:
             files = [("study", "SRP000539.xml")]
             data = self.create_submission_data(files)
-            response = await self.client.post("/validate", data=data)
+            response = await self.client.post(f"{API_PREFIX}/validate", data=data)
             self.assertEqual(response.status, 200)
             self.assertIn('{"isValid":true}', await response.text())
 
@@ -374,7 +376,7 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
         with self.p_get_sess_restapi:
             files = [("fake", "SRP000539.xml")]
             data = self.create_submission_data(files)
-            response = await self.client.post("/validate", data=data)
+            response = await self.client.post(f"{API_PREFIX}/validate", data=data)
             self.assertEqual(response.status, 404)
 
     async def test_validation_fails_for_invalid_xml_syntax(self):
@@ -382,7 +384,7 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
         with self.p_get_sess_restapi:
             files = [("study", "SRP000539_invalid.xml")]
             data = self.create_submission_data(files)
-            response = await self.client.post("/validate", data=data)
+            response = await self.client.post(f"{API_PREFIX}/validate", data=data)
             resp_dict = await response.json()
             self.assertEqual(response.status, 200)
             self.assertIn("Faulty XML file was given, mismatched tag", resp_dict["detail"]["reason"])
@@ -392,7 +394,7 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
         with self.p_get_sess_restapi:
             files = [("study", "SRP000539_invalid2.xml")]
             data = self.create_submission_data(files)
-            response = await self.client.post("/validate", data=data)
+            response = await self.client.post(f"{API_PREFIX}/validate", data=data)
             resp_dict = await response.json()
             self.assertEqual(response.status, 200)
             self.assertIn("value must be one of", resp_dict["detail"]["reason"])
@@ -402,7 +404,7 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
         with self.p_get_sess_restapi:
             files = [("submission", "ERA521986_valid.xml"), ("submission", "ERA521986_valid2.xml")]
             data = self.create_submission_data(files)
-            response = await self.client.post("/validate", data=data)
+            response = await self.client.post(f"{API_PREFIX}/validate", data=data)
             reason = "Only one file can be sent to this endpoint at a time."
             self.assertEqual(response.status, 400)
             self.assertIn(reason, await response.text())
@@ -421,6 +423,10 @@ class ObjectHandlerTestCase(HandlersTestCase):
         await super().setUpAsync()
 
         self._mock_draft_doi = "metadata_backend.api.handlers.object.ObjectAPIHandler._draft_doi"
+
+        class_doihandler = "metadata_backend.api.handlers.object.DOIHandler"
+        self.patch_doihandler = patch(class_doihandler, **self.doi_handler, spec=True)
+        self.MockedDoiHandler = self.patch_doihandler.start()
 
         class_xmloperator = "metadata_backend.api.handlers.object.XMLOperator"
         self.patch_xmloperator = patch(class_xmloperator, **self.xmloperator_config, spec=True)
@@ -451,13 +457,16 @@ class ObjectHandlerTestCase(HandlersTestCase):
         self.patch_submissionoperator.stop()
         self.patch_operator.stop()
         self.patch_metaxhandler.stop()
+        self.patch_doihandler.stop()
 
     async def test_submit_object_works(self):
         """Test that submission is handled, XMLOperator is called."""
         files = [("study", "SRP000539.xml")]
         data = self.create_submission_data(files)
-        with patch(self._mock_draft_doi, return_value=self._draf_doi_data), self.p_get_sess_restapi:
-            response = await self.client.post("/objects/study", params={"submission": "some id"}, data=data)
+        with patch(self._mock_draft_doi, return_value=self._draft_doi_data), self.p_get_sess_restapi:
+            response = await self.client.post(
+                f"{API_PREFIX}/objects/study", params={"submission": "some id"}, data=data
+            )
             self.assertEqual(response.status, 201)
             self.assertIn(self.test_ega_string, await response.text())
             self.MockedXMLOperator().create_metadata_object.assert_called_once()
@@ -473,8 +482,10 @@ class ObjectHandlerTestCase(HandlersTestCase):
                 "studyAbstract": "abstract description for testing",
             },
         }
-        with patch(self._mock_draft_doi, return_value=self._draf_doi_data), self.p_get_sess_restapi:
-            response = await self.client.post("/objects/study", params={"submission": "some id"}, json=json_req)
+        with patch(self._mock_draft_doi, return_value=self._draft_doi_data), self.p_get_sess_restapi:
+            response = await self.client.post(
+                f"{API_PREFIX}/objects/study", params={"submission": "some id"}, json=json_req
+            )
             self.assertEqual(response.status, 201)
             self.assertIn(self.test_ega_string, await response.text())
             self.MockedOperator().create_metadata_object.assert_called_once()
@@ -483,7 +494,9 @@ class ObjectHandlerTestCase(HandlersTestCase):
         """Test that JSON has missing property."""
         with self.p_get_sess_restapi:
             json_req = {"centerName": "GEO", "alias": "GSE10966"}
-            response = await self.client.post("/objects/study", params={"submission": "some id"}, json=json_req)
+            response = await self.client.post(
+                f"{API_PREFIX}/objects/study", params={"submission": "some id"}, json=json_req
+            )
             reason = "Provided input does not seem correct because: ''descriptor' is a required property'"
             self.assertEqual(response.status, 400)
             self.assertIn(reason, await response.text())
@@ -500,7 +513,9 @@ class ObjectHandlerTestCase(HandlersTestCase):
             },
         }
         with self.p_get_sess_restapi:
-            response = await self.client.post("/objects/study", params={"submission": "some id"}, json=json_req)
+            response = await self.client.post(
+                f"{API_PREFIX}/objects/study", params={"submission": "some id"}, json=json_req
+            )
             reason = "Provided input does not seem correct for field: 'descriptor'"
             self.assertEqual(response.status, 400)
             self.assertIn(reason, await response.text())
@@ -517,7 +532,9 @@ class ObjectHandlerTestCase(HandlersTestCase):
             },
         }
         with self.p_get_sess_restapi:
-            response = await self.client.post("/objects/study", params={"submission": "some id"}, data=json_req)
+            response = await self.client.post(
+                f"{API_PREFIX}/objects/study", params={"submission": "some id"}, data=json_req
+            )
             reason = "JSON is not correctly formatted. See: Expecting value: line 1 column 1"
             self.assertEqual(response.status, 400)
             self.assertIn(reason, await response.text())
@@ -529,7 +546,9 @@ class ObjectHandlerTestCase(HandlersTestCase):
         file_content = self.get_file_data("sample", "EGAformat.csv")
         self.MockedCSVParser().parse.return_value = [{}, {}, {}]
         with self.p_get_sess_restapi:
-            response = await self.client.post("/objects/sample", params={"submission": "some id"}, data=data)
+            response = await self.client.post(
+                f"{API_PREFIX}/objects/sample", params={"submission": "some id"}, data=data
+            )
             json_resp = await response.json()
             self.assertEqual(response.status, 201)
             self.assertEqual(self.test_ega_string, json_resp[0]["accessionId"])
@@ -548,7 +567,9 @@ class ObjectHandlerTestCase(HandlersTestCase):
         files = [("sample", "empty.csv")]
         data = self.create_submission_data(files)
         with self.p_get_sess_restapi:
-            response = await self.client.post("/objects/sample", params={"submission": "some id"}, data=data)
+            response = await self.client.post(
+                f"{API_PREFIX}/objects/sample", params={"submission": "some id"}, data=data
+            )
             json_resp = await response.json()
             self.assertEqual(response.status, 400)
             self.assertEqual(json_resp["detail"], "Request data seems empty.")
@@ -565,7 +586,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
                 "studyAbstract": "abstract description for testing",
             },
         }
-        call = "/drafts/study/EGA123456"
+        call = f"{API_PREFIX}/drafts/study/EGA123456"
         with self.p_get_sess_restapi:
             response = await self.client.put(call, data=json_req)
             reason = "JSON is not correctly formatted. See: Expecting value: line 1 column 1"
@@ -575,7 +596,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
     async def test_patch_object_bad_json(self):
         """Test that patch JSON is badly formated."""
         json_req = {"centerName": "GEO", "alias": "GSE10966"}
-        call = "/drafts/study/EGA123456"
+        call = f"{API_PREFIX}/drafts/study/EGA123456"
         with self.p_get_sess_restapi:
             response = await self.client.patch(call, data=json_req)
             reason = "JSON is not correctly formatted. See: Expecting value: line 1 column 1"
@@ -594,7 +615,9 @@ class ObjectHandlerTestCase(HandlersTestCase):
             },
         }
         with self.p_get_sess_restapi:
-            response = await self.client.post("/drafts/study", params={"submission": "some id"}, json=json_req)
+            response = await self.client.post(
+                f"{API_PREFIX}/drafts/study", params={"submission": "some id"}, json=json_req
+            )
             self.assertEqual(response.status, 201)
             self.assertIn(self.test_ega_string, await response.text())
             self.MockedOperator().create_metadata_object.assert_called_once()
@@ -610,7 +633,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
                 "studyAbstract": "abstract description for testing",
             },
         }
-        call = "/drafts/study/EGA123456"
+        call = f"{API_PREFIX}/drafts/study/EGA123456"
         with self.p_get_sess_restapi:
             response = await self.client.put(call, json=json_req)
             self.assertEqual(response.status, 200)
@@ -621,7 +644,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         """Test that put XML submisssion is handled, XMLOperator is called."""
         files = [("study", "SRP000539.xml")]
         data = self.create_submission_data(files)
-        call = "/drafts/study/EGA123456"
+        call = f"{API_PREFIX}/drafts/study/EGA123456"
         with self.p_get_sess_restapi:
             response = await self.client.put(call, data=data)
             self.assertEqual(response.status, 200)
@@ -631,7 +654,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
     async def test_patch_draft_works_with_json(self):
         """Test that draft JSON patch method is handled, operator is called."""
         json_req = {"centerName": "GEO", "alias": "GSE10966"}
-        call = "/drafts/study/EGA123456"
+        call = f"{API_PREFIX}/drafts/study/EGA123456"
         with self.p_get_sess_restapi:
             response = await self.client.patch(call, json=json_req)
             self.assertEqual(response.status, 200)
@@ -643,7 +666,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         with self.p_get_sess_restapi:
             files = [("study", "SRP000539.xml")]
             data = self.create_submission_data(files)
-            call = "/drafts/study/EGA123456"
+            call = f"{API_PREFIX}/drafts/study/EGA123456"
             response = await self.client.patch(call, data=data)
             self.assertEqual(response.status, 415)
 
@@ -652,7 +675,9 @@ class ObjectHandlerTestCase(HandlersTestCase):
         with self.p_get_sess_restapi:
             files = [("study", "SRP000539.xml"), ("study", "SRP000539_copy.xml")]
             data = self.create_submission_data(files)
-            response = await self.client.post("/objects/study", params={"submission": "some id"}, data=data)
+            response = await self.client.post(
+                f"{API_PREFIX}/objects/study", params={"submission": "some id"}, data=data
+            )
             reason = "Only one file can be sent to this endpoint at a time."
             self.assertEqual(response.status, 400)
             self.assertIn(reason, await response.text())
@@ -660,7 +685,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
     async def test_get_object(self):
         """Test that accessionId returns correct JSON object."""
         with self.p_get_sess_restapi:
-            url = f"/objects/study/{self.query_accessionId}"
+            url = f"{API_PREFIX}/objects/study/{self.query_accessionId}"
             response = await self.client.get(url)
             self.assertEqual(response.status, 200)
             self.assertEqual(response.content_type, "application/json")
@@ -669,7 +694,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
     async def test_get_draft_object(self):
         """Test that draft accessionId returns correct JSON object."""
         with self.p_get_sess_restapi:
-            url = f"/drafts/study/{self.query_accessionId}"
+            url = f"{API_PREFIX}/drafts/study/{self.query_accessionId}"
             response = await self.client.get(url)
             self.assertEqual(response.status, 200)
             self.assertEqual(response.content_type, "application/json")
@@ -677,7 +702,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
     async def test_get_object_as_xml(self):
         """Test that accessionId  with XML query returns XML object."""
-        url = f"/objects/study/{self.query_accessionId}"
+        url = f"{API_PREFIX}/objects/study/{self.query_accessionId}"
         with self.p_get_sess_restapi:
             response = await self.client.get(f"{url}?format=xml")
             self.assertEqual(response.status, 200)
@@ -686,7 +711,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
     async def test_query_is_called_and_returns_json_in_correct_format(self):
         """Test query method calls operator and returns mocked JSON object."""
-        url = f"/objects/study?studyType=foo&name=bar&page={self.page_num}" f"&per_page={self.page_size}"
+        url = f"{API_PREFIX}/objects/study?studyType=foo&name=bar&page={self.page_num}" f"&per_page={self.page_size}"
         with self.p_get_sess_restapi:
             response = await self.client.get(url)
             self.assertEqual(response.status, 200)
@@ -706,7 +731,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
     async def test_delete_is_called(self):
         """Test query method calls operator and returns status correctly."""
-        url = "/objects/study/EGA123456"
+        url = f"{API_PREFIX}/objects/study/EGA123456"
         with patch(
             "metadata_backend.api.handlers.object.DOIHandler.delete", return_value=None
         ), self.p_get_sess_restapi:
@@ -716,7 +741,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
     async def test_query_fails_with_xml_format(self):
         """Test query method calls operator and returns status correctly."""
-        url = "/objects/study?studyType=foo&name=bar&format=xml"
+        url = f"{API_PREFIX}/objects/study?studyType=foo&name=bar&format=xml"
         with self.p_get_sess_restapi:
             response = await self.client.get(url)
             json_resp = await response.json()
@@ -726,27 +751,27 @@ class ObjectHandlerTestCase(HandlersTestCase):
     async def test_operations_fail_for_wrong_schema_type(self):
         """Test 404 error is raised if incorrect schema name is given."""
         with self.p_get_sess_restapi:
-            get_resp = await self.client.get("/objects/bad_scehma_name/some_id")
+            get_resp = await self.client.get(f"{API_PREFIX}/objects/bad_scehma_name/some_id")
             self.assertEqual(get_resp.status, 404)
             json_get_resp = await get_resp.json()
             self.assertIn("Specified schema", json_get_resp["detail"])
 
-            post_rep = await self.client.post("/objects/bad_scehma_name", params={"submission": "some id"})
+            post_rep = await self.client.post(f"{API_PREFIX}/objects/bad_scehma_name", params={"submission": "some id"})
             self.assertEqual(post_rep.status, 404)
             post_json_rep = await post_rep.json()
             self.assertIn("Specified schema", post_json_rep["detail"])
 
-            get_resp = await self.client.get("/objects/bad_scehma_name")
+            get_resp = await self.client.get(f"{API_PREFIX}/objects/bad_scehma_name")
             self.assertEqual(get_resp.status, 404)
             json_get_resp = await get_resp.json()
             self.assertIn("Specified schema", json_get_resp["detail"])
 
-            get_resp = await self.client.delete("/objects/bad_scehma_name/some_id")
+            get_resp = await self.client.delete(f"{API_PREFIX}/objects/bad_scehma_name/some_id")
             self.assertEqual(get_resp.status, 404)
             json_get_resp = await get_resp.json()
             self.assertIn("Specified schema", json_get_resp["detail"])
 
-            get_resp = await self.client.delete("/drafts/bad_scehma_name/some_id")
+            get_resp = await self.client.delete(f"{API_PREFIX}/drafts/bad_scehma_name/some_id")
             self.assertEqual(get_resp.status, 404)
             json_get_resp = await get_resp.json()
             self.assertIn("Specified schema", json_get_resp["detail"])
@@ -754,11 +779,11 @@ class ObjectHandlerTestCase(HandlersTestCase):
     async def test_query_with_invalid_pagination_params(self):
         """Test that 400s are raised correctly with pagination."""
         with self.p_get_sess_restapi:
-            get_resp = await self.client.get("/objects/study?page=2?title=joo")
+            get_resp = await self.client.get(f"{API_PREFIX}/objects/study?page=2?title=joo")
             self.assertEqual(get_resp.status, 400)
-            get_resp = await self.client.get("/objects/study?page=0")
+            get_resp = await self.client.get(f"{API_PREFIX}/objects/study?page=0")
             self.assertEqual(get_resp.status, 400)
-            get_resp = await self.client.get("/objects/study?per_page=0")
+            get_resp = await self.client.get(f"{API_PREFIX}/objects/study?per_page=0")
             self.assertEqual(get_resp.status, 400)
 
 
@@ -785,7 +810,7 @@ class UserHandlerTestCase(HandlersTestCase):
     async def test_get_user_works(self):
         """Test user object is returned when correct user id is given."""
         with self.p_get_sess_restapi:
-            response = await self.client.get("/users/current")
+            response = await self.client.get(f"{API_PREFIX}/users/current")
             self.assertEqual(response.status, 200)
             self.MockedUserOperator().read_user.assert_called_once()
             json_resp = await response.json()
@@ -796,7 +821,7 @@ class UserHandlerTestCase(HandlersTestCase):
         with self.p_get_sess_restapi:
             self.MockedUserOperator().read_user.return_value = self.test_user
             self.MockedUserOperator().delete_user.return_value = None
-            await self.client.delete("/users/current")
+            await self.client.delete(f"{API_PREFIX}/users/current")
             self.MockedUserOperator().delete_user.assert_called_once()
 
 
@@ -850,7 +875,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             "metadata_backend.api.operators.ProjectOperator._check_project_exists",
             return_value=True,
         ), self.p_get_sess_restapi:
-            response = await self.client.post("/submissions", json=json_req)
+            response = await self.client.post(f"{API_PREFIX}/submissions", json=json_req)
             json_resp = await response.json()
             self.MockedSubmissionOperator().create_submission.assert_called_once()
             self.assertEqual(response.status, 201)
@@ -860,7 +885,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         """Test that submission creation fails when missing name in request."""
         json_req = {"description": "test submission", "projectId": "1000"}
         with self.p_get_sess_restapi:
-            response = await self.client.post("/submissions", json=json_req)
+            response = await self.client.post(f"{API_PREFIX}/submissions", json=json_req)
             json_resp = await response.json()
             self.assertEqual(response.status, 400)
             self.assertIn("'name' is a required property", json_resp["detail"])
@@ -869,7 +894,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         """Test that submission creation fails when missing project in request."""
         json_req = {"description": "test submission", "name": "name"}
         with self.p_get_sess_restapi:
-            response = await self.client.post("/submissions", json=json_req)
+            response = await self.client.post(f"{API_PREFIX}/submissions", json=json_req)
             json_resp = await response.json()
             self.assertEqual(response.status, 400)
             self.assertIn("'projectId' is a required property", json_resp["detail"])
@@ -877,7 +902,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
     async def test_submission_creation_with_empty_body_fails(self):
         """Test that submission creation fails when no data in request."""
         with self.p_get_sess_restapi:
-            response = await self.client.post("/submissions")
+            response = await self.client.post(f"{API_PREFIX}/submissions")
             json_resp = await response.json()
             self.assertEqual(response.status, 400)
             self.assertIn("JSON is not correctly formatted.", json_resp["detail"])
@@ -886,7 +911,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         """Test get_submissions() endpoint returns list with 1 submission."""
         self.MockedSubmissionOperator().query_submissions.return_value = (self.test_submission, 1)
         with self.p_get_sess_restapi:
-            response = await self.client.get("/submissions?projectId=1000")
+            response = await self.client.get(f"{API_PREFIX}/submissions?projectId=1000")
             self.MockedSubmissionOperator().query_submissions.assert_called_once()
             self.assertEqual(response.status, 200)
             result = {
@@ -904,7 +929,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         """Test get_submissions() endpoint returns empty list."""
         self.MockedSubmissionOperator().query_submissions.return_value = ([], 0)
         with self.p_get_sess_restapi:
-            response = await self.client.get("/submissions?projectId=1000")
+            response = await self.client.get(f"{API_PREFIX}/submissions?projectId=1000")
             self.MockedSubmissionOperator().query_submissions.assert_called_once()
             self.assertEqual(response.status, 200)
             result = {
@@ -921,17 +946,17 @@ class SubmissionHandlerTestCase(HandlersTestCase):
     async def test_get_submissions_with_bad_params(self):
         """Test get_submissions() with faulty pagination parameters."""
         with self.p_get_sess_restapi:
-            response = await self.client.get("/submissions?page=ayylmao&projectId=1000")
+            response = await self.client.get(f"{API_PREFIX}/submissions?page=ayylmao&projectId=1000")
             self.assertEqual(response.status, 400)
             resp = await response.json()
             self.assertEqual(resp["detail"], "page parameter must be a number, now it is ayylmao")
 
-            response = await self.client.get("/submissions?page=1&per_page=-100&projectId=1000")
+            response = await self.client.get(f"{API_PREFIX}/submissions?page=1&per_page=-100&projectId=1000")
             self.assertEqual(response.status, 400)
             resp = await response.json()
             self.assertEqual(resp["detail"], "per_page parameter must be over 0")
 
-            response = await self.client.get("/submissions?published=yes&projectId=1000")
+            response = await self.client.get(f"{API_PREFIX}/submissions?published=yes&projectId=1000")
             self.assertEqual(response.status, 400)
             resp = await response.json()
             self.assertEqual(resp["detail"], "'published' parameter must be either 'true' or 'false'")
@@ -939,7 +964,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
     async def test_get_submission_works(self):
         """Test submission is returned when correct submission id is given."""
         with self.p_get_sess_restapi:
-            response = await self.client.get("/submissions/FOL12345678")
+            response = await self.client.get(f"{API_PREFIX}/submissions/FOL12345678")
             self.assertEqual(response.status, 200)
             self.MockedSubmissionOperator().read_submission.assert_called_once()
             json_resp = await response.json()
@@ -947,16 +972,16 @@ class SubmissionHandlerTestCase(HandlersTestCase):
 
     async def test_update_submission_fails_with_wrong_key(self):
         """Test that submission does not update when wrong keys are provided."""
-        data = [{"op": "add", "path": "/objects"}]
+        data = [{"op": "add", "path": f"{API_PREFIX}/objects"}]
         with self.p_get_sess_restapi:
-            response = await self.client.patch("/submissions/FOL12345678", json=data)
+            response = await self.client.patch(f"{API_PREFIX}/submissions/FOL12345678", json=data)
             self.assertEqual(response.status, 400)
             json_resp = await response.json()
             reason = "Patch submission operation should be provided as a JSON object"
             self.assertEqual(reason, json_resp["detail"])
 
             data = {"doiInfo": {}}
-            response = await self.client.patch("/submissions/FOL12345678", json=data)
+            response = await self.client.patch(f"{API_PREFIX}/submissions/FOL12345678", json=data)
             self.assertEqual(response.status, 400)
             json_resp = await response.json()
             reason = "Patch submission operation only accept the fields 'name', or 'description'. Provided 'doiInfo'"
@@ -967,7 +992,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
         data = {"name": "test2"}
         with self.p_get_sess_restapi:
-            response = await self.client.patch("/submissions/FOL12345678", json=data)
+            response = await self.client.patch(f"{API_PREFIX}/submissions/FOL12345678", json=data)
             self.MockedSubmissionOperator().update_submission.assert_called_once()
             self.assertEqual(response.status, 200)
             json_resp = await response.json()
@@ -990,7 +1015,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
                 ],
             ),
         ), self.p_get_sess_restapi:
-            response = await self.client.patch("/publish/FOL12345678")
+            response = await self.client.patch(f"{API_PREFIX}/publish/FOL12345678")
             self.assertEqual(response.status, 200)
             json_resp = await response.json()
             self.assertEqual(json_resp["submissionId"], self.submission_id)
@@ -999,7 +1024,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         """Test that submission would be deleted."""
         self.MockedSubmissionOperator().read_submission.return_value = self.test_submission
         with self.p_get_sess_restapi:
-            response = await self.client.delete("/submissions/FOL12345678")
+            response = await self.client.delete(f"{API_PREFIX}/submissions/FOL12345678")
             self.MockedSubmissionOperator().read_submission.assert_called_once()
             self.MockedSubmissionOperator().delete_submission.assert_called_once()
             self.assertEqual(response.status, 204)
@@ -1010,12 +1035,12 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         data = ujson.load(open(self.TESTFILES_ROOT / "doi" / "test_doi.json"))
 
         with self.p_get_sess_restapi:
-            response = await self.client.put("/submissions/FOL12345678/doi", json=data)
+            response = await self.client.put(f"{API_PREFIX}/submissions/FOL12345678/doi", json=data)
             self.assertEqual(response.status, 200)
             json_resp = await response.json()
             self.assertEqual(json_resp["submissionId"], self.submission_id)
 
-            response = await self.client.get(f"/submissions/{self.submission_id}")
+            response = await self.client.get(f"{API_PREFIX}/submissions/{self.submission_id}")
             self.assertEqual(response.status, 200)
             json_resp = await response.json()
             self.assertIn("doiInfo", json_resp)

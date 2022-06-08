@@ -7,6 +7,7 @@ from aiohttp import FormData
 from aiohttp.test_utils import AioHTTPTestCase
 from pathlib import Path
 
+from metadata_backend.conf.conf import API_PREFIX
 from metadata_backend.server import init
 
 
@@ -52,18 +53,18 @@ class ErrorMiddlewareTestCase(AioHTTPTestCase):
         """Test that middleware reformats 400 error with problem details."""
         data = _create_improper_data()
         with self.p_get_sess_restapi:
-            response = await self.client.post("/submit", data=data)
+            response = await self.client.post(f"{API_PREFIX}/submit", data=data)
             self.assertEqual(response.status, 400)
             self.assertEqual(response.content_type, "application/problem+json")
             resp_dict = await response.json()
             self.assertIn("Bad Request", resp_dict["title"])
             self.assertIn("There must be a submission.xml file in submission.", resp_dict["detail"])
-            self.assertIn("/submit", resp_dict["instance"])
+            self.assertIn(f"{API_PREFIX}/submit", resp_dict["instance"])
 
     async def test_bad_url_returns_json_response(self):
         """Test that unrouted API url returns a 404 in JSON format."""
         with self.p_get_sess_restapi:
-            response = await self.client.get("/objects/swagadagamaster")
+            response = await self.client.get(f"{API_PREFIX}/objects/swagadagamaster")
             self.assertEqual(response.status, 404)
             self.assertEqual(response.content_type, "application/problem+json")
             resp_dict = await response.json()

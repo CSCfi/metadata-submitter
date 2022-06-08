@@ -1,24 +1,20 @@
 """Middleware methods for server."""
 import ujson
 from http import HTTPStatus
-from typing import Callable, Coroutine, Any, Awaitable
 import aiohttp_session
 import time
 
 from aiohttp import web
-from aiohttp.web import Request, Response, middleware
 from yarl import URL
 
 from ..helpers.logger import LOG
-from ..conf.conf import aai_config
+from ..conf.conf import OIDC_ENABLED
 
 HTTP_ERROR_MESSAGE = "HTTP %r request to %r raised an HTTP %d exception."
 
-AiohttpHandler = Callable[[web.Request], Coroutine[Awaitable, Any, web.Response]]
 
-
-@middleware
-async def http_error_handler(req: Request, handler: AiohttpHandler) -> Response:
+@web.middleware
+async def http_error_handler(req: web.Request, handler: aiohttp_session.Handler) -> web.StreamResponse:
     """Middleware for handling exceptions received from the API methods.
 
     :param req: A request instance
@@ -55,11 +51,8 @@ async def http_error_handler(req: Request, handler: AiohttpHandler) -> Response:
         raise exception
 
 
-@middleware
-async def check_session_at(
-    req: web.Request,
-    handler: AiohttpHandler,
-) -> web.Response:
+@web.middleware
+async def check_session(req: web.Request, handler: aiohttp_session.Handler) -> web.StreamResponse:
     """Raise on expired sessions or invalid sessions.
 
     :param req: A request instance
@@ -67,38 +60,41 @@ async def check_session_at(
     :raises: Reformatted HTTP Exceptions
     :returns: Successful requests unaffected
     """
-    main_paths = {
-        "/aai",
-        "/callback",
-        "/static",
-        "/swagger",
-        "/health",
-    }
-    try:
-        session = await aiohttp_session.get_session(req)
-        LOG.debug(f"session: {session}")
-        if not (req.path in main_paths):
-            if not all(k in session for k in {"access_token", "user_info", "at"}):
-                LOG.debug("checked session parameter")
-                response = web.HTTPSeeOther(f"{aai_config['domain']}/aai")
-                response.headers["Location"] = "/aai"
+    if OIDC_ENABLED:
+        try:
+            session = await aiohttp_session.get_session(req)
+            LOG.debug(f"session: {session}")
+
+            if session.empty:
                 session.invalidate()
-                raise response
+                raise _unauthorized("You must provide authentication to access SD-Submit API.")
+
+            if not all(k in session for k in {"access_token", "user_info", "at", "oidc_state"}):
+                LOG.error(f"Checked session parameter, session is invalid {session}. This could be a bug or abuse.")
+                session.invalidate()
+                raise _unauthorized("Invalid session, authenticate again.")
+
             if session["at"] + 28800 < time.time():
                 session.invalidate()
-                raise web.HTTPUnauthorized(
-                    headers={"WWW-Authenticate": 'OAuth realm="/", charset="UTF-8"'}, reason="Token expired."
-                )
-    except KeyError as error:
-        reason = f"No valid session. A session was invalidated due to invalid token. {error}"
-        LOG.info(reason)
-        raise web.HTTPUnauthorized(reason=reason)
-    except Exception as error:
-        reason = f"No valid session. A session was invalidated due to another reason: {error}"
-        LOG.info(reason)
-        raise web.HTTPUnauthorized(reason=reason)
+                raise _unauthorized("Token expired.")
+
+        except KeyError as error:
+            reason = f"No valid session. A session was invalidated due to invalid token. {error}"
+            LOG.info(reason)
+            raise _unauthorized(reason)
+        except web.HTTPException:
+            # HTTPExceptions are processed in the other middleware
+            raise
+        except Exception as error:
+            reason = f"No valid session. A session was invalidated due to another reason: {error}"
+            LOG.exception("No valid session. A session was invalidated due to another reason")
+            raise _unauthorized(reason)
 
     return await handler(req)
+
+
+def _unauthorized(reason: str) -> web.HTTPUnauthorized:
+    return web.HTTPUnauthorized(headers={"WWW-Authenticate": 'OAuth realm="/", charset="UTF-8"'}, reason=reason)
 
 
 def _json_problem(exception: web.HTTPError, url: URL, _type: str = "about:blank") -> str:

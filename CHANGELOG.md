@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - HTTPError exceptions return a response with JSON Problem instead of an HTML page #433
   - Make Metax errors visible to user #453
   - Catch unexpected errors and return a JSON Problem instead of server crashing #453
+- Fix session and authorization issues
+  - Prefix API endpoint with /v1
+  - Refactor authentication checking, fixing issues from #421 and remove HTTPSeeOther from the API
 
 ### Removed
 

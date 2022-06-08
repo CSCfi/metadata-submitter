@@ -8,6 +8,7 @@ from aiohttp.web import Request, Response
 from multidict import MultiDict, MultiDictProxy
 from xmlschema import XMLSchemaException
 
+from ...conf.conf import API_PREFIX
 from ...helpers.logger import LOG
 from ...helpers.metax_api_handler import MetaxServiceHandler
 from ...helpers.parser import XMLToJSONParser
@@ -167,7 +168,7 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
         # we only allow one study per submission
         # this is not enough to catch duplicate entries if updates happen in parallel
         # that is why we check in db_service.update_study
-        if not req.path.startswith("/drafts") and schema == "study":
+        if not req.path.startswith(f"{API_PREFIX}/drafts") and schema == "study":
             _ids = await submission_op.get_collection_objects(submission_id, schema)
             if len(_ids) == 1:
                 reason = "Only one study is allowed per submission."
