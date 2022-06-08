@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - HTTPError exceptions return a response with JSON Problem instead of an HTML page #433
   - Make Metax errors visible to user #453
   - Catch unexpected errors and return a JSON Problem instead of server crashing #453
+- Recreate DB before integration tests run and cleanup after integration tests have run #448
 
 ### Removed
 
