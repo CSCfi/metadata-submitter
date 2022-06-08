@@ -75,6 +75,8 @@ class ParserTestCase(unittest.TestCase):
             "GCA_000001405.1",
             analysis_json["analysisType"]["processedReads"]["assembly"]["accession"],
         )
+        self.assertEqual(25, len(analysis_json["analysisType"]["processedReads"]["sequence"]))
+        self.assertEqual(list, type(analysis_json["sampleRef"]))
 
     def test_submission_is_parsed(self):
         """Test that submission is parsed correctly.
