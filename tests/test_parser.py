@@ -85,6 +85,16 @@ class ParserTestCase(unittest.TestCase):
         submission_json = self.xml_parser.parse("submission", submission_xml)
         self.assertEqual({"schema": "study", "source": "SRP000539.xml"}, submission_json["actions"]["action"][0]["add"])
 
+    def test_dataset_is_parsed(self):
+        """Test that dataset is parsed correctly.
+
+        Tests for some values that convert JSON should have.
+        """
+        dataset_xml = self.load_file_to_text("dataset", "dataset.xml")
+        dataset_json = self.xml_parser.parse("dataset", dataset_xml)
+        self.assertEqual(2, len(dataset_json["datasetType"]))
+        self.assertEqual(8, len(dataset_json["runRef"]))
+
     def test_error_raised_when_schema_not_found(self):
         """Test 400 is returned when schema type is invalid."""
         with self.assertRaises(web.HTTPBadRequest):
