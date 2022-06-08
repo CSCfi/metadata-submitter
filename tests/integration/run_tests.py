@@ -18,7 +18,8 @@ from uuid import uuid4
 import aiofiles
 import aiohttp
 from aiohttp import FormData
-from motor.motor_asyncio import AsyncIOMotorClient
+
+from mongo import Mongo
 
 # === Global vars ===
 FORMAT = "[%(asctime)s][%(name)s][%(process)d %(processName)s][%(levelname)-8s](L:%(lineno)s) %(funcName)s: %(message)s"
@@ -1928,16 +1929,15 @@ async def test_health_check(sess):
         assert res["services"]["database"]["status"] == "Ok"
 
 
-async def main():
+async def main(url):
     """Launch different test tasks and run them."""
-    if TLS:
-        _params = "?tls=true&tlsCAFile=./config/cacert&tlsCertificateKeyFile=./config/combined"
-        url = f"mongodb://{AUTHDB}:{AUTHDB}@{HOST}/{DATABASE}{_params}&authSource=admin"
-    else:
-        url = f"mongodb://{AUTHDB}:{AUTHDB}@{HOST}/{DATABASE}?authSource=admin"
 
-    db_client = AsyncIOMotorClient(url, connectTimeoutMS=1000, serverSelectionTimeoutMS=1000)
-    database = db_client[DATABASE]
+    # When there's an exception in the main loop, it gets closed
+    # So here's a loop just for the DB operations to run after tests are completed
+    # db_loop = asyncio.new_event_loop()
+
+    mongo = Mongo(url)
+    database = mongo.db
 
     async with aiohttp.ClientSession() as sess:
 
@@ -2088,16 +2088,25 @@ async def main():
         LOG.debug("=== Testing basic CRUD user operations ===")
         await test_crud_users_works(sess, project_id)
 
-    # Remove the remaining user in the test database
+
+async def clear_metax_cache():
+    """Clear metax cache."""
     async with aiohttp.ClientSession() as sess:
-        await login(sess, other_test_user, other_test_user_given, other_test_user_family)
-        async with sess.get(f"{users_url}/{user_id}") as resp:
-            LOG.debug(f"Reading user {user_id}")
-            assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-            response = await resp.json()
-            real_user_id = response["userId"]
-        await delete_user(sess, real_user_id)
+        await sess.post(f"{metax_url}/purge")
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    if TLS:
+        _params = "?tls=true&tlsCAFile=./config/cacert&tlsCertificateKeyFile=./config/combined"
+        url = f"mongodb://{AUTHDB}:{AUTHDB}@{HOST}/{DATABASE}{_params}&authSource=admin"
+    else:
+        url = f"mongodb://{AUTHDB}:{AUTHDB}@{HOST}/{DATABASE}?authSource=admin"
+
+    try:
+        asyncio.run(Mongo(url).recreate_db())
+        asyncio.run(main(url))
+    finally:
+        # Clean up after tests are done
+        LOG.info("Cleaning up DB")
+        asyncio.run(Mongo(url).drop_db())
+        asyncio.run(clear_metax_cache())
