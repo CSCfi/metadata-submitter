@@ -1,19 +1,19 @@
-#=======================
-FROM node:16-alpine as BUILD-FRONTEND
-#=======================
-
-RUN apk add --update \
-    && apk add --no-cache git\
-    && rm -rf /var/cache/apk/*
-
-ARG BRANCH=master
-
-RUN git clone -b ${BRANCH} https://github.com/CSCfi/metadata-submitter-frontend.git
-
-WORKDIR /metadata-submitter-frontend
-RUN npx --quiet pinst --disable \
-    && npm install --production \
-    && npm run build --production
+# #=======================
+# FROM node:16-alpine as BUILD-FRONTEND
+# #=======================
+#
+# RUN apk add --update \
+#     && apk add --no-cache git\
+#     && rm -rf /var/cache/apk/*
+#
+# ARG BRANCH=master
+#
+# RUN git clone -b ${BRANCH} https://github.com/CSCfi/metadata-submitter-frontend.git
+#
+# WORKDIR /metadata-submitter-frontend
+# RUN npx --quiet pinst --disable \
+#     && npm install --production \
+#     && npm run build --production
 
 #=======================
 FROM python:3.8-alpine3.15 as BUILD-BACKEND
@@ -31,8 +31,8 @@ COPY metadata_backend /root/submitter/metadata_backend
 COPY scripts /root/submitter/scripts
 COPY docs/specification.yml /root/submitter/docs/specification.yml
 
-COPY --from=BUILD-FRONTEND /metadata-submitter-frontend/build \
-    /root/submitter/metadata_backend/frontend
+# COPY --from=BUILD-FRONTEND /metadata-submitter-frontend/build \
+#     /root/submitter/metadata_backend/frontend
 
 RUN pip install --upgrade pip pyyaml && \
     pip install -r /root/submitter/requirements.txt && \
