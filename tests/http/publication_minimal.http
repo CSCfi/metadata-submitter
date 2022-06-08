@@ -51,7 +51,7 @@ POST {{backend_url}}/objects/study
 
 < ../test_files/study/SRP000539.json
 
-### Add DOI to submission
+### Update DOI in submission
 PUT {{backend_url}}/submissions/{{submission_id}}/doi
 
 < ../test_files/doi/test_doi.json

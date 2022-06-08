@@ -36,7 +36,6 @@ def retry(
     :param total_tries: Total tries
     :param initial_wait: Time to first retry
     :param backoff_factor: Backoff multiplier (e.g. value of 2 will double the delay each retry).
-    :param logger: logger to be used, if none specified print
     """
 
     def retry_decorator(f: Callable) -> Callable:

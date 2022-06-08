@@ -1,17 +1,11 @@
 """Class for handling calls to METAX API."""
+from typing import Any, Dict, List, Union
 
-import asyncio
-from typing import Any, Dict, List
-
-from aiohttp import BasicAuth, ClientConnectorError, ClientSession
+from aiohttp import BasicAuth, ClientSession
 from aiohttp.web import (
-    HTTPBadRequest,
     HTTPError,
-    HTTPForbidden,
-    HTTPNotFound,
-    HTTPRequestTimeout,
-    HTTPServerError,
-    HTTPUnauthorized,
+    HTTPGatewayTimeout,
+    HTTPInternalServerError,
     Request,
 )
 
@@ -23,8 +17,48 @@ from .metax_mapper import MetaDataMapper
 from .retry import retry
 
 
+class MetaxServerError(HTTPError):
+    """Metax server errors should produce a 502 Bad Gateway response."""
+
+    status_code = 502
+
+
+class MetaxClientError(HTTPError):
+    """Metax client errors should be raised unmodified."""
+
+    def __init__(
+        self,
+        status_code: int,
+        **kwargs: Any,
+    ) -> None:
+        """Class to raise for Metax http client errors.
+
+        HTTPError doesn't have a setter for status_code, so this allows setting it.
+
+        :param status_code: Set the status code here, as
+        """
+        self.status_code = status_code
+        HTTPError.__init__(self, **kwargs)
+
+
+def metax_exception(reason: str, status: int) -> HTTPError:
+    """Create a Client or Server exception, according to status code.
+
+    :param reason: Error message
+    :param status: HTTP status code
+    :returns MetaxServerError or MetaxClientError. HTTPInternalServerError on invalid input
+    """
+    if status < 400:
+        LOG.error(f"HTTP status code must be an error code, >400 received {status}.")
+        return HTTPInternalServerError(reason="Server encountered an unexpected situation.")
+    reason = f"Metax error {status}: {reason}"
+    if status >= 500:
+        return MetaxServerError(text=reason, reason=reason)
+    return MetaxClientError(text=reason, reason=reason, status_code=status)
+
+
 class MetaxServiceHandler:
-    """API handler for uploading submitter's metadata to METAX service."""
+    """API handler for uploading submitters' metadata to METAX service."""
 
     def __init__(self, req: Request) -> None:
         """Define variables and paths.
@@ -80,57 +114,103 @@ class MetaxServiceHandler:
         metadata_provider_user = user["externalId"]
         return metadata_provider_user
 
-    @retry((HTTPRequestTimeout, ClientConnectorError), 5)
-    async def check_connection(self, timeout: int = 2) -> bool:
+    async def check_connection(self, timeout: int = 2) -> None:
         """Check connection for Metax server.
+
+        The request should raise exceptions if it fails, and interrupt code execution.
 
         :param timeout: Request operations timeout
         """
-        async with ClientSession() as sess:
-            try:
-                await sess.head(self.metax_url, timeout=timeout)
-                return True
-            except asyncio.exceptions.TimeoutError:
-                raise HTTPRequestTimeout(reason=f"Metax server {self.metax_url} is not respondig")
+        await self._request(method="HEAD", url=self.metax_url, timeout=2)
 
     @retry(total_tries=5)
-    async def _get(self, metax_id: str) -> str:
-        async with ClientSession() as sess:
-            resp = await sess.get(
-                f"{self.metax_url}{self.rest_route}/{metax_id}",
-                auth=self.auth,
-            )
-            status = resp.status
-            if status == 200:
-                return await resp.json()
-            else:
-                reason = await resp.text()
-                raise self.metax_error(status, reason)
+    async def _request(
+        self,
+        method: str = "GET",
+        url: str = None,
+        metax_id: str = None,
+        params: Union[str, dict] = None,
+        json_data: Any = None,
+        timeout: int = 10,
+    ) -> Union[str, dict]:
+        """Request to Metax REST API.
 
-    @retry(total_tries=3)
+        :param method: HTTP method
+        :param url: Full metax url. If None, one is created
+        :param metax_id: ID of a dataset
+        :param params: URL parameters, must be url encoded
+        :param json_data: Dict with request data
+        :param timeout: Request timeout
+        :returns: Response body parsed as JSON
+        """
+        if method not in {"HEAD", "GET", "POST", "PUT", "DELETE", "PATCH"}:
+            message = f"{method} request to Metax is not supported."
+            LOG.error(message)
+            raise HTTPInternalServerError(reason=message)
+
+        if not url:
+            url = f"{self.metax_url}{self.rest_route}"
+            if metax_id:
+                url = f"{self.metax_url}{self.rest_route}/{metax_id}"
+
+        async with ClientSession() as sess:
+            try:
+                response = await sess.request(
+                    method=method,
+                    url=url,
+                    params=params,
+                    json=json_data,
+                    auth=self.auth,
+                    timeout=timeout,
+                )
+
+                if response.content_type.endswith("json"):
+                    content = await response.json()
+                else:
+                    content = await response.text()
+                    # We should get a JSON response from metax in most requests.
+                    if method in {"GET", "POST", "PUT", "PATCH"}:
+                        message = f"{method} request to Metax '{url}' returned an unexpected answer: {content:!r}."
+                        LOG.error(message)
+                        raise MetaxServerError(text=message, reason=message)
+
+                if not response.ok:
+                    log_msg = f"{method} request to Metax '{url}' returned a {response.status}."
+                    if content:
+                        log_msg += f" Content: {content}"
+                    LOG.error(log_msg)
+                    raise metax_exception(reason=content, status=response.status)
+
+                return content
+
+            except TimeoutError:
+                LOG.exception(f"{method} request to Metax '{url}' timed out.")
+                raise HTTPGatewayTimeout(reason="Metax error: Could not reach Metax service provider.")
+            except HTTPError:
+                # These are expected
+                raise
+            except Exception:
+                LOG.exception(f"{method} request to Metax '{url}' raised an unexpected exception.")
+                message = "Metax error 502: Unexpected issue when connecting to Metax service provider."
+                raise MetaxServerError(text=message, reason=message)
+
+    async def _get(self, metax_id: str) -> dict:
+        result = await self._request(method="GET", metax_id=metax_id)
+        LOG.info(f"Got metax dataset {metax_id}")
+
+        return result
+
     async def _post_draft(self, json_data: Dict) -> Dict:
         """Post call to Metax REST API.
 
         :param json_data: Dict with request data
         :returns: Dict with full Metax dataset
         """
-        async with ClientSession() as sess:
-            resp = await sess.post(
-                f"{self.metax_url}{self.rest_route}",
-                params="draft",
-                json=json_data,
-                auth=self.auth,
-            )
-            status = resp.status
-            if status == 201:
-                metax_data = await resp.json()
-                LOG.info(f"Created Metax draft dataset {metax_data['identifier']}")
-                return metax_data
-            else:
-                reason = await resp.text()
-                raise self.metax_error(status, reason)
+        result = await self._request(method="POST", json_data=json_data, params="draft")
+        LOG.info(f"Created Metax draft dataset {result['identifier']}")
 
-    @retry(total_tries=3)
+        return result
+
     async def _put(self, metax_id: str, json_data: Dict) -> Dict:
         """Put call to Metax REST API.
 
@@ -138,21 +218,11 @@ class MetaxServiceHandler:
         :param json_data: Dict with request data
         :returns: Dict with full Metax dataset
         """
-        async with ClientSession() as sess:
-            resp = await sess.put(
-                f"{self.metax_url}{self.rest_route}/{metax_id}",
-                json=json_data,
-                auth=self.auth,
-            )
-            status = resp.status
-            if status == 200:
-                LOG.info(f"Updated Metax dataset {metax_id}")
-                return await resp.json()
-            else:
-                reason = await resp.text()
-                raise self.metax_error(status, reason)
+        result = await self._request(method="PUT", metax_id=metax_id, json_data=json_data)
+        LOG.info(f"Metax dataset {metax_id} updated.")
 
-    @retry(total_tries=3)
+        return result
+
     async def _patch(self, metax_id: str, json_data: Dict) -> Dict:
         """Patch call to Metax REST API.
 
@@ -160,81 +230,42 @@ class MetaxServiceHandler:
         :param json_data: Dict with request data
         :returns: Dict with full Metax dataset
         """
-        async with ClientSession() as sess:
-            resp = await sess.patch(
-                f"{self.metax_url}{self.rest_route}/{metax_id}",
-                json=json_data,
-                auth=self.auth,
-            )
-            status = resp.status
-            if status == 200:
-                LOG.info(f"Patched Metax dataset {metax_id}")
-                return await resp.json()
-            else:
-                reason = await resp.text()
-                raise self.metax_error(status, reason)
+        result = await self._request(method="PATCH", metax_id=metax_id, json_data=json_data)
+        LOG.info(f"Patch completed for metax dataset {metax_id}")
 
-    @retry(total_tries=5)
-    async def _bulk_patch(self, json_data: Dict) -> Dict:
+        return result
+
+    async def _bulk_patch(self, json_data: List[Dict]) -> Dict:
         """Bulk patch call to Metax REST API.
 
         :param json_data: Dict with request data
         :returns: Dict with full Metax dataset
         """
-        async with ClientSession() as sess:
-            resp = await sess.patch(
-                f"{self.metax_url}{self.rest_route}",
-                json=json_data,
-                auth=self.auth,
-            )
-            status = resp.status
-            if status == 200:
-                LOG.info("Updated Metax datasets")
-                return await resp.json()
-            else:
-                reason = await resp.text()
-                raise self.metax_error(status, reason)
+        result = await self._request(method="PATCH", json_data=json_data)
+        LOG.info("Bulk patch completed for metax datasets")
 
-    @retry((HTTPServerError, ClientConnectorError), 3)
+        return result
+
     async def _delete_draft(self, metax_id: str) -> None:
         """Delete draft dataset from Metax service.
 
         :param metax_id: Identification string pointing to Metax dataset to be deleted
         """
-        async with ClientSession() as sess:
-            resp = await sess.delete(
-                f"{self.metax_url}{self.rest_route}/{metax_id}",
-                auth=self.auth,
-            )
-            status = resp.status
-            if status == 204:
-                LOG.debug(f"Deleted draft dataset {metax_id} from Metax service")
-            else:
-                reason = await resp.text()
-                raise self.metax_error(status, reason)
+        await self._request(method="DELETE", metax_id=metax_id)
+        LOG.debug(f"Deleted draft dataset {metax_id} from Metax service")
 
-    @retry(total_tries=5)
     async def _publish(self, metax_id: str) -> str:
-        """Post call to Metax RPC publish endpoint.
+        """Post a call to Metax RPC publish endpoint.
 
         :param metax_id: ID of dataset to be updated
-        :param json_data: Dict with request data
         :returns: Dict with full Metax dataset
         """
-        async with ClientSession() as sess:
-            resp = await sess.post(
-                f"{self.metax_url}{self.publish_route}",
-                params={"identifier": metax_id},
-                auth=self.auth,
-            )
-            status = resp.status
-            if status == 200:
-                LOG.info(f"Metax ID {metax_id} was published to Metax service.")
-                res = await resp.json()
-                return res["preferred_identifier"]
-            else:
-                reason = await resp.text()
-                raise self.metax_error(status, reason)
+        result = await self._request(
+            method="POST", url=f"{self.metax_url}{self.publish_route}", params={"identifier": metax_id}
+        )
+        LOG.info(f"Metax ID {metax_id} was published to Metax service.")
+
+        return result["preferred_identifier"]
 
     async def post_dataset_as_draft(self, collection: str, data: Dict) -> str:
         """Send draft dataset to Metax.
@@ -242,7 +273,7 @@ class MetaxServiceHandler:
         Construct Metax dataset data from submitters' Study or Dataset and
         send it as new draft dataset to Metax Dataset API.
 
-        :param collection: Schema of incomming submitters metadata
+        :param collection: Schema of incoming submitters' metadata
         :param data: Validated Study or Dataset data dict
         :raises: HTTPError depending on returned error from Metax
         :returns: Metax ID for dataset returned by Metax API
@@ -251,29 +282,26 @@ class MetaxServiceHandler:
             f"Creating draft dataset to Metax service from Submitter {collection} with accession ID "
             f"{data['accessionId']}"
         )
-        try:
-            await self.check_connection()
-            metax_dataset = self.minimal_dataset_template
-            metax_dataset["metadata_provider_user"] = await self.get_metadata_provider_user()
-            if collection == "dataset":
-                dataset_data = self.create_metax_dataset_data_from_dataset(data)
-            else:
-                dataset_data = self.create_metax_dataset_data_from_study(data)
-            metax_dataset["research_dataset"] = dataset_data
+        await self.check_connection()
+        metax_dataset = self.minimal_dataset_template
+        metax_dataset["metadata_provider_user"] = await self.get_metadata_provider_user()
+        if collection == "dataset":
+            dataset_data = self.create_metax_dataset_data_from_dataset(data)
+        else:
+            dataset_data = self.create_metax_dataset_data_from_study(data)
+        metax_dataset["research_dataset"] = dataset_data
 
-            metax_data = await self._post_draft(metax_dataset)
-            LOG.debug(
-                f"Created Metax draft dataset from Submitter {collection} "
-                f"{data['accessionId']} with data: {metax_data}."
-            )
-            metax_id = metax_data["identifier"]
-            # Metax service overwrites preferred id (DOI) with temporary id for draft datasets
-            # Patching dataset with full research_dataset data updates preferred id to the real one
-            LOG.debug(f"Updating Metax draft dataset {metax_id} with permanent preferred identifier.")
-            await self._patch(metax_id, {"research_dataset": dataset_data})
-            return metax_id
-        except (HTTPRequestTimeout, HTTPServerError, ClientConnectorError):
-            return ""
+        metax_data = await self._post_draft(metax_dataset)
+        LOG.debug(
+            f"Created Metax draft dataset from Submitter {collection} "
+            f"{data['accessionId']} with data: {metax_data}."
+        )
+        metax_id = metax_data["identifier"]
+        # Metax service overwrites preferred id (DOI) with temporary id for draft datasets
+        # Patching dataset with full research_dataset data updates preferred id to the real one
+        LOG.debug(f"Updating Metax draft dataset {metax_id} with permanent preferred identifier.")
+        await self._patch(metax_id, {"research_dataset": dataset_data})
+        return metax_id
 
     async def update_draft_dataset(self, collection: str, data: Dict) -> None:
         """Update draft dataset to Metax.
@@ -281,27 +309,23 @@ class MetaxServiceHandler:
         Construct Metax draft dataset data from submitters' Study or Dataset and
         send it to Metax Dataset API for update.
 
-        :param collection: Schema of incomming submitters metadata
+        :param collection: Schema of incoming submitters' metadata
         :param data: Validated Study or Dataset data dict
         :raises: HTTPError depending on returned error from Metax
         :returns: Metax ID for dataset returned by Metax API
         """
         LOG.info(f"Updating {collection} object data to Metax service.")
-        try:
-            await self.check_connection()
-            metax_dataset = self.minimal_dataset_template
-            metax_dataset["metadata_provider_user"] = await self.get_metadata_provider_user()
-            if collection == "dataset":
-                dataset_data = self.create_metax_dataset_data_from_dataset(data)
-            else:
-                dataset_data = self.create_metax_dataset_data_from_study(data)
-            metax_dataset["research_dataset"] = dataset_data
+        await self.check_connection()
+        metax_dataset = self.minimal_dataset_template
+        metax_dataset["metadata_provider_user"] = await self.get_metadata_provider_user()
+        if collection == "dataset":
+            dataset_data = self.create_metax_dataset_data_from_dataset(data)
+        else:
+            dataset_data = self.create_metax_dataset_data_from_study(data)
+        metax_dataset["research_dataset"] = dataset_data
 
-            metax_data = await self._put(data["metaxIdentifier"], metax_dataset)
-            LOG.debug(f"Updated Metax ID {data['metaxIdentifier']}, new metadata is: {metax_data}")
-        except (HTTPRequestTimeout, HTTPServerError, ClientConnectorError) as e:
-            LOG.debug(f"Updating draft dataset failed due to: {e}")
-            pass
+        metax_data = await self._put(data["metaxIdentifier"], metax_dataset)
+        LOG.debug(f"Updated Metax ID {data['metaxIdentifier']}, new metadata is: {metax_data}")
 
     async def delete_draft_dataset(self, metax_id: str) -> None:
         """Delete draft dataset from Metax service.
@@ -309,27 +333,21 @@ class MetaxServiceHandler:
         :param metax_id: Identification string pointing to Metax dataset to be deleted
         """
         LOG.info(f"Deleting Metax draft dataset {metax_id}")
-        try:
-            await self.check_connection()
-            await self._delete_draft(metax_id)
-        except (HTTPRequestTimeout, HTTPServerError, ClientConnectorError) as e:
-            LOG.debug(f"Updating draft dataset failed due to: {e}")
-            pass
+        await self._delete_draft(metax_id)
 
     async def update_dataset_with_doi_info(self, doi_info: Dict, _metax_ids: List) -> None:
         """Update dataset for publishing.
 
         :param doi_info: Dict containing info to complete metax dataset metadata
-        :param metax_id: Metax id of dataset to be updated
+        :param _metax_ids: List of Metax id of dataset to be updated
         """
         LOG.info(
             "Updating metadata with datacite info for Metax datasets: "
             f"{','.join([id['metaxIdentifier'] for id in _metax_ids])}"
         )
-        await self.check_connection()
         bulk_data = []
         for id in _metax_ids:
-            metax_data = await self._get(id["metaxIdentifier"])
+            metax_data: dict = await self._get(id["metaxIdentifier"])
 
             # Map fields from doi info to Metax schema
             mapper = MetaDataMapper(metax_data["research_dataset"], doi_info)
@@ -384,23 +402,3 @@ class MetaxServiceHandler:
         research_dataset["description"]["en"] = data["description"]
         LOG.debug(f"Created Metax dataset from Dataset with data: {research_dataset}")
         return research_dataset
-
-    # we dont know exactly what is comming from Metax so we try it all
-    def metax_error(self, status: int, resp_json: str) -> HTTPError:
-        """Construct Metax dataset's research dataset dictionary from Submitters Dataset.
-
-        :param status: Status code of the HTTP exception
-        :param resp_json: Response mesage for returning exeption
-        :returns: HTTP error depending on incomming status
-        """
-        LOG.error(resp_json)
-        if status == 400:
-            return HTTPBadRequest(reason=resp_json)
-        if status == 401:
-            return HTTPUnauthorized(reason=resp_json)
-        if status == 403:
-            return HTTPForbidden(reason=resp_json)
-        if status == 404:
-            return HTTPNotFound(reason=resp_json)
-        else:
-            return HTTPServerError(reason=resp_json)

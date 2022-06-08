@@ -26,22 +26,33 @@ async def http_error_handler(req: Request, handler: Callable) -> Response:
     :raises: Reformatted HTTP Exceptions
     :returns: Successful requests unaffected
     """
+    c_type = "application/problem+json"
     try:
         response = await handler(req)
         return response
+    except (web.HTTPSuccessful, web.HTTPRedirection):
+        # Catches 200s and 300s
+        raise
     except web.HTTPError as error:
+        # Catch 400s and 500s
         LOG.info(HTTP_ERROR_MESSAGE, req.method, req.path, error.status)
         problem = _json_problem(error, req.url)
         LOG.debug("Response payload is %r", problem)
-        c_type = "application/problem+json"
 
-        if error.status in {400, 401, 403, 404, 415, 422}:
+        if error.status in {400, 401, 403, 404, 415, 422, 502, 504}:
             error.content_type = c_type
             error.text = problem
             raise error
         else:
             LOG.exception(HTTP_ERROR_MESSAGE + " This IS a bug.", req.method, req.path, error.status)
             raise web.HTTPInternalServerError(text=problem, content_type=c_type)
+    except Exception:
+        # We don't expect any other errors, so we log it and return a nice message instead of letting server crash
+        LOG.exception("HTTP %r request to %r raised an unexpected exception. This IS a bug.", req.method, req.path)
+        exception = web.HTTPInternalServerError(reason="Server ran into an unexpected error", content_type=c_type)
+        problem = _json_problem(exception, req.url)
+        exception.text = problem
+        raise exception
 
 
 @middleware
@@ -74,11 +85,6 @@ async def check_login(request: Request, handler: Callable) -> StreamResponse:
         "/static",
         "/swagger",
         "/health",
-        "/error400",
-        "/error401",
-        "/error403",
-        "/error404",
-        "/error500",
     ]
     if (
         request.path.startswith(tuple(main_paths))
