@@ -2,14 +2,14 @@
 from typing import Any, Dict, List
 
 import aiohttp_session
-from aiohttp import web, BasicAuth
+from aiohttp import BasicAuth, web
 from yarl import URL
 
-from .metax_mapper import MetaDataMapper
-from .service_handler import ServiceHandler
 from ..api.operators import UserOperator
 from ..conf.conf import metax_config
 from ..helpers.logger import LOG
+from .metax_mapper import MetaDataMapper
+from .service_handler import ServiceHandler
 
 
 class MetaxServiceHandler(ServiceHandler):

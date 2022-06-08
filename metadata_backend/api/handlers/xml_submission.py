@@ -158,6 +158,7 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
         _allowed_doi = {"study", "dataset"}
         db_client = req.app["db_client"]
         submission_op = SubmissionOperator(db_client)
+        metax_handler = MetaxServiceHandler(req)
 
         submission_id = req.query.get("submission", "")
         if not submission_id:
@@ -188,7 +189,7 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
 
         # Create draft dataset to Metax catalog
         try:
-            if schema in _allowed_doi:
+            if metax_handler.enabled and schema in _allowed_doi:
                 await self.create_metax_dataset(req, schema, json_data)
         except Exception as e:
             # We don't care if it fails here
