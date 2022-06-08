@@ -44,108 +44,108 @@
     "processedReads": {
       "assembly": {
         "refname": "GRCh37",
-        "accessionId": "GCA_000001405.1"
+        "accession": "GCA_000001405.1"
       },
       "sequence": [
         {
           "label": "1",
-          "accessionId": "CM000663.1"
+          "accession": "CM000663.1"
         },
         {
           "label": "10",
-          "accessionId": "CM000672.1"
+          "accession": "CM000672.1"
         },
         {
           "label": "11",
-          "accessionId": "CM000673.1"
+          "accession": "CM000673.1"
         },
         {
           "label": "12",
-          "accessionId": "CM000674.1"
+          "accession": "CM000674.1"
         },
         {
           "label": "13",
-          "accessionId": "CM000675.1"
+          "accession": "CM000675.1"
         },
         {
           "label": "14",
-          "accessionId": "CM000676.1"
+          "accession": "CM000676.1"
         },
         {
           "label": "15",
-          "accessionId": "CM000677.1"
+          "accession": "CM000677.1"
         },
         {
           "label": "16",
-          "accessionId": "CM000678.1"
+          "accession": "CM000678.1"
         },
         {
           "label": "17",
-          "accessionId": "CM000679.1"
+          "accession": "CM000679.1"
         },
         {
           "label": "18",
-          "accessionId": "CM000680.1"
+          "accession": "CM000680.1"
         },
         {
           "label": "19",
-          "accessionId": "CM000681.1"
+          "accession": "CM000681.1"
         },
         {
           "label": "2",
-          "accessionId": "CM000664.1"
+          "accession": "CM000664.1"
         },
         {
           "label": "20",
-          "accessionId": "CM000682.1"
+          "accession": "CM000682.1"
         },
         {
           "label": "21",
-          "accessionId": "CM000683.1"
+          "accession": "CM000683.1"
         },
         {
           "label": "22",
-          "accessionId": "CM000684.1"
+          "accession": "CM000684.1"
         },
         {
           "label": "3",
-          "accessionId": "CM000665.1"
+          "accession": "CM000665.1"
         },
         {
           "label": "4",
-          "accessionId": "CM000666.1"
+          "accession": "CM000666.1"
         },
         {
           "label": "5",
-          "accessionId": "CM000667.1"
+          "accession": "CM000667.1"
         },
         {
           "label": "6",
-          "accessionId": "CM000668.1"
+          "accession": "CM000668.1"
         },
         {
           "label": "7",
-          "accessionId": "CM000669.1"
+          "accession": "CM000669.1"
         },
         {
           "label": "8",
-          "accessionId": "CM000670.1"
+          "accession": "CM000670.1"
         },
         {
           "label": "9",
-          "accessionId": "CM000671.1"
+          "accession": "CM000671.1"
         },
         {
           "label": "MT",
-          "accessionId": "J01415.2"
+          "accession": "J01415.2"
         },
         {
           "label": "X",
-          "accessionId": "CM000685.1"
+          "accession": "CM000685.1"
         },
         {
           "label": "Y",
-          "accessionId": "CM000686.1"
+          "accession": "CM000686.1"
         }
       ]
     }

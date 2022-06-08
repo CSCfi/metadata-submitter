@@ -8,6 +8,7 @@ from aiohttp import web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
+from ...conf.conf import API_PREFIX
 from ...helpers.doi import DOIHandler
 from ...helpers.logger import LOG
 from ...helpers.metax_api_handler import MetaxServiceHandler
@@ -76,7 +77,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         accession_id = req.match_info["accessionId"]
         schema_type = req.match_info["schema"]
         self._check_schema_exists(schema_type)
-        collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
+        collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
 
         req_format = req.query.get("format", "json").lower()
         db_client = req.app["db_client"]
@@ -117,7 +118,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         await self._handle_check_ownership(req, "submissions", submission_id)
 
         self._check_schema_exists(schema_type)
-        collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
+        collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
 
         db_client = req.app["db_client"]
         submission_op = SubmissionOperator(db_client)
@@ -126,7 +127,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         # we only allow one study per submission
         # this is not enough to catch duplicate entries if updates happen in parallel
         # that is why we check in db_service.update_study
-        if not req.path.startswith("/drafts") and schema_type == "study":
+        if not req.path.startswith(f"{API_PREFIX}/drafts") and schema_type == "study":
             _ids = await submission_op.get_collection_objects(submission_id, collection)
             if len(_ids) == 1:
                 reason = "Only one study is allowed per submission."
@@ -149,7 +150,7 @@ class ObjectAPIHandler(RESTAPIHandler):
             operator = XMLOperator(db_client) if cont_type == "xml" else Operator(db_client)
         else:
             content = await self._get_data(req)
-            if not req.path.startswith("/drafts"):
+            if not req.path.startswith(f"{API_PREFIX}/drafts"):
                 JSONValidator(content, schema_type).validate
             operator = Operator(db_client)
 
@@ -221,7 +222,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         _allowed_doi = {"study", "dataset"}
 
         self._check_schema_exists(schema_type)
-        collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
+        collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
         db_client = req.app["db_client"]
 
         operator = Operator(db_client)
@@ -284,7 +285,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         _allowed_doi = {"study", "dataset"}
 
         self._check_schema_exists(schema_type)
-        collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
+        collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
 
         db_client = req.app["db_client"]
         content: Union[Dict, str]
@@ -296,7 +297,7 @@ class ObjectAPIHandler(RESTAPIHandler):
             operator = XMLOperator(db_client)
         else:
             content = await self._get_data(req)
-            if not req.path.startswith("/drafts"):
+            if not req.path.startswith(f"{API_PREFIX}/drafts"):
                 reason = "Replacing objects only allowed for XML."
                 LOG.error(reason)
                 raise web.HTTPUnsupportedMediaType(reason=reason)
@@ -343,7 +344,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         LOG.debug(f"Patching object {schema_type} {accession_id}")
 
         self._check_schema_exists(schema_type)
-        collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
+        collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
 
         db_client = req.app["db_client"]
         operator: Union[Operator, XMLOperator]
