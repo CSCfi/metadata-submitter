@@ -175,6 +175,7 @@ doi_config = {
 }
 
 metax_config = {
+    "enabled": os.getenv("METAX_ENABLED", "") == "True",
     "username": os.getenv("METAX_USER", "sd"),
     "password": os.getenv("METAX_PASS", "test"),
     "url": os.getenv("METAX_URL", "http://mockmetax:8002"),

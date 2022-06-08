@@ -70,6 +70,7 @@ class MetaxServiceHandler:
         """
         self.req = req
         self.db_client = self.req.app["db_client"]
+        self.enabled = metax_config["enabled"]
         self.auth = BasicAuth(metax_config["username"], metax_config["password"])
         self.metax_url = metax_config["url"]
         self.rest_route = metax_config["rest_route"]

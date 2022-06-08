@@ -186,8 +186,9 @@ class ObjectAPIHandler(RESTAPIHandler):
         await submission_op.update_submission(submission_id, patch)
 
         # Create draft dataset to Metax catalog
+        metax_handler = MetaxServiceHandler(req)
         try:
-            if collection in _allowed_doi:
+            if metax_handler.enabled and collection in _allowed_doi:
                 [await self.create_metax_dataset(req, collection, item) for item, _ in objects]
         except Exception as e:
             # We don't care if it fails here
@@ -266,7 +267,8 @@ class ObjectAPIHandler(RESTAPIHandler):
         accession_id = await operator.delete_metadata_object(collection, accession_id)
 
         # Delete draft dataset from Metax catalog
-        if collection in _allowed_doi:
+        metax_handler = MetaxServiceHandler(req)
+        if metax_handler.enabled and collection in _allowed_doi:
             try:
                 await MetaxServiceHandler(req).delete_draft_dataset(metax_id)
             except Exception as e:
@@ -330,8 +332,9 @@ class ObjectAPIHandler(RESTAPIHandler):
         await submission_op.update_submission(submission_id, patch)
 
         # Update draft dataset to Metax catalog
+        metax_handler = MetaxServiceHandler(req)
         try:
-            if collection in _allowed_doi:
+            if metax_handler.enabled and collection in _allowed_doi:
                 if data.get("metaxIdentifier", None):
                     await MetaxServiceHandler(req).update_draft_dataset(collection, data)
                 else:
@@ -393,8 +396,9 @@ class ObjectAPIHandler(RESTAPIHandler):
             pass
 
         # Update draft dataset to Metax catalog
+        metax_handler = MetaxServiceHandler(req)
         try:
-            if collection in {"study", "dataset"}:
+            if metax_handler.enabled and collection in {"study", "dataset"}:
                 object_data, _ = await operator.read_metadata_object(collection, accession_id)
                 # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
                 if isinstance(object_data, Dict):
@@ -520,12 +524,16 @@ class ObjectAPIHandler(RESTAPIHandler):
         :returns: Metax ID
         """
         LOG.info("Creating draft dataset to Metax.")
+        metax_handler = MetaxServiceHandler(req)
+        if not metax_handler.enabled:
+            LOG.info("Metax integration is disabled.")
+            return ""
         operator = Operator(req.app["db_client"])
         new_info = {}
         if create_draft_doi:
             object["doi"] = await self._draft_doi(collection)
             new_info = {"doi": object["doi"]}
-        metax_id = await MetaxServiceHandler(req).post_dataset_as_draft(collection, object)
+        metax_id = await metax_handler.post_dataset_as_draft(collection, object)
         new_info["metaxIdentifier"] = metax_id
         await operator.create_metax_info(collection, object["accessionId"], new_info)
 
