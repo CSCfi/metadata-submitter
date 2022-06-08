@@ -11,7 +11,7 @@
       "value": "BGI-FC304RWAAXX"
     }
   },
-  "experimentRef": {
+  "experimentRef": [{
     "refname": "g1k-bgi-NA18542-HUMsgR2ACDECBPE",
     "refcenter": "BGI",
     "accessionId": "ERX000037",
@@ -22,7 +22,7 @@
         "value": "g1k-bgi-NA18542-HUMsgR2ACDECBPE"
       }
     }
-  },
+  }],
   "files": [
     {
       "filename": "ERA000/ERA000014/srf/BGI-FC304RWAAXX_5.srf",
