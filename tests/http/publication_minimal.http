@@ -13,7 +13,7 @@
 @project_id = {{user_data_req.response.body.projects[0].projectId}}
 @submission_id = {{submission_id_req.response.body.submissionId}}
 
-### Mock athentication
+### Mock authentication
 GET {{auth_url}}/setmock
     ?sub={{auth_email}}
     &given=Mock
@@ -22,15 +22,19 @@ GET {{auth_url}}/setmock
 ###
 GET {{backend_url}}/aai
 
+###
+GET {{backend_url}}/logout
+
+
 ### Get user data
 # @name user_data_req
-GET {{backend_url}}/users/current
+GET {{backend_url}}/v1/users/current
 
 
 
 ### Create submission
 # @name submission_id_req
-POST {{backend_url}}/submissions
+POST {{backend_url}}/v1/submissions
 
 {
     "name": "submission test 1",
@@ -39,22 +43,22 @@ POST {{backend_url}}/submissions
 }
 
 ### List submissions
-GET {{backend_url}}/submissions
+GET {{backend_url}}/v1/submissions
     ?projectId={{project_id}}
 
 ### Get submission
-GET {{backend_url}}/submissions/{{submission_id}}
+GET {{backend_url}}/v1/submissions/{{submission_id}}
 
 ### Add study to submission
-POST {{backend_url}}/objects/study
+POST {{backend_url}}/v1/objects/study
     ?submission={{submission_id}}
 
 < ../test_files/study/SRP000539.json
 
 ### Update DOI in submission
-PUT {{backend_url}}/submissions/{{submission_id}}/doi
+PUT {{backend_url}}/v1/submissions/{{submission_id}}/doi
 
 < ../test_files/doi/test_doi.json
 
 ### Publish submission
-PATCH {{backend_url}}/publish/{{submission_id}}
+PATCH {{backend_url}}/v1/publish/{{submission_id}}

@@ -1,13 +1,13 @@
 """Handle HTTP methods for server."""
 from typing import Union
 
+import aiohttp_session
 import ujson
 from aiohttp import web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
 from ...helpers.logger import LOG
-from ..middlewares import get_session
 from ..operators import Operator, ProjectOperator, UserOperator, XMLOperator
 from .restapi import RESTAPIHandler
 
@@ -21,11 +21,13 @@ class TemplatesAPIHandler(RESTAPIHandler):
         :param req: GET Request
         :returns: JSON list of templates available for the user
         """
+        session = await aiohttp_session.get_session(req)
+
         project_id = self._get_param(req, "projectId")
         db_client = req.app["db_client"]
 
         user_operator = UserOperator(db_client)
-        current_user = get_session(req)["user_info"]
+        current_user = session["user_info"]
         user = await user_operator.read_user(current_user)
         user_has_project = await user_operator.check_user_has_project(project_id, user["userId"])
         if not user_has_project:
@@ -83,6 +85,8 @@ class TemplatesAPIHandler(RESTAPIHandler):
         :param req: POST request
         :returns: JSON response containing accessionId for submitted template
         """
+        session = await aiohttp_session.get_session(req)
+
         schema_type = req.match_info["schema"]
         self._check_schema_exists(schema_type)
         collection = f"template-{schema_type}"
@@ -111,7 +115,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
 
                 # Check that project exists and user is affiliated with it
                 await project_op._check_project_exists(tmpl["projectId"])
-                current_user = get_session(req)["user_info"]
+                current_user = session["user_info"]
                 user = await user_op.read_user(current_user)
                 user_has_project = await user_op.check_user_has_project(tmpl["projectId"], user["userId"])
                 if not user_has_project:
@@ -144,7 +148,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
 
             # Check that project exists and user is affiliated with it
             await project_op._check_project_exists(content["projectId"])
-            current_user = get_session(req)["user_info"]
+            current_user = session["user_info"]
             user = await user_op.read_user(current_user)
             user_has_project = await user_op.check_user_has_project(content["projectId"], user["userId"])
             if not user_has_project:
@@ -217,7 +221,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
         LOG.info(f"PATCH template with accession ID {accession_id} in schema {collection} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
-    async def delete_template(self, req: Request) -> Response:
+    async def delete_template(self, req: Request) -> web.HTTPNoContent:
         """Delete metadata template from database.
 
         :param req: DELETE request
@@ -225,6 +229,8 @@ class TemplatesAPIHandler(RESTAPIHandler):
         :raises: HTTPUnprocessableEntity if template does not belong to current user
         :returns: HTTPNoContent response
         """
+        await aiohttp_session.get_session(req)
+
         schema_type = req.match_info["schema"]
         self._check_schema_exists(schema_type)
         collection = f"template-{schema_type}"
@@ -245,4 +251,4 @@ class TemplatesAPIHandler(RESTAPIHandler):
         accession_id = await Operator(db_client).delete_metadata_object(collection, accession_id)
 
         LOG.info(f"DELETE template with accession ID {accession_id} in schema {collection} was successful.")
-        return web.Response(status=204)
+        return web.HTTPNoContent()

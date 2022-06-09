@@ -18,14 +18,12 @@
     "scientificName": "Homo sapiens"
   },
   "description": "Human HapMap individual NA18758",
-  "sampleLinks": {
-    "urlLinks": [
-      {
-        "label": "DNA source",
-        "url": "http://ccr.coriell.org/Sections/Collections/NHGRI/hapmap.aspx?PgId=266"
-      }
-    ]
-  },
+  "sampleLinks": [
+    {
+      "label": "DNA source",
+      "url": "http://ccr.coriell.org/Sections/Collections/NHGRI/hapmap.aspx?PgId=266"
+    }
+  ],
   "sampleAttributes": [
     {
       "tag": "population",

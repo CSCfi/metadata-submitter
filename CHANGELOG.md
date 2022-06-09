@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - connection checking and `retry`-mechanism for calls to Metax-service in case of server and connection errors
 - Endpoint for submitting DOI information. #389
 - Endpoint with swagger documentation `/swagger`
+- added `aiohttp_session` as dependency and removed old way of handling cookies
 
 ### Changed
 - migrated to variables used by motor 3 for ssl https://motor.readthedocs.io/en/stable/migrate-to-motor-3.html?highlight=ssl_certfile#renamed-uri-options
@@ -21,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - HTTPError exceptions return a response with JSON Problem instead of an HTML page #433
   - Make Metax errors visible to user #453
   - Catch unexpected errors and return a JSON Problem instead of server crashing #453
+- Fix session and authorization issues
+  - Prefix API endpoint with /v1
+  - Refactor authentication checking, fixing issues from #421 and remove HTTPSeeOther from the API
 - Recreate DB before integration tests run and cleanup after integration tests have run #448
 
 ### Removed
