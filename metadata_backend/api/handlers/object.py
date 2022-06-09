@@ -8,6 +8,7 @@ from aiohttp import web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
+from ...conf.conf import API_PREFIX
 from ...helpers.doi import DOIHandler
 from ...helpers.logger import LOG
 from ...helpers.metax_api_handler import MetaxServiceHandler
@@ -76,7 +77,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         accession_id = req.match_info["accessionId"]
         schema_type = req.match_info["schema"]
         self._check_schema_exists(schema_type)
-        collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
+        collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
 
         req_format = req.query.get("format", "json").lower()
         db_client = req.app["db_client"]
@@ -117,7 +118,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         await self._handle_check_ownership(req, "submissions", submission_id)
 
         self._check_schema_exists(schema_type)
-        collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
+        collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
 
         db_client = req.app["db_client"]
         submission_op = SubmissionOperator(db_client)
@@ -126,7 +127,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         # we only allow one study per submission
         # this is not enough to catch duplicate entries if updates happen in parallel
         # that is why we check in db_service.update_study
-        if not req.path.startswith("/drafts") and schema_type == "study":
+        if not req.path.startswith(f"{API_PREFIX}/drafts") and schema_type == "study":
             _ids = await submission_op.get_collection_objects(submission_id, collection)
             if len(_ids) == 1:
                 reason = "Only one study is allowed per submission."
@@ -149,7 +150,7 @@ class ObjectAPIHandler(RESTAPIHandler):
             operator = XMLOperator(db_client) if cont_type == "xml" else Operator(db_client)
         else:
             content = await self._get_data(req)
-            if not req.path.startswith("/drafts"):
+            if not req.path.startswith(f"{API_PREFIX}/drafts"):
                 JSONValidator(content, schema_type).validate
             operator = Operator(db_client)
 
@@ -185,8 +186,13 @@ class ObjectAPIHandler(RESTAPIHandler):
         await submission_op.update_submission(submission_id, patch)
 
         # Create draft dataset to Metax catalog
-        if collection in _allowed_doi:
-            [await self.create_metax_dataset(req, collection, item) for item, _ in objects]
+        try:
+            if collection in _allowed_doi:
+                [await self.create_metax_dataset(req, collection, item) for item, _ in objects]
+        except Exception as e:
+            # We don't care if it fails here
+            LOG.info(f"create_metax_dataset failed: {e} for collection {collection}")
+            pass
 
         body = ujson.dumps(data, escape_forward_slashes=False)
 
@@ -207,7 +213,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         self._check_schema_exists(schema_type)
         return await self._handle_query(req)
 
-    async def delete_object(self, req: Request) -> Response:
+    async def delete_object(self, req: Request) -> web.HTTPNoContent:
         """Delete metadata object from database.
 
         :param req: DELETE request
@@ -221,7 +227,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         _allowed_doi = {"study", "dataset"}
 
         self._check_schema_exists(schema_type)
-        collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
+        collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
         db_client = req.app["db_client"]
 
         operator = Operator(db_client)
@@ -261,12 +267,17 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         # Delete draft dataset from Metax catalog
         if collection in _allowed_doi:
-            await MetaxServiceHandler(req).delete_draft_dataset(metax_id)
+            try:
+                await MetaxServiceHandler(req).delete_draft_dataset(metax_id)
+            except Exception as e:
+                # We don't care if it fails here
+                LOG.info(f"delete_draft_dataset failed: {e} for collection {collection}")
+                pass
             doi_service = DOIHandler()
             await doi_service.delete(doi_id)
 
         LOG.info(f"DELETE object with accession ID {accession_id} in schema {collection} was successful.")
-        return web.Response(status=204)
+        return web.HTTPNoContent()
 
     async def put_object(self, req: Request) -> Response:
         """Replace metadata object in database.
@@ -284,7 +295,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         _allowed_doi = {"study", "dataset"}
 
         self._check_schema_exists(schema_type)
-        collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
+        collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
 
         db_client = req.app["db_client"]
         content: Union[Dict, str]
@@ -296,7 +307,7 @@ class ObjectAPIHandler(RESTAPIHandler):
             operator = XMLOperator(db_client)
         else:
             content = await self._get_data(req)
-            if not req.path.startswith("/drafts"):
+            if not req.path.startswith(f"{API_PREFIX}/drafts"):
                 reason = "Replacing objects only allowed for XML."
                 LOG.error(reason)
                 raise web.HTTPUnsupportedMediaType(reason=reason)
@@ -319,11 +330,16 @@ class ObjectAPIHandler(RESTAPIHandler):
         await submission_op.update_submission(submission_id, patch)
 
         # Update draft dataset to Metax catalog
-        if collection in _allowed_doi:
-            if data.get("metaxIdentifier", None):
-                await MetaxServiceHandler(req).update_draft_dataset(collection, data)
-            else:
-                await self.create_metax_dataset(req, collection, data, create_draft_doi=False)
+        try:
+            if collection in _allowed_doi:
+                if data.get("metaxIdentifier", None):
+                    await MetaxServiceHandler(req).update_draft_dataset(collection, data)
+                else:
+                    await self.create_metax_dataset(req, collection, data, create_draft_doi=False)
+        except Exception as e:
+            # We don't care if it fails here
+            LOG.info(f"update_draft_dataset or create_metax_dataset failed: {e} for collection {collection}")
+            pass
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info(f"PUT object with accession ID {accession_id} in schema {collection} was successful.")
@@ -343,7 +359,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         LOG.debug(f"Patching object {schema_type} {accession_id}")
 
         self._check_schema_exists(schema_type)
-        collection = f"draft-{schema_type}" if req.path.startswith("/drafts") else schema_type
+        collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
 
         db_client = req.app["db_client"]
         operator: Union[Operator, XMLOperator]
@@ -377,16 +393,21 @@ class ObjectAPIHandler(RESTAPIHandler):
             pass
 
         # Update draft dataset to Metax catalog
-        if collection in {"study", "dataset"}:
-            object_data, _ = await operator.read_metadata_object(collection, accession_id)
-            # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
-            if isinstance(object_data, Dict):
-                if object_data.get("metaxIdentifier", None):
-                    await MetaxServiceHandler(req).update_draft_dataset(collection, object_data)
+        try:
+            if collection in {"study", "dataset"}:
+                object_data, _ = await operator.read_metadata_object(collection, accession_id)
+                # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
+                if isinstance(object_data, Dict):
+                    if object_data.get("metaxIdentifier", None):
+                        await MetaxServiceHandler(req).update_draft_dataset(collection, object_data)
+                    else:
+                        await self.create_metax_dataset(req, collection, object_data, create_draft_doi=False)
                 else:
-                    await self.create_metax_dataset(req, collection, object_data, create_draft_doi=False)
-            else:
-                raise ValueError("Object's data must be dictionary")
+                    raise ValueError("Object's data must be dictionary")
+        except Exception as e:
+            # We don't care if it fails here
+            LOG.info(f"update_draft_dataset or create_metax_dataset failed: {e} for collection {collection}")
+            pass
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info(f"PATCH object with accession ID {accession_id} in schema {collection} was successful.")

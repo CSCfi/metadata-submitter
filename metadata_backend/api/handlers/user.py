@@ -4,14 +4,13 @@ import re
 from math import ceil
 from typing import Any, Dict, Tuple
 
+import aiohttp_session
 import ujson
 from aiohttp import web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
-from ...conf.conf import aai_config
 from ...helpers.logger import LOG
-from ..middlewares import decrypt_cookie, get_session
 from ..operators import UserOperator
 from .restapi import RESTAPIHandler
 
@@ -83,12 +82,14 @@ class UserAPIHandler(RESTAPIHandler):
         :raises: HTTPUnauthorized if not current user
         :returns: JSON response containing user object or list of user templates or user submissions by id
         """
+        session = await aiohttp_session.get_session(req)
+
         user_id = req.match_info["userId"]
         if user_id != "current":
             LOG.info(f"User ID {user_id} was requested")
             raise web.HTTPUnauthorized(reason="Only current user retrieval is allowed")
 
-        current_user = get_session(req)["user_info"]
+        current_user = session["user_info"]
 
         # Return whole user object if templates or submissions are not specified in query
         db_client = req.app["db_client"]
@@ -106,6 +107,8 @@ class UserAPIHandler(RESTAPIHandler):
         :raises: HTTPUnauthorized if not current user
         :returns: HTTPNoContent response
         """
+        session = await aiohttp_session.get_session(req)
+
         user_id = req.match_info["userId"]
         if user_id != "current":
             LOG.info(f"User ID {user_id} delete was requested")
@@ -113,25 +116,15 @@ class UserAPIHandler(RESTAPIHandler):
         db_client = req.app["db_client"]
         operator = UserOperator(db_client)
 
-        current_user = get_session(req)["user_info"]
+        current_user = session["user_info"]
 
         await operator.delete_user(current_user)
         LOG.info(f"DELETE user with ID {current_user} was successful.")
 
-        cookie = decrypt_cookie(req)
+        session.invalidate()
 
-        try:
-            req.app["Session"].pop(cookie["id"])
-            req.app["Cookies"].remove(cookie["id"])
-        except KeyError:
-            pass
-
-        response = web.HTTPSeeOther(f"{aai_config['redirect']}/")
-        response.headers["Location"] = (
-            "/" if aai_config["redirect"] == aai_config["domain"] else f"{aai_config['redirect']}/"
-        )
-        LOG.debug("Logged out user ")
-        raise response
+        LOG.debug(f"Logged out user {user_id}")
+        return web.HTTPNoContent()
 
     async def _get_user_items(self, req: Request, user: Dict, item_type: str) -> Tuple[Dict, CIMultiDict[str]]:
         """Get draft templates owned by the user with pagination values.
@@ -140,7 +133,7 @@ class UserAPIHandler(RESTAPIHandler):
         :param user: User object
         :param item_type: Name of the items ("templates" or "submissions")
         :raises: HTTPUnauthorized if not current user
-        :returns: Paginated list of user draft templates and link header
+        :returns: Tuple with paginated list of user draft templates and link headers
         """
         # Check item_type parameter is not faulty
         if item_type not in {"templates", "submissions"}:
