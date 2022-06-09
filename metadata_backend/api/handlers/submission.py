@@ -46,7 +46,8 @@ class SubmissionAPIHandler(RESTAPIHandler):
                     "schemaOrg": "Collection",
                     "resourceTypeGeneral": "Collection",
                 },
-                "url": f"{doi_config['discovery_url']}{study_data['metaxIdentifier']}",
+                "url": f"{doi_config['discovery_url']}metax_disabled",
+                # "url": f"{doi_config['discovery_url']}{study_data['metaxIdentifier']}",
                 "identifiers": [
                     {
                         "identifierType": "DOI",
@@ -214,7 +215,7 @@ class SubmissionAPIHandler(RESTAPIHandler):
                         if metax_handler.enabled:
                             if not study_data["metaxIdentifier"]:
                                 study_data["metaxIdentifier"] = await obj_handler.create_metax_dataset(
-                                    req, "study", study_data, create_draft_doi=False
+                                    req, "study", study_data
                                 )
 
                             metax_ids.append({"doi": study_data["doi"], "metaxIdentifier": study_data["metaxIdentifier"]})
@@ -248,7 +249,7 @@ class SubmissionAPIHandler(RESTAPIHandler):
                         # in case object is not added to metax due to server error
                         if metax_handler.enabled and not ds_data["metaxIdentifier"]:
                             ds_data["metaxIdentifier"] = await obj_handler.create_metax_dataset(
-                                req, "dataset", ds_data, create_draft_doi=False
+                                req, "dataset", ds_data
                             )
 
                             metax_ids.append({"doi": ds_data["doi"], "metaxIdentifier": ds_data["metaxIdentifier"]})
@@ -273,7 +274,7 @@ class SubmissionAPIHandler(RESTAPIHandler):
         # properly recorded
         except Exception as e:
             reason = f"Could not construct DOI data, reason: {e}"
-            LOG.error(reason)
+            LOG.exception(reason)
             raise web.HTTPInternalServerError(reason=reason)
 
         return (study, datasets, metax_ids)

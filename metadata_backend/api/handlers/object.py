@@ -185,6 +185,12 @@ class ObjectAPIHandler(RESTAPIHandler):
         patch = self._prepare_submission_patch_new_object(collection, objects, cont_type)
         await submission_op.update_submission(submission_id, patch)
 
+        # Add DOI to object
+        if collection in _allowed_doi:
+            for item, _ in objects:
+                item["doi"] = await self.create_draft_doi(collection)
+                await operator.create_metax_info(collection, item["accessionId"], {"doi": item["doi"]})
+
         # Create draft dataset to Metax catalog
         metax_handler = MetaxServiceHandler(req)
         try:
@@ -338,7 +344,7 @@ class ObjectAPIHandler(RESTAPIHandler):
                 if data.get("metaxIdentifier", None):
                     await MetaxServiceHandler(req).update_draft_dataset(collection, data)
                 else:
-                    await self.create_metax_dataset(req, collection, data, create_draft_doi=False)
+                    await self.create_metax_dataset(req, collection, data)
         except Exception as e:
             # We don't care if it fails here
             LOG.info(f"update_draft_dataset or create_metax_dataset failed: {e} for collection {collection}")
@@ -405,7 +411,7 @@ class ObjectAPIHandler(RESTAPIHandler):
                     if object_data.get("metaxIdentifier", None):
                         await MetaxServiceHandler(req).update_draft_dataset(collection, object_data)
                     else:
-                        await self.create_metax_dataset(req, collection, object_data, create_draft_doi=False)
+                        await self.create_metax_dataset(req, collection, object_data)
                 else:
                     raise ValueError("Object's data must be dictionary")
         except Exception as e:
@@ -509,7 +515,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         return [patch_op, lastModified]
 
     async def create_metax_dataset(
-        self, req: Request, collection: str, object: Dict, create_draft_doi: bool = True
+        self, req: Request, collection: str, object: Dict
     ) -> str:
         """Handle connection to Metax api handler for dataset creation.
 
@@ -520,7 +526,6 @@ class ObjectAPIHandler(RESTAPIHandler):
         :param req: HTTP request
         :param collection: object's schema
         :param object: metadata object
-        :param submission_id: submission ID where metadata object belongs to
         :returns: Metax ID
         """
         LOG.info("Creating draft dataset to Metax.")
@@ -530,26 +535,27 @@ class ObjectAPIHandler(RESTAPIHandler):
             return ""
         operator = Operator(req.app["db_client"])
         new_info = {}
-        if create_draft_doi:
-            object["doi"] = await self._draft_doi(collection)
-            new_info = {"doi": object["doi"]}
+        if "doi" in object:
+            new_info["doi"] = object["doi"]
         metax_id = await metax_handler.post_dataset_as_draft(collection, object)
         new_info["metaxIdentifier"] = metax_id
         await operator.create_metax_info(collection, object["accessionId"], new_info)
 
         return metax_id
 
-    async def _draft_doi(self, schema_type: str) -> str:
+    @staticmethod
+    async def create_draft_doi(collection: str) -> str:
         """Create draft DOI for study and dataset.
 
         The Draft DOI will be created only on POST and the data added to the
         submission. Any update of this should not be possible.
 
-        :param schema_type: schema can be either study or dataset
+        :param collection: schema can be either study or dataset
         :returns: Dict with DOI of the study or dataset as well as the types.
         """
+        assert collection in {"study", "dataset"}
         doi_ops = DOIHandler()
-        _doi_data = await doi_ops.create_draft(prefix=schema_type)
+        _doi_data = await doi_ops.create_draft(prefix=collection)
 
         LOG.debug(f"doi created with doi: {_doi_data['fullDOI']}")
 
