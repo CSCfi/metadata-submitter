@@ -153,7 +153,7 @@ The REST API is structured as follows:
 - `Management Endpoints` used for handling data updates and deletion, makes use of HTTP ``PUT``, ``PATCH`` and ``DELETE``.
 
 .. important:: A logged in user can only perform operations on the data it has associated.
-               The information for the current user can be retrieved at ``/users/current`` (the user ID is ``current``), and
+               The information for the current user can be retrieved at ``/v1/users/current`` (the user ID is ``current``), and
                any additional operations on other users are rejected.
 
 

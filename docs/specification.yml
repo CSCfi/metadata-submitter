@@ -16,7 +16,7 @@ tags:
   - name: Manage
     description: Endpoints used for managing data
 paths:
-  /submit:
+  /v1/submit:
     post:
       tags:
         - Submission
@@ -60,7 +60,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
-  /validate:
+  /v1/validate:
     post:
       tags:
         - Submission
@@ -96,7 +96,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
-  /schemas:
+  /v1/schemas:
     get:
       tags:
         - Query
@@ -126,7 +126,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
-  /schemas/{schema}:
+  /v1/schemas/{schema}:
     get:
       tags:
         - Query
@@ -163,7 +163,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
-  /objects/{schema}:
+  /v1/objects/{schema}:
     get:
       tags:
         - Query
@@ -353,7 +353,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
-  /objects/{schema}/{accessionId}:
+  /v1/objects/{schema}/{accessionId}:
     get:
       tags:
         - Query
@@ -538,7 +538,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
-  /drafts/{schema}:
+  /v1/drafts/{schema}:
     post:
       tags:
         - Submission
@@ -588,7 +588,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/401Unauthorized"
-  /drafts/{schema}/{accessionId}:
+  /v1/drafts/{schema}/{accessionId}:
     get:
       tags:
         - Query
@@ -773,7 +773,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
-  /templates:
+  /v1/templates:
     get:
       tags:
         - Query
@@ -804,7 +804,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
-  /templates/{schema}:
+  /v1/templates/{schema}:
     post:
       tags:
         - Submission
@@ -846,7 +846,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
-  /templates/{schema}/{accessionId}:
+  /v1/templates/{schema}/{accessionId}:
     get:
       tags:
         - Query
@@ -932,7 +932,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
   
-  /submissions:
+  /v1/submissions:
     get:
       tags:
         - Query
@@ -1046,7 +1046,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
-  /submissions/{submissionId}:
+  /v1/submissions/{submissionId}:
     get:
       tags:
         - Query
@@ -1167,7 +1167,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
-  /submissions/{submissionId}/doi:
+  /v1/submissions/{submissionId}/doi:
     put:
       tags:
         - Manage
@@ -1209,7 +1209,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
-  /publish/{submissionId}:
+  /v1/publish/{submissionId}:
     patch:
       tags:
         - Manage
@@ -1246,7 +1246,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
-  /users/{userId}:
+        502:
+          description: Bad Gateway
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/502BadGateway"
+        504:
+          description: Gateway Timeout
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/504GatewayTimeout"
+  /v1/users/{userId}:
     get:
       tags:
         - Query
@@ -1424,6 +1436,22 @@ components:
           example: Forbidden
         detail:
           example: the request does not contain the right permissions
+    502BadGateway:
+      allOf:
+        - $ref: "#/components/schemas/ErrorModel"
+      properties:
+        title:
+          example: Bad Gateway
+        detail:
+          example: "Metax error: metax service provider couldn't process request"
+    504GatewayTimeout:
+      allOf:
+        - $ref: "#/components/schemas/ErrorModel"
+      properties:
+        title:
+          example: Gateway Timeout
+        detail:
+          example: "Metax error: could not reach the metax service provider"
     SchemasList:
       type: array
       items:

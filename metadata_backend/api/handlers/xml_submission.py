@@ -8,6 +8,7 @@ from aiohttp.web import Request, Response
 from multidict import MultiDict, MultiDictProxy
 from xmlschema import XMLSchemaException
 
+from ...conf.conf import API_PREFIX
 from ...helpers.logger import LOG
 from ...helpers.metax_api_handler import MetaxServiceHandler
 from ...helpers.parser import XMLToJSONParser
@@ -167,7 +168,7 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
         # we only allow one study per submission
         # this is not enough to catch duplicate entries if updates happen in parallel
         # that is why we check in db_service.update_study
-        if not req.path.startswith("/drafts") and schema == "study":
+        if not req.path.startswith(f"{API_PREFIX}/drafts") and schema == "study":
             _ids = await submission_op.get_collection_objects(submission_id, schema)
             if len(_ids) == 1:
                 reason = "Only one study is allowed per submission."
@@ -186,8 +187,13 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
         await submission_op.update_submission(submission_id, patch)
 
         # Create draft dataset to Metax catalog
-        if schema in _allowed_doi:
-            await self.create_metax_dataset(req, schema, json_data)
+        try:
+            if schema in _allowed_doi:
+                await self.create_metax_dataset(req, schema, json_data)
+        except Exception as e:
+            # We don't care if it fails here
+            LOG.info(f"create_metax_dataset failed: {e} for schema {schema}")
+            pass
 
         return result
 
@@ -241,13 +247,18 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
             pass
 
         # Update draft dataset to Metax catalog
-        if schema in _allowed_doi:
-            object_data, _ = await operator.read_metadata_object(schema, accession_id)
-            # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
-            if isinstance(object_data, Dict):
-                await MetaxServiceHandler(req).update_draft_dataset(schema, object_data)
-            else:
-                raise ValueError("Object's data must be dictionary")
+        try:
+            if schema in _allowed_doi:
+                object_data, _ = await operator.read_metadata_object(schema, accession_id)
+                # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
+                if isinstance(object_data, Dict):
+                    await MetaxServiceHandler(req).update_draft_dataset(schema, object_data)
+                else:
+                    raise ValueError("Object's data must be dictionary")
+        except Exception as e:
+            # We don't care if it fails here
+            LOG.info(f"update_draft_dataset failed: {e} for schema {schema}")
+            pass
 
         LOG.debug(f"modified some content in {schema} ...")
         return result
