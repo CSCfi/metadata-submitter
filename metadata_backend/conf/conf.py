@@ -96,6 +96,8 @@ LOG.debug(f"mongodb connection string is {url}")
 serverTimeout = 15000
 connectTimeout = 15000
 
+API_PREFIX = "/v1"
+
 
 def create_db_client() -> AsyncIOMotorClient:
     """Initialize database client for AioHTTP App.
@@ -142,6 +144,9 @@ swagger_static_path = Path(__file__).parent.parent / "swagger" / "index.html"
 
 
 # 5) Set up configurations for AAI server
+OIDC_ENABLED = False
+if "OIDC_URL" in os.environ and bool(os.getenv("OIDC_URL")):
+    OIDC_ENABLED = True
 
 aai_config = {
     "client_id": os.getenv("AAI_CLIENT_ID", "public"),
@@ -160,7 +165,7 @@ aai_config = {
 # 6) Set the DataCite REST API values
 
 doi_config = {
-    "api": os.getenv("DOI_API", ""),
+    "api": os.getenv("DOI_API", "http://localhost:8001/dois"),
     "prefix": os.getenv("DOI_PREFIX", ""),
     "user": os.getenv("DOI_USER", ""),
     "key": os.getenv("DOI_KEY", ""),

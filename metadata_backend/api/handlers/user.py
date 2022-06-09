@@ -10,7 +10,6 @@ from aiohttp import web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
-from ...conf.conf import aai_config
 from ...helpers.logger import LOG
 from ..operators import UserOperator
 from .restapi import RESTAPIHandler
@@ -124,12 +123,8 @@ class UserAPIHandler(RESTAPIHandler):
 
         session.invalidate()
 
-        response = web.HTTPSeeOther(f"{aai_config['redirect']}/")
-        response.headers["Location"] = (
-            "/" if aai_config["redirect"] == aai_config["domain"] else f"{aai_config['redirect']}/"
-        )
-        LOG.debug("Logged out user ")
-        raise response
+        LOG.debug(f"Logged out user {user_id}")
+        return web.HTTPNoContent()
 
     async def _get_user_items(self, req: Request, user: Dict, item_type: str) -> Tuple[Dict, CIMultiDict[str]]:
         """Get draft templates owned by the user with pagination values.

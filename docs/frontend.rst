@@ -224,7 +224,7 @@ Example:
 
     import { create } from "apisauce"
 
-    const api = create({ baseURL: "/objects" })
+    const api = create({ baseURL: "/v1/objects" })
 
     const createFromXML = async (objectType: string, XMLFile: string) => {
     let formData = new FormData()

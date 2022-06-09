@@ -5,6 +5,8 @@ import json
 from pathlib import Path
 from locust import HttpUser, task, tag, between
 
+from metadata_backend.conf.conf import API_PREFIX
+
 testfiles_root = Path(__file__).parent.parent / "test_files"
 
 
@@ -30,13 +32,13 @@ class BasicUser(HttpUser):
 
         # Create new submission
         test_submission = {"name": "test1", "description": "test submission"}
-        with self.client.post("/submissions", json=test_submission, catch_response=True) as resp:
+        with self.client.post(f"{API_PREFIX}/submissions", json=test_submission, catch_response=True) as resp:
             if resp.status_code != 201:
                 resp.failure("Submission was not added successfully.")
             submission_id = resp.json()["submissionId"]
 
         # Post a study object
-        with self.client.post("/objects/study", json=json_file, catch_response=True) as resp:
+        with self.client.post(f"{API_PREFIX}/objects/study", json=json_file, catch_response=True) as resp:
             if resp.status_code != 201:
                 resp.failure("Object was not added successfully.")
             accession_id = resp.json()["accessionId"]
@@ -46,7 +48,10 @@ class BasicUser(HttpUser):
             {"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id, "schema": "study"}}
         ]
         with self.client.patch(
-            f"/submissions/{submission_id}", json=patch_object, name="/submissions/{submissionId}", catch_response=True
+            f"{API_PREFIX}/submissions/{submission_id}",
+            json=patch_object,
+            name=f"{API_PREFIX}/submissions/{{submissionId}}",
+            catch_response=True,
         ) as resp:
             if resp.status_code != 200:
                 resp.failure("Object was not patched to submission successfully.")
@@ -62,13 +67,13 @@ class BasicUser(HttpUser):
 
         # Create new submission
         test_submission = {"name": "test2", "description": "another test submission"}
-        with self.client.post("/submissions", json=test_submission, catch_response=True) as resp:
+        with self.client.post(f"{API_PREFIX}/submissions", json=test_submission, catch_response=True) as resp:
             if resp.status_code != 201:
                 resp.failure("Submission was not added successfully.")
             submission_id = resp.json()["submissionId"]
 
         # Post a study object
-        with self.client.post("/objects/study", json=json_file1, catch_response=True) as resp:
+        with self.client.post(f"{API_PREFIX}/objects/study", json=json_file1, catch_response=True) as resp:
             if resp.status_code != 201:
                 resp.failure("Object was not added successfully.")
             accession_id1 = resp.json()["accessionId"]
@@ -78,13 +83,16 @@ class BasicUser(HttpUser):
             {"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id1, "schema": "study"}}
         ]
         with self.client.patch(
-            f"/submissions/{submission_id}", json=patch_object1, name="/submissions/{submissionId}", catch_response=True
+            f"{API_PREFIX}/submissions/{submission_id}",
+            json=patch_object1,
+            name=f"{API_PREFIX}/submissions/{{submissionId}}",
+            catch_response=True,
         ) as resp:
             if resp.status_code != 200:
                 resp.failure("Object was not patched to submission successfully.")
 
         # Post an experiment object
-        with self.client.post("/objects/experiment", json=json_file2, catch_response=True) as resp:
+        with self.client.post(f"{API_PREFIX}/objects/experiment", json=json_file2, catch_response=True) as resp:
             if resp.status_code != 201:
                 resp.failure("Object was not added successfully.")
             accession_id2 = resp.json()["accessionId"]
@@ -94,7 +102,10 @@ class BasicUser(HttpUser):
             {"op": "add", "path": "/metadataObjects/-", "value": {"accessionId": accession_id2, "schema": "experiment"}}
         ]
         with self.client.patch(
-            f"/submissions/{submission_id}", json=patch_object2, name="/submissions/{submissionId}", catch_response=True
+            f"{API_PREFIX}/submissions/{submission_id}",
+            json=patch_object2,
+            name=f"{API_PREFIX}/submissions/{submission_id}",
+            catch_response=True,
         ) as resp:
             if resp.status_code != 200:
                 resp.failure("Object was not patched to submission successfully.")
@@ -112,7 +123,7 @@ class BasicUser(HttpUser):
     def get_submissions_and_objects(self):
         """Get users submissions, read one of the objects in a submission and get the object by accession ID."""
 
-        with self.client.get("/submissions", catch_response=True) as resp:
+        with self.client.get(f"{API_PREFIX}/submissions", catch_response=True) as resp:
             if resp.status_code != 200:
                 resp.failure("Getting submissions was unsuccesful.")
             elif resp.json()["page"]["totalSubmissions"] == 0:
@@ -122,7 +133,9 @@ class BasicUser(HttpUser):
             obj_schema = resp.json()["submissions"][0]["metadataObjects"][0]["schema"]
 
         with self.client.get(
-            f"/objects/{obj_schema}/{obj_acc_id}", name="/objects/{schema}/{accessionId}", catch_response=True
+            f"{API_PREFIX}/objects/{obj_schema}/{obj_acc_id}",
+            name=f"{API_PREFIX}/objects/{{schema}}/{{accessionId}}",
+            catch_response=True,
         ) as resp:
             if resp.status_code != 200:
                 resp.failure("Getting an object was unsuccesful.")
