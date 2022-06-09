@@ -1,5 +1,5 @@
 """
-Run integration tests against backend api endpoints.
+Run integration tests against backend API endpoints.
 
 Deleting from db is currently not supported, objects added to db in different
 should be taken into account.
@@ -53,15 +53,16 @@ test_json_files = [
     ("experiment", "ERX000119.json", "ERX000119.json"),
     ("analysis", "ERZ266973.json", "ERZ266973.json"),
 ]
+API_PREFIX = "/v1"
 base_url = os.getenv("BASE_URL", "http://localhost:5430")
 mock_auth_url = os.getenv("OIDC_URL_TEST", "http://localhost:8000")
-objects_url = f"{base_url}/objects"
-drafts_url = f"{base_url}/drafts"
-templates_url = f"{base_url}/templates"
-submissions_url = f"{base_url}/submissions"
-users_url = f"{base_url}/users"
-submit_url = f"{base_url}/submit"
-publish_url = f"{base_url}/publish"
+objects_url = f"{base_url}{API_PREFIX}/objects"
+drafts_url = f"{base_url}{API_PREFIX}/drafts"
+templates_url = f"{base_url}{API_PREFIX}/templates"
+submissions_url = f"{base_url}{API_PREFIX}/submissions"
+users_url = f"{base_url}{API_PREFIX}/users"
+submit_url = f"{base_url}{API_PREFIX}/submit"
+publish_url = f"{base_url}{API_PREFIX}/publish"
 metax_url = f"{os.getenv('METAX_URL', 'http://localhost:8002')}/rest/v2/datasets"
 auth = aiohttp.BasicAuth(os.getenv("METAX_USER", "sd"), os.getenv("METAX_PASS", "test"))
 # to form direct contact to db with eg create_submission()
@@ -102,7 +103,7 @@ async def get_user_data(sess):
 
     :param sess: HTTP session in which request call is made
     """
-    async with sess.get(f"{base_url}/users/current") as resp:
+    async with sess.get(f"{users_url}/current") as resp:
         LOG.debug("Get userdata")
         ans = await resp.json()
         assert resp.status == 200, f"HTTP Status code error {resp.status} {ans}"
@@ -554,33 +555,15 @@ async def delete_objects_metax_id(sess, database, collection, accession_id, meta
         LOG.error(f"Object deletion from mmocked Metax failed due to {str(e)}")
 
 
-async def patch_user(sess, user_id, real_user_id, json_patch):
-    """Patch one user object within session, return userId.
-
-    :param sess: HTTP session in which request call is made
-    :param user_id: id of the user (current)
-    :param real_user_id: id of the user in the database
-    :param json_patch: JSON Patch object to use in PATCH call
-    """
-    async with sess.patch(f"{users_url}/current", data=json.dumps(json_patch)) as resp:
-        LOG.debug(f"Updating user {real_user_id}")
-        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-        ans_patch = await resp.json()
-        assert ans_patch["userId"] == real_user_id, "user ID error"
-        return ans_patch["userId"]
-
-
 async def delete_user(sess, user_id):
     """Delete user object within session.
 
     :param sess: HTTP session in which request call is made
     :param user_id: id of the user (current)
     """
-    async with sess.delete(f"{users_url}/current") as resp:
-        LOG.debug(f"Deleting user {user_id}")
-        # we expect 404 as there is no frontend
-        assert str(resp.url) == f"{base_url}/", "redirect url user delete differs"
-        assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
+    async with sess.delete(f"{users_url}/{user_id}") as resp:
+        LOG.debug(f"Deleting user {user_id} {await resp.text()}")
+        assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
 
 def extract_submissions_object(res, accession_id, draft):
@@ -633,7 +616,7 @@ async def check_submissions_object_patch(sess, submission_id, schema, accession_
 
 # === Integration tests ===
 async def test_crud_works(sess, schema, filename, submission_id):
-    """Test REST api POST, GET and DELETE reqs.
+    """Test REST API POST, GET and DELETE reqs.
 
     Tries to create new object, gets accession id and checks if correct
     resource is returned with that id. Finally deletes the object and checks it
@@ -745,7 +728,7 @@ async def test_put_objects(sess, submission_id):
 
 
 async def test_crud_drafts_works(sess, schema, orginal_file, update_file, submission_id):
-    """Test drafts REST api POST, PUT and DELETE reqs.
+    """Test drafts REST API POST, PUT and DELETE reqs.
 
     Tries to create new draft object, gets accession id and checks if correct
     resource is returned with that id. Finally deletes the object and checks it
@@ -785,7 +768,7 @@ async def test_crud_drafts_works(sess, schema, orginal_file, update_file, submis
 
 
 async def test_patch_drafts_works(sess, schema, orginal_file, update_file, submission_id):
-    """Test REST api POST, PATCH and DELETE reqs.
+    """Test REST API POST, PATCH and DELETE reqs.
 
     Tries to create put and patch object, gets accession id and
     checks if correct resource is returned with that id.
@@ -1164,7 +1147,7 @@ async def test_crud_submissions_works(sess, project_id):
                     "fileName": "SRS001433.xml",
                 },
             }
-        ], "submission drafts content mismatch"
+        ], f'submission drafts content mismatch, {res["drafts"]}'
         assert res["metadataObjects"] == [], "there are objects in submission, expected empty"
 
     # Get the draft from the collection within this session and post it to objects collection
@@ -1192,7 +1175,7 @@ async def test_crud_submissions_works(sess, project_id):
                     "fileName": "SRS001433.xml",
                 },
             }
-        ], "submission drafts content mismatch"
+        ], f'submission drafts content mismatch, {res["drafts"]}'
         assert res["metadataObjects"] == [
             {
                 "accessionId": accession_id,
@@ -1232,7 +1215,7 @@ async def test_crud_submissions_works(sess, project_id):
 
 
 async def test_crud_submissions_works_no_publish(sess, project_id):
-    """Test submissions REST api POST, GET, PATCH, PUBLISH and DELETE reqs.
+    """Test submissions REST API POST, GET, PATCH, PUBLISH and DELETE reqs.
 
     :param sess: HTTP session in which request call is made
     :param project_id: id of the project the submission belongs to
@@ -1635,7 +1618,7 @@ async def test_getting_submissions_filtered_by_date_modified(sess, database, pro
 
 
 async def test_crud_users_works(sess, project_id):
-    """Test users REST api GET, PATCH and DELETE reqs.
+    """Test users REST API GET, PATCH and DELETE reqs.
 
     :param sess: HTTP session in which request call is made
     :param project_id: id of the project the submission belongs to
@@ -1724,7 +1707,7 @@ async def test_crud_users_works(sess, project_id):
 
     # Delete user
     await delete_user(sess, user_id)
-    # 401 means API is innacessible thus session ended
+    # 401 means API is inaccessible thus session ended
     # this check is not needed but good to do
     async with sess.get(f"{users_url}/{user_id}") as resp:
         LOG.debug(f"Checking that user {user_id} was deleted")
@@ -1732,7 +1715,7 @@ async def test_crud_users_works(sess, project_id):
 
 
 async def test_get_submissions(sess, submission_id: str, project_id: str):
-    """Test submissions REST api GET .
+    """Test submissions REST API GET .
 
     :param sess: HTTP session in which request call is made
     :param submission_id: id of the submission used to group submission objects
@@ -1743,13 +1726,13 @@ async def test_get_submissions(sess, submission_id: str, project_id: str):
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         response = await resp.json()
         LOG.error(response)
-        assert len(response["submissions"]) == 1
+        assert len(response["submissions"]) == 1, len(response["submissions"])
         assert response["page"] == {"page": 1, "size": 5, "totalPages": 1, "totalSubmissions": 1}
         assert response["submissions"][0]["submissionId"] == submission_id
 
 
 async def test_get_submissions_objects(sess, submission_id: str, project_id: str):
-    """Test submissions REST api GET with objects.
+    """Test submissions REST API GET with objects.
 
     :param sess: HTTP session in which request call is made
     :param submission_id: id of the submission used to group submission objects
@@ -1975,9 +1958,8 @@ async def main(url):
         basic_submission_id = await post_submission(sess, basic_submission)
 
         # test XML files
-        await asyncio.gather(
-            *[test_crud_works(sess, schema, file, basic_submission_id) for schema, file in test_xml_files]
-        )
+        for schema, file in test_xml_files:
+            await test_crud_works(sess, schema, file, basic_submission_id)
 
         # test CSV files
         await test_csv(sess, basic_submission_id)
@@ -1999,12 +1981,9 @@ async def main(url):
             "projectId": project_id,
         }
         draft_submission_id = await post_submission(sess, draft_submission)
-        await asyncio.gather(
-            *[
-                test_crud_drafts_works(sess, schema, file, file2, draft_submission_id)
-                for schema, file, file2 in test_json_files
-            ]
-        )
+
+        for schema, file, file2 in test_json_files:
+            await test_crud_drafts_works(sess, schema, file, file2, draft_submission_id)
 
         # Test patch and put
         LOG.debug("=== Testing patch and put drafts operations ===")

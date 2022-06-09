@@ -1,12 +1,12 @@
 """Functions to launch backend server."""
 
 import asyncio
-import secrets
-import time
 
 import uvloop
+import base64
 from aiohttp import web
 from cryptography.fernet import Fernet
+from typing import List, Any
 
 from .api.auth import AccessHandler
 from .api.handlers.restapi import RESTAPIHandler
@@ -17,40 +17,24 @@ from .api.handlers.xml_submission import XMLSubmissionAPIHandler
 from .api.handlers.template import TemplatesAPIHandler
 from .api.handlers.user import UserAPIHandler
 from .api.health import HealthHandler
-from .api.middlewares import check_login, http_error_handler
-from .conf.conf import aai_config, create_db_client, frontend_static_files, swagger_static_path
+from .api.middlewares import http_error_handler, check_session
+from .conf.conf import (
+    aai_config,
+    create_db_client,
+    frontend_static_files,
+    swagger_static_path,
+    API_PREFIX,
+)
 from .helpers.logger import LOG
+import aiohttp_session
+import aiohttp_session.cookie_storage
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
-async def kill_sess_on_shutdown(app: web.Application) -> None:
-    """Kill all open sessions and purge their data when killed."""
-    LOG.info("Gracefully shutting down the program at %s", time.ctime())
-    while app["Session"].keys():
-        key = list(app["Session"].keys())[0]
-        LOG.info("Purging session for %s", key)
-        # Purge the openstack connection from the server
-        app["Session"].pop(key)
-        LOG.debug("Purged connection information for %s :: %s", key, time.ctime())
-    LOG.debug("Removed session")
-
-
-async def startup(server: web.Application) -> None:
-    """Add startup web server state configuration."""
-    # Mutable_map handles cookie storage, also stores the object that provides
-    # the encryption we use
-    server["Crypt"] = Fernet(Fernet.generate_key())
-    # Create a signature salt to prevent editing the signature on the client
-    # side. Hash function doesn't need to be cryptographically secure, it's
-    # just a convenient way of getting ascii output from byte values.
-    server["Salt"] = secrets.token_hex(64)
-    server["Session"] = {}
-    server["Cookies"] = set({})
-    server["OIDC_State"] = set({})
-
-
-async def init() -> web.Application:
+async def init(
+    inject_middleware: List[Any] = [],
+) -> web.Application:
     """Initialise server and setup routes.
 
     Routes should be setup by adding similar paths one after the another. (i.e.
@@ -61,12 +45,14 @@ async def init() -> web.Application:
     .. note:: if using variable resources (such as ``{schema}``), add
               specific ones on top of more generic ones.
 
+    :param inject_middleware: list of middlewares to inject
+    :returns: Web Application
     """
-    server = web.Application()
-    server.on_startup.append(startup)
+    middlewares = [http_error_handler, check_session]
+    if inject_middleware:
+        middlewares = middlewares + inject_middleware
+    api = web.Application(middlewares=middlewares)
 
-    server.middlewares.append(http_error_handler)
-    server.middlewares.append(check_login)
     _schema = RESTAPIHandler()
     _object = ObjectAPIHandler()
     _submission = SubmissionAPIHandler()
@@ -74,7 +60,7 @@ async def init() -> web.Application:
     _xml_submission = XMLSubmissionAPIHandler()
     _template = TemplatesAPIHandler()
     api_routes = [
-        # retrieve schema and informations about it
+        # retrieve schema and information about it
         web.get("/schemas", _schema.get_schema_types),
         web.get("/schemas/{schema}", _schema.get_json_schema),
         # metadata objects operations
@@ -84,7 +70,7 @@ async def init() -> web.Application:
         web.put("/objects/{schema}/{accessionId}", _object.put_object),
         web.patch("/objects/{schema}/{accessionId}", _object.patch_object),
         web.delete("/objects/{schema}/{accessionId}", _object.delete_object),
-        # drafts objects operations
+        # draft objects operations
         web.post("/drafts/{schema}", _object.post_object),
         web.get("/drafts/{schema}/{accessionId}", _object.get_object),
         web.put("/drafts/{schema}/{accessionId}", _object.put_object),
@@ -96,7 +82,7 @@ async def init() -> web.Application:
         web.get("/templates/{schema}/{accessionId}", _template.get_template),
         web.patch("/templates/{schema}/{accessionId}", _template.patch_template),
         web.delete("/templates/{schema}/{accessionId}", _template.delete_template),
-        # submissions/submissions operations
+        # submissions operations
         web.get("/submissions", _submission.get_submissions),
         web.post("/submissions", _submission.post_submission),
         web.get("/submissions/{submissionId}", _submission.get_submission),
@@ -113,36 +99,48 @@ async def init() -> web.Application:
         # validate
         web.post("/validate", _xml_submission.validate),
     ]
-    server.router.add_routes(api_routes)
-    LOG.info("Server configurations and routes loaded")
+    api.add_routes(api_routes)
+    LOG.info("API configurations and routes loaded")
+
+    sec_key = base64.urlsafe_b64decode(Fernet.generate_key())
+    session_middleware = aiohttp_session.session_middleware(
+        aiohttp_session.cookie_storage.EncryptedCookieStorage(sec_key)
+    )
+    server = web.Application(middlewares=[session_middleware])
+    server.add_subapp(API_PREFIX, api)
+
     _access = AccessHandler(aai_config)
     aai_routes = [
         web.get("/aai", _access.login),
         web.get("/logout", _access.logout),
         web.get("/callback", _access.callback),
     ]
-    server.router.add_routes(aai_routes)
+    server.add_routes(aai_routes)
     LOG.info("AAI routes loaded")
     _health = HealthHandler()
     health_routes = [
         web.get("/health", _health.get_health_status),
     ]
-    server.router.add_routes(health_routes)
+    server.add_routes(health_routes)
     LOG.info("Health routes loaded")
     if swagger_static_path.exists():
         swagger_handler = html_handler_factory(swagger_static_path)
         server.router.add_get("/swagger", swagger_handler)
         LOG.info("Swagger routes loaded")
+
+    # These should be the last routes added, as they are a catch-all
     if frontend_static_files.exists():
         _static = StaticHandler(frontend_static_files)
         frontend_routes = [
             web.static("/static", _static.setup_static()),
             web.get("/{path:.*}", _static.frontend),
         ]
-        server.router.add_routes(frontend_routes)
+        server.add_routes(frontend_routes)
         LOG.info("Frontend routes loaded")
-    server["db_client"] = create_db_client()
-    server.on_shutdown.append(kill_sess_on_shutdown)
+
+    db_client = create_db_client()
+    api["db_client"] = db_client
+    server["db_client"] = db_client
     LOG.info("Database client loaded")
     return server
 

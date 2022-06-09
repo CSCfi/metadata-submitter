@@ -1,10 +1,9 @@
-"""Test api endpoints from views module."""
+"""Test API endpoints from views module."""
 import unittest
 from pathlib import Path
 
 from aiohttp import web
-
-from metadata_backend.helpers.parser import XMLToJSONParser, CSVToJSONParser, jsonpatch_mongo
+from metadata_backend.helpers.parser import CSVToJSONParser, XMLToJSONParser, jsonpatch_mongo
 from pymongo import UpdateOne
 
 
