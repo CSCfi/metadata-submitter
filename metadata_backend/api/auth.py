@@ -49,14 +49,12 @@ class AccessHandler:
         """Redirect user to AAI login.
 
         :param req: A HTTP request instance (unused)
-        :raises: HTTPSeeOther redirect to login AAI
         :raises: HTTPInternalServerError if OIDC configuration init failed
         :returns: HTTPSseeOther redirect to AAI
         """
         LOG.debug("Start login")
 
         # Generate authentication payload
-        session = None
         try:
             session = self.rph.begin("aai")
         except Exception as e:
@@ -77,7 +75,7 @@ class AccessHandler:
         Sets encrypted cookie to identify clients.
 
         :raises: HTTPUnauthorized in case login failed
-        :raises: HTTPBadRequest AAI sends wrong paramters
+        :raises: HTTPBadRequest AAI sends wrong parameters
         :raises: HTTPForbidden in case of bad session
         :param req: A HTTP request instance with callback parameters
         :returns: HTTPSeeOther redirect to home page
@@ -93,7 +91,6 @@ class AccessHandler:
             raise web.HTTPUnauthorized(reason=reason)
 
         # Verify oidc_state and retrieve auth session
-        session = None
         try:
             session = self.rph.get_session_information(params["state"])
         except KeyError as e:

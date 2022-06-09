@@ -211,7 +211,6 @@ filetype
 flatfile
 flx
 flybase
-submissionid
 followsreadindex
 formdata
 fos
@@ -267,6 +266,7 @@ html
 http
 httperror
 https
+HTTPSeeOther
 identifiertype
 identitypython
 ido
@@ -589,7 +589,7 @@ studytitle
 studytype
 subjectscheme
 subjectsSchema
-submissionsubmission
+submissionid
 submissionslice
 submissiontype
 submitterdemultiplexed
