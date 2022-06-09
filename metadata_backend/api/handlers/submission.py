@@ -4,6 +4,7 @@ from distutils.util import strtobool
 from math import ceil
 from typing import Dict, List, Tuple, Union
 
+import aiohttp_session
 import ujson
 from aiohttp import web
 from aiohttp.web import Request, Response
@@ -14,7 +15,6 @@ from ...helpers.doi import DOIHandler
 from ...helpers.logger import LOG
 from ...helpers.metax_api_handler import MetaxServiceHandler
 from ...helpers.validator import JSONValidator
-from ..middlewares import get_session
 from ..operators import SubmissionOperator, Operator, ProjectOperator, UserOperator
 from .object import ObjectAPIHandler
 from .restapi import RESTAPIHandler
@@ -282,6 +282,8 @@ class SubmissionAPIHandler(RESTAPIHandler):
         :param req: GET Request
         :returns: JSON list of submissions available for the user
         """
+        session = await aiohttp_session.get_session(req)
+
         page = self._get_page_param(req, "page", 1)
         per_page = self._get_page_param(req, "per_page", 5)
         project_id = self._get_param(req, "projectId")
@@ -289,7 +291,8 @@ class SubmissionAPIHandler(RESTAPIHandler):
         db_client = req.app["db_client"]
 
         user_operator = UserOperator(db_client)
-        current_user = get_session(req)["user_info"]
+
+        current_user = session["user_info"]
         user = await user_operator.read_user(current_user)
         user_has_project = await user_operator.check_user_has_project(project_id, user["userId"])
         if not user_has_project:
@@ -393,6 +396,8 @@ class SubmissionAPIHandler(RESTAPIHandler):
         :param req: POST request
         :returns: JSON response containing submission ID for submitted submission
         """
+        session = await aiohttp_session.get_session(req)
+
         db_client = req.app["db_client"]
         content = await self._get_data(req)
 
@@ -404,7 +409,7 @@ class SubmissionAPIHandler(RESTAPIHandler):
 
         # Check that user is affiliated with project
         user_op = UserOperator(db_client)
-        current_user = get_session(req)["user_info"]
+        current_user = session["user_info"]
         user = await user_op.read_user(current_user)
         user_has_project = await user_op.check_user_has_project(content["projectId"], user["userId"])
         if not user_has_project:
@@ -500,8 +505,6 @@ class SubmissionAPIHandler(RESTAPIHandler):
 
         await self._handle_check_ownership(req, "submissions", submission_id)
 
-        await metax_handler.check_connection()
-
         submission = await operator.read_submission(submission_id)
 
         # we first try to publish the DOI before actually publishing the submission
@@ -568,12 +571,14 @@ class SubmissionAPIHandler(RESTAPIHandler):
         LOG.info(f"Patching submission with ID {new_submission} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
 
-    async def delete_submission(self, req: Request) -> Response:
+    async def delete_submission(self, req: Request) -> web.HTTPNoContent:
         """Delete object submission from database.
 
         :param req: DELETE request
         :returns: HTTP No Content response
         """
+        await aiohttp_session.get_session(req)
+
         submission_id = req.match_info["submissionId"]
         db_client = req.app["db_client"]
         operator = SubmissionOperator(db_client)
@@ -593,7 +598,7 @@ class SubmissionAPIHandler(RESTAPIHandler):
         _submission_id = await operator.delete_submission(submission_id)
 
         LOG.info(f"DELETE submission with ID {_submission_id} was successful.")
-        return web.Response(status=204)
+        return web.HTTPNoContent()
 
     async def put_submission_doi(self, req: Request) -> Response:
         """Put or replace DOI metadata to a submission.

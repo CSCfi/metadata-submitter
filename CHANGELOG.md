@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - connection checking and `retry`-mechanism for calls to Metax-service in case of server and connection errors
 - Endpoint for submitting DOI information. #389
 - Endpoint with swagger documentation `/swagger`
+- added `aiohttp_session` as dependency and removed old way of handling cookies
 
 ### Changed
 - migrated to variables used by motor 3 for ssl https://motor.readthedocs.io/en/stable/migrate-to-motor-3.html?highlight=ssl_certfile#renamed-uri-options
