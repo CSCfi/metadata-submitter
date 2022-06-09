@@ -173,7 +173,10 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 continue
 
             if key in refs:
-                children[key] = [value]
+                ref = key
+                if ref not in children:
+                    children[key] = list()
+                children[key].append(value)
                 continue
 
             if "policyFile" in key:
