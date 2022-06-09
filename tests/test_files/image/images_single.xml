@@ -1,0 +1,119 @@
+<IMAGE_SET>
+    <IMAGE alias="Image_tSQsAkvutz">
+        <ATTRIBUTES>
+            <ATTRIBUTE>
+                <TAG>acquisition_date_time</TAG>
+                <VALUE>2022-01-25 00:00:00</VALUE>
+            </ATTRIBUTE>
+            <ATTRIBUTE>
+                <TAG>lossy_image_compression_methods</TAG>
+                <VALUE>JPEG Lossy Compression</VALUE>
+            </ATTRIBUTE>
+            <ATTRIBUTE>
+                <TAG>compression_status</TAG>
+                <VALUE>True</VALUE>
+            </ATTRIBUTE>
+            <ATTRIBUTE>
+                <TAG>has_overview</TAG>
+                <VALUE>True</VALUE>
+            </ATTRIBUTE>
+            <ATTRIBUTE>
+                <TAG>has_label</TAG>
+                <VALUE>False</VALUE>
+            </ATTRIBUTE>
+            <ATTRIBUTE>
+                <TAG>tma_status</TAG>
+                <VALUE>False</VALUE>
+            </ATTRIBUTE>
+            <ATTRIBUTE_SET>
+                <TAG>scanner</TAG>
+                <ATTRIBUTE>
+                    <TAG>scanner_manufactors_name</TAG>
+                    <VALUE>3DHistech</VALUE>
+                </ATTRIBUTE>
+                <ATTRIBUTE>
+                    <TAG>manufacturers_model_name</TAG>
+                    <VALUE>PANNORAMIC 250 Flash III DX</VALUE>
+                </ATTRIBUTE>
+                <ATTRIBUTE>
+                    <TAG>device_serial_number</TAG>
+                    <VALUE>nan</VALUE>
+                </ATTRIBUTE>
+                <ATTRIBUTE>
+                    <TAG>software_versions</TAG>
+                    <VALUE>2.1.1.100094</VALUE>
+                </ATTRIBUTE>
+            </ATTRIBUTE_SET>
+            <ATTRIBUTE_SET>
+                <TAG>imaging_setting</TAG>
+                <ATTRIBUTE>
+                    <TAG>image_resolution</TAG>
+                    <VALUE>0.242797397769517, 0.242797397769517</VALUE>
+                </ATTRIBUTE>
+                <ATTRIBUTE_SET>
+                    <TAG>optical_paths</TAG>
+                    <ATTRIBUTE>
+                        <TAG>color_space</TAG>
+                        <VALUE>rgb</VALUE>
+                    </ATTRIBUTE>
+                    <NUMERIC_ATTRIBUTE>
+                        <TAG>color_depth</TAG>
+                        <VALUE>8</VALUE>
+                    </NUMERIC_ATTRIBUTE>
+                    <ATTRIBUTE_SET>
+                        <TAG>illumination</TAG>
+                        <ATTRIBUTE>
+                            <TAG>type</TAG>
+                            <VALUE>Brightfield illumination</VALUE>
+                        </ATTRIBUTE>
+                        <ATTRIBUTE>
+                            <TAG>color_code</TAG>
+                            <VALUE>Full Spectrum</VALUE>
+                        </ATTRIBUTE>
+                    </ATTRIBUTE_SET>
+                </ATTRIBUTE_SET>
+                <ATTRIBUTE_SET>
+                    <TAG>focus</TAG>
+                    <ATTRIBUTE>
+                        <TAG>focus_method</TAG>
+                        <VALUE>AUTO</VALUE>
+                    </ATTRIBUTE>
+                    <ATTRIBUTE>
+                        <TAG>extended_depth_of_field</TAG>
+                        <VALUE>False</VALUE>
+                    </ATTRIBUTE>
+                </ATTRIBUTE_SET>
+            </ATTRIBUTE_SET>
+            <ATTRIBUTE_SET>
+                <TAG>base_layer_tile_size</TAG>
+                <NUMERIC_ATTRIBUTE>
+                    <TAG>width</TAG>
+                    <VALUE>2144</VALUE>
+                </NUMERIC_ATTRIBUTE>
+                <NUMERIC_ATTRIBUTE>
+                    <TAG>height</TAG>
+                    <VALUE>2144</VALUE>
+                </NUMERIC_ATTRIBUTE>
+            </ATTRIBUTE_SET>
+            <ATTRIBUTE_SET>
+                <TAG>image_shape</TAG>
+                <NUMERIC_ATTRIBUTE>
+                    <TAG>width</TAG>
+                    <VALUE>90263</VALUE>
+                </NUMERIC_ATTRIBUTE>
+                <NUMERIC_ATTRIBUTE>
+                    <TAG>height</TAG>
+                    <VALUE>207243</VALUE>
+                </NUMERIC_ATTRIBUTE>
+            </ATTRIBUTE_SET>
+        </ATTRIBUTES>
+        <STUDY_REF refname="study_1"/>
+        <IMAGE_OF refname="SI1"/>
+        <IMAGE_TYPE>
+            <WSI_IMAGE>WSI</WSI_IMAGE>
+        </IMAGE_TYPE>
+        <FILES>
+          <FILE filename="asdf" checksum_method="SHA256" checksum="asdf" filetype="dcm"/>
+        </FILES>
+    </IMAGE>
+</IMAGE_SET>

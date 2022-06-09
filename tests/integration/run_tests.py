@@ -43,6 +43,7 @@ test_xml_files = [
     ("dac", "dac.xml"),
     ("policy", "policy.xml"),
     ("dataset", "dataset.xml"),
+    ("image", "images_single.xml"),
 ]
 test_json_files = [
     ("study", "SRP000539.json", "SRP000539.json"),
