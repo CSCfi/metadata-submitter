@@ -149,6 +149,7 @@ if "OIDC_URL" in os.environ and bool(os.getenv("OIDC_URL")):
     OIDC_ENABLED = True
 
 aai_config = {
+    "enabled": os.getenv("OIDC_ENABLED", "") == "True",
     "client_id": os.getenv("AAI_CLIENT_ID", "public"),
     "client_secret": os.getenv("AAI_CLIENT_SECRET", "secret"),
     "domain": os.getenv("BASE_URL", "http://localhost:5430"),
@@ -160,7 +161,8 @@ aai_config = {
     "oidc_url": os.getenv("OIDC_URL", ""),
     "auth_method": os.getenv("AUTH_METHOD", "code"),
 }
-
+if aai_config["enabled"] and aai_config["oidc_url"] == "":
+    raise RuntimeError("OIDC is enabled, but no URL provided.")
 
 # 6) Set the DataCite REST API values
 
