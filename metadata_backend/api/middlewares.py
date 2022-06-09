@@ -7,8 +7,9 @@ import time
 from aiohttp import web
 from yarl import URL
 
+from .operators import UserOperator, ProjectOperator
 from ..helpers.logger import LOG
-from ..conf.conf import OIDC_ENABLED
+from ..conf.conf import aai_config
 
 HTTP_ERROR_MESSAGE = "HTTP %r request to %r raised an HTTP %d exception."
 
@@ -60,7 +61,7 @@ async def check_session(req: web.Request, handler: aiohttp_session.Handler) -> w
     :raises: Reformatted HTTP Exceptions
     :returns: Successful requests unaffected
     """
-    if OIDC_ENABLED:
+    if aai_config["enabled"]:
         try:
             session = await aiohttp_session.get_session(req)
             LOG.debug(f"session: {session}")
@@ -89,6 +90,31 @@ async def check_session(req: web.Request, handler: aiohttp_session.Handler) -> w
             reason = f"No valid session. A session was invalidated due to another reason: {error}"
             LOG.exception("No valid session. A session was invalidated due to another reason")
             raise _unauthorized(reason)
+    else:
+        db_client = req.app["db_client"]
+        user_operator = UserOperator(db_client)
+        project_operator = ProjectOperator(db_client)
+        session = await aiohttp_session.get_session(req)
+
+        user_data = {
+            "user_id": "free_api_access@csc.fi",
+            "real_name": f"Free API access",
+            # "projects": ["bp_test_well", "bp_test_api", "bp_test_everything"],
+        }
+        created_projects = []
+        for project in ["bp_test_well", "bp_test_api", "bp_test_everything"]:
+            project_id = await project_operator.create_project(project)
+            project_data = {
+                "projectId": project_id,  # internal ID
+                "projectNumber": project,  # human friendly
+            }
+            created_projects.append(project_data)
+        user_data["projects"] = created_projects
+
+        # Create user
+        user_id = await user_operator.create_user(user_data)
+
+        session["user_info"] = user_id
 
     return await handler(req)
 

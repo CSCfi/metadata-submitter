@@ -109,14 +109,15 @@ async def init(
     server = web.Application(middlewares=[session_middleware])
     server.add_subapp(API_PREFIX, api)
 
-    _access = AccessHandler(aai_config)
-    aai_routes = [
-        web.get("/aai", _access.login),
-        web.get("/logout", _access.logout),
-        web.get("/callback", _access.callback),
-    ]
-    server.add_routes(aai_routes)
-    LOG.info("AAI routes loaded")
+    if aai_config["enabled"]:
+        _access = AccessHandler(aai_config)
+        aai_routes = [
+            web.get("/aai", _access.login),
+            web.get("/logout", _access.logout),
+            web.get("/callback", _access.callback),
+        ]
+        server.add_routes(aai_routes)
+        LOG.info("AAI routes loaded")
     _health = HealthHandler()
     health_routes = [
         web.get("/health", _health.get_health_status),
