@@ -2,11 +2,12 @@
 
 import asyncio
 import secrets
-import time
 
 import uvloop
+import base64
 from aiohttp import web
 from cryptography.fernet import Fernet
+from typing import List, Any
 
 from .api.auth import AccessHandler
 from .api.handlers.restapi import RESTAPIHandler
@@ -17,40 +18,18 @@ from .api.handlers.xml_submission import XMLSubmissionAPIHandler
 from .api.handlers.template import TemplatesAPIHandler
 from .api.handlers.user import UserAPIHandler
 from .api.health import HealthHandler
-from .api.middlewares import check_login, http_error_handler
+from .api.middlewares import http_error_handler, check_session_at
 from .conf.conf import aai_config, create_db_client, frontend_static_files, swagger_static_path
 from .helpers.logger import LOG
+import aiohttp_session
+import aiohttp_session.cookie_storage
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
-async def kill_sess_on_shutdown(app: web.Application) -> None:
-    """Kill all open sessions and purge their data when killed."""
-    LOG.info("Gracefully shutting down the program at %s", time.ctime())
-    while app["Session"].keys():
-        key = list(app["Session"].keys())[0]
-        LOG.info("Purging session for %s", key)
-        # Purge the openstack connection from the server
-        app["Session"].pop(key)
-        LOG.debug("Purged connection information for %s :: %s", key, time.ctime())
-    LOG.debug("Removed session")
-
-
-async def startup(server: web.Application) -> None:
-    """Add startup web server state configuration."""
-    # Mutable_map handles cookie storage, also stores the object that provides
-    # the encryption we use
-    server["Crypt"] = Fernet(Fernet.generate_key())
-    # Create a signature salt to prevent editing the signature on the client
-    # side. Hash function doesn't need to be cryptographically secure, it's
-    # just a convenient way of getting ascii output from byte values.
-    server["Salt"] = secrets.token_hex(64)
-    server["Session"] = {}
-    server["Cookies"] = set({})
-    server["OIDC_State"] = set({})
-
-
-async def init() -> web.Application:
+async def init(
+    inject_middleware: List[Any] = [],
+) -> web.Application:
     """Initialise server and setup routes.
 
     Routes should be setup by adding similar paths one after the another. (i.e.
@@ -61,12 +40,33 @@ async def init() -> web.Application:
     .. note:: if using variable resources (such as ``{schema}``), add
               specific ones on top of more generic ones.
 
+    :param inject_middleware: list of middlewares to inject
+    :returns: Web Application
     """
+    middlewares = [http_error_handler, check_session_at]
+    if inject_middleware:
+        middlewares = middlewares + inject_middleware
     server = web.Application()
-    server.on_startup.append(startup)
 
-    server.middlewares.append(http_error_handler)
-    server.middlewares.append(check_login)
+    # Mutable_map handles cookie storage, also stores the object that provides
+    # the encryption we use
+    # Initialize aiohttp_session
+    server["seckey"] = base64.urlsafe_b64decode(Fernet.generate_key())
+    aiohttp_session.setup(
+        server,
+        aiohttp_session.cookie_storage.EncryptedCookieStorage(
+            server["seckey"],
+        ),
+    )
+
+    # Add the rest of the middlewares
+    [server.middlewares.append(i) for i in middlewares]  # type: ignore
+
+    # Create a signature salt to prevent editing the signature on the client
+    # side. Hash function doesn't need to be cryptographically secure, it's
+    # just a convenient way of getting ascii output from byte values.
+    server["Salt"] = secrets.token_hex(64)
+
     _schema = RESTAPIHandler()
     _object = ObjectAPIHandler()
     _submission = SubmissionAPIHandler()
@@ -142,7 +142,6 @@ async def init() -> web.Application:
         server.router.add_routes(frontend_routes)
         LOG.info("Frontend routes loaded")
     server["db_client"] = create_db_client()
-    server.on_shutdown.append(kill_sess_on_shutdown)
     LOG.info("Database client loaded")
     return server
 

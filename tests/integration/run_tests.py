@@ -1,5 +1,5 @@
 """
-Run integration tests against backend api endpoints.
+Run integration tests against backend API endpoints.
 
 Deleting from db is currently not supported, objects added to db in different
 should be taken into account.
@@ -577,9 +577,9 @@ async def delete_user(sess, user_id):
     """
     async with sess.delete(f"{users_url}/current") as resp:
         LOG.debug(f"Deleting user {user_id}")
-        # we expect 404 as there is no frontend
+        # we expect 401 as there is no frontend
         assert str(resp.url) == f"{base_url}/", "redirect url user delete differs"
-        assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
+        assert resp.status == 401, f"HTTP Status code error, got {resp.status}"
 
 
 def extract_submissions_object(res, accession_id, draft):
@@ -632,7 +632,7 @@ async def check_submissions_object_patch(sess, submission_id, schema, accession_
 
 # === Integration tests ===
 async def test_crud_works(sess, schema, filename, submission_id):
-    """Test REST api POST, GET and DELETE reqs.
+    """Test REST API POST, GET and DELETE reqs.
 
     Tries to create new object, gets accession id and checks if correct
     resource is returned with that id. Finally deletes the object and checks it
@@ -744,7 +744,7 @@ async def test_put_objects(sess, submission_id):
 
 
 async def test_crud_drafts_works(sess, schema, orginal_file, update_file, submission_id):
-    """Test drafts REST api POST, PUT and DELETE reqs.
+    """Test drafts REST API POST, PUT and DELETE reqs.
 
     Tries to create new draft object, gets accession id and checks if correct
     resource is returned with that id. Finally deletes the object and checks it
@@ -784,7 +784,7 @@ async def test_crud_drafts_works(sess, schema, orginal_file, update_file, submis
 
 
 async def test_patch_drafts_works(sess, schema, orginal_file, update_file, submission_id):
-    """Test REST api POST, PATCH and DELETE reqs.
+    """Test REST API POST, PATCH and DELETE reqs.
 
     Tries to create put and patch object, gets accession id and
     checks if correct resource is returned with that id.
@@ -1231,7 +1231,7 @@ async def test_crud_submissions_works(sess, project_id):
 
 
 async def test_crud_submissions_works_no_publish(sess, project_id):
-    """Test submissions REST api POST, GET, PATCH, PUBLISH and DELETE reqs.
+    """Test submissions REST API POST, GET, PATCH, PUBLISH and DELETE reqs.
 
     :param sess: HTTP session in which request call is made
     :param project_id: id of the project the submission belongs to
@@ -1634,7 +1634,7 @@ async def test_getting_submissions_filtered_by_date_modified(sess, database, pro
 
 
 async def test_crud_users_works(sess, project_id):
-    """Test users REST api GET, PATCH and DELETE reqs.
+    """Test users REST API GET, PATCH and DELETE reqs.
 
     :param sess: HTTP session in which request call is made
     :param project_id: id of the project the submission belongs to
@@ -1731,7 +1731,7 @@ async def test_crud_users_works(sess, project_id):
 
 
 async def test_get_submissions(sess, submission_id: str, project_id: str):
-    """Test submissions REST api GET .
+    """Test submissions REST API GET .
 
     :param sess: HTTP session in which request call is made
     :param submission_id: id of the submission used to group submission objects
@@ -1748,7 +1748,7 @@ async def test_get_submissions(sess, submission_id: str, project_id: str):
 
 
 async def test_get_submissions_objects(sess, submission_id: str, project_id: str):
-    """Test submissions REST api GET with objects.
+    """Test submissions REST API GET with objects.
 
     :param sess: HTTP session in which request call is made
     :param submission_id: id of the submission used to group submission objects

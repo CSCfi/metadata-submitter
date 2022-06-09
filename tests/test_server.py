@@ -38,7 +38,7 @@ class AppTestCase(AioHTTPTestCase):
         self.assertIs(type(server), web.Application)
 
     async def test_api_routes_are_set(self):
-        """Test correct amount of api (no frontend) routes is set.
+        """Test correct amount of API (no frontend) routes is set.
 
         routes considered to be separate are eg.:
         - /submissions
