@@ -35,6 +35,15 @@ drafts = {}
 published = {}
 
 
+async def get_root(req: web.Request) -> web.Response:
+    """Mock endpoint for testing server responds.
+
+    :params req: HTTP request with data for Metax dataset
+    :return: HTTPNoContent
+    """
+    return web.HTTPNoContent()
+
+
 async def get_dataset(req: web.Request) -> web.Response:
     """Mock endpoint for retrieving Metax dataset.
 
@@ -352,6 +361,7 @@ async def init() -> web.Application:
     """Start server."""
     app = web.Application()
     api_routes = [
+        web.get("/", get_root),
         web.post("/rest/v2/datasets", post_dataset),
         web.put("/rest/v2/datasets/{metax_id}", update_dataset),
         web.delete("/rest/v2/datasets/{metax_id}", delete_dataset),

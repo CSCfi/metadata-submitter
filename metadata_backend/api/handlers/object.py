@@ -185,8 +185,13 @@ class ObjectAPIHandler(RESTAPIHandler):
         await submission_op.update_submission(submission_id, patch)
 
         # Create draft dataset to Metax catalog
-        if collection in _allowed_doi:
-            [await self.create_metax_dataset(req, collection, item) for item, _ in objects]
+        try:
+            if collection in _allowed_doi:
+                [await self.create_metax_dataset(req, collection, item) for item, _ in objects]
+        except Exception as e:
+            # We don't care if it fails here
+            LOG.info(f"create_metax_dataset failed: {e} for collection {collection}")
+            pass
 
         body = ujson.dumps(data, escape_forward_slashes=False)
 
@@ -261,7 +266,12 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         # Delete draft dataset from Metax catalog
         if collection in _allowed_doi:
-            await MetaxServiceHandler(req).delete_draft_dataset(metax_id)
+            try:
+                await MetaxServiceHandler(req).delete_draft_dataset(metax_id)
+            except Exception as e:
+                # We don't care if it fails here
+                LOG.info(f"delete_draft_dataset failed: {e} for collection {collection}")
+                pass
             doi_service = DOIHandler()
             await doi_service.delete(doi_id)
 
@@ -319,11 +329,16 @@ class ObjectAPIHandler(RESTAPIHandler):
         await submission_op.update_submission(submission_id, patch)
 
         # Update draft dataset to Metax catalog
-        if collection in _allowed_doi:
-            if data.get("metaxIdentifier", None):
-                await MetaxServiceHandler(req).update_draft_dataset(collection, data)
-            else:
-                await self.create_metax_dataset(req, collection, data, create_draft_doi=False)
+        try:
+            if collection in _allowed_doi:
+                if data.get("metaxIdentifier", None):
+                    await MetaxServiceHandler(req).update_draft_dataset(collection, data)
+                else:
+                    await self.create_metax_dataset(req, collection, data, create_draft_doi=False)
+        except Exception as e:
+            # We don't care if it fails here
+            LOG.info(f"update_draft_dataset or create_metax_dataset failed: {e} for collection {collection}")
+            pass
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info(f"PUT object with accession ID {accession_id} in schema {collection} was successful.")
@@ -377,16 +392,21 @@ class ObjectAPIHandler(RESTAPIHandler):
             pass
 
         # Update draft dataset to Metax catalog
-        if collection in {"study", "dataset"}:
-            object_data, _ = await operator.read_metadata_object(collection, accession_id)
-            # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
-            if isinstance(object_data, Dict):
-                if object_data.get("metaxIdentifier", None):
-                    await MetaxServiceHandler(req).update_draft_dataset(collection, object_data)
+        try:
+            if collection in {"study", "dataset"}:
+                object_data, _ = await operator.read_metadata_object(collection, accession_id)
+                # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
+                if isinstance(object_data, Dict):
+                    if object_data.get("metaxIdentifier", None):
+                        await MetaxServiceHandler(req).update_draft_dataset(collection, object_data)
+                    else:
+                        await self.create_metax_dataset(req, collection, object_data, create_draft_doi=False)
                 else:
-                    await self.create_metax_dataset(req, collection, object_data, create_draft_doi=False)
-            else:
-                raise ValueError("Object's data must be dictionary")
+                    raise ValueError("Object's data must be dictionary")
+        except Exception as e:
+            # We don't care if it fails here
+            LOG.info(f"update_draft_dataset or create_metax_dataset failed: {e} for collection {collection}")
+            pass
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info(f"PATCH object with accession ID {accession_id} in schema {collection} was successful.")
