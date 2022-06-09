@@ -140,6 +140,12 @@ class MetadataXMLConverter(XMLSchemaConverter):
                     children["files"] = value["file"]
                 continue
 
+            if "imageOf" in key:
+                if "imageOf" not in children:
+                    children[key] = list()
+                children[key].append(value)
+                continue
+
             if "dataBlock" in key:
                 children["files"] = value["files"]
                 continue
