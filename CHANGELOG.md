@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - added `aiohttp_session` as dependency and removed old way of handling cookies
 
 ### Changed
+- schema loader now matches schema files by exact match with schema #481. This means that schema file naming in metadata_backend/helpers/schemas now have rules: 
+  - file name starts with schema provider separated with dot or underscore (e.g. EGA.policy.xsd, ena_policy.json) or 
+  - if schema is local then no schema provider needs to be added (e.g users.json) 
+  - schema name and mongo database collection name must be the same
 - migrated to variables used by motor 3 for ssl https://motor.readthedocs.io/en/stable/migrate-to-motor-3.html?highlight=ssl_certfile#renamed-uri-options
   - env vars `MONGO_SSL_CLIENT_KEY` and `MONGO_SSL_CLIENT_CERT` are replaced with `MONGO_SSL_CLIENT_CERT_KEY`
 - Refactor **folder** to **submission** #411
