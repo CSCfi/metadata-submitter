@@ -45,7 +45,7 @@ class ParserTestCase(unittest.TestCase):
     def test_experiment_is_parsed(self):
         """Test that experiment is parsed correctly and accessionId is set.
 
-        Tests for some values that convert JSON should have.
+        Tests for some values that converted JSON should have.
         """
         experiment_xml = self.load_file_to_text("experiment", "ERX000119.xml")
         experiment_json = self.xml_parser.parse("experiment", experiment_xml)
@@ -56,7 +56,7 @@ class ParserTestCase(unittest.TestCase):
     def test_run_is_parsed(self):
         """Test that run is parsed correctly and accessionId is set.
 
-        Tests for some values that convert JSON should have.
+        Tests for some values that converted JSON should have.
         """
         run_xml = self.load_file_to_text("run", "ERR000076.xml")
         run_json = self.xml_parser.parse("run", run_xml)
@@ -66,7 +66,7 @@ class ParserTestCase(unittest.TestCase):
     def test_analysis_is_parsed(self):
         """Test that run is parsed correctly and accessionId is set.
 
-        Tests for some values that convert JSON should have.
+        Tests for some values that converted JSON should have.
         """
         analysis_xml = self.load_file_to_text("analysis", "ERZ266973.xml")
         analysis_json = self.xml_parser.parse("analysis", analysis_xml)
@@ -89,7 +89,7 @@ class ParserTestCase(unittest.TestCase):
     def test_dataset_is_parsed(self):
         """Test that dataset is parsed correctly.
 
-        Tests for some values that convert JSON should have.
+        Tests for some values that converted JSON should have.
         """
         dataset_xml = self.load_file_to_text("dataset", "dataset.xml")
         dataset_json = self.xml_parser.parse("dataset", dataset_xml)
