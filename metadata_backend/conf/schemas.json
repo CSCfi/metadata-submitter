@@ -104,6 +104,14 @@
       "title": "BP Image",
       "detail": "A BP image object captures image objects.",
       "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.1.1/src/BP.image.xsd"
+    }
+  },
+  "bpdataset": {
+    "priority": 13,
+    "description": {
+      "title": "BP Dataset",
+      "detail": "A BP dataset.",
+      "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.1.1/src/BP.dataset.xsd"
     },
     "provider": "BP"
   }
