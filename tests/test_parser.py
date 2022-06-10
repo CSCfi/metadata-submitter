@@ -96,6 +96,18 @@ class ParserTestCase(unittest.TestCase):
         self.assertEqual(2, len(dataset_json["datasetType"]))
         self.assertEqual(8, len(dataset_json["runRef"]))
 
+    def test_image_is_parsed(self):
+        """Test that dataset is parsed correctly.
+
+        Tests for some values that converted JSON should have.
+        """
+        image_xml = self.load_file_to_text("image", "images_single.xml")
+        image_json = self.xml_parser.parse("image", image_xml)
+        self.assertEqual("Image_tSQsAkvutz", image_json["alias"])
+        self.assertEqual(6, len(image_json["attributes"]["attribute"]))
+        self.assertEqual(4, len(image_json["attributes"]["attributeSet"]))
+        self.assertEqual("asdf", image_json["files"][0]["filename"])
+
     def test_error_raised_when_schema_not_found(self):
         """Test 400 is returned when schema type is invalid."""
         with self.assertRaises(web.HTTPBadRequest):
