@@ -10,7 +10,7 @@ from xmlschema import XMLSchemaException
 
 from ...conf.conf import API_PREFIX
 from ...helpers.logger import LOG
-from ...helpers.metax_api_handler import MetaxServiceHandler
+from ...services.metax_service_handler import MetaxServiceHandler
 from ...helpers.parser import XMLToJSONParser
 from ...helpers.schema_loader import SchemaNotFoundException, XMLSchemaLoader
 from ...helpers.validator import XMLValidator

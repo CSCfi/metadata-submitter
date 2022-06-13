@@ -11,9 +11,9 @@ from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
 from ...conf.conf import doi_config
-from ...helpers.doi import DOIHandler
 from ...helpers.logger import LOG
-from ...helpers.metax_api_handler import MetaxServiceHandler
+from ...services.datacite_service_handler import DataciteServiceHandler
+from ...services.metax_service_handler import MetaxServiceHandler
 from ...helpers.validator import JSONValidator
 from ..operators import SubmissionOperator, Operator, ProjectOperator, UserOperator
 from .object import ObjectAPIHandler
@@ -511,7 +511,7 @@ class SubmissionAPIHandler(RESTAPIHandler):
         obj_ops = Operator(db_client)
         study, datasets, metax_ids = await self._prepare_doi_update(req, obj_ops, submission)
 
-        doi_ops = DOIHandler()
+        doi_ops = DataciteServiceHandler()
 
         datasets_patch = []
 

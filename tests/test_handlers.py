@@ -424,7 +424,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
         self._mock_draft_doi = "metadata_backend.api.handlers.object.ObjectAPIHandler._draft_doi"
 
-        class_doihandler = "metadata_backend.api.handlers.object.DOIHandler"
+        class_doihandler = "metadata_backend.api.handlers.object.DataciteServiceHandler"
         self.patch_doihandler = patch(class_doihandler, **self.doi_handler, spec=True)
         self.MockedDoiHandler = self.patch_doihandler.start()
 
@@ -733,7 +733,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         """Test query method calls operator and returns status correctly."""
         url = f"{API_PREFIX}/objects/study/EGA123456"
         with patch(
-            "metadata_backend.api.handlers.object.DOIHandler.delete", return_value=None
+            "metadata_backend.api.handlers.object.DataciteServiceHandler.delete", return_value=None
         ), self.p_get_sess_restapi:
             response = await self.client.delete(url)
             self.assertEqual(response.status, 204)
@@ -837,7 +837,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
 
         await super().setUpAsync()
 
-        class_doihandler = "metadata_backend.api.handlers.submission.DOIHandler"
+        class_doihandler = "metadata_backend.api.handlers.submission.DataciteServiceHandler"
         self.patch_doihandler = patch(class_doihandler, **self.doi_handler, spec=True)
         self.MockedDoiHandler = self.patch_doihandler.start()
 

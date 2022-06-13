@@ -278,6 +278,7 @@ iix
 illumina
 ini
 insdc
+integrations
 interactiveresource
 interlingua
 interlingue
@@ -559,6 +560,7 @@ sequenceassembly
 sequenceflatfile
 sequencetype
 sequencevariation
+servicehandler
 sff
 sha
 shellcheck

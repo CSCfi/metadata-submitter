@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Endpoint for submitting DOI information. #389
 - Endpoint with swagger documentation `/swagger`
 - added `aiohttp_session` as dependency and removed old way of handling cookies
+- Create a new ServiceHandler class to share error handling, retry mechanism, custom request logic between service integrations.
 
 ### Changed
 - migrated to variables used by motor 3 for ssl https://motor.readthedocs.io/en/stable/migrate-to-motor-3.html?highlight=ssl_certfile#renamed-uri-options

@@ -12,6 +12,7 @@
 
 @project_id = {{user_data_req.response.body.projects[0].projectId}}
 @submission_id = {{submission_id_req.response.body.submissionId}}
+@study_id = {{study_id_req.response.body.accessionId}}
 
 ### Mock authentication
 GET {{auth_url}}/setmock
@@ -50,10 +51,14 @@ GET {{backend_url}}/v1/submissions
 GET {{backend_url}}/v1/submissions/{{submission_id}}
 
 ### Add study to submission
+# @name study_id_req
 POST {{backend_url}}/v1/objects/study
     ?submission={{submission_id}}
 
 < ../test_files/study/SRP000539.json
+
+### Get study
+GET {{backend_url}}/v1/objects/study/{{study_id}}
 
 ### Update DOI in submission
 PUT {{backend_url}}/v1/submissions/{{submission_id}}/doi
