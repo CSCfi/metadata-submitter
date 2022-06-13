@@ -47,8 +47,6 @@ idna==3.3
     # via
     #   requests
     #   yarl
-importlib-resources==5.7.1
-    # via jsonschema
 jsonschema==4.6.0
     # via -r requirements.in
 motor==3.0.0
@@ -77,7 +75,7 @@ pyyaml==6.0
     #   oidcrp
 readerwriterlock==1.0.9
     # via cryptojwt
-requests==2.27.1
+requests==2.28.0
     # via
     #   -r requirements.in
     #   cryptojwt
@@ -100,8 +98,6 @@ xmlschema==1.11.1
     # via -r requirements.in
 yarl==1.7.2
     # via aiohttp
-zipp==3.8.0
-    # via importlib-resources
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
