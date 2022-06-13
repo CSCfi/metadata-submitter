@@ -108,6 +108,17 @@ class ParserTestCase(unittest.TestCase):
         self.assertEqual(4, len(image_json["attributes"]["attributeSet"]))
         self.assertEqual("asdf", image_json["files"][0]["filename"])
 
+    def test_bp_dataset_is_parsed(self):
+        """Test that BP dataset is parsed correctly.
+
+        Tests for some values that converted JSON should have.
+        """
+        bp_dataset_xml = self.load_file_to_text("bpdataset", "template_dataset.xml")
+        bp_dataset_json = self.xml_parser.parse("bpdataset", bp_dataset_xml)
+        self.assertEqual("Dataset_QoRIPbAPlP", bp_dataset_json["alias"])
+        self.assertEqual("1", bp_dataset_json["attributes"]["attribute"][0]["value"])
+        self.assertEqual(list, type(bp_dataset_json["datasetType"]))
+
     def test_error_raised_when_schema_not_found(self):
         """Test 400 is returned when schema type is invalid."""
         with self.assertRaises(web.HTTPBadRequest):

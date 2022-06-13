@@ -1,0 +1,167 @@
+{
+    "title": "Dataset",
+    "definitions": {
+        "identifiers": {
+            "$id": "#/definitions/identifiers",
+            "title": "Identifiers",
+            "description": "Identifiers to be used in the International Nucleotide Sequence Database Collaboration (INSDC) namespace.",
+            "type": "object",
+            "properties": {
+                "primaryId": {
+                    "type": "string",
+                    "description": "A primary identifier in the INSDC namespace.",
+                    "title": "Primary Id"
+                },
+                "secondaryId": {
+                    "type": "string",
+                    "description": "A secondary identifier in the INSDC namespace.",
+                    "title": "Secondary Id"
+                },
+                "uuid": {
+                    "type": "string",
+                    "description": "A universally unique identifier that requires no namespace.",
+                    "title": "UUID"
+                },
+                "externalId": {
+                    "type": "object",
+                    "title": "External Id",
+                    "description": "An identifier from a public non-INSDC resource.",
+                    "properties": {
+                        "namespace": {
+                            "type": "string",
+                            "title": "Namespace"
+                        },
+                        "value": {
+                            "type": "string",
+                            "title": "Identifier"
+                        }
+                    }
+                },
+                "submitterId": {
+                    "type": "object",
+                    "title": "Submitter Id",
+                    "description": "A submitter provided identifier.",
+                    "properties": {
+                        "namespace": {
+                            "type": "string",
+                            "title": "Namespace"
+                        },
+                        "value": {
+                            "type": "string",
+                            "title": "Identifier"
+                        }
+                    }
+                }
+            }
+        },
+        "reference": {
+            "$id": "#/definitions/reference",
+            "additionalProperties": true,
+            "type": "object",
+            "properties": {
+                "accessionId": {
+                    "type": "string",
+                    "description": "Identifies a record by its accession. The scope of resolution is the entire Storage.",
+                    "title": "Accession Id"
+                },
+                "refname": {
+                    "type": "string",
+                    "description": "Identifies an object by name within the namespace defined by attribute refcenter",
+                    "title": "Record name"
+                },
+                "refcenter": {
+                    "type": "string",
+                    "description": "The namespace of the attribute refname.",
+                    "title": "Center Namespace"
+                },
+                "identifiers": {
+                    "$ref": "#/definitions/identifiers"
+                }
+            }
+        }
+    },
+    "type": "object",
+    "description": "Describes an object that contains the samples in the data set.",
+    "additionalProperties": true,
+    "required": [
+        "title",
+        "policyRef"
+    ],
+    "properties": {
+        "version": {
+            "title": "Version",
+            "type": "integer"
+        },
+        "metadata_standard": {
+            "title": "Metadata Standard",
+            "type": "string"
+        },
+        "ethical_approval": {
+            "title": "Ethical Approval",
+            "type": "string"
+        },
+        "contains_personal_data": {
+            "title": "Contains Personal Data",
+            "type": "boolean"
+        },
+        "title": {
+            "title": "Dataset Title",
+            "description": "Short text that can be used to call out data sets in searches or in displays.",
+            "type": "string"
+        },
+        "description": {
+            "title": "Dataset Description",
+            "description": "Free-form text describing the data sets.",
+            "type": "string"
+        },
+        "datasetType": {
+            "title": "Dataset Type",
+            "type": "array",
+            "items": {
+                "type": "string",
+                "enum": [
+                    "Whole slide imaging"
+                ]
+            },
+            "uniqueItems": true
+        },
+        "policyRef": {
+            "title": "Policy Reference",
+            "description": "Identifies the data access policy controlling this data set.",
+            "type": "object",
+            "$ref": "#/definitions/reference"
+        },
+        "imageRef": {
+            "title": "Image Reference",
+            "description": "Identifies the images which are part of this dataset.",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/reference"
+            }
+        },
+        "annotationRef": {
+            "title": "Annotation Reference",
+            "description": "Identifies the annotations which are part of this dataset.",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/reference"
+            }
+        },
+        "observationsRef": {
+            "title": "Observation Reference",
+            "description": "Identifies the observations which are part of this dataset.",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/reference"
+            }
+        },
+        "complementsDatasetRef": {
+            "type": "array",
+            "title": "Complements Dataset Reference",
+            "description": "Identifies the datasets which this dataset complements.",
+            "items": {
+                "$ref": "#/definitions/reference"
+            }
+        }
+    }
+}
