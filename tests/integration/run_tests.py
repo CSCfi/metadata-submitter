@@ -43,6 +43,7 @@ test_xml_files = [
     ("dac", "dac.xml"),
     ("policy", "policy.xml"),
     ("dataset", "dataset.xml"),
+    ("image", "images_single.xml"),
 ]
 test_json_files = [
     ("study", "SRP000539.json", "SRP000539.json"),
@@ -842,7 +843,7 @@ async def test_querying_works(sess, submission_id):
     for schema, schema_queries in queries.items():
         LOG.debug(f"Querying {schema} collection with working params")
         await asyncio.gather(*[do_one_query(schema, key, value, 200) for key, value in schema_queries])
-        LOG.debug("Querying {schema} collection with non-working params")
+        LOG.debug(f"Querying {schema} collection with non-working params")
         invalid = "yoloswaggings"
         await asyncio.gather(*[do_one_query(schema, key, invalid, 404) for key, _ in schema_queries])
 
