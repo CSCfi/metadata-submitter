@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from aiohttp import web
 
-from metadata_backend.helpers.doi import DOIHandler
+from metadata_backend.services.datacite_service_handler import DataciteServiceHandler
 
 
 class DOITestCase(unittest.TestCase):
@@ -12,7 +12,7 @@ class DOITestCase(unittest.TestCase):
 
     def setUp(self):
         """Set class for tests."""
-        self.doi = DOIHandler()
+        self.doi = DataciteServiceHandler()
 
     async def test_400_is_raised(self):
         """Test 400 is raised when request to DataCite supposedly fails."""

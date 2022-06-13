@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Dict, List
 
 from ..conf.conf import metax_reference_data
-from .logger import LOG
+from ..helpers.logger import LOG
 
 
 class MetaDataMapper:
@@ -13,8 +13,6 @@ class MetaDataMapper:
     This helpper class maps data from datacite, study and dataset schemas to Metax research_dataset
     schema:
     https://raw.githubusercontent.com/CSCfi/metax-api/master/src/metax_api/api/rest/v2/schemas/att_dataset_schema.json
-    """
-
     {
         "ResearchDataset": {
             # DOI
@@ -123,7 +121,7 @@ class MetaDataMapper:
                         "identifier": {
                             "description": (
                                 "Recommended best practice is to identify the resource by means of a string conforming "
-                                "to a formal identification system. \n\nAn unambiguous reference to the resource "
+                                "to a formal identification system. An unambiguous reference to the resource "
                                 "within a given context."
                             ),
                             "type": "string",
@@ -211,7 +209,7 @@ class MetaDataMapper:
                 "type": "array",
                 "items": {"type": "object", "$ref": "#/definitions/Concept"},
             },
-            # TODO: Need clarification on necessarity of this field
+            # TODO: Need clarification on necessity of this field
             "remote_resources": {
                 "type": "array",
                 "items": {"type": "object", "$ref": "#/definitions/WebResource"},
@@ -232,6 +230,7 @@ class MetaDataMapper:
             },
         }
     }
+    """
 
     def __init__(self, metax_data: Dict, data: Dict) -> None:
         """Set variables.
