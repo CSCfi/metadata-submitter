@@ -186,21 +186,23 @@ class ObjectAPIHandler(RESTAPIHandler):
         await submission_op.update_submission(submission_id, patch)
 
         # Add DOI to object
-        #  TODO: fix for XML upload
-        # if collection in _allowed_doi:
-        #     for item, _ in objects:
-        #         item["doi"] = await self.create_draft_doi(collection)
-        #         await operator.create_metax_info(collection, item["accessionId"], {"doi": item["doi"]})
+        if collection in _allowed_doi:
+            for item, _ in objects:
+                item["doi"] = await self.create_draft_doi(collection)
+                await operator.update_object_doi(
+                    collection, item["accessionId"], {"doi": item["doi"]}
+                )
 
         # Create draft dataset to Metax catalog
         metax_handler = MetaxServiceHandler(req)
         try:
             if metax_handler.enabled and collection in _allowed_doi:
-                [await self.create_metax_dataset(req, collection, item) for item, _ in objects]
+                for item, _ in objects:
+                    await self.create_metax_dataset(req, collection, item)
         except Exception as e:
             # We don't care if it fails here
             LOG.info(f"create_metax_dataset failed: {e} for collection {collection}")
-            pass
+            raise
 
         body = ujson.dumps(data, escape_forward_slashes=False)
 
@@ -513,9 +515,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         return [patch_op, lastModified]
 
-    async def create_metax_dataset(
-        self, req: Request, collection: str, object: Dict
-    ) -> str:
+    async def create_metax_dataset(self, req: Request, collection: str, object: Dict) -> str:
         """Handle connection to Metax api handler for dataset creation.
 
         Dataset or Study object is assigned with DOI
@@ -538,7 +538,7 @@ class ObjectAPIHandler(RESTAPIHandler):
             new_info["doi"] = object["doi"]
         metax_id = await metax_handler.post_dataset_as_draft(collection, object)
         new_info["metaxIdentifier"] = metax_id
-        await operator.create_metax_info(collection, object["accessionId"], new_info)
+        await operator.update_object_doi(collection, object["accessionId"], new_info)
 
         return metax_id
 
