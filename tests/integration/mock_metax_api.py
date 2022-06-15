@@ -332,6 +332,14 @@ async def delete_dataset(req: web.Request) -> web.Response:
     return web.HTTPNoContent()
 
 
+async def purge(req: web.Request) -> web.Response:
+    """Clean up cache."""
+    drafts = {}
+    published = {}
+    LOG.info("=== Cache purged ===")
+    return web.json_response(data={"drafts": drafts, "published": published})
+
+
 def validate_data(data: Dict, draft=True) -> None:
     """Check for required fields in dataset.
 
@@ -369,6 +377,7 @@ async def init() -> web.Application:
         web.get("/rest/v2/datasets/{metax_id}", get_dataset),
         web.patch("/rest/v2/datasets", patch_datasets),
         web.patch("/rest/v2/datasets/{metax_id}", patch_dataset),
+        web.post("/purge", purge),
     ]
     app.router.add_routes(api_routes)
     LOG.info("Metax mock API started")

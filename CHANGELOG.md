@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix session and authorization issues
   - Prefix API endpoint with /v1
   - Refactor authentication checking, fixing issues from #421 and remove HTTPSeeOther from the API
+- Recreate DB before integration tests run and cleanup after integration tests have run #448
 
 ### Removed
 
