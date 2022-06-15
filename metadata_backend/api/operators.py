@@ -432,8 +432,10 @@ class Operator(BaseOperator):
         )
         return data, page_num, page_size, total_objects[0]["total"]
 
-    async def create_metax_info(self, schema_type: str, accession_id: str, data: Dict) -> bool:
-        """Update study or dataset object with metax info.
+    async def update_object_doi(self, schema_type: str, accession_id: str, data: Dict) -> bool:
+        """Update study or dataset object with data.
+
+        Only study and dataset have a DOI, and it can't be freely modified.
 
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
@@ -581,7 +583,7 @@ class Operator(BaseOperator):
         return doc
 
 
-class XMLOperator(BaseOperator):
+class XMLOperator(Operator):
     """Alternative operator class for handling database operations.
 
     We store the XML data in a database ``XML-{schema}``.
@@ -595,7 +597,7 @@ class XMLOperator(BaseOperator):
         running on same loop with aiohttp, so needs to be passed from aiohttp
         Application.
         """
-        super().__init__(mongo_database, "text/xml", db_client)
+        BaseOperator.__init__(self, mongo_database, "text/xml", db_client)
 
     async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: str) -> Dict:
         """Format XML metadata object and add it to db.
