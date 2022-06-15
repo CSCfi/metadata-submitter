@@ -9,9 +9,9 @@ from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
 from ...conf.conf import API_PREFIX
-from ...helpers.doi import DOIHandler
+from ...services.datacite_service_handler import DataciteServiceHandler
 from ...helpers.logger import LOG
-from ...helpers.metax_api_handler import MetaxServiceHandler
+from ...services.metax_service_handler import MetaxServiceHandler
 from ...helpers.validator import JSONValidator
 from ..operators import SubmissionOperator, Operator, XMLOperator
 from .common import multipart_content
@@ -186,10 +186,11 @@ class ObjectAPIHandler(RESTAPIHandler):
         await submission_op.update_submission(submission_id, patch)
 
         # Add DOI to object
-        if collection in _allowed_doi:
-            for item, _ in objects:
-                item["doi"] = await self.create_draft_doi(collection)
-                await operator.create_metax_info(collection, item["accessionId"], {"doi": item["doi"]})
+        #  TODO: fix for XML upload
+        # if collection in _allowed_doi:
+        #     for item, _ in objects:
+        #         item["doi"] = await self.create_draft_doi(collection)
+        #         await operator.create_metax_info(collection, item["accessionId"], {"doi": item["doi"]})
 
         # Create draft dataset to Metax catalog
         metax_handler = MetaxServiceHandler(req)
@@ -281,7 +282,7 @@ class ObjectAPIHandler(RESTAPIHandler):
                 # We don't care if it fails here
                 LOG.info(f"delete_draft_dataset failed: {e} for collection {collection}")
                 pass
-            doi_service = DOIHandler()
+            doi_service = DataciteServiceHandler()
             await doi_service.delete(doi_id)
 
         LOG.info(f"DELETE object with accession ID {accession_id} in schema {collection} was successful.")
@@ -338,13 +339,12 @@ class ObjectAPIHandler(RESTAPIHandler):
         await submission_op.update_submission(submission_id, patch)
 
         # Update draft dataset to Metax catalog
-        metax_handler = MetaxServiceHandler(req)
         try:
-            if metax_handler.enabled and collection in _allowed_doi:
+            if collection in _allowed_doi:
                 if data.get("metaxIdentifier", None):
                     await MetaxServiceHandler(req).update_draft_dataset(collection, data)
                 else:
-                    await self.create_metax_dataset(req, collection, data)
+                    await self.create_metax_dataset(req, collection, data, create_draft_doi=False)
         except Exception as e:
             # We don't care if it fails here
             LOG.info(f"update_draft_dataset or create_metax_dataset failed: {e} for collection {collection}")
@@ -402,16 +402,15 @@ class ObjectAPIHandler(RESTAPIHandler):
             pass
 
         # Update draft dataset to Metax catalog
-        metax_handler = MetaxServiceHandler(req)
         try:
-            if metax_handler.enabled and collection in {"study", "dataset"}:
+            if collection in {"study", "dataset"}:
                 object_data, _ = await operator.read_metadata_object(collection, accession_id)
                 # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
                 if isinstance(object_data, Dict):
                     if object_data.get("metaxIdentifier", None):
                         await MetaxServiceHandler(req).update_draft_dataset(collection, object_data)
                     else:
-                        await self.create_metax_dataset(req, collection, object_data)
+                        await self.create_metax_dataset(req, collection, object_data, create_draft_doi=False)
                 else:
                     raise ValueError("Object's data must be dictionary")
         except Exception as e:
@@ -554,7 +553,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         :returns: Dict with DOI of the study or dataset as well as the types.
         """
         assert collection in {"study", "dataset"}
-        doi_ops = DOIHandler()
+        doi_ops = DataciteServiceHandler()
         _doi_data = await doi_ops.create_draft(prefix=collection)
 
         LOG.debug(f"doi created with doi: {_doi_data['fullDOI']}")

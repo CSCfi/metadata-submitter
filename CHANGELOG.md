@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Endpoint for submitting DOI information. #389
 - Endpoint with swagger documentation `/swagger`
 - added `aiohttp_session` as dependency and removed old way of handling cookies
+- Create a new ServiceHandler class to share error handling, retry mechanism, custom request logic between service integrations.
 
 ### Changed
 - schema loader now matches schema files by exact match with schema #481. This means that schema file naming in metadata_backend/helpers/schemas now have rules: 
@@ -31,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix session and authorization issues
   - Prefix API endpoint with /v1
   - Refactor authentication checking, fixing issues from #421 and remove HTTPSeeOther from the API
+- Recreate DB before integration tests run and cleanup after integration tests have run #448
 
 ### Removed
 

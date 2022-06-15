@@ -21,7 +21,7 @@ from typing import Any, Callable, Dict, List, Tuple
 from aiohttp import ClientConnectorError
 from aiohttp.web import HTTPServerError
 
-from .logger import LOG
+from ..helpers.logger import LOG
 
 
 def retry(
