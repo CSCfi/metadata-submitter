@@ -9,9 +9,9 @@ from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
 from ...conf.conf import API_PREFIX
-from ...helpers.doi import DOIHandler
+from ...services.datacite_service_handler import DataciteServiceHandler
 from ...helpers.logger import LOG
-from ...helpers.metax_api_handler import MetaxServiceHandler
+from ...services.metax_service_handler import MetaxServiceHandler
 from ...helpers.validator import JSONValidator
 from ..operators import SubmissionOperator, Operator, XMLOperator
 from .common import multipart_content
@@ -273,7 +273,7 @@ class ObjectAPIHandler(RESTAPIHandler):
                 # We don't care if it fails here
                 LOG.info(f"delete_draft_dataset failed: {e} for collection {collection}")
                 pass
-            doi_service = DOIHandler()
+            doi_service = DataciteServiceHandler()
             await doi_service.delete(doi_id)
 
         LOG.info(f"DELETE object with accession ID {accession_id} in schema {collection} was successful.")
@@ -540,7 +540,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         :param schema_type: schema can be either study or dataset
         :returns: Dict with DOI of the study or dataset as well as the types.
         """
-        doi_ops = DOIHandler()
+        doi_ops = DataciteServiceHandler()
         _doi_data = await doi_ops.create_draft(prefix=schema_type)
 
         LOG.debug(f"doi created with doi: {_doi_data['fullDOI']}")
