@@ -1,3 +1,4 @@
+-r requirements.txt
 aiofiles  # to run integration tests
 authlib
 bandit
