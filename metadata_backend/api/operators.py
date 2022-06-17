@@ -432,13 +432,13 @@ class Operator(BaseOperator):
         )
         return data, page_num, page_size, total_objects[0]["total"]
 
-    async def create_datacite_info(self, schema_type: str, accession_id: str, data: Dict) -> bool:
+    async def update_identifiers(self, schema_type: str, accession_id: str, data: Dict) -> bool:
         """Update study or dataset object with metax info.
 
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
         :param data: Metadata object
-        :returns: True on successed database update
+        :returns: True on successful database update
         """
         if schema_type not in {"study", "dataset"}:
             LOG.error("Object schema type must be either study or dataset")

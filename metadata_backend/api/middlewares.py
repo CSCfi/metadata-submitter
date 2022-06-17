@@ -31,7 +31,7 @@ async def http_error_handler(req: web.Request, handler: aiohttp_session.Handler)
         raise
     except web.HTTPError as error:
         # Catch 400s and 500s
-        LOG.info(HTTP_ERROR_MESSAGE, req.method, req.path, error.status)
+        LOG.error(HTTP_ERROR_MESSAGE, req.method, req.path, error.status)
         problem = _json_problem(error, req.url)
         LOG.debug("Response payload is %r", problem)
 

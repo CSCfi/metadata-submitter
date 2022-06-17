@@ -5,9 +5,9 @@ from unittest.mock import AsyncMock, call, patch
 import time
 
 import ujson
+from aiohttp import web
 from aiohttp import FormData
 from aiohttp.test_utils import AioHTTPTestCase, make_mocked_coro
-from metadata_backend.api.handlers.object import ObjectAPIHandler
 from metadata_backend.api.handlers.restapi import RESTAPIHandler
 import aiohttp_session
 
@@ -20,7 +20,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     TESTFILES_ROOT = Path(__file__).parent / "test_files"
 
-    async def get_application(self):
+    async def get_application(self) -> web.Application:
         """Retrieve web Application for test."""
         server = await init()
         return server
@@ -28,7 +28,7 @@ class HandlersTestCase(AioHTTPTestCase):
     async def setUpAsync(self):
         """Configure default values for testing and other modules.
 
-        This patches used modules and sets default return values for their
+        Patches used modules and sets default return values for their
         methods. Also sets up reusable test variables for different test
         methods.
         """
@@ -109,7 +109,6 @@ class HandlersTestCase(AioHTTPTestCase):
             "delete_metadata_object.side_effect": self.fake_operator_delete_metadata_object,
             "update_metadata_object.side_effect": self.fake_operator_update_metadata_object,
             "replace_metadata_object.side_effect": self.fake_operator_replace_metadata_object,
-            "create_datacite_info.side_effect": self.fake_operator_create_datacite_info,
         }
         self.xmloperator_config = {
             "read_metadata_object.side_effect": self.fake_xmloperator_read_metadata_object,
@@ -128,14 +127,7 @@ class HandlersTestCase(AioHTTPTestCase):
             "filter_user.side_effect": self.fake_useroperator_filter_user,
         }
 
-        self.doi_handler = {
-            "create_draft.side_effect": self.fake_doi_create_draft,
-            "set_state.side_effect": self.fake_doi_set_state,
-            "delete.side_effect": self.fake_doi_delete,
-        }
-
         RESTAPIHandler._handle_check_ownership = make_mocked_coro(True)
-        ObjectAPIHandler._delete_metax_dataset = make_mocked_coro()
 
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
@@ -172,18 +164,6 @@ class HandlersTestCase(AioHTTPTestCase):
         with open(path_to_file.as_posix(), mode="r") as csv_file:
             _reader = csv_file.read()
         return _reader
-
-    async def fake_doi_create_draft(self, prefix):
-        """."""
-        return {"fullDOI": "10.xxxx/yyyyy", "dataset": "https://doi.org/10.xxxx/yyyyy"}
-
-    async def fake_doi_set_state(self, data):
-        """."""
-        return {"fullDOI": "10.xxxx/yyyyy", "dataset": "https://doi.org/10.xxxx/yyyyy"}
-
-    async def fake_doi_delete(self, doi):
-        """."""
-        return None
 
     async def fake_operator_read_metadata_object(self, schema_type, accession_id):
         """Fake read operation to return mocked JSON."""
@@ -422,12 +402,6 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
         await super().setUpAsync()
 
-        self._mock_draft_doi = "metadata_backend.api.handlers.object.ObjectAPIHandler.create_draft_doi"
-
-        class_doihandler = "metadata_backend.api.handlers.object.DataciteServiceHandler"
-        self.patch_doihandler = patch(class_doihandler, **self.doi_handler, spec=True)
-        self.MockedDoiHandler = self.patch_doihandler.start()
-
         class_xmloperator = "metadata_backend.api.handlers.object.XMLOperator"
         self.patch_xmloperator = patch(class_xmloperator, **self.xmloperator_config, spec=True)
         self.MockedXMLOperator = self.patch_xmloperator.start()
@@ -444,11 +418,6 @@ class ObjectHandlerTestCase(HandlersTestCase):
         self.patch_submissionoperator = patch(class_submissionoperator, **self.submissionoperator_config, spec=True)
         self.MockedSubmissionOperator = self.patch_submissionoperator.start()
 
-        class_metaxhandler = "metadata_backend.api.handlers.object.MetaxServiceHandler"
-        self.patch_metaxhandler = patch(class_metaxhandler, spec=True)
-        self.MockedMetaxHandler = self.patch_metaxhandler.start()
-        self.MockedMetaxHandler().post_dataset_as_draft.return_value = "123-456"
-
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
         await super().tearDownAsync()
@@ -456,14 +425,14 @@ class ObjectHandlerTestCase(HandlersTestCase):
         self.patch_csv_parser.stop()
         self.patch_submissionoperator.stop()
         self.patch_operator.stop()
-        self.patch_metaxhandler.stop()
-        self.patch_doihandler.stop()
 
     async def test_submit_object_works(self):
         """Test that submission is handled, XMLOperator is called."""
         files = [("study", "SRP000539.xml")]
         data = self.create_submission_data(files)
-        with patch(self._mock_draft_doi, return_value=self._draft_doi_data), self.p_get_sess_restapi:
+        with patch(
+            "metadata_backend.api.handlers.object.ObjectAPIHandler.create_draft_doi", return_value=self._draft_doi_data
+        ), self.p_get_sess_restapi:
             response = await self.client.post(
                 f"{API_PREFIX}/objects/study", params={"submission": "some id"}, data=data
             )
@@ -482,7 +451,9 @@ class ObjectHandlerTestCase(HandlersTestCase):
                 "studyAbstract": "abstract description for testing",
             },
         }
-        with patch(self._mock_draft_doi, return_value=self._draft_doi_data), self.p_get_sess_restapi:
+        with patch(
+            "metadata_backend.api.handlers.object.ObjectAPIHandler.create_draft_doi", return_value=self._draft_doi_data
+        ), self.p_get_sess_restapi:
             response = await self.client.post(
                 f"{API_PREFIX}/objects/study", params={"submission": "some id"}, json=json_req
             )
@@ -634,7 +605,9 @@ class ObjectHandlerTestCase(HandlersTestCase):
             },
         }
         call = f"{API_PREFIX}/drafts/study/EGA123456"
-        with self.p_get_sess_restapi:
+        with patch(
+            "metadata_backend.api.handlers.object.ObjectAPIHandler.get_user_external_id", return_value=self.user_id
+        ), self.p_get_sess_restapi:
             response = await self.client.put(call, json=json_req)
             self.assertEqual(response.status, 200)
             self.assertIn(self.test_ega_string, await response.text())
@@ -645,7 +618,9 @@ class ObjectHandlerTestCase(HandlersTestCase):
         files = [("study", "SRP000539.xml")]
         data = self.create_submission_data(files)
         call = f"{API_PREFIX}/drafts/study/EGA123456"
-        with self.p_get_sess_restapi:
+        with patch(
+            "metadata_backend.api.handlers.object.ObjectAPIHandler.get_user_external_id", return_value=self.user_id
+        ), self.p_get_sess_restapi:
             response = await self.client.put(call, data=data)
             self.assertEqual(response.status, 200)
             self.assertIn(self.test_ega_string, await response.text())
@@ -732,9 +707,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
     async def test_delete_is_called(self):
         """Test query method calls operator and returns status correctly."""
         url = f"{API_PREFIX}/objects/study/EGA123456"
-        with patch(
-            "metadata_backend.api.handlers.object.DataciteServiceHandler.delete", return_value=None
-        ), self.p_get_sess_restapi:
+        with self.p_get_sess_restapi:
             response = await self.client.delete(url)
             self.assertEqual(response.status, 204)
             self.MockedOperator().delete_metadata_object.assert_called_once()
@@ -837,10 +810,6 @@ class SubmissionHandlerTestCase(HandlersTestCase):
 
         await super().setUpAsync()
 
-        class_doihandler = "metadata_backend.api.handlers.submission.DataciteServiceHandler"
-        self.patch_doihandler = patch(class_doihandler, **self.doi_handler, spec=True)
-        self.MockedDoiHandler = self.patch_doihandler.start()
-
         self._mock_prepare_doi = "metadata_backend.api.handlers.submission.SubmissionAPIHandler._prepare_doi_update"
 
         class_submissionoperator = "metadata_backend.api.handlers.submission.SubmissionOperator"
@@ -855,18 +824,12 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         self.patch_operator = patch(class_operator, **self.operator_config, spec=True)
         self.MockedOperator = self.patch_operator.start()
 
-        class_metaxhandler = "metadata_backend.api.handlers.submission.MetaxServiceHandler"
-        self.patch_metaxhandler = patch(class_metaxhandler, spec=True)
-        self.MockedMetaxHandler = self.patch_metaxhandler.start()
-
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
         await super().tearDownAsync()
-        self.patch_doihandler.stop()
         self.patch_submissionoperator.stop()
         self.patch_useroperator.stop()
         self.patch_operator.stop()
-        self.patch_metaxhandler.stop()
 
     async def test_submission_creation_works(self):
         """Test that submission is created and submission ID returned."""
@@ -1000,10 +963,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
 
     async def test_submission_is_published(self):
         """Test that submission would be published and DOI would be added."""
-        self.MockedDoiHandler().set_state.return_value = None
         self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
-        self.MockedMetaxHandler().update_dataset_with_doi_info.return_value = None
-        self.MockedMetaxHandler().publish_dataset.return_value = None
         with patch(
             self._mock_prepare_doi,
             return_value=(
@@ -1014,6 +974,13 @@ class SubmissionHandlerTestCase(HandlersTestCase):
                     {"doi": "prefix/suffix-dataset", "metaxIdentifier": "metax_id"},
                 ],
             ),
+        ), patch(
+            "metadata_backend.services.datacite_service_handler.DataciteServiceHandler.set_state", return_value=None
+        ), patch(
+            "metadata_backend.services.metax_service_handler.MetaxServiceHandler.update_dataset_with_doi_info",
+            return_value=None,
+        ), patch(
+            "metadata_backend.services.metax_service_handler.MetaxServiceHandler.publish_dataset", return_value=None
         ), self.p_get_sess_restapi:
             response = await self.client.patch(f"{API_PREFIX}/publish/FOL12345678")
             self.assertEqual(response.status, 200)
