@@ -10,7 +10,6 @@ from xmlschema import XMLSchemaException
 
 from ...conf.conf import API_PREFIX
 from ...helpers.logger import LOG
-from ...services.metax_service_handler import MetaxServiceHandler
 from ...helpers.parser import XMLToJSONParser
 from ...helpers.schema_loader import SchemaNotFoundException, XMLSchemaLoader
 from ...helpers.validator import XMLValidator
@@ -158,7 +157,6 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
         _allowed_doi = {"study", "dataset"}
         db_client = req.app["db_client"]
         submission_op = SubmissionOperator(db_client)
-        metax_handler = MetaxServiceHandler(req)
 
         submission_id = req.query.get("submission", "")
         if not submission_id:
@@ -190,11 +188,11 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
         # Add DOI to object
         if schema in _allowed_doi:
             json_data["doi"] = await self.create_draft_doi(schema)
-            await Operator(db_client).create_datacite_info(schema, json_data["accessionId"], {"doi": json_data["doi"]})
+            await Operator(db_client).update_identifiers(schema, json_data["accessionId"], {"doi": json_data["doi"]})
 
         # Create draft dataset to Metax catalog
         try:
-            if metax_handler.enabled and schema in _allowed_doi:
+            if self.metax_handler.enabled and schema in _allowed_doi:
                 await self.create_metax_dataset(req, schema, json_data)
         except Exception as e:
             # We don't care if it fails here
@@ -253,13 +251,13 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
             pass
 
         # Update draft dataset to Metax catalog
-        metax_handler = MetaxServiceHandler(req)
         try:
-            if metax_handler.enabled and schema in _allowed_doi:
+            if self.metax_handler.enabled and schema in _allowed_doi:
                 object_data, _ = await operator.read_metadata_object(schema, accession_id)
+                external_id = await self.get_user_external_id(req)
                 # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
                 if isinstance(object_data, Dict):
-                    await metax_handler.update_draft_dataset(schema, object_data)
+                    await self.metax_handler.update_draft_dataset(external_id, schema, object_data)
                 else:
                     raise ValueError("Object's data must be dictionary")
         except Exception as e:

@@ -9,16 +9,14 @@ from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
 from ...conf.conf import API_PREFIX
-from ...services.datacite_service_handler import DataciteServiceHandler
 from ...helpers.logger import LOG
-from ...services.metax_service_handler import MetaxServiceHandler
 from ...helpers.validator import JSONValidator
 from ..operators import SubmissionOperator, Operator, XMLOperator
 from .common import multipart_content
-from .restapi import RESTAPIHandler
+from .restapi import RESTAPIIntegrationHandler
 
 
-class ObjectAPIHandler(RESTAPIHandler):
+class ObjectAPIHandler(RESTAPIIntegrationHandler):
     """API Handler for Objects."""
 
     async def _handle_query(self, req: Request) -> Response:
@@ -190,12 +188,11 @@ class ObjectAPIHandler(RESTAPIHandler):
             obj: Dict[str, Any]
             for obj, _ in objects:
                 obj["doi"] = await self.create_draft_doi(collection)
-                await Operator(db_client).create_datacite_info(collection, obj["accessionId"], {"doi": obj["doi"]})
+                await Operator(db_client).update_identifiers(collection, obj["accessionId"], {"doi": obj["doi"]})
 
         # Create draft dataset to Metax catalog
-        metax_handler = MetaxServiceHandler(req)
         try:
-            if metax_handler.enabled and collection in _allowed_doi:
+            if self.metax_handler.enabled and collection in _allowed_doi:
                 [await self.create_metax_dataset(req, collection, item) for item, _ in objects]
         except Exception as e:
             # We don't care if it fails here
@@ -274,16 +271,14 @@ class ObjectAPIHandler(RESTAPIHandler):
         accession_id = await operator.delete_metadata_object(collection, accession_id)
 
         # Delete draft dataset from Metax catalog
-        metax_handler = MetaxServiceHandler(req)
-        if metax_handler.enabled and collection in _allowed_doi:
+        if self.metax_handler.enabled and collection in _allowed_doi:
             try:
-                await MetaxServiceHandler(req).delete_draft_dataset(metax_id)
+                await self.metax_handler.delete_draft_dataset(metax_id)
             except Exception as e:
                 # We don't care if it fails here
                 LOG.exception(f"delete_draft_dataset failed: {e} for collection {collection}")
                 pass
-            doi_service = DataciteServiceHandler()
-            await doi_service.delete(doi_id)
+            await self.datacite_handler.delete(doi_id)
 
         LOG.info(f"DELETE object with accession ID {accession_id} in schema {collection} was successful.")
         return web.HTTPNoContent()
@@ -339,13 +334,14 @@ class ObjectAPIHandler(RESTAPIHandler):
         await submission_op.update_submission(submission_id, patch)
 
         # Update draft dataset to Metax catalog
-        metax_handler = MetaxServiceHandler(req)
         try:
-            if metax_handler.enabled and collection in _allowed_doi:
-                if data.get("metaxIdentifier", None):
-                    await MetaxServiceHandler(req).update_draft_dataset(collection, data)
-                else:
-                    await self.create_metax_dataset(req, collection, data)
+            external_id = await self.get_user_external_id(req)
+            if self.metax_handler.enabled and collection in _allowed_doi:
+                if collection in _allowed_doi:
+                    if data.get("metaxIdentifier", None):
+                        await self.metax_handler.update_draft_dataset(external_id, collection, data)
+                    else:
+                        await self.create_metax_dataset(req, collection, data)
         except Exception as e:
             # We don't care if it fails here
             LOG.exception(f"update_draft_dataset or create_metax_dataset failed: {e} for collection {collection}")
@@ -403,14 +399,14 @@ class ObjectAPIHandler(RESTAPIHandler):
             pass
 
         # Update draft dataset to Metax catalog
-        metax_handler = MetaxServiceHandler(req)
         try:
-            if metax_handler.enabled and collection in {"study", "dataset"}:
+            if self.metax_handler.enabled and collection in {"study", "dataset"}:
                 object_data, _ = await operator.read_metadata_object(collection, accession_id)
                 # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
                 if isinstance(object_data, Dict):
+                    external_id = await self.get_user_external_id(req)
                     if object_data.get("metaxIdentifier", None):
-                        await MetaxServiceHandler(req).update_draft_dataset(collection, object_data)
+                        await self.metax_handler.update_draft_dataset(external_id, collection, object_data)
                     else:
                         await self.create_metax_dataset(req, collection, object_data)
                 else:
@@ -418,7 +414,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         except Exception as e:
             # We don't care if it fails here
             LOG.exception(f"update_draft_dataset or create_metax_dataset failed: {e} for collection {collection}")
-            pass
+            raise
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info(f"PATCH object with accession ID {accession_id} in schema {collection} was successful.")
@@ -429,7 +425,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         :param schema: schema of objects to be added to the submission
         :param objects: metadata objects
-        :param params: addidtional data required for db entry
+        :param cont_type: content type
         :returns: list of patch operations
         """
         LOG.info("Preparing submission patch for new objects")
@@ -514,48 +510,3 @@ class ObjectAPIHandler(RESTAPIHandler):
         lastModified = {"op": "replace", "path": "/lastModified", "value": _now}
 
         return [patch_op, lastModified]
-
-    @staticmethod
-    async def create_metax_dataset(req: Request, collection: str, object: Dict) -> str:
-        """Handle connection to Metax api handler for dataset creation.
-
-        Dataset or Study object is assigned with DOI
-        and it's data is sent to Metax api handler.
-        Object database entry is updated with metax ID returned by Metax service.
-
-        :param req: HTTP request
-        :param collection: object's schema
-        :param object: metadata object
-        :returns: Metax ID
-        """
-        LOG.info("Creating draft dataset to Metax.")
-        metax_handler = MetaxServiceHandler(req)
-        if not metax_handler.enabled:
-            LOG.error("Metax integration is disabled.")
-            return ""
-        operator = Operator(req.app["db_client"])
-        new_info = {}
-        if "doi" in object:
-            new_info["doi"] = object["doi"]
-        metax_id = await metax_handler.post_dataset_as_draft(collection, object)
-        new_info["metaxIdentifier"] = metax_id
-        await operator.create_datacite_info(collection, object["accessionId"], new_info)
-
-        return metax_id
-
-    @staticmethod
-    async def create_draft_doi(collection: str) -> dict:
-        """Create draft DOI for study and dataset.
-
-        The Draft DOI will be created only on POST and the data added to the
-        submission. Any update of this should not be possible.
-
-        :param collection: schema can be either study or dataset
-        :returns: Dict with DOI of the study or dataset as well as the types.
-        """
-        doi_ops = DataciteServiceHandler()
-        _doi_data = await doi_ops.create_draft(prefix=collection)
-
-        LOG.debug(f"doi created with doi: {_doi_data['fullDOI']}")
-
-        return _doi_data["fullDOI"]
