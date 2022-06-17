@@ -66,6 +66,7 @@ users_url = f"{base_url}{API_PREFIX}/users"
 submit_url = f"{base_url}{API_PREFIX}/submit"
 publish_url = f"{base_url}{API_PREFIX}/publish"
 metax_url = f"{os.getenv('METAX_URL', 'http://localhost:8002')}/rest/v2/datasets"
+datacite_url = f"{os.getenv('DOI_API', 'http://localhost:8001/dois')}"
 auth = aiohttp.BasicAuth(os.getenv("METAX_USER", "sd"), os.getenv("METAX_PASS", "test"))
 # to form direct contact to db with eg create_submission()
 DATABASE = os.getenv("MONGO_DATABASE", "default")
@@ -157,6 +158,20 @@ async def create_request_json_data(schema, filename):
     async with aiofiles.open(path, mode="r") as f:
         request_data = await f.read()
     return request_data
+
+
+async def get_object(sess, schema, accession_id):
+    """Post one metadata object within session, returns accessionId.
+
+    :param sess: HTTP session in which request call is made
+    :param schema: name of the schema (submission) used for testing
+    :param filename: name of the file used for testing.
+    """
+    async with sess.get(f"{objects_url}/{schema}/{accession_id}") as resp:
+        LOG.debug(f"Getting object from {schema} with {accession_id}")
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+        data = await resp.json()
+        return data
 
 
 async def post_object(sess, schema, submission_id, filename):
@@ -1191,8 +1206,14 @@ async def test_crud_submissions_works(sess, project_id):
     await put_submission_doi(sess, submission_id, doi_data_raw)
 
     # add a study and dataset for publishing a submission
-    await post_object_json(sess, "study", submission_id, "SRP000539.json")
-    await post_object(sess, "dataset", submission_id, "dataset.xml")
+    ds_1 = await post_object(sess, "dataset", submission_id, "dataset.xml")
+    ds_1 = await get_object(sess, "dataset", ds_1[0])
+
+    study = await post_object_json(sess, "study", submission_id, "SRP000539.json")
+    study = await get_object(sess, "study", study)
+
+    ds_2 = await post_object(sess, "dataset", submission_id, "dataset_put.xml")
+    ds_2 = await get_object(sess, "dataset", ds_2[0])
 
     submission_id = await publish_submission(sess, submission_id)
 
@@ -1206,7 +1227,25 @@ async def test_crud_submissions_works(sess, project_id):
         assert "datePublished" in res.keys()
         assert "extraInfo" in res.keys()
         assert res["drafts"] == [], "there are drafts in submission, expected empty"
-        assert len(res["metadataObjects"]) == 3, "submission metadataObjects content mismatch"
+        assert len(res["metadataObjects"]) == 4, "submission metadataObjects content mismatch"
+
+    # check that datacite has references between datasets and study
+    async with sess.get(f"{datacite_url}/{ds_1['doi']}") as datacite_resp:
+        assert datacite_resp.status == 200, f"HTTP Status code error, got {datacite_resp.status}"
+        datacite_res = await datacite_resp.json()
+        ds_1 = datacite_res["data"]
+    async with sess.get(f"{datacite_url}/{ds_2['doi']}") as datacite_resp:
+        assert datacite_resp.status == 200, f"HTTP Status code error, got {datacite_resp.status}"
+        datacite_res = await datacite_resp.json()
+        ds_2 = datacite_res["data"]
+    async with sess.get(f"{datacite_url}/{study['doi']}") as datacite_resp:
+        assert datacite_resp.status == 200, f"HTTP Status code error, got {datacite_resp.status}"
+        datacite_res = await datacite_resp.json()
+        study = datacite_res["data"]
+    assert ds_1["attributes"]["relatedIdentifiers"][0]["relatedIdentifier"] == study["id"]
+    assert ds_2["attributes"]["relatedIdentifiers"][0]["relatedIdentifier"] == study["id"]
+    for id in study["attributes"]["relatedIdentifiers"]:
+        assert id["relatedIdentifier"] in {ds_1["id"], ds_2["id"]}
 
     # Delete submission
     await delete_submission_publish(sess, submission_id)
