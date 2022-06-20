@@ -161,11 +161,12 @@ async def create_request_json_data(schema, filename):
 
 
 async def get_object(sess, schema, accession_id):
-    """Post one metadata object within session, returns accessionId.
+    """Get one metadata object within session, returns object's data.
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (submission) used for testing
-    :param filename: name of the file used for testing.
+    :param accession_id: object to fetch
+    :return: data of an object
     """
     async with sess.get(f"{objects_url}/{schema}/{accession_id}") as resp:
         LOG.debug(f"Getting object from {schema} with {accession_id}")
@@ -179,7 +180,9 @@ async def post_object(sess, schema, submission_id, filename):
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (submission) used for testing
+    :submission_id: submission object belongs to
     :param filename: name of the file used for testing.
+    :return: accessionId of created object
     """
     request_data = await create_request_data(schema, filename)
     async with sess.post(f"{objects_url}/{schema}", params={"submission": submission_id}, data=request_data) as resp:
@@ -194,7 +197,10 @@ async def post_object_expect_status(sess, schema, submission_id, filename, statu
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (submission) used for testing
-    :param filename: name of the file used for testing.
+    :submission_id: submission object belongs to
+    :param filename: name of the file used for testing
+    :param: HTTP status to expect for
+    :return: accessionId of created object
     """
     request_data = await create_request_data(schema, filename)
     async with sess.post(f"{objects_url}/{schema}", params={"submission": submission_id}, data=request_data) as resp:
@@ -210,7 +216,9 @@ async def post_object_json(sess, schema, submission_id, filename):
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (submission) used for testing
+    :submission_id: submission object belongs to
     :param filename: name of the file used for testing.
+    :return: accessionId of created object
     """
     request_data = await create_request_json_data(schema, filename)
     async with sess.post(f"{objects_url}/{schema}", params={"submission": submission_id}, data=request_data) as resp:
@@ -237,7 +245,9 @@ async def post_draft(sess, schema, submission_id, filename):
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (submission) used for testing
+    :submission_id: submission object belongs to
     :param filename: name of the file used for testing.
+    :return: accessionId of created draft
     """
     request_data = await create_request_data(schema, filename)
     async with sess.post(f"{drafts_url}/{schema}", params={"submission": submission_id}, data=request_data) as resp:
@@ -252,7 +262,9 @@ async def post_draft_json(sess, schema, submission_id, filename):
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (submission) used for testing
+    :submission_id: submission object belongs to
     :param filename: name of the file used for testing.
+    :return: accessionId of created draft
     """
     request_data = await create_request_json_data(schema, filename)
     async with sess.post(f"{drafts_url}/{schema}", params={"submission": submission_id}, data=request_data) as resp:
@@ -268,6 +280,8 @@ async def get_draft(sess, schema, draft_id, expected_status=200):
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (submission) used for testing
     :param draft_id: id of the draft
+    :param expected_status: HTTP status to expect for
+    :return: data of a draft
     """
     async with sess.get(f"{drafts_url}/{schema}/{draft_id}") as resp:
         LOG.debug(f"Checking that {draft_id} JSON exists")
@@ -283,6 +297,7 @@ async def put_draft(sess, schema, draft_id, update_filename):
     :param schema: name of the schema (submission) used for testing
     :param draft_id: id of the draft
     :param update_filename: name of the file used to use for updating data.
+    :return: assession id of updated draft
     """
     request_data = await create_request_json_data(schema, update_filename)
     async with sess.put(f"{drafts_url}/{schema}/{draft_id}", data=request_data) as resp:
@@ -298,8 +313,9 @@ async def put_object_json(sess, schema, accession_id, update_filename):
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (submission) used for testing
-    :param draft_id: id of the draft
+    :param accession_id: id of the object
     :param update_filename: name of the file used to use for updating data.
+    :return: assession id of updated object
     """
     request_data = await create_request_json_data(schema, update_filename)
     async with sess.put(f"{objects_url}/{schema}/{accession_id}", data=request_data) as resp:
@@ -312,8 +328,9 @@ async def patch_object_json(sess, schema, accession_id, update_filename):
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (submission) used for testing
-    :param draft_id: id of the draft
+    :param accession_id: id of the object
     :param update_filename: name of the file used to use for updating data.
+    :return: assession id of updated object
     """
     request_data = await create_request_json_data(schema, update_filename)
     async with sess.patch(f"{objects_url}/{schema}/{accession_id}", data=request_data) as resp:
@@ -329,8 +346,9 @@ async def put_object_xml(sess, schema, accession_id, update_filename):
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (submission) used for testing
-    :param draft_id: id of the draft
+    :param accession_id: id of the object
     :param update_filename: name of the file used to use for updating data.
+    :return: assession id of updated object
     """
     request_data = await create_request_data(schema, update_filename)
     async with sess.put(f"{objects_url}/{schema}/{accession_id}", data=request_data) as resp:
@@ -348,6 +366,7 @@ async def patch_draft(sess, schema, draft_id, update_filename):
     :param schema: name of the schema (submission) used for testing
     :param draft_id: id of the draft
     :param update_filename: name of the file used to use for updating data.
+    :return: assession id of updated draft
     """
     request_data = await create_request_json_data(schema, update_filename)
     async with sess.patch(f"{drafts_url}/{schema}/{draft_id}", data=request_data) as resp:
