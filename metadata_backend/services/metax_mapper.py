@@ -83,7 +83,6 @@ class MetaDataMapper:
                 "type": "array",
                 "items": {"type": "object", "$ref": "#/definitions/ResearchAgent"},
             },
-            # TODO: will be implemented later
             # describes study from same submission for mapped datasets
             "is_output_of": {
                 "title": "Producer project",
@@ -160,8 +159,7 @@ class MetaDataMapper:
                 "type": "array",
                 "items": {"type": "object", "$ref": "#/definitions/PeriodOfTime"},
             },
-            # TODO: will be implemented later
-            # dataset from same submission
+            # datasets from same submission
             "relation": {
                 "type": "array",
                 "items": {
@@ -232,13 +230,15 @@ class MetaDataMapper:
     }
     """
 
-    def __init__(self, metax_data: Dict, data: Dict) -> None:
+    def __init__(self, object_type: str, metax_data: Dict, data: Dict) -> None:
         """Set variables.
 
         :param metax_data: Metax research_dataset metadata
         """
+        self.object_type = object_type
         self.research_dataset = metax_data
         self.datacite_data = data
+        self.affiliations: List = []
         self.identifier_types = metax_reference_data["identifier_types"]
         self.person: Dict[str, Any] = {
             "name": "",
@@ -254,7 +254,7 @@ class MetaDataMapper:
         """
         LOG.info("Mapping datasite data to Metax metadata")
         LOG.debug(f"Data incomming for mapping: {self.datacite_data}")
-        for key, value in self.datacite_data.items():
+        for key, value in self.datacite_data["doiInfo"].items():
             if key == "creators":
                 self._map_creators(value)
             if key == "keywords":
@@ -267,6 +267,12 @@ class MetaDataMapper:
                 self._map_spatial(value)
             if key == "alternateIdentifiers":
                 self._map_other_identifier(value)
+
+        for key, value in self.datacite_data["extraInfo"].items():
+            if self.object_type == "study" and key == "datasetIdentifiers":
+                self._map_relations(value)
+            if self.object_type == "dataset" and key == "studyIdentifier":
+                self._map_is_output_of(value)
         return self.research_dataset
 
     def _map_creators(self, creators: List) -> None:
@@ -287,6 +293,8 @@ class MetaDataMapper:
                 metax_creator["member_of"]["name"]["en"] = affiliation["name"]
                 if affiliation.get("affiliationIdentifier"):
                     metax_creator["member_of"]["identifier"] = affiliation["affiliationIdentifier"]
+                # here we collect affiliations for
+                self.affiliations.append(metax_creator["member_of"])
             # Metax schema accepts only one identifier per creator
             # so we take first one
             if creator.get("nameIdentifiers", None) and creator["nameIdentifiers"][0].get("nameIdentifier", None):
@@ -316,6 +324,7 @@ class MetaDataMapper:
                 metax_contributor["member_of"]["name"]["en"] = affiliation["name"]
                 if affiliation.get("affiliationIdentifier"):
                     metax_contributor["member_of"]["identifier"] = affiliation["affiliationIdentifier"]
+                self.affiliations.append(metax_contributor["member_of"])
             # Metax schema accepts only one identifier per creator
             # so we take first one
             if contributor.get("nameIdentifiers", None) and contributor["nameIdentifiers"][0].get(
@@ -420,7 +429,7 @@ class MetaDataMapper:
         """
         LOG.info("Mapping alternate identifiers")
         LOG.debug(identifiers)
-        self.research_dataset["other_identifier"] = []
+
         other_identifier: Dict[str, Any] = {
             "type": {
                 "identifier": "",
@@ -428,11 +437,52 @@ class MetaDataMapper:
             },
             "notation": "",
         }
+        other_identifiers = self.research_dataset["other_identifier"] = []
         for identifier in identifiers:
             other_identifier["notation"] = identifier["alternateIdentifier"]
-
             type = self.identifier_types[identifier["alternateIdentifierType"].lower()]
-
             other_identifier["type"]["identifier"] = type
+            other_identifiers.append(other_identifier)
 
-        self.research_dataset["other_identifier"].append(other_identifier)
+    def _map_relations(self, datasets: List) -> None:
+        """Map datasets for study as a relation.
+
+        :param datasets: Datasets identifiers object
+        """
+        LOG.info("Mapping datasets related to study")
+        LOG.debug(datasets)
+
+        relation = {
+            "entity": {
+                "identifier": "",
+                "type": "http://uri.suomi.fi/codelist/fairdata/resource_type/code/dataset",
+            },
+            "relation_type": {"identifier": "http://purl.org/dc/terms/relation"},
+        }
+
+        relations = self.research_dataset["relation"] = []
+
+        for dataset in datasets:
+            rel = deepcopy(relation)
+            rel["entity"]["identifier"] = dataset["url"]
+            relations.append(rel)
+
+    def _map_is_output_of(self, study: Dict) -> None:
+        """Map study for datasets as a output of.
+
+        :param study: Study identifier object
+        """
+        LOG.info("Mapping study for related datasets")
+        LOG.debug(study)
+
+        for obj in self.datacite_data["metadataObjects"]:
+            if obj["schema"] == "study":
+                name = obj["tags"]["displayTitle"]
+
+        self.research_dataset["is_output_of"] = [
+            {
+                "name": {"en": name},
+                "identifier": study["url"],
+                "source_organization": self.affiliations,
+            }
+        ]
