@@ -32,40 +32,40 @@ class SubmissionAPIHandler(RESTAPIHandler):
         """
 
         study = {
-            "attributes": {
-                "publisher": doi_config["publisher"],
-                "publicationYear": date.today().year,
-                "event": "publish",
-                "schemaVersion": "https://schema.datacite.org/meta/kernel-4",
-                "doi": study_data["doi"],
-                "prefix": study_data["doi"].split("/")[0],
-                "suffix": study_data["doi"].split("/")[1],
-                "types": {
-                    "bibtex": "misc",
-                    "citeproc": "collection",
-                    "schemaOrg": "Collection",
-                    "resourceTypeGeneral": "Collection",
-                },
-                "url": f"{doi_config['discovery_url']}metax_disabled",
-                # "url": f"{doi_config['discovery_url']}{study_data['metaxIdentifier']}",
-                "identifiers": [
-                    {
-                        "identifierType": "DOI",
-                        "doi": study_data["doi"],
-                    }
-                ],
-                "descriptions": [],
-                "titles": [],
-            },
             "id": study_data["doi"],
             "type": "dois",
+            "data": {
+                "attributes": {
+                    "publisher": doi_config["publisher"],
+                    "publicationYear": date.today().year,
+                    "event": "publish",
+                    "schemaVersion": "https://schema.datacite.org/meta/kernel-4",
+                    "doi": study_data["doi"],
+                    "prefix": study_data["doi"].split("/")[0],
+                    "suffix": study_data["doi"].split("/")[1],
+                    "types": {
+                        "bibtex": "misc",
+                        "citeproc": "collection",
+                        "schemaOrg": "Collection",
+                        "resourceTypeGeneral": "Collection",
+                    },
+                    "url": doi_config["discovery_url"],
+                    "identifiers": [
+                        {
+                            "identifierType": "DOI",
+                            "doi": study_data["doi"],
+                        }
+                    ],
+                    "descriptions": [],
+                    "titles": [],
+                },
+            },
         }
-
-        study["attributes"]["titles"].append(
+        study["data"]["attributes"]["titles"].append(
             {"lang": None, "title": study_data["descriptor"]["studyTitle"], "titleType": None},
         )
 
-        study["attributes"]["descriptions"].append(
+        study["data"]["attributes"]["descriptions"].append(
             {
                 "lang": None,
                 "description": study_data["descriptor"]["studyAbstract"],
@@ -74,11 +74,11 @@ class SubmissionAPIHandler(RESTAPIHandler):
         )
 
         if "studyDescription" in study_data:
-            study["attributes"]["descriptions"].append(
+            study["data"]["attributes"]["descriptions"].append(
                 {"lang": None, "description": study_data["studyDescription"], "descriptionType": "Other"}
             )
 
-        study["attributes"].update(general_info)
+        study["data"]["attributes"].update(general_info)
         LOG.debug(f"prepared study info: {study}")
 
         return study
@@ -93,40 +93,42 @@ class SubmissionAPIHandler(RESTAPIHandler):
         """
 
         dataset = {
-            "attributes": {
-                "publisher": doi_config["publisher"],
-                "publicationYear": date.today().year,
-                "event": "publish",
-                "schemaVersion": "https://schema.datacite.org/meta/kernel-4",
-                "doi": dataset_data["doi"],
-                "prefix": dataset_data["doi"].split("/")[0],
-                "suffix": dataset_data["doi"].split("/")[1],
-                "types": {
-                    "ris": "DATA",
-                    "bibtex": "misc",
-                    "citeproc": "dataset",
-                    "schemaOrg": "Dataset",
-                    "resourceTypeGeneral": "Dataset",
-                },
-                "url": f"{doi_config['discovery_url']}{dataset_data['metaxIdentifier']}",
-                "identifiers": [
-                    {
-                        "identifierType": "DOI",
-                        "doi": dataset_data["doi"],
-                    }
-                ],
-                "descriptions": [],
-                "titles": [],
-            },
             "id": dataset_data["doi"],
             "type": "dois",
+            "data": {
+                "attributes": {
+                    "publisher": doi_config["publisher"],
+                    "publicationYear": date.today().year,
+                    "event": "publish",
+                    "schemaVersion": "https://schema.datacite.org/meta/kernel-4",
+                    "doi": dataset_data["doi"],
+                    "prefix": dataset_data["doi"].split("/")[0],
+                    "suffix": dataset_data["doi"].split("/")[1],
+                    "types": {
+                        "ris": "DATA",
+                        "bibtex": "misc",
+                        "citeproc": "dataset",
+                        "schemaOrg": "Dataset",
+                        "resourceTypeGeneral": "Dataset",
+                    },
+                    "url": doi_config["discovery_url"],
+                    "identifiers": [
+                        {
+                            "identifierType": "DOI",
+                            "doi": dataset_data["doi"],
+                        }
+                    ],
+                    "descriptions": [],
+                    "titles": [],
+                },
+            },
         }
 
-        dataset["attributes"]["titles"].append(
+        dataset["data"]["attributes"]["titles"].append(
             {"lang": None, "title": dataset_data["title"], "titleType": None},
         )
 
-        dataset["attributes"]["descriptions"].append(
+        dataset["data"]["attributes"]["descriptions"].append(
             {
                 "lang": None,
                 "description": dataset_data["description"],
@@ -135,11 +137,11 @@ class SubmissionAPIHandler(RESTAPIHandler):
         )
 
         # A Dataset is described by a Study
-        if "relatedIdentifiers" not in dataset["attributes"]:
-            dataset["attributes"]["relatedIdentifiers"] = []
+        if "relatedIdentifiers" not in dataset["data"]["attributes"]:
+            dataset["data"]["attributes"]["relatedIdentifiers"] = []
 
         if study_doi:
-            dataset["attributes"]["relatedIdentifiers"].append(
+            dataset["data"]["attributes"]["relatedIdentifiers"].append(
                 {
                     "relationType": "IsDescribedBy",
                     "relatedIdentifier": study_doi,
@@ -148,7 +150,7 @@ class SubmissionAPIHandler(RESTAPIHandler):
                 }
             )
 
-        dataset["attributes"].update(general_info)
+        dataset["data"]["attributes"].update(general_info)
         LOG.debug(f"prepared dataset info: {dataset}")
 
         return dataset
@@ -219,13 +221,15 @@ class SubmissionAPIHandler(RESTAPIHandler):
                                     req, "study", study_data
                                 )
 
-                            metax_ids.append({"doi": study_data["doi"], "metaxIdentifier": study_data["metaxIdentifier"]})
+                            metax_ids.append(
+                                {"doi": study_data["doi"], "metaxIdentifier": study_data["metaxIdentifier"]}
+                            )
 
                         # there are cases where datasets are added first
                         if len(datasets) > 0:
                             LOG.info(datasets)
                             for ds in datasets:
-                                ds["attributes"]["relatedIdentifiers"].append(
+                                ds["data"]["attributes"]["relatedIdentifiers"].append(
                                     {
                                         "relationType": "IsDescribedBy",
                                         "relatedIdentifier": _study_doi,
@@ -233,13 +237,13 @@ class SubmissionAPIHandler(RESTAPIHandler):
                                         "relatedIdentifierType": "DOI",
                                     }
                                 )
-                                if "relatedIdentifiers" not in study["attributes"]:
-                                    study["attributes"]["relatedIdentifiers"] = []
+                                if "relatedIdentifiers" not in study["data"]["attributes"]:
+                                    study["data"]["attributes"]["relatedIdentifiers"] = []
 
-                                study["attributes"]["relatedIdentifiers"].append(
+                                study["data"]["attributes"]["relatedIdentifiers"].append(
                                     {
                                         "relationType": "Describes",
-                                        "relatedIdentifier": ds["attributes"]["doi"],
+                                        "relatedIdentifier": ds["data"]["attributes"]["doi"],
                                         "resourceTypeGeneral": "Dataset",
                                         "relatedIdentifierType": "DOI",
                                     }
@@ -257,19 +261,17 @@ class SubmissionAPIHandler(RESTAPIHandler):
 
                         # in case object is not added to metax due to server error
                         if metax_handler.enabled and not ds_data["metaxIdentifier"]:
-                            ds_data["metaxIdentifier"] = await obj_handler.create_metax_dataset(
-                                req, "dataset", ds_data
-                            )
+                            ds_data["metaxIdentifier"] = await obj_handler.create_metax_dataset(req, "dataset", ds_data)
 
                             metax_ids.append({"doi": ds_data["doi"], "metaxIdentifier": ds_data["metaxIdentifier"]})
 
                         # A Study describes a Dataset
                         # there are cases where datasets are added first
                         if "attributes" in study:
-                            if "relatedIdentifiers" not in study["attributes"]:
-                                study["attributes"]["relatedIdentifiers"] = []
+                            if "relatedIdentifiers" not in study["data"]["attributes"]:
+                                study["data"]["attributes"]["relatedIdentifiers"] = []
 
-                            study["attributes"]["relatedIdentifiers"].append(
+                            study["data"]["attributes"]["relatedIdentifiers"].append(
                                 {
                                     "relationType": "Describes",
                                     "relatedIdentifier": ds_data["doi"],
@@ -541,8 +543,8 @@ class SubmissionAPIHandler(RESTAPIHandler):
                         "identifierType": "DOI",
                         "doi": ds["id"],
                     },
-                    "url": ds["attributes"]["url"],
-                    "types": ds["attributes"]["types"],
+                    "url": ds["data"]["attributes"]["url"],
+                    "types": ds["data"]["attributes"]["types"],
                 },
             }
             datasets_patch.append(patch_ds)
@@ -574,8 +576,8 @@ class SubmissionAPIHandler(RESTAPIHandler):
                         "identifierType": "DOI",
                         "doi": study["id"],
                     },
-                    "url": study["attributes"]["url"],
-                    "types": study["attributes"]["types"],
+                    "url": study["data"]["attributes"]["url"],
+                    "types": study["data"]["attributes"]["types"],
                 },
             },
         ]
