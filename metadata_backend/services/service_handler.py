@@ -96,6 +96,11 @@ class ServiceHandler:
         """
         await self._request(method="HEAD", url=self.connection_check_url, timeout=timeout)
 
+    @staticmethod
+    def _process_error(error: str) -> str:
+        """Override in subclass and return formatted error message."""
+        return error
+
     @retry(total_tries=5)
     async def _request(
         self,
@@ -141,9 +146,9 @@ class ServiceHandler:
 
                 if not response.ok:
                     content = await response.text()
-                    log_msg = f"{method} request to {self.service_name} '{url}' returned a {response.status}."
+                    log_msg = f"{method} request to {self.service_name} '{url}' returned a {response.status}: '{content}'"
                     if content:
-                        log_msg += f" Content: '{content}'"
+                        content = self._process_error(content)
                     LOG.error(log_msg)
                     raise self.make_exception(reason=content, status=response.status)
 
@@ -183,7 +188,7 @@ class ServiceHandler:
         if status < 400:
             LOG.error(f"HTTP status code must be an error code, >400 received {status}.")
             return HTTPInternalServerError(reason="Server encountered an unexpected situation.")
-        reason = f"{self.service_name} error {reason}"
+        reason = f"{self.service_name} error: {reason}"
         if status >= 500:
             return ServiceServerError(text=reason, reason=reason)
         return ServiceClientError(text=reason, reason=reason, status_code=status)
