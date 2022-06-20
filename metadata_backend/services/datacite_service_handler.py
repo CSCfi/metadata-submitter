@@ -6,6 +6,7 @@ https://github.com/neicnordic/sda-orchestration/blob/master/sda_orchestrator/uti
 from typing import Dict, Union
 from uuid import uuid4
 
+import ujson
 from aiohttp import BasicAuth, ClientTimeout
 from yarl import URL
 
@@ -28,6 +29,49 @@ class DataciteServiceHandler(ServiceHandler):
             http_client_headers={"Content-Type": "application/vnd.api+json"},
         )
         self.doi_prefix = doi_config["prefix"]
+
+    @staticmethod
+    def _process_error(error: str) -> str:
+        """Return error message in a human-readable format
+
+        Errors come as JSON. Example:
+        {
+            "errors": [
+                {
+                    "status": "400",
+                    "title": "You need to provide a payload following the JSONAPI spec"
+                }
+            ]
+        }
+        {
+            "errors": [
+                {
+                    "source": "url",
+                    "uid":"10.xxxx/12345",
+                    "title":"Can't be blank"
+                }
+            ]
+        }
+        """
+        if not error:
+            return error
+
+        error_messages = []
+        try:
+            error = ujson.loads(error)
+            for e in error["errors"]:
+                title = e["title"]
+                message = title
+                if "source" in e:
+                    source = e["source"]
+                    uid = e["uid"]
+                    message = f"Attribute '{source}' in '{uid}': {title}"
+                error_messages.append(message)
+        except (KeyError, UnicodeDecodeError, ujson.JSONDecodeError):
+            LOG.exception(f"Unexpected format for error message from Datacite: '{error}'.")
+            pass
+
+        return ". ".join(error_messages)
 
     # @property
     # def enabled(self) -> bool:
