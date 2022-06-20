@@ -1,10 +1,11 @@
 """Mock aiohttp.web server for DOI API calls."""
 
+import collections.abc
 import json
 import logging
+from copy import deepcopy
 from datetime import date, datetime
 from os import getenv
-import collections.abc
 
 from aiohttp import web
 
@@ -85,6 +86,8 @@ BASE_RESPONSE = {
     ],
 }
 
+DATASETS = {}
+
 
 def update_dict(d, u):
     """Update values in a dictionary with values from another dictionary."""
@@ -105,7 +108,7 @@ async def create(req: web.Request) -> web.Response:
         LOG.info(reason)
         raise web.HTTPBadRequest(reason=reason)
 
-    data = BASE_RESPONSE
+    data = deepcopy(BASE_RESPONSE)
     try:
         _doi = content["data"]["attributes"]["doi"]
         data["data"]["id"] = content["data"]["attributes"]["doi"]
@@ -124,7 +127,7 @@ async def create(req: web.Request) -> web.Response:
     data["data"]["attributes"]["updated"] = str(datetime.utcnow())
     data["included"][0]["attributes"]["created"] = str(datetime.utcnow())
     data["included"][0]["attributes"]["updated"] = str(datetime.utcnow())
-
+    DATASETS[_doi] = data
     return web.json_response(data, status=201)
 
 
@@ -132,21 +135,34 @@ async def update(req: web.Request) -> web.Response:
     """DOI update endpoint."""
     try:
         content = await req.json()
+        _doi = req.match_info["id"]
     except json.decoder.JSONDecodeError as e:
         reason = f"JSON is not correctly formatted. See: {e}"
         LOG.info(reason)
         raise web.HTTPBadRequest(reason=reason)
 
-    data = BASE_RESPONSE
+    data = DATASETS[_doi]
     data["data"]["attributes"]["updated"] = str(datetime.utcnow())
     data["included"][0]["attributes"]["updated"] = str(datetime.utcnow())
     try:
-        data = update_dict(data, content)
+        data = update_dict(data["data"], content)
     except Exception as e:
         reason = f"Provided payload did not include required attributes: {e}"
         LOG.info(reason)
         raise web.HTTPBadRequest(reason=reason)
+    return web.json_response(data, status=200)
 
+
+async def get(req: web.Request) -> web.Response:
+    """DOI get endpoint."""
+    try:
+        _doi = req.match_info["id"]
+    except Exception as e:
+        reason = f"No identifier is provided : {e}"
+        LOG.info(reason)
+        raise web.HTTPBadRequest(reason=reason)
+
+    data = DATASETS[_doi]
     return web.json_response(data, status=200)
 
 
@@ -159,6 +175,7 @@ async def delete(req: web.Request) -> web.Response:
 async def init() -> web.Application:
     """Start server."""
     app = web.Application()
+    app.router.add_get("/dois/{id:.*}", get)
     app.router.add_post("/dois", create)
     app.router.add_put("/dois/{id:.*}", update)
     app.router.add_delete("/dois/{id:.*}", delete)

@@ -12,10 +12,10 @@ from multidict import CIMultiDict
 
 from ...conf.conf import doi_config
 from ...helpers.logger import LOG
+from ...helpers.validator import JSONValidator
 from ...services.datacite_service_handler import DataciteServiceHandler
 from ...services.metax_service_handler import MetaxServiceHandler
-from ...helpers.validator import JSONValidator
-from ..operators import SubmissionOperator, Operator, ProjectOperator, UserOperator
+from ..operators import Operator, ProjectOperator, SubmissionOperator, UserOperator
 from .object import ObjectAPIHandler
 from .restapi import RESTAPIHandler
 
@@ -137,14 +137,15 @@ class SubmissionAPIHandler(RESTAPIHandler):
         if "relatedIdentifiers" not in dataset["attributes"]:
             dataset["attributes"]["relatedIdentifiers"] = []
 
-        dataset["attributes"]["relatedIdentifiers"].append(
-            {
-                "relationType": "IsDescribedBy",
-                "relatedIdentifier": study_doi,
-                "resourceTypeGeneral": "Collection",
-                "relatedIdentifierType": "DOI",
-            }
-        )
+        if study_doi:
+            dataset["attributes"]["relatedIdentifiers"].append(
+                {
+                    "relationType": "IsDescribedBy",
+                    "relatedIdentifier": study_doi,
+                    "resourceTypeGeneral": "Collection",
+                    "relatedIdentifierType": "DOI",
+                }
+            )
 
         dataset["attributes"].update(general_info)
         LOG.debug(f"prepared dataset info: {dataset}")
@@ -221,6 +222,14 @@ class SubmissionAPIHandler(RESTAPIHandler):
                         if len(datasets) > 0:
                             LOG.info(datasets)
                             for ds in datasets:
+                                ds["attributes"]["relatedIdentifiers"].append(
+                                    {
+                                        "relationType": "IsDescribedBy",
+                                        "relatedIdentifier": _study_doi,
+                                        "resourceTypeGeneral": "Dataset",
+                                        "relatedIdentifierType": "DOI",
+                                    }
+                                )
                                 if "relatedIdentifiers" not in study["attributes"]:
                                     study["attributes"]["relatedIdentifiers"] = []
 
