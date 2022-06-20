@@ -1007,8 +1007,8 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         with patch(
             self._mock_prepare_doi,
             return_value=(
-                {"id": "prefix/suffix-study", "attributes": {"url": "http://metax_id", "types": {}}},
-                [{"id": "prefix/suffix-dataset", "attributes": {"url": "http://metax_id", "types": {}}}],
+                {"id": "prefix/suffix-study", "data": {"attributes": {"url": "http://metax_id", "types": {}}}},
+                [{"id": "prefix/suffix-dataset", "data": {"attributes": {"url": "http://metax_id", "types": {}}}}],
                 [
                     {"doi": "prefix/suffix-study", "metaxIdentifier": "metax_id"},
                     {"doi": "prefix/suffix-dataset", "metaxIdentifier": "metax_id"},
