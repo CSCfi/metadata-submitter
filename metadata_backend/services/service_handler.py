@@ -34,7 +34,7 @@ class ServiceClientError(HTTPError):
 
         HTTPError doesn't have a setter for status_code, so this allows setting it.
 
-        :param status_code: Set the status code here, as
+        :param status_code: Set the status code here
         """
         self.status_code = status_code
         HTTPError.__init__(self, **kwargs)
@@ -146,7 +146,9 @@ class ServiceHandler:
 
                 if not response.ok:
                     content = await response.text()
-                    log_msg = f"{method} request to {self.service_name} '{url}' returned a {response.status}: '{content}'"
+                    log_msg = (
+                        f"{method} request to {self.service_name} '{url}' returned a {response.status}: '{content}'"
+                    )
                     if content:
                         content = self._process_error(content)
                     LOG.error(log_msg)

@@ -2,6 +2,9 @@
 
 The DOI handler from SDA orchestration was used as reference:
 https://github.com/neicnordic/sda-orchestration/blob/master/sda_orchestrator/utils/id_ops.py
+
+Api docs and reference: https://support.datacite.org/
+Test account access: https://doi.test.datacite.org/sign-in
 """
 from typing import Dict, Union
 from uuid import uuid4
@@ -32,7 +35,7 @@ class DataciteServiceHandler(ServiceHandler):
 
     @staticmethod
     def _process_error(error: str) -> str:
-        """Return error message in a human-readable format
+        """Return error message in a human-readable format.
 
         Errors come as JSON. Example:
         {
@@ -58,8 +61,8 @@ class DataciteServiceHandler(ServiceHandler):
 
         error_messages = []
         try:
-            error = ujson.loads(error)
-            for e in error["errors"]:
+            json_error = ujson.loads(error)
+            for e in json_error["errors"]:
                 title = e["title"]
                 message = title
                 if "source" in e:
@@ -113,8 +116,9 @@ class DataciteServiceHandler(ServiceHandler):
         :raises: HTTPInternalServerError if the Datacite DOI update fails
         :returns: None
         """
-        await self._request(method="PUT", path=doi_payload["id"], json_data=doi_payload)
-        LOG.info(f"Datacite doi {doi_payload['id']} updated ")
+        _id = doi_payload["id"]
+        await self._request(method="PUT", path=_id, json_data=doi_payload)
+        LOG.info(f"Datacite doi {_id} updated ")
 
     async def delete(self, doi: str) -> None:
         """Delete DOI and associated metadata.
