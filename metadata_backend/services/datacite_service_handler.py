@@ -74,7 +74,7 @@ class DataciteServiceHandler(ServiceHandler):
             LOG.exception(f"Unexpected format for error message from Datacite: '{error}'.")
             pass
 
-        return ". ".join(error_messages)
+        return " | ".join(error_messages)
 
     # @property
     # def enabled(self) -> bool:
