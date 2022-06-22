@@ -207,11 +207,6 @@ class MetaDataMapper:
                 "type": "array",
                 "items": {"type": "object", "$ref": "#/definitions/Concept"},
             },
-            # TODO: Need clarification on necessity of this field
-            "remote_resources": {
-                "type": "array",
-                "items": {"type": "object", "$ref": "#/definitions/WebResource"},
-            },
             # restricted
             "access_rights": {
                 "type": "object",
@@ -222,7 +217,7 @@ class MetaDataMapper:
                 "type": "array",
                 "items": {"type": "object", "$ref": "#/definitions/ResearchAgent"},
             },
-            # TODO: will be implemented later
+            # TODO: this need to be extracted from linked files metadata on integration with SD Connect
             "total_remote_resources_byte_size": {
                 "type": "integer",
             },
@@ -294,7 +289,8 @@ class MetaDataMapper:
                 if affiliation.get("affiliationIdentifier"):
                     metax_creator["member_of"]["identifier"] = affiliation["affiliationIdentifier"]
                 # here we collect affiliations for
-                self.affiliations.append(metax_creator["member_of"])
+                if metax_creator["member_of"] not in self.affiliations:
+                    self.affiliations.append(metax_creator["member_of"])
             # Metax schema accepts only one identifier per creator
             # so we take first one
             if creator.get("nameIdentifiers", None) and creator["nameIdentifiers"][0].get("nameIdentifier", None):
@@ -317,15 +313,16 @@ class MetaDataMapper:
         for contributor in contributors:
             metax_contributor = deepcopy(self.person)
             metax_contributor["name"] = contributor["name"]
-            # Metax schema accepts only one affiliation per creator
+            # Metax schema accepts only one affiliation per contributor
             # so we take first one
             if contributor.get("affiliation", None):
                 affiliation = contributor["affiliation"][0]
                 metax_contributor["member_of"]["name"]["en"] = affiliation["name"]
                 if affiliation.get("affiliationIdentifier"):
                     metax_contributor["member_of"]["identifier"] = affiliation["affiliationIdentifier"]
-                self.affiliations.append(metax_contributor["member_of"])
-            # Metax schema accepts only one identifier per creator
+                if metax_contributor["member_of"] not in self.affiliations:
+                    self.affiliations.append(metax_contributor["member_of"])
+            # Metax schema accepts only one identifier per contributor
             # so we take first one
             if contributor.get("nameIdentifiers", None) and contributor["nameIdentifiers"][0].get(
                 "nameIdentifier", None
@@ -335,9 +332,9 @@ class MetaDataMapper:
                 del metax_contributor["identifier"]
 
             if contributor.get("contributorType", None):
-                if contributor["contributorType"] == "DataCurator":
+                if contributor["contributorType"] == "Data Curator":
                     self.research_dataset["curator"].append(metax_contributor)
-                elif contributor["contributorType"] == "RightsHolder":
+                elif contributor["contributorType"] == "Rights Holder":
                     self.research_dataset["rights_holder"].append(metax_contributor)
                 else:
                     self.research_dataset["contributor"].append(metax_contributor)
@@ -455,9 +452,16 @@ class MetaDataMapper:
         relation = {
             "entity": {
                 "identifier": "",
-                "type": "http://uri.suomi.fi/codelist/fairdata/resource_type/code/dataset",
+                "type": {
+                    "in_scheme": "http://uri.suomi.fi/codelist/fairdata/resource_type",
+                    "identifier": "http://uri.suomi.fi/codelist/fairdata/resource_type/code/dataset",
+                    "pref_label": {"en": "Dataset", "fi": "Tutkimusaineisto", "und": "Tutkimusaineisto"},
+                },
             },
-            "relation_type": {"identifier": "http://purl.org/dc/terms/relation"},
+            "relation_type": {
+                "identifier": "http://purl.org/dc/terms/relation",
+                "pref_label": {"en": "Related dataset", "fi": "Liittyvä aineisto", "und": "Liittyvä aineisto"},
+            },
         }
 
         relations = self.research_dataset["relation"] = []
