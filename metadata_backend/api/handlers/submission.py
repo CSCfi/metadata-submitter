@@ -219,7 +219,13 @@ class SubmissionAPIHandler(RESTAPIHandler):
                                 req, "study", study_data, create_draft_doi=False
                             )
 
-                        metax_ids.append({"doi": study_data["doi"], "metaxIdentifier": study_data["metaxIdentifier"]})
+                        metax_ids.append(
+                            {
+                                "schema": "study",
+                                "doi": study_data["doi"],
+                                "metaxIdentifier": study_data["metaxIdentifier"],
+                            }
+                        )
 
                         # there are cases where datasets are added first
                         if len(datasets) > 0:
@@ -261,7 +267,9 @@ class SubmissionAPIHandler(RESTAPIHandler):
                                 req, "dataset", ds_data, create_draft_doi=False
                             )
 
-                        metax_ids.append({"doi": ds_data["doi"], "metaxIdentifier": ds_data["metaxIdentifier"]})
+                        metax_ids.append(
+                            {"schema": "dataset", "doi": ds_data["doi"], "metaxIdentifier": ds_data["metaxIdentifier"]}
+                        )
 
                         # A Study describes a Dataset
                         # there are cases where datasets are added first
@@ -522,12 +530,23 @@ class SubmissionAPIHandler(RESTAPIHandler):
         # we first try to publish the DOI before actually publishing the submission
         obj_ops = Operator(db_client)
         study, datasets, metax_ids = await self._prepare_doi_update(req, obj_ops, submission)
-
+        extra_info_patch = []
         doi_ops = DataciteServiceHandler()
-
-        datasets_patch = []
-
         await doi_ops.set_state(study)
+        study_patch = {
+            "op": "add",
+            "path": "/extraInfo/studyIdentifier",
+            "value": {
+                "identifier": {
+                    "identifierType": "DOI",
+                    "doi": study["id"],
+                },
+                "url": study["data"]["attributes"]["url"],
+                "types": study["data"]["attributes"]["types"],
+            },
+        }
+        extra_info_patch.append(study_patch)
+        datasets_patch = []
 
         for ds in datasets:
             await doi_ops.set_state(ds)
@@ -544,14 +563,18 @@ class SubmissionAPIHandler(RESTAPIHandler):
                 },
             }
             datasets_patch.append(patch_ds)
+        extra_info_patch.extend(datasets_patch)
+        extra_info_submission = await operator.update_submission(submission_id, extra_info_patch)
 
-        # Create draft DOI ??? and delete draft objects from the submission
+        # we next try to publish the to Metax before actually publishing the submission
+        await metax_handler.update_dataset_with_doi_info(
+            await operator.read_submission(extra_info_submission), metax_ids
+        )
+        await metax_handler.publish_dataset(metax_ids)
+
+        # Delete draft objects from the submission
         for obj in submission["drafts"]:
             await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
-
-        # update study to metax with data comming from doi info
-        await metax_handler.update_dataset_with_doi_info(submission["doiInfo"], metax_ids)
-        await metax_handler.publish_dataset(metax_ids)
 
         # Patch the submission into a published state
         _now = int(datetime.now().timestamp())
@@ -576,7 +599,6 @@ class SubmissionAPIHandler(RESTAPIHandler):
                 },
             },
         ]
-        patch.extend(datasets_patch)
         new_submission = await operator.update_submission(submission_id, patch)
 
         body = ujson.dumps({"submissionId": new_submission}, escape_forward_slashes=False)

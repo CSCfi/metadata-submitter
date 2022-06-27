@@ -1103,6 +1103,18 @@ async def test_metax_publish_dataset(sess, submission_id):
             assert actual_rd["spatial"] == expected_rd["spatial"]
             assert actual_rd["temporal"] == expected_rd["temporal"]
 
+            if schema == "study":
+                assert "relation" in actual_rd
+                study_dataset_relation = actual_rd["relation"][0]["entity"]["identifier"].split("/")[-1]
+                study_metax_id = metax_id
+            if schema == "dataset":
+                assert "is_output_of" in actual_rd
+                dataset_output_study = actual_rd["is_output_of"][0]["identifier"].split("/")[-1]
+                dataset_metax_id = metax_id
+
+    assert study_dataset_relation == dataset_metax_id
+    assert dataset_output_study == study_metax_id
+
     for _, _, metax_id in objects:
         # delete of published metax datasets is possible only from mocked metax for testing purpose
         # Metax service does not allow deleting published datasets
