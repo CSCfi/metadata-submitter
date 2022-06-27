@@ -2,14 +2,14 @@
 from typing import Any, Dict, List
 
 import aiohttp_session
-from aiohttp import web, BasicAuth
+from aiohttp import BasicAuth, web
 from yarl import URL
 
-from .metax_mapper import MetaDataMapper
-from .service_handler import ServiceHandler
 from ..api.operators import UserOperator
 from ..conf.conf import metax_config
 from ..helpers.logger import LOG
+from .metax_mapper import MetaDataMapper
+from .service_handler import ServiceHandler
 
 
 class MetaxServiceHandler(ServiceHandler):
@@ -221,7 +221,7 @@ class MetaxServiceHandler(ServiceHandler):
         LOG.info(f"Deleting Metax draft dataset {metax_id}")
         await self._delete_draft(metax_id)
 
-    async def update_dataset_with_doi_info(self, doi_info: Dict, _metax_ids: List) -> None:
+    async def update_dataset_with_doi_info(self, datacite_info: Dict, _metax_ids: List) -> None:
         """Update dataset for publishing.
 
         :param doi_info: Dict containing info to complete metax dataset metadata
@@ -236,8 +236,9 @@ class MetaxServiceHandler(ServiceHandler):
             metax_data: dict = await self._get(id["metaxIdentifier"])
 
             # Map fields from doi info to Metax schema
-            mapper = MetaDataMapper(metax_data["research_dataset"], doi_info)
+            mapper = MetaDataMapper(id["schema"], metax_data["research_dataset"], datacite_info)
             mapped_metax_data = mapper.map_metadata()
+
             bulk_data.append({"identifier": id["metaxIdentifier"], "research_dataset": mapped_metax_data})
 
         await self._bulk_patch(bulk_data)
