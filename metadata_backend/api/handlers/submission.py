@@ -172,6 +172,7 @@ class SubmissionAPIHandler(RESTAPIHandler):
         metax_ids = []
         study = {}
         datasets: List = []
+        bpdatasets: List = []
         obj_handler = ObjectAPIHandler()
         metax_handler = MetaxServiceHandler(req)
 
@@ -227,32 +228,14 @@ class SubmissionAPIHandler(RESTAPIHandler):
 
                         # there are cases where datasets are added first
                         if len(datasets) > 0:
-                            LOG.info(datasets)
-                            for ds in datasets:
-                                ds["data"]["attributes"]["relatedIdentifiers"].append(
-                                    {
-                                        "relationType": "IsDescribedBy",
-                                        "relatedIdentifier": _study_doi,
-                                        "resourceTypeGeneral": "Dataset",
-                                        "relatedIdentifierType": "DOI",
-                                    }
-                                )
-                                if "relatedIdentifiers" not in study["data"]["attributes"]:
-                                    study["data"]["attributes"]["relatedIdentifiers"] = []
+                            self._add_datasets_to_study(study, _study_doi, datasets)
+                        elif len(bpdatasets) > 0:
+                            self._add_datasets_to_study(study, _study_doi, bpdatasets)
 
-                                study["data"]["attributes"]["relatedIdentifiers"].append(
-                                    {
-                                        "relationType": "Describes",
-                                        "relatedIdentifier": ds["data"]["attributes"]["doi"],
-                                        "resourceTypeGeneral": "Dataset",
-                                        "relatedIdentifierType": "DOI",
-                                    }
-                                )
-
-                elif _obj["schema"] == "dataset":
+                elif _obj["schema"] in {"dataset", "bpdataset"}:
 
                     # we need the dataset title and description
-                    ds_data, _ = await obj_op.read_metadata_object("dataset", _obj["accessionId"])
+                    ds_data, _ = await obj_op.read_metadata_object(_obj["schema"], _obj["accessionId"])
 
                     if isinstance(ds_data, dict):
                         dataset = self._prepare_published_dataset(_study_doi, ds_data, _info)
@@ -261,7 +244,9 @@ class SubmissionAPIHandler(RESTAPIHandler):
 
                         # in case object is not added to metax due to server error
                         if metax_handler.enabled and not ds_data["metaxIdentifier"]:
-                            ds_data["metaxIdentifier"] = await obj_handler.create_metax_dataset(req, "dataset", ds_data)
+                            ds_data["metaxIdentifier"] = await obj_handler.create_metax_dataset(
+                                req, _obj["schema"], ds_data
+                            )
 
                             metax_ids.append({"doi": ds_data["doi"], "metaxIdentifier": ds_data["metaxIdentifier"]})
 
@@ -289,6 +274,29 @@ class SubmissionAPIHandler(RESTAPIHandler):
             raise web.HTTPInternalServerError(reason=reason)
 
         return (study, datasets, metax_ids)
+
+    def _add_datasets_to_study(self, study: Dict, datasets: List, _study_doi: str) -> None:
+        LOG.debug(datasets)
+        for ds in datasets:
+            ds["data"]["attributes"]["relatedIdentifiers"].append(
+                {
+                    "relationType": "IsDescribedBy",
+                    "relatedIdentifier": _study_doi,
+                    "resourceTypeGeneral": "Dataset",
+                    "relatedIdentifierType": "DOI",
+                }
+            )
+            if "relatedIdentifiers" not in study["data"]["attributes"]:
+                study["data"]["attributes"]["relatedIdentifiers"] = []
+
+            study["data"]["attributes"]["relatedIdentifiers"].append(
+                {
+                    "relationType": "Describes",
+                    "relatedIdentifier": ds["data"]["attributes"]["doi"],
+                    "resourceTypeGeneral": "Dataset",
+                    "relatedIdentifierType": "DOI",
+                }
+            )
 
     async def get_submissions(self, req: Request) -> Response:
         """Get a set of submissions owned by the project with pagination values.

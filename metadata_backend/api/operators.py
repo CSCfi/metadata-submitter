@@ -433,16 +433,16 @@ class Operator(BaseOperator):
         return data, page_num, page_size, total_objects[0]["total"]
 
     async def update_object_doi(self, schema_type: str, accession_id: str, data: Dict) -> bool:
-        """Update study or dataset object with data.
+        """Update study, dataset or bpdataset object with data.
 
-        Only study and dataset have a DOI, and it can't be freely modified.
+        Only study, dataset and bpdataset have a DOI, and it can't be freely modified.
 
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
         :param data: Metadata object
         :returns: True on successed database update
         """
-        if schema_type not in {"study", "dataset"}:
+        if schema_type not in {"study", "dataset", "bpdataset"}:
             LOG.error("Object schema type must be either study or dataset")
             return False
         try:

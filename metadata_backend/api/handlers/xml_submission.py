@@ -155,7 +155,6 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
         :raises: HTTPBadRequest if an incorrect or non-supported action is called
         :returns: Dict containing specific action that was completed
         """
-        _allowed_doi = {"study", "dataset"}
         db_client = req.app["db_client"]
         submission_op = SubmissionOperator(db_client)
         metax_handler = MetaxServiceHandler(req)
@@ -189,7 +188,7 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
 
         # Create draft dataset to Metax catalog
         try:
-            if metax_handler.enabled and schema in _allowed_doi:
+            if metax_handler.enabled and schema in self.doi_objects:
                 await self.create_metax_dataset(req, schema, json_data)
         except Exception as e:
             # We don't care if it fails here
@@ -208,7 +207,6 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
         :raises: HTTPBadRequest if an incorrect or non-supported action is called
         :returns: Dict containing specific action that was completed
         """
-        _allowed_doi = {"study", "dataset"}
         db_client = req.app["db_client"]
         submission_op = SubmissionOperator(db_client)
         operator = Operator(db_client)
@@ -249,7 +247,7 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
 
         # Update draft dataset to Metax catalog
         try:
-            if schema in _allowed_doi:
+            if schema in self.doi_objects:
                 object_data, _ = await operator.read_metadata_object(schema, accession_id)
                 # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
                 if isinstance(object_data, Dict):

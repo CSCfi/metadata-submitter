@@ -21,6 +21,11 @@ from .restapi import RESTAPIHandler
 class ObjectAPIHandler(RESTAPIHandler):
     """API Handler for Objects."""
 
+    def __init__(self) -> None:
+        """Init needed variables."""
+
+        self.doi_objects = {"study", "dataset", "bpdataset"}
+
     async def _handle_query(self, req: Request) -> Response:
         """Handle query results.
 
@@ -104,7 +109,6 @@ class ObjectAPIHandler(RESTAPIHandler):
         :returns: JSON response containing accessionId for submitted object
         """
         _allowed_csv = {"sample"}
-        _allowed_doi = {"study", "dataset"}
         schema_type = req.match_info["schema"]
         LOG.debug(f"Creating {schema_type} object")
         filename = ""
@@ -186,17 +190,15 @@ class ObjectAPIHandler(RESTAPIHandler):
         await submission_op.update_submission(submission_id, patch)
 
         # Add DOI to object
-        if collection in _allowed_doi:
+        if collection in self.doi_objects:
             for item, _ in objects:
-                item["doi"] = await self.create_draft_doi(collection)
-                await operator.update_object_doi(
-                    collection, item["accessionId"], {"doi": item["doi"]}
-                )
+                item["doi"] = await self._create_draft_doi(collection)
+                await operator.update_object_doi(collection, item["accessionId"], {"doi": item["doi"]})
 
         # Create draft dataset to Metax catalog
         metax_handler = MetaxServiceHandler(req)
         try:
-            if metax_handler.enabled and collection in _allowed_doi:
+            if metax_handler.enabled and collection in self.doi_objects:
                 for item, _ in objects:
                     await self.create_metax_dataset(req, collection, item)
         except Exception as e:
@@ -234,7 +236,6 @@ class ObjectAPIHandler(RESTAPIHandler):
         schema_type = req.match_info["schema"]
         accession_id = req.match_info["accessionId"]
         LOG.debug(f"Deleting object {schema_type} {accession_id}")
-        _allowed_doi = {"study", "dataset"}
 
         self._check_schema_exists(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
@@ -263,7 +264,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         metax_id: str = ""
         doi_id: str = ""
-        if collection in _allowed_doi:
+        if collection in self.doi_objects:
             try:
                 object_data, _ = await operator.read_metadata_object(collection, accession_id)
                 # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
@@ -277,7 +278,7 @@ class ObjectAPIHandler(RESTAPIHandler):
 
         # Delete draft dataset from Metax catalog
         metax_handler = MetaxServiceHandler(req)
-        if metax_handler.enabled and collection in _allowed_doi:
+        if metax_handler.enabled and collection in self.doi_objects:
             try:
                 await MetaxServiceHandler(req).delete_draft_dataset(metax_id)
             except Exception as e:
@@ -303,7 +304,6 @@ class ObjectAPIHandler(RESTAPIHandler):
         schema_type = req.match_info["schema"]
         accession_id = req.match_info["accessionId"]
         LOG.debug(f"Replacing object {schema_type} {accession_id}")
-        _allowed_doi = {"study", "dataset"}
 
         self._check_schema_exists(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
@@ -343,7 +343,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         # Update draft dataset to Metax catalog
         metax_handler = MetaxServiceHandler(req)
         try:
-            if metax_handler.enabled and collection in _allowed_doi:
+            if metax_handler.enabled and collection in self.doi_objects:
                 if data.get("metaxIdentifier", None):
                     await MetaxServiceHandler(req).update_draft_dataset(collection, data)
                 else:
@@ -407,7 +407,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         # Update draft dataset to Metax catalog
         metax_handler = MetaxServiceHandler(req)
         try:
-            if metax_handler.enabled and collection in {"study", "dataset"}:
+            if metax_handler.enabled and collection in self.doi_objects:
                 object_data, _ = await operator.read_metadata_object(collection, accession_id)
                 # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
                 if isinstance(object_data, Dict):
@@ -545,7 +545,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         return metax_id
 
     @staticmethod
-    async def create_draft_doi(collection: str) -> str:
+    async def _create_draft_doi(collection: str) -> str:
         """Create draft DOI for study and dataset.
 
         The Draft DOI will be created only on POST and the data added to the
@@ -554,7 +554,7 @@ class ObjectAPIHandler(RESTAPIHandler):
         :param collection: schema can be either study or dataset
         :returns: Dict with DOI of the study or dataset as well as the types.
         """
-        assert collection in {"study", "dataset"}
+
         doi_ops = DataciteServiceHandler()
         _doi_data = await doi_ops.create_draft(prefix=collection)
 

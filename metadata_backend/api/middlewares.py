@@ -1,15 +1,15 @@
 """Middleware methods for server."""
-import ujson
-from http import HTTPStatus
-import aiohttp_session
 import time
+from http import HTTPStatus
 
+import aiohttp_session
+import ujson
 from aiohttp import web
 from yarl import URL
 
-from .operators import UserOperator, ProjectOperator
-from ..helpers.logger import LOG
 from ..conf.conf import aai_config
+from ..helpers.logger import LOG
+from .operators import ProjectOperator, UserOperator
 
 HTTP_ERROR_MESSAGE = "HTTP %r request to %r raised an HTTP %d exception."
 
@@ -98,7 +98,7 @@ async def check_session(req: web.Request, handler: aiohttp_session.Handler) -> w
 
         user_data = {
             "user_id": "free_api_access@csc.fi",
-            "real_name": f"Free API access",
+            "real_name": "Free API access",
             # "projects": ["bp_test_well", "bp_test_api", "bp_test_everything"],
         }
         created_projects = []
