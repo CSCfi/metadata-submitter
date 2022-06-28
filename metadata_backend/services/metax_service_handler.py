@@ -35,6 +35,7 @@ class MetaxServiceHandler(ServiceHandler):
 
         self.connection_check_url = metax_url
         self.publish_route = metax_url / metax_config["publish_route"][1:]
+        self.enabled = metax_config["enabled"]
 
         self.minimal_dataset_template: Dict[Any, Any] = {
             "data_catalog": metax_config["catalog_pid"],

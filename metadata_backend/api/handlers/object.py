@@ -189,7 +189,9 @@ class ObjectAPIHandler(RESTAPIHandler):
         if collection in _allowed_doi:
             for item, _ in objects:
                 item["doi"] = await self.create_draft_doi(collection)
-                await operator.update_object_doi(collection, item["accessionId"], {"doi": item["doi"]})
+                await operator.update_object_doi(
+                    collection, item["accessionId"], {"doi": item["doi"]}
+                )
 
         # Create draft dataset to Metax catalog
         metax_handler = MetaxServiceHandler(req)
