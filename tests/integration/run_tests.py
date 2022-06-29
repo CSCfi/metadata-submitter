@@ -1102,6 +1102,7 @@ async def test_metax_publish_dataset(sess, submission_id):
             assert actual_rd["rights_holder"] == expected_rd["rights_holder"]
             assert actual_rd["spatial"] == expected_rd["spatial"]
             assert actual_rd["temporal"] == expected_rd["temporal"]
+            assert actual_rd["language"] == expected_rd["language"]
 
             if schema == "study":
                 assert "relation" in actual_rd

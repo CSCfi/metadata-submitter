@@ -37,6 +37,7 @@ from distutils.util import strtobool
 from pathlib import Path
 from typing import Dict, Tuple
 
+import requests
 import ujson
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -184,8 +185,37 @@ metax_config = {
     "catalog_pid": "urn:nbn:fi:att:data-catalog-sd",
 }
 
-metax_reference_data: Dict = {"identifier_types": {}}
+# Create helper dictionaries on start for mapping metadata to Metax model
+metax_reference_data: Dict = {"identifier_types": {}, "languages": {}}
 with open(Path(__file__).parent.parent / "conf/metax_references/identifier_types.json", "r") as codes:
     codes_list = json.load(codes)["codes"]
     for code in codes_list:
         metax_reference_data["identifier_types"][code["codeValue"].lower()] = code["uri"]
+
+# submitter uses language descriptions as enums. Metax uses 3-letter codes with links
+mappings = {}
+# parsing mappings of lexvo 2-letter codes to 3-letter codes
+lexovo_urls = [
+    "http://www.lexvo.org/resources/lexvo-iso639-3.tsv",
+    "http://www.lexvo.org/resources/lexvo-iso639-2.tsv",
+    "http://www.lexvo.org/resources/lexvo-iso639-1.tsv",
+]
+for l_url in lexovo_urls:
+    lexovo_text = requests.get(l_url).text
+    lexvo_list = [lang.split("\t") for lang in lexovo_text.split("\n")]
+    lexvo_dict = {lang[0]: lang[1] for lang in lexvo_list[:-1]}
+    mappings.update(lexvo_dict)
+
+
+# parsing languages and their subtags
+iana_url = "https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry"
+lang_text = requests.get(iana_url).text
+lang_list = [lang.split("\n") for lang in lang_text.split("\n%%\n")]
+lang_dict = {lang[2].split(": ")[1]: lang[1].split(": ")[1] for lang in lang_list[1:]}
+
+map: Dict[str, str] = {}
+for k, v in lang_dict.items():
+    try:
+        metax_reference_data["languages"][k] = mappings[v]
+    except KeyError:
+        pass

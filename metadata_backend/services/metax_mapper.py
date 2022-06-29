@@ -235,6 +235,7 @@ class MetaDataMapper:
         self.datacite_data = data
         self.affiliations: List = []
         self.identifier_types = metax_reference_data["identifier_types"]
+        self.languages = metax_reference_data["languages"]
         self.person: Dict[str, Any] = {
             "name": "",
             "@type": "Person",
@@ -262,6 +263,9 @@ class MetaDataMapper:
                 self._map_spatial(value)
             if key == "alternateIdentifiers":
                 self._map_other_identifier(value)
+            if key == "language":
+                self.research_dataset["language"] = []
+                self.research_dataset["language"].append({"title": {"en": value}, "identifier": self.languages[value]})
 
         for key, value in self.datacite_data["extraInfo"].items():
             if self.object_type == "study" and key == "datasetIdentifiers":
