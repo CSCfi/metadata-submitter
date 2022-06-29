@@ -1273,9 +1273,9 @@ async def test_crud_submissions_works(sess, project_id):
         assert datacite_resp.status == 200, f"HTTP Status code error, got {datacite_resp.status}"
         datacite_res = await datacite_resp.json()
         study = datacite_res["data"]
-    assert ds_1["attributes"]["relatedIdentifiers"][0]["relatedIdentifier"] == study["id"]
-    assert ds_2["attributes"]["relatedIdentifiers"][0]["relatedIdentifier"] == study["id"]
-    for id in study["attributes"]["relatedIdentifiers"]:
+    assert ds_1["data"]["attributes"]["relatedIdentifiers"][0]["relatedIdentifier"] == study["id"]
+    assert ds_2["data"]["attributes"]["relatedIdentifiers"][0]["relatedIdentifier"] == study["id"]
+    for id in study["data"]["attributes"]["relatedIdentifiers"]:
         assert id["relatedIdentifier"] in {ds_1["id"], ds_2["id"]}
 
     # Delete submission

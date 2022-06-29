@@ -2,10 +2,14 @@
 
 The DOI handler from SDA orchestration was used as reference:
 https://github.com/neicnordic/sda-orchestration/blob/master/sda_orchestrator/utils/id_ops.py
+
+Api docs and reference: https://support.datacite.org/
+Test account access: https://doi.test.datacite.org/sign-in
 """
 from typing import Dict, Union
 from uuid import uuid4
 
+import ujson
 from aiohttp import BasicAuth, ClientTimeout
 from yarl import URL
 
@@ -28,6 +32,49 @@ class DataciteServiceHandler(ServiceHandler):
             http_client_headers={"Content-Type": "application/vnd.api+json"},
         )
         self.doi_prefix = doi_config["prefix"]
+
+    @staticmethod
+    def _process_error(error: str) -> str:
+        """Return error message in a human-readable format.
+
+        Errors come as JSON. Example:
+        {
+            "errors": [
+                {
+                    "status": "400",
+                    "title": "You need to provide a payload following the JSONAPI spec"
+                }
+            ]
+        }
+        {
+            "errors": [
+                {
+                    "source": "url",
+                    "uid":"10.xxxx/12345",
+                    "title":"Can't be blank"
+                }
+            ]
+        }
+        """
+        if not error:
+            return error
+
+        error_messages = []
+        try:
+            json_error = ujson.loads(error)
+            for e in json_error["errors"]:
+                title = e["title"]
+                message = title
+                if "source" in e:
+                    source = e["source"]
+                    uid = e["uid"]
+                    message = f"Attribute '{source}' in '{uid}': {title}"
+                error_messages.append(message)
+        except (KeyError, UnicodeDecodeError, ujson.JSONDecodeError):
+            LOG.exception(f"Unexpected format for error message from Datacite: '{error}'.")
+            pass
+
+        return " | ".join(error_messages)
 
     # @property
     # def enabled(self) -> bool:
@@ -69,8 +116,9 @@ class DataciteServiceHandler(ServiceHandler):
         :raises: HTTPInternalServerError if the Datacite DOI update fails
         :returns: None
         """
-        await self._request(method="PUT", path=doi_payload["id"], json_data=doi_payload)
-        LOG.info(f"Datacite doi {doi_payload['id']} updated ")
+        _id = doi_payload["id"]
+        await self._request(method="PUT", path=_id, json_data=doi_payload)
+        LOG.info(f"Datacite doi {_id} updated ")
 
     async def delete(self, doi: str) -> None:
         """Delete DOI and associated metadata.
