@@ -10,7 +10,7 @@ from aiohttp import web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
-from ...conf.conf import doi_config
+from ...conf.conf import doi_config, METAX_ENABLED
 from ...helpers.logger import LOG
 from ...helpers.validator import JSONValidator
 from ...services.datacite_service_handler import DataciteServiceHandler
@@ -23,6 +23,16 @@ from .restapi import RESTAPIHandler
 class SubmissionAPIHandler(RESTAPIHandler):
     """API Handler for submissions."""
 
+    @staticmethod
+    def _make_discovery_url(obj_data: Dict) -> str:
+        """Make an url that points to a discovery service."""
+        # TODO: Proper URL creation when metax is disabled
+        if METAX_ENABLED:
+            url = f"{doi_config['discovery_url']}{obj_data['metaxIdentifier']}"
+        else:
+            url = f"{doi_config['discovery_url']}{obj_data['doi']}"
+        return url
+
     def _prepare_published_study(self, study_data: Dict, general_info: Dict) -> Dict:
         """Prepare Study object for publishing.
 
@@ -30,7 +40,6 @@ class SubmissionAPIHandler(RESTAPIHandler):
         :param general_info: General information that is captured in front-end and set in ``doiInfo`` key
         :returns: Study Object ready to publish to Datacite
         """
-
         study = {
             "id": study_data["doi"],
             "type": "dois",
@@ -49,7 +58,7 @@ class SubmissionAPIHandler(RESTAPIHandler):
                         "schemaOrg": "Collection",
                         "resourceTypeGeneral": "Collection",
                     },
-                    "url": f"{doi_config['discovery_url']}{study_data['metaxIdentifier']}",
+                    "url": self._make_discovery_url(study_data),
                     "identifiers": [
                         {
                             "identifierType": "DOI",
@@ -111,7 +120,7 @@ class SubmissionAPIHandler(RESTAPIHandler):
                         "schemaOrg": "Dataset",
                         "resourceTypeGeneral": "Dataset",
                     },
-                    "url": f"{doi_config['discovery_url']}{dataset_data['metaxIdentifier']}",
+                    "url": self._make_discovery_url(dataset_data),
                     "identifiers": [
                         {
                             "identifierType": "DOI",
@@ -173,6 +182,7 @@ class SubmissionAPIHandler(RESTAPIHandler):
         study = {}
         datasets: List = []
         obj_handler = ObjectAPIHandler()
+        metax_handler = MetaxServiceHandler(req)
 
         # we need to re-format these for Datacite, as in the JSON schemas
         # we split the words so that front-end will display them nicely
@@ -214,18 +224,19 @@ class SubmissionAPIHandler(RESTAPIHandler):
                         _study_doi = study_data["doi"]
 
                         # in case object is not added to metax due to server error
-                        if not study_data["metaxIdentifier"]:
-                            study_data["metaxIdentifier"] = await obj_handler.create_metax_dataset(
-                                req, "study", study_data, create_draft_doi=False
-                            )
+                        if metax_handler.enabled:
+                            if not study_data["metaxIdentifier"]:
+                                study_data["metaxIdentifier"] = await obj_handler.create_metax_dataset(
+                                    req, "study", study_data
+                                )
 
-                        metax_ids.append(
-                            {
-                                "schema": "study",
-                                "doi": study_data["doi"],
-                                "metaxIdentifier": study_data["metaxIdentifier"],
-                            }
-                        )
+                            metax_ids.append(
+                                {
+                                    "schema": "study",
+                                    "doi": study_data["doi"],
+                                    "metaxIdentifier": study_data["metaxIdentifier"],
+                                }
+                            )
 
                         # there are cases where datasets are added first
                         if len(datasets) > 0:
@@ -262,14 +273,19 @@ class SubmissionAPIHandler(RESTAPIHandler):
                         datasets.append(dataset)
 
                         # in case object is not added to metax due to server error
-                        if not ds_data["metaxIdentifier"]:
-                            ds_data["metaxIdentifier"] = await obj_handler.create_metax_dataset(
-                                req, "dataset", ds_data, create_draft_doi=False
-                            )
+                        if metax_handler.enabled:
+                            if not ds_data["metaxIdentifier"]:
+                                ds_data["metaxIdentifier"] = await obj_handler.create_metax_dataset(
+                                    req, "dataset", ds_data
+                                )
 
-                        metax_ids.append(
-                            {"schema": "dataset", "doi": ds_data["doi"], "metaxIdentifier": ds_data["metaxIdentifier"]}
-                        )
+                            metax_ids.append(
+                                {
+                                    "schema": "dataset",
+                                    "doi": ds_data["doi"],
+                                    "metaxIdentifier": ds_data["metaxIdentifier"],
+                                }
+                            )
 
                         # A Study describes a Dataset
                         # there are cases where datasets are added first
@@ -291,7 +307,7 @@ class SubmissionAPIHandler(RESTAPIHandler):
         # properly recorded
         except Exception as e:
             reason = f"Could not construct DOI data, reason: {e}"
-            LOG.error(reason)
+            LOG.exception(reason)
             raise web.HTTPInternalServerError(reason=reason)
 
         return (study, datasets, metax_ids)
@@ -524,6 +540,8 @@ class SubmissionAPIHandler(RESTAPIHandler):
         await operator.check_submission_exists(submission_id)
 
         await self._handle_check_ownership(req, "submissions", submission_id)
+        if metax_handler.enabled:
+            await metax_handler.check_connection()
 
         submission = await operator.read_submission(submission_id)
 
@@ -566,11 +584,12 @@ class SubmissionAPIHandler(RESTAPIHandler):
         extra_info_patch.extend(datasets_patch)
         extra_info_submission = await operator.update_submission(submission_id, extra_info_patch)
 
-        # we next try to publish the to Metax before actually publishing the submission
-        await metax_handler.update_dataset_with_doi_info(
-            await operator.read_submission(extra_info_submission), metax_ids
-        )
-        await metax_handler.publish_dataset(metax_ids)
+        # we next try to publish to Metax before actually publishing the submission
+        if metax_handler.enabled:
+            await metax_handler.update_dataset_with_doi_info(
+                await operator.read_submission(extra_info_submission), metax_ids
+            )
+            await metax_handler.publish_dataset(metax_ids)
 
         # Delete draft objects from the submission
         for obj in submission["drafts"]:
