@@ -6,7 +6,7 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
 from pymongo import ReturnDocument
 from pymongo.errors import AutoReconnect, BulkWriteError, ConnectionFailure
 
-from ..conf.conf import serverTimeout
+from ..conf.conf import DATACITE_SCHEMAS, serverTimeout
 from ..helpers.logger import LOG
 from ..helpers.parser import jsonpatch_mongo
 
@@ -265,9 +265,10 @@ class DBService:
         old_data = await self.database[collection].find_one(find_by_id)
         if not (len(new_data) == 2 and new_data["content"].startswith("<")):
             new_data["dateCreated"] = old_data["dateCreated"]
-            if collection in {"study", "dataset"}:
-                new_data["metaxIdentifier"] = old_data["metaxIdentifier"]
+            if collection in DATACITE_SCHEMAS:
                 new_data["doi"] = old_data["doi"]
+                if old_data.get("metaxIdentifier", None):
+                    new_data["metaxIdentifier"] = old_data["metaxIdentifier"]
             if "publishDate" in old_data:
                 new_data["publishDate"] = old_data["publishDate"]
         result = await self.database[collection].replace_one(find_by_id, new_data)

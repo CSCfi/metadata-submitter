@@ -13,7 +13,7 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
 from multidict import MultiDictProxy
 from pymongo.errors import ConnectionFailure, OperationFailure
 
-from ..conf.conf import mongo_database, query_map
+from ..conf.conf import DATACITE_SCHEMAS, mongo_database, query_map
 from ..database.db_service import DBService, auto_reconnect
 from ..helpers.logger import LOG
 from ..helpers.parser import XMLToJSONParser
@@ -434,15 +434,15 @@ class Operator(BaseOperator):
         return data, page_num, page_size, total_objects[0]["total"]
 
     async def update_identifiers(self, schema_type: str, accession_id: str, data: Dict) -> bool:
-        """Update study or dataset object with metax info.
+        """Update study, dataset or bpdataset object with doi and/or metax info.
 
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
         :param data: Metadata object
         :returns: True on successful database update
         """
-        if schema_type not in {"study", "dataset"}:
-            LOG.error("Object schema type must be either study or dataset")
+        if schema_type not in DATACITE_SCHEMAS:
+            LOG.error("Object schema type not supported")
             return False
         try:
             create_success = await self.db_service.update(schema_type, accession_id, data)

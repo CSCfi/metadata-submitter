@@ -1378,6 +1378,52 @@ async def test_crud_submissions_works(sess, project_id):
         assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
 
 
+async def test_bpdataset_gets_doi(sess, project_id):
+    """Test bp dataset has doi generated.
+
+    :param sess: HTTP session in which request call is made
+    :param project_id: id of the project the submission belongs to
+    """
+    # Create new submission
+    submission_data = {
+        "name": "Test bpdataset submission",
+        "description": "Test that DOI is generated for bp dataset",
+        "projectId": project_id,
+    }
+    submission_id = await post_submission(sess, submission_data)
+
+    # Submit study, bpdataset
+    study = await post_object_json(sess, "study", submission_id, "SRP000539.json")
+    study = await get_object(sess, "study", study)
+
+    bpdataset = post_object(sess, "bpdataset", submission_id, "template_dataset.xml")
+    bpdataset = await get_object(sess, "bpdataset", bpdataset[0])
+    assert bpdataset["doi"] is not None
+
+    # Add DOI for publishing the submission
+    doi_data_raw = await create_request_json_data("doi", "test_doi.json")
+    await put_submission_doi(sess, submission_id, doi_data_raw)
+
+    submission_id = await publish_submission(sess, submission_id)
+
+    # check that datacite has references between datasets and study
+    async with sess.get(f"{datacite_url}/{bpdataset['doi']}") as datacite_resp:
+        assert datacite_resp.status == 200, f"HTTP Status code error, got {datacite_resp.status}"
+        datacite_res = await datacite_resp.json()
+        bpdataset = datacite_res["data"]
+
+    async with sess.get(f"{datacite_url}/{study['doi']}") as datacite_resp:
+        assert datacite_resp.status == 200, f"HTTP Status code error, got {datacite_resp.status}"
+        datacite_res = await datacite_resp.json()
+        study = datacite_res["data"]
+    assert bpdataset["data"]["attributes"]["relatedIdentifiers"][0]["relatedIdentifier"] == study["id"]
+    for id in study["data"]["attributes"]["relatedIdentifiers"]:
+        assert study["data"]["attributes"]["relatedIdentifiers"][0]["relatedIdentifier"] == bpdataset["id"]
+
+    # Delete submission
+    await delete_submission_publish(sess, submission_id)
+
+
 async def test_crud_submissions_works_no_publish(sess, project_id):
     """Test submissions REST API POST, GET, PATCH, PUBLISH and DELETE reqs.
 
