@@ -109,7 +109,7 @@ class HandlersTestCase(AioHTTPTestCase):
             "delete_metadata_object.side_effect": self.fake_operator_delete_metadata_object,
             "update_metadata_object.side_effect": self.fake_operator_update_metadata_object,
             "replace_metadata_object.side_effect": self.fake_operator_replace_metadata_object,
-            "create_metax_info.side_effect": self.fake_operator_create_metax_info,
+            "create_datacite_info.side_effect": self.fake_operator_create_datacite_info,
         }
         self.xmloperator_config = {
             "read_metadata_object.side_effect": self.fake_xmloperator_read_metadata_object,
@@ -221,7 +221,7 @@ class HandlersTestCase(AioHTTPTestCase):
         """Fake delete operation to await successful operation indicator."""
         return True
 
-    async def fake_operator_create_metax_info(self, schema_type, accession_id, data):
+    async def fake_operator_create_datacite_info(self, schema_type, accession_id, data):
         """Fake update operation to await successful operation indicator."""
         return True
 
@@ -422,7 +422,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
         await super().setUpAsync()
 
-        self._mock_draft_doi = "metadata_backend.api.handlers.object.ObjectAPIHandler._draft_doi"
+        self._mock_draft_doi = "metadata_backend.api.handlers.object.ObjectAPIHandler.create_draft_doi"
 
         class_doihandler = "metadata_backend.api.handlers.object.DataciteServiceHandler"
         self.patch_doihandler = patch(class_doihandler, **self.doi_handler, spec=True)

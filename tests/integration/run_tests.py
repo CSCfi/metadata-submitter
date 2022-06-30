@@ -1076,7 +1076,7 @@ async def test_metax_publish_dataset(sess, submission_id):
         async with sess.get(f"{metax_url}/{metax_id}") as metax_resp:
             assert metax_resp.status == 200, f"HTTP Status code error, got {metax_resp.status}"
             metax_res = await metax_resp.json()
-            assert metax_res["state"] == "published"
+            assert metax_res["state"] == "published", f"{schema}  {metax_res}"
 
             # this data is synced with /test_files/doi/test_doi.json
             # if data changes inside the file it must data must be reflected here
