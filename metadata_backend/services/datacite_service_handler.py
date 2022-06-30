@@ -58,6 +58,8 @@ class DataciteServiceHandler(ServiceHandler):
         """
         if not error:
             return error
+        if isinstance(error, str):
+            return error
 
         error_messages = []
         try:

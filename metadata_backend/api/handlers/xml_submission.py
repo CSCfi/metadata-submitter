@@ -158,6 +158,7 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
         _allowed_doi = {"study", "dataset"}
         db_client = req.app["db_client"]
         submission_op = SubmissionOperator(db_client)
+        metax_handler = MetaxServiceHandler(req)
 
         submission_id = req.query.get("submission", "")
         if not submission_id:
@@ -186,9 +187,14 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
         patch = self._prepare_submission_patch_new_object(schema, [(json_data, filename)], "xml")
         await submission_op.update_submission(submission_id, patch)
 
+        # Add DOI to object
+        if schema in _allowed_doi:
+            json_data["doi"] = await self.create_draft_doi(schema)
+            await Operator(db_client).create_datacite_info(schema, json_data["accessionId"], {"doi": json_data["doi"]})
+
         # Create draft dataset to Metax catalog
         try:
-            if schema in _allowed_doi:
+            if metax_handler.enabled and schema in _allowed_doi:
                 await self.create_metax_dataset(req, schema, json_data)
         except Exception as e:
             # We don't care if it fails here
@@ -247,12 +253,13 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
             pass
 
         # Update draft dataset to Metax catalog
+        metax_handler = MetaxServiceHandler(req)
         try:
-            if schema in _allowed_doi:
+            if metax_handler.enabled and schema in _allowed_doi:
                 object_data, _ = await operator.read_metadata_object(schema, accession_id)
                 # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
                 if isinstance(object_data, Dict):
-                    await MetaxServiceHandler(req).update_draft_dataset(schema, object_data)
+                    await metax_handler.update_draft_dataset(schema, object_data)
                 else:
                     raise ValueError("Object's data must be dictionary")
         except Exception as e:
