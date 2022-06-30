@@ -174,6 +174,7 @@ doi_config = {
     "discovery_url": os.getenv("DISCOVERY_URL", "https://etsin.fairdata.fi/dataset/"),
 }
 
+METAX_ENABLED = os.getenv("METAX_ENABLED", "") == "True"
 metax_config = {
     "username": os.getenv("METAX_USER", "sd"),
     "password": os.getenv("METAX_PASS", "test"),

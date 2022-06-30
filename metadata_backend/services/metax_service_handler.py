@@ -6,7 +6,7 @@ from aiohttp import BasicAuth, web
 from yarl import URL
 
 from ..api.operators import UserOperator
-from ..conf.conf import metax_config
+from ..conf.conf import metax_config, METAX_ENABLED
 from ..helpers.logger import LOG
 from .metax_mapper import MetaDataMapper
 from .service_handler import ServiceHandler
@@ -63,11 +63,10 @@ class MetaxServiceHandler(ServiceHandler):
             },
         }
 
-    # @property
-    # def enabled(self) -> bool:
-    #     """True when service is enabled."""
-    #     # return metax_config["enabled"]
-    #     return True
+    @property
+    def enabled(self) -> bool:
+        """Indicate whether service is enabled."""
+        return METAX_ENABLED
 
     async def get_metadata_provider_user(self) -> str:
         """Get current user's external id.
@@ -224,7 +223,7 @@ class MetaxServiceHandler(ServiceHandler):
     async def update_dataset_with_doi_info(self, datacite_info: Dict, _metax_ids: List) -> None:
         """Update dataset for publishing.
 
-        :param doi_info: Dict containing info to complete metax dataset metadata
+        :param datacite_info: Dict containing info to complete metax dataset metadata
         :param _metax_ids: List of Metax id of dataset to be updated
         """
         LOG.info(
