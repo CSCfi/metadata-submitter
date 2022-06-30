@@ -10,7 +10,7 @@ from aiohttp import web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
-from ...conf.conf import doi_config
+from ...conf.conf import DATACITE_SCHEMAS, METAX_SCHEMAS, doi_config
 from ...helpers.logger import LOG
 from ...helpers.validator import JSONValidator
 from ..operators import Operator, ProjectOperator, SubmissionOperator, UserOperator
@@ -177,6 +177,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         metax_ids: List[dict] = []
         datacite_study = {}
         datacite_datasets: List[dict] = []
+        datacite_bpdatasets: List[dict] = []
         rems_datasets: List[dict] = []
 
         # we need to re-format these for Datacite, as in the JSON schemas
@@ -212,14 +213,14 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
                 if not isinstance(object_data, dict):
                     continue
-                if schema in {"study", "dataset"}:
+                if schema in DATACITE_SCHEMAS:
                     if "doi" not in object_data:
                         # in case object is not added to datacite due to server error
                         object_data["doi"] = await self.create_draft_doi(schema)
 
                     doi = object_data["doi"]
                     # in case object is not added to metax due to server error
-                    if self.metax_handler.enabled:
+                    if self.metax_handler.enabled and schema in METAX_SCHEMAS:
                         if not object_data["metaxIdentifier"]:
                             object_data["metaxIdentifier"] = await self.create_metax_dataset(req, schema, object_data)
 
@@ -239,30 +240,30 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
                     datacite_study = self._prepare_datacite_study(object_data, _info)
 
                     # there are cases where datasets are added first
-                    if len(datacite_datasets) > 0:
-                        LOG.info(f"datacite datasets: {datacite_datasets}")
-                        for ds in datacite_datasets:
-                            ds["data"]["attributes"]["relatedIdentifiers"].append(
-                                {
-                                    "relationType": "IsDescribedBy",
-                                    "relatedIdentifier": doi,
-                                    "resourceTypeGeneral": "Dataset",
-                                    "relatedIdentifierType": "DOI",
-                                }
-                            )
-                            if "relatedIdentifiers" not in datacite_study["data"]["attributes"]:
-                                datacite_study["data"]["attributes"]["relatedIdentifiers"] = []
+                    datasets = [*datacite_datasets, *datacite_bpdatasets]
+                    LOG.info(f"datacite datasets: {datacite_datasets}")
+                    for ds in datasets:
+                        ds["data"]["attributes"]["relatedIdentifiers"].append(
+                            {
+                                "relationType": "IsDescribedBy",
+                                "relatedIdentifier": _study_doi,
+                                "resourceTypeGeneral": "Dataset",
+                                "relatedIdentifierType": "DOI",
+                            }
+                        )
+                        if "relatedIdentifiers" not in datacite_study["data"]["attributes"]:
+                            datacite_study["data"]["attributes"]["relatedIdentifiers"] = []
 
-                            datacite_study["data"]["attributes"]["relatedIdentifiers"].append(
-                                {
-                                    "relationType": "Describes",
-                                    "relatedIdentifier": ds["data"]["attributes"]["doi"],
-                                    "resourceTypeGeneral": "Dataset",
-                                    "relatedIdentifierType": "DOI",
-                                }
-                            )
+                        datacite_study["data"]["attributes"]["relatedIdentifiers"].append(
+                            {
+                                "relationType": "Describes",
+                                "relatedIdentifier": ds["data"]["attributes"]["doi"],
+                                "resourceTypeGeneral": "Dataset",
+                                "relatedIdentifierType": "DOI",
+                            }
+                        )
 
-                elif schema == "dataset":
+                elif schema in {"dataset", "bpdataset"}:
                     if self.rems_handler.enabled:
                         rems_ds = {
                             "accession_id": accession_id,
@@ -296,8 +297,6 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
                                 "relatedIdentifierType": "DOI",
                             }
                         )
-                else:
-                    pass
         # we catch all errors, if we missed even a key, that means some information is not
         # properly recorded
         except Exception as e:

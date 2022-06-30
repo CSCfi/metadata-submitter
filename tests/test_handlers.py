@@ -703,7 +703,9 @@ class ObjectHandlerTestCase(HandlersTestCase):
     async def test_delete_is_called(self):
         """Test query method calls operator and returns status correctly."""
         url = f"{API_PREFIX}/objects/study/EGA123456"
-        with self.p_get_sess_restapi:
+        with patch(
+            "metadata_backend.services.datacite_service_handler.DataciteServiceHandler.delete", return_value=None
+        ), self.p_get_sess_restapi:
             response = await self.client.delete(url)
             self.assertEqual(response.status, 204)
             self.MockedOperator().delete_metadata_object.assert_called_once()

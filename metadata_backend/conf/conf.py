@@ -195,3 +195,6 @@ rems_config = {
     "key": os.getenv("REMS_KEY", "test"),
     "url": os.getenv("REMS_URL", "http://mockrems:8003"),
 }
+
+DATACITE_SCHEMAS = {"study", "dataset", "bpdataset"}
+METAX_SCHEMAS = {"study", "dataset"}
