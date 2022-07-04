@@ -22,6 +22,8 @@ black==22.3.0
     # via -r requirements-dev.in
 bracex==2.2.1
     # via wcmatch
+build==0.8.0
+    # via pip-tools
 certifi==2022.6.15
     # via
     #   -r requirements-dev.in
@@ -88,6 +90,7 @@ nodeenv==1.6.0
     # via pre-commit
 packaging==21.3
     # via
+    #   build
     #   pytest
     #   sphinx
     #   tox
@@ -96,8 +99,8 @@ pathspec==0.9.0
 pbr==5.9.0
     # via stevedore
 pep517==0.12.0
-    # via pip-tools
-pip-tools==6.6.2
+    # via build
+pip-tools==6.8.0
     # via -r requirements-dev.in
 platformdirs==2.5.2
     # via
@@ -181,6 +184,7 @@ toml==0.10.2
 tomli==2.0.1
     # via
     #   black
+    #   build
     #   coverage
     #   mypy
     #   pep517
