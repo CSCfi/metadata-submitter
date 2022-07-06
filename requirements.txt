@@ -75,7 +75,7 @@ pyyaml==6.0
     #   oidcrp
 readerwriterlock==1.0.9
     # via cryptojwt
-requests==2.28.0
+requests==2.28.1
     # via
     #   -r requirements.in
     #   cryptojwt
