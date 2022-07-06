@@ -85,6 +85,9 @@ $ source venv/bin/activate  # activates virtual environment
 $ pip install -U pip
 $ pip install -Ue .
 $ pip install -r requirements-dev.txt
+
+# generate references for metax integration
+$ scripts/metax_mappings/fetch_refs.sh
 ```
 
 Copy `.env` file and set up the environment variables.
