@@ -351,8 +351,11 @@ class XMLToJSONParser:
         # however we expect any type as it is easier to work with
         result: Any = schema.to_dict(content, converter=MetadataXMLConverter, decimal_type=float, dict_class=dict)
         _schema_type: str = schema_type.lower()
+        # Validate each JSON object separately if an array of objects is parsed
+        results = result[_schema_type] if isinstance(result[_schema_type], list) else [result[_schema_type]]
         if _schema_type != "submission":
-            JSONValidator(result[_schema_type], _schema_type).validate
+            for object in results:
+                JSONValidator(object, _schema_type).validate
         return result[_schema_type]
 
     @staticmethod
