@@ -50,9 +50,11 @@ class BaseOperator(ABC):
         :returns: Tuple of Accession id for the object inserted to database and its title
         """
         data = await self._format_data_to_create_and_add_to_db(schema_type, data)
-        LOG.info(
-            f"Inserting object with schema {schema_type} to database succeeded with accession id: {data['accessionId']}"
-        )
+        data_list = data if isinstance(data, list) else [data]
+        acc_ids: list = []
+        for object in data_list:
+            acc_ids.append(object["accessionId"])
+        LOG.info(f"Inserting object with schema {schema_type} to database succeeded with accession id(s): {acc_ids}")
         return data
 
     async def replace_metadata_object(self, schema_type: str, accession_id: str, data: Union[Dict, str]) -> Dict:
@@ -610,15 +612,20 @@ class XMLOperator(BaseOperator):
         db_client = self.db_service.db_client
         # remove `draft-` from schema type
         schema = schema_type[6:] if schema_type.startswith("draft") else schema_type
-        data_as_json = XMLToJSONParser().parse(schema, data)
-        data_with_id = await Operator(db_client)._format_data_to_create_and_add_to_db(schema_type, data_as_json)
-        LOG.debug(f"XMLOperator formatted data for xml-{schema_type} to add to DB")
+        parsed_data = XMLToJSONParser().parse(schema, data)
 
-        await self._insert_formatted_object_to_db(
-            f"xml-{schema_type}", {"accessionId": data_with_id["accessionId"], "content": data}
-        )
+        # Parser may return a list of objects and each object should be added separately
+        data_objects = parsed_data if isinstance(parsed_data, list) else [parsed_data]
+        added_data: List = []
+        for object in data_objects:
+            data_with_id = await Operator(db_client)._format_data_to_create_and_add_to_db(schema_type, object)
+            added_data.append(data_with_id)
+            LOG.debug(f"XMLOperator formatted data for xml-{schema_type} to add to DB")
+            await self._insert_formatted_object_to_db(
+                f"xml-{schema_type}", {"accessionId": data_with_id["accessionId"], "content": data}
+            )
 
-        return data_with_id
+        return added_data
 
     async def _format_data_to_replace_and_add_to_db(self, schema_type: str, accession_id: str, data: str) -> Dict:
         """Format XML metadata object and add it to db.

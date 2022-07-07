@@ -174,6 +174,7 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
                 raise web.HTTPBadRequest(reason=reason)
 
         json_data = await XMLOperator(db_client).create_metadata_object(schema, content)
+        json_data = json_data[0]
 
         result = {
             "accessionId": json_data["accessionId"],
