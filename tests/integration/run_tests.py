@@ -192,6 +192,22 @@ async def post_object(sess, schema, submission_id, filename):
         return ans if isinstance(ans, list) else ans["accessionId"], schema
 
 
+async def post_multi_object(sess, schema, submission_id, filename):
+    """Post metadata objects from one file within session, returns response body (json).
+
+    :param sess: HTTP session in which request call is made
+    :param schema: name of the schema (submission) used for testing
+    :submission_id: submission object belongs to
+    :param filename: name of the file used for testing.
+    :return: response data after created objects
+    """
+    request_data = await create_request_data(schema, filename)
+    async with sess.post(f"{objects_url}/{schema}", params={"submission": submission_id}, data=request_data) as resp:
+        LOG.debug(f"Adding new object to {schema}, via XML/CSV file {filename}")
+        assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
+        return await resp.json()
+
+
 async def post_object_expect_status(sess, schema, submission_id, filename, status):
     """Post one metadata object within session, returns accessionId.
 
@@ -704,6 +720,48 @@ async def test_crud_works(sess, schema, filename, submission_id):
         assert expected_true, f"object {accession_id[0]} still exists"
 
 
+async def test_crud_with_multi_xml(sess, submission_id):
+    """Test CRUD for a submitted XML file with multiple metadata objects.
+
+    :param sess: HTTP session in which request call is made
+    :param submission_id: id of the submission used to group submission
+    """
+    items = []
+    _schema = "policy"
+    _filename = "policy2.xml"
+    data = await post_multi_object(sess, _schema, submission_id, _filename)
+    for item in data:
+        items.append(item)
+        async with sess.get(f"{objects_url}/{_schema}/{item['accessionId']}") as resp:
+            LOG.debug(f"Checking that {item['accessionId']} JSON is in {_schema}")
+            assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+        async with sess.get(f"{objects_url}/{_schema}/{item['accessionId']}?format=xml") as resp:
+            LOG.debug(f"Checking that {item['accessionId']} XML is in {_schema}")
+            assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+
+    _schema = "image"
+    _filename = "images_multi.xml"
+    data = await post_multi_object(sess, _schema, submission_id, _filename)
+    for item in data:
+        items.append(item)
+        async with sess.get(f"{objects_url}/{_schema}/{item['accessionId']}") as resp:
+            LOG.debug(f"Checking that {item['accessionId']} JSON is in {_schema}")
+            assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+        async with sess.get(f"{objects_url}/{_schema}/{item['accessionId']}?format=xml") as resp:
+            LOG.debug(f"Checking that {item['accessionId']} XML is in {_schema}")
+            assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+
+    for item in items:
+        _id, _schema = item["accessionId"], item["schema"]
+        await delete_object(sess, _schema, _id)
+        async with sess.get(f"{objects_url}/{_schema}/{_id}") as resp:
+            LOG.debug(f"Checking that JSON object {_id} was deleted")
+            assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
+        async with sess.get(f"{objects_url}/{_schema}/{_id}?format=xml") as resp:
+            LOG.debug(f"Checking that XML object {_id} was deleted")
+            assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
+
+
 async def test_csv(sess, submission_id):
     """Test CRUD for a submitted CSV file.
 
@@ -711,8 +769,6 @@ async def test_csv(sess, submission_id):
     After this we try with study object which is not allowed.
 
     :param sess: HTTP session in which request call is made
-    :param schema: name of the schema (submission) used for testing
-    :param filename: name of the file used for testing
     :param submission_id: id of the submission used to group submission
     """
     _schema = "sample"
@@ -2097,6 +2153,7 @@ async def main(url):
         # test XML files
         for schema, file in test_xml_files:
             await test_crud_works(sess, schema, file, basic_submission_id)
+        await test_crud_with_multi_xml(sess, basic_submission_id)
 
         # test CSV files
         await test_csv(sess, basic_submission_id)
