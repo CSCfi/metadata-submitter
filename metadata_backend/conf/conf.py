@@ -31,11 +31,10 @@ Production version gets frontend SPA from this folder, after it has been built
 and inserted here in projects Dockerfile.
 """
 
-import json
 import os
 from distutils.util import strtobool
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Tuple
 
 import ujson
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -184,8 +183,8 @@ metax_config = {
     "catalog_pid": "urn:nbn:fi:att:data-catalog-sd",
 }
 
-metax_reference_data: Dict = {"identifier_types": {}}
-with open(Path(__file__).parent.parent / "conf/metax_references/identifier_types.json", "r") as codes:
-    codes_list = json.load(codes)["codes"]
-    for code in codes_list:
-        metax_reference_data["identifier_types"][code["codeValue"].lower()] = code["uri"]
+METAX_REFERENCE_FILE = Path(__file__).parent.parent / "conf" / "metax_references" / "metax_references.json"
+if METAX_ENABLED and not METAX_REFERENCE_FILE.is_file():
+    raise RuntimeError(
+        "You must generate the metax references to run submitter: `bash scripts/metax_mappings/fetch_refs.sh`"
+    )
