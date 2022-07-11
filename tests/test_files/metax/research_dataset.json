@@ -106,5 +106,13 @@
             },
             "notation": "arXiv:9912.12345v2"
         }
+    ],
+    "language": [
+        {
+            "title": {
+                "en": "Assamese"
+            },
+            "identifier": "http://lexvo.org/id/iso639-3/asm"
+        }
     ]
 }

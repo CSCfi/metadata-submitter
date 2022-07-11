@@ -1,9 +1,10 @@
 """Class for mapping Submitter metadata to Metax metadata."""
+import json
 from copy import deepcopy
 from datetime import datetime
 from typing import Any, Dict, List
 
-from ..conf.conf import metax_reference_data
+from ..conf.conf import METAX_REFERENCE_FILE
 from ..helpers.logger import LOG
 
 
@@ -234,7 +235,10 @@ class MetaDataMapper:
         self.research_dataset = metax_data
         self.datacite_data = data
         self.affiliations: List = []
+        with open(METAX_REFERENCE_FILE, "r") as ref_file:
+            metax_reference_data = json.load(ref_file)
         self.identifier_types = metax_reference_data["identifier_types"]
+        self.languages = metax_reference_data["languages"]
         self.person: Dict[str, Any] = {
             "name": "",
             "@type": "Person",
@@ -262,6 +266,9 @@ class MetaDataMapper:
                 self._map_spatial(value)
             if key == "alternateIdentifiers":
                 self._map_other_identifier(value)
+            if key == "language":
+                self.research_dataset["language"] = []
+                self.research_dataset["language"].append({"title": {"en": value}, "identifier": self.languages[value]})
 
         for key, value in self.datacite_data["extraInfo"].items():
             if self.object_type == "study" and key == "datasetIdentifiers":
