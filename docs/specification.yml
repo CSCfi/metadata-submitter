@@ -16,6 +16,36 @@ tags:
   - name: Manage
     description: Endpoints used for managing data
 paths:
+  /v1/rems:
+    get:
+      tags:
+        - Query
+      summary: Get data from REMS
+      parameters:
+        - name: language
+          in: query
+          description: language code to retrieve the results in. Falls back and defaults to English ("en")
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/REMS"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
   /v1/submit:
     post:
       tags:
@@ -1171,7 +1201,7 @@ paths:
     put:
       tags:
         - Manage
-      summary: Delete an object submission with a specified submission ID.
+      summary: Update DOI for the submission with a specified submission ID.
       parameters:
         - name: submissionId
           in: path
@@ -1184,6 +1214,48 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/DoiInfo"
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmissionCreated"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
+  /v1/submissions/{submissionId}/dac:
+    put:
+      tags:
+        - Manage
+      summary: Update DAC for the submission with a specified submission ID.
+      parameters:
+        - name: submissionId
+          in: path
+          description: ID of the object submission.
+          schema:
+            type: string
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DAC"
       responses:
         200:
           description: OK
@@ -1811,6 +1883,63 @@ components:
                 type: string
                 description: Subject scheme name
                 example: "Fields of Science and Technology (FOS)"
+    DAC:
+      type: object
+      required:
+        - workflowId
+        - organizationId
+        - licenses
+      properties:
+        organizationId:
+          type: integer
+          description: ID of an organization in REMS
+        workflowId:
+          type: integer
+          description: ID of a Workflow, obtained from REMS
+        licenses:
+          type: array
+          items:
+            type: integer
+            description: ID of a license, obtained from REMS, and must belong to organizationId
+    REMS:
+      type: array
+      description: Array of organizations with workflows and licenses from REMS database
+      items:
+        type: object
+        properties:
+          id:
+            type: string
+            description: ID of the organization
+            example: "CSC"
+          name:
+            type: string
+            description: Name of the organization
+            example: "CSC – IT CENTER FOR SCIENCE LTD."
+          workflows:
+            type: array
+            description: Workflows from REMS
+            items:
+              type: object
+              properties:
+                id:
+                  type: integer
+                title:
+                  type: string
+                  description: Name of the workflow
+          licenses:
+            type: array
+            description: Licenses from REMS
+            items:
+              type: object
+              properties:
+                id:
+                  type: integer
+                title:
+                  type: string
+                  description: Name of the license
+                textcontent:
+                  type: string
+                  description: Content of the license
     JSONPatch:
       type: array
       items:

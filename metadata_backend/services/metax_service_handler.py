@@ -1,4 +1,8 @@
-"""Class for handling calls to METAX API."""
+"""Class for handling calls to METAX API.
+
+API docs https://metax.fairdata.fi/docs/
+Swagger https://metax.fairdata.fi/swagger/v2
+"""
 from typing import Any, Dict, List
 
 from aiohttp import BasicAuth
@@ -226,6 +230,19 @@ class MetaxServiceHandler(ServiceHandler):
             bulk_data.append({"identifier": id["metaxIdentifier"], "research_dataset": mapped_metax_data})
 
         await self._bulk_patch(bulk_data)
+
+    async def update_draft_dataset_description(self, metax_id: str, description: str) -> None:
+        """Update the description of the draft dataset.
+
+        :param metax_id: metax dataset id
+        :param description: New description
+        :raises: HTTPError depending on returned error from Metax
+        """
+        LOG.info(f"Updating the description of '{metax_id}'.")
+        data = await self._get(metax_id)
+        data["research_dataset"]["description"]["en"] = description
+        metax_data = await self._put(metax_id, data)
+        LOG.debug(f"Updated description of '{metax_id}', new metadata is: {metax_data}")
 
     async def publish_dataset(self, _metax_ids: List[Dict]) -> None:
         """Publish draft dataset to Metax service.

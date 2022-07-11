@@ -145,7 +145,7 @@ class JSONValidator:
             if len(e.path) > 0:
                 reason = f"Provided input does not seem correct for field: '{e.path[0]}'"
                 LOG.debug(f"Provided JSON input: '{e.instance}'")
-                LOG.error(reason)
+                LOG.exception(reason)
                 raise web.HTTPBadRequest(reason=reason)
             else:
                 reason = f"Provided input does not seem correct because: '{e.message}'"

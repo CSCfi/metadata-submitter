@@ -35,6 +35,10 @@ services:
       - "METAX_USER=${METAX_USER}"
       - "METAX_PASS=${METAX_PASS}"
       - "METAX_URL=${METAX_URL}"
+      - "REMS_ENABLED=${REMS_ENABLED}"
+      - "REMS_USER_ID=${REMS_USER_ID}"
+      - "REMS_KEY=${REMS_KEY}"
+      - "REMS_URL=${REMS_URL}"
   database:
     image: "mongo"
     container_name: "metadata_submitter_database_dev"
@@ -95,5 +99,19 @@ services:
     volumes:
       - ./tests/integration/mock_metax_api.py:/mock_metax_api.py
     entrypoint: ["python", "/mock_metax_api.py", "0.0.0.0", "8002"]
+  mockrems:
+    build:
+      dockerfile: Dockerfile-dev
+      context: .
+      target: develop
+    image: cscfi/metadata-submitter-dev
+    hostname: mockrems
+    expose:
+      - 8003
+    ports:
+      - "8003:8003"
+    volumes:
+      - ./tests/integration/mock_rems_api.py:/mock_rems_api.py
+    entrypoint: ["python", "/mock_rems_api.py", "0.0.0.0", "8003"]
 volumes:
   data:

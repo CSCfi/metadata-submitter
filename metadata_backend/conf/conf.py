@@ -161,7 +161,7 @@ aai_config = {
 }
 
 
-# 6) Set the DataCite REST API values
+# 6) Setup integration config
 
 doi_config = {
     "api": os.getenv("DOI_API", "http://localhost:8001/dois"),
@@ -188,3 +188,10 @@ if METAX_ENABLED and not METAX_REFERENCE_FILE.is_file():
     raise RuntimeError(
         "You must generate the metax references to run submitter: `bash scripts/metax_mappings/fetch_refs.sh`"
     )
+
+REMS_ENABLED = os.getenv("REMS_ENABLED", "") == "True"
+rems_config = {
+    "id": os.getenv("REMS_USER_ID", "sd"),
+    "key": os.getenv("REMS_KEY", "test"),
+    "url": os.getenv("REMS_URL", "http://mockrems:8003"),
+}

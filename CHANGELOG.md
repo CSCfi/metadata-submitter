@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Endpoint with swagger documentation `/swagger`
 - added `aiohttp_session` as dependency and removed old way of handling cookies
 - Create a new ServiceHandler class to share error handling, retry mechanism, custom request logic between service integrations.
+- Integration with REMS #498
+  - New rems service handler
+  - New rems mock api service for integration tests
+  - New API endpoint `/v1/rems` for the frontend to retrieve DAC and Policies
+  - Submission now can have a new field, `dac`, with `workflowId`, `organizationId`, and `licenses` (array of int)
+  - Published datasets have a new field `dac` with `workflowId`, `organizationId`, `resourceId`, and `catalogueItemId`
 
 ### Changed
 - schema loader now matches schema files by exact match with schema #481. This means that schema file naming in metadata_backend/helpers/schemas now have rules: 
