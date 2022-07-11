@@ -14,6 +14,7 @@ from ...helpers.logger import LOG
 from ...helpers.schema_loader import JSONSchemaLoader, SchemaNotFoundException
 from ...services.metax_service_handler import MetaxServiceHandler
 from ...services.datacite_service_handler import DataciteServiceHandler
+from ...services.rems_service_handler import RemsServiceHandler
 from ..operators import SubmissionOperator, UserOperator, Operator
 import aiohttp_session
 
@@ -207,10 +208,16 @@ class RESTAPIHandler:
 class RESTAPIIntegrationHandler(RESTAPIHandler):
     """Endpoints that use service integrations."""
 
-    def __init__(self, metax_handler: MetaxServiceHandler, datacite_handler: DataciteServiceHandler) -> None:
+    def __init__(
+        self,
+        metax_handler: MetaxServiceHandler,
+        datacite_handler: DataciteServiceHandler,
+        rems_handler: RemsServiceHandler,
+    ) -> None:
         """Endpoints should have access to metax and datacite services."""
         self.metax_handler = metax_handler
         self.datacite_handler = datacite_handler
+        self.rems_handler = rems_handler
 
     @staticmethod
     async def get_user_external_id(request: web.Request) -> str:
@@ -267,3 +274,23 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
         LOG.debug(f"doi created with doi: {_doi_data['fullDOI']}")
 
         return _doi_data["fullDOI"]
+
+    async def check_dac_ok(self, submission: dict) -> bool:
+        """Check that DAC in object is ok."""
+
+        if "dac" not in submission:
+            raise web.HTTPBadRequest(reason="DAC is missing.")
+
+        dac = submission["dac"]
+
+        if "workflowId" in dac and "organizationId" in dac and "licenses" in dac:
+            await self.rems_handler.validate_workflow_licenses(
+                dac["organizationId"], dac["workflowId"], dac["licenses"]
+            )
+        else:
+            raise web.HTTPBadRequest(
+                reason="DAC is missing one or more of the required fields: "
+                "'workflowId', 'organizationId', or 'licenses'."
+            )
+
+        return True

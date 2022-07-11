@@ -269,8 +269,8 @@ async def post_draft_json(sess, schema, submission_id, filename):
     request_data = await create_request_json_data(schema, filename)
     async with sess.post(f"{drafts_url}/{schema}", params={"submission": submission_id}, data=request_data) as resp:
         LOG.debug(f"Adding new draft object to {schema}, via JSON file {filename}")
-        assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
+        assert resp.status == 201, f"HTTP Status code error, got {resp.status}: {ans}"
         return ans["accessionId"]
 
 
@@ -508,8 +508,8 @@ async def publish_submission(sess, submission_id):
     """
     async with sess.patch(f"{publish_url}/{submission_id}") as resp:
         LOG.debug(f"Publishing submission {submission_id}")
-        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}: {ans}"
         assert ans["submissionId"] == submission_id, "submission ID error"
         return ans["submissionId"]
 
@@ -548,6 +548,21 @@ async def put_submission_doi(sess, submission_id, data):
         ans = await resp.json()
         assert resp.status == 200, f"HTTP Status code error {resp.status} {ans}"
         LOG.debug(f"Adding doi to submission {ans['submissionId']}")
+        return ans["submissionId"]
+
+
+async def put_submission_dac(sess, submission_id, data):
+    """Put DAC into submission within session, returns submissionId.
+
+    :param sess: HTTP session in which request call is made
+    :param submission_id: id of the submission
+    :param data: dac data used to update the submission
+    :returns: Submission id for the submission inserted to database
+    """
+    async with sess.put(f"{submissions_url}/{submission_id}/dac", data=data) as resp:
+        ans = await resp.json()
+        assert resp.status == 200, f"HTTP Status code error {resp.status} {ans}"
+        LOG.debug(f"Adding DAC to submission {ans['submissionId']}")
         return ans["submissionId"]
 
 
@@ -1065,6 +1080,8 @@ async def test_metax_publish_dataset(sess, submission_id):
     # Add DOI and publish the submission
     doi_data_raw = await create_request_json_data("doi", "test_doi.json")
     await put_submission_doi(sess, submission_id, doi_data_raw)
+    dac_data = await create_request_json_data("dac", "dac_rems.json")
+    await put_submission_dac(sess, submission_id, dac_data)
     await publish_submission(sess, submission_id)
 
     for schema, object_id, metax_id in objects:
@@ -1087,7 +1104,7 @@ async def test_metax_publish_dataset(sess, submission_id):
             description = res["description"] if schema == "dataset" else res["descriptor"]["studyAbstract"]
 
             assert actual_rd["title"]["en"] == title
-            assert actual_rd["description"]["en"] == description
+            assert actual_rd["description"]["en"].split("\n\n")[0] == description
             assert actual_rd["creator"] == expected_rd["creator"]
             assert (
                 actual_rd["access_rights"]["access_type"]["identifier"]
@@ -1151,6 +1168,8 @@ async def test_metax_publish_dataset_with_missing_metax_id(sess, database, submi
     # Add DOI and publish the submission
     doi_data_raw = await create_request_json_data("doi", "test_doi.json")
     await put_submission_doi(sess, submission_id, doi_data_raw)
+    dac_data = await create_request_json_data("dac", "dac_rems.json")
+    await put_submission_dac(sess, submission_id, dac_data)
     await publish_submission(sess, submission_id)
 
     for schema, accession_id in objects:
@@ -1246,6 +1265,9 @@ async def test_crud_submissions_works(sess, project_id):
 
     ds_2 = await post_object(sess, "dataset", submission_id, "dataset_put.xml")
     ds_2 = await get_object(sess, "dataset", ds_2[0])
+
+    dac_data = await create_request_json_data("dac", "dac_rems.json")
+    await put_submission_dac(sess, submission_id, dac_data)
 
     submission_id = await publish_submission(sess, submission_id)
 
@@ -1444,7 +1466,7 @@ async def test_getting_paginated_submissions(sess, project_id):
         assert ans["page"]["page"] == 1
         assert ans["page"]["size"] == 5
         assert ans["page"]["totalPages"] == 2
-        assert ans["page"]["totalSubmissions"] == 8
+        assert ans["page"]["totalSubmissions"] == 9
         assert len(ans["submissions"]) == 5
 
     # Test with custom pagination values
@@ -1454,7 +1476,7 @@ async def test_getting_paginated_submissions(sess, project_id):
         assert ans["page"]["page"] == 2
         assert ans["page"]["size"] == 3
         assert ans["page"]["totalPages"] == 3
-        assert ans["page"]["totalSubmissions"] == 8
+        assert ans["page"]["totalSubmissions"] == 9
         assert len(ans["submissions"]) == 3
 
     # Test querying only published submissions
@@ -1464,8 +1486,8 @@ async def test_getting_paginated_submissions(sess, project_id):
         assert ans["page"]["page"] == 1
         assert ans["page"]["size"] == 5
         assert ans["page"]["totalPages"] == 1
-        assert ans["page"]["totalSubmissions"] == 2
-        assert len(ans["submissions"]) == 2
+        assert ans["page"]["totalSubmissions"] == 3
+        assert len(ans["submissions"]) == 3
 
     # Test querying only draft submissions
     async with sess.get(f"{submissions_url}?published=false&projectId={project_id}") as resp:
@@ -1726,6 +1748,9 @@ async def test_crud_users_works(sess, project_id):
     doi_data_raw = await create_request_json_data("doi", "test_doi.json")
     await put_submission_doi(sess, publish_submission_id, doi_data_raw)
 
+    dac_data = await create_request_json_data("dac", "dac_rems.json")
+    await put_submission_dac(sess, publish_submission_id, dac_data)
+
     # add a study and dataset for publishing a submission
     await post_object_json(sess, "study", publish_submission_id, "SRP000539.json")
     await post_object(sess, "dataset", publish_submission_id, "dataset.xml")
@@ -1963,6 +1988,8 @@ async def test_minimal_json_publication(sess, project_id):
     await post_object_json(sess, "study", submission_id, "SRP000539.json")
     doi_data_raw = await create_request_json_data("doi", "test_doi.json")
     await put_submission_doi(sess, submission_id, doi_data_raw)
+    dac_data = await create_request_json_data("dac", "dac_rems.json")
+    await put_submission_dac(sess, submission_id, dac_data)
     await publish_submission(sess, submission_id)
 
     async with sess.get(f"{submissions_url}/{submission_id}") as resp:
@@ -1970,6 +1997,47 @@ async def test_minimal_json_publication(sess, project_id):
         res = await resp.json()
         assert res["submissionId"] == submission_id, "expected submission id does not match"
         assert res["published"] is True, "submission is published, expected False"
+
+
+async def test_minimal_json_publication_rems(sess, project_id):
+    """Test minimal publication workflow with json submissions.
+
+    :param sess: HTTP session in which request call is made
+    :param project_id: id of the project the submission belongs to
+    """
+    submission = {
+        "name": "Minimal json publication",
+        "description": "Testing json publication with new doi endpoint",
+        "projectId": project_id,
+    }
+    submission_id = await post_submission(sess, submission)
+
+    await post_object_json(sess, "study", submission_id, "SRP000539.json")
+    ds_id = await post_object_json(sess, "dataset", submission_id, "dataset.json")
+
+    doi_data_raw = await create_request_json_data("doi", "test_doi.json")
+    await put_submission_doi(sess, submission_id, doi_data_raw)
+
+    dac_data = await create_request_json_data("dac", "dac_rems.json")
+    await put_submission_dac(sess, submission_id, dac_data)
+
+    await publish_submission(sess, submission_id)
+
+    async with sess.get(f"{submissions_url}/{submission_id}") as resp:
+        LOG.debug(f"Checking that submission {submission_id} was published")
+        res = await resp.json()
+        assert res["submissionId"] == submission_id, "expected submission id does not match"
+        assert res["published"] is True, "submission is published, expected False"
+
+    async with sess.get(f"{objects_url}/dataset/{ds_id}?submission_id={submission_id}") as resp:
+        LOG.debug(f"Checking that dataset {ds_id} in submission {submission_id} has rems data")
+        res = await resp.json()
+        assert res["accessionId"] == ds_id, "expected dataset id does not match"
+        assert "dac" in res
+        assert res["dac"]["workflowId"] == 1
+        assert res["dac"]["organizationId"] == "CSC"
+        assert "resourceId" in res["dac"]
+        assert "catalogueId" in res["dac"]
 
 
 async def test_health_check(sess):
@@ -1987,10 +2055,6 @@ async def test_health_check(sess):
 
 async def main(url):
     """Launch different test tasks and run them."""
-
-    # When there's an exception in the main loop, it gets closed
-    # So here's a loop just for the DB operations to run after tests are completed
-    # db_loop = asyncio.new_event_loop()
 
     mongo = Mongo(url)
     database = mongo.db
@@ -2092,6 +2156,9 @@ async def main(url):
         # Test creating a submission, with minimal required objects + DOI for publishing
         LOG.debug("=== Testing minimal JSON submission ===")
         await test_minimal_json_publication(sess, project_id)
+
+        LOG.debug("=== Testing minimal JSON submission with REMS integration ===")
+        await test_minimal_json_publication_rems(sess, project_id)
 
         # Test getting a list of submissions and draft templates owned by the user
         LOG.debug("=== Testing getting submissions, draft submissions and draft templates with pagination ===")

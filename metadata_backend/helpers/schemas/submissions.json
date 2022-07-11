@@ -1101,6 +1101,41 @@
         }
       },
       "uniqueItems": true
+    },
+    "dac": {
+      "type": "object",
+      "title": "REMS DAC for datasets",
+      "required": [
+        "workflowId",
+        "organizationId",
+        "licenses"
+      ],
+      "properties": {
+        "workflowId": {
+          "type": "integer",
+          "title": "REMS id of the dac/workflow"
+        },
+        "organizationId": {
+          "type": "string",
+          "title": "REMS id of the organization"
+        },
+        "licenses": {
+          "type": "array",
+          "title": "REMS ids of each policy/license",
+          "items": {
+            "type": "integer",
+            "title": "REMS id of a policy/license"
+          }
+        },
+        "resourceId": {
+          "type": "string",
+          "title": "REMS id of the resource created. Created automatically during the publication process"
+        },
+        "catalogueItemId": {
+          "type": "string",
+          "title": "REMS id of the catalogue created. Created automatically during the publication process"
+        }
+      }
     }
   },
   "additionalProperties": false

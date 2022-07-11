@@ -2,7 +2,7 @@
 from datetime import date, datetime
 from distutils.util import strtobool
 from math import ceil
-from typing import Dict, List, Tuple, Union
+from typing import Dict, Tuple, Union, List
 
 import aiohttp_session
 import ujson
@@ -10,7 +10,7 @@ from aiohttp import web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
-from ...conf.conf import doi_config, METAX_ENABLED
+from ...conf.conf import doi_config
 from ...helpers.logger import LOG
 from ...helpers.validator import JSONValidator
 from ..operators import Operator, ProjectOperator, SubmissionOperator, UserOperator
@@ -20,17 +20,16 @@ from .restapi import RESTAPIIntegrationHandler
 class SubmissionAPIHandler(RESTAPIIntegrationHandler):
     """API Handler for submissions."""
 
-    @staticmethod
-    def _make_discovery_url(obj_data: Dict) -> str:
+    def _make_discovery_url(self, obj_data: Dict) -> str:
         """Make an url that points to a discovery service."""
         # TODO: Proper URL creation when metax is disabled
-        if METAX_ENABLED:
+        if self.metax_handler.enabled:
             url = f"{doi_config['discovery_url']}{obj_data['metaxIdentifier']}"
         else:
             url = f"{doi_config['discovery_url']}{obj_data['doi']}"
         return url
 
-    def _prepare_published_study(self, study_data: Dict, general_info: Dict) -> Dict:
+    def _prepare_datacite_study(self, study_data: Dict, general_info: Dict) -> Dict:
         """Prepare Study object for publishing.
 
         :param study_data: Study Object read from the database
@@ -89,7 +88,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         return study
 
-    def _prepare_published_dataset(self, study_doi: str, dataset_data: Dict, general_info: Dict) -> Dict:
+    def _prepare_datacite_dataset(self, study_doi: str, dataset_data: Dict, general_info: Dict) -> Dict:
         """Prepare Dataset object for publishing.
 
         :param study_doi: Study DOI to link dataset to study at Datacite
@@ -161,7 +160,9 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         return dataset
 
-    async def _prepare_doi_update(self, req: Request, obj_op: Operator, submission: Dict) -> Tuple[Dict, List, List]:
+    async def _prepare_for_publishing(
+        self, req: Request, obj_op: Operator, submission: Dict
+    ) -> Tuple[dict, list, list, list]:
         """Prepare dictionary with values for the Datacite DOI update.
 
         We need to prepare data for Study and Datasets, publish doi for each,
@@ -175,9 +176,10 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         :returns: Tuple with the Study and list of Datasets and list of identifiers for publishing to Metax
         """
 
-        metax_ids = []
-        study = {}
-        datasets: List = []
+        metax_ids: List[dict] = []
+        datacite_study = {}
+        datacite_datasets: List[dict] = []
+        rems_datasets: List[dict] = []
 
         # we need to re-format these for Datacite, as in the JSON schemas
         # we split the words so that front-end will display them nicely
@@ -206,94 +208,96 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
             _study_doi = ""
 
             for _obj in submission["metadataObjects"]:
+                accession_id = _obj["accessionId"]
+                schema = _obj["schema"]
+                object_data, _ = await obj_op.read_metadata_object(schema, accession_id)
 
-                if _obj["schema"] == "study":
+                if not isinstance(object_data, dict):
+                    continue
+                if schema in {"study", "dataset"}:
+                    if "doi" not in object_data:
+                        # in case object is not added to datacite due to server error
+                        object_data["doi"] = await self.create_draft_doi(schema)
 
-                    # we need the study for the title, abstract and description
-                    study_data, _ = await obj_op.read_metadata_object("study", _obj["accessionId"])
+                    doi = object_data["doi"]
+                    # in case object is not added to metax due to server error
+                    if self.metax_handler.enabled:
+                        if not object_data["metaxIdentifier"]:
+                            object_data["metaxIdentifier"] = await self.create_metax_dataset(req, schema, object_data)
 
-                    if isinstance(study_data, dict):
+                        metax_ids.append(
+                            {
+                                "schema": schema,
+                                "doi": doi,
+                                "metaxIdentifier": object_data["metaxIdentifier"],
+                            }
+                        )
+                else:
+                    continue
 
-                        study = self._prepare_published_study(study_data, _info)
+                if schema == "study":
+                    _study_doi = doi
 
-                        _study_doi = study_data["doi"]
+                    datacite_study = self._prepare_datacite_study(object_data, _info)
 
-                        # in case object is not added to metax due to server error
-                        if self.metax_handler.enabled:
-                            if not study_data["metaxIdentifier"]:
-                                study_data["metaxIdentifier"] = await self.create_metax_dataset(
-                                    req, "study", study_data
-                                )
-
-                            metax_ids.append(
+                    # there are cases where datasets are added first
+                    if len(datacite_datasets) > 0:
+                        LOG.info(datacite_datasets)
+                        for ds in datacite_datasets:
+                            ds["data"]["attributes"]["relatedIdentifiers"].append(
                                 {
-                                    "schema": "study",
-                                    "doi": study_data["doi"],
-                                    "metaxIdentifier": study_data["metaxIdentifier"],
-                                }
-                            )
-
-                        # there are cases where datasets are added first
-                        if len(datasets) > 0:
-                            LOG.info(datasets)
-                            for ds in datasets:
-                                ds["data"]["attributes"]["relatedIdentifiers"].append(
-                                    {
-                                        "relationType": "IsDescribedBy",
-                                        "relatedIdentifier": _study_doi,
-                                        "resourceTypeGeneral": "Dataset",
-                                        "relatedIdentifierType": "DOI",
-                                    }
-                                )
-                                if "relatedIdentifiers" not in study["data"]["attributes"]:
-                                    study["data"]["attributes"]["relatedIdentifiers"] = []
-
-                                study["data"]["attributes"]["relatedIdentifiers"].append(
-                                    {
-                                        "relationType": "Describes",
-                                        "relatedIdentifier": ds["data"]["attributes"]["doi"],
-                                        "resourceTypeGeneral": "Dataset",
-                                        "relatedIdentifierType": "DOI",
-                                    }
-                                )
-
-                elif _obj["schema"] == "dataset":
-
-                    # we need the dataset title and description
-                    ds_data, _ = await obj_op.read_metadata_object("dataset", _obj["accessionId"])
-
-                    if isinstance(ds_data, dict):
-                        dataset = self._prepare_published_dataset(_study_doi, ds_data, _info)
-
-                        datasets.append(dataset)
-
-                        # in case object is not added to metax due to server error
-                        if self.metax_handler.enabled:
-                            if not ds_data["metaxIdentifier"]:
-                                ds_data["metaxIdentifier"] = await self.create_metax_dataset(req, "dataset", ds_data)
-
-                            metax_ids.append(
-                                {
-                                    "schema": "dataset",
-                                    "doi": ds_data["doi"],
-                                    "metaxIdentifier": ds_data["metaxIdentifier"],
-                                }
-                            )
-
-                        # A Study describes a Dataset
-                        # there are cases where datasets are added first
-                        if "attributes" in study:
-                            if "relatedIdentifiers" not in study["data"]["attributes"]:
-                                study["data"]["attributes"]["relatedIdentifiers"] = []
-
-                            study["data"]["attributes"]["relatedIdentifiers"].append(
-                                {
-                                    "relationType": "Describes",
-                                    "relatedIdentifier": ds_data["doi"],
+                                    "relationType": "IsDescribedBy",
+                                    "relatedIdentifier": doi,
                                     "resourceTypeGeneral": "Dataset",
                                     "relatedIdentifierType": "DOI",
                                 }
                             )
+                            if "relatedIdentifiers" not in datacite_study["data"]["attributes"]:
+                                datacite_study["data"]["attributes"]["relatedIdentifiers"] = []
+
+                            datacite_study["data"]["attributes"]["relatedIdentifiers"].append(
+                                {
+                                    "relationType": "Describes",
+                                    "relatedIdentifier": ds["data"]["attributes"]["doi"],
+                                    "resourceTypeGeneral": "Dataset",
+                                    "relatedIdentifierType": "DOI",
+                                }
+                            )
+
+                elif schema == "dataset":
+                    if self.rems_handler.enabled:
+                        rems_ds = {
+                            "accession_id": accession_id,
+                            "doi": doi,
+                            "description": object_data["description"],
+                            "localizations": {
+                                "en": {
+                                    "title": object_data["title"],
+                                    "infourl": self._make_discovery_url(object_data),
+                                }
+                            },
+                        }
+                        if self.metax_handler.enabled and "metaxIdentifier" in object_data:
+                            rems_ds["metaxIdentifier"] = object_data["metaxIdentifier"]
+                        rems_datasets.append(rems_ds)
+
+                    dataset = self._prepare_datacite_dataset(_study_doi, object_data, _info)
+                    datacite_datasets.append(dataset)
+
+                    # A Study describes a Dataset
+                    # there are cases where datasets are added first
+                    if "attributes" in datacite_study:
+                        if "relatedIdentifiers" not in datacite_study["data"]["attributes"]:
+                            datacite_study["data"]["attributes"]["relatedIdentifiers"] = []
+
+                        datacite_study["data"]["attributes"]["relatedIdentifiers"].append(
+                            {
+                                "relationType": "Describes",
+                                "relatedIdentifier": doi,
+                                "resourceTypeGeneral": "Dataset",
+                                "relatedIdentifierType": "DOI",
+                            }
+                        )
                 else:
                     pass
         # we catch all errors, if we missed even a key, that means some information is not
@@ -303,7 +307,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
             LOG.exception(reason)
             raise web.HTTPInternalServerError(reason=reason)
 
-        return (study, datasets, metax_ids)
+        return datacite_study, datacite_datasets, metax_ids, rems_datasets
 
     async def get_submissions(self, req: Request) -> Response:
         """Get a set of submissions owned by the project with pagination values.
@@ -528,6 +532,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         submission_id = req.match_info["submissionId"]
         db_client = req.app["db_client"]
         operator = SubmissionOperator(db_client)
+        obj_op = Operator(db_client)
 
         await operator.check_submission_exists(submission_id)
 
@@ -536,29 +541,50 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
             await self.metax_handler.check_connection()
 
         submission = await operator.read_submission(submission_id)
+        # Validate that submission seems to have required data for publishing
+        if "doiInfo" not in submission:
+            raise web.HTTPBadRequest(reason=f"Submission '{submission_id}' must have the required DOI metadata.")
+        has_study = False
+        # has_ega_dac = False
+        for _obj in submission["metadataObjects"]:
+            accession_id = _obj["accessionId"]
+            schema = _obj["schema"]
+            object_data, _ = await obj_op.read_metadata_object(schema, accession_id)
+            if schema == "study":
+                has_study = True
+            # if schema == "dac":
+            #     has_ega_dac = True
+            if self.rems_handler.enabled and "dac" not in submission:
+                raise web.HTTPBadRequest(reason=f"Submission '{accession_id}' must have DAC.")
+        if not has_study:
+            raise web.HTTPBadRequest(reason=f"Submission '{submission_id}' must have a study.")
+        # if not has_ega_dac:
+        #     raise web.HTTPBadRequest(reason=f"Submission '{submission_id}' must have an EGA DAC.")
 
         # we first try to publish the DOI before actually publishing the submission
         obj_ops = Operator(db_client)
-        study, datasets, metax_ids = await self._prepare_doi_update(req, obj_ops, submission)
+        datacite_study, datacite_datasets, metax_ids, rems_datasets = await self._prepare_for_publishing(
+            req, obj_ops, submission
+        )
         extra_info_patch = []
-        await self.datacite_handler.set_state(study)
+        await self.datacite_handler.publish(datacite_study)
         study_patch = {
             "op": "add",
             "path": "/extraInfo/studyIdentifier",
             "value": {
                 "identifier": {
                     "identifierType": "DOI",
-                    "doi": study["id"],
+                    "doi": datacite_study["id"],
                 },
-                "url": study["data"]["attributes"]["url"],
-                "types": study["data"]["attributes"]["types"],
+                "url": datacite_study["data"]["attributes"]["url"],
+                "types": datacite_study["data"]["attributes"]["types"],
             },
         }
         extra_info_patch.append(study_patch)
         datasets_patch = []
 
-        for ds in datasets:
-            await self.datacite_handler.set_state(ds)
+        for ds in datacite_datasets:
+            await self.datacite_handler.publish(ds)
             patch_ds = {
                 "op": "add",
                 "path": "/extraInfo/datasetIdentifiers/-",
@@ -574,6 +600,40 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
             datasets_patch.append(patch_ds)
         extra_info_patch.extend(datasets_patch)
         extra_info_submission = await operator.update_submission(submission_id, extra_info_patch)
+
+        if self.rems_handler.enabled:
+            org_id = submission["dac"]["organizationId"]
+            licenses = submission["dac"]["licenses"]
+            workflow_id = submission["dac"]["workflowId"]
+            for ds in rems_datasets:
+                resource_id = await self.rems_handler.create_resource(
+                    doi=ds["doi"], organization_id=org_id, licenses=licenses
+                )
+                catalogue_id = await self.rems_handler.create_catalogue_item(
+                    resource_id=resource_id,
+                    workflow_id=workflow_id,
+                    organization_id=org_id,
+                    localizations=ds["localizations"],
+                )
+
+                # Add rems URL to metax dataset description
+                rems_url = self.rems_handler.application_url(catalogue_id)
+                if self.metax_handler.enabled and "metaxIdentifier" in ds:
+                    new_description = ds["description"] + f"\n\nDAC: {rems_url}"
+                    await self.metax_handler.update_draft_dataset_description(ds["metaxIdentifier"], new_description)
+                await obj_op.update_metadata_object(
+                    "dataset",
+                    ds["accession_id"],
+                    {
+                        "dac": {
+                            "url": rems_url,
+                            "workflowId": workflow_id,
+                            "organizationId": org_id,
+                            "resourceId": resource_id,
+                            "catalogueId": catalogue_id,
+                        },
+                    },
+                )
 
         # we next try to publish to Metax before actually publishing the submission
         if self.metax_handler.enabled:
@@ -602,10 +662,10 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
                 "value": {
                     "identifier": {
                         "identifierType": "DOI",
-                        "doi": study["id"],
+                        "doi": datacite_study["id"],
                     },
-                    "url": study["data"]["attributes"]["url"],
-                    "types": study["data"]["attributes"]["types"],
+                    "url": datacite_study["data"]["attributes"]["url"],
+                    "types": datacite_study["data"]["attributes"]["types"],
                 },
             },
         ]
@@ -644,10 +704,10 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         LOG.info(f"DELETE submission with ID {_submission_id} was successful.")
         return web.HTTPNoContent()
 
-    async def put_submission_doi(self, req: Request) -> Response:
-        """Put or replace DOI metadata to a submission.
+    async def put_submission_path(self, req: Request) -> Response:
+        """Put or replace metadata to a submission.
 
-        :param req: PUT request with DOI schema in the body
+        :param req: PUT request with metadata schema in the body
         :returns: HTTP No Content response
         """
         submission_id = req.match_info["submissionId"]
@@ -658,18 +718,32 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         await self._handle_check_ownership(req, "submissions", submission_id)
 
         submission = await operator.read_submission(submission_id)
-        doi_info = await self._get_data(req)
-        submission["doiInfo"] = doi_info
+
+        data = await self._get_data(req)
+
+        if req.path.endswith("doi"):
+            schema = "doiInfo"
+        elif req.path.endswith("dac"):
+            # TODO: create an EGA DAC object from REMS contact information
+            schema = "dac"
+            if self.rems_handler.enabled:
+                await self.check_dac_ok({"dac": data})
+            else:
+                raise web.HTTPBadRequest(reason="Attempted to update REMS DAC, but REMS is not enabled.")
+        else:
+            raise web.HTTPNotFound(reason=f"'{req.path}' does not exist")
+
+        submission[schema] = data
         JSONValidator(submission, "submissions").validate
 
         op = "add"
-        if "doiInfo" in submission:
+        if schema in submission:
             op = "replace"
         patch = [
-            {"op": op, "path": "/doiInfo", "value": doi_info},
+            {"op": op, "path": f"/{schema}", "value": data},
         ]
         upd_submission = await operator.update_submission(submission_id, patch)
 
         body = ujson.dumps({"submissionId": upd_submission}, escape_forward_slashes=False)
-        LOG.info(f"PUT submission with ID {submission_id} was successful.")
+        LOG.info(f"PUT '{schema}' in submission with ID {submission_id} was successful.")
         return web.Response(body=body, status=200, content_type="application/json")
