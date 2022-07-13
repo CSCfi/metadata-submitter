@@ -8,7 +8,7 @@ from typing import Any, Dict, List
 from aiohttp import BasicAuth
 from yarl import URL
 
-from ..conf.conf import metax_config, METAX_ENABLED
+from ..conf.conf import METAX_ENABLED, metax_config
 from ..helpers.logger import LOG
 from .metax_mapper import MetaDataMapper
 from .service_handler import ServiceHandler

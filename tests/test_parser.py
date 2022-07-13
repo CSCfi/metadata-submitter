@@ -3,8 +3,13 @@ import unittest
 from pathlib import Path
 
 from aiohttp import web
-from metadata_backend.helpers.parser import CSVToJSONParser, XMLToJSONParser, jsonpatch_mongo
 from pymongo import UpdateOne
+
+from metadata_backend.helpers.parser import (
+    CSVToJSONParser,
+    XMLToJSONParser,
+    jsonpatch_mongo,
+)
 
 
 class ParserTestCase(unittest.TestCase):

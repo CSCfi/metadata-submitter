@@ -3,6 +3,7 @@ import json
 from math import ceil
 from typing import AsyncGenerator, Dict, List, Tuple
 
+import aiohttp_session
 import ujson
 from aiohttp import web
 from aiohttp.web import Request, Response
@@ -12,11 +13,10 @@ from multidict import CIMultiDict
 from ...conf.conf import schema_types
 from ...helpers.logger import LOG
 from ...helpers.schema_loader import JSONSchemaLoader, SchemaNotFoundException
-from ...services.metax_service_handler import MetaxServiceHandler
 from ...services.datacite_service_handler import DataciteServiceHandler
+from ...services.metax_service_handler import MetaxServiceHandler
 from ...services.rems_service_handler import RemsServiceHandler
-from ..operators import SubmissionOperator, UserOperator, Operator
-import aiohttp_session
+from ..operators import Operator, SubmissionOperator, UserOperator
 
 
 class RESTAPIHandler:
@@ -277,7 +277,6 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
 
     async def check_dac_ok(self, submission: dict) -> bool:
         """Check that DAC in object is ok."""
-
         if "dac" not in submission:
             raise web.HTTPBadRequest(reason="DAC is missing.")
 

@@ -1,9 +1,9 @@
 """Handle HTTP methods for server."""
+from datetime import datetime
 from math import ceil
 from typing import Any, Dict, List, Tuple, Union
 
 import ujson
-from datetime import datetime
 from aiohttp import web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
@@ -11,7 +11,7 @@ from multidict import CIMultiDict
 from ...conf.conf import API_PREFIX
 from ...helpers.logger import LOG
 from ...helpers.validator import JSONValidator
-from ..operators import SubmissionOperator, Operator, XMLOperator
+from ..operators import Operator, SubmissionOperator, XMLOperator
 from .common import multipart_content
 from .restapi import RESTAPIIntegrationHandler
 
