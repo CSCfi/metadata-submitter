@@ -1,21 +1,23 @@
 """Test API auth endpoints."""
 import time
+from unittest import IsolatedAsyncioTestCase
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import aiohttp_session
+from aiohttp.test_utils import AioHTTPTestCase
 from aiohttp.web_exceptions import (
+    HTTPBadRequest,
     HTTPInternalServerError,
     HTTPSeeOther,
-    HTTPBadRequest,
     HTTPUnauthorized,
 )
+
 from metadata_backend.api.auth import AccessHandler
-from unittest.mock import patch, AsyncMock, MagicMock
-from aiohttp.test_utils import AioHTTPTestCase
+from metadata_backend.server import init
+
+from .mockups import Mock_Request
 
 # from metadata_backend.api.middlewares import generate_cookie
-
-from metadata_backend.server import init
-from .mockups import Mock_Request
-import aiohttp_session
-from unittest import IsolatedAsyncioTestCase
 
 
 class AccessHandlerFailTestCase(AioHTTPTestCase):

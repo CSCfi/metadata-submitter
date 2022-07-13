@@ -7,7 +7,13 @@ from typing import Any, Dict, List, Optional, Type, Union
 
 from aiohttp import web
 from pymongo import UpdateOne
-from xmlschema import XMLSchema, XMLSchemaConverter, XMLSchemaException, XsdElement, XsdType
+from xmlschema import (
+    XMLSchema,
+    XMLSchemaConverter,
+    XMLSchemaException,
+    XsdElement,
+    XsdType,
+)
 
 from .logger import LOG
 from .schema_loader import SchemaNotFoundException, XMLSchemaLoader

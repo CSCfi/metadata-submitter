@@ -1,9 +1,10 @@
 """Logging formatting and functions for debugging."""
 
-import ujson
 import logging
-from typing import Any, Dict
 import os
+from typing import Any, Dict
+
+import ujson
 
 FORMAT = (
     "[%(asctime)s][%(name)s][%(process)d %(processName)s] [%(levelname)-8s](L:%(lineno)s) %(funcName)s: %(message)s"
