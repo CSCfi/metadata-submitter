@@ -35,7 +35,9 @@ apisauce
 aragonese
 arxiv
 assemblyannotation
+assignees
 async
+figma
 atac
 auth
 authdb
@@ -121,6 +123,7 @@ cscfi
 cscusername
 csi
 csrf
+css
 csv
 ctrl
 cts

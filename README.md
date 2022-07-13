@@ -5,6 +5,7 @@
 ![Documentation Checks](https://github.com/CSCfi/metadata-submitter/workflows/Documentation%20Checks/badge.svg)
 ![Python style check](https://github.com/CSCfi/metadata-submitter/workflows/Python%20style%20check/badge.svg)
 [![Coverage Status](https://coveralls.io/repos/github/CSCfi/metadata-submitter/badge.svg?branch=master)](https://coveralls.io/github/CSCfi/metadata-submitter?branch=master)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 
 Metadata submission service to handle submissions of EGA metadata, either as XML files or via form submissions. Submissions through graphical frontend and POST are supported.
 Service also validates submitted metadata objects against EGA XSD metadata models and saves objects to database.
@@ -29,7 +30,7 @@ Server can then be found from `http://localhost:5430`.
     - `MONGO_USERNAME`, username for connecting to mongodb instance
     - `MONGO_PASSWORD`, password for connecting to mongodb instance
     - `MONGO_HOST`, host and port for mongodb instance (e.g. `localhost:27017`)
-    - `MONGO_DATABASE`, If a specific database is to be used, set the name here. 
+    - `MONGO_DATABASE`, If a specific database is to be used, set the name here.
     - `MONGO_AUTHDB`, if `MONGO_DATABASE` is set and the user doesn't exists in the database, set this to the database where the user exists (e.g. `admin`)
   - Out of the box, metadata submitter is configured with default values from MongoDB Docker image
   - Suitable mongodb instance can be launched with Docker by running `docker-compose up database`
@@ -47,6 +48,7 @@ Clone the repository
 ```bash
 git clone -b develop git@github.com:CSCfi/metadata-submitter.git
 cd metadata-submitter
+pre-commit install
 ```
 
 Git hooks are activated inside the local development environment which will run tox tests before pushing. To ignore them for fast updates use `git` with the flag `--no-verify`.
@@ -55,7 +57,7 @@ Below we provide two alternative ways of developing, with _VS Code dev container
 
 ### Developing with VS Code
 
-VS Code provides functionality to develop inside the docker container. This mitigates the need to install a development environment and difficulties to make things work with different OSs. Also developing inside a container gives you the ability to see code changes on the fly. 
+VS Code provides functionality to develop inside the docker container. This mitigates the need to install a development environment and difficulties to make things work with different OSs. Also developing inside a container gives you the ability to see code changes on the fly.
 
 To start using the VS Code devcontainer:
 - install extension Remote - Containers
@@ -91,7 +93,7 @@ $ scripts/metax_mappings/fetch_refs.sh
 ```
 
 Copy `.env` file and set up the environment variables.
-The example file has hostnames for development with VS Code dev containers. You will have to change the hostnames to `localhost`. 
+The example file has hostnames for development with VS Code dev containers. You will have to change the hostnames to `localhost`.
 
 ```bash
 $ cp .env.example .env  # Make any changes you need to the file
@@ -135,7 +137,7 @@ $ docker build --no-cache . -t metadata-submitter
 $ docker run -p 5430:5430 metadata-submitter
 ```
 
-Frontend is built and added as static files to backend while building. 
+Frontend is built and added as static files to backend while building.
 
 ## License
 
