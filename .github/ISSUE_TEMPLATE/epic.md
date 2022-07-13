@@ -9,15 +9,15 @@ assignees: ''
 
 
 #### Describe the user story
-<!-- A description of the user story. --> 
+<!-- A description of the user story. -->
 
 
 #### Tasks:
 <!-- List of tasks needed for this user story. Technical description is in the tasks. Additional information, for example a prototype, Figma files, pictures are linked here. -->
-- [ ] 
+- [ ]
 
 
-#### Testing 
+#### Testing
 <!-- Description how the testing will be done. -->
 
 

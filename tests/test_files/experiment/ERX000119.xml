@@ -1,6 +1,6 @@
 <?xml version = '1.0' encoding = 'UTF-8'?>
 <EXPERIMENT_SET>
-    <EXPERIMENT accession="ERX000119" alias="NA18504.3" center_name="MPIMG"> 
+    <EXPERIMENT accession="ERX000119" alias="NA18504.3" center_name="MPIMG">
         <IDENTIFIERS>
             <PRIMARY_ID>ERX000119</PRIMARY_ID>
             <SUBMITTER_ID namespace="MPIMG">NA18504.3</SUBMITTER_ID>

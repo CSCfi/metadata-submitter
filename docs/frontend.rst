@@ -48,8 +48,8 @@ After installing and running, frontend can be found from ``http://localhost:3000
 Internal structure
 ------------------
 
-Reusable components are stored in ``src/components`` and views in ``src/views``. 
-View-components reflect page structure, such as ``/``, ``/newdraft``, ``/login`` etc. 
+Reusable components are stored in ``src/components`` and views in ``src/views``.
+View-components reflect page structure, such as ``/``, ``/newdraft``, ``/login`` etc.
 One should not define and export views to be rendered inside other views, but rather always build views using components.
 
 React Router is used to render different views in App-component. All components are wrapped with `Nav` which provider app menu and navigation.
@@ -60,8 +60,8 @@ Form components
 Form components are crucial part of the application:
 
 - All submissions are made with `react-hook-form <https://react-hook-form.com/>`_.
-  Latter uses form as a reference so submission can be triggered outside the form. JSON schema based forms are created with custom JSON schema parser, which builds 
-  ``react-hook-form`` based forms from given schema. The forms are validated against the JSON schema with ``Ajv``. 
+  Latter uses form as a reference so submission can be triggered outside the form. JSON schema based forms are created with custom JSON schema parser, which builds
+  ``react-hook-form`` based forms from given schema. The forms are validated against the JSON schema with ``Ajv``.
   React-hook-form is used for performance reasons: it uses uncontrolled components so adding a lot of fields to array doesn't slow rendering of the application.
 
 Constants
@@ -215,7 +215,7 @@ Examples for storing and dispatching with async submission function:
 Communicating with backend REST API
 -----------------------------------
 
-API/backend modules are defined in ``services/`` -folder with help from ``apisauce`` library. 
+API/backend modules are defined in ``services/`` -folder with help from ``apisauce`` library.
 Modules should be only responsible for API-related things, so one shouldn't modify data inside them.
 
 Example:
@@ -244,5 +244,5 @@ App uses `Material UI <https://material-ui.com/>`_ components.
 
 Global styles are defined with ``style.css`` and Material UI theme, customized for CSC. Material UI theme is set ``theme.js``, and added to ``index.js`` for use.
 
-Styles are also used inside components, either with ``withStyles`` (modifies Material UI components) or ``makeStyles`` 
+Styles are also used inside components, either with ``withStyles`` (modifies Material UI components) or ``makeStyles``
 (creates css for component and its children). See `customizing components <https://material-ui.com/customization/components/>`_ for more info.
