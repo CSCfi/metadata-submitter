@@ -1,42 +1,42 @@
 {
-  "type": "object",
-  "title": "User object schema",
-  "required": [
-    "userId",
-    "name",
-    "projects"
-  ],
-  "properties": {
-    "userId": {
-      "type": "string",
-      "title": "User Id"
-    },
-    "name": {
-      "type": "string",
-      "title": "User Name"
-    },
-    "projects": {
-      "type": "array",
-      "title": "User's project affiliations schema",
-      "items": {
-        "type": "object",
-        "title": "Project objects",
-        "required": [
-          "projectId",
-          "projectNumber"
-        ],
-        "properties": {
-          "projectId": {
+    "type": "object",
+    "title": "User object schema",
+    "required": [
+        "userId",
+        "name",
+        "projects"
+    ],
+    "properties": {
+        "userId": {
             "type": "string",
-            "title": "Project internal accession ID"
-          },
-          "projectNumber": {
+            "title": "User Id"
+        },
+        "name": {
             "type": "string",
-            "title": "Project human friendly ID"
-          }
+            "title": "User Name"
+        },
+        "projects": {
+            "type": "array",
+            "title": "User's project affiliations schema",
+            "items": {
+                "type": "object",
+                "title": "Project objects",
+                "required": [
+                    "projectId",
+                    "projectNumber"
+                ],
+                "properties": {
+                    "projectId": {
+                        "type": "string",
+                        "title": "Project internal accession ID"
+                    },
+                    "projectNumber": {
+                        "type": "string",
+                        "title": "Project human friendly ID"
+                    }
+                }
+            },
+            "uniqueItems": true
         }
-      },
-      "uniqueItems": true
     }
-  }
 }

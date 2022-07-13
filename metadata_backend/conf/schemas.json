@@ -1,118 +1,118 @@
 {
-  "submission": {
-    "priority": 1,
-    "description": {
-      "title": "Submission",
-      "detail": "A submission contains submission actions to be performed by the storage. A submission can add more objects to the storage, update already submitted objects or make objects publicly available.",
-      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.submission.xsd"
+    "submission": {
+        "priority": 1,
+        "description": {
+            "title": "Submission",
+            "detail": "A submission contains submission actions to be performed by the storage. A submission can add more objects to the storage, update already submitted objects or make objects publicly available.",
+            "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.submission.xsd"
+        },
+        "provider": "ENA"
     },
-    "provider": "ENA"
-  },
-  "study": {
-    "priority": 2,
-    "description": {
-      "title": "Study",
-      "detail": "A study groups together data submitted to the storage. A study accession is typically used when citing data submitted to ENA. Note that all associated data and other objects are made public when the study is released.",
-      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.study.xsd"
+    "study": {
+        "priority": 2,
+        "description": {
+            "title": "Study",
+            "detail": "A study groups together data submitted to the storage. A study accession is typically used when citing data submitted to ENA. Note that all associated data and other objects are made public when the study is released.",
+            "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.study.xsd"
+        },
+        "provider": "ENA"
     },
-    "provider": "ENA"
-  },
-  "project": {
-    "priority": 3,
-    "description": {
-      "title": "Project",
-      "detail": "A project groups together data submitted to the storage. A project accession is typically used when citing data submitted to ENA. Note that all associated data and other objects are made public when the project is released.",
-      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/ENA.project.xsd"
+    "project": {
+        "priority": 3,
+        "description": {
+            "title": "Project",
+            "detail": "A project groups together data submitted to the storage. A project accession is typically used when citing data submitted to ENA. Note that all associated data and other objects are made public when the project is released.",
+            "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/ENA.project.xsd"
+        },
+        "provider": "ENA"
     },
-    "provider": "ENA"
-  },
-  "sample": {
-    "priority": 4,
-    "description": {
-      "title": "Sample",
-      "detail": "A sample contains information about the sequenced source material. Samples are typically associated with checklists, which define the fields used to annotate the samples.",
-      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.sample.xsd"
+    "sample": {
+        "priority": 4,
+        "description": {
+            "title": "Sample",
+            "detail": "A sample contains information about the sequenced source material. Samples are typically associated with checklists, which define the fields used to annotate the samples.",
+            "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.sample.xsd"
+        },
+        "provider": "ENA"
     },
-    "provider": "ENA"
-  },
-  "experiment": {
-    "priority": 5,
-    "description": {
-      "title": "Experiment",
-      "detail": "An experiment contain information about a sequencing experiment including library and instrument details.",
-      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.experiment.xsd"
+    "experiment": {
+        "priority": 5,
+        "description": {
+            "title": "Experiment",
+            "detail": "An experiment contain information about a sequencing experiment including library and instrument details.",
+            "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.experiment.xsd"
+        },
+        "provider": "ENA"
     },
-    "provider": "ENA"
-  },
-  "run": {
-    "priority": 6,
-    "description": {
-      "title": "Run",
-      "detail": "A run is part of an experiment and refers to data files containing sequence reads.",
-      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.run.xsd"
+    "run": {
+        "priority": 6,
+        "description": {
+            "title": "Run",
+            "detail": "A run is part of an experiment and refers to data files containing sequence reads.",
+            "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.run.xsd"
+        },
+        "provider": "ENA"
     },
-    "provider": "ENA"
-  },
-  "analysis": {
-    "priority": 7,
-    "description": {
-      "title": "Analysis",
-      "detail": "An analysis contains secondary analysis results derived from sequence reads (e.g. a genome assembly),",
-      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.analysis.xsd"
+    "analysis": {
+        "priority": 7,
+        "description": {
+            "title": "Analysis",
+            "detail": "An analysis contains secondary analysis results derived from sequence reads (e.g. a genome assembly),",
+            "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/SRA.analysis.xsd"
+        },
+        "provider": "ENA"
     },
-    "provider": "ENA"
-  },
-  "dac": {
-    "priority": 8,
-    "description": {
-      "title": "DAC",
-      "detail": "An European Genome-phenome Archive (EGA) data access committee (DAC) is required for authorized access submissions.",
-      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/EGA.dac.xsd"
+    "dac": {
+        "priority": 8,
+        "description": {
+            "title": "DAC",
+            "detail": "An European Genome-phenome Archive (EGA) data access committee (DAC) is required for authorized access submissions.",
+            "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/EGA.dac.xsd"
+        },
+        "provider": "ENA"
     },
-    "provider": "ENA"
-  },
-  "policy": {
-    "priority": 9,
-    "description": {
-      "title": "Policy",
-      "detail": "An European Genome-phenome Archive (EGA) data access policy is required for authorized access submissions.",
-      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/EGA.policy.xsd"
+    "policy": {
+        "priority": 9,
+        "description": {
+            "title": "Policy",
+            "detail": "An European Genome-phenome Archive (EGA) data access policy is required for authorized access submissions.",
+            "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/EGA.policy.xsd"
+        },
+        "provider": "ENA"
     },
-    "provider": "ENA"
-  },
-  "dataset": {
-    "priority": 10,
-    "description": {
-      "title": "Dataset",
-      "detail": "An European Genome-phenome Archive (EGA) data set is required for authorized access submissions.",
-      "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/EGA.dataset.xsd"
+    "dataset": {
+        "priority": 10,
+        "description": {
+            "title": "Dataset",
+            "detail": "An European Genome-phenome Archive (EGA) data set is required for authorized access submissions.",
+            "url": "https://github.com/enasequence/schema/blob/master/src/main/resources/uk/ac/ebi/ena/sra/schema/EGA.dataset.xsd"
+        },
+        "provider": "ENA"
     },
-    "provider": "ENA"
-  },
-  "datacite": {
-    "priority": 11,
-    "description": {
-      "title": "Datacite DOI schema",
-      "detail": "Derived from the DataCite Metadata Schema which is a list of core metadata properties chosen for an accurate and consistent identification of a resource for citation and retrieval purposes, along with recommended use instructions. We only work with a subset of them for this schema.",
-      "url": "http://schema.datacite.org/"
+    "datacite": {
+        "priority": 11,
+        "description": {
+            "title": "Datacite DOI schema",
+            "detail": "Derived from the DataCite Metadata Schema which is a list of core metadata properties chosen for an accurate and consistent identification of a resource for citation and retrieval purposes, along with recommended use instructions. We only work with a subset of them for this schema.",
+            "url": "http://schema.datacite.org/"
+        },
+        "provider": "Datacite"
     },
-    "provider": "Datacite"
-  },
-  "image": {
-    "priority": 12,
-    "description": {
-      "title": "BP Image",
-      "detail": "A BP image object captures image objects.",
-      "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.1.1/src/BP.image.xsd"
+    "image": {
+        "priority": 12,
+        "description": {
+            "title": "BP Image",
+            "detail": "A BP image object captures image objects.",
+            "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.1.1/src/BP.image.xsd"
+        }
+    },
+    "bpdataset": {
+        "priority": 13,
+        "description": {
+            "title": "BP Dataset",
+            "detail": "A BP dataset.",
+            "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.1.1/src/BP.dataset.xsd"
+        },
+        "provider": "BP"
     }
-  },
-  "bpdataset": {
-    "priority": 13,
-    "description": {
-      "title": "BP Dataset",
-      "detail": "A BP dataset.",
-      "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.1.1/src/BP.dataset.xsd"
-    },
-    "provider": "BP"
-  }
 }
