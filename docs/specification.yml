@@ -961,7 +961,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
-  
+
   /v1/submissions:
     get:
       tags:

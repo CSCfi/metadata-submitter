@@ -58,7 +58,7 @@ Configuration
    :noindex:
 
 .. autosummary::
-   
+
     metadata_backend.conf.conf
 
 Server
@@ -67,4 +67,3 @@ Server
 .. automodule:: metadata_backend.server
    :noindex:
    :members:
-

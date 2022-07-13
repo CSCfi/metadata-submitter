@@ -21,9 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Published datasets have a new field `dac` with `workflowId`, `organizationId`, `resourceId`, and `catalogueItemId`
 
 ### Changed
-- schema loader now matches schema files by exact match with schema #481. This means that schema file naming in metadata_backend/helpers/schemas now have rules: 
-  - file name starts with schema provider separated with dot or underscore (e.g. EGA.policy.xsd, ena_policy.json) or 
-  - if schema is local then no schema provider needs to be added (e.g users.json) 
+- schema loader now matches schema files by exact match with schema #481. This means that schema file naming in metadata_backend/helpers/schemas now have rules:
+  - file name starts with schema provider separated with dot or underscore (e.g. EGA.policy.xsd, ena_policy.json) or
+  - if schema is local then no schema provider needs to be added (e.g users.json)
   - schema name and mongo database collection name must be the same
 - migrated to variables used by motor 3 for ssl https://motor.readthedocs.io/en/stable/migrate-to-motor-3.html?highlight=ssl_certfile#renamed-uri-options
   - env vars `MONGO_SSL_CLIENT_KEY` and `MONGO_SSL_CLIENT_CERT` are replaced with `MONGO_SSL_CLIENT_CERT_KEY`
@@ -45,13 +45,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - remove `datacite.json` to render the form from `folder["doiInfo"]`
   - we removed `namedtype` for `contributors` and `creators` we therefore allow `additionalProperties`
   - `subjectsSchema` is a given by frontend thus we allow via `additionalProperties`
-  
+
 ## [0.13.0] - 2022-04-07
 
 ### Added
 
 - Submission endpoint update #371
-  - Adds mandatory query parameter `folder` for submit endpoint POST 
+  - Adds mandatory query parameter `folder` for submit endpoint POST
   - On actions add and modify object is added or updated to folder(submission) where it belongs with it's accession ID, schema, submission type, title and filename
   - Adds metax integration to submit endpoint
 - Integration with Metax service #356 #387
@@ -62,7 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Adds new handler MetaxServiceHandler to take care of mapping Submitter metadata to Metax metadata and to connect to Metax API
   - Adds new mapper class to adjust incoming metadata to Metax schema
 - Add patching of folders after object save and update operations #354
-  - Adds mandatory query parameter `folder` for objects endpoint POST 
+  - Adds mandatory query parameter `folder` for objects endpoint POST
   - Object is added or updated to folder(submission) where it belongs with it's accession ID, schema, submission type, title and filename in the case of CSV and XML upload
   - Adds configuration for mypy linting to VScode devcontainer setup
 - Templates API #256
@@ -117,7 +117,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - README updated with tox command, development build instructions, and prettify Dockerfile.
 - Update ENA XML and JSON schemas #299
 - Github actions changed the use of https://git.io/misspell to rojopolis/spellcheck-github-actions #316
-- Separated most of the handlers to own files inside the handlers folder #319 
+- Separated most of the handlers to own files inside the handlers folder #319
 - allow inserting only one study in folder #332
 - JSON schemas #332
    - introduce `keywords` required for Metax in `doiInfo`
@@ -234,13 +234,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.7.0] - 2021-01-06
 
-### Added 
+### Added
 
 - CodeQL github action #162
 - `/health` endpoint #173
 
 - Map `users` to `folders` with `_handle_check_ownedby_user` #158
-  - querying for objects is restricted to only the objects that belong to user 
+  - querying for objects is restricted to only the objects that belong to user
   - return folders owned by user or published
   - added a few db operators some used (aggregate, remove)
   - process json patch to mongo query so that there is addition and replace instead of full rewrite of the document causing race condition
@@ -261,7 +261,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.6.1] - 2020-11-23
 
-### Added 
+### Added
 
 - CSRF session #142
 
@@ -277,7 +277,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.6.0] - 2020-10-08
 
-### Added 
+### Added
 
 - Authentication with OIDC  #133
 - Only 3.7 support going further #134
@@ -310,7 +310,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixes
 
 - Dockerfile build fixes #115
-- Fix JSON Schema details #117 
+- Fix JSON Schema details #117
 - Missing env from github actions #119
 - Typo fixes #120
 - Await responses #122

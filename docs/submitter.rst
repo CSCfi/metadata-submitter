@@ -7,7 +7,7 @@ Metadata Submitter Backend
 
   - Python 3.8+
   - MongoDB
-  
+
 
 Environment Setup
 -----------------
