@@ -48,3 +48,45 @@ matrix:
   sources:
   - metadata_backend/helpers/schemas/*.json
   default_encoding: utf-8
+
+- name: python
+  sources:
+  - setup.py
+  - '{metadata_submitter,scripts}/**/*.py'
+  aspell:
+    lang: en
+  dictionary:
+    wordlists:
+    - docs/dictionary/wordlist.txt
+  pipeline:
+  - pyspelling.filters.python:
+      group_comments: true
+  - pyspelling.flow_control.wildcard:
+      allow:
+      - py-comment
+  - pyspelling.filters.context:
+      context_visible_first: true
+      delimiters:
+      # Ignore lint (noqa) and coverage (pragma) as well as shebang (#!) and bandit (nosec)
+      - open: '^(?: *(?:noqa\b|pragma: no cover|nosec)|!)'
+        close: '$'
+      # Ignore Python encoding string -*- encoding stuff -*-
+      - open: '^ *-\*-'
+        close: '-\*-$'
+      # Ignore docstring variable poram
+      - open: '^(?: *(:param \w+:))'
+        close: '$'
+  - pyspelling.filters.context:
+      context_visible_first: true
+      escapes: '\\[\\`]'
+      delimiters:
+      # Ignore multiline content between fences (fences can have 3 or more back ticks)
+      # ```
+      # content
+      # ```
+      - open: '(?s)^(?P<open> *`{3,})$'
+        close: '^(?P=open)$'
+      # Ignore text between inline back ticks
+      - open: '(?P<open>`+)'
+        close: '(?P=open)'
+  - pyspelling.filters.url:
