@@ -1,16 +1,15 @@
 """Test API endpoints from handlers module."""
 
+import time
 from pathlib import Path
 from unittest.mock import AsyncMock, call, patch
-import time
 
-import ujson
-from aiohttp import web
-from aiohttp import FormData
-from aiohttp.test_utils import AioHTTPTestCase, make_mocked_coro
-from metadata_backend.api.handlers.restapi import RESTAPIHandler
 import aiohttp_session
+import ujson
+from aiohttp import FormData, web
+from aiohttp.test_utils import AioHTTPTestCase, make_mocked_coro
 
+from metadata_backend.api.handlers.restapi import RESTAPIHandler
 from metadata_backend.conf.conf import API_PREFIX
 from metadata_backend.server import init
 
@@ -131,7 +130,6 @@ class HandlersTestCase(AioHTTPTestCase):
 
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
-
         await self.client.close()
 
     def create_submission_data(self, files):
@@ -291,7 +289,6 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
         This patches used modules and sets default return values for their
         methods.
         """
-
         await super().setUpAsync()
         class_parser = "metadata_backend.api.handlers.xml_submission.XMLToJSONParser"
         self.patch_parser = patch(class_parser, spec=True)
@@ -399,7 +396,6 @@ class ObjectHandlerTestCase(HandlersTestCase):
         This patches used modules and sets default return values for their
         methods.
         """
-
         await super().setUpAsync()
 
         class_xmloperator = "metadata_backend.api.handlers.object.XMLOperator"
@@ -769,7 +765,6 @@ class UserHandlerTestCase(HandlersTestCase):
         This patches used modules and sets default return values for their
         methods.
         """
-
         await super().setUpAsync()
         class_useroperator = "metadata_backend.api.handlers.user.UserOperator"
         self.patch_useroperator = patch(class_useroperator, **self.useroperator_config, spec=True)
@@ -807,7 +802,6 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         This patches used modules and sets default return values for their
         methods.
         """
-
         await super().setUpAsync()
 
         self._mock_prepare_doi = "metadata_backend.api.handlers.submission.SubmissionAPIHandler._prepare_for_publishing"
