@@ -5,15 +5,15 @@ Converts an openapi YAML spec file to HTML + Swagger UI.
 Usage: python swagger-yaml-to-html.py < specification.yml > index.html
 
 Credits:
-- github.com/oseiskar
+- https://github.com/oseiskar
 - https://gist.github.com/oseiskar/dbd51a3727fc96dcf5ed189fca491fb3
 - https://github.com/CSCfi/fairdata-sso/blob/aa1ea8a47faed4d246000d4925014b4fb4d2c6df/swagger/yaml-to-html.py
 """
 
 import json
 import sys
-import yaml
 
+import yaml
 
 TEMPLATE = """
 <!DOCTYPE html>
