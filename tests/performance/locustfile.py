@@ -1,9 +1,9 @@
 """Run load tests for submitting submissions and objects and querying them."""
 
 import json
-
 from pathlib import Path
-from locust import HttpUser, task, tag, between
+
+from locust import HttpUser, between, tag, task
 
 from metadata_backend.conf.conf import API_PREFIX
 
@@ -26,7 +26,6 @@ class BasicUser(HttpUser):
     @task
     def post_submission1(self):
         """Create a submission with one object."""
-
         # Get a test JSON object
         json_file = self.get_json_object("study", "SRP000539.json")
 
@@ -60,7 +59,6 @@ class BasicUser(HttpUser):
     @task
     def post_submission2(self):
         """Create a submission with two objects."""
-
         # Get test JSON objects
         json_file1 = self.get_json_object("study", "SRP000539.json")
         json_file2 = self.get_json_object("experiment", "ERX000119.json")
@@ -122,7 +120,6 @@ class BasicUser(HttpUser):
     @task
     def get_submissions_and_objects(self):
         """Get users submissions, read one of the objects in a submission and get the object by accession ID."""
-
         with self.client.get(f"{API_PREFIX}/submissions", catch_response=True) as resp:
             if resp.status_code != 200:
                 resp.failure("Getting submissions was unsuccesful.")
