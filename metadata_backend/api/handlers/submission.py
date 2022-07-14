@@ -545,21 +545,16 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         if "doiInfo" not in submission:
             raise web.HTTPBadRequest(reason=f"Submission '{submission_id}' must have the required DOI metadata.")
         has_study = False
-        # has_ega_dac = False
         for _obj in submission["metadataObjects"]:
             accession_id = _obj["accessionId"]
             schema = _obj["schema"]
             object_data, _ = await obj_op.read_metadata_object(schema, accession_id)
             if schema == "study":
                 has_study = True
-            # if schema == "dac":
-            #     has_ega_dac = True
             if self.rems_handler.enabled and "dac" not in submission:
                 raise web.HTTPBadRequest(reason=f"Submission '{accession_id}' must have DAC.")
         if not has_study:
             raise web.HTTPBadRequest(reason=f"Submission '{submission_id}' must have a study.")
-        # if not has_ega_dac:
-        #     raise web.HTTPBadRequest(reason=f"Submission '{submission_id}' must have an EGA DAC.")
 
         # we first try to publish the DOI before actually publishing the submission
         obj_ops = Operator(db_client)
