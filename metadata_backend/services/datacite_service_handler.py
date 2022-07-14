@@ -107,19 +107,19 @@ class DataciteServiceHandler(ServiceHandler):
 
         return doi_data
 
-    async def set_state(self, doi_payload: Dict) -> None:
+    async def publish(self, datacite_payload: Dict) -> None:
         """Set DOI and associated metadata.
 
         We will only support publish event type, and we expect the data to be
         prepared for the update.
         Partial updates are possible.
 
-        :param doi_payload: Dictionary with payload to send to Datacite
+        :param datacite_payload: Dictionary with payload to send to Datacite
         :raises: HTTPInternalServerError if the Datacite DOI update fails
         :returns: None
         """
-        _id = doi_payload["id"]
-        await self._request(method="PUT", path=_id, json_data=doi_payload)
+        _id = datacite_payload["id"]
+        await self._request(method="PUT", path=_id, json_data=datacite_payload)
         LOG.info(f"Datacite doi {_id} updated ")
 
     async def delete(self, doi: str) -> None:

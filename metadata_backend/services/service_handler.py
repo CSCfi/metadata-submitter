@@ -82,10 +82,10 @@ class ServiceHandler:
         if self._http_client is not None:
             await self._http_client.close()
 
-    # @property
-    # def enabled(self) -> bool:
-    #     """True when service is enabled."""
-    #     return False
+    @property
+    def enabled(self) -> bool:
+        """Indicate whether service is enabled."""
+        return True
 
     async def check_connection(self, timeout: int = 2) -> None:
         """Check service is reachable.
@@ -122,10 +122,10 @@ class ServiceHandler:
         :returns: Response body parsed as JSON
         """
 
-        # if not self.enabled:
-        #     reason = f"{self.service_name} is disabled, yet attempted to '{method}' '{url}'"
-        #     LOG.error(reason)
-        #     raise HTTPInternalServerError(reason=reason)
+        if not self.enabled:
+            reason = f"{self.service_name} is disabled, yet attempted to '{method}' '{url}' path '{path}'"
+            LOG.error(reason)
+            raise HTTPInternalServerError(reason=reason)
 
         LOG.debug(
             f"{method} request to '{url or self.base_url}' path '{path}', params '{params}', payload '{json_data}'"
