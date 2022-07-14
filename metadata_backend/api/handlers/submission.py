@@ -242,7 +242,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
                     # there are cases where datasets are added first
                     if len(datacite_datasets) > 0:
-                        LOG.info(datacite_datasets)
+                        LOG.info(f"datacite datasets: {datacite_datasets}")
                         for ds in datacite_datasets:
                             ds["data"]["attributes"]["relatedIdentifiers"].append(
                                 {
