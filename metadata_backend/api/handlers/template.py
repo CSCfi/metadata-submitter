@@ -160,6 +160,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
             # Move projectId to template structure, so that it is saved in mongo
             content["template"]["projectId"] = content["projectId"]
             json_data = await operator.create_metadata_object(collection, content["template"])
+            json_data = json_data[0] if isinstance(json_data, list) else json_data
             data = [{"accessionId": json_data["accessionId"], "schema": collection}]
             if "tags" in content:
                 data[0]["tags"] = content["tags"]
