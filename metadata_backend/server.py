@@ -18,6 +18,8 @@ from .api.handlers.template import TemplatesAPIHandler
 from .api.handlers.user import UserAPIHandler
 from .api.health import HealthHandler
 from .api.middlewares import http_error_handler, check_session
+from .services.datacite_service_handler import DataciteServiceHandler
+from .services.metax_service_handler import MetaxServiceHandler
 from .conf.conf import (
     aai_config,
     create_db_client,
@@ -53,11 +55,27 @@ async def init(
         middlewares = middlewares + inject_middleware
     api = web.Application(middlewares=middlewares)
 
+    sec_key = base64.urlsafe_b64decode(Fernet.generate_key())
+    session_middleware = aiohttp_session.session_middleware(
+        aiohttp_session.cookie_storage.EncryptedCookieStorage(sec_key)
+    )
+    server = web.Application(middlewares=[session_middleware])
+
+    metax_handler = MetaxServiceHandler()
+    datacite_handler = DataciteServiceHandler()
+
+    async def close_http_clients(app: web.Application) -> None:
+        """Close http client session."""
+        await metax_handler.http_client_close()
+        await datacite_handler.http_client_close()
+
+    server.on_shutdown.append(close_http_clients)
+
     _schema = RESTAPIHandler()
-    _object = ObjectAPIHandler()
-    _submission = SubmissionAPIHandler()
+    _object = ObjectAPIHandler(metax_handler=metax_handler, datacite_handler=datacite_handler)
+    _submission = SubmissionAPIHandler(metax_handler=metax_handler, datacite_handler=datacite_handler)
     _user = UserAPIHandler()
-    _xml_submission = XMLSubmissionAPIHandler()
+    _xml_submission = XMLSubmissionAPIHandler(metax_handler=metax_handler, datacite_handler=datacite_handler)
     _template = TemplatesAPIHandler()
     api_routes = [
         # retrieve schema and information about it
@@ -100,14 +118,8 @@ async def init(
         web.post("/validate", _xml_submission.validate),
     ]
     api.add_routes(api_routes)
-    LOG.info("API configurations and routes loaded")
-
-    sec_key = base64.urlsafe_b64decode(Fernet.generate_key())
-    session_middleware = aiohttp_session.session_middleware(
-        aiohttp_session.cookie_storage.EncryptedCookieStorage(sec_key)
-    )
-    server = web.Application(middlewares=[session_middleware])
     server.add_subapp(API_PREFIX, api)
+    LOG.info("API configurations and routes loaded")
 
     _access = AccessHandler(aai_config)
     aai_routes = [

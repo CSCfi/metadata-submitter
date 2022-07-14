@@ -1,11 +1,9 @@
 """Class for handling calls to METAX API."""
 from typing import Any, Dict, List
 
-import aiohttp_session
-from aiohttp import BasicAuth, web
+from aiohttp import BasicAuth
 from yarl import URL
 
-from ..api.operators import UserOperator
 from ..conf.conf import metax_config, METAX_ENABLED
 from ..helpers.logger import LOG
 from .metax_mapper import MetaDataMapper
@@ -17,7 +15,7 @@ class MetaxServiceHandler(ServiceHandler):
 
     service_name = "Metax"
 
-    def __init__(self, req: web.Request) -> None:
+    def __init__(self) -> None:
         """Define variables and paths.
 
         Define variables and paths used for connecting to Metax API and
@@ -30,8 +28,6 @@ class MetaxServiceHandler(ServiceHandler):
             base_url=metax_url / metax_config["rest_route"][1:],
             auth=BasicAuth(metax_config["username"], metax_config["password"]),
         )
-        self.req = req
-        self.db_client = req.app["db_client"]
 
         self.connection_check_url = metax_url
         self.publish_route = metax_url / metax_config["publish_route"][1:]
@@ -67,19 +63,6 @@ class MetaxServiceHandler(ServiceHandler):
     def enabled(self) -> bool:
         """Indicate whether service is enabled."""
         return METAX_ENABLED
-
-    async def get_metadata_provider_user(self) -> str:
-        """Get current user's external id.
-
-        TODO: Remove this!
-        :returns: Current users external ID
-        """
-        session = await aiohttp_session.get_session(self.req)
-        current_user = session["user_info"]
-        user_op = UserOperator(self.db_client)
-        user = await user_op.read_user(current_user)
-        metadata_provider_user = user["externalId"]
-        return metadata_provider_user
 
     async def _get(self, metax_id: str) -> dict:
         result = await self._request(method="GET", path=metax_id)
@@ -152,12 +135,13 @@ class MetaxServiceHandler(ServiceHandler):
 
         return result["preferred_identifier"]
 
-    async def post_dataset_as_draft(self, collection: str, data: Dict) -> str:
+    async def post_dataset_as_draft(self, external_id: str, collection: str, data: Dict) -> str:
         """Send draft dataset to Metax.
 
         Construct Metax dataset data from submitters' Study or Dataset and
         send it as new draft dataset to Metax Dataset API.
 
+        :param external_id: external user id, from OIDC provider
         :param collection: Schema of incoming submitters' metadata
         :param data: Validated Study or Dataset data dict
         :raises: HTTPError depending on returned error from Metax
@@ -169,7 +153,7 @@ class MetaxServiceHandler(ServiceHandler):
         )
         await self.check_connection()
         metax_dataset = self.minimal_dataset_template
-        metax_dataset["metadata_provider_user"] = await self.get_metadata_provider_user()
+        metax_dataset["metadata_provider_user"] = external_id
         if collection == "dataset":
             dataset_data = self.create_metax_dataset_data_from_dataset(data)
         else:
@@ -188,12 +172,13 @@ class MetaxServiceHandler(ServiceHandler):
         await self._patch(metax_id, {"research_dataset": dataset_data})
         return metax_id
 
-    async def update_draft_dataset(self, collection: str, data: Dict) -> None:
+    async def update_draft_dataset(self, external_id: str, collection: str, data: Dict) -> None:
         """Update draft dataset to Metax.
 
         Construct Metax draft dataset data from submitters' Study or Dataset and
         send it to Metax Dataset API for update.
 
+        :param external_id: external user id, from OIDC provider
         :param collection: Schema of incoming submitters' metadata
         :param data: Validated Study or Dataset data dict
         :raises: HTTPError depending on returned error from Metax
@@ -202,7 +187,7 @@ class MetaxServiceHandler(ServiceHandler):
         LOG.info(f"Updating {collection} object data to Metax service.")
         await self.check_connection()
         metax_dataset = self.minimal_dataset_template
-        metax_dataset["metadata_provider_user"] = await self.get_metadata_provider_user()
+        metax_dataset["metadata_provider_user"] = external_id
         if collection == "dataset":
             dataset_data = self.create_metax_dataset_data_from_dataset(data)
         else:
@@ -217,7 +202,7 @@ class MetaxServiceHandler(ServiceHandler):
 
         :param metax_id: Identification string pointing to Metax dataset to be deleted
         """
-        LOG.info(f"Deleting Metax draft dataset {metax_id}")
+        LOG.info(f"Deleting Metax draft dataset '{metax_id}'")
         await self._delete_draft(metax_id)
 
     async def update_dataset_with_doi_info(self, datacite_info: Dict, _metax_ids: List) -> None:
