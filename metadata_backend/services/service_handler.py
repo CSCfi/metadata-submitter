@@ -67,7 +67,7 @@ class ServiceHandler:
         self.http_client_headers = http_client_headers
 
     @property
-    def http_client(self) -> ClientSession:
+    def _client(self) -> ClientSession:
         """Singleton http client, customized for the service."""
         if self._http_client is None or self._http_client.closed:
             self._http_client = ClientSession(
@@ -127,15 +127,17 @@ class ServiceHandler:
         #     LOG.error(reason)
         #     raise HTTPInternalServerError(reason=reason)
 
+        LOG.debug(
+            f"{method} request to '{url or self.base_url}' path '{path}', params '{params}', payload '{json_data}'"
+        )
         if url is None:
             url = self.base_url
             if path and path.startswith("/"):
                 path = path[1:]
             if path:
                 url = url / path
-        LOG.debug(f"making a {method} request to {url}, params {params}, payload {json_data}")
         try:
-            async with self.http_client.request(
+            async with self._client.request(
                 auth=self.auth,
                 method=method,
                 url=url,

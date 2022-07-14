@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Refactor authentication checking, fixing issues from #421 and remove HTTPSeeOther from the API
 - Recreate DB before integration tests run and cleanup after integration tests have run #448
 - Make using of discovery service (METAX) optional #467
+- Refactor api handlers to share a single instance of service handlers
 
 ### Removed
 

@@ -13,14 +13,11 @@ from multidict import CIMultiDict
 from ...conf.conf import doi_config, METAX_ENABLED
 from ...helpers.logger import LOG
 from ...helpers.validator import JSONValidator
-from ...services.datacite_service_handler import DataciteServiceHandler
-from ...services.metax_service_handler import MetaxServiceHandler
 from ..operators import Operator, ProjectOperator, SubmissionOperator, UserOperator
-from .object import ObjectAPIHandler
-from .restapi import RESTAPIHandler
+from .restapi import RESTAPIIntegrationHandler
 
 
-class SubmissionAPIHandler(RESTAPIHandler):
+class SubmissionAPIHandler(RESTAPIIntegrationHandler):
     """API Handler for submissions."""
 
     @staticmethod
@@ -181,8 +178,6 @@ class SubmissionAPIHandler(RESTAPIHandler):
         metax_ids = []
         study = {}
         datasets: List = []
-        obj_handler = ObjectAPIHandler()
-        metax_handler = MetaxServiceHandler(req)
 
         # we need to re-format these for Datacite, as in the JSON schemas
         # we split the words so that front-end will display them nicely
@@ -224,9 +219,9 @@ class SubmissionAPIHandler(RESTAPIHandler):
                         _study_doi = study_data["doi"]
 
                         # in case object is not added to metax due to server error
-                        if metax_handler.enabled:
+                        if self.metax_handler.enabled:
                             if not study_data["metaxIdentifier"]:
-                                study_data["metaxIdentifier"] = await obj_handler.create_metax_dataset(
+                                study_data["metaxIdentifier"] = await self.create_metax_dataset(
                                     req, "study", study_data
                                 )
 
@@ -273,11 +268,9 @@ class SubmissionAPIHandler(RESTAPIHandler):
                         datasets.append(dataset)
 
                         # in case object is not added to metax due to server error
-                        if metax_handler.enabled:
+                        if self.metax_handler.enabled:
                             if not ds_data["metaxIdentifier"]:
-                                ds_data["metaxIdentifier"] = await obj_handler.create_metax_dataset(
-                                    req, "dataset", ds_data
-                                )
+                                ds_data["metaxIdentifier"] = await self.create_metax_dataset(req, "dataset", ds_data)
 
                             metax_ids.append(
                                 {
@@ -535,13 +528,12 @@ class SubmissionAPIHandler(RESTAPIHandler):
         submission_id = req.match_info["submissionId"]
         db_client = req.app["db_client"]
         operator = SubmissionOperator(db_client)
-        metax_handler = MetaxServiceHandler(req)
 
         await operator.check_submission_exists(submission_id)
 
         await self._handle_check_ownership(req, "submissions", submission_id)
-        if metax_handler.enabled:
-            await metax_handler.check_connection()
+        if self.metax_handler.enabled:
+            await self.metax_handler.check_connection()
 
         submission = await operator.read_submission(submission_id)
 
@@ -549,8 +541,7 @@ class SubmissionAPIHandler(RESTAPIHandler):
         obj_ops = Operator(db_client)
         study, datasets, metax_ids = await self._prepare_doi_update(req, obj_ops, submission)
         extra_info_patch = []
-        doi_ops = DataciteServiceHandler()
-        await doi_ops.set_state(study)
+        await self.datacite_handler.set_state(study)
         study_patch = {
             "op": "add",
             "path": "/extraInfo/studyIdentifier",
@@ -567,7 +558,7 @@ class SubmissionAPIHandler(RESTAPIHandler):
         datasets_patch = []
 
         for ds in datasets:
-            await doi_ops.set_state(ds)
+            await self.datacite_handler.set_state(ds)
             patch_ds = {
                 "op": "add",
                 "path": "/extraInfo/datasetIdentifiers/-",
@@ -585,11 +576,11 @@ class SubmissionAPIHandler(RESTAPIHandler):
         extra_info_submission = await operator.update_submission(submission_id, extra_info_patch)
 
         # we next try to publish to Metax before actually publishing the submission
-        if metax_handler.enabled:
-            await metax_handler.update_dataset_with_doi_info(
+        if self.metax_handler.enabled:
+            await self.metax_handler.update_dataset_with_doi_info(
                 await operator.read_submission(extra_info_submission), metax_ids
             )
-            await metax_handler.publish_dataset(metax_ids)
+            await self.metax_handler.publish_dataset(metax_ids)
 
         # Delete draft objects from the submission
         for obj in submission["drafts"]:

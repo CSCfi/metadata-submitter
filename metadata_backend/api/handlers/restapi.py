@@ -12,7 +12,9 @@ from multidict import CIMultiDict
 from ...conf.conf import schema_types
 from ...helpers.logger import LOG
 from ...helpers.schema_loader import JSONSchemaLoader, SchemaNotFoundException
-from ..operators import SubmissionOperator, UserOperator
+from ...services.metax_service_handler import MetaxServiceHandler
+from ...services.datacite_service_handler import DataciteServiceHandler
+from ..operators import SubmissionOperator, UserOperator, Operator
 import aiohttp_session
 
 
@@ -39,7 +41,7 @@ class RESTAPIHandler:
         :returns: Page parameter value
         """
         try:
-            param = int(req.query.get(name, default))
+            param = int(req.query.get(name, str(default)))
         except ValueError:
             reason = f"{name} parameter must be a number, now it is {req.query.get(name)}"
             LOG.error(reason)
@@ -200,3 +202,68 @@ class RESTAPIHandler:
         link_headers = CIMultiDict(Link=f"{links}")
         LOG.debug("Link headers created")
         return link_headers
+
+
+class RESTAPIIntegrationHandler(RESTAPIHandler):
+    """Endpoints that use service integrations."""
+
+    def __init__(self, metax_handler: MetaxServiceHandler, datacite_handler: DataciteServiceHandler) -> None:
+        """Endpoints should have access to metax and datacite services."""
+        self.metax_handler = metax_handler
+        self.datacite_handler = datacite_handler
+
+    @staticmethod
+    async def get_user_external_id(request: web.Request) -> str:
+        """Get current user's external id.
+
+        :param request: current HTTP request made by the user
+        :returns: Current users external ID
+        """
+        session = await aiohttp_session.get_session(request)
+        current_user = session["user_info"]
+        user_op = UserOperator(request.app["db_client"])
+        user = await user_op.read_user(current_user)
+        metadata_provider_user = user["externalId"]
+        return metadata_provider_user
+
+    async def create_metax_dataset(self, request: Request, collection: str, object: Dict) -> str:
+        """Handle connection to Metax api handler for dataset creation.
+
+        Dataset or Study object is assigned with DOI
+        and it's data is sent to Metax api handler.
+        Object database entry is updated with metax ID returned by Metax service.
+
+        :param request: HTTP request with user session
+        :param collection: object's schema
+        :param object: metadata object
+        :returns: Metax ID
+        """
+        LOG.info("Creating draft dataset to Metax.")
+        if not self.metax_handler.enabled:
+            LOG.error("Metax integration is disabled.")
+            return ""
+        operator = Operator(request.app["db_client"])
+        new_info = {}
+        if "doi" in object:
+            new_info["doi"] = object["doi"]
+        external_id = await self.get_user_external_id(request)
+        metax_id = await self.metax_handler.post_dataset_as_draft(external_id, collection, object)
+        new_info["metaxIdentifier"] = metax_id
+        await operator.update_identifiers(collection, object["accessionId"], new_info)
+
+        return metax_id
+
+    async def create_draft_doi(self, collection: str) -> str:
+        """Create draft DOI for study and dataset.
+
+        The Draft DOI will be created only on POST and the data added to the
+        submission. Any update of this should not be possible.
+
+        :param collection: either study or dataset
+        :returns: Dict with DOI of the study or dataset as well as the types.
+        """
+        _doi_data = await self.datacite_handler.create_draft(prefix=collection)
+
+        LOG.debug(f"doi created with doi: {_doi_data['fullDOI']}")
+
+        return _doi_data["fullDOI"]
