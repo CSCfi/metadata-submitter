@@ -13,6 +13,7 @@ from .api.handlers.restapi import RESTAPIHandler
 from .api.handlers.static import StaticHandler, html_handler_factory
 from .api.handlers.submission import SubmissionAPIHandler
 from .api.handlers.object import ObjectAPIHandler
+from .api.handlers.rems_proxy import RemsAPIHandler
 from .api.handlers.xml_submission import XMLSubmissionAPIHandler
 from .api.handlers.template import TemplatesAPIHandler
 from .api.handlers.user import UserAPIHandler
@@ -20,8 +21,10 @@ from .api.health import HealthHandler
 from .api.middlewares import http_error_handler, check_session
 from .services.datacite_service_handler import DataciteServiceHandler
 from .services.metax_service_handler import MetaxServiceHandler
+from .services.rems_service_handler import RemsServiceHandler
 from .conf.conf import (
     aai_config,
+    REMS_ENABLED,
     create_db_client,
     frontend_static_files,
     swagger_static_path,
@@ -63,19 +66,27 @@ async def init(
 
     metax_handler = MetaxServiceHandler()
     datacite_handler = DataciteServiceHandler()
+    rems_handler = RemsServiceHandler()
 
-    async def close_http_clients(app: web.Application) -> None:
+    async def close_http_clients(_: web.Application) -> None:
         """Close http client session."""
         await metax_handler.http_client_close()
         await datacite_handler.http_client_close()
+        await rems_handler.http_client_close()
 
     server.on_shutdown.append(close_http_clients)
 
     _schema = RESTAPIHandler()
-    _object = ObjectAPIHandler(metax_handler=metax_handler, datacite_handler=datacite_handler)
-    _submission = SubmissionAPIHandler(metax_handler=metax_handler, datacite_handler=datacite_handler)
+    _object = ObjectAPIHandler(
+        metax_handler=metax_handler, datacite_handler=datacite_handler, rems_handler=rems_handler
+    )
+    _submission = SubmissionAPIHandler(
+        metax_handler=metax_handler, datacite_handler=datacite_handler, rems_handler=rems_handler
+    )
     _user = UserAPIHandler()
-    _xml_submission = XMLSubmissionAPIHandler(metax_handler=metax_handler, datacite_handler=datacite_handler)
+    _xml_submission = XMLSubmissionAPIHandler(
+        metax_handler=metax_handler, datacite_handler=datacite_handler, rems_handler=rems_handler
+    )
     _template = TemplatesAPIHandler()
     api_routes = [
         # retrieve schema and information about it
@@ -104,7 +115,7 @@ async def init(
         web.get("/submissions", _submission.get_submissions),
         web.post("/submissions", _submission.post_submission),
         web.get("/submissions/{submissionId}", _submission.get_submission),
-        web.put("/submissions/{submissionId}/doi", _submission.put_submission_doi),
+        web.put("/submissions/{submissionId}/doi", _submission.put_submission_path),
         web.patch("/submissions/{submissionId}", _submission.patch_submission),
         web.delete("/submissions/{submissionId}", _submission.delete_submission),
         # publish submissions
@@ -117,6 +128,16 @@ async def init(
         # validate
         web.post("/validate", _xml_submission.validate),
     ]
+    if REMS_ENABLED:
+        LOG.info("REMS is enabled, adding to list of api routes")
+        api_routes.append(
+            web.put("/submissions/{submissionId}/dac", _submission.put_submission_path),
+        )
+        _rems = RemsAPIHandler(
+            metax_handler=metax_handler, datacite_handler=datacite_handler, rems_handler=rems_handler
+        )
+        api_routes.append(web.get("/rems", _rems.get_workflows_licenses_from_rems))
+
     api.add_routes(api_routes)
     server.add_subapp(API_PREFIX, api)
     LOG.info("API configurations and routes loaded")

@@ -2,4 +2,5 @@ db: docker  run -v ${PWD}/scripts/init_mongo.js:/docker-entrypoint-initdb.d/init
 mockauth:   gunicorn --reload --worker-class aiohttp.GunicornUVLoopWebWorker --workers 1 --log-level debug --graceful-timeout 60 --timeout 120 --bind ${BACKEND_HOST}:8000              tests.integration.mock_auth:init
 mockdoi:    gunicorn --reload --worker-class aiohttp.GunicornUVLoopWebWorker --workers 1 --log-level debug --graceful-timeout 60 --timeout 120 --bind ${BACKEND_HOST}:8001              tests.integration.mock_doi_api:init
 mockmetax:  gunicorn --reload --worker-class aiohttp.GunicornUVLoopWebWorker --workers 1 --log-level debug --graceful-timeout 60 --timeout 120 --bind ${BACKEND_HOST}:8002              tests.integration.mock_metax_api:init
+mockrems:   gunicorn --reload --worker-class aiohttp.GunicornUVLoopWebWorker --workers 1 --log-level debug --graceful-timeout 60 --timeout 120 --bind ${BACKEND_HOST}:8003              tests.integration.mock_rems_api:init
 backend:    gunicorn --reload --worker-class aiohttp.GunicornUVLoopWebWorker --workers 1 --log-level debug --graceful-timeout 60 --timeout 120 --bind ${BACKEND_HOST}:${BACKEND_PORT}   metadata_backend.server:init

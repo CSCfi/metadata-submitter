@@ -810,7 +810,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
 
         await super().setUpAsync()
 
-        self._mock_prepare_doi = "metadata_backend.api.handlers.submission.SubmissionAPIHandler._prepare_doi_update"
+        self._mock_prepare_doi = "metadata_backend.api.handlers.submission.SubmissionAPIHandler._prepare_for_publishing"
 
         class_submissionoperator = "metadata_backend.api.handlers.submission.SubmissionOperator"
         self.patch_submissionoperator = patch(class_submissionoperator, **self.submissionoperator_config, spec=True)
@@ -973,9 +973,17 @@ class SubmissionHandlerTestCase(HandlersTestCase):
                     {"doi": "prefix/suffix-study", "metaxIdentifier": "metax_id"},
                     {"doi": "prefix/suffix-dataset", "metaxIdentifier": "metax_id"},
                 ],
+                [
+                    {
+                        "accession_id": "accId",
+                        "doi": "prefix/suffix-dataset",
+                        "description": "Dataset description",
+                        "localizations": {"en": "Dataset title"},
+                    }
+                ],
             ),
         ), patch(
-            "metadata_backend.services.datacite_service_handler.DataciteServiceHandler.set_state", return_value=None
+            "metadata_backend.services.datacite_service_handler.DataciteServiceHandler.publish", return_value=None
         ), patch(
             "metadata_backend.services.metax_service_handler.MetaxServiceHandler.update_dataset_with_doi_info",
             return_value=None,

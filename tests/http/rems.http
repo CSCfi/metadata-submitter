@@ -1,0 +1,113 @@
+# https://github.com/Huachao/vscode-restclient
+# https://jsonpath.com/
+
+
+@backend_url = http://localhost:5430
+# @auth_url = http://localhost:8000
+@rems_url = https://test-rems.sd.csc.fi/api
+# @rems_url = http://localhost:8003/api
+@rems_user_id = sd-submit-robot
+@rems_api_key = sd-submit-test-key
+
+@auth_email = mock_user@test.what
+
+@resid = {{resid_req.response.body.id}}
+@wfid = {{dac_req.response.body.$[0].id}}
+@orgid = {{dac_req.response.body.$[0].organization.organization/id}}
+@application_id = {{catalogue_req.response.body.id}}
+
+### Mock authentication
+GET {{auth_url}}/setmock
+    ?sub={{auth_email}}
+    &given=Mock
+    &family=Family
+
+###
+GET {{backend_url}}/aai
+
+### Get from REMS proxy
+GET {{backend_url}}/v1/rems
+    ?language=fi
+
+### Get workflows
+# @name dac_req
+GET {{rems_url}}/workflows
+    ?disabled=false
+    &archived=false
+x-rems-user-id: {{rems_user_id}}
+x-rems-api-key: {{rems_api_key}}
+
+### Get workflow
+# @name dac_req
+GET {{rems_url}}/workflows/1
+    ?disabled=false
+    &archived=false
+x-rems-user-id: {{rems_user_id}}
+x-rems-api-key: {{rems_api_key}}
+
+### Get licenses
+GET {{rems_url}}/licenses
+    ?disabled=false
+    &archived=false
+x-rems-user-id: {{rems_user_id}}
+x-rems-api-key: {{rems_api_key}}
+
+### Get license
+# @name dac_req
+GET {{rems_url}}/licenses/1
+    ?disabled=false
+    &archived=false
+x-rems-user-id: {{rems_user_id}}
+x-rems-api-key: {{rems_api_key}}
+
+### Create resource
+# @name resid_req
+POST {{rems_url}}/resources/create
+x-rems-user-id: {{rems_user_id}}
+x-rems-api-key: {{rems_api_key}}
+Content-Type: application/json
+
+{
+  "resid": "test-doi-here",
+  "organization": {
+    "organization/id": "another_org"
+  },
+  "licenses": [
+    1
+  ]
+}
+
+### Create catalogue item
+# @name catalogue_req
+POST {{rems_url}}/catalogue-items/create
+x-rems-user-id: {{rems_user_id}}
+x-rems-api-key: {{rems_api_key}}
+Content-Type: application/json
+
+{
+  "form": null,
+  "resid": {{resid}},
+  "wfid": {{wfid}},
+  "organization": {
+    "organization/id": "{{orgid}}"
+  },
+  "localizations": {
+    "fi": {
+      "title": "SD Testiaineisto 2",
+      "infourl": "http://example.fi"
+    },
+    "en": {
+      "title": "SD Test Dataset 2",
+      "infourl": "http://example.com"
+    }
+  },
+  "enabled": true,
+  "archived": false
+}
+
+
+### Get application - only with mock api
+GET {{rems_url}}/application
+    ?items=2
+x-rems-user-id: {{rems_user_id}}
+x-rems-api-key: {{rems_api_key}}

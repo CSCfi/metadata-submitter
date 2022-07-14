@@ -25,8 +25,8 @@ analysisdate
 analysislinks
 analysisref
 analysistype
-annotinfo
 annotationref
+annotinfo
 anonymized
 antibiogram
 api
@@ -78,6 +78,7 @@ bugfix
 bugfixes
 buildkit
 buildx
+catalogueitemid
 cdd
 cdna
 centername
@@ -251,7 +252,7 @@ github
 githubusercontent
 givenname
 gridion
-grossImage
+grossimage
 groupedbyschema
 gtr
 guaraní
@@ -272,7 +273,7 @@ html
 http
 httperror
 https
-HTTPSeeOther
+httpseeother
 identifiertype
 identitypython
 ido
@@ -443,6 +444,7 @@ ontologies
 openapi
 openid
 orcid
+organizationid
 orgtrack
 oromo
 oss
@@ -528,6 +530,7 @@ relativeorder
 remoteuseridentifier
 reqs
 resequencing
+resourceid
 resourcetypegeneral
 rnaseq
 rojopolis
@@ -604,7 +607,7 @@ studyref
 studytitle
 studytype
 subjectscheme
-subjectsSchema
+subjectsschema
 submissionid
 submissionslice
 submissiontype
@@ -678,7 +681,8 @@ wizardsteps
 wizardsubmissionslice
 wolof
 wordlist
-wsiImage
+workflowid
+wsiimage
 wxs
 xl
 xml

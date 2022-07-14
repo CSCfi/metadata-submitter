@@ -61,6 +61,16 @@ POST {{backend_url}}/v1/objects/study
 ### Get study
 GET {{backend_url}}/v1/objects/study/{{study_id}}
 
+### Add dataset to submission
+# @name dataset_id_req
+POST {{backend_url}}/v1/objects/dataset
+    ?submission={{submission_id}}
+
+< ../test_files/dataset/dataset.json
+
+### Get dataset
+GET {{backend_url}}/v1/objects/dataset/{{dataset_id}}
+
 ### Update DOI in submission
 PUT {{backend_url}}/v1/submissions/{{submission_id}}/doi
 
