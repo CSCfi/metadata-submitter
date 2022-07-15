@@ -469,7 +469,7 @@ class Operator(BaseOperator):
 
         :param schema_type: Schema type of the object to create.
         :param data: Metadata object
-        :returns: Tuple of Accession Id for object inserted to database and its title
+        :returns: Metadata object with some additional keys/values
         """
         accession_id = self._generate_accession_id()
         data["accessionId"] = accession_id
@@ -495,7 +495,7 @@ class Operator(BaseOperator):
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
         :param data: Metadata object
-        :returns: Tuple of Accession Id for object replaced in database and its title
+        :returns: Metadata object with some additional keys/values
         """
         forbidden_keys = {"accessionId", "publishDate", "dateCreated", "metaxIdentifier", "doi"}
         if any(i in data for i in forbidden_keys):
@@ -606,7 +606,7 @@ class XMLOperator(BaseOperator):
 
         :param schema_type: Schema type of the object to read.
         :param data: Original XML content
-        :returns: Tuple of Accession Id for object inserted to database and its title
+        :returns: List of metadata objects extracted from the XML content
         """
         db_client = self.db_service.db_client
         # remove `draft-` from schema type
@@ -635,7 +635,7 @@ class XMLOperator(BaseOperator):
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
         :param data: Original XML content
-        :returns: Accession Id for object inserted to database
+        :returns: Metadata object extracted from the XML content
         """
         db_client = self.db_service.db_client
         # remove `draft-` from schema type
