@@ -179,7 +179,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     async def fake_xmloperator_create_metadata_object(self, schema_type, content):
         """Fake create operation to return mocked accessionId."""
-        return {"accessionId": self.test_ega_string}
+        return [{"accessionId": self.test_ega_string}]
 
     async def fake_xmloperator_replace_metadata_object(self, schema_type, accession_id, content):
         """Fake replace operation to return mocked accessionId."""

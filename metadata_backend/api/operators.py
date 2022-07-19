@@ -39,7 +39,7 @@ class BaseOperator(ABC):
         self.db_service = DBService(db_name, db_client)
         self.content_type = content_type
 
-    async def create_metadata_object(self, schema_type: str, data: Union[Dict, str]) -> Dict:
+    async def create_metadata_object(self, schema_type: str, data: Union[Dict, str]) -> Union[Dict, List[dict]]:
         """Create new metadata object to database.
 
         Data formatting and addition step for JSON or XML must be implemented
@@ -47,13 +47,14 @@ class BaseOperator(ABC):
 
         :param schema_type: Schema type of the object to create.
         :param data: Data to be saved to database.
-        :returns: Tuple of Accession id for the object inserted to database and its title
+        :returns: Dict (or list of dicts) with accession id of the object inserted to database and its title
         """
-        data = await self._format_data_to_create_and_add_to_db(schema_type, data)
-        LOG.info(
-            f"Inserting object with schema {schema_type} to database succeeded with accession id: {data['accessionId']}"
-        )
-        return data
+        formatted_data = await self._format_data_to_create_and_add_to_db(schema_type, data)
+        data_list: List = formatted_data if isinstance(formatted_data, list) else [formatted_data]
+        for object in data_list:
+            _id = object["accessionId"]
+            LOG.info(f"Inserting object with schema {schema_type} to database succeeded with accession id: {_id}")
+        return formatted_data
 
     async def replace_metadata_object(self, schema_type: str, accession_id: str, data: Union[Dict, str]) -> Dict:
         """Replace metadata object from database.
@@ -252,7 +253,7 @@ class BaseOperator(ABC):
             raise web.HTTPNotFound(reason=reason)
 
     @abstractmethod
-    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: Any) -> Dict:
+    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: Any) -> Union[Dict, List[dict]]:
         """Format and add data to database.
 
         Must be implemented by subclass.
@@ -468,7 +469,7 @@ class Operator(BaseOperator):
 
         :param schema_type: Schema type of the object to create.
         :param data: Metadata object
-        :returns: Tuple of Accession Id for object inserted to database and its title
+        :returns: Metadata object with some additional keys/values
         """
         accession_id = self._generate_accession_id()
         data["accessionId"] = accession_id
@@ -494,7 +495,7 @@ class Operator(BaseOperator):
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
         :param data: Metadata object
-        :returns: Tuple of Accession Id for object replaced in database and its title
+        :returns: Metadata object with some additional keys/values
         """
         forbidden_keys = {"accessionId", "publishDate", "dateCreated", "metaxIdentifier", "doi"}
         if any(i in data for i in forbidden_keys):
@@ -597,7 +598,7 @@ class XMLOperator(BaseOperator):
         """
         super().__init__(mongo_database, "text/xml", db_client)
 
-    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: str) -> Dict:
+    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: str) -> List[dict]:
         """Format XML metadata object and add it to db.
 
         XML is validated, then parsed to JSON, which is added to database.
@@ -605,20 +606,25 @@ class XMLOperator(BaseOperator):
 
         :param schema_type: Schema type of the object to read.
         :param data: Original XML content
-        :returns: Tuple of Accession Id for object inserted to database and its title
+        :returns: List of metadata objects extracted from the XML content
         """
         db_client = self.db_service.db_client
         # remove `draft-` from schema type
         schema = schema_type[6:] if schema_type.startswith("draft") else schema_type
-        data_as_json = XMLToJSONParser().parse(schema, data)
-        data_with_id = await Operator(db_client)._format_data_to_create_and_add_to_db(schema_type, data_as_json)
-        LOG.debug(f"XMLOperator formatted data for xml-{schema_type} to add to DB")
+        parsed_data = XMLToJSONParser().parse(schema, data)
 
-        await self._insert_formatted_object_to_db(
-            f"xml-{schema_type}", {"accessionId": data_with_id["accessionId"], "content": data}
-        )
+        # Parser may return a list of objects and each object should be added separately
+        data_objects = parsed_data if isinstance(parsed_data, list) else [parsed_data]
+        added_data: List = []
+        for object in data_objects:
+            data_with_id = await Operator(db_client)._format_data_to_create_and_add_to_db(schema_type, object)
+            added_data.append(data_with_id)
+            LOG.debug(f"XMLOperator formatted data for xml-{schema_type} to add to DB")
+            await self._insert_formatted_object_to_db(
+                f"xml-{schema_type}", {"accessionId": data_with_id["accessionId"], "content": data}
+            )
 
-        return data_with_id
+        return added_data
 
     async def _format_data_to_replace_and_add_to_db(self, schema_type: str, accession_id: str, data: str) -> Dict:
         """Format XML metadata object and add it to db.
@@ -629,7 +635,7 @@ class XMLOperator(BaseOperator):
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
         :param data: Original XML content
-        :returns: Accession Id for object inserted to database
+        :returns: Metadata object extracted from the XML content
         """
         db_client = self.db_service.db_client
         # remove `draft-` from schema type
