@@ -1665,29 +1665,35 @@ components:
     Submission:
       type: object
       required:
-        - submissionId
-        - projectId
         - name
         - description
-        - published
-        - metadataObjects
-        - drafts
-        - doiInfo
-        - extraInfo
+        - projectId
       additionalProperties: false
       properties:
-        submissionId:
-          type: string
-          description: Submission id
         projectId:
           type: string
           description: Project ID this submission belongs to
+        submissionId:
+          type: string
+          description: Submission id
         name:
           type: string
           description: Submission name
+        text_name:
+          type: string
+          description: Searchable Submission Name, used for indexing
         description:
           type: string
           description: Submission description
+        dateCreated:
+          type: integer
+          description: Unix time stamp of creation, used for indexing
+        datePublished:
+          type: integer
+          description: Unix time stamp of publishing, used for indexing
+        lastModified:
+          type: integer
+          description: Unix time stamp of when objects in submission were last modified
         published:
           type: boolean
           description: If submission is published or not
@@ -1695,47 +1701,70 @@ components:
           $ref: "#/components/schemas/DoiInfo"
         extraInfo:
           type: object
-          required:
-            - identifier
-            - url
-            - resourceType
-            - publisher
+          additionalProperties: false
           properties:
-            identifier:
+            studyIdentifier:
               type: object
               description: DOI id generated according to DOI recommendations
               required:
-                - identifierType
+                - identifier
+                - url
               properties:
-                identifierType:
+                identifier:
+                  type: object
+                  description: identifier object
+                  required:
+                    - identifierType
+                    - doi
+                  properties:
+                    identifierType:
+                      type: string
+                      description: Type of identifier (= DOI)
+                    doi:
+                      type: string
+                      description: A persistent identifier for a resource
+                url:
                   type: string
-                  example: "DOI"
-                doi:
-                  type: string
-                  description: Character string of DOI handle
-                  example: "prefix/suffix"
-                id:
-                  type: string
-                  description: Display url for DOI id
-                  example: "https://doi.org/prefix/suffix"
-            url:
-              type: string
-              description: URL of the digital location of the object
+                  description: URL of the digital location of the object
+                types:
+                  type: object
+                  description: "Type info of the resource. Multiple types can be listed: ResourceTypeGeneral, schemaOrg etc."
+            datasetIdentifiers:
+              type: array
+              items:
+                type: object
+                required:
+                  - identifier
+                  - url
+                properties:
+                  identifier:
+                    type: object
+                    description: identifier object
+                    required:
+                      - identifierType
+                      - doi
+                    properties:
+                      identifierType:
+                        type: string
+                        description: Type of identifier (= DOI)
+                      doi:
+                        type: string
+                        description: A persistent identifier for a resource
+                  url:
+                    type: string
+                    description: URL of the digital location of the object
+                  types:
+                    type: object
+                    description: "Type info of the resource. Multiple types can be listed: ResourceTypeGeneral, schemaOrg etc."
             publisher:
               type: string
               description: Full name of publisher from Research Organization Registry
-            resourceType:
-              type: object
-              required:
-                - resourceTypeGeneral
-              properties:
-                resourceTypeGeneral:
-                  type: string
-                  description: Mandatory general type name
-                  example: "Dataset"
-                type:
-                  type: string
-                  description: Name of resource type
+            publicationYear:
+              type: integer
+              description: Publication Year
+            version:
+              type: string
+              description: Version number of the resource
         metadataObjects:
           type: array
           items:
@@ -1743,7 +1772,7 @@ components:
             required:
               - accessionId
               - schema
-            additionalProperties: false
+            uniqueItems: true
             properties:
               accessionId:
                 type: string
@@ -1759,7 +1788,7 @@ components:
                   submissionType:
                     type: string
                     description: Type of submission
-                    enum: ["XML", "Form"]
+                    enum: ["XML", "CSV", "Form"]
         drafts:
           type: array
           items:
@@ -1767,6 +1796,7 @@ components:
             required:
               - accessionId
               - schema
+            uniqueItems: true
             additionalProperties: false
             properties:
               accessionId:
@@ -1783,7 +1813,7 @@ components:
                   submissionType:
                     type: string
                     description: Type of submission
-                    enum: ["XML", "Form"]
+                    enum: ["XML", "CSV", "Form"]
     SubmissionList:
       type: object
       required:
@@ -1835,54 +1865,774 @@ components:
           type: string
           description: Custom generated ID for the user object.
     DoiInfo:
-      type: object
       required:
-        - creators
-        - titles
-        - subjects
+      - creators
+      - subjects
+      - keywords
+      description: Datacite DOI Registration Information
+      type: object
       properties:
         creators:
-          type: array
+          description: The main researcher(s) involved in producing the data, or the
+            author(s) of the publication.
           items:
-            type: object
+            additionalProperties: true
             properties:
-              name:
-                type: string
-                description: Full name
-                example: "Family name, First name"
-              nameType:
-                type: string
-                description: Type of name
-                example: "Personal"
-              givenName:
-                type: string
-                description: Official first name
-                example: "First name"
-              familyName:
-                type: string
-                description: Official Family name
-                example: "Family name"
-              nameIdentifiers:
-                type: array
-                items:
-                  type: object
               affiliation:
-                type: array
+                description: The organizational or institutional affiliation of the
+                  creator. Upon filling the form with the organization or institution
+                  suggestion will be made from Research Organization Registry (ROR)
+                  Community API.
                 items:
+                  properties:
+                    affiliationIdentifier:
+                      description: URI location based on the URI scheme of the name
+                        identifier this will be pre-filled based on https://ror.org/name.
+                      type: string
+                    affiliationIdentifierScheme:
+                      description: Identifier scheme name. This will default to ROR.
+                      type: string
+                    name:
+                      description: Name of the place of affiliation
+                      type: string
+                    schemeUri:
+                      description: Name identifier scheme. This will default to https://ror.org/.
+                      type: string
+                  description: Affiliation Details
                   type: object
-        subjects:
-          type: array
-          items:
+                type: array
+                uniqueItems: true
+              familyName:
+                description: Family Name
+                type: string
+              givenName:
+                description: Given Name
+                type: string
+              name:
+                description: This field will be constructed based from Given Name and
+                  Family Name.
+                type: string
+              nameIdentifiers:
+                description: Uniquely identifies the creator, according to various schemas,
+                  e.g. ORCID, ROR or ISNI. Use name identifier expressed as URL.
+                items:
+                  properties:
+                    nameIdentifier:
+                      description: URI location based on the URI scheme of the name
+                        identifier e.g. https://orcid.org/nameIdentifier.
+                      type: string
+                    nameIdentifierScheme:
+                      description: Identifier scheme name e.g. ORCID, ROR or ISNI.
+                      type: string
+                    schemeUri:
+                      description: Depending on the name identifier scheme e.g. https://isni.org/
+                        or https://orcid.org/ or https://ror.org/ or https://www.grid.ac/.
+                      format: uri
+                      type: string
+                  description: Creator Name Identifier
+                  type: object
+                type: array
+                uniqueItems: true
+            required:
+            - givenName
+            - familyName
+            - affiliation
+            description: Main researcher(s) involved with data or the author(s) of the publication.
             type: object
+          type: array
+          uniqueItems: true
+        subjects:
+          description: Subject, classification code, or key phrase describing the resources
+            specified by OECD Fields of Science and Technology (FOS)
+          items:
+            additionalProperties: true
             properties:
               subject:
+                enum:
+                - 'FOS: Agricultural biotechnology'
+                - 'FOS: Agricultural sciences'
+                - 'FOS: Agriculture, forestry, and fisheries'
+                - 'FOS: Animal and dairy science'
+                - 'FOS: Arts (arts, history of arts, performing arts, music)'
+                - 'FOS: Basic medicine'
+                - 'FOS: Biological sciences'
+                - 'FOS: Chemical engineering'
+                - 'FOS: Chemical sciences'
+                - 'FOS: Civil engineering'
+                - 'FOS: Clinical medicine'
+                - 'FOS: Computer and information sciences'
+                - 'FOS: Earth and related environmental sciences'
+                - 'FOS: Economics and business'
+                - 'FOS: Educational sciences'
+                - 'FOS: Electrical engineering, electronic engineering, information
+                  engineering'
+                - 'FOS: Engineering and technology'
+                - 'FOS: Environmental biotechnology'
+                - 'FOS: Environmental engineering'
+                - 'FOS: Health sciences'
+                - 'FOS: History and archaeology'
+                - 'FOS: Humanities'
+                - 'FOS: Industrial biotechnology'
+                - 'FOS: Languages and literature'
+                - 'FOS: Law'
+                - 'FOS: Materials engineering'
+                - 'FOS: Mathematics'
+                - 'FOS: Mechanical engineering'
+                - 'FOS: Media and communications'
+                - 'FOS: Medical and health sciences'
+                - 'FOS: Medical biotechnology'
+                - 'FOS: Medical engineering'
+                - 'FOS: Nano-technology'
+                - 'FOS: Natural sciences'
+                - 'FOS: Other agricultural sciences'
+                - 'FOS: Other engineering and technologies'
+                - 'FOS: Other humanities'
+                - 'FOS: Other medical sciences'
+                - 'FOS: Other natural sciences'
+                - 'FOS: Other social sciences'
+                - 'FOS: Philosophy, ethics and religion'
+                - 'FOS: Physical sciences'
+                - 'FOS: Political science'
+                - 'FOS: Psychology'
+                - 'FOS: Social and economic geography'
+                - 'FOS: Social sciences'
+                - 'FOS: Sociology'
+                - 'FOS: Veterinary science'
+                description: FOS identifier
                 type: string
-                description: FOS defined subject name
-                example: "FOS: field"
-              subjectScheme:
+            required:
+            - subject
+            description: Subjects
+            type: object
+          type: array
+          uniqueItems: true
+        keywords:
+          description: A list of keywords or tags describing the resources. It is recommended
+            to use a controlled vocabulary, ontology or classification when choosing
+            keywords. Multiple keywords can be added, separating them by comma.
+          type: string
+        contributors:
+          description: The person(s) responsible for contributing to the development
+            of the dataset.
+          items:
+            additionalProperties: true
+            properties:
+              affiliation:
+                description: The organizational or institutional affiliation of the
+                  creator. Upon filling the form with the organization or institution
+                  suggestion will be made from Research Organization Registry (ROR)
+                  Community API.
+                items:
+                  properties:
+                    affiliationIdentifier:
+                      description: URI location based on the URI scheme of the name
+                        identifier this will be pre-filled based on  https://ror.org/name.
+                      type: string
+                    affiliationIdentifierScheme:
+                      description: Identifier scheme name. This will default to ROR.
+                      type: string
+                    name:
+                      description: Name of the place of affiliation
+                      type: string
+                    schemeUri:
+                      description: Name identifier scheme. This will default to https://ror.org/.
+                      type: string
+                  description: Affiliation Details
+                  type: object
+                type: array
+                uniqueItems: true
+              contributorType:
+                enum:
+                - Contact Person
+                - Data Collector
+                - Data Curator
+                - Data Manager
+                - Distributor
+                - Editor
+                - Producer
+                - Project Leader
+                - Project Manager
+                - Project Member
+                - Related Person
+                - Research Group
+                - Researcher
+                - Rights Holder
+                - Sponsor
+                - Supervisor
+                - Work Package Leader
+                - Other
+                description: Type of contributor
                 type: string
-                description: Subject scheme name
-                example: "Fields of Science and Technology (FOS)"
+              familyName:
+                description: Family Name
+                type: string
+              givenName:
+                description: Given Name
+                type: string
+              name:
+                description: This field will be constructed based from Given Name and
+                  Family Name.
+                type: string
+              nameIdentifiers:
+                description: Uniquely identifies the contributor, according to various
+                  schemas, e.g. ORCID, ROR or ISNI. Use name identifier expressed as
+                  URL.
+                items:
+                  properties:
+                    nameIdentifier:
+                      description: URI location based on the URI scheme of the name
+                        identifier e.g. https://orcid.org/nameIdentifier .
+                      type: string
+                    nameIdentifierScheme:
+                      description: Identifier scheme name e.g. ORCID, ROR or ISNI .
+                      type: string
+                    schemeUri:
+                      description: Depending on the name identifier scheme e.g. https://isni.org/
+                        or https://orcid.org/ or https://ror.org/ or https://www.grid.ac/.
+                      format: uri
+                      type: string
+                  description: Contributor Name Identifier
+                  type: object
+                type: array
+                uniqueItems: true
+            required:
+            - givenName
+            - familyName
+            - contributorType
+            - affiliation
+            description: Contributor
+            type: object
+          type: array
+          uniqueItems: true
+        dates:
+          description: List of relevant dates to publication. The type of date can vary
+            and it is recommended to add information if appropriate to distinguish between
+            dates.
+          items:
+            additionalProperties: false
+            properties:
+              date:
+                description: A standard format for a date value.
+                type: string
+              dateInformation:
+                description: Specific information about the date, if appropriate.
+                type: string
+              dateType:
+                description: Relevance of the date for the resources being submitted.
+                enum:
+                - Accepted
+                - Available
+                - Collected
+                - Copyrighted
+                - Created
+                - Issued
+                - Submitted
+                - Updated
+                - Valid
+                - Withdrawn
+                - Other
+                type: string
+            required:
+            - date
+            - dateType
+            description: Date
+            type: object
+          type: array
+          uniqueItems: true
+        descriptions:
+          description: Additional information about the resources that does not fit
+            in any of the other categories, or general descriptions that are supplemental
+            to the descriptions added for Study or Datasets.
+          items:
+            additionalProperties: false
+            properties:
+              description:
+                description: description
+                type: string
+              descriptionType:
+                enum:
+                - Abstract
+                - Methods
+                - Series Information
+                - Table Of Contents
+                - Technical Info
+                - Other
+                description: Description Type
+                type: string
+              lang:
+                description: Language
+                type: string
+            description: description
+            type: object
+          type: array
+          uniqueItems: true
+        geoLocations:
+          description: Spatial region or named place where the data was gathered or
+            where the resources are focused.
+          items:
+            additionalProperties: false
+            properties:
+              geoLocationBox:
+                description: The spatial limits of a box. A box is defined by two geographic
+                  points. Left low corner and right upper corner. Each point is defined
+                  by its longitude and latitude.
+                properties:
+                  eastBoundLongitude:
+                    description: Longitude coordinate of east bound.
+                    type: string
+                  northBoundLatitude:
+                    description: Latitude coordinate of north bound.
+                    type: string
+                  southBoundLatitude:
+                    description: Latitude coordinate of south bound.
+                    type: string
+                  westBoundLongitude:
+                    description: Longitude coordinate of west bound.
+                    type: string
+                type: object
+              geoLocationPlace:
+                description: Geolocation Place
+                type: string
+              geoLocationPoint:
+                additionalProperties: false
+                description: A point location in space. A point contains a single longitude-latitude
+                  pair.
+                properties:
+                  pointLatitude:
+                    description: Latitude coordinate
+                    type: string
+                  pointLongitude:
+                    description: Longitude coordinate
+                    type: string
+                type: object
+              geoLocationPolygon:
+                items:
+                  properties:
+                    pointLatitude:
+                      description: Latitude coordinate
+                      type: string
+                    pointLongitude:
+                      description: Longitude coordinate
+                      type: string
+                  description: Polygon point object
+                  type: object
+                description: A drawn polygon area, defined by a set of polygon points
+                type: array
+            description: GeoLocation
+            type: object
+          type: array
+          uniqueItems: true
+        language:
+          description: Primary language of the submitted resources.
+          enum:
+          - Abkhaz
+          - Afar
+          - Afrikaans
+          - Akan
+          - Albanian
+          - Amharic
+          - Arabic
+          - Aragonese
+          - Armenian
+          - Assamese
+          - Avaric
+          - Avestan
+          - Aymara
+          - Azerbaijani
+          - Bambara
+          - Bashkir
+          - Basque
+          - Belarusian
+          - Bengali
+          - Bihari
+          - Bislama
+          - Bosnian
+          - Breton
+          - Bulgarian
+          - Burmese
+          - Catalan
+          - Chamorro
+          - Chechen
+          - Chichewa
+          - Chinese
+          - Chuvash
+          - Cornish
+          - Corsican
+          - Cree
+          - Croatian
+          - Czech
+          - Danish
+          - Divehi
+          - Dutch
+          - Dzongkha
+          - English
+          - Esperanto
+          - Estonian
+          - Ewe
+          - Faroese
+          - Fijian
+          - Finnish
+          - French
+          - Fula
+          - Galician
+          - Ganda
+          - Georgian
+          - German
+          - Greek
+          - "Guaran\xED"
+          - Gujarati
+          - Haitian
+          - Hausa
+          - Hebrew
+          - Herero
+          - Hindi
+          - Hiri Motu
+          - Hungarian
+          - Icelandic
+          - Ido
+          - Igbo
+          - Indonesian
+          - Interlingua
+          - Interlingue
+          - Inuktitut
+          - Inupiaq
+          - Irish
+          - Italian
+          - Japanese
+          - Javanese
+          - Kalaallisut
+          - Kannada
+          - Kanuri
+          - Kashmiri
+          - Kazakh
+          - Khmer
+          - Kikuyu
+          - Kinyarwanda
+          - Kirundi
+          - Komi
+          - Kongo
+          - Korean
+          - Kurdish
+          - Kwanyama
+          - Kyrgyz
+          - Lao
+          - Latin
+          - Latvian
+          - Limburgish
+          - Lingala
+          - Lithuanian
+          - Luba-Katanga
+          - Luxembourgish
+          - Macedonian
+          - Malagasy
+          - Malay
+          - Malayalam
+          - Maltese
+          - Manx
+          - "M\u0101ori"
+          - Marathi
+          - Marshallese
+          - Mongolian
+          - Nauru
+          - Navajo
+          - Ndonga
+          - Nepali
+          - Northern Ndebele
+          - Northern Sami
+          - "Norwegian Bokm\xE5l"
+          - Norwegian Nynorsk
+          - Norwegian
+          - Nuosu
+          - Occitan
+          - Ojibwe
+          - Old Church Slavonic
+          - Oriya
+          - Oromo
+          - Ossetian
+          - "P\u0101li"
+          - Panjabi
+          - Pashto
+          - Persian
+          - Polish
+          - Portuguese
+          - Quechua
+          - Romanian
+          - Romansh
+          - Russian
+          - Samoan
+          - Sango
+          - Sanskrit
+          - Sardinian
+          - Scottish Gaelic
+          - Serbian
+          - Shona
+          - Sindhi
+          - Sinhala
+          - Slovak
+          - Slovenian
+          - Somali
+          - Southern Ndebele
+          - Southern Sotho
+          - Spanish
+          - Sundanese
+          - Swahili
+          - Swati
+          - Swedish
+          - Tagalog
+          - Tahitian
+          - Tajik
+          - Tamil
+          - Tatar
+          - Telugu
+          - Thai
+          - Tibetan
+          - Tigrinya
+          - Tonga
+          - Tsonga
+          - Tswana
+          - Turkish
+          - Turkmen
+          - Twi
+          - Ukrainian
+          - Urdu
+          - Uyghur
+          - Uzbek
+          - Venda
+          - Vietnamese
+          - "Volap\xFCk"
+          - Walloon
+          - Welsh
+          - Western Frisian
+          - Wolof
+          - Xhosa
+          - Yiddish
+          - Yoruba
+          - Zhuang
+          - Zulu
+          type: string
+        relatedIdentifiers:
+          description: Information about a resource related to the one being registered,
+            primarily used to provide series information or a text citation where the
+            related resource does not have an identifier. It is also optional to provide
+            such an identifier.
+          items:
+            additionalProperties: false
+            properties:
+              relatedIdentifier:
+                description: These must be globally unique identifiers and correspond
+                  to the type selected. e.g. 10.2022/example.78m9865 for DOI identifier
+                  Type
+                type: string
+              relatedIdentifierType:
+                enum:
+                - ARK
+                - arXiv
+                - bibcode
+                - DOI
+                - EAN13
+                - EISSN
+                - Handle
+                - IGSN
+                - ISBN
+                - ISSN
+                - ISTC
+                - LISSN
+                - LSID
+                - PMID
+                - PURL
+                - UPC
+                - URL
+                - URN
+                - w3id
+                description: Identifier Type
+                type: string
+              relatedMetadataScheme:
+                description: 'To be used only with this relation pair: (Has Metadata/Is
+                  Metadata For). Example DDI-L'
+                type: string
+              relationType:
+                enum:
+                - Cites
+                - Is Cited By
+                - Compiles
+                - Is Compiled By
+                - Continues
+                - Is Continued By
+                - Describes
+                - Is Described By
+                - Documents
+                - Is Documented By
+                - Is Derived From
+                - Is Source Of
+                - Has Metadata
+                - Is Metadata For
+                - Has Part
+                - Is Part Of
+                - Is Supplemented By
+                - Is Supplement To
+                - Obsoletes
+                - Is Obsoleted By
+                - References
+                - Is Referenced By
+                - Requires
+                - Is Required By
+                - Reviews
+                - Is Reviewed By
+                - Has Version
+                - Is Version Of
+                - Is New version Of
+                - Is Previous Version Of
+                - Is Published In
+                - Is Variant Form Of
+                - Is Original Form Of
+                - Is Identical To
+                description: Relationship Type
+                type: string
+              resourceTypeGeneral:
+                enum:
+                - Audiovisual
+                - Book
+                - Book Chapter
+                - Collection
+                - Computational Notebook
+                - Conference Paper
+                - Conference Proceeding
+                - Data Paper
+                - Dataset
+                - Dissertation
+                - Event
+                - Image
+                - Interactive Resource
+                - Journal
+                - Journal Article
+                - Model
+                - Output Management Plan
+                - Peer Review
+                - Physical Object
+                - Preprint
+                - Report
+                - Service
+                - Software
+                - Sound
+                - Standard
+                - Text
+                - Workflow
+                - Other
+                description: Resource Type
+                type: string
+              schemeType:
+                description: 'To be used only with this relation pair: (Has Metadata/Is
+                  Metadata For). Examples: XSD, DDT, Turtle'
+                type: string
+              schemeUri:
+                description: 'To be used only with this relation pair: (Has Metadata/Is
+                  Metadata For). Example: http://www.ddialliance.org/Specification/DDI-Lifecycle/3.1/XMLSchema/instance.xsd'
+                type: string
+            required:
+            - relatedIdentifier
+            - relatedIdentifierType
+            - relationType
+            description: Identifier of related resource
+            type: object
+          type: array
+          uniqueItems: true
+        alternateIdentifiers:
+          description: An identifier or identifiers other than the primary or related
+            identifier applied to the resources being registered. EGA identifier(s)
+            obtained, that can be used as an alternative to the current resources.
+          items:
+            additionalProperties: false
+            properties:
+              alternateIdentifier:
+                description: Alternate Identifier
+                type: string
+              alternateIdentifierType:
+                enum:
+                - ARK
+                - arXiv
+                - bibcode
+                - DOI
+                - EAN13
+                - EISSN
+                - Handle
+                - IGSN
+                - ISBN
+                - ISSN
+                - ISTC
+                - LISSN
+                - LSID
+                - PMID
+                - PURL
+                - UPC
+                - URL
+                - URN
+                - w3id
+                description: Alternate Identifier Type
+                type: string
+            required:
+            - alternateIdentifier
+            - alternateIdentifierType
+            description: Identifier(s) other than the primary identifier of the resources
+            type: object
+          type: array
+          uniqueItems: true
+        sizes:
+          description: 'Size (e.g., bytes, pages, inches, etc.) or duration (extent),
+            e.g., hours, minutes, days, etc., of a resources. Examples: ''15 pages'',
+            ''6 MB'', ''45 minutes''.'
+          items:
+            description: Size
+            type: string
+          type: array
+        formats:
+          description: Use file extension or MIME type where possible, e.g., PDF, XML,
+            MPG or application/pdf, text/xml, video/mpeg. We will pre-fill some of them
+            based on what was filled in metadata.
+          items:
+            description: Format
+            type: string
+          type: array
+        fundingReferences:
+          description: It is recommended to supply funding information when financial
+            support has been received. The funder will be identified by their Research
+            Organization Registry (ROR).
+          items:
+            additionalProperties: false
+            properties:
+              funderName:
+                description: Funder Name
+                type: string
+              funderIdentifier:
+                description: Unique identifier for funding entity
+                type: string
+              funderIdentifierType:
+                description: The type of funder identifier, one of Crossref Funder ID,
+                  GRID, ISNI, or ROR.
+                enum:
+                - Crossref Funder ID
+                - GRID
+                - ISNI
+                - ROR
+                - Other
+                type: string
+              awardTitle:
+                description: The human readable title of the award.
+                type: string
+              awardNumber:
+                description: The code assigned by the funder to a sponsored award.
+                type: string
+              awardUri:
+                description: The URI leading to a page provided by the funder for more
+                  information about the award (grant).
+                type: string
+            required:
+            - funderName
+            - funderIdentifier
+            - funderIdentifierType
+            description: Information about financial support for producing the resources
+            type: object
+          type: array
+          uniqueItems: true
     DAC:
       type: object
       required:

@@ -97,7 +97,7 @@
                                         },
                                         "affiliationIdentifier": {
                                             "type": "string",
-                                            "description": "URI location based on the URI scheme of the name identifier this will be pre-filled based on  https://ror.org/name.",
+                                            "description": "URI location based on the URI scheme of the name identifier this will be pre-filled based on https://ror.org/name.",
                                             "title": "Location of affiliation identifier"
                                         },
                                         "affiliationIdentifierScheme": {
@@ -125,12 +125,12 @@
                                         },
                                         "nameIdentifier": {
                                             "type": "string",
-                                            "description": "URI location based on the URI scheme of the name identifier e.g. https://orcid.org/nameIdentifier .",
+                                            "description": "URI location based on the URI scheme of the name identifier e.g. https://orcid.org/nameIdentifier.",
                                             "title": "URI (location) of name identifier. "
                                         },
                                         "nameIdentifierScheme": {
                                             "type": "string",
-                                            "description": "Identifier scheme name e.g. ORCID, ROR or ISNI .",
+                                            "description": "Identifier scheme name e.g. ORCID, ROR or ISNI.",
                                             "title": "Name of identifier scheme."
                                         }
                                     }
