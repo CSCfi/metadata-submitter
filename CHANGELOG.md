@@ -39,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Recreate DB before integration tests run and cleanup after integration tests have run #448
 - Make using of discovery service (METAX) optional #467
 - Refactor api handlers to share a single instance of service handlers
+- Refactor metadata creation methods to parse and add separate metadata objects to db from a single XML file #525
 
 ### Removed
 

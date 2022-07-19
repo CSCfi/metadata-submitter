@@ -307,7 +307,7 @@ class TestOperators(IsolatedAsyncioTestCase):
             with patch("metadata_backend.api.operators.XMLToJSONParser"):
                 data = await operator.create_metadata_object("study", "<MOCK_ELEM></MOCK_ELEM>")
         operator.db_service.create.assert_called_once()
-        self.assertEqual(data["accessionId"], self.accession_id)
+        self.assertEqual(data[0]["accessionId"], self.accession_id)
 
     async def test_correct_data_is_set_to_json_when_creating(self):
         """Test operator creates object and adds necessary info."""
@@ -428,7 +428,7 @@ class TestOperators(IsolatedAsyncioTestCase):
                     m_insert.assert_called_once_with(
                         "xml-study", {"accessionId": self.accession_id, "content": xml_data}
                     )
-                    self.assertEqual(acc["accessionId"], self.accession_id)
+                    self.assertEqual(acc[0]["accessionId"], self.accession_id)
 
     async def test_correct_data_is_set_to_xml_when_replacing(self):
         """Test XMLoperator replaces object and adds necessary info."""

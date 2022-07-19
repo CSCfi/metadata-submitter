@@ -101,8 +101,29 @@ class ParserTestCase(unittest.TestCase):
         self.assertEqual(2, len(dataset_json["datasetType"]))
         self.assertEqual(8, len(dataset_json["runRef"]))
 
+    def test_policy_is_parsed(self):
+        """Test that policy is parsed correctly.
+
+        Tests for some values that converted JSON should have.
+        """
+        policy_xml = self.load_file_to_text("policy", "policy.xml")
+        policy_json = self.xml_parser.parse("policy", policy_xml)
+        self.assertIn("accessionId", policy_json["dacRef"])
+        self.assertEqual(2, len(policy_json["dataUses"]))
+
+    def test_multi_policy_is_parsed(self):
+        """Test that xml with 2 policies is parsed correctly.
+
+        Tests for some values that converted JSON should have.
+        """
+        policy_xml = self.load_file_to_text("policy", "policy2.xml")
+        policy_json = self.xml_parser.parse("policy", policy_xml)
+        self.assertEqual(2, len(policy_json))
+        self.assertEqual("asgsasg", policy_json[0]["alias"])
+        self.assertEqual("asgsasgaSas", policy_json[1]["alias"])
+
     def test_image_is_parsed(self):
-        """Test that dataset is parsed correctly.
+        """Test that BP image is parsed correctly.
 
         Tests for some values that converted JSON should have.
         """
@@ -112,6 +133,18 @@ class ParserTestCase(unittest.TestCase):
         self.assertEqual(6, len(image_json["attributes"]["attribute"]))
         self.assertEqual(4, len(image_json["attributes"]["attributeSet"]))
         self.assertEqual("asdf", image_json["files"][0]["filename"])
+
+    def test_multi_image_is_parsed(self):
+        """Test that multiple BP images are parsed correctly.
+
+        Tests for some values that converted JSON should have.
+        """
+        image_xml = self.load_file_to_text("image", "images_multi.xml")
+        image_json = self.xml_parser.parse("image", image_xml)
+        self.assertEqual(2, len(image_json))
+        self.assertEqual("Image_tSQsAkvutz", image_json[0]["alias"])
+        self.assertEqual("Image_ReLyCtLAWo", image_json[1]["alias"])
+        self.assertEqual("asdf", image_json[1]["files"][0]["filename"])
 
     def test_bp_dataset_is_parsed(self):
         """Test that BP dataset is parsed correctly.

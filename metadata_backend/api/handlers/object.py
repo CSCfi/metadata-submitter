@@ -155,29 +155,33 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         # Add a new metadata object or multiple objects if multiple were extracted
         url = f"{req.scheme}://{req.host}{req.path}"
         data: Union[List[Dict[str, str]], Dict[str, str]]
+        objects: List[Tuple[Dict[str, Any], str]] = []
         if isinstance(content, List):
             LOG.debug(f"Inserting multiple objects for {schema_type}.")
-            objects: List[Tuple[Dict[str, Any], str]] = []
             for item in content:
                 json_data = await operator.create_metadata_object(collection, item[0])
                 filename = item[2]
-                objects.append((json_data, filename))
-                LOG.info(
-                    f"POST object with accesssion ID {json_data['accessionId']} in schema {collection} was successful."
-                )
-
-            # we format like this to make it consistent with the response from /submit endpoint
-            data = [dict({"accessionId": item["accessionId"]}, **{"schema": schema_type}) for item, _ in objects]
-            # we take the first result if we get multiple
-            location_headers = CIMultiDict(Location=f"{url}/{data[0]['accessionId']}")
+                listed_json = json_data if isinstance(json_data, list) else [json_data]
+                for object in listed_json:
+                    objects.append((object, filename))
+                    LOG.info(
+                        f"POST object with accesssion ID {object['accessionId']} in schema {collection} was successful."
+                    )
         else:
             json_data = await operator.create_metadata_object(collection, content)
-            data = {"accessionId": json_data["accessionId"]}
-            location_headers = CIMultiDict(Location=f"{url}/{json_data['accessionId']}")
-            LOG.info(
-                f"POST object with accesssion ID {json_data['accessionId']} in schema {collection} was successful."
-            )
-            objects = [(json_data, filename)]
+            listed_json = json_data if isinstance(json_data, list) else [json_data]
+            for object in listed_json:
+                objects.append((object, filename))
+                LOG.info(
+                    f"POST object with accesssion ID {object['accessionId']} in schema {collection} was successful."
+                )
+
+        # Format like this to make it consistent with the response from /submit endpoint
+        data = [dict({"accessionId": item["accessionId"]}, **{"schema": schema_type}) for item, _ in objects]
+        # Take the first result if we get multiple
+        location_headers = CIMultiDict(Location=f"{url}/{data[0]['accessionId']}")
+        # Return data as single object if only one was extracted
+        data = data[0] if len(data) == 1 else data
 
         # Gathering data for object to be added to submission
         patch = self._prepare_submission_patch_new_object(collection, objects, cont_type)
