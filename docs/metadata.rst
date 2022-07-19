@@ -34,18 +34,18 @@ Some of the relationships are illustrated in the Metadata ENA Model figure, howe
 
 - ``Study`` - usually other objects point to it, as it represents one of the main objects of a ``Submission``;
 - ``Analysis`` - contains references to:
-    
+
     - parent ``Study`` (not mandatory);
     - zero or more references to objects of type: ``Sample``, ``Experiment``, ``Run``;
-  
+
 - ``Experiment`` - contains references to exactly one parent ``Study``. It can also contain a reference to ``Sample`` as an individual or a Pool;
 - ``Run`` - contains reference to exactly one parent ``Experiment``;
 - ``Policy`` - contains reference to exactly one parent ``DAC``;
 - ``Dataset`` - contains references to:
-    
+
     - exactly one ``Policy``;
     - zero or more references to objects of type: ``Analysis`` and ``Run``.
-  
+
 
 EGA/ENA Metadata submission Guides
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

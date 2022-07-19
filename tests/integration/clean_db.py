@@ -10,7 +10,6 @@ import os
 
 from mongo import Mongo
 
-
 # === Global vars ===
 DATABASE = os.getenv("MONGO_DATABASE", "default")
 AUTHDB = os.getenv("MONGO_AUTHDB", "admin")

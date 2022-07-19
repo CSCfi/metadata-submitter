@@ -6,6 +6,7 @@ black
 certifi
 flake8
 honcho  # Runs Procfile
+isort
 mypy
 pip-tools  # pip depedencies management
 pre-commit

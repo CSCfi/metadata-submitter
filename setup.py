@@ -25,7 +25,7 @@ setup(
     author=__author__,
     classifiers=["License :: OSI Approved :: MIT License"],
     # Instead of listing each package manually, we can use find_packages() to
-    # automatically discover all packages and subpackages.
+    # automatically discover all packages and sub-packages.
     packages=find_packages(exclude=["tests"]),
     install_requires=requirements,
     extras_require={

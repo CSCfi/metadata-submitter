@@ -9,7 +9,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         python-version: [3.8]
-      
+
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -26,6 +26,8 @@ jobs:
       run: tox -e black
     - name: Flake8 syntax check
       run: tox -e flake8
+    - name: isort check
+      run: tox -e isort
     - name: Type hints check
       run: tox -e mypy
     - name: Run bandit static code analysis

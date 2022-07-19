@@ -4,9 +4,9 @@ cryptography
 gunicorn
 jsonschema
 motor
+oidcrp
 python-dateutil
 requests
+ujson
 uvloop
 xmlschema
-ujson
-oidcrp

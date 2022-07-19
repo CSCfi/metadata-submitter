@@ -2,14 +2,10 @@
 
 It provides a http client with optional basic auth, and requests that retry automatically and come with error handling
 """
-from typing import Any, Union, Optional
+from typing import Any, Optional, Union
 
 from aiohttp import BasicAuth, ClientSession, ClientTimeout
-from aiohttp.web import (
-    HTTPError,
-    HTTPGatewayTimeout,
-    HTTPInternalServerError,
-)
+from aiohttp.web import HTTPError, HTTPGatewayTimeout, HTTPInternalServerError
 from yarl import URL
 
 from ..helpers.logger import LOG
@@ -121,7 +117,6 @@ class ServiceHandler:
         :param timeout: Request timeout
         :returns: Response body parsed as JSON
         """
-
         if not self.enabled:
             reason = f"{self.service_name} is disabled, yet attempted to '{method}' '{url}' path '{path}'"
             LOG.error(reason)

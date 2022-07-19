@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from aiohttp import web
 from aiohttp.test_utils import AioHTTPTestCase
+
 from metadata_backend.server import init, main
 
 

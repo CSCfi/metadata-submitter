@@ -93,4 +93,3 @@ jobs:
 
       - name: Verify that we do not get a 404 when we ask for nonexistant path (TLS)
         run: curl -s -4 --head --cacert ./config/cacert https://localhost:5430/notfound.ico | head -1 | grep -q -v -F ' 404 '
-

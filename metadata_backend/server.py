@@ -1,38 +1,38 @@
 """Functions to launch backend server."""
 
 import asyncio
-
-import uvloop
 import base64
+from typing import Any, List
+
+import aiohttp_session
+import aiohttp_session.cookie_storage
+import uvloop
 from aiohttp import web
 from cryptography.fernet import Fernet
-from typing import List, Any
 
 from .api.auth import AccessHandler
+from .api.handlers.object import ObjectAPIHandler
+from .api.handlers.rems_proxy import RemsAPIHandler
 from .api.handlers.restapi import RESTAPIHandler
 from .api.handlers.static import StaticHandler, html_handler_factory
 from .api.handlers.submission import SubmissionAPIHandler
-from .api.handlers.object import ObjectAPIHandler
-from .api.handlers.rems_proxy import RemsAPIHandler
-from .api.handlers.xml_submission import XMLSubmissionAPIHandler
 from .api.handlers.template import TemplatesAPIHandler
 from .api.handlers.user import UserAPIHandler
+from .api.handlers.xml_submission import XMLSubmissionAPIHandler
 from .api.health import HealthHandler
-from .api.middlewares import http_error_handler, check_session
-from .services.datacite_service_handler import DataciteServiceHandler
-from .services.metax_service_handler import MetaxServiceHandler
-from .services.rems_service_handler import RemsServiceHandler
+from .api.middlewares import check_session, http_error_handler
 from .conf.conf import (
-    aai_config,
+    API_PREFIX,
     REMS_ENABLED,
+    aai_config,
     create_db_client,
     frontend_static_files,
     swagger_static_path,
-    API_PREFIX,
 )
 from .helpers.logger import LOG
-import aiohttp_session
-import aiohttp_session.cookie_storage
+from .services.datacite_service_handler import DataciteServiceHandler
+from .services.metax_service_handler import MetaxServiceHandler
+from .services.rems_service_handler import RemsServiceHandler
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 

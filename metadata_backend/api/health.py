@@ -1,15 +1,15 @@
 """Handle health check endpoint."""
-import ujson
 import time
-from typing import Dict, Union, Any
+from typing import Any, Dict, Union
 
+import ujson
 from aiohttp import web
 from aiohttp.web import Request, Response
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import ConnectionFailure
 
-from ..helpers.logger import LOG
 from ..conf.conf import url
+from ..helpers.logger import LOG
 
 
 class HealthHandler:

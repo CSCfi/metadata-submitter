@@ -1,11 +1,11 @@
 """Utility classes for validating XML or JSON files."""
 
-import ujson
 import re
 from io import StringIO
 from typing import Any, Dict, cast
 from urllib.error import URLError
 
+import ujson
 from aiohttp import web
 from jsonschema import Draft7Validator, validators
 from jsonschema.exceptions import ValidationError

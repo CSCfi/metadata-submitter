@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Script for fetching references for mapping metadata for Metax integration."""
-import logging
 import json
+import logging
 
 import requests
 
@@ -9,7 +9,7 @@ log = logging.getLogger("metax")
 log.setLevel(logging.DEBUG)
 
 # Create helper dictionaries for mapping metadata to Metax model
-# Resources are fetched from external uris and parsed for submitter use in metax_mapper class
+# Resources are fetched from external URI and parsed for submitter use in metax_mapper class
 
 # parsing codes for mapping identifier types
 metax_ref = {"identifier_types": {}, "languages": {}}
@@ -23,8 +23,8 @@ for code in codes_json:
 
 
 # parsing ISO 639-1, ISO 639-2 and ISO 639-3 format languages to build mapper
-# for submitter used language descriptions as enums.
-# Metax uses ISO 639-3 system which are 3-letter codes with uris as identifiers.
+# for submitter used language descriptions as ENUM.
+# Metax uses ISO 639-3 system which are 3-letter codes with URI as identifiers.
 
 ISO_langs = {}
 
@@ -43,7 +43,7 @@ for url in lexovo_urls:
     ISO_langs.update(lexovo_dict)
 
 
-# parsing languages and their subtags
+# parsing languages and their sub-tags
 iana_url = "https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry"
 lang_text = requests.get(iana_url).text
 lang_list = [lang.split("\n") for lang in lang_text.split("\n%%\n")]

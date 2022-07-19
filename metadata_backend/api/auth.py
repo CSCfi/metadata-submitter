@@ -80,7 +80,6 @@ class AccessHandler:
         :param req: A HTTP request instance with callback parameters
         :returns: HTTPSeeOther redirect to home page
         """
-
         # Response from AAI must have the query params `state` and `code`
         if "state" in req.query and "code" in req.query:
             LOG.debug("AAI response contained the correct params.")

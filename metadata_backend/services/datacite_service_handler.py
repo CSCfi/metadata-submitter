@@ -13,9 +13,9 @@ import ujson
 from aiohttp import BasicAuth, ClientTimeout
 from yarl import URL
 
-from .service_handler import ServiceHandler
-from ..helpers.logger import LOG
 from ..conf.conf import doi_config
+from ..helpers.logger import LOG
+from .service_handler import ServiceHandler
 
 
 class DataciteServiceHandler(ServiceHandler):

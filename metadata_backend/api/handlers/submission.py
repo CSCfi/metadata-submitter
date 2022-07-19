@@ -2,7 +2,7 @@
 from datetime import date, datetime
 from distutils.util import strtobool
 from math import ceil
-from typing import Dict, Tuple, Union, List
+from typing import Dict, List, Tuple, Union
 
 import aiohttp_session
 import ujson
@@ -96,7 +96,6 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         :param general_info: General information that is captured in front-end and set in `doiInfo` key
         :returns: Dataset Object ready to publish to Datacite
         """
-
         dataset = {
             "id": dataset_data["doi"],
             "type": "dois",
@@ -175,7 +174,6 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         :param submission: Submission data
         :returns: Tuple with the Study and list of Datasets and list of identifiers for publishing to Metax
         """
-
         metax_ids: List[dict] = []
         datacite_study = {}
         datacite_datasets: List[dict] = []

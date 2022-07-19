@@ -211,7 +211,7 @@
                             <xs:annotation>
                               <xs:documentation>
                                     Accession or refname of the object that is made public.
-                                    If not specified then all objects in the submission will 
+                                    If not specified then all objects in the submission will
                                     made public.
                           </xs:documentation>
                             </xs:annotation>
@@ -297,7 +297,7 @@
           <xs:element name="SUBMISSION_ATTRIBUTES" minOccurs="0" maxOccurs="1">
             <xs:annotation>
               <xs:documentation>
-            Archive assigned properties and attributes of a SUBMISSION.  
+            Archive assigned properties and attributes of a SUBMISSION.
           </xs:documentation>
             </xs:annotation>
             <xs:complexType>
