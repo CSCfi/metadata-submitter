@@ -16,9 +16,9 @@ from typing import Dict, List
 from aiohttp import web
 from yarl import URL
 
-from .service_handler import ServiceHandler
-from ..conf.conf import rems_config, REMS_ENABLED
+from ..conf.conf import REMS_ENABLED, rems_config
 from ..helpers.logger import LOG
+from .service_handler import ServiceHandler
 
 
 class RemsServiceHandler(ServiceHandler):

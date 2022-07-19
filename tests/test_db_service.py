@@ -1,14 +1,15 @@
 """Test db_services."""
-from unittest.mock import MagicMock, patch, AsyncMock
-
 from unittest import IsolatedAsyncioTestCase
+from unittest.mock import AsyncMock, MagicMock, patch
+
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorCursor
+from pymongo import UpdateOne
 from pymongo.errors import AutoReconnect, ConnectionFailure
 from pymongo.results import DeleteResult, InsertOneResult, UpdateResult
 
 from metadata_backend.database.db_service import DBService
-from pymongo import UpdateOne
+
 from .test_operators import AsyncIterator
 
 

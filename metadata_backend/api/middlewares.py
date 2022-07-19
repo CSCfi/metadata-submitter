@@ -1,14 +1,14 @@
 """Middleware methods for server."""
-import ujson
-from http import HTTPStatus
-import aiohttp_session
 import time
+from http import HTTPStatus
 
+import aiohttp_session
+import ujson
 from aiohttp import web
 from yarl import URL
 
-from ..helpers.logger import LOG
 from ..conf.conf import OIDC_ENABLED
+from ..helpers.logger import LOG
 
 HTTP_ERROR_MESSAGE = "HTTP %r request to %r raised an HTTP %d exception."
 

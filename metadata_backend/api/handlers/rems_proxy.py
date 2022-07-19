@@ -1,5 +1,5 @@
 """Get and process REMS data for the frontend."""
-from typing import Union, Dict, TypedDict, List
+from typing import Dict, List, TypedDict, Union
 
 from aiohttp import web
 
@@ -44,7 +44,6 @@ class RemsAPIHandler(RESTAPIIntegrationHandler):
 
     async def get_workflows_licenses_from_rems(self, request: web.Request) -> web.Response:
         """Get workflows and Policies for frontend."""
-
         language = request.query.get("language", "en").split("_")[0]
         workflows = await self.rems_handler.get_workflows()
         licenses = await self.rems_handler.get_licenses()

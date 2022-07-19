@@ -14,11 +14,11 @@ from multidict import MultiDict, MultiDictProxy
 from pymongo.errors import ConnectionFailure, OperationFailure
 
 from metadata_backend.api.operators import (
-    SubmissionOperator,
     Operator,
-    XMLOperator,
-    UserOperator,
     ProjectOperator,
+    SubmissionOperator,
+    UserOperator,
+    XMLOperator,
 )
 
 from .mockups import Mock_Request

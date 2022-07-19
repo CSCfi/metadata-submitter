@@ -168,7 +168,6 @@ async def get(req: web.Request) -> web.Response:
 
 async def delete(req: web.Request) -> web.Response:
     """DOI delete endpoint."""
-
     return web.json_response(status=204)
 
 

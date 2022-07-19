@@ -18,7 +18,6 @@ from uuid import uuid4
 import aiofiles
 import aiohttp
 from aiohttp import FormData
-
 from mongo import Mongo
 
 # === Global vars ===
@@ -2111,7 +2110,6 @@ async def test_health_check(sess):
 
 async def main(url):
     """Launch different test tasks and run them."""
-
     mongo = Mongo(url)
     database = mongo.db
 

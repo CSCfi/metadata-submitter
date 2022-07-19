@@ -14,7 +14,7 @@ Deploying Backend
 
 Check out `backend repository <https://github.com/CSCfi/metadata-submitter>`_.
 
-For quick testing, launch both server and database with Docker by running ``docker-compose up --build`` 
+For quick testing, launch both server and database with Docker by running ``docker-compose up --build``
 (add ``-d`` flag to run containers in background). Server can then be found from ``http://localhost:5430``.
 
 This will launch a version without the frontend.
@@ -43,7 +43,7 @@ With backend running as container and frontend with ``npm``:
 With backend and frontend running in containers:
 
 1. check out metadata submitter backend repository
-2. un-commented line 24 from ``docker-compose.yml`` and modify to ``http://frontend:3000`` 
+2. un-commented line 24 from ``docker-compose.yml`` and modify to ``http://frontend:3000``
 3. ``docker-compose up -d --build`` backend repository root directory
 4. check out metadata submitter frontend repository
 5. ``docker-compose up -d --build`` frontend repository root directory
