@@ -116,13 +116,11 @@ idna==3.3
     #   yarl
 imagesize==1.4.1
     # via sphinx
-importlib-resources==5.8.0
-    # via -r requirements.txt
 iniconfig==1.1.1
     # via pytest
 jinja2==3.1.2
     # via sphinx
-jsonschema==4.6.2
+jsonschema==4.7.2
     # via -r requirements.txt
 lxml==4.9.1
     # via pyspelling
@@ -327,8 +325,6 @@ yarl==1.7.2
     # via
     #   -r requirements.txt
     #   aiohttp
-zipp==3.8.0
-    # via -r requirements.txt
 
 # The following packages are considered to be unsafe in a requirements file:
 # pip
