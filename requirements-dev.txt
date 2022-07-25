@@ -116,14 +116,6 @@ idna==3.3
     #   yarl
 imagesize==1.4.1
     # via sphinx
-importlib-metadata==4.12.0
-    # via
-    #   markdown
-    #   sphinx
-importlib-resources==5.8.0
-    # via
-    #   -r requirements.txt
-    #   jsonschema
 iniconfig==1.1.1
     # via pytest
 isort==5.10.1
@@ -147,7 +139,7 @@ multidict==6.0.2
     #   -r requirements.txt
     #   aiohttp
     #   yarl
-mypy==0.961
+mypy==0.971
     # via -r requirements-dev.in
 mypy-extensions==0.4.3
     # via
@@ -308,7 +300,6 @@ types-urllib3==1.26.16
 typing-extensions==4.3.0
     # via
     #   -r requirements.txt
-    #   black
     #   mypy
     #   readerwriterlock
 ujson==5.4.0
@@ -336,11 +327,6 @@ yarl==1.7.2
     # via
     #   -r requirements.txt
     #   aiohttp
-zipp==3.8.0
-    # via
-    #   -r requirements.txt
-    #   importlib-metadata
-    #   importlib-resources
 
 # The following packages are considered to be unsafe in a requirements file:
 # pip
