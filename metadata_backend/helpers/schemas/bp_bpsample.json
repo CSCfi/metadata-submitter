@@ -12,6 +12,20 @@
                 }
             }
         },
+        "Slide": {
+            "$id": "#/definitions/Slide",
+            "title": "Slide",
+            "type": "object",
+            "properties": {
+                "staining_information": {
+                    "title": "Staining Information",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Stain"
+                    }
+                }
+            }
+        },
         "Stain": {
             "$id": "#/definitions/Stain",
             "title": "Stain",
@@ -49,7 +63,7 @@
                     "title": "Optional scientific units."
                 }
             }
-        },
+        }
     },
     "type": "object",
     "required": [
@@ -114,15 +128,9 @@
         "slide": {
             "title": "Slide Type",
             "description": "A physical slide that has been created out of one or more Blocks.",
-            "type": "object",
-            "properties": {
-                "staining_information": {
-                    "title": "Staining Information",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/Stain"
-                    }
-                }
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Slide"
             }
         },
         "attributes": {
