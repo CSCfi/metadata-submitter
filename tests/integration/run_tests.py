@@ -750,6 +750,20 @@ async def test_crud_with_multi_xml(sess, submission_id):
             LOG.debug(f"Checking that {item['accessionId']} XML is in {_schema}")
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
+    _schema = "bpsample"
+    _filename = "template_samples.xml"
+    data = await post_multi_object(sess, _schema, submission_id, _filename)
+    for item in data:
+        items.append(item)
+        async with sess.get(f"{objects_url}/{_schema}/{item['accessionId']}") as resp:
+            LOG.debug(f"Checking that {item['accessionId']} JSON is in {_schema}")
+            assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+            res = await resp.json()
+            LOG.debug(res)
+        async with sess.get(f"{objects_url}/{_schema}/{item['accessionId']}?format=xml") as resp:
+            LOG.debug(f"Checking that {item['accessionId']} XML is in {_schema}")
+            assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+
     for item in items:
         _id, _schema = item["accessionId"], item["schema"]
         await delete_object(sess, _schema, _id)
