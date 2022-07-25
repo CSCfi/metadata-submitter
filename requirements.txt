@@ -33,6 +33,8 @@ cryptography==37.0.4
     #   pyopenssl
 cryptojwt==1.6.1
     # via oidcmsg
+defusedxml==0.7.1
+    # via -r requirements.in
 elementpath==3.0.1
     # via xmlschema
 filelock==3.7.1

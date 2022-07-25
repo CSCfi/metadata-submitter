@@ -5,8 +5,8 @@ from typing import Any, Dict, List, Tuple
 
 from aiohttp import BodyPartReader, MultipartReader, hdrs, web
 from aiohttp.web import Request
+from defusedxml.ElementTree import ParseError
 from xmlschema import XMLResource
-from xmlschema.etree import ElementTree
 
 from ...conf.conf import schema_types
 from ...helpers.logger import LOG
@@ -130,7 +130,7 @@ def _check_xml(content: str) -> bool:
         XMLResource(content, allow="local", defuse="always")
         LOG.info("Valid XML content was extracted.")
         return True
-    except ElementTree.ParseError as err:
+    except ParseError as err:
         reason = f"Submitted file was not proper XML. Error: {err}"
         LOG.error(reason)
         return False
