@@ -33,7 +33,7 @@ cryptography==37.0.4
     #   pyopenssl
 cryptojwt==1.6.1
     # via oidcmsg
-elementpath==2.5.3
+elementpath==3.0.1
     # via xmlschema
 filelock==3.7.1
     # via oidcmsg
@@ -47,6 +47,8 @@ idna==3.3
     # via
     #   requests
     #   yarl
+importlib-resources==5.9.0
+    # via jsonschema
 jsonschema==4.7.2
     # via -r requirements.in
 motor==3.0.0
@@ -61,7 +63,7 @@ oidcrp==2.1.4
     # via -r requirements.in
 pycparser==2.21
     # via cffi
-pymongo==4.1.1
+pymongo==4.2.0
     # via motor
 pyopenssl==22.0.0
     # via oidcmsg
@@ -94,10 +96,12 @@ urllib3==1.26.10
     #   responses
 uvloop==0.16.0
     # via -r requirements.in
-xmlschema==1.11.3
+xmlschema==2.0.1
     # via -r requirements.in
 yarl==1.7.2
     # via aiohttp
+zipp==3.8.1
+    # via importlib-resources
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
