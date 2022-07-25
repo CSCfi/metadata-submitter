@@ -74,6 +74,8 @@ cryptojwt==1.6.1
     # via
     #   -r requirements.txt
     #   oidcmsg
+defusedxml==0.7.1
+    # via -r requirements.txt
 distlib==0.3.5
     # via virtualenv
 docutils==0.17.1
