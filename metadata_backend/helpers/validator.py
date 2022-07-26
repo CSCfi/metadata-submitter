@@ -2,15 +2,16 @@
 
 import re
 from io import StringIO
-from typing import Any, Dict, cast
+from typing import Any, Dict
 from urllib.error import URLError
 
 import ujson
 from aiohttp import web
+from defusedxml.ElementTree import ParseError
+from defusedxml.ElementTree import tostring as etree_tostring
 from jsonschema import Draft7Validator, validators
 from jsonschema.exceptions import ValidationError
 from xmlschema import XMLSchema, XMLSchemaValidationError
-from xmlschema.etree import ElementTree, ParseError
 
 from ..helpers.logger import LOG
 from .schema_loader import JSONSchemaLoader, SchemaNotFoundException
@@ -23,7 +24,7 @@ class XMLValidator:
         """Set variables.
 
         :param schema: Schema to be used
-        :param content: Content of XML file to be validated
+        :param xml: Content of XML file to be validated
         """
         self.schema = schema
         self.xml_content = xml
@@ -53,15 +54,18 @@ class XMLValidator:
         except XMLSchemaValidationError as error:
             # Parse reason and instance from the validation error message
             reason = str(error.reason)
-            _elem = cast(ElementTree.Element, error.elem)
-            instance = ElementTree.tostring(_elem, encoding="unicode")
-            # Replace element address in reason with instance element
-            if "<" and ">" in reason:
-                instance_parent = "".join((instance.split(">")[0], ">"))
-                reason = re.sub("<[^>]*>", instance_parent + " ", reason)
+            response: Dict = {"isValid": False, "detail": {"reason": reason}}
+            if error.elem:
+                instance = etree_tostring(error.elem, encoding="unicode")
+                # Replace element address in reason with instance element
+                if "<" and ">" in reason:
+                    instance_parent = "".join((instance.split(">")[0], ">"))
+                    reason = re.sub("<[^>]*>", instance_parent + " ", reason)
+                    response["detail"]["reason"] = reason
+                response["detail"]["instance"] = instance
 
             LOG.info("Submitted file is not valid against schema.")
-            return ujson.dumps({"isValid": False, "detail": {"reason": reason, "instance": instance}})
+            return ujson.dumps(response)
 
         except URLError as error:
             reason = f"Faulty file was provided. {error.reason}."

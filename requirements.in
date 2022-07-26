@@ -1,6 +1,7 @@
 aiohttp
 aiohttp_session
 cryptography
+defusedxml
 gunicorn
 jsonschema
 motor
