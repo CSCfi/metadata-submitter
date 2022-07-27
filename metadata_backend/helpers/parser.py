@@ -45,7 +45,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
         `list`.
         """
         kwargs.update(attr_prefix="", text_key="", cdata_prefix=None)
-        super(MetadataXMLConverter, self).__init__(namespaces, dict_class, list_class, **kwargs)
+        super().__init__(namespaces, dict_class, list_class, **kwargs)
 
     def _to_camel(self, name: str) -> str:
         """Convert underscore char notation to CamelCase."""
@@ -122,7 +122,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
 
             if key == "sequence":
                 if "sequence" not in children:
-                    children[key] = list()
+                    children[key] = []
                 children[key].append(value)
                 for d in children[key]:
                     if "accessionId" in d:
@@ -135,7 +135,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
 
             if "datasetType" in key:
                 if "datasetType" not in children:
-                    children[key] = list()
+                    children[key] = []
                 children[key].append(value)
                 continue
 
@@ -148,7 +148,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
 
             if "imageOf" in key:
                 if "imageOf" not in children:
-                    children[key] = list()
+                    children[key] = []
                 children[key].append(value)
                 continue
 
@@ -162,7 +162,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
 
             if "pipeSection" in key:
                 if "pipeSection" not in children:
-                    children[key] = list()
+                    children[key] = []
                 children[key].append(value)
                 continue
 
@@ -187,7 +187,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
             if key in refs:
                 ref = key
                 if ref not in children:
-                    children[key] = list()
+                    children[key] = []
                 children[key].append(value)
                 continue
 
@@ -210,9 +210,9 @@ class MetadataXMLConverter(XMLSchemaConverter):
                     continue
 
             if key in links and len(value) == 1:
-                grp = list()
+                grp = []
                 if isinstance(value[key[:-1]], dict):
-                    grp = [it for it in value[key[:-1]].values()]
+                    grp = list(value[key[:-1]].values())
                     ks = list(value[key[:-1]])[0][:-4]
                     if ks == "url":
                         children[key] = grp
@@ -326,8 +326,8 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 else:
                     tmp["value"] = children
             return self.dict(tmp)
-        else:
-            return children
+
+        return children
 
 
 class XMLToJSONParser:
@@ -360,8 +360,8 @@ class XMLToJSONParser:
         # Validate each JSON object separately if an array of objects is parsed
         results = result[_schema_type] if isinstance(result[_schema_type], list) else [result[_schema_type]]
         if _schema_type != "submission":
-            for object in results:
-                JSONValidator(object, _schema_type).validate
+            for obj in results:
+                JSONValidator(obj, _schema_type).validate
         return result[_schema_type]
 
     @staticmethod
@@ -420,7 +420,7 @@ class CSVToJSONParser:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        rows = [row for row in csv_reader]
+        rows = list(csv_reader)
 
         if not rows:
             reason = "CSV file appears to be incomplete. No rows of data were parsed."
@@ -452,7 +452,8 @@ class CSVToJSONParser:
 def jsonpatch_mongo(identifier: Dict, json_patch: List[Dict[str, Any]]) -> List:
     """Convert JSONpatch object to mongo query.
 
-    :param jsonpatch: array with JSON patch actions
+    :param identifier: object database ID
+    :param json_patch: array with JSON patch actions
     :returns: dictionary of mongodb actions
     """
     queries: List[Any] = []

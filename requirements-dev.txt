@@ -18,6 +18,8 @@ aiosignal==1.2.0
     #   aiohttp
 alabaster==0.7.12
     # via sphinx
+astroid==2.11.7
+    # via pylint
 async-timeout==4.0.2
     # via
     #   -r requirements.txt
@@ -76,6 +78,8 @@ cryptojwt==1.6.1
     #   oidcmsg
 defusedxml==0.7.1
     # via -r requirements.txt
+dill==0.3.5.1
+    # via pylint
 distlib==0.3.5
     # via virtualenv
 docutils==0.17.1
@@ -129,11 +133,15 @@ importlib-resources==5.9.0
 iniconfig==1.1.1
     # via pytest
 isort==5.10.1
-    # via -r requirements-dev.in
+    # via
+    #   -r requirements-dev.in
+    #   pylint
 jinja2==3.1.2
     # via sphinx
 jsonschema==4.7.2
     # via -r requirements.txt
+lazy-object-proxy==1.7.1
+    # via astroid
 lxml==4.9.1
     # via pyspelling
 markdown==3.4.1
@@ -141,7 +149,9 @@ markdown==3.4.1
 markupsafe==2.1.1
     # via jinja2
 mccabe==0.6.1
-    # via flake8
+    # via
+    #   flake8
+    #   pylint
 motor==3.0.0
     # via -r requirements.txt
 multidict==6.0.2
@@ -180,6 +190,7 @@ pip-tools==6.8.0
 platformdirs==2.5.2
     # via
     #   black
+    #   pylint
     #   virtualenv
 pluggy==1.0.0
     # via
@@ -201,6 +212,8 @@ pyflakes==2.4.0
     # via flake8
 pygments==2.12.0
     # via sphinx
+pylint==2.14.5
+    # via -r requirements-dev.in
 pymongo==4.2.0
     # via
     #   -r requirements.txt
@@ -296,7 +309,10 @@ tomli==2.0.1
     #   coverage
     #   mypy
     #   pep517
+    #   pylint
     #   pytest
+tomlkit==0.11.1
+    # via pylint
 tox==3.25.1
     # via -r requirements-dev.in
 types-python-dateutil==2.8.19
@@ -310,8 +326,10 @@ types-urllib3==1.26.16
 typing-extensions==4.3.0
     # via
     #   -r requirements.txt
+    #   astroid
     #   black
     #   mypy
+    #   pylint
     #   readerwriterlock
 ujson==5.4.0
     # via -r requirements.txt
@@ -332,6 +350,8 @@ webencodings==0.5.1
     # via html5lib
 wheel==0.37.1
     # via pip-tools
+wrapt==1.14.1
+    # via astroid
 xmlschema==2.0.1
     # via -r requirements.txt
 yarl==1.7.2

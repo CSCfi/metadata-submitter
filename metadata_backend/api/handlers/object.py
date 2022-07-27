@@ -134,7 +134,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         content: Union[Dict[str, Any], str, List[Tuple[Any, str, str]]]
         operator: Union[Operator, XMLOperator]
         if req.content_type == "multipart/form-data":
-            _only_xml = False if schema_type in _allowed_csv else True
+            _only_xml = schema_type not in _allowed_csv
             files, cont_type = await multipart_content(req, extract_one=True, expect_xml=_only_xml)
             if cont_type == "xml":
                 # from this tuple we only care about the content
@@ -162,18 +162,19 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
                 json_data = await operator.create_metadata_object(collection, item[0])
                 filename = item[2]
                 listed_json = json_data if isinstance(json_data, list) else [json_data]
-                for object in listed_json:
-                    objects.append((object, filename))
+                for obj_from_json in listed_json:
+                    objects.append((obj_from_json, filename))
                     LOG.info(
-                        f"POST object with accesssion ID {object['accessionId']} in schema {collection} was successful."
+                        f"POST object with accesssion ID {obj_from_json['accessionId']} "
+                        f"in schema {collection} was successful."
                     )
         else:
             json_data = await operator.create_metadata_object(collection, content)
             listed_json = json_data if isinstance(json_data, list) else [json_data]
-            for object in listed_json:
-                objects.append((object, filename))
+            for listed_obj in listed_json:
+                objects.append((listed_obj, filename))
                 LOG.info(
-                    f"POST object with accesssion ID {object['accessionId']} in schema {collection} was successful."
+                    f"POST object with accession ID {listed_obj['accessionId']} in schema {collection} was successful."
                 )
 
         # Format like this to make it consistent with the response from /submit endpoint
@@ -194,14 +195,13 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
                 obj["doi"] = await self.create_draft_doi(collection)
                 await Operator(db_client).update_identifiers(collection, obj["accessionId"], {"doi": obj["doi"]})
 
-        # Create draft dataset to Metax catalog
-        try:
-            if self.metax_handler.enabled and collection in _allowed_doi:
-                [await self.create_metax_dataset(req, collection, item) for item, _ in objects]
-        except Exception as e:
-            # We don't care if it fails here
-            LOG.exception(f"create_metax_dataset failed: {e} for collection {collection}")
-            pass
+                # Create draft dataset to Metax catalog
+                if self.metax_handler.enabled:
+                    try:
+                        await self.create_metax_dataset(req, collection, obj)
+                    except Exception as e:
+                        # We don't care if it fails here
+                        LOG.exception(f"create_metax_dataset failed: {e} for collection {collection}")
 
         body = ujson.dumps(data, escape_forward_slashes=False)
 
@@ -281,7 +281,6 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
             except Exception as e:
                 # We don't care if it fails here
                 LOG.exception(f"delete_draft_dataset failed: {e} for collection {collection}")
-                pass
             await self.datacite_handler.delete(doi_id)
 
         LOG.info(f"DELETE object with accession ID {accession_id} in schema {collection} was successful.")
@@ -349,7 +348,6 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         except Exception as e:
             # We don't care if it fails here
             LOG.exception(f"update_draft_dataset or create_metax_dataset failed: {e} for collection {collection}")
-            pass
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info(f"PUT object with accession ID {accession_id} in schema {collection} was successful.")
@@ -376,9 +374,9 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         if req.content_type == "multipart/form-data":
             reason = "XML patching is not possible."
             raise web.HTTPUnsupportedMediaType(reason=reason)
-        else:
-            content = await self._get_data(req)
-            operator = Operator(db_client)
+
+        content = await self._get_data(req)
+        operator = Operator(db_client)
 
         await operator.check_exists(collection, accession_id)
 
@@ -445,9 +443,9 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
 
         patch = []
         patch_ops: Dict[str, Any] = {}
-        for object, filename in objects:
+        for obj, filename in objects:
             try:
-                title = object["descriptor"]["studyTitle"] if schema in ["study", "draft-study"] else object["title"]
+                title = obj["descriptor"]["studyTitle"] if schema in ["study", "draft-study"] else obj["title"]
             except (TypeError, KeyError):
                 title = ""
 
@@ -455,7 +453,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
                 "op": "add",
                 "path": path,
                 "value": {
-                    "accessionId": object["accessionId"],
+                    "accessionId": obj["accessionId"],
                     "schema": schema,
                     "tags": {
                         "submissionType": submission_type,

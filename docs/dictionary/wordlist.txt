@@ -37,7 +37,6 @@ arxiv
 assemblyannotation
 assignees
 async
-figma
 atac
 auth
 authdb
@@ -214,6 +213,7 @@ faroese
 fasta
 fastq
 fbtr
+figma
 filebase
 filename
 filetype
@@ -505,6 +505,7 @@ publicationyear
 pubmed
 py
 pycqa
+pylint
 pymongo
 pyspelling
 quickstart

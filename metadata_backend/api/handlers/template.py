@@ -114,7 +114,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
                     raise web.HTTPBadRequest(reason=reason)
 
                 # Check that project exists and user is affiliated with it
-                await project_op._check_project_exists(tmpl["projectId"])
+                await project_op.check_project_exists(tmpl["projectId"])
                 current_user = session["user_info"]
                 user = await user_op.read_user(current_user)
                 user_has_project = await user_op.check_user_has_project(tmpl["projectId"], user["userId"])
@@ -147,7 +147,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
                 raise web.HTTPBadRequest(reason=reason)
 
             # Check that project exists and user is affiliated with it
-            await project_op._check_project_exists(content["projectId"])
+            await project_op.check_project_exists(content["projectId"])
             current_user = session["user_info"]
             user = await user_op.read_user(current_user)
             user_has_project = await user_op.check_user_has_project(content["projectId"], user["userId"])

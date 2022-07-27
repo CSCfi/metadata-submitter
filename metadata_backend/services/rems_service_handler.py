@@ -45,7 +45,8 @@ class RemsServiceHandler(ServiceHandler):
     @staticmethod
     def application_url(catalogue_id: str) -> str:
         """Return URL for data access application."""
-        return "{}/application?items={}".format(rems_config["url"], catalogue_id)
+        url = rems_config["url"]
+        return f"{url}/application?items={catalogue_id}"
 
     async def get_workflows(self) -> List[Dict]:
         """Get all active workflows.
@@ -121,10 +122,12 @@ class RemsServiceHandler(ServiceHandler):
                     reason=f"{capitalized_item_type} '{_id}' doesn't belong to organization '{organization_id}'",
                     status=400,
                 )
-        except KeyError:
-            raise self.make_exception(reason=f"{capitalized_item_type} '{_id}' has unexpected structure.", status=400)
-        except web.HTTPNotFound:
-            raise self.make_exception(reason=f"{capitalized_item_type} '{_id}' doesn't exist.", status=400)
+        except KeyError as exc:
+            raise self.make_exception(
+                reason=f"{capitalized_item_type} '{_id}' has unexpected structure.", status=400
+            ) from exc
+        except web.HTTPNotFound as exc:
+            raise self.make_exception(reason=f"{capitalized_item_type} '{_id}' doesn't exist.", status=400) from exc
 
         LOG.debug(f"{capitalized_item_type} '{_id}' is ok.")
         return True

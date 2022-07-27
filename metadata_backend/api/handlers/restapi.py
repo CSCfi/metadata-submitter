@@ -43,10 +43,10 @@ class RESTAPIHandler:
         """
         try:
             param = int(req.query.get(name, str(default)))
-        except ValueError:
+        except ValueError as exc:
             reason = f"{name} parameter must be a number, now it is {req.query.get(name)}"
             LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
+            raise web.HTTPBadRequest(reason=reason) from exc
         if param < 1:
             reason = f"{name} parameter must be over 0"
             LOG.error(reason)
@@ -146,11 +146,11 @@ class RESTAPIHandler:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-    async def get_schema_types(self, req: Request) -> Response:
+    async def get_schema_types(self, _: Request) -> Response:
         """Get all possible metadata schema types from database.
 
         Basically returns which objects user can submit and query for.
-        :param req: GET Request
+        :param _: GET Request
         :returns: JSON list of schema types
         """
         types_json = ujson.dumps([x["description"] for x in schema_types.values()], escape_forward_slashes=False)
@@ -197,7 +197,7 @@ class RESTAPIHandler:
         prev_link = f'<{url}?page={page-1}&per_page={size}>; rel="prev", ' if page > 1 else ""
         next_link = f'<{url}?page={page+1}&per_page={size}>; rel="next", ' if page < total_pages else ""
         last_link = f'<{url}?page={total_pages}&per_page={size}>; rel="last"' if page < total_pages else ""
-        comma = ", " if page > 1 and page < total_pages else ""
+        comma = ", " if 1 < page < total_pages else ""
         first_link = f'<{url}?page=1&per_page={size}>; rel="first"{comma}' if page > 1 else ""
         links = f"{prev_link}{next_link}{first_link}{last_link}"
         link_headers = CIMultiDict(Link=f"{links}")
@@ -233,7 +233,7 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
         metadata_provider_user = user["externalId"]
         return metadata_provider_user
 
-    async def create_metax_dataset(self, request: Request, collection: str, object: Dict) -> str:
+    async def create_metax_dataset(self, request: Request, collection: str, obj: Dict) -> str:
         """Handle connection to Metax api handler for dataset creation.
 
         Dataset or Study object is assigned with DOI
@@ -242,7 +242,7 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
 
         :param request: HTTP request with user session
         :param collection: object's schema
-        :param object: metadata object
+        :param obj: metadata object
         :returns: Metax ID
         """
         LOG.info("Creating draft dataset to Metax.")
@@ -251,12 +251,12 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
             return ""
         operator = Operator(request.app["db_client"])
         new_info = {}
-        if "doi" in object:
-            new_info["doi"] = object["doi"]
+        if "doi" in obj:
+            new_info["doi"] = obj["doi"]
         external_id = await self.get_user_external_id(request)
-        metax_id = await self.metax_handler.post_dataset_as_draft(external_id, collection, object)
+        metax_id = await self.metax_handler.post_dataset_as_draft(external_id, collection, obj)
         new_info["metaxIdentifier"] = metax_id
-        await operator.update_identifiers(collection, object["accessionId"], new_info)
+        await operator.update_identifiers(collection, obj["accessionId"], new_info)
 
         return metax_id
 

@@ -166,16 +166,16 @@ class ServiceHandler:
 
             return content
 
-        except TimeoutError:
+        except TimeoutError as exc:
             LOG.exception(f"{method} request to {self.service_name} '{url}' timed out.")
-            raise HTTPGatewayTimeout(reason=f"{self.service_name} error: Could not reach service provider.")
+            raise HTTPGatewayTimeout(reason=f"{self.service_name} error: Could not reach service provider.") from exc
         except HTTPError:
             # These are expected
             raise
-        except Exception:
+        except Exception as exc:
             LOG.exception(f"{method} request to {self.service_name} '{url}' raised an unexpected exception.")
             message = f"{self.service_name} error 502: Unexpected issue when connecting to service provider."
-            raise ServiceServerError(text=message, reason=message)
+            raise ServiceServerError(text=message, reason=message) from exc
 
     def make_exception(self, reason: str, status: int) -> HTTPError:
         """Create a Client or Server exception, according to status code.

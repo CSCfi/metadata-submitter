@@ -1,6 +1,6 @@
 """Services that handle database connections. Implemented with MongoDB."""
 from functools import wraps
-from typing import Any, Callable, Dict, List, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
 from pymongo import ReturnDocument
@@ -29,13 +29,15 @@ def auto_reconnect(db_func: Callable) -> Callable:
         for attempt in range(1, max_attempts + 1):
             try:
                 return await db_func(*args, **kwargs)
-            except AutoReconnect:
+            except AutoReconnect as exc:
                 if attempt == max_attempts:
                     message = f"Connection to database failed after {attempt} tries"
-                    raise ConnectionFailure(message=message)
+                    raise ConnectionFailure(message=message) from exc
                 LOG.error(
                     "Connection not successful, trying to reconnect. "
-                    + f"Reconnection attempt number {attempt}, waiting for {default_timeout} seconds."
+                    "Reconnection attempt number %d, waiting for %d seconds.",
+                    attempt,
+                    default_timeout,
                 )
                 continue
 
@@ -88,7 +90,7 @@ class DBService:
         find_by_id = {id_key: accession_id}
         exists = await self.database[collection].find_one(find_by_id, projection)
         LOG.debug(f"DB check exists for {accession_id} in collection {collection}.")
-        return True if exists else False
+        return bool(exists)
 
     @auto_reconnect
     async def exists_project_by_external_id(self, external_id: str) -> Union[None, str]:
@@ -106,8 +108,9 @@ class DBService:
     async def exists_user_by_external_id(self, external_id: str, name: str) -> Union[None, str]:
         """Check user exists by its eppn.
 
-        :param eppn: eduPersonPrincipalName to be searched
-        :returns: Id if exists and None if it does not
+        :param external_id: external user ID
+        :param name: eduPersonPrincipalName to be searched
+        :returns: User ID if exists and None if it does not
         """
         find_by_id = {"externalId": external_id, "name": name}
         user = await self.database["user"].find_one(find_by_id, {"_id": False, "externalId": False})
@@ -123,7 +126,7 @@ class DBService:
         """
         find_published = {"published": True, "submissionId": submission_id}
         exists = await self.database["submission"].find_one(find_published, {"_id": False})
-        check = True if exists else False
+        check = bool(exists)
         LOG.debug(f"DB check submission {submission_id} published, result: {check}.")
         return check
 
@@ -285,7 +288,7 @@ class DBService:
         LOG.debug(f"DB doc in {collection} deleted for {accession_id}.")
         return result.acknowledged
 
-    def query(self, collection: str, query: Dict, custom_projection: Dict = {}) -> AsyncIOMotorCursor:
+    def query(self, collection: str, query: Dict, custom_projection: Optional[Dict] = None) -> AsyncIOMotorCursor:
         """Query database with given query.
 
         Find() does no I/O and does not require an await expression, hence

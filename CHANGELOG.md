@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - New API endpoint `/v1/rems` for the frontend to retrieve DAC and Policies
   - Submission now can have a new field, `dac`, with `workflowId`, `organizationId`, and `licenses` (array of int)
   - Published datasets have a new field `dac` with `workflowId`, `organizationId`, `resourceId`, and `catalogueItemId`
+- Pylint static checks
 
 ### Changed
 - schema loader now matches schema files by exact match with schema #481. This means that schema file naming in metadata_backend/helpers/schemas now have rules:

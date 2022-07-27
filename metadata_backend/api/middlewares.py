@@ -11,6 +11,7 @@ from ..conf.conf import OIDC_ENABLED
 from ..helpers.logger import LOG
 
 HTTP_ERROR_MESSAGE = "HTTP %r request to %r raised an HTTP %d exception."
+HTTP_ERROR_MESSAGE_BUG = "HTTP %r request to %r raised an HTTP %d exception. This IS a bug."
 
 
 @web.middleware
@@ -26,7 +27,7 @@ async def http_error_handler(req: web.Request, handler: aiohttp_session.Handler)
     try:
         response = await handler(req)
         return response
-    except (web.HTTPSuccessful, web.HTTPRedirection):
+    except (web.HTTPSuccessful, web.HTTPRedirection):  # pylint: disable=try-except-raise
         # Catches 200s and 300s
         raise
     except web.HTTPError as error:
@@ -39,16 +40,15 @@ async def http_error_handler(req: web.Request, handler: aiohttp_session.Handler)
             error.content_type = c_type
             error.text = problem
             raise error
-        else:
-            LOG.exception(HTTP_ERROR_MESSAGE + " This IS a bug.", req.method, req.path, error.status)
-            raise web.HTTPInternalServerError(text=problem, content_type=c_type)
-    except Exception:
+        LOG.exception(HTTP_ERROR_MESSAGE_BUG, req.method, req.path, error.status)
+        raise web.HTTPInternalServerError(text=problem, content_type=c_type)
+    except Exception as exc:
         # We don't expect any other errors, so we log it and return a nice message instead of letting server crash
         LOG.exception("HTTP %r request to %r raised an unexpected exception. This IS a bug.", req.method, req.path)
         exception = web.HTTPInternalServerError(reason="Server ran into an unexpected error", content_type=c_type)
         problem = _json_problem(exception, req.url)
         exception.text = problem
-        raise exception
+        raise exception from exc
 
 
 @web.middleware
@@ -69,7 +69,7 @@ async def check_session(req: web.Request, handler: aiohttp_session.Handler) -> w
                 session.invalidate()
                 raise _unauthorized("You must provide authentication to access SD-Submit API.")
 
-            if not all(k in session for k in {"access_token", "user_info", "at", "oidc_state"}):
+            if not all(k in session for k in ["access_token", "user_info", "at", "oidc_state"]):
                 LOG.error(f"Checked session parameter, session is invalid {session}. This could be a bug or abuse.")
                 session.invalidate()
                 raise _unauthorized("Invalid session, authenticate again.")
@@ -81,14 +81,14 @@ async def check_session(req: web.Request, handler: aiohttp_session.Handler) -> w
         except KeyError as error:
             reason = f"No valid session. A session was invalidated due to invalid token. {error}"
             LOG.info(reason)
-            raise _unauthorized(reason)
+            raise _unauthorized(reason) from error
         except web.HTTPException:
             # HTTPExceptions are processed in the other middleware
             raise
         except Exception as error:
             reason = f"No valid session. A session was invalidated due to another reason: {error}"
             LOG.exception("No valid session. A session was invalidated due to another reason")
-            raise _unauthorized(reason)
+            raise _unauthorized(reason) from error
 
     return await handler(req)
 

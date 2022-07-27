@@ -44,7 +44,6 @@ class UserAPIHandler(RESTAPIHandler):
                     reason = "submissionType is restricted to either 'XML' or 'Form' values."
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
-                pass
             else:
                 if all(i not in op["path"] for i in _arrays):
                     reason = f"Request contains '{op['path']}' key that cannot be updated to user object"
@@ -55,7 +54,7 @@ class UserAPIHandler(RESTAPIHandler):
                     LOG.error(reason)
                     raise web.HTTPUnauthorized(reason=reason)
                 if op["path"] == "/submissions/-":
-                    if not (isinstance(op["value"], str) or isinstance(op["value"], list)):
+                    if not isinstance(op["value"], (list, str)):
                         reason = "We only accept string submission IDs."
                         LOG.error(reason)
                         raise web.HTTPBadRequest(reason=reason)

@@ -179,8 +179,8 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
         response = {"url": "some url"}
         request = Mock_Request()
         with patch("oidcrp.rp_handler.RPHandler.begin", return_value=response):
-            with self.assertRaises(HTTPSeeOther):
-                await self.AccessHandler.login(request)
+            response = await self.AccessHandler.login(request)
+            assert isinstance(response, HTTPSeeOther)
 
     async def test_callback_pass(self):
         """Test callback correct validation."""
