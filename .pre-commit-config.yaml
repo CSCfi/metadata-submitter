@@ -38,7 +38,7 @@ repos:
     rev: 5.10.1
     hooks:
     - id: isort
-      args: ["--profile", "black", "--filter-files"]
+      args: [--profile, black, --filter-files]
 
   - repo: https://github.com/pycqa/flake8
     rev: 4.0.1
@@ -65,17 +65,6 @@ repos:
     - id: bandit
       files: ^metadata_backend
 
-  - repo: https://github.com/pycqa/pydocstyle
-    rev: 6.1.1
-    hooks:
-      - id: pydocstyle
-
-  - repo: https://github.com/PyCQA/doc8
-    rev: 0.11.2
-    hooks:
-      - id: doc8
-        args: ["--max-line-length=400"]
-
   - repo: https://github.com/APIDevTools/swagger-cli
     rev: v4.0.4
     hooks:
@@ -85,6 +74,17 @@ repos:
 
   - repo: local
     hooks:
+    - id: pylint
+      name: pylint
+      entry: pylint
+      language: system
+      types: [python]
+      files: ^metadata_backend
+      args:
+        [
+          -rn, # Only display messages
+          -sn, # Don't display the score
+        ]
     - id: pyspelling-docs
       name: pyspelling-docs
       entry: ./scripts/pyspelling.sh

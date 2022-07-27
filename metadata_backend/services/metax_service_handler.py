@@ -186,7 +186,6 @@ class MetaxServiceHandler(ServiceHandler):
         :param collection: Schema of incoming submitters' metadata
         :param data: Validated Study or Dataset data dict
         :raises: HTTPError depending on returned error from Metax
-        :returns: Metax ID for dataset returned by Metax API
         """
         LOG.info(f"Updating {collection} object data to Metax service.")
         await self.check_connection()
@@ -220,14 +219,14 @@ class MetaxServiceHandler(ServiceHandler):
             f"{','.join([id['metaxIdentifier'] for id in _metax_ids])}"
         )
         bulk_data = []
-        for id in _metax_ids:
-            metax_data: dict = await self._get(id["metaxIdentifier"])
+        for metax_id in _metax_ids:
+            metax_data: dict = await self._get(metax_id["metaxIdentifier"])
 
             # Map fields from doi info to Metax schema
-            mapper = MetaDataMapper(id["schema"], metax_data["research_dataset"], datacite_info)
+            mapper = MetaDataMapper(metax_id["schema"], metax_data["research_dataset"], datacite_info)
             mapped_metax_data = mapper.map_metadata()
 
-            bulk_data.append({"identifier": id["metaxIdentifier"], "research_dataset": mapped_metax_data})
+            bulk_data.append({"identifier": metax_id["metaxIdentifier"], "research_dataset": mapped_metax_data})
 
         await self._bulk_patch(bulk_data)
 
@@ -253,16 +252,15 @@ class MetaxServiceHandler(ServiceHandler):
         """
         LOG.info(f"Publishing Metax datasets {','.join([id['metaxIdentifier'] for id in _metax_ids])}")
 
-        for object in _metax_ids:
-            metax_id = object["metaxIdentifier"]
-            doi = object["doi"]
+        for obj in _metax_ids:
+            metax_id = obj["metaxIdentifier"]
+            doi = obj["doi"]
             preferred_id = await self._publish(metax_id)
 
             if doi != preferred_id:
                 LOG.warning(f"Metax Preferred Identifier {preferred_id} " f"does not match object's DOI {doi}")
             LOG.debug(
-                f"Object with metax ID {object['metaxIdentifier']} and DOI {object['doi']} is "
-                "published to Metax service."
+                f"Object with metax ID {obj['metaxIdentifier']} and DOI {obj['doi']} is " "published to Metax service."
             )
 
     def create_metax_dataset_data_from_study(self, data: Dict) -> Dict:

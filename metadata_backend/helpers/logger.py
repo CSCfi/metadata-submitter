@@ -22,9 +22,9 @@ def get_attributes(obj: Any) -> None:
     """
     for attr in dir(obj):
         try:
-            LOG.info("obj.%s = %r" % (attr, getattr(obj, attr)))
+            LOG.info("obj.%s = %r", attr, getattr(obj, attr))
         except AttributeError as error:
-            LOG.info("Error: ", error)
+            LOG.info("Error: %r", error)
 
 
 def pprint_json(content: Dict) -> None:

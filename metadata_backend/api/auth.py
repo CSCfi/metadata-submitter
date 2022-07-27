@@ -45,10 +45,10 @@ class AccessHandler:
         }
         self.rph = RPHandler(self.oidc_url, client_configs=self.oidc_conf)
 
-    async def login(self, req: Request) -> Response:
+    async def login(self, _: Request) -> web.HTTPSeeOther:
         """Redirect user to AAI login.
 
-        :param req: A HTTP request instance (unused)
+        :param _: A HTTP request instance (unused)
         :raises: HTTPInternalServerError if OIDC configuration init failed
         :returns: HTTPSseeOther redirect to AAI
         """
@@ -66,7 +66,7 @@ class AccessHandler:
         # Redirect user to AAI
         response = web.HTTPSeeOther(session["url"])
         response.headers["Location"] = session["url"]
-        raise response
+        return response
 
     async def callback(self, req: Request) -> Response:
         """Include correct tokens in cookies as a callback after login.
@@ -158,7 +158,7 @@ class AccessHandler:
         response.headers["Location"] = "/home" if self.redirect == self.domain else f"{self.redirect}/home"
         return response
 
-    async def logout(self, req: Request) -> Response:
+    async def logout(self, req: Request) -> web.HTTPSeeOther:
         """Log the user out by revoking tokens.
 
         :param req: A HTTP request instance
@@ -179,7 +179,7 @@ class AccessHandler:
         response.headers["Location"] = "/" if self.redirect == self.domain else f"{self.redirect}/"
         LOG.debug("Logged out user ")
 
-        raise response
+        return response
 
     async def _process_projects(self, req: Request, projects: List[str]) -> List[Dict[str, str]]:
         """Process project external IDs to internal accession IDs by getting IDs\

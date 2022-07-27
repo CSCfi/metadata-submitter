@@ -829,7 +829,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         """Test that submission is created and submission ID returned."""
         json_req = {"name": "test", "description": "test submission", "projectId": "1000"}
         with patch(
-            "metadata_backend.api.operators.ProjectOperator._check_project_exists",
+            "metadata_backend.api.operators.ProjectOperator.check_project_exists",
             return_value=True,
         ), self.p_get_sess_restapi:
             response = await self.client.post(f"{API_PREFIX}/submissions", json=json_req)
