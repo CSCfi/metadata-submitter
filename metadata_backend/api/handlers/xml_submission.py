@@ -58,10 +58,10 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
                     raise web.HTTPBadRequest(reason=reason)
                 LOG.debug(f"submission has action {action}")
                 if attr["schema"] in actions:
-                    set = []
-                    set.append(actions[attr["schema"]])
-                    set.append(action)
-                    actions[attr["schema"]] = set
+                    _set = []
+                    _set.append(actions[attr["schema"]])
+                    _set.append(action)
+                    actions[attr["schema"]] = _set
                 else:
                     actions[attr["schema"]] = action
 
@@ -132,17 +132,16 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
         if action == "add":
             return await self._execute_action_add(req, schema, content, filename)
 
-        elif action == "modify":
+        if action == "modify":
             return await self._execute_action_modify(req, schema, content, filename)
 
-        elif action == "validate":
+        if action == "validate":
             validator = await self._perform_validation(schema, content)
             return ujson.loads(validator.resp_body)
 
-        else:
-            reason = f"Action {action} in XML is not supported."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
+        reason = f"Action {action} in XML is not supported."
+        LOG.error(reason)
+        raise web.HTTPBadRequest(reason=reason)
 
     async def _execute_action_add(self, req: Request, schema: str, content: str, filename: str) -> Dict:
         """Complete the add action.
@@ -198,7 +197,6 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
         except Exception as e:
             # We don't care if it fails here
             LOG.info(f"create_metax_dataset failed: {e} for schema {schema}")
-            pass
 
         return result
 
@@ -264,7 +262,6 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
         except Exception as e:
             # We don't care if it fails here
             LOG.info(f"update_draft_dataset failed: {e} for schema {schema}")
-            pass
 
         LOG.debug(f"modified some content in {schema} ...")
         return result

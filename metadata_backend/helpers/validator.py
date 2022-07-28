@@ -58,7 +58,7 @@ class XMLValidator:
             if error.elem:
                 instance = etree_tostring(error.elem, encoding="unicode")
                 # Replace element address in reason with instance element
-                if "<" and ">" in reason:
+                if "<" in reason and ">" in reason:
                     instance_parent = "".join((instance.split(">")[0], ">"))
                     reason = re.sub("<[^>]*>", instance_parent + " ", reason)
                     response["detail"]["reason"] = reason
@@ -74,7 +74,7 @@ class XMLValidator:
 
     def _parse_error_reason(self, error: ParseError) -> str:
         """Generate better error reason."""
-        reason = str(error).split(":")[0]
+        reason = str(error).split(":", maxsplit=1)[0]
         position = (str(error).split(":")[1])[1:]
         return f"Faulty XML file was given, {reason} at {position}"
 
@@ -134,7 +134,6 @@ class JSONValidator:
     def validate(self) -> None:
         """Check validation against JSON schema.
 
-        :returns: Nothing if it is valid
         :raises: HTTPBadRequest if validation fails.
         """
         try:
@@ -151,8 +150,8 @@ class JSONValidator:
                 LOG.debug(f"Provided JSON input: '{e.instance}'")
                 LOG.exception(reason)
                 raise web.HTTPBadRequest(reason=reason)
-            else:
-                reason = f"Provided input does not seem correct because: '{e.message}'"
-                LOG.debug(f"Provided JSON input: '{e.instance}'")
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
+
+            reason = f"Provided input does not seem correct because: '{e.message}'"
+            LOG.debug(f"Provided JSON input: '{e.instance}'")
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)

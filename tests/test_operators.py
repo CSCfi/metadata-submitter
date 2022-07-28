@@ -1183,14 +1183,14 @@ class TestOperators(IsolatedAsyncioTestCase):
         operator = ProjectOperator(self.client)
         operator.db_service.exists.return_value = False
         with self.assertRaises(HTTPNotFound):
-            await operator._check_project_exists(self.project_id)
+            await operator.check_project_exists(self.project_id)
             operator.db_service.exists.assert_called_once()
 
     async def test_check_project_exists_passes(self):
         """Test project exists passes."""
         operator = ProjectOperator(self.client)
         operator.db_service.exists.return_value = True
-        await operator._check_project_exists(self.project_id)
+        await operator.check_project_exists(self.project_id)
         operator.db_service.exists.assert_called_once()
 
     async def test_project_objects_remove_passes(self):
@@ -1242,9 +1242,7 @@ class TestOperators(IsolatedAsyncioTestCase):
         """Test that project which does not exist can not be updated."""
         operator = ProjectOperator(self.client)
         with self.assertRaises(HTTPNotFound):
-            with patch(
-                "metadata_backend.api.operators.ProjectOperator._check_project_exists", side_effect=HTTPNotFound
-            ):
+            with patch("metadata_backend.api.operators.ProjectOperator.check_project_exists", side_effect=HTTPNotFound):
                 await operator.update_project(self.project_generated_id, [])
 
     async def test_update_project_fail_connfail(self):
@@ -1252,7 +1250,7 @@ class TestOperators(IsolatedAsyncioTestCase):
         operator = ProjectOperator(self.client)
         operator.db_service.patch.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
-            with patch("metadata_backend.api.operators.ProjectOperator._check_project_exists", return_value=True):
+            with patch("metadata_backend.api.operators.ProjectOperator.check_project_exists", return_value=True):
                 await operator.update_project(self.project_generated_id, [])
 
     async def test_update_project_fail_general(self):
@@ -1260,14 +1258,14 @@ class TestOperators(IsolatedAsyncioTestCase):
         operator = ProjectOperator(self.client)
         operator.db_service.patch.return_value = False
         with self.assertRaises(HTTPBadRequest):
-            with patch("metadata_backend.api.operators.ProjectOperator._check_project_exists", return_value=True):
+            with patch("metadata_backend.api.operators.ProjectOperator.check_project_exists", return_value=True):
                 await operator.update_project(self.project_generated_id, [])
 
     async def test_update_project_pass(self):
         """Test project update passes."""
         operator = ProjectOperator(self.client)
         operator.db_service.patch.return_value = True
-        with patch("metadata_backend.api.operators.ProjectOperator._check_project_exists", return_value=True):
+        with patch("metadata_backend.api.operators.ProjectOperator.check_project_exists", return_value=True):
             pid = await operator.update_project(self.project_generated_id, [])
             self.assertEqual(pid, self.project_generated_id)
 

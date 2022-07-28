@@ -436,7 +436,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         # Check that project exists
         project_op = ProjectOperator(db_client)
-        await project_op._check_project_exists(content["projectId"])
+        await project_op.check_project_exists(content["projectId"])
 
         # Check that user is affiliated with project
         user_op = UserOperator(db_client)
@@ -546,7 +546,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         for _obj in submission["metadataObjects"]:
             accession_id = _obj["accessionId"]
             schema = _obj["schema"]
-            object_data, _ = await obj_op.read_metadata_object(schema, accession_id)
+            object_data, _ = await obj_op.read_metadata_object(schema, accession_id)  # pylint: disable=unused-variable
             if schema == "study":
                 has_study = True
             if self.rems_handler.enabled and "dac" not in submission:
@@ -727,7 +727,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
             raise web.HTTPNotFound(reason=f"'{req.path}' does not exist")
 
         submission[schema] = data
-        JSONValidator(submission, "submissions").validate
+        JSONValidator(submission, "submissions").validate  # pylint: disable=expression-not-assigned
 
         op = "add"
         if schema in submission:

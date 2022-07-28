@@ -74,7 +74,6 @@ class DataciteServiceHandler(ServiceHandler):
                 error_messages.append(message)
         except (KeyError, UnicodeDecodeError, ujson.JSONDecodeError):
             LOG.exception(f"Unexpected format for error message from Datacite: '{error}'.")
-            pass
 
         return " | ".join(error_messages)
 
@@ -116,7 +115,6 @@ class DataciteServiceHandler(ServiceHandler):
 
         :param datacite_payload: Dictionary with payload to send to Datacite
         :raises: HTTPInternalServerError if the Datacite DOI update fails
-        :returns: None
         """
         _id = datacite_payload["id"]
         await self._request(method="PUT", path=_id, json_data=datacite_payload)
@@ -129,7 +127,6 @@ class DataciteServiceHandler(ServiceHandler):
 
         :param doi: identifier to be utilized for deleting draft DOI
         :raises: HTTPInternalServerError if we the Datacite draft DOI delete fails
-        :returns: None
         """
         await self._request(method="DELETE", path=doi)
         LOG.info(f"Datacite doi {doi} deleted.")

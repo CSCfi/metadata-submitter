@@ -2,7 +2,7 @@
 
 import asyncio
 import base64
-from typing import Any, List
+from typing import Any, List, Optional
 
 import aiohttp_session
 import aiohttp_session.cookie_storage
@@ -38,7 +38,7 @@ asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
 async def init(
-    inject_middleware: List[Any] = [],
+    inject_middleware: Optional[List[Any]] = None,
 ) -> web.Application:
     """Initialise server and setup routes.
 

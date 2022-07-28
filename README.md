@@ -6,6 +6,7 @@
 ![Python style check](https://github.com/CSCfi/metadata-submitter/workflows/Python%20style%20check/badge.svg)
 [![Coverage Status](https://coveralls.io/repos/github/CSCfi/metadata-submitter/badge.svg?branch=master)](https://coveralls.io/github/CSCfi/metadata-submitter?branch=master)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
+[![linting: pylint](https://img.shields.io/badge/linting-pylint-yellowgreen)](https://github.com/PyCQA/pylint)
 
 Metadata submission service to handle submissions of EGA metadata, either as XML files or via form submissions. Submissions through graphical frontend and POST are supported.
 Service also validates submitted metadata objects against EGA XSD metadata models and saves objects to database.
@@ -87,6 +88,7 @@ $ source venv/bin/activate  # activates virtual environment
 $ pip install -U pip
 $ pip install -Ue .
 $ pip install -r requirements-dev.txt
+$ pre-commit install
 
 # generate references for metax integration
 $ scripts/metax_mappings/fetch_refs.sh
@@ -124,9 +126,11 @@ If it doesn't work right away, check your settings in `.env` and restart the ser
 
 4. If you want to update all dependencies to their newest versions, run:
     * `pip-compile --upgrade requirements.in`
+    * `pip-compile --upgrade requirements-dev.in`
 
 5. To install Python requirements run:
     * `pip-sync requirements.txt`
+    * `pip-sync requirements-dev.txt`
 
 
 ## Build and deploy

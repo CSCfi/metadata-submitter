@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 """Operators for handling database-related operations."""
 import re
 from abc import ABC, abstractmethod
@@ -51,8 +52,8 @@ class BaseOperator(ABC):
         """
         formatted_data = await self._format_data_to_create_and_add_to_db(schema_type, data)
         data_list: List = formatted_data if isinstance(formatted_data, list) else [formatted_data]
-        for object in data_list:
-            _id = object["accessionId"]
+        for obj in data_list:
+            _id = obj["accessionId"]
             LOG.info(f"Inserting object with schema {schema_type} to database succeeded with accession id: {_id}")
         return formatted_data
 
@@ -126,10 +127,10 @@ class BaseOperator(ABC):
         if JSON_deletion_success and XML_deletion_success:
             LOG.info(f"{accession_id} successfully deleted from collection")
             return accession_id
-        else:
-            reason = f"Deleting {accession_id} from database failed."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
+
+        reason = f"Deleting {accession_id} from database failed."
+        LOG.error(reason)
+        raise web.HTTPBadRequest(reason=reason)
 
     async def _insert_formatted_object_to_db(self, schema_type: str, data: Dict) -> bool:
         """Insert formatted metadata object to database.
@@ -205,10 +206,10 @@ class BaseOperator(ABC):
             raise web.HTTPBadRequest(reason=reason)
         if update_success:
             return accession_id
-        else:
-            reason = "Replacing object to database failed for some reason."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
+
+        reason = "Replacing object to database failed for some reason."
+        LOG.error(reason)
+        raise web.HTTPBadRequest(reason=reason)
 
     async def _remove_object_from_db(self, operator: Any, schema_type: str, accession_id: str) -> bool:
         """Delete object from database.
@@ -228,8 +229,8 @@ class BaseOperator(ABC):
                 reason = f"Object with accession id {accession_id} was not found."
                 LOG.error(reason)
                 raise web.HTTPNotFound(reason=reason)
-            else:
-                LOG.debug("XML is not in backup collection")
+
+            LOG.debug("XML is not in backup collection")
             delete_success = await operator.db_service.delete(schema_type, accession_id)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while deleting object: {error}"
@@ -243,7 +244,6 @@ class BaseOperator(ABC):
         :param schema_type: Schema type of the object to find.
         :param accession_id: Identifier of object to find.
         :raises: HTTPNotFound if object does not exist
-        :returns: None
         """
         exists = await self.db_service.exists(schema_type, accession_id)
         LOG.info(f"check_exists: {exists}")
@@ -314,14 +314,14 @@ class Operator(BaseOperator):
 
         if len(templates) == 1:
             return templates[0]["templates"]
-        else:
-            return []
+
+        return []
 
     async def get_object_project(self, collection: str, accession_id: str) -> str:
         """Get the project ID the object is associated to.
 
         :param collection: database table to look into
-        :param object_id: internal accession ID of object
+        :param accession_id: internal accession ID of object
         :returns: project ID object is associated to
         """
         try:
@@ -454,9 +454,9 @@ class Operator(BaseOperator):
             reason = "Updating object to database failed for some reason."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        else:
-            LOG.info(f"Object {schema_type} with id {accession_id} metax info updated.")
-            return True
+
+        LOG.info(f"Object {schema_type} with id {accession_id} metax info updated.")
+        return True
 
     async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: Dict) -> Dict:
         """Format JSON metadata object and add it to db.
@@ -557,8 +557,8 @@ class Operator(BaseOperator):
         """
         if isinstance(data_raw, dict):
             return self._format_single_dict(schema_type, data_raw)
-        else:
-            return [self._format_single_dict(schema_type, doc) for doc in data_raw]
+
+        return [self._format_single_dict(schema_type, doc) for doc in data_raw]
 
     def _format_single_dict(self, schema_type: str, doc: Dict) -> Dict:
         """Format single result dictionary.
@@ -616,8 +616,8 @@ class XMLOperator(BaseOperator):
         # Parser may return a list of objects and each object should be added separately
         data_objects = parsed_data if isinstance(parsed_data, list) else [parsed_data]
         added_data: List = []
-        for object in data_objects:
-            data_with_id = await Operator(db_client)._format_data_to_create_and_add_to_db(schema_type, object)
+        for obj in data_objects:
+            data_with_id = await Operator(db_client)._format_data_to_create_and_add_to_db(schema_type, obj)
             added_data.append(data_with_id)
             LOG.debug(f"XMLOperator formatted data for xml-{schema_type} to add to DB")
             await self._insert_formatted_object_to_db(
@@ -738,18 +738,20 @@ class SubmissionOperator:
         if len(submission_check) == 0:
             LOG.info(f"doc {accession_id} belongs to no submission something is off")
             return False, "", False
-        elif len(submission_check) > 1:
+
+        if len(submission_check) > 1:
             reason = f"The {accession_id} is in more than 1 submission."
             LOG.error(reason)
             raise web.HTTPUnprocessableEntity(reason=reason)
-        else:
-            submission_id = submission_check[0]["submissionId"]
-            LOG.info(f"found doc {accession_id} in {submission_id}")
-            return True, submission_id, submission_check[0]["published"]
+
+        submission_id = submission_check[0]["submissionId"]
+        LOG.info(f"found doc {accession_id} in {submission_id}")
+        return True, submission_id, submission_check[0]["published"]
 
     async def get_collection_objects(self, submission_id: str, collection: str) -> List:
         """List objects ids per collection.
 
+        :param submission_id: id of the submission
         :param collection: collection it belongs to, it would be used as path
         :returns: List of objects
         """
@@ -768,8 +770,8 @@ class SubmissionOperator:
 
         if len(submissions) >= 1:
             return [i["accessionId"] for i in submissions[0][submission_path]]
-        else:
-            return []
+
+        return []
 
     async def create_submission(self, data: Dict) -> str:
         """Create new object submission to database.
@@ -799,9 +801,9 @@ class SubmissionOperator:
             reason = "Inserting submission to database failed for some reason."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        else:
-            LOG.info(f"Inserting submission with id {submission_id} to database succeeded.")
-            return submission_id
+
+        LOG.info(f"Inserting submission with id {submission_id} to database succeeded.")
+        return submission_id
 
     async def query_submissions(
         self, query: Dict, page_num: int, page_size: int, sort_param: Optional[dict] = None
@@ -839,7 +841,7 @@ class SubmissionOperator:
         if not data_raw:
             data = []
         else:
-            data = [doc for doc in data_raw]
+            data = list(data_raw)
 
         count_query = [{"$match": query}, {"$count": "total"}]
         total_submissions = await self.db_service.do_aggregate("submission", count_query)
@@ -871,6 +873,7 @@ class SubmissionOperator:
 
         :param submission_id: ID of submission to update
         :param patch: JSON Patch operations determined in the request
+        :param schema: database schema for the object
         :raises: HTTPBadRequest if updating was not successful
         :returns: ID of the submission updated to database
         """
@@ -891,9 +894,9 @@ class SubmissionOperator:
                 reason = "Updating submission to database failed for some reason."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        else:
-            LOG.info(f"Updating submission with id {submission_id} to database succeeded.")
-            return submission_id
+
+        LOG.info(f"Updating submission with id {submission_id} to database succeeded.")
+        return submission_id
 
     async def remove_object(self, submission_id: str, collection: str, accession_id: str) -> None:
         """Remove object from submissions in the database.
@@ -902,7 +905,6 @@ class SubmissionOperator:
         :param accession_id: ID of object to remove
         :param collection: collection where to remove the id from
         :raises: HTTPBadRequest if db connection fails
-        :returns: None
         """
         try:
             submission_path = "drafts" if collection.startswith("draft") else "metadataObjects"
@@ -936,15 +938,14 @@ class SubmissionOperator:
             reason = f"Deleting for {submission_id} from database failed."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        else:
-            LOG.info(f"Deleting submission with id {submission_id} to database succeeded.")
-            return submission_id
+
+        LOG.info(f"Deleting submission with id {submission_id} to database succeeded.")
+        return submission_id
 
     async def check_submission_exists(self, submission_id: str) -> None:
         """Check the existance of a submission by its id in the database.
 
         :raises: HTTPNotFound if submission does not exist
-        :returns: None
         """
         exists = await self.db_service.exists("submission", submission_id)
         if not exists:
@@ -956,7 +957,6 @@ class SubmissionOperator:
         """Check the existance of a submission by its id in the database.
 
         :raises: HTTPNotFound if submission does not exist
-        :returns: None
         """
         published = await self.db_service.published_submission(submission_id)
         if published:
@@ -994,6 +994,7 @@ class UserOperator:
     ) -> Tuple[bool, str]:
         """Check a submission/template belongs to same project the user is in.
 
+        :param req: HTTP request
         :param collection: collection it belongs to, it would be used as path
         :param user_id: user_id from session
         :param accession_id: document by accession_id
@@ -1038,10 +1039,10 @@ class UserOperator:
             if user_check:
                 LOG.debug(f"user {user_id} has project {project_id} affiliation")
                 return True
-            else:
-                reason = f"user {user_id} does not have project {project_id} affiliation"
-                LOG.debug(reason)
-                return False
+
+            reason = f"user {user_id} does not have project {project_id} affiliation"
+            LOG.debug(reason)
+            return False
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while reading user project affiliation: {error}"
             LOG.error(reason)
@@ -1054,27 +1055,27 @@ class UserOperator:
         :raises: HTTPBadRequest if error occurs during the process of creating user
         :returns: User id for the user object inserted to database
         """
-        user_data: Dict[str, Union[list, str]] = dict()
+        user_data: Dict[str, Union[list, str]] = {}
 
         try:
             existing_user_id = await self.db_service.exists_user_by_external_id(data["user_id"], data["real_name"])
             if existing_user_id:
                 LOG.info(f"User with identifier: {data['user_id']} exists, no need to create.")
                 return existing_user_id
-            else:
-                user_data["projects"] = data["projects"]
-                user_data["userId"] = user_id = self._generate_user_id()
-                user_data["name"] = data["real_name"]
-                user_data["externalId"] = data["user_id"]
-                JSONValidator(user_data, "users")
-                insert_success = await self.db_service.create("user", user_data)
-                if not insert_success:
-                    reason = "Inserting user to database failed for some reason."
-                    LOG.error(reason)
-                    raise web.HTTPBadRequest(reason=reason)
-                else:
-                    LOG.info(f"Inserting user with id {user_id} to database succeeded.")
-                    return user_id
+
+            user_data["projects"] = data["projects"]
+            user_data["userId"] = user_id = self._generate_user_id()
+            user_data["name"] = data["real_name"]
+            user_data["externalId"] = data["user_id"]
+            JSONValidator(user_data, "users")
+            insert_success = await self.db_service.create("user", user_data)
+            if not insert_success:
+                reason = "Inserting user to database failed for some reason."
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+
+            LOG.info(f"Inserting user with id {user_id} to database succeeded.")
+            return user_id
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while inserting user: {error}"
             LOG.error(reason)
@@ -1100,6 +1101,7 @@ class UserOperator:
         """Query database based on url query parameters.
 
         :param query: Dict containing query information
+        :param item_type: schema type of the item
         :param page_num: Page number
         :param page_size: Results per page
         :returns: Tuple with Paginated query result
@@ -1154,9 +1156,9 @@ class UserOperator:
             reason = "Updating user to database failed for some reason."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        else:
-            LOG.info(f"Updating user with id {user_id} to database succeeded.")
-            return user_id
+
+        LOG.info(f"Updating user with id {user_id} to database succeeded.")
+        return user_id
 
     async def assign_objects(self, user_id: str, collection: str, object_ids: List) -> None:
         """Assing object to user.
@@ -1231,9 +1233,9 @@ class UserOperator:
             reason = "Deleting for {user_id} from database failed."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        else:
-            LOG.info(f"User {user_id} successfully deleted.")
-            return user_id
+
+        LOG.info(f"User {user_id} successfully deleted.")
+        return user_id
 
     async def _check_user_exists(self, user_id: str) -> None:
         """Check the existance of a user by its id in the database.
@@ -1276,41 +1278,40 @@ class ProjectOperator:
     async def create_project(self, project_number: str) -> str:
         """Create new object project to database.
 
-        :param project_numer: project external ID received from AAI
+        :param project_number: project external ID received from AAI
         :raises: HTTPBadRequest if error occurs during the process of insert
         :returns: Project id for the project inserted to database
         """
-        project_data: Dict[str, Union[str, List[str]]] = dict()
+        project_data: Dict[str, Union[str, List[str]]] = {}
 
         try:
             existing_project_id = await self.db_service.exists_project_by_external_id(project_number)
             if existing_project_id:
                 LOG.info(f"Project with external ID: {project_number} exists, no need to create.")
                 return existing_project_id
-            else:
-                project_id = self._generate_project_id()
-                project_data["templates"] = []
-                project_data["projectId"] = project_id
-                project_data["externalId"] = project_number
-                insert_success = await self.db_service.create("project", project_data)
-                if not insert_success:
-                    reason = "Inserting project to database failed for some reason."
-                    LOG.error(reason)
-                    raise web.HTTPBadRequest(reason=reason)
-                else:
-                    LOG.info(f"Inserting project with id {project_id} to database succeeded.")
-                    return project_id
+
+            project_id = self._generate_project_id()
+            project_data["templates"] = []
+            project_data["projectId"] = project_id
+            project_data["externalId"] = project_number
+            insert_success = await self.db_service.create("project", project_data)
+            if not insert_success:
+                reason = "Inserting project to database failed for some reason."
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+
+            LOG.info(f"Inserting project with id {project_id} to database succeeded.")
+            return project_id
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while inserting project: {error}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-    async def _check_project_exists(self, project_id: str) -> None:
+    async def check_project_exists(self, project_id: str) -> None:
         """Check the existence of a project by its id in the database.
 
         :param project_id: Identifier of project to find.
         :raises: HTTPNotFound if project does not exist
-        :returns: None
         """
         exists = await self.db_service.exists("project", project_id)
         if not exists:
@@ -1327,7 +1328,7 @@ class ProjectOperator:
         returns: None
         """
         try:
-            await self._check_project_exists(project_id)
+            await self.check_project_exists(project_id)
             assign_success = await self.db_service.append(
                 "project", project_id, {"templates": {"$each": object_ids, "$position": 0}}
             )
@@ -1353,7 +1354,7 @@ class ProjectOperator:
         """
         remove_content: Dict
         try:
-            await self._check_project_exists(project_id)
+            await self.check_project_exists(project_id)
             for obj in object_ids:
                 remove_content = {"templates": {"accessionId": obj}}
                 await self.db_service.remove("project", project_id, remove_content)
@@ -1372,7 +1373,7 @@ class ProjectOperator:
         :returns: ID of the project updated to database
         """
         try:
-            await self._check_project_exists(project_id)
+            await self.check_project_exists(project_id)
             update_success = await self.db_service.patch("project", project_id, patch)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting project: {error}"
@@ -1383,9 +1384,9 @@ class ProjectOperator:
             reason = "Updating project in database failed for some reason."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        else:
-            LOG.info(f"Updating project={project_id} to database succeeded.")
-            return project_id
+
+        LOG.info(f"Updating project={project_id} to database succeeded.")
+        return project_id
 
     def _generate_project_id(self) -> str:
         """Generate random project id.
