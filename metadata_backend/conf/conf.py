@@ -58,8 +58,8 @@ def set_conf() -> Tuple[str, str]:
     mongo_user = os.getenv("MONGO_USERNAME", "admin")
     mongo_password = os.getenv("MONGO_PASSWORD", "admin")
     mongo_host = os.getenv("MONGO_HOST", "localhost:27017")
-    mongo_database = os.getenv("MONGO_DATABASE", "")
-    _base = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}/{mongo_database}"
+    mongo_db = os.getenv("MONGO_DATABASE", "")
+    _base = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}/{mongo_db}"
     if strtobool(os.getenv("MONGO_SSL", "False")):
         _ca = os.getenv("MONGO_SSL_CA", None)
         # Instead of using ssl_certfile and ssl_keyfile to specify
@@ -70,21 +70,21 @@ def set_conf() -> Tuple[str, str]:
             tls = f"?tls=true&tlsCAFile={_ca}&tlsCertificateKeyFile={_combined_cert_key}"
             _authdb = str(os.getenv("MONGO_AUTHDB"))
             auth = f"&authSource={_authdb}"
-            url = f"{_base}{tls}{auth}"
+            mongo_uri = f"{_base}{tls}{auth}"
         else:
             tls = f"?tls=true&tlsCAFile={_ca}&tlsCertificateKeyFile={_combined_cert_key}"
-            url = f"{_base}{tls}"
+            mongo_uri = f"{_base}{tls}"
     elif bool(os.getenv("MONGO_AUTHDB")):
         _authdb = str(os.getenv("MONGO_AUTHDB"))
         auth = f"?authSource={_authdb}"
-        url = f"{_base}{auth}"
+        mongo_uri = f"{_base}{auth}"
     else:
-        url = _base
+        mongo_uri = _base
 
     if os.getenv("MONGO_DATABASE", "") == "":
-        mongo_database = "default"
+        mongo_db = "default"
 
-    return url, mongo_database
+    return mongo_uri, mongo_db
 
 
 url, mongo_database = set_conf()
@@ -110,7 +110,7 @@ def create_db_client() -> AsyncIOMotorClient:
 # 2) Load schema types and descriptions from json
 # Default schemas will be ENA schemas
 path_to_schema_file = Path(__file__).parent / "schemas.json"
-with open(path_to_schema_file) as schema_file:
+with open(path_to_schema_file, encoding="utf-8") as schema_file:
     schema_types = ujson.load(schema_file)
 
 

@@ -36,7 +36,7 @@ class RemsAPIHandler(RESTAPIIntegrationHandler):
             return ""
         if language in _dict:
             return _dict[language]
-        elif fallback_language in _dict:
+        if fallback_language in _dict:
             return _dict[fallback_language]
 
         # return first element
@@ -66,12 +66,12 @@ class RemsAPIHandler(RESTAPIIntegrationHandler):
                 add_organization(str(org_id), str(org_name))
             organizations[org_id]["workflows"].append({"id": workflow["id"], "title": title})
 
-        for license in licenses:
-            title = self._get_localized(language, license["localizations"])
-            org_name = self._get_localized(language, license["organization"]["organization/name"])
-            org_id = license["organization"]["organization/id"]
+        for lic in licenses:
+            title = self._get_localized(language, lic["localizations"])
+            org_name = self._get_localized(language, lic["organization"]["organization/name"])
+            org_id = lic["organization"]["organization/id"]
             if org_id not in organizations:
                 add_organization(str(org_id), str(org_name))
-            organizations[org_id]["licenses"].append({"id": license["id"], **title})
+            organizations[org_id]["licenses"].append({"id": lic["id"], **title})
 
         return web.json_response(data=list(organizations.values()))

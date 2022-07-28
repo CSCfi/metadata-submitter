@@ -10,6 +10,7 @@ isort
 mypy
 pip-tools  # pip depedencies management
 pre-commit
+pylint
 pyspelling
 pytest
 pytest-cov

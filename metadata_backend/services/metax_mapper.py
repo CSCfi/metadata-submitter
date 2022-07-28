@@ -235,7 +235,7 @@ class MetaDataMapper:
         self.research_dataset = metax_data
         self.datacite_data = data
         self.affiliations: List = []
-        with open(METAX_REFERENCE_FILE, "r") as ref_file:
+        with open(METAX_REFERENCE_FILE, "r", encoding="utf-8") as ref_file:
             metax_reference_data = json.load(ref_file)
         self.identifier_types = metax_reference_data["identifier_types"]
         self.languages = metax_reference_data["languages"]
@@ -444,8 +444,8 @@ class MetaDataMapper:
         other_identifiers = self.research_dataset["other_identifier"] = []
         for identifier in identifiers:
             other_identifier["notation"] = identifier["alternateIdentifier"]
-            type = self.identifier_types[identifier["alternateIdentifierType"].lower()]
-            other_identifier["type"]["identifier"] = type
+            identifier_type = self.identifier_types[identifier["alternateIdentifierType"].lower()]
+            other_identifier["type"]["identifier"] = identifier_type
             other_identifiers.append(other_identifier)
 
     def _map_relations(self, datasets: List) -> None:

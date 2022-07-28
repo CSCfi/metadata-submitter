@@ -15,10 +15,10 @@ from ..helpers.logger import LOG
 class HealthHandler:
     """Handler for health check."""
 
-    async def get_health_status(self, req: Request) -> Response:
+    async def get_health_status(self, _: Request) -> Response:
         """Check health status of the application and return a JSON object portraying the status.
 
-        :param req: GET request
+        :param _: GET request
         :returns: JSON response containing health statuses
         """
         db_client = await self.create_test_db_client()

@@ -30,10 +30,10 @@ async def multipart_content(
     csv_files: List[Tuple[Dict, str, str]] = []
     try:
         reader = await req.multipart()
-    except AssertionError:
+    except AssertionError as exc:
         reason = "Request does not have valid multipart/form content"
         LOG.error(reason)
-        raise web.HTTPBadRequest(reason=reason)
+        raise web.HTTPBadRequest(reason=reason) from exc
     while True:
         part = await reader.next()
         # we expect a simple body part (BodyPartReader) instance here
@@ -107,7 +107,7 @@ def _check_csv(content: str) -> bool:
     """
     try:
         # Check for non-printable characters which should not be in CSV files
-        if not all([c in string.printable or c.isprintable() for c in content]):
+        if not all(c in string.printable or c.isprintable() for c in content):
             raise csv.Error
         csv.Sniffer().sniff(content)
         # No errors indicates validity of CSV
@@ -150,13 +150,13 @@ def _get_content_with_type(
         reason = "Request contained both xml and csv file types. Only one file type can be processed in this endpoint."
         LOG.error(reason)
         raise web.HTTPBadRequest(reason=reason)
-    elif xml_files:
+    if xml_files:
         # Files are sorted to spesific order by their schema priorities
         # (e.g. submission should be processed before study).
         return sorted(xml_files, key=lambda x: schema_types[x[1]]["priority"]), "xml"
-    elif csv_files:
+    if csv_files:
         return csv_files, "csv"
-    else:
-        reason = "Request data seems empty."
-        LOG.error(reason)
-        raise web.HTTPBadRequest(reason=reason)
+
+    reason = "Request data seems empty."
+    LOG.error(reason)
+    raise web.HTTPBadRequest(reason=reason)
