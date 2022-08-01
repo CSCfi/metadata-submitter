@@ -357,6 +357,9 @@ class XMLToJSONParser:
         # however we expect any type as it is easier to work with
         result: Any = schema.to_dict(content, converter=MetadataXMLConverter, decimal_type=float, dict_class=dict)
         _schema_type: str = schema_type.lower()
+        # BP sample files require special treatment
+        if _schema_type == "bpsample":
+            result = self._organize_bp_sample_objects(result)
         # Validate each JSON object separately if an array of objects is parsed
         results = result[_schema_type] if isinstance(result[_schema_type], list) else [result[_schema_type]]
         if _schema_type != "submission":
@@ -380,6 +383,44 @@ class XMLToJSONParser:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         return schema
+
+    @staticmethod
+    def _organize_bp_sample_objects(data: Dict) -> Dict:
+        """Handle BP Sample data after it was parsed from an XML so it can be validated and added to db.
+
+        :param data: BP sample objects in JSON format
+        :returns: Organized BP sample objects
+        """
+        # Separate biological beings, specimen, blocks and slides from the data that was extracted from the XML
+        bio_beings = data["biologicalBeing"] if "biologicalBeing" in data else []
+        bio_beings = bio_beings if isinstance(bio_beings, list) else [bio_beings]
+        specimens = data["specimen"] if "specimen" in data else []
+        specimens = specimens if isinstance(specimens, list) else [specimens]
+        blocks = data["block"] if "block" in data else []
+        blocks = blocks if isinstance(blocks, list) else [blocks]
+        slides = data["slide"] if "slide" in data else []
+        slides = slides if isinstance(slides, list) else [slides]
+
+        # Create sample object from biological beings, specimen, blocks and slides that relate to each other
+        samples: List[Dict] = []
+        for being in bio_beings:
+            sample: Dict[str, Any] = {"biologicalBeing": None, "specimen": None, "block": [], "slide": []}
+            sample["biologicalBeing"] = being
+            being_alias = being["alias"]
+            for specimen in specimens:
+                if specimen["extractedFrom"]["refname"] == being_alias:
+                    sample["specimen"] = specimen
+                    specimen_alias = specimen["alias"]
+                    for block in blocks:
+                        if block["sampledFrom"]["refname"] == specimen_alias:
+                            sample["block"].append(block)
+                            block_alias = block["alias"]
+                            for slide in slides:
+                                if slide["createdFrom"]["refname"] == block_alias:
+                                    sample["slide"].append(slide)
+            samples.append(sample)
+
+        return {"bpsample": samples}
 
 
 class CSVToJSONParser:

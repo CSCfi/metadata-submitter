@@ -1,0 +1,185 @@
+<SAMPLE_SET>
+    <BIOLOGICAL_BEING alias="BiologicalBeing_qLNZYjYjyZ">
+        <ATTRIBUTES>
+            <ATTRIBUTE>
+                <TAG>sex</TAG>
+                <VALUE>w</VALUE>
+            </ATTRIBUTE>
+            <ATTRIBUTE>
+                <TAG>animal_species</TAG>
+                <VALUE>homo_sapiens</VALUE>
+            </ATTRIBUTE>
+        </ATTRIBUTES>
+    </BIOLOGICAL_BEING>
+    <BIOLOGICAL_BEING alias="BiologicalBeing_NhlAsXgDXz">
+        <ATTRIBUTES>
+            <ATTRIBUTE>
+                <TAG>sex</TAG>
+                <VALUE>m</VALUE>
+            </ATTRIBUTE>
+            <ATTRIBUTE>
+                <TAG>animal_species</TAG>
+                <VALUE>homo_sapiens</VALUE>
+            </ATTRIBUTE>
+        </ATTRIBUTES>
+    </BIOLOGICAL_BEING>
+    <SPECIMEN alias="Specimen_agzPROKqfe">
+        <ATTRIBUTES>
+            <ATTRIBUTE>
+                <TAG>specimen_type</TAG>
+                <VALUE>histology</VALUE>
+            </ATTRIBUTE>
+            <ATTRIBUTE>
+                <TAG>age_at_extraction</TAG>
+                <VALUE>65</VALUE>
+            </ATTRIBUTE>
+            <ATTRIBUTE>
+                <TAG>extraction_method</TAG>
+                <VALUE>biopsy</VALUE>
+            </ATTRIBUTE>
+            <ATTRIBUTE>
+                <TAG>anatomical_site</TAG>
+                <VALUE>liver</VALUE>
+            </ATTRIBUTE>
+        </ATTRIBUTES>
+        <EXTRACTED_FROM refname="BiologicalBeing_qLNZYjYjyZ"/>
+    </SPECIMEN>
+    <SPECIMEN alias="Specimen_zMfXLUhmrV">
+        <ATTRIBUTES>
+            <ATTRIBUTE>
+                <TAG>specimen_type</TAG>
+                <VALUE>histology</VALUE>
+            </ATTRIBUTE>
+            <ATTRIBUTE>
+                <TAG>age_at_extraction</TAG>
+                <VALUE>50</VALUE>
+            </ATTRIBUTE>
+            <ATTRIBUTE>
+                <TAG>extraction_method</TAG>
+                <VALUE>biopsy</VALUE>
+            </ATTRIBUTE>
+            <ATTRIBUTE>
+                <TAG>anatomical_site</TAG>
+                <VALUE>liver</VALUE>
+            </ATTRIBUTE>
+        </ATTRIBUTES>
+        <EXTRACTED_FROM refname="BiologicalBeing_NhlAsXgDXz"/>
+    </SPECIMEN>
+    <BLOCK alias="Block_novHraeLUH">
+        <ATTRIBUTES>
+            <ATTRIBUTE>
+                <TAG>sample_preparation</TAG>
+                <VALUE>paraffin</VALUE>
+            </ATTRIBUTE>
+        </ATTRIBUTES>
+        <SAMPLED_FROM refname="Specimen_agzPROKqfe"/>
+    </BLOCK>
+    <BLOCK alias="Block_SRbwyUAbuF">
+        <ATTRIBUTES>
+            <ATTRIBUTE>
+                <TAG>sample_preparation</TAG>
+                <VALUE>paraffin</VALUE>
+            </ATTRIBUTE>
+        </ATTRIBUTES>
+        <SAMPLED_FROM refname="Specimen_zMfXLUhmrV"/>
+    </BLOCK>
+    <BLOCK alias="Block_rYkFuzYviO">
+        <ATTRIBUTES>
+            <ATTRIBUTE>
+                <TAG>sample_preparation</TAG>
+                <VALUE>paraffin</VALUE>
+            </ATTRIBUTE>
+        </ATTRIBUTES>
+        <SAMPLED_FROM refname="Specimen_zMfXLUhmrV"/>
+    </BLOCK>
+    <SLIDE alias="Slide_BkyUrCfBxx">
+        <ATTRIBUTES>
+            <ATTRIBUTE_SET>
+                <TAG>staining_information</TAG>
+                <ATTRIBUTE_SET>
+                    <TAG>stain</TAG>
+                    <ATTRIBUTE>
+                        <TAG>staining_compound</TAG>
+                        <VALUE>eosin</VALUE>
+                    </ATTRIBUTE>
+                    <ATTRIBUTE>
+                        <TAG>staining_method</TAG>
+                        <VALUE>chemical</VALUE>
+                    </ATTRIBUTE>
+                </ATTRIBUTE_SET>
+                <ATTRIBUTE_SET>
+                    <TAG>stain</TAG>
+                    <ATTRIBUTE>
+                        <TAG>staining_compound</TAG>
+                        <VALUE>hematoxilin</VALUE>
+                    </ATTRIBUTE>
+                    <ATTRIBUTE>
+                        <TAG>staining_method</TAG>
+                        <VALUE>chemical</VALUE>
+                    </ATTRIBUTE>
+                </ATTRIBUTE_SET>
+            </ATTRIBUTE_SET>
+        </ATTRIBUTES>
+        <CREATED_FROM refname="Block_novHraeLUH"/>
+    </SLIDE>
+    <SLIDE alias="Slide_OYFDfQXRhr">
+        <ATTRIBUTES>
+            <ATTRIBUTE_SET>
+                <TAG>staining_information</TAG>
+                <ATTRIBUTE_SET>
+                    <TAG>stain</TAG>
+                    <ATTRIBUTE>
+                        <TAG>staining_compound</TAG>
+                        <VALUE>eosin</VALUE>
+                    </ATTRIBUTE>
+                    <ATTRIBUTE>
+                        <TAG>staining_method</TAG>
+                        <VALUE>chemical</VALUE>
+                    </ATTRIBUTE>
+                </ATTRIBUTE_SET>
+                <ATTRIBUTE_SET>
+                    <TAG>stain</TAG>
+                    <ATTRIBUTE>
+                        <TAG>staining_compound</TAG>
+                        <VALUE>hematoxilin</VALUE>
+                    </ATTRIBUTE>
+                    <ATTRIBUTE>
+                        <TAG>staining_method</TAG>
+                        <VALUE>chemical</VALUE>
+                    </ATTRIBUTE>
+                </ATTRIBUTE_SET>
+            </ATTRIBUTE_SET>
+        </ATTRIBUTES>
+        <CREATED_FROM refname="Block_SRbwyUAbuF"/>
+    </SLIDE>
+    <SLIDE alias="Slide_OYFDfQXRhr">
+        <ATTRIBUTES>
+            <ATTRIBUTE_SET>
+                <TAG>staining_information</TAG>
+                <ATTRIBUTE_SET>
+                    <TAG>stain</TAG>
+                    <ATTRIBUTE>
+                        <TAG>staining_compound</TAG>
+                        <VALUE>eosin</VALUE>
+                    </ATTRIBUTE>
+                    <ATTRIBUTE>
+                        <TAG>staining_method</TAG>
+                        <VALUE>chemical</VALUE>
+                    </ATTRIBUTE>
+                </ATTRIBUTE_SET>
+                <ATTRIBUTE_SET>
+                    <TAG>stain</TAG>
+                    <ATTRIBUTE>
+                        <TAG>staining_compound</TAG>
+                        <VALUE>hematoxilin</VALUE>
+                    </ATTRIBUTE>
+                    <ATTRIBUTE>
+                        <TAG>staining_method</TAG>
+                        <VALUE>chemical</VALUE>
+                    </ATTRIBUTE>
+                </ATTRIBUTE_SET>
+            </ATTRIBUTE_SET>
+        </ATTRIBUTES>
+        <CREATED_FROM refname="Block_rYkFuzYviO"/>
+    </SLIDE>
+</SAMPLE_SET>
