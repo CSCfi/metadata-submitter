@@ -272,7 +272,7 @@ soupsieve==2.3.2.post1
     # via
     #   beautifulsoup4
     #   pyspelling
-sphinx==5.1.0
+sphinx==5.1.1
     # via
     #   -r requirements-dev.in
     #   sphinx-rtd-theme
