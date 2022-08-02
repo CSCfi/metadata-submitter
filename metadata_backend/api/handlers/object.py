@@ -73,20 +73,9 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         :returns: JSON or XML response containing metadata object
         """
         accession_id = req.match_info["accessionId"]
-        schema_type = req.match_info["schema"]
-        self._check_schema_exists(schema_type)
-        collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
-
+        collection = req["collection"]
         req_format = req.query.get("format", "json").lower()
-        db_client = req.app["db_client"]
-        operator = XMLOperator(db_client) if req_format == "xml" else Operator(db_client)
-        type_collection = f"xml-{collection}" if req_format == "xml" else collection
-
-        await operator.check_exists(collection, accession_id)
-
-        await self._handle_check_ownership(req, collection, accession_id)
-
-        data, content_type = await operator.read_metadata_object(type_collection, accession_id)
+        data, content_type = req["object"]
 
         data = data if req_format == "xml" else ujson.dumps(data, escape_forward_slashes=False)
         LOG.info(f"GET object with accesssion ID {accession_id} from schema {collection}.")
@@ -112,10 +101,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
             reason = "Submission is required query parameter. Please provide submission id where object is added to."
             raise web.HTTPBadRequest(reason=reason)
 
-        await self._handle_check_ownership(req, "submissions", submission_id)
-
-        self._check_schema_exists(schema_type)
-        collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
+        collection = req["collection"]
 
         db_client = req.app["db_client"]
         submission_op = SubmissionOperator(db_client)
@@ -146,7 +132,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
             # Else the multipart request is expected to contain CSV file(s) which are converted into JSON.
             operator = XMLOperator(db_client) if cont_type == "xml" else Operator(db_client)
         else:
-            content = await self._get_data(req)
+            content = await self.get_data(req)
             if not req.path.startswith(f"{API_PREFIX}/drafts"):
                 JSONValidator(content, schema_type).validate
             operator = Operator(db_client)
@@ -217,8 +203,6 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         :param req: GET request with query parameters (can be empty).
         :returns: Query results as JSON
         """
-        schema_type = req.match_info["schema"]
-        self._check_schema_exists(schema_type)
         return await self._handle_query(req)
 
     async def delete_object(self, req: Request) -> web.HTTPNoContent:
@@ -233,36 +217,23 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         accession_id = req.match_info["accessionId"]
         LOG.debug(f"Deleting object {schema_type} {accession_id}")
 
-        self._check_schema_exists(schema_type)
-        collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
+        collection = req["collection"]
         db_client = req.app["db_client"]
 
         operator = Operator(db_client)
-        await operator.check_exists(collection, accession_id)
-
-        await self._handle_check_ownership(req, collection, accession_id)
 
         submission_op = SubmissionOperator(db_client)
-        exists, submission_id, published = await submission_op.check_object_in_submission(collection, accession_id)
-        if exists:
-            if published:
-                reason = "published objects cannot be deleted."
-                LOG.error(reason)
-                raise web.HTTPUnauthorized(reason=reason)
-            await submission_op.remove_object(submission_id, collection, accession_id)
-            _now = int(datetime.now().timestamp())
-            lastModified = {"op": "replace", "path": "/lastModified", "value": _now}
-            await submission_op.update_submission(submission_id, [lastModified])
-        else:
-            reason = "This object does not seem to belong to any user."
-            LOG.error(reason)
-            raise web.HTTPUnprocessableEntity(reason=reason)
+        _, submission_id, _ = await submission_op.check_object_in_submission(collection, accession_id)
+        await submission_op.remove_object(submission_id, collection, accession_id)
+        _now = int(datetime.now().timestamp())
+        lastModified = {"op": "replace", "path": "/lastModified", "value": _now}
+        await submission_op.update_submission(submission_id, [lastModified])
 
         metax_id: str = ""
         doi_id: str = ""
         if collection in DATACITE_SCHEMAS:
             try:
-                object_data, _ = await operator.read_metadata_object(collection, accession_id)
+                object_data, _ = req["object"]
                 # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
                 if isinstance(object_data, dict):
                     doi_id = object_data["doi"]
@@ -302,8 +273,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         accession_id = req.match_info["accessionId"]
         LOG.debug(f"Replacing object {schema_type} {accession_id}")
 
-        self._check_schema_exists(schema_type)
-        collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
+        collection = req["collection"]
 
         db_client = req.app["db_client"]
         content: Union[Dict, str]
@@ -314,24 +284,15 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
             content, _, _ = files[0]
             operator = XMLOperator(db_client)
         else:
-            content = await self._get_data(req)
+            content = req["content"]
             if not req.path.startswith(f"{API_PREFIX}/drafts"):
                 reason = "Replacing objects only allowed for XML."
                 LOG.error(reason)
                 raise web.HTTPUnsupportedMediaType(reason=reason)
             operator = Operator(db_client)
 
-        await operator.check_exists(collection, accession_id)
-
-        await self._handle_check_ownership(req, collection, accession_id)
-
         submission_op = SubmissionOperator(db_client)
-        exists, submission_id, published = await submission_op.check_object_in_submission(collection, accession_id)
-        if exists:
-            if published:
-                reason = "Published objects cannot be updated."
-                LOG.error(reason)
-                raise web.HTTPUnauthorized(reason=reason)
+        _, submission_id, _ = await submission_op.check_object_in_submission(collection, accession_id)
 
         data = await operator.replace_metadata_object(collection, accession_id, content)
         patch = self._prepare_submission_patch_update_object(collection, data, filename)
@@ -366,8 +327,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         accession_id = req.match_info["accessionId"]
         LOG.debug(f"Patching object {schema_type} {accession_id}")
 
-        self._check_schema_exists(schema_type)
-        collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
+        collection = req["collection"]
 
         db_client = req.app["db_client"]
         operator: Union[Operator, XMLOperator]
@@ -375,20 +335,11 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
             reason = "XML patching is not possible."
             raise web.HTTPUnsupportedMediaType(reason=reason)
 
-        content = await self._get_data(req)
+        content = req["content"]
         operator = Operator(db_client)
 
-        await operator.check_exists(collection, accession_id)
-
-        await self._handle_check_ownership(req, collection, accession_id)
-
         submission_op = SubmissionOperator(db_client)
-        exists, submission_id, published = await submission_op.check_object_in_submission(collection, accession_id)
-        if exists:
-            if published:
-                reason = "Published objects cannot be updated."
-                LOG.error(reason)
-                raise web.HTTPUnauthorized(reason=reason)
+        _, submission_id, _ = await submission_op.check_object_in_submission(collection, accession_id)
 
         accession_id = await operator.update_metadata_object(collection, accession_id, content)
 

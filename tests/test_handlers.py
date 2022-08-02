@@ -48,6 +48,10 @@ class HandlersTestCase(AioHTTPTestCase):
 
         self.aiohttp_session_get_session_mock = AsyncMock()
         self.aiohttp_session_get_session_mock.return_value = self.session_return
+        # self.p_get_sess_restapi = patch(
+        #     "metadata_backend.api.middlewares.aiohttp_session.get_session",
+        #     self.aiohttp_session_get_session_mock,
+        # )
         self.p_get_sess_restapi = patch(
             "metadata_backend.api.handlers.restapi.aiohttp_session.get_session",
             self.aiohttp_session_get_session_mock,
@@ -126,7 +130,7 @@ class HandlersTestCase(AioHTTPTestCase):
             "filter_user.side_effect": self.fake_useroperator_filter_user,
         }
 
-        RESTAPIHandler._handle_check_ownership = make_mocked_coro(True)
+        RESTAPIHandler.handle_check_ownership = make_mocked_coro(True)
 
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
@@ -398,13 +402,19 @@ class ObjectHandlerTestCase(HandlersTestCase):
         """
         await super().setUpAsync()
 
-        class_xmloperator = "metadata_backend.api.handlers.object.XMLOperator"
+        class_xmloperator = "metadata_backend.api.middlewares.XMLOperator"
+        # class_xmloperator = "metadata_backend.api.handlers.object.XMLOperator"
         self.patch_xmloperator = patch(class_xmloperator, **self.xmloperator_config, spec=True)
         self.MockedXMLOperator = self.patch_xmloperator.start()
 
+        # class_operator = "metadata_backend.api.middlewares.Operator"
         class_operator = "metadata_backend.api.handlers.object.Operator"
         self.patch_operator = patch(class_operator, **self.operator_config, spec=True)
         self.MockedOperator = self.patch_operator.start()
+
+        class_operator_middleware = "metadata_backend.api.middlewares.Operator"
+        self.patch_operator_middleware = patch(class_operator_middleware, **self.operator_config, spec=True)
+        self.MockedOperatorMiddleware = self.patch_operator_middleware.start()
 
         class_csv_parser = "metadata_backend.api.handlers.common.CSVToJSONParser"
         self.patch_csv_parser = patch(class_csv_parser, spec=True)
@@ -414,6 +424,16 @@ class ObjectHandlerTestCase(HandlersTestCase):
         self.patch_submissionoperator = patch(class_submissionoperator, **self.submissionoperator_config, spec=True)
         self.MockedSubmissionOperator = self.patch_submissionoperator.start()
 
+        class_submissionoperator_middleware = "metadata_backend.api.middlewares.SubmissionOperator"
+        self.patch_submissionoperator_middleware = patch(
+            class_submissionoperator_middleware, **self.submissionoperator_config, spec=True
+        )
+        self.MockedSubmissionOperatorMiddleware = self.patch_submissionoperator_middleware.start()
+
+        class_useroperator = "metadata_backend.api.middlewares.UserOperator"
+        self.patch_useroperator = patch(class_useroperator, **self.useroperator_config, spec=True)
+        self.MockedUserOperatorMiddleware = self.patch_useroperator.start()
+
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
         await super().tearDownAsync()
@@ -421,6 +441,9 @@ class ObjectHandlerTestCase(HandlersTestCase):
         self.patch_csv_parser.stop()
         self.patch_submissionoperator.stop()
         self.patch_operator.stop()
+        self.patch_useroperator.stop()
+        self.patch_operator_middleware.stop()
+        self.patch_submissionoperator_middleware.stop()
 
     async def test_submit_object_works(self):
         """Test that submission is handled, XMLOperator is called."""
@@ -562,10 +585,10 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
     async def test_patch_object_bad_json(self):
         """Test that patch JSON is badly formated."""
-        json_req = {"centerName": "GEO", "alias": "GSE10966"}
+        json_req = 'centerName": "GEO", "alias": "GSE10966"}'
         call = f"{API_PREFIX}/drafts/study/EGA123456"
         with self.p_get_sess_restapi:
-            response = await self.client.patch(call, data=json_req)
+            response = await self.client.patch(call, data=json_req, headers={"content-type": "application/json"})
             reason = "JSON is not correctly formatted. See: Expecting value: line 1 column 1"
             self.assertEqual(response.status, 400)
             self.assertIn(reason, await response.text())
@@ -672,7 +695,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
             self.assertEqual(self.metadata_json, await response.json())
 
     async def test_get_object_as_xml(self):
-        """Test that accessionId  with XML query returns XML object."""
+        """Test that accessionId with XML query returns XML object."""
         url = f"{API_PREFIX}/objects/study/{self.query_accessionId}"
         with self.p_get_sess_restapi:
             response = await self.client.get(f"{url}?format=xml")
@@ -812,7 +835,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         self.patch_submissionoperator = patch(class_submissionoperator, **self.submissionoperator_config, spec=True)
         self.MockedSubmissionOperator = self.patch_submissionoperator.start()
 
-        class_useroperator = "metadata_backend.api.handlers.submission.UserOperator"
+        class_useroperator = "metadata_backend.api.middlewares.UserOperator"
         self.patch_useroperator = patch(class_useroperator, **self.useroperator_config, spec=True)
         self.MockedUserOperator = self.patch_useroperator.start()
 

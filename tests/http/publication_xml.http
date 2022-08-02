@@ -36,14 +36,25 @@ GET {{backend_url}}/v1/users/current
 
 ### Create submission
 # @name submission_id_req
-POST {{backend_url}}/v1/submissions
-Content-Type: text/json
+POST {{backend_url}}/v1/submit
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
 
-{
-    "name": "submission test 1",
-    "description": "submission test 1",
-    "projectId": "{{project_id}}"
-}
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="SUBMISSION"; value="ERA521986_valid.xml"
+Content-Type: text/xml
+
+< ../test_files/submission/ERA521986_valid.xml
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+Content-Disposition: form-data; name="STUDY"; value="SRP000539.xml"
+Content-Type: text/xml
+
+< ../test_files/study/SRP000539.xml
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+Content-Disposition: form-data; name="SAMPLE"; value="SRS001433.xml"
+Content-Type: text/xml
+
+< ../test_files/sample/SRS001433.xml
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
 
 ### List submissions
 GET {{backend_url}}/v1/submissions
@@ -52,13 +63,17 @@ GET {{backend_url}}/v1/submissions
 ### Get submission
 GET {{backend_url}}/v1/submissions/{{submission_id}}
 
-### Add study to submission
+### Add XML dataset to submission
 # @name study_id_req
-POST {{backend_url}}/v1/objects/study
+POST {{backend_url}}/v1/objects/dataset
     ?submission={{submission_id}}
-Content-Type: text/json
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
 
-< ../test_files/study/SRP000539.json
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="DATASET"; value="dataset.xml"
+Content-Type: text/xml
+
+< ../test_files/dataset/dataset.xml
 
 ### Get study
 GET {{backend_url}}/v1/objects/study/{{study_id}}

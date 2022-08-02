@@ -20,7 +20,7 @@ from .api.handlers.template import TemplatesAPIHandler
 from .api.handlers.user import UserAPIHandler
 from .api.handlers.xml_submission import XMLSubmissionAPIHandler
 from .api.health import HealthHandler
-from .api.middlewares import check_session, http_error_handler
+from .api.middlewares import check_session, http_error_handler, protect_published
 from .conf.conf import (
     API_PREFIX,
     REMS_ENABLED,
@@ -53,7 +53,7 @@ async def init(
     :param inject_middleware: list of middlewares to inject
     :returns: Web Application
     """
-    middlewares = [http_error_handler, check_session]
+    middlewares = [http_error_handler, check_session, protect_published]
     if inject_middleware:
         middlewares = middlewares + inject_middleware
     api = web.Application(middlewares=middlewares)

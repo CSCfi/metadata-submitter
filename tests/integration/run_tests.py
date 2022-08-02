@@ -155,8 +155,7 @@ async def create_request_json_data(schema, filename):
     path_to_file = testfiles_root / schema / filename
     path = path_to_file.as_posix()
     async with aiofiles.open(path, mode="r") as f:
-        request_data = await f.read()
-    return request_data
+        return json.loads(await f.read())
 
 
 async def get_object(sess, schema, accession_id):
@@ -179,7 +178,7 @@ async def post_object(sess, schema, submission_id, filename):
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (submission) used for testing
-    :submission_id: submission object belongs to
+    :param submission_id: submission object belongs to
     :param filename: name of the file used for testing.
     :return: accessionId of created object
     """
@@ -212,7 +211,7 @@ async def post_object_expect_status(sess, schema, submission_id, filename, statu
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (submission) used for testing
-    :submission_id: submission object belongs to
+    :param submission_id: submission object belongs to
     :param filename: name of the file used for testing
     :param: HTTP status to expect for
     :return: accessionId of created object
@@ -236,7 +235,7 @@ async def post_object_json(sess, schema, submission_id, filename):
     :return: accessionId of created object
     """
     request_data = await create_request_json_data(schema, filename)
-    async with sess.post(f"{objects_url}/{schema}", params={"submission": submission_id}, data=request_data) as resp:
+    async with sess.post(f"{objects_url}/{schema}", params={"submission": submission_id}, json=request_data) as resp:
         LOG.debug(f"Adding new object to {schema}, via JSON file {filename}")
         assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
@@ -282,7 +281,7 @@ async def post_draft_json(sess, schema, submission_id, filename):
     :return: accessionId of created draft
     """
     request_data = await create_request_json_data(schema, filename)
-    async with sess.post(f"{drafts_url}/{schema}", params={"submission": submission_id}, data=request_data) as resp:
+    async with sess.post(f"{drafts_url}/{schema}", params={"submission": submission_id}, json=request_data) as resp:
         LOG.debug(f"Adding new draft object to {schema}, via JSON file {filename}")
         ans = await resp.json()
         assert resp.status == 201, f"HTTP Status code error, got {resp.status}: {ans}"
@@ -302,7 +301,7 @@ async def get_draft(sess, schema, draft_id, expected_status=200):
         LOG.debug(f"Checking that {draft_id} JSON exists")
         assert resp.status == expected_status, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
-        return json.dumps(ans)
+        return ans
 
 
 async def put_draft(sess, schema, draft_id, update_filename):
@@ -315,7 +314,7 @@ async def put_draft(sess, schema, draft_id, update_filename):
     :return: assession id of updated draft
     """
     request_data = await create_request_json_data(schema, update_filename)
-    async with sess.put(f"{drafts_url}/{schema}/{draft_id}", data=request_data) as resp:
+    async with sess.put(f"{drafts_url}/{schema}/{draft_id}", json=request_data) as resp:
         LOG.debug(f"Replace draft object in {schema}")
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         ans_put = await resp.json()
@@ -333,7 +332,7 @@ async def put_object_json(sess, schema, accession_id, update_filename):
     :return: assession id of updated object
     """
     request_data = await create_request_json_data(schema, update_filename)
-    async with sess.put(f"{objects_url}/{schema}/{accession_id}", data=request_data) as resp:
+    async with sess.put(f"{objects_url}/{schema}/{accession_id}", json=request_data) as resp:
         LOG.debug(f"Try to replace object in {schema}")
         assert resp.status == 415, f"HTTP Status code error, got {resp.status}"
 
@@ -348,7 +347,7 @@ async def patch_object_json(sess, schema, accession_id, update_filename):
     :return: assession id of updated object
     """
     request_data = await create_request_json_data(schema, update_filename)
-    async with sess.patch(f"{objects_url}/{schema}/{accession_id}", data=request_data) as resp:
+    async with sess.patch(f"{objects_url}/{schema}/{accession_id}", json=request_data) as resp:
         LOG.debug(f"Try to patch object in {schema}")
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         ans_put = await resp.json()
@@ -384,7 +383,7 @@ async def patch_draft(sess, schema, draft_id, update_filename):
     :return: assession id of updated draft
     """
     request_data = await create_request_json_data(schema, update_filename)
-    async with sess.patch(f"{drafts_url}/{schema}/{draft_id}", data=request_data) as resp:
+    async with sess.patch(f"{drafts_url}/{schema}/{draft_id}", json=request_data) as resp:
         LOG.debug(f"Update draft object in {schema}")
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         ans_put = await resp.json()
@@ -413,14 +412,12 @@ async def post_template_json(sess, schema, filename, project_id):
     :param project_id: id of the project the template belongs to
     """
     request_data = await create_request_json_data(schema, filename)
-    request_data = json.loads(request_data)
     if type(request_data) is list:
         for rd in request_data:
             rd["projectId"] = project_id
     else:
         request_data["projectId"] = project_id
-    request_data = json.dumps(request_data)
-    async with sess.post(f"{templates_url}/{schema}", data=request_data) as resp:
+    async with sess.post(f"{templates_url}/{schema}", json=request_data) as resp:
         LOG.debug(f"Adding new template object to {schema}, via JSON file {filename}")
         ans = await resp.json()
         assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
@@ -467,7 +464,7 @@ async def patch_template(sess, schema, template_id, update_filename):
     :param update_filename: name of the file used to use for updating data.
     """
     request_data = await create_request_json_data(schema, update_filename)
-    async with sess.patch(f"{templates_url}/{schema}/{template_id}", data=request_data) as resp:
+    async with sess.patch(f"{templates_url}/{schema}/{template_id}", json=request_data) as resp:
         LOG.debug(f"Update draft object in {schema}")
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         ans_put = await resp.json()
@@ -493,7 +490,7 @@ async def post_submission(sess, data):
     :param sess: HTTP session in which request call is made
     :param data: data used to update the submission
     """
-    async with sess.post(f"{submissions_url}", data=json.dumps(data)) as resp:
+    async with sess.post(f"{submissions_url}", json=data) as resp:
         ans = await resp.json()
         assert resp.status == 201, f"HTTP Status code error {resp.status} {ans}"
         LOG.debug(f"Adding new submission {ans['submissionId']}")
@@ -507,7 +504,7 @@ async def patch_submission(sess, submission_id, data):
     :param submission_id: id of the submission
     :param data: JSON object to use in PATCH call
     """
-    async with sess.patch(f"{submissions_url}/{submission_id}", data=json.dumps(data)) as resp:
+    async with sess.patch(f"{submissions_url}/{submission_id}", json=data) as resp:
         LOG.debug(f"Updating submission {submission_id}")
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         ans_patch = await resp.json()
@@ -548,7 +545,7 @@ async def delete_submission_publish(sess, submission_id):
     """
     async with sess.delete(f"{submissions_url}/{submission_id}") as resp:
         LOG.debug(f"Deleting submission {submission_id}")
-        assert resp.status == 401, f"HTTP Status code error, got {resp.status}"
+        assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
 
 
 async def put_submission_doi(sess, submission_id, data):
@@ -556,10 +553,10 @@ async def put_submission_doi(sess, submission_id, data):
 
     :param sess: HTTP session in which request call is made
     :param submission_id: id of the submission
-    :param data: doi data used to update the submission
+    :param data: doi data as a dict used to update the submission
     :returns: Submission id for the submission inserted to database
     """
-    async with sess.put(f"{submissions_url}/{submission_id}/doi", data=data) as resp:
+    async with sess.put(f"{submissions_url}/{submission_id}/doi", json=data) as resp:
         ans = await resp.json()
         assert resp.status == 200, f"HTTP Status code error {resp.status} {ans}"
         LOG.debug(f"Adding doi to submission {ans['submissionId']}")
@@ -571,10 +568,10 @@ async def put_submission_dac(sess, submission_id, data):
 
     :param sess: HTTP session in which request call is made
     :param submission_id: id of the submission
-    :param data: dac data used to update the submission
+    :param data: dac data as a dict used to update the submission
     :returns: Submission id for the submission inserted to database
     """
-    async with sess.put(f"{submissions_url}/{submission_id}/dac", data=data) as resp:
+    async with sess.put(f"{submissions_url}/{submission_id}/dac", json=data) as resp:
         ans = await resp.json()
         assert resp.status == 200, f"HTTP Status code error {resp.status} {ans}"
         LOG.debug(f"Adding DAC to submission {ans['submissionId']}")
@@ -1117,9 +1114,9 @@ async def test_metax_id_not_updated_on_patch(sess, submission_id):
         ("dataset", "dataset.json"),
     }:
         accession_id = await post_object_json(sess, schema, submission_id, filename)
-        async with sess.patch(f"{objects_url}/{schema}/{accession_id}", data={"metaxIdentifier": "12345"}) as resp:
+        async with sess.patch(f"{objects_url}/{schema}/{accession_id}", json={"metaxIdentifier": "12345"}) as resp:
             LOG.debug(f"Trying to patch object in {schema}")
-            assert resp.status == 400
+            assert resp.status == 400, resp.status
 
             await delete_object(sess, schema, accession_id)
 
@@ -1147,8 +1144,8 @@ async def test_metax_publish_dataset(sess, submission_id):
             object.append(res["metaxIdentifier"])
 
     # Add DOI and publish the submission
-    doi_data_raw = await create_request_json_data("doi", "test_doi.json")
-    await put_submission_doi(sess, submission_id, doi_data_raw)
+    doi_data = await create_request_json_data("doi", "test_doi.json")
+    await put_submission_doi(sess, submission_id, doi_data)
     dac_data = await create_request_json_data("dac", "dac_rems.json")
     await put_submission_dac(sess, submission_id, dac_data)
     await publish_submission(sess, submission_id)
@@ -1166,7 +1163,7 @@ async def test_metax_publish_dataset(sess, submission_id):
 
             # this data is synced with /test_files/doi/test_doi.json
             # if data changes inside the file it must data must be reflected here
-            expected_rd = json.loads(await create_request_json_data("metax", "research_dataset.json"))
+            expected_rd = await create_request_json_data("metax", "research_dataset.json")
             actual_rd = metax_res["research_dataset"]
 
             title = res["title"] if schema == "dataset" else res["descriptor"]["studyTitle"]
@@ -1235,8 +1232,8 @@ async def test_metax_publish_dataset_with_missing_metax_id(sess, database, submi
             assert res["metaxIdentifier"] == ""
 
     # Add DOI and publish the submission
-    doi_data_raw = await create_request_json_data("doi", "test_doi.json")
-    await put_submission_doi(sess, submission_id, doi_data_raw)
+    doi_data = await create_request_json_data("doi", "test_doi.json")
+    await put_submission_doi(sess, submission_id, doi_data)
     dac_data = await create_request_json_data("dac", "dac_rems.json")
     await put_submission_dac(sess, submission_id, dac_data)
     await publish_submission(sess, submission_id)
@@ -1289,7 +1286,7 @@ async def test_crud_submissions_works(sess, project_id):
 
     # Get the draft from the collection within this session and post it to objects collection
     draft_data = await get_draft(sess, "sample", draft_id)
-    async with sess.post(f"{objects_url}/sample", params={"submission": submission_id}, data=draft_data) as resp:
+    async with sess.post(f"{objects_url}/sample", params={"submission": submission_id}, json=draft_data) as resp:
         LOG.debug("Adding draft to actual objects")
         assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
@@ -1322,8 +1319,8 @@ async def test_crud_submissions_works(sess, project_id):
         ], "submission metadataObjects content mismatch"
 
     # Add DOI for publishing the submission
-    doi_data_raw = await create_request_json_data("doi", "test_doi.json")
-    await put_submission_doi(sess, submission_id, doi_data_raw)
+    doi_data = await create_request_json_data("doi", "test_doi.json")
+    await put_submission_doi(sess, submission_id, doi_data)
 
     # add a study and dataset for publishing a submission
     ds_1 = await post_object(sess, "dataset", submission_id, "dataset.xml")
@@ -1465,7 +1462,7 @@ async def test_crud_submissions_works_no_publish(sess, project_id):
 
     # Get the draft from the collection within this session and post it to objects collection
     draft = await get_draft(sess, "sample", draft_id)
-    async with sess.post(f"{objects_url}/sample", params={"submission": submission_id}, data=draft) as resp:
+    async with sess.post(f"{objects_url}/sample", params={"submission": submission_id}, json=draft) as resp:
         LOG.debug("Adding draft to actual objects")
         assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
@@ -1521,9 +1518,8 @@ async def test_adding_doi_info_to_submission_works(sess, project_id):
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
     # Get correctly formatted DOI info and patch it into the new submission successfully
-    doi_data_raw = await create_request_json_data("doi", "test_doi.json")
-    doi_data = json.loads(doi_data_raw)
-    await put_submission_doi(sess, submission_id, doi_data_raw)
+    doi_data = await create_request_json_data("doi", "test_doi.json")
+    await put_submission_doi(sess, submission_id, doi_data)
 
     async with sess.get(f"{submissions_url}/{submission_id}") as resp:
         LOG.debug(f"Checking that submission {submission_id} was patched")
@@ -1536,7 +1532,7 @@ async def test_adding_doi_info_to_submission_works(sess, project_id):
 
     # Test that an incomplete DOI object fails to patch into the submission
     put_bad_doi = {"identifier": {}}
-    async with sess.put(f"{submissions_url}/{submission_id}/doi", data=json.dumps(put_bad_doi)) as resp:
+    async with sess.put(f"{submissions_url}/{submission_id}/doi", json=put_bad_doi) as resp:
         LOG.debug(f"Tried updating submission {submission_id}")
         assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
         res = await resp.json()
@@ -1550,7 +1546,7 @@ async def test_adding_doi_info_to_submission_works(sess, project_id):
 
     # Test that extraInfo cannot be altered
     patch_add_bad_doi = [{"op": "add", "path": "/extraInfo", "value": {"publisher": "something"}}]
-    async with sess.patch(f"{submissions_url}/{submission_id}", data=json.dumps(patch_add_bad_doi)) as resp:
+    async with sess.patch(f"{submissions_url}/{submission_id}", json=patch_add_bad_doi) as resp:
         LOG.debug(f"Tried updating submission {submission_id}")
         assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
         res = await resp.json()
@@ -1860,8 +1856,8 @@ async def test_crud_users_works(sess, project_id):
     publish_submission_id = await post_submission(sess, submission_published)
 
     # Add DOI for publishing the submission
-    doi_data_raw = await create_request_json_data("doi", "test_doi.json")
-    await put_submission_doi(sess, publish_submission_id, doi_data_raw)
+    doi_data = await create_request_json_data("doi", "test_doi.json")
+    await put_submission_doi(sess, publish_submission_id, doi_data)
 
     dac_data = await create_request_json_data("dac", "dac_rems.json")
     await put_submission_dac(sess, publish_submission_id, dac_data)
@@ -2101,8 +2097,8 @@ async def test_minimal_json_publication(sess, project_id):
     submission_id = await post_submission(sess, submission)
 
     await post_object_json(sess, "study", submission_id, "SRP000539.json")
-    doi_data_raw = await create_request_json_data("doi", "test_doi.json")
-    await put_submission_doi(sess, submission_id, doi_data_raw)
+    doi_data = await create_request_json_data("doi", "test_doi.json")
+    await put_submission_doi(sess, submission_id, doi_data)
     dac_data = await create_request_json_data("dac", "dac_rems.json")
     await put_submission_dac(sess, submission_id, dac_data)
     await publish_submission(sess, submission_id)
@@ -2130,8 +2126,8 @@ async def test_minimal_json_publication_rems(sess, project_id):
     await post_object_json(sess, "study", submission_id, "SRP000539.json")
     ds_id = await post_object_json(sess, "dataset", submission_id, "dataset.json")
 
-    doi_data_raw = await create_request_json_data("doi", "test_doi.json")
-    await put_submission_doi(sess, submission_id, doi_data_raw)
+    doi_data = await create_request_json_data("doi", "test_doi.json")
+    await put_submission_doi(sess, submission_id, doi_data)
 
     dac_data = await create_request_json_data("dac", "dac_rems.json")
     await put_submission_dac(sess, submission_id, dac_data)
@@ -2147,7 +2143,7 @@ async def test_minimal_json_publication_rems(sess, project_id):
     async with sess.get(f"{objects_url}/dataset/{ds_id}?submission_id={submission_id}") as resp:
         LOG.debug(f"Checking that dataset {ds_id} in submission {submission_id} has rems data")
         res = await resp.json()
-        assert res["accessionId"] == ds_id, "expected dataset id does not match"
+        assert res["accessionId"] == ds_id, "expected dataset id does not match, %r" % res["accessionId"]
         assert "dac" in res
         assert res["dac"]["workflowId"] == 1
         assert res["dac"]["organizationId"] == "CSC"

@@ -22,7 +22,8 @@ from ..operators import Operator, SubmissionOperator, UserOperator
 class RESTAPIHandler:
     """Handler for REST API methods."""
 
-    def _check_schema_exists(self, schema_type: str) -> None:
+    @staticmethod
+    def check_schema_exists(schema_type: str) -> None:
         """Check if schema type exists.
 
         :param schema_type: schema type.
@@ -67,7 +68,8 @@ class RESTAPIHandler:
             raise web.HTTPBadRequest(reason=reason)
         return param
 
-    async def _handle_check_ownership(self, req: Request, collection: str, accession_id: str) -> Tuple[bool, str]:
+    @staticmethod
+    async def handle_check_ownership(req: Request, collection: str, accession_id: str) -> Tuple[bool, str]:
         """Check if object belongs to project.
 
         For this we need to check the object is in exactly 1 submission and we need to check
@@ -75,7 +77,7 @@ class RESTAPIHandler:
 
         :param req: HTTP request
         :param collection: collection or schema of document
-        :param doc_id: document accession id
+        :param accession_id: document accession id
         :raises: HTTPUnauthorized if accession id does not belong to user
         :returns: bool and possible project id
         """
@@ -131,7 +133,8 @@ class RESTAPIHandler:
 
             yield result
 
-    async def _get_data(self, req: Request) -> Dict:
+    @staticmethod
+    async def get_data(req: Request) -> Dict:
         """Get the data content from a request.
 
         :param req: POST/PUT/PATCH request
@@ -166,7 +169,7 @@ class RESTAPIHandler:
         :returns: JSON list of schema types
         """
         schema_type = req.match_info["schema"]
-        self._check_schema_exists(schema_type)
+        self.check_schema_exists(schema_type)
 
         try:
             if schema_type == "datacite":

@@ -21,19 +21,19 @@ class TemplatesAPIHandler(RESTAPIHandler):
         :param req: GET Request
         :returns: JSON list of templates available for the user
         """
-        session = await aiohttp_session.get_session(req)
-
+        # session = await aiohttp_session.get_session(req)
+        #
         project_id = self._get_param(req, "projectId")
         db_client = req.app["db_client"]
-
-        user_operator = UserOperator(db_client)
-        current_user = session["user_info"]
-        user = await user_operator.read_user(current_user)
-        user_has_project = await user_operator.check_user_has_project(project_id, user["userId"])
-        if not user_has_project:
-            reason = f"user {user['userId']} is not affiliated with project {project_id}"
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
+        #
+        # user_operator = UserOperator(db_client)
+        # current_user = session["user_info"]
+        # user = await user_operator.read_user(current_user)
+        # user_has_project = await user_operator.check_user_has_project(project_id, user["userId"])
+        # if not user_has_project:
+        #     reason = f"user {user['userId']} is not affiliated with project {project_id}"
+        #     LOG.error(reason)
+        #     raise web.HTTPUnauthorized(reason=reason)
 
         operator = Operator(db_client)
         templates = await operator.query_templates_by_project(project_id)
@@ -60,7 +60,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
         """
         accession_id = req.match_info["accessionId"]
         schema_type = req.match_info["schema"]
-        self._check_schema_exists(schema_type)
+        self.check_schema_exists(schema_type)
         collection = f"template-{schema_type}"
 
         db_client = req.app["db_client"]
@@ -68,7 +68,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
 
         await operator.check_exists(collection, accession_id)
 
-        await self._handle_check_ownership(req, collection, accession_id)
+        await self.handle_check_ownership(req, collection, accession_id)
 
         data, content_type = await operator.read_metadata_object(collection, accession_id)
 
@@ -88,11 +88,11 @@ class TemplatesAPIHandler(RESTAPIHandler):
         session = await aiohttp_session.get_session(req)
 
         schema_type = req.match_info["schema"]
-        self._check_schema_exists(schema_type)
+        self.check_schema_exists(schema_type)
         collection = f"template-{schema_type}"
 
         db_client = req.app["db_client"]
-        content = await self._get_data(req)
+        content = await self.get_data(req)
 
         # Operators
         project_op = ProjectOperator(db_client)
@@ -187,18 +187,18 @@ class TemplatesAPIHandler(RESTAPIHandler):
         """
         schema_type = req.match_info["schema"]
         accession_id = req.match_info["accessionId"]
-        self._check_schema_exists(schema_type)
+        self.check_schema_exists(schema_type)
         collection = f"template-{schema_type}"
 
         db_client = req.app["db_client"]
         operator: Union[Operator, XMLOperator]
 
-        content = await self._get_data(req)
+        content = await self.get_data(req)
         operator = Operator(db_client)
 
         await operator.check_exists(collection, accession_id)
 
-        _, project_id = await self._handle_check_ownership(req, collection, accession_id)
+        _, project_id = await self.handle_check_ownership(req, collection, accession_id)
 
         # Update the templates-list in project-collection
         if "index" in content and "tags" in content:
@@ -233,7 +233,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
         await aiohttp_session.get_session(req)
 
         schema_type = req.match_info["schema"]
-        self._check_schema_exists(schema_type)
+        self.check_schema_exists(schema_type)
         collection = f"template-{schema_type}"
         accession_id = req.match_info["accessionId"]
         db_client = req.app["db_client"]
@@ -241,7 +241,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
         await Operator(db_client).check_exists(collection, accession_id)
         project_operator = ProjectOperator(db_client)
 
-        project_ok, project_id = await self._handle_check_ownership(req, collection, accession_id)
+        project_ok, project_id = await self.handle_check_ownership(req, collection, accession_id)
         if project_ok:
             await project_operator.remove_templates(project_id, [accession_id])
         else:

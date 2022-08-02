@@ -7,8 +7,16 @@ import ujson
 from aiohttp import web
 from yarl import URL
 
-from ..conf.conf import OIDC_ENABLED
+from ..conf.conf import API_PREFIX, OIDC_ENABLED
 from ..helpers.logger import LOG
+from .handlers.restapi import RESTAPIHandler
+from .operators import (
+    Operator,
+    ProjectOperator,
+    SubmissionOperator,
+    UserOperator,
+    XMLOperator,
+)
 
 HTTP_ERROR_MESSAGE = "HTTP %r request to %r raised an HTTP %d exception."
 HTTP_ERROR_MESSAGE_BUG = "HTTP %r request to %r raised an HTTP %d exception. This IS a bug."
@@ -89,6 +97,108 @@ async def check_session(req: web.Request, handler: aiohttp_session.Handler) -> w
             reason = f"No valid session. A session was invalidated due to another reason: {error}"
             LOG.exception("No valid session. A session was invalidated due to another reason")
             raise _unauthorized(reason) from error
+
+    return await handler(req)
+
+
+@web.middleware
+async def protect_published(req: web.Request, handler: aiohttp_session.Handler) -> web.StreamResponse:
+    """Prevent modifying published objects and submissions.
+
+    - For all requests: Check user has access rights
+    - For modifying requests: Check resource is not published
+    - Injects the target object or submission in the request object.
+
+    :param req: A request instance
+    :param handler: A request handler
+    :raises: HTTPBadRequest when the resource is in published state
+    :returns: Successful requests with injected object / submission
+    """
+    if req.path.split("/")[2] not in {"objects", "drafts", "submissions", "publish"}:
+        # No checks for other endpoints
+        return await handler(req)
+
+    session = await aiohttp_session.get_session(req)
+
+    db_client = req.app["db_client"]
+
+    user_op = UserOperator(db_client)
+    submission_op = SubmissionOperator(db_client)
+    current_user = session["user_info"]
+    user = await user_op.read_user(current_user)
+    user_id = user["userId"]
+
+    content = {}
+    req_format = req.query.get("format", "json").lower()
+    if req.body_exists and ("json" in req.content_type and req_format == "json"):
+        content = await RESTAPIHandler.get_data(req)
+        req["content"] = content
+
+    project_id = req.query.get("projectId", "")
+    if project_id == "" and isinstance(content, dict):
+        project_id = content.get("projectId", "")
+
+    if project_id:
+        # Check that project exists
+        project_op = ProjectOperator(db_client)
+        await project_op.check_project_exists(project_id)
+
+        # Check that user is affiliated with project
+        user_has_project = await user_op.check_user_has_project(project_id, user_id)
+        if not user_has_project:
+            reason = f"user {user_id} is not affiliated with project {project_id}"
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
+
+    # We get accessionID only when changing an object directly. Those requests don't come with submissionID
+    # Object creation requests do come with schema and submissionID
+    schema = req.match_info.get("schema", "")
+
+    if submission_id := req.match_info.get("submissionId", "") or req.query.get("submission", ""):
+        await submission_op.check_submission_exists(submission_id)
+        await RESTAPIHandler.handle_check_ownership(req, "submissions", submission_id)
+        submission = await submission_op.read_submission(submission_id)
+        req["submission"] = submission
+        project_id = submission["projectId"]
+        if submission.get("published", False) and req.method in {"PUT", "POST", "PATCH", "DELETE"}:
+            reason = (
+                f"User {user_id} attempted to {req.method} a published submission '{submission_id}' "
+                f"from project {project_id}"
+            )
+            if schema:
+                reason = (
+                    f"User {user_id} attempted to {req.method} the schema '{schema}' of "
+                    f"a published submission '{submission_id}' from project {project_id}"
+                )
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+    if schema:
+        RESTAPIHandler.check_schema_exists(schema)
+        collection = f"draft-{schema}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema
+        req["collection"] = collection
+        type_collection = f"xml-{collection}" if req_format == "xml" else collection
+
+        if accession_id := req.match_info.get("accessionId", "") or req.query.get("accessionId", ""):
+            operator = XMLOperator(db_client) if req_format == "xml" else Operator(db_client)
+
+            await operator.check_exists(collection, accession_id)
+            await RESTAPIHandler.handle_check_ownership(req, collection, accession_id)
+            exists, object_submission_id, published = await submission_op.check_object_in_submission(
+                collection, accession_id
+            )
+            if not exists:
+                reason = f"Object with schema '{schema}' and accessionId '{accession_id}' was not found"
+                raise web.HTTPNotFound(reason=reason)
+            if published and req.method in {"PUT", "POST", "PATCH", "DELETE"}:
+                reason = (
+                    f"User {user_id} attempted to {req.method} the object '{accession_id}' with schema '{schema}' of "
+                    f"a published submission '{object_submission_id}' from project {project_id}"
+                )
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+            data, content_type = await operator.read_metadata_object(type_collection, accession_id)
+            req["object"] = (data, content_type)
 
     return await handler(req)
 

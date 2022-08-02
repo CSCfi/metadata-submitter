@@ -4,7 +4,6 @@ from distutils.util import strtobool
 from math import ceil
 from typing import Dict, List, Tuple, Union
 
-import aiohttp_session
 import ujson
 from aiohttp import web
 from aiohttp.web import Request, Response
@@ -13,7 +12,7 @@ from multidict import CIMultiDict
 from ...conf.conf import DATACITE_SCHEMAS, METAX_SCHEMAS, doi_config
 from ...helpers.logger import LOG
 from ...helpers.validator import JSONValidator
-from ..operators import Operator, ProjectOperator, SubmissionOperator, UserOperator
+from ..operators import Operator, SubmissionOperator
 from .restapi import RESTAPIIntegrationHandler
 
 
@@ -312,26 +311,14 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         :param req: GET Request
         :returns: JSON list of submissions available for the user
         """
-        session = await aiohttp_session.get_session(req)
-
         page = self._get_page_param(req, "page", 1)
         per_page = self._get_page_param(req, "per_page", 5)
         project_id = self._get_param(req, "projectId")
         sort = {"date": True, "score": False, "modified": False}
         db_client = req.app["db_client"]
 
-        user_operator = UserOperator(db_client)
-
-        current_user = session["user_info"]
-        user = await user_operator.read_user(current_user)
-        user_has_project = await user_operator.check_user_has_project(project_id, user["userId"])
-        if not user_has_project:
-            reason = f"user {user['userId']} is not affiliated with project {project_id}"
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
-
         submission_query: Dict[str, Union[str, Dict[str, Union[str, bool, float]]]] = {"projectId": project_id}
-        # Check if only published or draft submissions are requestsed
+        # Check if only published or draft submissions are requested
         if "published" in req.query:
             pub_param = req.query.get("published", "").title()
             if pub_param in {"True", "False"}:
@@ -426,26 +413,10 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         :param req: POST request
         :returns: JSON response containing submission ID for submitted submission
         """
-        session = await aiohttp_session.get_session(req)
-
         db_client = req.app["db_client"]
-        content = await self._get_data(req)
+        content = req["content"]
 
         JSONValidator(content, "submissions").validate
-
-        # Check that project exists
-        project_op = ProjectOperator(db_client)
-        await project_op.check_project_exists(content["projectId"])
-
-        # Check that user is affiliated with project
-        user_op = UserOperator(db_client)
-        current_user = session["user_info"]
-        user = await user_op.read_user(current_user)
-        user_has_project = await user_op.check_user_has_project(content["projectId"], user["userId"])
-        if not user_has_project:
-            reason = f"user {user['userId']} is not affiliated with project {content['projectId']}"
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
 
         operator = SubmissionOperator(db_client)
         submission = await operator.create_submission(content)
@@ -465,14 +436,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         :returns: JSON response containing object submission
         """
         submission_id = req.match_info["submissionId"]
-        db_client = req.app["db_client"]
-        operator = SubmissionOperator(db_client)
-
-        await operator.check_submission_exists(submission_id)
-
-        await self._handle_check_ownership(req, "submissions", submission_id)
-
-        submission = await operator.read_submission(submission_id)
+        submission = req["submission"]
 
         LOG.info(f"GET submission with ID {submission_id} was successful.")
         return web.Response(
@@ -488,14 +452,10 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         :returns: JSON response containing submission ID for updated submission
         """
         submission_id = req.match_info["submissionId"]
-        db_client = req.app["db_client"]
-
-        operator = SubmissionOperator(db_client)
-
-        await operator.check_submission_exists(submission_id)
+        operator = SubmissionOperator(req.app["db_client"])
 
         # Check patch operations in request are valid
-        data = await self._get_data(req)
+        data = req["content"]
         if not isinstance(data, dict):
             reason = "Patch submission operation should be provided as a JSON object"
             LOG.error(reason)
@@ -511,8 +471,6 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         # we update the submission last modified date
         _now = int(datetime.now().timestamp())
         patch_ops.append({"op": "replace", "path": "/lastModified", "value": _now})
-
-        await self._handle_check_ownership(req, "submissions", submission_id)
 
         upd_submission = await operator.update_submission(submission_id, patch_ops)
 
@@ -531,13 +489,10 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         operator = SubmissionOperator(db_client)
         obj_op = Operator(db_client)
 
-        await operator.check_submission_exists(submission_id)
-
-        await self._handle_check_ownership(req, "submissions", submission_id)
         if self.metax_handler.enabled:
             await self.metax_handler.check_connection()
 
-        submission = await operator.read_submission(submission_id)
+        submission = req["submission"]
         # Validate that submission seems to have required data for publishing
         if "doiInfo" not in submission:
             raise web.HTTPBadRequest(reason=f"Submission '{submission_id}' must have the required DOI metadata.")
@@ -673,20 +628,12 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         :param req: DELETE request
         :returns: HTTP No Content response
         """
-        await aiohttp_session.get_session(req)
-
         submission_id = req.match_info["submissionId"]
         db_client = req.app["db_client"]
         operator = SubmissionOperator(db_client)
-
-        await operator.check_submission_exists(submission_id)
-        await operator.check_submission_published(submission_id)
-
-        await self._handle_check_ownership(req, "submissions", submission_id)
-
         obj_ops = Operator(db_client)
 
-        submission = await operator.read_submission(submission_id)
+        submission = req["submission"]
 
         for obj in submission["drafts"] + submission["metadataObjects"]:
             await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
@@ -706,12 +653,9 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         db_client = req.app["db_client"]
         operator = SubmissionOperator(db_client)
 
-        await operator.check_submission_exists(submission_id)
-        await self._handle_check_ownership(req, "submissions", submission_id)
+        submission = req["submission"]
 
-        submission = await operator.read_submission(submission_id)
-
-        data = await self._get_data(req)
+        data = req["content"]
 
         if req.path.endswith("doi"):
             schema = "doiInfo"
@@ -726,7 +670,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
             raise web.HTTPNotFound(reason=f"'{req.path}' does not exist")
 
         submission[schema] = data
-        JSONValidator(submission, "submissions").validate  # pylint: disable=expression-not-assigned
+        JSONValidator(submission, "submissions").validate
 
         op = "add"
         if schema in submission:
