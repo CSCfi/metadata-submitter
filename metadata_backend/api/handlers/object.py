@@ -8,7 +8,7 @@ from aiohttp import web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
-from ...conf.conf import API_PREFIX
+from ...conf.conf import API_PREFIX, DATACITE_SCHEMAS, METAX_SCHEMAS
 from ...helpers.logger import LOG
 from ...helpers.validator import JSONValidator
 from ..operators import Operator, SubmissionOperator, XMLOperator
@@ -102,7 +102,6 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         :returns: JSON response containing accessionId for submitted object
         """
         _allowed_csv = {"sample"}
-        _allowed_doi = {"study", "dataset"}
         schema_type = req.match_info["schema"]
         LOG.debug(f"Creating {schema_type} object")
         filename = ""
@@ -189,14 +188,14 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         await submission_op.update_submission(submission_id, patch)
 
         # Add DOI to object
-        if collection in _allowed_doi:
+        if collection in DATACITE_SCHEMAS:
             obj: Dict[str, Any]
             for obj, _ in objects:
                 obj["doi"] = await self.create_draft_doi(collection)
                 await Operator(db_client).update_identifiers(collection, obj["accessionId"], {"doi": obj["doi"]})
 
                 # Create draft dataset to Metax catalog
-                if self.metax_handler.enabled:
+                if self.metax_handler.enabled and collection in METAX_SCHEMAS:
                     try:
                         await self.create_metax_dataset(req, collection, obj)
                     except Exception as e:
@@ -233,7 +232,6 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         schema_type = req.match_info["schema"]
         accession_id = req.match_info["accessionId"]
         LOG.debug(f"Deleting object {schema_type} {accession_id}")
-        _allowed_doi = {"study", "dataset"}
 
         self._check_schema_exists(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
@@ -262,25 +260,29 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
 
         metax_id: str = ""
         doi_id: str = ""
-        if collection in _allowed_doi:
+        if collection in DATACITE_SCHEMAS:
             try:
                 object_data, _ = await operator.read_metadata_object(collection, accession_id)
                 # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
                 if isinstance(object_data, dict):
-                    metax_id = object_data["metaxIdentifier"]
                     doi_id = object_data["doi"]
+                    if self.metax_handler.enabled and collection in METAX_SCHEMAS:
+                        metax_id = object_data["metaxIdentifier"]
             except KeyError:
-                LOG.warning(f"MetadataObject {collection} {accession_id} was never added to Metax service.")
+                LOG.warning(
+                    f"MetadataObject {collection} {accession_id} was never added to Metax or Datacite services."
+                )
 
         accession_id = await operator.delete_metadata_object(collection, accession_id)
 
         # Delete draft dataset from Metax catalog
-        if self.metax_handler.enabled and collection in _allowed_doi:
+        if self.metax_handler.enabled and collection in METAX_SCHEMAS:
             try:
                 await self.metax_handler.delete_draft_dataset(metax_id)
             except Exception as e:
                 # We don't care if it fails here
                 LOG.exception(f"delete_draft_dataset failed: {e} for collection {collection}")
+        if collection in DATACITE_SCHEMAS:
             await self.datacite_handler.delete(doi_id)
 
         LOG.info(f"DELETE object with accession ID {accession_id} in schema {collection} was successful.")
@@ -299,7 +301,6 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         schema_type = req.match_info["schema"]
         accession_id = req.match_info["accessionId"]
         LOG.debug(f"Replacing object {schema_type} {accession_id}")
-        _allowed_doi = {"study", "dataset"}
 
         self._check_schema_exists(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
@@ -338,13 +339,12 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
 
         # Update draft dataset to Metax catalog
         try:
-            external_id = await self.get_user_external_id(req)
-            if self.metax_handler.enabled and collection in _allowed_doi:
-                if collection in _allowed_doi:
-                    if data.get("metaxIdentifier", None):
-                        await self.metax_handler.update_draft_dataset(external_id, collection, data)
-                    else:
-                        await self.create_metax_dataset(req, collection, data)
+            if self.metax_handler.enabled and collection in METAX_SCHEMAS:
+                if data.get("metaxIdentifier", None):
+                    external_id = await self.get_user_external_id(req)
+                    await self.metax_handler.update_draft_dataset(external_id, collection, data)
+                else:
+                    await self.create_metax_dataset(req, collection, data)
         except Exception as e:
             # We don't care if it fails here
             LOG.exception(f"update_draft_dataset or create_metax_dataset failed: {e} for collection {collection}")
@@ -402,7 +402,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
 
         # Update draft dataset to Metax catalog
         try:
-            if self.metax_handler.enabled and collection in {"study", "dataset"}:
+            if self.metax_handler.enabled and collection in METAX_SCHEMAS:
                 object_data, _ = await operator.read_metadata_object(collection, accession_id)
                 # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
                 if isinstance(object_data, Dict):
