@@ -722,6 +722,10 @@ async def test_crud_works(sess, schema, filename, submission_id):
 async def test_crud_with_multi_xml(sess, submission_id):
     """Test CRUD for a submitted XML file with multiple metadata objects.
 
+    Tries to create new objects, gets accession ids and checks if correct
+    resource is returned with those ids. Finally deletes the objects and checks it
+    was deleted.
+
     :param sess: HTTP session in which request call is made
     :param submission_id: id of the submission used to group submission
     """
@@ -764,6 +768,7 @@ async def test_crud_with_multi_xml(sess, submission_id):
             LOG.debug(f"Checking that {item['accessionId']} XML is in {_schema}")
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
+    assert len(items) == 14, "Wrong amount of items were added during previous requests."
     for item in items:
         _id, _schema = item["accessionId"], item["schema"]
         await delete_object(sess, _schema, _id)
