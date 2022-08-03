@@ -1,5 +1,5 @@
 {
-    "title": "Sample",
+    "title": "BP Sample",
     "definitions": {
         "Block": {
             "$id": "#/definitions/Block",
@@ -66,80 +66,140 @@
         }
     },
     "type": "object",
-    "required": [
-        "biologicalBeing",
-        "specimen",
-        "block",
-        "slide"
-    ],
     "additionalProperties": true,
-    "properties": {
-        "biologicalBeing": {
-            "title": "Biological Being Type",
-            "description": "A human being or animal.",
+    "oneOf": [
+        {
             "type": "object",
+            "additionalProperties": false,
             "properties": {
-                "gender": {
-                    "title": "Gender",
-                    "type": "string",
-                    "enum": [
-                        "male",
-                        "female",
-                        "unknown"
-                    ]
-                },
-                "animal_species": {
-                    "title": "Animal Species",
-                    "type": "string"
+                "biologicalBeing": {
+                    "title": "Biological Being Type",
+                    "description": "A human being or animal.",
+                    "type": "object",
+                    "properties": {
+                        "alias": {
+                            "title": "Alias Type",
+                            "type": "string"
+                        },
+                        "attributes": {
+                            "title": "Sample Attributes",
+                            "description": "Properties and attributes of the sample set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
+                            "type": "object",
+                            "properties": {
+                                "$ref": "#/definitions/sampleAttribute"
+                            }
+                        }
+                    }
                 }
             }
         },
-        "specimen": {
-            "title": "Specimen Type",
-            "description": "A removed part of a human/animal being.",
+        {
             "type": "object",
+            "additionalProperties": false,
             "properties": {
-                "specimen_type": {
+                "specimen": {
                     "title": "Specimen Type",
-                    "type": "string"
-                },
-                "age_at_extraction": {
-                    "title": "Age At Extraction",
-                    "type": "integer"
-                },
-                "extraction_method": {
-                    "title": "Extraction Method",
-                    "type": "string"
-                },
-                "anatomical_site": {
-                    "title": "Anatomical Site",
-                    "type": "string"
+                    "description": "A removed part of a human/animal being.",
+                    "type": "object",
+                    "properties": {
+                        "alias": {
+                            "title": "Alias Type",
+                            "type": "string"
+                        },
+                        "attributes": {
+                            "title": "Sample Attributes",
+                            "description": "Properties and attributes of the sample set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
+                            "type": "object",
+                            "properties": {
+                                "$ref": "#/definitions/sampleAttribute"
+                            }
+                        },
+                        "extractedFrom": {
+                            "title": "Extracted From Type",
+                            "description": "The alias of the biological being object where specimen is extracted from.",
+                            "type": "object",
+                            "properties": {
+                                "refname": {
+                                    "title": "Reference name",
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
                 }
             }
         },
-        "block": {
-            "title": "Block Type",
-            "description": "A part or a collection of parts of one or many Specimens that has/have been sampled and processed for further investigation.",
-            "type": "array",
-            "items": {
-                "$ref": "#/definitions/Block"
+        {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "block": {
+                    "title": "Block Type",
+                    "description": "A part or a collection of parts of one or many Specimens that has/have been sampled and processed for further investigation.",
+                    "type": "object",
+                    "properties": {
+                        "alias": {
+                            "title": "Alias Type",
+                            "type": "string"
+                        },
+                        "attributes": {
+                            "title": "Sample Attributes",
+                            "description": "Properties and attributes of the sample set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
+                            "type": "object",
+                            "properties": {
+                                "$ref": "#/definitions/sampleAttribute"
+                            }
+                        },
+                        "sampledFrom": {
+                            "title": "Sampled From Type",
+                            "description": "The alias of the specimen object where block is sampled from.",
+                            "type": "object",
+                            "properties": {
+                                "refname": {
+                                    "title": "Reference name",
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
-        "slide": {
-            "title": "Slide Type",
-            "description": "A physical slide that has been created out of one or more Blocks.",
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/Slide"
-            }
-        },
-        "attributes": {
-            "type": "array",
-            "title": "Sample Attributes",
-            "description": "Properties and attributes of the sample set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
-            "items": {
-                "$ref": "#/definitions/sampleAttribute"
+        {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "slide": {
+                    "title": "Slide Type",
+                    "description": "A physical slide that has been created out of one or more Blocks.",
+                    "type": "object",
+                    "properties": {
+                        "alias": {
+                            "title": "Alias Type",
+                            "type": "string"
+                        },
+                        "attributes": {
+                            "title": "Sample Attributes",
+                            "description": "Properties and attributes of the sample set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
+                            "type": "object",
+                            "properties": {
+                                "$ref": "#/definitions/sampleAttribute"
+                            }
+                        },
+                        "createdFrom": {
+                            "title": "Sampled From Type",
+                            "description": "The alias of the block object where slide is created from.",
+                            "type": "object",
+                            "properties": {
+                                "refname": {
+                                    "title": "Reference name",
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
-    }
+    ]
 }
