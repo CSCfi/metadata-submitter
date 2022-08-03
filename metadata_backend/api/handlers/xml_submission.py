@@ -8,7 +8,7 @@ from aiohttp.web import Request, Response
 from multidict import MultiDict, MultiDictProxy
 from xmlschema import XMLSchemaException
 
-from ...conf.conf import API_PREFIX
+from ...conf.conf import API_PREFIX, DATACITE_SCHEMAS, METAX_SCHEMAS
 from ...helpers.logger import LOG
 from ...helpers.parser import XMLToJSONParser
 from ...helpers.schema_loader import SchemaNotFoundException, XMLSchemaLoader
@@ -153,7 +153,6 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
         :raises: HTTPBadRequest if an incorrect or non-supported action is called
         :returns: Dict containing specific action that was completed
         """
-        _allowed_doi = {"study", "dataset"}
         db_client = req.app["db_client"]
         submission_op = SubmissionOperator(db_client)
 
@@ -186,13 +185,13 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
         await submission_op.update_submission(submission_id, patch)
 
         # Add DOI to object
-        if schema in _allowed_doi:
+        if schema in DATACITE_SCHEMAS:
             json_data["doi"] = await self.create_draft_doi(schema)
             await Operator(db_client).update_identifiers(schema, json_data["accessionId"], {"doi": json_data["doi"]})
 
         # Create draft dataset to Metax catalog
         try:
-            if self.metax_handler.enabled and schema in _allowed_doi:
+            if self.metax_handler.enabled and schema in METAX_SCHEMAS:
                 await self.create_metax_dataset(req, schema, json_data)
         except Exception as e:
             # We don't care if it fails here
@@ -210,7 +209,6 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
         :raises: HTTPBadRequest if an incorrect or non-supported action is called
         :returns: Dict containing specific action that was completed
         """
-        _allowed_doi = {"study", "dataset"}
         db_client = req.app["db_client"]
         submission_op = SubmissionOperator(db_client)
         operator = Operator(db_client)
@@ -251,7 +249,7 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
 
         # Update draft dataset to Metax catalog
         try:
-            if self.metax_handler.enabled and schema in _allowed_doi:
+            if self.metax_handler.enabled and schema in METAX_SCHEMAS:
                 object_data, _ = await operator.read_metadata_object(schema, accession_id)
                 external_id = await self.get_user_external_id(req)
                 # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
