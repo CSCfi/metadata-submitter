@@ -111,6 +111,7 @@ covid
 cp
 cpg
 crai
+createdFrom
 createfromjson
 createfromxml
 createnewdraftsubmission
@@ -205,6 +206,7 @@ experimentlinks
 experimentref
 experimenttype
 externalid
+extractedFrom
 extrainfo
 fairdata
 faire
@@ -556,6 +558,7 @@ sampleattributes
 sampledata
 sampledemuxdirective
 sampledescriptor
+sampledFrom
 samplelinks
 samplename
 samplephenotype
