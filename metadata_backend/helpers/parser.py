@@ -391,35 +391,25 @@ class XMLToJSONParser:
         :param data: BP sample objects in JSON format
         :returns: Organized BP sample objects
         """
+
+        # Helper function for separating sample objects
+        def _separate_samples(item: Union[Dict, List[Dict]], title: str) -> List[Dict]:
+            if isinstance(item, list) and len(item) > 0:
+                return [{title: i} for i in item]
+            return [{title: item}] if isinstance(item, dict) else []
+
         # Separate biological beings, specimen, blocks and slides from the data that was extracted from the XML
         bio_beings = data["biologicalBeing"] if "biologicalBeing" in data else []
-        bio_beings = bio_beings if isinstance(bio_beings, list) else [bio_beings]
+        bio_beings = _separate_samples(bio_beings, "biologicalBeing")
         specimens = data["specimen"] if "specimen" in data else []
-        specimens = specimens if isinstance(specimens, list) else [specimens]
+        specimens = _separate_samples(specimens, "specimen")
         blocks = data["block"] if "block" in data else []
-        blocks = blocks if isinstance(blocks, list) else [blocks]
+        blocks = _separate_samples(blocks, "block")
         slides = data["slide"] if "slide" in data else []
-        slides = slides if isinstance(slides, list) else [slides]
+        slides = _separate_samples(slides, "slide")
 
-        # Create sample object from biological beings, specimen, blocks and slides that relate to each other
-        samples: List[Dict] = []
-        for being in bio_beings:
-            sample: Dict[str, Any] = {"biologicalBeing": None, "specimen": None, "block": [], "slide": []}
-            sample["biologicalBeing"] = being
-            being_alias = being["alias"]
-            for specimen in specimens:
-                if specimen["extractedFrom"]["refname"] == being_alias:
-                    sample["specimen"] = specimen
-                    specimen_alias = specimen["alias"]
-                    for block in blocks:
-                        if block["sampledFrom"]["refname"] == specimen_alias:
-                            sample["block"].append(block)
-                            block_alias = block["alias"]
-                            for slide in slides:
-                                if slide["createdFrom"]["refname"] == block_alias:
-                                    sample["slide"].append(slide)
-            samples.append(sample)
-
+        # Return all samples as an array under bpsample schema name
+        samples: List[Dict] = bio_beings + specimens + blocks + slides
         return {"bpsample": samples}
 
 
