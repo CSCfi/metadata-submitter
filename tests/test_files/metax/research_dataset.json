@@ -114,5 +114,15 @@
             },
             "identifier": "http://lexvo.org/id/iso639-3/asm"
         }
+    ],
+    "field_of_science": [
+        {
+            "in_scheme": "http://uri.suomi.fi/codelist/research/Tieteenala2010"
+            "identifier": "http://www.yso.fi/onto/okm-tieteenala/ta999",
+            "pref_label": {
+                "en": "Others"
+                "fi": "Muut"
+            }
+        }
     ]
 }

@@ -18,8 +18,11 @@
   ],
   "subjects": [
     {
-      "subject": "FOS: Computer and information sciences",
-      "subjectScheme": "Fields of Science and Technology (FOS)"
+      "subject": "Muut",
+      "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
+      "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
+      "valueUri": "http://www.yso.fi/onto/okm-tieteenala/ta999",
+      "classificationCode": "999"
     }
   ],
   "keywords": "test,keyword",
