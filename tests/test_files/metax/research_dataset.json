@@ -117,11 +117,13 @@
     ],
     "field_of_science": [
         {
-            "in_scheme": "http://uri.suomi.fi/codelist/research/Tieteenala2010"
+            "in_scheme": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
             "identifier": "http://www.yso.fi/onto/okm-tieteenala/ta999",
             "pref_label": {
-                "en": "Others"
-                "fi": "Muut"
+                "en": "Other",
+                "fi": "Muut",
+                "sv": "Övrigt",
+                "und": "Muut"
             }
         }
     ]
