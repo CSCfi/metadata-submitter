@@ -143,6 +143,19 @@ $ docker run -p 5430:5430 metadata-submitter
 
 Frontend is built and added as static files to backend while building.
 
+## Swagger docs
+
+Swagger UI is already available in the production docker image. During development, you can enable it by executing `bash scripts/swagger/generate.sh`.
+
+Restart the server, and the swagger docs will be available at http://localhost:5430/swagger.
+
+**Swagger docs requirements**
+- `bash`
+- `Python 3`
+- `PyYaml` - Already available if you installed the development dependencies
+- `realpath` - Linux machines already have `realpath`, but if you use a Mac, you might want to look at [this StackOverflow thread](https://stackoverflow.com/questions/3572030/bash-script-absolute-path-with-os-x).
+
+
 ## License
 
 Metadata submission interface is released under `MIT`, see [LICENSE](LICENSE).
