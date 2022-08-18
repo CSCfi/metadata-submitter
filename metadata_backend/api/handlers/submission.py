@@ -431,7 +431,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         db_client = req.app["db_client"]
         content = await self._get_data(req)
 
-        JSONValidator(content, "submissions").validate
+        JSONValidator(content, "submission").validate
 
         # Check that project exists
         project_op = ProjectOperator(db_client)
@@ -470,7 +470,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         await operator.check_submission_exists(submission_id)
 
-        await self._handle_check_ownership(req, "submissions", submission_id)
+        await self._handle_check_ownership(req, "submission", submission_id)
 
         submission = await operator.read_submission(submission_id)
 
@@ -512,7 +512,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         _now = int(datetime.now().timestamp())
         patch_ops.append({"op": "replace", "path": "/lastModified", "value": _now})
 
-        await self._handle_check_ownership(req, "submissions", submission_id)
+        await self._handle_check_ownership(req, "submission", submission_id)
 
         upd_submission = await operator.update_submission(submission_id, patch_ops)
 
@@ -533,7 +533,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         await operator.check_submission_exists(submission_id)
 
-        await self._handle_check_ownership(req, "submissions", submission_id)
+        await self._handle_check_ownership(req, "submission", submission_id)
         if self.metax_handler.enabled:
             await self.metax_handler.check_connection()
 
@@ -682,7 +682,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         await operator.check_submission_exists(submission_id)
         await operator.check_submission_published(submission_id)
 
-        await self._handle_check_ownership(req, "submissions", submission_id)
+        await self._handle_check_ownership(req, "submission", submission_id)
 
         obj_ops = Operator(db_client)
 
@@ -707,7 +707,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         operator = SubmissionOperator(db_client)
 
         await operator.check_submission_exists(submission_id)
-        await self._handle_check_ownership(req, "submissions", submission_id)
+        await self._handle_check_ownership(req, "submission", submission_id)
 
         submission = await operator.read_submission(submission_id)
 
@@ -726,7 +726,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
             raise web.HTTPNotFound(reason=f"'{req.path}' does not exist")
 
         submission[schema] = data
-        JSONValidator(submission, "submissions").validate  # pylint: disable=expression-not-assigned
+        JSONValidator(submission, "submission").validate  # pylint: disable=expression-not-assigned
 
         op = "add"
         if schema in submission:

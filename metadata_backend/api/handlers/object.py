@@ -112,7 +112,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
             reason = "Submission is required query parameter. Please provide submission id where object is added to."
             raise web.HTTPBadRequest(reason=reason)
 
-        await self._handle_check_ownership(req, "submissions", submission_id)
+        await self._handle_check_ownership(req, "submission", submission_id)
 
         self._check_schema_exists(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type

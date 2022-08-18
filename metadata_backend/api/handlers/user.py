@@ -135,8 +135,8 @@ class UserAPIHandler(RESTAPIHandler):
         :returns: Tuple with paginated list of user draft templates and link headers
         """
         # Check item_type parameter is not faulty
-        if item_type not in {"templates", "submissions"}:
-            reason = f"{item_type} is a faulty item parameter. Should be either submissions or templates"
+        if item_type not in {"templates", "submission"}:
+            reason = f"{item_type} is a faulty item parameter. Should be either submission or templates"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
