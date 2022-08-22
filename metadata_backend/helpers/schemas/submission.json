@@ -148,7 +148,7 @@
                     "description": "Subject, classification code, or key phrase describing the resources specified by OECD Fields of Science and Technology (FOS)",
                     "items": {
                         "type": "object",
-                        "title": "Subjects",
+                        "title": "Single subject",
                         "required": [
                             "subject"
                         ],

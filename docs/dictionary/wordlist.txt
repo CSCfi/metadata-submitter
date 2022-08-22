@@ -96,6 +96,7 @@ chia
 chichewa
 chip
 chmod
+classificationCode
 cli
 clinvar
 cloneend
@@ -682,6 +683,7 @@ uuid
 uuids
 uyghur
 validator
+valueUri
 vcf
 venda
 venv
