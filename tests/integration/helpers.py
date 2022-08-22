@@ -583,7 +583,7 @@ async def delete_objects_metax_id(sess, database, collection, accession_id, meta
     try:
         await sess.delete(f"{metax_api}/{metax_id}")
     except Exception as e:
-        LOG.error(f"Object deletion from mmocked Metax failed due to {str(e)}")
+        LOG.error(f"Object deletion from mocked Metax failed due to {str(e)}")
 
 
 async def delete_user(sess, user_id):

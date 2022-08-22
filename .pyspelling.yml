@@ -73,7 +73,7 @@ matrix:
       # Ignore Python encoding string -*- encoding stuff -*-
       - open: '^ *-\*-'
         close: '-\*-$'
-      # Ignore docstring variable poram
+      # Ignore docstring variable param
       - open: '^(?: *(:param \w+:))'
         close: '$'
   - pyspelling.filters.context:
