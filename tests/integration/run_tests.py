@@ -54,6 +54,21 @@ test_json_files = [
     ("experiment", "ERX000119.json", "ERX000119.json"),
     ("analysis", "ERZ266973.json", "ERZ266973.json"),
 ]
+test_schemas = [
+    ("submission", 200),
+    ("study", 200),
+    # ("project", 200),
+    ("sample", 200),
+    ("experiment", 200),
+    ("run", 200),
+    ("dac", 200),
+    ("policy", 200),
+    ("dataset", 200),
+    ("datacite", 200),
+    ("image", 200),
+    ("bpdataset", 200),
+    ("bpsample", 200),
+]
 API_PREFIX = "/v1"
 base_url = os.getenv("BASE_URL", "http://localhost:5430")
 mock_auth_url = os.getenv("OIDC_URL_TEST", "http://localhost:8000")
@@ -64,6 +79,7 @@ submissions_url = f"{base_url}{API_PREFIX}/submissions"
 users_url = f"{base_url}{API_PREFIX}/users"
 submit_url = f"{base_url}{API_PREFIX}/submit"
 publish_url = f"{base_url}{API_PREFIX}/publish"
+schemas_url = f"{base_url}{API_PREFIX}/schemas"
 metax_url = f"{os.getenv('METAX_URL', 'http://localhost:8002')}/rest/v2/datasets"
 datacite_url = f"{os.getenv('DOI_API', 'http://localhost:8001/dois')}"
 auth = aiohttp.BasicAuth(os.getenv("METAX_USER", "sd"), os.getenv("METAX_PASS", "test"))
@@ -2173,6 +2189,13 @@ async def test_health_check(sess):
         assert res["services"]["database"]["status"] == "Ok"
 
 
+async def test_schemas_endpoint(sess):
+    """Test that schemas' endpoint return 200."""
+    for schema, expected_status in test_schemas:
+        async with sess.get(f"{schemas_url}/{schema}") as resp:
+            assert resp.status == expected_status, f"{resp.status} {schema}"
+
+
 async def main(url):
     """Launch different test tasks and run them."""
     mongo = Mongo(url)
@@ -2184,6 +2207,9 @@ async def main(url):
         await login(sess, other_test_user, other_test_user_given, other_test_user_family)
         user_data = await get_user_data(sess)
         project_id = user_data["projects"][0]["projectId"]
+
+        LOG.debug("=== Testing schemas endpoint ===")
+        await test_schemas_endpoint(sess)
 
         # Test add, modify, validate and release action with submissions
         # added to validate that objects belong to a specific user

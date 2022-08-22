@@ -88,7 +88,7 @@ class RESTAPIHandler:
         _check = False
 
         project_id = ""
-        if collection != "submissions":
+        if collection != "submission":
 
             submission_op = SubmissionOperator(db_client)
             check, submission_id, _ = await submission_op.check_object_in_submission(collection, accession_id)
@@ -96,7 +96,7 @@ class RESTAPIHandler:
             #     _check = True
             if check:
                 # if the draft object is found in submission we just need to check if the submission belongs to user
-                _check, project_id = await user_op.check_user_has_doc(req, "submissions", current_user, submission_id)
+                _check, project_id = await user_op.check_user_has_doc(req, "submission", current_user, submission_id)
             elif collection.startswith("template"):
                 # if collection is template but not found in a submission
                 # we also check if object is in templates of the user
