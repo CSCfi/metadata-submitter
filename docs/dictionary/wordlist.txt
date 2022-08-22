@@ -66,6 +66,7 @@ bihari
 biocollections
 biologicalbeing
 biome
+biomedicine
 biomes
 bionano
 bioproject
@@ -96,7 +97,7 @@ chia
 chichewa
 chip
 chmod
-classificationCode
+classificationcode
 cli
 clinvar
 cloneend
@@ -256,6 +257,7 @@ geolocationpoint
 geolocationpolygon
 geolocations
 geoprofiles
+geosciences
 gff
 gh
 github
@@ -421,6 +423,7 @@ ncrna
 ndebele
 ndonga
 neic
+neurosciences
 newdraft
 nextseq
 nlmcatalog
@@ -461,6 +464,7 @@ orgtrack
 oromo
 oss
 ossetian
+otorhinolaryngology
 outputmanagementplan
 ownedby
 pacbio
@@ -683,7 +687,7 @@ uuid
 uuids
 uyghur
 validator
-valueUri
+valueuri
 vcf
 venda
 venv
