@@ -3,6 +3,7 @@ import unittest
 
 import xmlschema
 
+from metadata_backend.conf.conf import schema_types
 from metadata_backend.helpers.schema_loader import (
     JSONSchemaLoader,
     SchemaNotFoundException,
@@ -42,6 +43,19 @@ class TestJSONSchemaLoader(unittest.TestCase):
         schema_name = "NULL"
         schemaloader = JSONSchemaLoader()
         self.assertRaises(SchemaNotFoundException, schemaloader.get_schema, schema_name)
+
+
+class TestAllDefinedSchemasExist(unittest.TestCase):
+    """Test that all defined schemas exist."""
+
+    def test_schemas_exist(self):
+        """Test that all defined schemas have their schema definition."""
+        schema_loader = JSONSchemaLoader()
+        for schema_name in schema_types.keys():
+            if schema_name in {"project", "datacite"}:
+                continue
+            schema = schema_loader.get_schema(schema_name)
+            self.assertIs(type(schema), dict)
 
 
 if __name__ == "__main__":

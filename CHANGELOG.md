@@ -48,6 +48,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - we removed `namedtype` for `contributors` and `creators` we therefore allow `additionalProperties`
   - `subjectsSchema` is a given by frontend thus we allow via `additionalProperties`
 
+### Fixed
+- Schemas endpoint returned 400 for /v1/schemas/datacite #554
+
 ## [0.13.0] - 2022-04-07
 
 ### Added
