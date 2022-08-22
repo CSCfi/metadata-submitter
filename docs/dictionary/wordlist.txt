@@ -510,6 +510,7 @@ pycqa
 pylint
 pymongo
 pyspelling
+pyyaml
 quickstart
 randompriming
 rbcl
@@ -521,6 +522,7 @@ readme
 readspec
 readthedocs
 readtype
+realpath
 redux
 refcenter
 referencealignment
@@ -603,6 +605,7 @@ src
 srf
 ssl
 ssrna
+StackOverflow
 stepindex
 studyabstract
 studyattribute
