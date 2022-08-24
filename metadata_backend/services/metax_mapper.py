@@ -455,6 +455,7 @@ class MetaDataMapper:
         """Map subjects to field of science.
 
         :param subjects: Subjects data from datacite
+        :raises: Custom SubjectNotFoundException if subject cannot be mapped to metax field of science
         """
         LOG.info("Mapping subjects")
         LOG.debug(subjects)
@@ -525,3 +526,11 @@ class MetaDataMapper:
                 "source_organization": self.affiliations,
             }
         ]
+
+
+class SubjectNotFoundException(Exception):
+    """Custom exception to be raised when subject cannot be mapped to metax field of science."""
+
+    def __init__(self) -> None:
+        """Set up exception message."""
+        Exception.__init__(self, "The provided subject does not correspond with any of the possible subject names.")
