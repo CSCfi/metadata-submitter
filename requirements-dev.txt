@@ -38,7 +38,7 @@ bandit==1.7.4
     # via -r requirements-dev.in
 beautifulsoup4==4.11.1
     # via pyspelling
-black==22.6.0
+black==22.8.0
     # via -r requirements-dev.in
 bracex==2.3.post1
     # via wcmatch
@@ -122,8 +122,6 @@ idna==3.3
     #   yarl
 imagesize==1.4.1
     # via sphinx
-importlib-resources==5.9.0
-    # via -r requirements.txt
 iniconfig==1.1.1
     # via pytest
 isort==5.10.1
@@ -349,8 +347,6 @@ yarl==1.7.2
     # via
     #   -r requirements.txt
     #   aiohttp
-zipp==3.8.1
-    # via -r requirements.txt
 
 # The following packages are considered to be unsafe in a requirements file:
 # pip
