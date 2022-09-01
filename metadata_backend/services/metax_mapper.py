@@ -4,7 +4,7 @@ from copy import deepcopy
 from datetime import datetime
 from typing import Any, Dict, List
 
-from ..conf.conf import METAX_REFERENCE_FILE
+from ..conf.conf import METAX_REFERENCE_FILES
 from ..helpers.logger import LOG
 
 
@@ -235,11 +235,15 @@ class MetaDataMapper:
         self.research_dataset = metax_data
         self.datacite_data = data
         self.affiliations: List = []
-        with open(METAX_REFERENCE_FILE, "r", encoding="utf-8") as ref_file:
-            metax_reference_data = json.load(ref_file)
-        self.identifier_types = metax_reference_data["identifier_types"]
-        self.languages = metax_reference_data["languages"]
-        self.fields_of_science = metax_reference_data["fields_of_science"]
+        for file in METAX_REFERENCE_FILES:
+            with open(file, "r", encoding="utf-8") as ref_file:
+                metax_reference_data = json.load(ref_file)
+                if "identifier_types" in metax_reference_data:
+                    self.identifier_types = metax_reference_data["identifier_types"]
+                if "languages" in metax_reference_data:
+                    self.languages = metax_reference_data["languages"]
+                if "fields_of_science" in metax_reference_data:
+                    self.fields_of_science = metax_reference_data["fields_of_science"]
         self.person: Dict[str, Any] = {
             "name": "",
             "@type": "Person",
