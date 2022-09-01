@@ -183,11 +183,13 @@ metax_config = {
     "catalog_pid": "urn:nbn:fi:att:data-catalog-sd",
 }
 
-METAX_REFERENCE_FILE = Path(__file__).parent.parent / "conf" / "metax_references" / "metax_references.json"
-if METAX_ENABLED and not METAX_REFERENCE_FILE.is_file():
-    raise RuntimeError(
-        "You must generate the metax references to run submitter: `bash scripts/metax_mappings/fetch_refs.sh`"
-    )
+file_names = ["identifier_types.json", "languages.json", "fields_of_science.json"]
+METAX_REFERENCE_FILES = [Path(__file__).parent.parent / "conf" / "metax_references" / file for file in file_names]
+for ref_file in METAX_REFERENCE_FILES:
+    if METAX_ENABLED and not ref_file.is_file():
+        raise RuntimeError(
+            "You must generate the metax references to run submitter: `bash scripts/metax_mappings/fetch_refs.sh`"
+        )
 
 REMS_ENABLED = os.getenv("REMS_ENABLED", "") == "True"
 rems_config = {
