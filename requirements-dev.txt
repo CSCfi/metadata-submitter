@@ -122,8 +122,6 @@ idna==3.3
     #   yarl
 imagesize==1.4.1
     # via sphinx
-importlib-resources==5.9.0
-    # via -r requirements.txt
 iniconfig==1.1.1
     # via pytest
 isort==5.10.1
@@ -343,14 +341,12 @@ wheel==0.37.1
     # via pip-tools
 wrapt==1.14.1
     # via astroid
-xmlschema==2.0.1
+xmlschema==2.0.3
     # via -r requirements.txt
 yarl==1.7.2
     # via
     #   -r requirements.txt
     #   aiohttp
-zipp==3.8.1
-    # via -r requirements.txt
 
 # The following packages are considered to be unsafe in a requirements file:
 # pip
