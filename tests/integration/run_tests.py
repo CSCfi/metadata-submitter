@@ -2240,8 +2240,12 @@ async def main(url):
         basic_submission_id = await post_submission(sess, basic_submission)
 
         # test XML files
+        gather_items = []
         for schema, file in test_xml_files:
-            await test_crud_works(sess, schema, file, basic_submission_id)
+            gather_items.append(test_crud_works(sess, schema, file, basic_submission_id))
+        # Run in parallel to test concurrent uploads
+        await asyncio.gather(*gather_items)
+
         await test_crud_with_multi_xml(sess, basic_submission_id)
 
         # test CSV files
@@ -2265,8 +2269,11 @@ async def main(url):
         }
         draft_submission_id = await post_submission(sess, draft_submission)
 
+        gather_items = []
         for schema, file, file2 in test_json_files:
-            await test_crud_drafts_works(sess, schema, file, file2, draft_submission_id)
+            gather_items.append(test_crud_drafts_works(sess, schema, file, file2, draft_submission_id))
+        # Run in parallel to test concurrent uploads
+        await asyncio.gather(*gather_items)
 
         # Test patch and put
         LOG.debug("=== Testing patch and put drafts operations ===")
