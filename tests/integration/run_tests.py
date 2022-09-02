@@ -778,8 +778,6 @@ async def test_crud_with_multi_xml(sess, submission_id):
         async with sess.get(f"{objects_url}/{_schema}/{item['accessionId']}") as resp:
             LOG.debug(f"Checking that {item['accessionId']} JSON is in {_schema}")
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-            res = await resp.json()
-            LOG.debug(res)
         async with sess.get(f"{objects_url}/{_schema}/{item['accessionId']}?format=xml") as resp:
             LOG.debug(f"Checking that {item['accessionId']} XML is in {_schema}")
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
@@ -1959,7 +1957,6 @@ async def test_get_submissions(sess, submission_id: str, project_id: str):
         LOG.debug(f"Reading submission {submission_id}")
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         response = await resp.json()
-        LOG.error(response)
         assert len(response["submissions"]) == 1, len(response["submissions"])
         assert response["page"] == {"page": 1, "size": 5, "totalPages": 1, "totalSubmissions": 1}
         assert response["submissions"][0]["submissionId"] == submission_id
