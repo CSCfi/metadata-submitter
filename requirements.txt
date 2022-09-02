@@ -49,7 +49,7 @@ idna==3.3
     # via
     #   requests
     #   yarl
-jsonschema==4.9.0
+jsonschema==4.15.0
     # via -r requirements.in
 motor==3.0.0
     # via -r requirements.in
@@ -96,7 +96,7 @@ urllib3==1.26.10
     #   responses
 uvloop==0.16.0
     # via -r requirements.in
-xmlschema==2.0.1
+xmlschema==2.0.3
     # via -r requirements.in
 yarl==1.7.2
     # via aiohttp
