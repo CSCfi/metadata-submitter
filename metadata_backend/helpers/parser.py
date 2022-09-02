@@ -408,6 +408,12 @@ class XMLToJSONParser:
         slides = data["slide"] if "slide" in data else []
         slides = _separate_samples(slides, "slide")
 
+        # Turn age_at_extraction value to int
+        for specimen in specimens:
+            for attribute in specimen["specimen"]["attributes"]["attribute"]:
+                if attribute["tag"] == "age_at_extraction":
+                    attribute["value"] = int(attribute["value"])
+
         # Return all samples as an array under bpsample schema name
         samples: List[Dict] = bio_beings + specimens + blocks + slides
         return {"bpsample": samples}

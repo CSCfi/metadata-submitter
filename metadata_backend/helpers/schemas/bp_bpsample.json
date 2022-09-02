@@ -55,7 +55,7 @@
                     "title": "Tag title"
                 },
                 "value": {
-                    "type": "string",
+                    "type": ["string", "number"],
                     "title": "Description"
                 },
                 "units": {
