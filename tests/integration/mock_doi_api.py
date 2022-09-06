@@ -145,7 +145,7 @@ async def update(req: web.Request) -> web.Response:
     data["data"]["attributes"]["updated"] = str(datetime.utcnow())
     data["included"][0]["attributes"]["updated"] = str(datetime.utcnow())
     try:
-        data = update_dict(data["data"], content)
+        data = update_dict(data, content)
     except Exception as e:
         reason = f"Provided payload did not include required attributes: {e}"
         LOG.info(reason)

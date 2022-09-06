@@ -267,6 +267,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
                     if self.rems_handler.enabled:
                         rems_ds = {
                             "accession_id": accession_id,
+                            "schema": schema,
                             "doi": doi,
                             "description": object_data["description"],
                             "localizations": {
@@ -614,7 +615,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
                     new_description = ds["description"] + f"\n\nDAC: {rems_url}"
                     await self.metax_handler.update_draft_dataset_description(ds["metaxIdentifier"], new_description)
                 await obj_op.update_metadata_object(
-                    "dataset",
+                    ds["schema"],
                     ds["accession_id"],
                     {
                         "dac": {

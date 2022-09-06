@@ -63,7 +63,8 @@ users_url = f"{base_url}{API_PREFIX}/users"
 submit_url = f"{base_url}{API_PREFIX}/submit"
 publish_url = f"{base_url}{API_PREFIX}/publish"
 schemas_url = f"{base_url}{API_PREFIX}/schemas"
-metax_url = f"{os.getenv('METAX_URL', 'http://localhost:8002')}/rest/v2/datasets"
+metax_url = f"{os.getenv('METAX_URL', 'http://localhost:8002')}"
+metax_api = f"{metax_url}/rest/v2/datasets"
 datacite_url = f"{os.getenv('DOI_API', 'http://localhost:8001/dois')}"
 auth = aiohttp.BasicAuth(os.getenv("METAX_USER", "sd"), os.getenv("METAX_PASS", "test"))
 # to form direct contact to db with eg create_submission()
