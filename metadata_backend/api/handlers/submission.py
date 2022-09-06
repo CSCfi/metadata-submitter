@@ -23,7 +23,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
     def _make_discovery_url(self, obj_data: Dict) -> str:
         """Make an url that points to a discovery service."""
         # TODO: Proper URL creation when metax is disabled
-        if self.metax_handler.enabled:
+        if self.metax_handler.enabled and "metaxIdentifier" in obj_data:
             url = f"{doi_config['discovery_url']}{obj_data['metaxIdentifier']}"
         else:
             url = f"{doi_config['discovery_url']}{obj_data['doi']}"

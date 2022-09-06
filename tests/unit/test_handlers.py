@@ -17,7 +17,7 @@ from metadata_backend.server import init
 class HandlersTestCase(AioHTTPTestCase):
     """API endpoint class test cases."""
 
-    TESTFILES_ROOT = Path(__file__).parent / "test_files"
+    TESTFILES_ROOT = Path(__file__).parent.parent / "test_files"
 
     async def get_application(self) -> web.Application:
         """Retrieve web Application for test."""

@@ -38,14 +38,52 @@ To run environments separately use:
 Integration Testing
 ~~~~~~~~~~~~~~~~~~~
 
-Integration tests required a running backend, follow the instructions in :ref:`deploy` for development setup of backend.
-After the backend has been successfully set up, run the following in the backend repository root directory: ``python tests/integration/run_tests.py``.
+Integration tests are executed with ``pytest``, and require a running backend.
+Follow the instructions in :ref:`deploy` for development setup of backend. Install
+
+- aiofiles
+- aiohttp
+- motor
+- pytest
+- pytest-asyncio
+
+After the backend has been successfully set up, run the following in the backend repository root directory: ``pytest tests/integration``.
 This command will run a series of integration tests.
 
-To clean db before or after each integration tests run: ``python tests/integration/clean_db.py`` (``--tls`` argument
-can be added if MongoDB is started via ``docker-compose-tls.yml``). Script clean_db.py will delete all documents in all collections in the database.
-To erase the database run: ``python tests/integration/clean_db.py --purge``. After that indexes need to be recreated.
-To do that run: ``python tests/integration/mongo_indexes.py`` (``--tls`` argument can be added if MongoDB is started via ``docker-compose-tls.yml``).
+**Pytest fixtures**
+
+Be sure to familiarize yourself with `pytest fixtures <https://docs.pytest.org/en/6.2.x/fixture.html>`_ and their scope.
+They are pure magic.
+
+Fixtures are defined in ``tests/integration/conftest.py``.
+
+Basically, a fixture is run before a new module/class/function/<fixture scope here>
+is executed, according to its defined ``scope``. Statements before a ``yield`` statement function as a ``Setup``, and
+statements after are ``Teardown``. When there's no ``yield``, there's no teardown either, only setup.
+
+Debugging tests
+~~~~~~~~~~~~~~~
+
+Depending on your setup, there are different ways to debug tests run with `pytest <https://docs.pytest.org/en/6.2.x/usage.html>`_.
+Without covering the possibilities that IDEs offer, here are the possibilities with the CLI and
+`the Python debugger (PDB) <https://docs.python.org/3/library/pdb.html#debugger-commands>`_.
+
+- Run a single test with ``pytest tests/integration/test_module.py::TestClass::test_method``.
+  Or remove the method name to run a single class test.
+
+- Follow `pytest docs <https://docs.pytest.org/en/6.2.x/usage.html#dropping-to-pdb-python-debugger-on-failures>`_,
+  and run tests with ``pytest -x --pdb tests/integration`` to drop to the PDB on
+  the first error.
+
+
+- Similarly, you can use ``ipdb`` to use the more feature-full pdb, using IPython.
+
+::
+
+    $ pip install ipdb
+    $ pytest -x --pdb -pdbcls=IPython.terminal.debugger:TerminalPdb tests/integration
+
+- Together with ``--pdb``, call ``breakpoint()`` in the code to pause the test execution at a predefined point.
 
 
 Performance Testing
