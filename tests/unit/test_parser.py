@@ -15,7 +15,7 @@ from metadata_backend.helpers.parser import (
 class ParserTestCase(unittest.TestCase):
     """Parser Test Cases."""
 
-    TESTFILES_ROOT = Path(__file__).parent / "test_files"
+    TESTFILES_ROOT = Path(__file__).parent.parent / "test_files"
 
     def setUp(self):
         """Configure variables for tests."""

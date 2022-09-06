@@ -3,19 +3,14 @@
 import argparse
 import asyncio
 import logging
-import os
+import sys
 
 import pymongo
 from motor.motor_asyncio import AsyncIOMotorClient
 
-# === Global vars ===
-DATABASE = os.getenv("MONGO_DATABASE", "default")
-AUTHDB = os.getenv("MONGO_AUTHDB", "admin")
-HOST = os.getenv("MONGO_HOST", "localhost:27017")
+from tests.integration.conf import AUTHDB, DATABASE, DATE_FORMAT, FORMAT, HOST
 
-# === Logging ===
-FORMAT = "[%(asctime)s][%(name)s][%(process)d %(processName)s][%(levelname)-8s](L:%(lineno)s) %(funcName)s: %(message)s"
-logging.basicConfig(format=FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
+logging.basicConfig(format=FORMAT, datefmt=DATE_FORMAT)
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
 
@@ -90,7 +85,6 @@ class Mongo:
                 await self.db.create_collection(col)
             except pymongo.errors.CollectionInvalid as e:
                 LOG.debug(f"=== Collection {col} not created due to {str(e)} ===")
-                pass
         LOG.debug("=== DONE ===")
 
     async def drop_collections(self) -> None:
@@ -104,7 +98,6 @@ class Mongo:
                 await self.db.drop_collection(col)
             except pymongo.errors.CollectionInvalid as e:
                 LOG.debug(f"=== Collection {col} not dropped {str(e)} ===")
-                pass
         LOG.debug("=== DONE ===")
 
     async def clean_db(self) -> None:
@@ -129,7 +122,6 @@ class Mongo:
                     await self.db[collection].create_index([index["index"]], unique=index["unique"])
                 except Exception:
                     LOG.exception(f"=== Collection '{collection}' index '{index}' not created ===")
-                    pass
             ind = await self.db[collection].index_information()
             LOG.debug(f"==== Collection '{collection}' indexes created ==== {ind}")
 
@@ -143,7 +135,6 @@ class Mongo:
         for collection in COLLECTIONS:
             self.db[collection].drop_indexes()
         LOG.debug("=== DONE ===")
-        LOG.debug("==== Indexes created ====")
 
     async def drop_db(self) -> None:
         """Drop DB."""
@@ -171,16 +162,32 @@ class Mongo:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Process some integers.")
-    parser.add_argument("--tls", action="store_true", help="add tls configuration")
-    parser.add_argument("--count", action="store_true", help="Print number of documents in each collection")
+    parser = argparse.ArgumentParser(description="Recreate DB schema by default, or check the other options.")
+    parser.add_argument("--tls", action="store_true", help="Add tls configuration")
+    parser.add_argument("--clear", action="store_true", help="Delete all records")
+    parser.add_argument("--purge", action="store_true", help="Destroy database")
+    parser.add_argument(
+        "--count",
+        action="store_true",
+        help="Print number of documents in each collection",
+    )
     args = parser.parse_args()
     url = f"mongodb://{AUTHDB}:{AUTHDB}@{HOST}/{DATABASE}?authSource=admin"
     if args.tls:
         _params = "?tls=true&tlsCAFile=./config/cacert&tlsCertificateKeyFile=./config/combined"
         url = f"mongodb://{AUTHDB}:{AUTHDB}@{HOST}/{DATABASE}{_params}&authSource=admin"
     LOG.debug(f"=== Database url {url} ===")
+    mongo = Mongo(url)
     if args.count:
-        asyncio.run(Mongo(url).get_count())
-    else:
-        asyncio.run(Mongo(url).recreate_db())
+        asyncio.run(mongo.get_count())
+        sys.exit(0)
+
+    if args.clear:
+        asyncio.run(mongo.clean_db())
+        sys.exit(0)
+
+    if args.purge:
+        asyncio.run(mongo.drop_db())
+        sys.exit(0)
+
+    asyncio.run(mongo.recreate_db())

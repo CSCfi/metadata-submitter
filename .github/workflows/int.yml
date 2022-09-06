@@ -22,24 +22,16 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install requirements
       run: |
-         pip install aiohttp aiofiles motor
+         pip install aiohttp aiofiles motor pytest pytest-asyncio
 
     - name: Start Services
       run: |
         docker-compose --env-file .env.example up -d --build
         sleep 30
 
-    - name: Clear database
-      run: |
-        python tests/integration/clean_db.py
-      env:
-        MONGO_HOST: localhost:27017
-        MONGO_DATABASE: default
-        MONGO_AUTHDB: admin
-
     - name: Run Integration test
       run: |
-        python tests/integration/run_tests.py
+        pytest tests/integration/run_tests.py
       env:
         BASE_URL: http://localhost:5430
         OIDC_URL: http://localhost:8000
@@ -68,20 +60,9 @@ jobs:
         docker-compose -f docker-compose-tls.yml --env-file .env.example up -d
         sleep 30
 
-    - name: Clear database
-      run: |
-        python tests/integration/clean_db.py --tls
-      env:
-        MONGO_HOST: localhost:27017
-        MONGO_DATABASE: default
-        MONGO_AUTHDB: admin
-        MONGO_SSL: True
-        MONGO_SSL_CA: /tls/cacert
-        MONGO_SSL_CLIENT_CERT_KEY: /tls/combined
-
     - name: Run Integration test
       run: |
-        python tests/integration/run_tests.py
+        pytest tests/integration/run_tests.py
       env:
         BASE_URL: http://localhost:5430
         OIDC_URL: http://localhost:8000

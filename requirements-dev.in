@@ -13,6 +13,7 @@ pre-commit
 pylint
 pyspelling
 pytest
+pytest-asyncio
 pytest-cov
 PyYAML  # for building swagger html
 sphinx
