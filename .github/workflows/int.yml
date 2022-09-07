@@ -31,7 +31,7 @@ jobs:
 
     - name: Run Integration test
       run: |
-        pytest tests/integration/run_tests.py
+        pytest tests/integration
       env:
         BASE_URL: http://localhost:5430
         OIDC_URL: http://localhost:8000
@@ -62,7 +62,7 @@ jobs:
 
     - name: Run Integration test
       run: |
-        pytest tests/integration/run_tests.py
+        pytest tests/integration
       env:
         BASE_URL: http://localhost:5430
         OIDC_URL: http://localhost:8000
