@@ -21,12 +21,8 @@ from tests.integration.conf import (
     other_test_user_family,
     other_test_user_given,
 )
+from tests.integration.helpers import delete_submission, get_user_data, post_submission
 from tests.integration.mongo import Mongo
-from tests.integration.run_tests import (
-    delete_submission,
-    get_user_data,
-    post_submission,
-)
 
 
 @pytest.fixture(scope="session")

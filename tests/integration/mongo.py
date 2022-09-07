@@ -8,9 +8,8 @@ import sys
 import pymongo
 from motor.motor_asyncio import AsyncIOMotorClient
 
-from tests.integration.conf import AUTHDB, DATABASE, DATE_FORMAT, FORMAT, HOST
+from tests.integration.conf import AUTHDB, DATABASE, HOST
 
-logging.basicConfig(format=FORMAT, datefmt=DATE_FORMAT)
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
 
