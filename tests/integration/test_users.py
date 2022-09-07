@@ -1,13 +1,28 @@
 """Test operations with users."""
 import logging
 
-from tests.integration.conf import submissions_url, templates_url, user_id, users_url
+import aiohttp
+
+from tests.integration.conf import (
+    other_test_user,
+    other_test_user_family,
+    other_test_user_given,
+    submissions_url,
+    templates_url,
+    test_user,
+    test_user_family,
+    test_user_given,
+    user_id,
+    users_url,
+)
 from tests.integration.helpers import (
     create_request_json_data,
     delete_submission,
     delete_template,
     delete_user,
     get_templates,
+    get_user_data,
+    login,
     patch_template,
     post_object,
     post_object_json,
@@ -25,8 +40,52 @@ LOG.setLevel(logging.DEBUG)
 class TestUsers:
     """Test user operations."""
 
+    async def test_multiple_user_submissions(self, client_logged_in):
+        """Test different users can create a submission."""
+        async with aiohttp.ClientSession() as sess:
+            await login(sess, other_test_user, other_test_user_given, other_test_user_family)
+            user_data = await get_user_data(sess)
+            other_test_user_project_id = user_data["projects"][0]["projectId"]
+
+            other_test_user_submission = {
+                "name": "submission test 1",
+                "description": "submission test submission 1",
+                "projectId": other_test_user_project_id,
+            }
+            other_test_user_submission_id = await post_submission(sess, other_test_user_submission)
+
+        async with aiohttp.ClientSession() as sess:
+            await login(sess, test_user, test_user_given, test_user_family)
+            user_data = await get_user_data(sess)
+            test_user_project_id = user_data["projects"][0]["projectId"]
+
+            # Test adding and getting objects
+            LOG.debug("=== Testing basic CRUD operations ===")
+            test_user_submission = {
+                "name": "basic test",
+                "description": "basic test submission",
+                "projectId": test_user_project_id,
+            }
+            test_user_submission_id = await post_submission(sess, test_user_submission)
+
+        async with client_logged_in.get(
+            f"{submissions_url}/{other_test_user_submission_id}?projectId={other_test_user_project_id}"
+        ) as resp:
+            res = await resp.json()
+            assert res["name"] == other_test_user_submission["name"]
+            assert res["projectId"] == other_test_user_submission["projectId"]
+
+        async with client_logged_in.get(
+            f"{submissions_url}/{test_user_submission_id}?projectId={test_user_project_id}"
+        ) as resp:
+            res = await resp.json()
+            assert res["name"] == test_user_submission["name"]
+            assert res["projectId"] == test_user_submission["projectId"]
+
     async def test_crud_users_works(self, client_logged_in, project_id):
         """Test users REST API GET, PATCH and DELETE reqs.
+
+        This should be the last test, as it deletes users.
 
         :param client_logged_in: HTTP client in which request call is made
         :param project_id: id of the project the submission belongs to
