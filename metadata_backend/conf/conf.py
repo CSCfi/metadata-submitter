@@ -34,7 +34,7 @@ and inserted here in projects Dockerfile.
 import os
 from distutils.util import strtobool
 from pathlib import Path
-from typing import Tuple
+from typing import Dict, Tuple
 
 import ujson
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -184,12 +184,17 @@ metax_config = {
 }
 
 file_names = ["identifier_types.json", "languages.json", "fields_of_science.json"]
-METAX_REFERENCE_FILES = [Path(__file__).parent.parent / "conf" / "metax_references" / file for file in file_names]
-for ref_file in METAX_REFERENCE_FILES:
-    if METAX_ENABLED and not ref_file.is_file():
+METAX_REFERENCE_ROOT = Path(__file__).parent.parent / "conf" / "metax_references"
+METAX_REFERENCE_DATA: Dict[str, Dict] = {"identifier_types": {}, "languages": {}, "fields_of_science": {}}
+# Load metax reference data from different reference files into a single dict used by metax mapper
+for ref_file in file_names:
+    ref_file_path = METAX_REFERENCE_ROOT / ref_file
+    if METAX_ENABLED and not ref_file_path.is_file():
         raise RuntimeError(
             "You must generate the metax references to run submitter: `bash scripts/metax_mappings/fetch_refs.sh`"
         )
+    with open(ref_file_path, "r", encoding="utf-8") as file:
+        METAX_REFERENCE_DATA[ref_file.replace(".json", "")] = ujson.load(file)
 
 REMS_ENABLED = os.getenv("REMS_ENABLED", "") == "True"
 rems_config = {
