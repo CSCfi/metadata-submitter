@@ -16,14 +16,14 @@ log.setLevel(logging.DEBUG)
 def get_identifier_types() -> None:
     """Parse codes for mapping identifier types."""
 
-    id_types = {"identifier_types": {}}
+    id_types = {}
     codes_url = (
         "https://koodistot.suomi.fi/codelist-api/api/v1/coderegistries/fairdata/codeschemes/identifier_type/"
         "?format=json&embedCodes=true&downloadFile=true&pretty"
     )
     codes_json = requests.get(codes_url).json()["codes"]
     for code in codes_json:
-        id_types["identifier_types"][code["uri"].split("/")[-1]] = code["uri"]
+        id_types[code["uri"].split("/")[-1]] = code["uri"]
 
     # Print to console, so the script caller should output it to the correct file
     print(json.dumps(id_types, indent=4, sort_keys=True))
@@ -35,7 +35,7 @@ def get_languages() -> None:
     Metax uses ISO 639-3 system which are 3-letter codes with URI as identifiers.
     """
 
-    langs = {"languages": {}}
+    langs = {}
     ISO_langs = {}
 
     # Parsing ISO 639-1, ISO 639-2 and ISO 639-3 language format
@@ -70,7 +70,7 @@ def get_languages() -> None:
     for k, v in lang_dict.items():
         v = v.lower()
         try:
-            langs["languages"][k] = ISO_langs[v]
+            langs[k] = ISO_langs[v]
             n_matches += 1
         except KeyError:
             # We expect that not all languages will match.
@@ -86,11 +86,11 @@ def get_languages() -> None:
 def get_fields_of_science() -> None:
     """Parse codes and identifiers for mapping fields of science."""
 
-    fields = {"fields_of_science": {}}
+    fields = {}
     fos_codes_url = "https://metax.demo.fairdata.fi/es/reference_data/field_of_science/_search?size=100"
     fos_codes_json = requests.get(fos_codes_url).json()["hits"]["hits"]
     for fos in fos_codes_json:
-        fields["fields_of_science"][fos["_source"]["code"]] = {
+        fields[fos["_source"]["code"]] = {
             "uri": fos["_source"]["uri"],
             "label": fos["_source"]["label"],
         }

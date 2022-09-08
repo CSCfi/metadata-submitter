@@ -1,670 +1,668 @@
 {
-    "fields_of_science": {
-        "ta1": {
-            "label": {
-                "en": "Natural sciences",
-                "fi": "LUONNONTIETEET",
-                "sv": "Naturvetenskaper",
-                "und": "LUONNONTIETEET"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta1"
-        },
-        "ta111": {
-            "label": {
-                "en": "Mathematics",
-                "fi": "Matematiikka",
-                "sv": "Matematik",
-                "und": "Matematiikka"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta111"
-        },
-        "ta112": {
-            "label": {
-                "en": "Statistics and probability",
-                "fi": "Tilastotiede",
-                "sv": "Statistik",
-                "und": "Tilastotiede"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta112"
-        },
-        "ta113": {
-            "label": {
-                "en": "Computer and information sciences",
-                "fi": "Tietojenk\u00e4sittely ja informaatiotieteet",
-                "sv": "Data- och informationsvetenskap",
-                "und": "Tietojenk\u00e4sittely ja informaatiotieteet"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta113"
-        },
-        "ta114": {
-            "label": {
-                "en": "Physical sciences",
-                "fi": "Fysiikka",
-                "sv": "Fysik",
-                "und": "Fysiikka"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta114"
-        },
-        "ta115": {
-            "label": {
-                "en": "Astronomy, Space science",
-                "fi": "Avaruustieteet ja t\u00e4htitiede",
-                "sv": "Rymdvetenskap och astronomi",
-                "und": "Avaruustieteet ja t\u00e4htitiede"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta115"
-        },
-        "ta116": {
-            "label": {
-                "en": "Chemical sciences",
-                "fi": "Kemia",
-                "sv": "Kemi",
-                "und": "Kemia"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta116"
-        },
-        "ta1171": {
-            "label": {
-                "en": "Geosciences",
-                "fi": "Geotieteet",
-                "sv": "Geovetenskaper",
-                "und": "Geotieteet"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta1171"
-        },
-        "ta1172": {
-            "label": {
-                "en": "Environmental sciences",
-                "fi": "Ymp\u00e4rist\u00f6tiede",
-                "sv": "Milj\u00f6vetenskap",
-                "und": "Ymp\u00e4rist\u00f6tiede"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta1172"
-        },
-        "ta1181": {
-            "label": {
-                "en": "Ecology, evolutionary biology",
-                "fi": "Ekologia, evoluutiobiologia",
-                "sv": "Ekologi, evolutionsbiologi",
-                "und": "Ekologia, evoluutiobiologia"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta1181"
-        },
-        "ta1182": {
-            "label": {
-                "en": "Biochemistry, cell and molecular biology",
-                "fi": "Biokemia, solu- ja molekyylibiologia",
-                "sv": "Biokemi, cell- och molekyl\u00e4rbiologi",
-                "und": "Biokemia, solu- ja molekyylibiologia"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta1182"
-        },
-        "ta1183": {
-            "label": {
-                "en": "Plant biology, microbiology, virology",
-                "fi": "Kasvibiologia, mikrobiologia, virologia",
-                "sv": "V\u00e4xtbiologi, mikrobiologi, virologi",
-                "und": "Kasvibiologia, mikrobiologia, virologia"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta1183"
-        },
-        "ta1184": {
-            "label": {
-                "en": "Genetics, developmental biology, physiology",
-                "fi": "Genetiikka, kehitysbiologia, fysiologia",
-                "sv": "Genetik, utvecklingsbiologi, fysiologi",
-                "und": "Genetiikka, kehitysbiologia, fysiologia"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta1184"
-        },
-        "ta119": {
-            "label": {
-                "en": "Other natural sciences",
-                "fi": "Muut luonnontieteet",
-                "sv": "\u00d6vrig naturvetenskap",
-                "und": "Muut luonnontieteet"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta119"
-        },
-        "ta2": {
-            "label": {
-                "en": "Engineering and technology",
-                "fi": "TEKNIIKKA",
-                "sv": "Teknik",
-                "und": "TEKNIIKKA"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta2"
-        },
-        "ta211": {
-            "label": {
-                "en": "Architecture",
-                "fi": "Arkkitehtuuri",
-                "sv": "Arkitektur",
-                "und": "Arkkitehtuuri"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta211"
-        },
-        "ta212": {
-            "label": {
-                "en": "Civil and Construction engineering",
-                "fi": "Rakennus- ja yhdyskuntatekniikka",
-                "sv": "Byggnads- och samh\u00e4llsteknik",
-                "und": "Rakennus- ja yhdyskuntatekniikka"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta212"
-        },
-        "ta213": {
-            "label": {
-                "en": "Electronic, automation and communications engineering, electronics",
-                "fi": "S\u00e4hk\u00f6-, automaatio- ja tietoliikennetekniikka, elektroniikka",
-                "sv": "El-, automations- och telekommunikationsteknik, elektronik",
-                "und": "S\u00e4hk\u00f6-, automaatio- ja tietoliikennetekniikka, elektroniikka"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta213"
-        },
-        "ta214": {
-            "label": {
-                "en": "Mechanical engineering",
-                "fi": "Kone- ja valmistustekniikka",
-                "sv": "Maskin- och produktionsteknik",
-                "und": "Kone- ja valmistustekniikka"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta214"
-        },
-        "ta215": {
-            "label": {
-                "en": "Chemical engineering",
-                "fi": "Teknillinen kemia, kemian prosessitekniikka",
-                "sv": "Teknisk kemi, kemisk processteknik",
-                "und": "Teknillinen kemia, kemian prosessitekniikka"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta215"
-        },
-        "ta216": {
-            "label": {
-                "en": "Materials engineering",
-                "fi": "Materiaalitekniikka",
-                "sv": "Materialteknik",
-                "und": "Materiaalitekniikka"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta216"
-        },
-        "ta217": {
-            "label": {
-                "en": "Medical engineering",
-                "fi": "L\u00e4\u00e4ketieteen tekniikka",
-                "sv": "Medicinsk teknik",
-                "und": "L\u00e4\u00e4ketieteen tekniikka"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta217"
-        },
-        "ta218": {
-            "label": {
-                "en": "Environmental engineering",
-                "fi": "Ymp\u00e4rist\u00f6tekniikka",
-                "sv": "Milj\u00f6teknik",
-                "und": "Ymp\u00e4rist\u00f6tekniikka"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta218"
-        },
-        "ta219": {
-            "label": {
-                "en": "Environmental biotechnology",
-                "fi": "Ymp\u00e4rist\u00f6n bioteknologia",
-                "sv": "Milj\u00f6bioteknologi",
-                "und": "Ymp\u00e4rist\u00f6n bioteknologia"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta219"
-        },
-        "ta220": {
-            "label": {
-                "en": "Industrial biotechnology",
-                "fi": "Teollinen bioteknologia",
-                "sv": "Industriell bioteknologi",
-                "und": "Teollinen bioteknologia"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta220"
-        },
-        "ta221": {
-            "label": {
-                "en": "Nano-technology",
-                "fi": "Nanoteknologia",
-                "sv": "Nanoteknologi",
-                "und": "Nanoteknologia"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta221"
-        },
-        "ta222": {
-            "label": {
-                "en": "Other engineering and technologies",
-                "fi": "Muu tekniikka",
-                "sv": "\u00d6vrig teknik och teknologi",
-                "und": "Muu tekniikka"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta222"
-        },
-        "ta3": {
-            "label": {
-                "en": "Medical and health sciences",
-                "fi": "L\u00c4\u00c4KE- JA TERVEYSTIETEET",
-                "sv": "Medicin och h\u00e4lsovetenskaper",
-                "und": "L\u00c4\u00c4KE- JA TERVEYSTIETEET"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta3"
-        },
-        "ta3111": {
-            "label": {
-                "en": "Biomedicine",
-                "fi": "Biol\u00e4\u00e4ketieteet",
-                "sv": "Biomedicinska vetenskaper",
-                "und": "Biol\u00e4\u00e4ketieteet"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta3111"
-        },
-        "ta3112": {
-            "label": {
-                "en": "Neurosciences",
-                "fi": "Neurotieteet",
-                "sv": "Neurovetenskaper",
-                "und": "Neurotieteet"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta3112"
-        },
-        "ta3121": {
-            "label": {
-                "en": "Internal medicine",
-                "fi": "Sis\u00e4taudit",
-                "sv": "Inre medicin",
-                "und": "Sis\u00e4taudit"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta3121"
-        },
-        "ta3122": {
-            "label": {
-                "en": "Cancers",
-                "fi": "Sy\u00f6p\u00e4taudit",
-                "sv": "Cancersjukdomar",
-                "und": "Sy\u00f6p\u00e4taudit"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta3122"
-        },
-        "ta3123": {
-            "label": {
-                "en": "Gynaecology and paediatrics",
-                "fi": "Naisten- ja lastentaudit",
-                "sv": "Kvinno- och barnsjukdomar",
-                "und": "Naisten- ja lastentaudit"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta3123"
-        },
-        "ta3124": {
-            "label": {
-                "en": "Neurology and psychiatry",
-                "fi": "Neurologia ja psykiatria",
-                "sv": "Neurologi och psykiatri",
-                "und": "Neurologia ja psykiatria"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta3124"
-        },
-        "ta3125": {
-            "label": {
-                "en": "Otorhinolaryngology, ophthalmology",
-                "fi": "Korva-, nen\u00e4- ja kurkkutaudit, silm\u00e4taudit",
-                "sv": "\u00d6ron-, n\u00e4s- och halssjukdomar, \u00f6gonsjukdomar",
-                "und": "Korva-, nen\u00e4- ja kurkkutaudit, silm\u00e4taudit"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta3125"
-        },
-        "ta3126": {
-            "label": {
-                "en": "Surgery, anesthesiology, intensive care, radiology",
-                "fi": "Kirurgia, anestesiologia, tehohoito, radiologia",
-                "sv": "Kirurgi, anestesiologi, intensivv\u00e5rd, radiologi",
-                "und": "Kirurgia, anestesiologia, tehohoito, radiologia"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta3126"
-        },
-        "ta313": {
-            "label": {
-                "en": "Dentistry",
-                "fi": "Hammasl\u00e4\u00e4ketieteet",
-                "sv": "Odontologi",
-                "und": "Hammasl\u00e4\u00e4ketieteet"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta313"
-        },
-        "ta3141": {
-            "label": {
-                "en": "Health care science",
-                "fi": "Terveystiede",
-                "sv": "H\u00e4lsovetenskap",
-                "und": "Terveystiede"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta3141"
-        },
-        "ta3142": {
-            "label": {
-                "en": "Public health care science, environmental and occupational health",
-                "fi": "Kansanterveystiede, ymp\u00e4rist\u00f6 ja ty\u00f6terveys",
-                "sv": "Folkh\u00e4lsovetenskap, milj\u00f6 och arbetsh\u00e4lsa",
-                "und": "Kansanterveystiede, ymp\u00e4rist\u00f6 ja ty\u00f6terveys"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta3142"
-        },
-        "ta315": {
-            "label": {
-                "en": "Sport and fitness sciences",
-                "fi": "Liikuntatiede",
-                "sv": "Gymnastik- och idrottsvetenskap",
-                "und": "Liikuntatiede"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta315"
-        },
-        "ta316": {
-            "label": {
-                "en": "Nursing",
-                "fi": "Hoitotiede",
-                "sv": "V\u00e5rdvetenskap",
-                "und": "Hoitotiede"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta316"
-        },
-        "ta317": {
-            "label": {
-                "en": "Pharmacy",
-                "fi": "Farmasia",
-                "sv": "Farmaci",
-                "und": "Farmasia"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta317"
-        },
-        "ta318": {
-            "label": {
-                "en": "Medical biotechnology",
-                "fi": "L\u00e4\u00e4ketieteen bioteknologia",
-                "sv": "Medicinsk bioteknologi",
-                "und": "L\u00e4\u00e4ketieteen bioteknologia"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta318"
-        },
-        "ta319": {
-            "label": {
-                "en": "Forensic science and other medical sciences",
-                "fi": "Oikeusl\u00e4\u00e4ketiede ja muut l\u00e4\u00e4ketieteet",
-                "sv": "R\u00e4ttsmedicin och \u00f6vrig medicinsk vetenskap",
-                "und": "Oikeusl\u00e4\u00e4ketiede ja muut l\u00e4\u00e4ketieteet"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta319"
-        },
-        "ta4": {
-            "label": {
-                "en": "Agriculture and forestry",
-                "fi": "MAATALOUS- JA METS\u00c4TIETEET",
-                "sv": "Jordbruks- och skogsvetenskaper",
-                "und": "MAATALOUS- JA METS\u00c4TIETEET"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta4"
-        },
-        "ta4111": {
-            "label": {
-                "en": "Agronomy",
-                "fi": "Maataloustiede",
-                "sv": "Jordbruksvetenskap",
-                "und": "Maataloustiede"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta4111"
-        },
-        "ta4112": {
-            "label": {
-                "en": "Forestry",
-                "fi": "Mets\u00e4tiede",
-                "sv": "Skogsvetenskap",
-                "und": "Mets\u00e4tiede"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta4112"
-        },
-        "ta412": {
-            "label": {
-                "en": "Animal science, dairy science",
-                "fi": "Kotiel\u00e4intiede, maitotaloustiede",
-                "sv": "Djursvetenskap, mj\u00f6lkproduktl\u00e4ra",
-                "und": "Kotiel\u00e4intiede, maitotaloustiede"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta412"
-        },
-        "ta413": {
-            "label": {
-                "en": "Veterinary science",
-                "fi": "El\u00e4inl\u00e4\u00e4ketiede",
-                "sv": "Veterin\u00e4rvetenskap",
-                "und": "El\u00e4inl\u00e4\u00e4ketiede"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta413"
-        },
-        "ta414": {
-            "label": {
-                "en": "Agricultural biotechnology",
-                "fi": "Maatalouden bioteknologia",
-                "sv": "Jordbruksbioteknologi",
-                "und": "Maatalouden bioteknologia"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta414"
-        },
-        "ta415": {
-            "label": {
-                "en": "Other agricultural sciences",
-                "fi": "Muut maataloustieteet",
-                "sv": "\u00d6vriga jordbruksvetenskaper",
-                "und": "Muut maataloustieteet"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta415"
-        },
-        "ta5": {
-            "label": {
-                "en": "Social sciences",
-                "fi": "YHTEISKUNTATIETEET",
-                "sv": "Samh\u00e4llsvetenskaper",
-                "und": "YHTEISKUNTATIETEET"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta5"
-        },
-        "ta511": {
-            "label": {
-                "en": "Economics",
-                "fi": "Kansantaloustiede",
-                "sv": "Nationalekonomi",
-                "und": "Kansantaloustiede"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta511"
-        },
-        "ta512": {
-            "label": {
-                "en": "Business and management",
-                "fi": "Liiketaloustiede",
-                "sv": "F\u00f6retagsekonomi",
-                "und": "Liiketaloustiede"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta512"
-        },
-        "ta513": {
-            "label": {
-                "en": "Law",
-                "fi": "Oikeustiede",
-                "sv": "Juridik",
-                "und": "Oikeustiede"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta513"
-        },
-        "ta5141": {
-            "label": {
-                "en": "Sociology",
-                "fi": "Sosiologia",
-                "sv": "Sociologi",
-                "und": "Sosiologia"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta5141"
-        },
-        "ta5142": {
-            "label": {
-                "en": "Social policy",
-                "fi": "Sosiaali- ja yhteiskuntapolitiikka",
-                "sv": "Social- och samh\u00e4llspolitik",
-                "und": "Sosiaali- ja yhteiskuntapolitiikka"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta5142"
-        },
-        "ta515": {
-            "label": {
-                "en": "Psychology",
-                "fi": "Psykologia",
-                "sv": "Psykologi",
-                "und": "Psykologia"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta515"
-        },
-        "ta516": {
-            "label": {
-                "en": "Educational sciences",
-                "fi": "Kasvatustieteet",
-                "sv": "Pedagogik",
-                "und": "Kasvatustieteet"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta516"
-        },
-        "ta517": {
-            "label": {
-                "en": "Political science",
-                "fi": "Valtio-oppi, hallintotiede",
-                "sv": "Statsvetenskap",
-                "und": "Valtio-oppi, hallintotiede"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta517"
-        },
-        "ta518": {
-            "label": {
-                "en": "Media and communications",
-                "fi": "Media- ja viestint\u00e4tieteet",
-                "sv": "Medie- och kommunikationsvetenskap",
-                "und": "Media- ja viestint\u00e4tieteet"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta518"
-        },
-        "ta519": {
-            "label": {
-                "en": "Social and economic geography",
-                "fi": "Yhteiskuntamaantiede, talousmaantiede",
-                "sv": "Socialgeografi och ekonomisk geografi",
-                "und": "Yhteiskuntamaantiede, talousmaantiede"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta519"
-        },
-        "ta520": {
-            "label": {
-                "en": "Other social sciences",
-                "fi": "Muut yhteiskuntatieteet",
-                "sv": "\u00d6vriga samh\u00e4llsvetenskaper",
-                "und": "Muut yhteiskuntatieteet"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta520"
-        },
-        "ta6": {
-            "label": {
-                "en": "Humanities",
-                "fi": "HUMANISTISET TIETEET",
-                "sv": "Humanistiska vetenskaper",
-                "und": "HUMANISTISET TIETEET"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta6"
-        },
-        "ta611": {
-            "label": {
-                "en": "Philosophy",
-                "fi": "Filosofia",
-                "sv": "Filosofi",
-                "und": "Filosofia"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta611"
-        },
-        "ta6121": {
-            "label": {
-                "en": "Languages",
-                "fi": "Kielitieteet",
-                "sv": "Spr\u00e5kvetenskaper",
-                "und": "Kielitieteet"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta6121"
-        },
-        "ta6122": {
-            "label": {
-                "en": "Literature studies",
-                "fi": "Kirjallisuuden tutkimus",
-                "sv": "Litteraturforskning",
-                "und": "Kirjallisuuden tutkimus"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta6122"
-        },
-        "ta6131": {
-            "label": {
-                "en": "Theatre, dance, music, other performing arts",
-                "fi": "Teatteri, tanssi, musiikki, muut esitt\u00e4v\u00e4t taiteet",
-                "sv": "Teater, dans, musik, \u00f6vrig scenkonst",
-                "und": "Teatteri, tanssi, musiikki, muut esitt\u00e4v\u00e4t taiteet"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta6131"
-        },
-        "ta6132": {
-            "label": {
-                "en": "Visual arts and design",
-                "fi": "Kuvataide ja muotoilu",
-                "sv": "Bildkonst och formgivning",
-                "und": "Kuvataide ja muotoilu"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta6132"
-        },
-        "ta614": {
-            "label": {
-                "en": "Theology",
-                "fi": "Teologia",
-                "sv": "Teologi",
-                "und": "Teologia"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta614"
-        },
-        "ta615": {
-            "label": {
-                "en": "History and archaeology",
-                "fi": "Historia ja arkeologia",
-                "sv": "Historia och arkeologi",
-                "und": "Historia ja arkeologia"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta615"
-        },
-        "ta616": {
-            "label": {
-                "en": "Other humanities",
-                "fi": "Muut humanistiset tieteet",
-                "sv": "\u00d6vriga humanistiska vetenskaper",
-                "und": "Muut humanistiset tieteet"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta616"
-        },
-        "ta9": {
-            "label": {
-                "en": "Other",
-                "fi": "MUUT",
-                "sv": "\u00d6vrigt",
-                "und": "MUUT"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta9"
-        },
-        "ta999": {
-            "label": {
-                "en": "Other",
-                "fi": "Muut",
-                "sv": "\u00d6vrigt",
-                "und": "Muut"
-            },
-            "uri": "http://www.yso.fi/onto/okm-tieteenala/ta999"
-        }
+    "ta1": {
+        "label": {
+            "en": "Natural sciences",
+            "fi": "LUONNONTIETEET",
+            "sv": "Naturvetenskaper",
+            "und": "LUONNONTIETEET"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta1"
+    },
+    "ta111": {
+        "label": {
+            "en": "Mathematics",
+            "fi": "Matematiikka",
+            "sv": "Matematik",
+            "und": "Matematiikka"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta111"
+    },
+    "ta112": {
+        "label": {
+            "en": "Statistics and probability",
+            "fi": "Tilastotiede",
+            "sv": "Statistik",
+            "und": "Tilastotiede"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta112"
+    },
+    "ta113": {
+        "label": {
+            "en": "Computer and information sciences",
+            "fi": "Tietojenk\u00e4sittely ja informaatiotieteet",
+            "sv": "Data- och informationsvetenskap",
+            "und": "Tietojenk\u00e4sittely ja informaatiotieteet"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta113"
+    },
+    "ta114": {
+        "label": {
+            "en": "Physical sciences",
+            "fi": "Fysiikka",
+            "sv": "Fysik",
+            "und": "Fysiikka"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta114"
+    },
+    "ta115": {
+        "label": {
+            "en": "Astronomy, Space science",
+            "fi": "Avaruustieteet ja t\u00e4htitiede",
+            "sv": "Rymdvetenskap och astronomi",
+            "und": "Avaruustieteet ja t\u00e4htitiede"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta115"
+    },
+    "ta116": {
+        "label": {
+            "en": "Chemical sciences",
+            "fi": "Kemia",
+            "sv": "Kemi",
+            "und": "Kemia"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta116"
+    },
+    "ta1171": {
+        "label": {
+            "en": "Geosciences",
+            "fi": "Geotieteet",
+            "sv": "Geovetenskaper",
+            "und": "Geotieteet"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta1171"
+    },
+    "ta1172": {
+        "label": {
+            "en": "Environmental sciences",
+            "fi": "Ymp\u00e4rist\u00f6tiede",
+            "sv": "Milj\u00f6vetenskap",
+            "und": "Ymp\u00e4rist\u00f6tiede"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta1172"
+    },
+    "ta1181": {
+        "label": {
+            "en": "Ecology, evolutionary biology",
+            "fi": "Ekologia, evoluutiobiologia",
+            "sv": "Ekologi, evolutionsbiologi",
+            "und": "Ekologia, evoluutiobiologia"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta1181"
+    },
+    "ta1182": {
+        "label": {
+            "en": "Biochemistry, cell and molecular biology",
+            "fi": "Biokemia, solu- ja molekyylibiologia",
+            "sv": "Biokemi, cell- och molekyl\u00e4rbiologi",
+            "und": "Biokemia, solu- ja molekyylibiologia"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta1182"
+    },
+    "ta1183": {
+        "label": {
+            "en": "Plant biology, microbiology, virology",
+            "fi": "Kasvibiologia, mikrobiologia, virologia",
+            "sv": "V\u00e4xtbiologi, mikrobiologi, virologi",
+            "und": "Kasvibiologia, mikrobiologia, virologia"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta1183"
+    },
+    "ta1184": {
+        "label": {
+            "en": "Genetics, developmental biology, physiology",
+            "fi": "Genetiikka, kehitysbiologia, fysiologia",
+            "sv": "Genetik, utvecklingsbiologi, fysiologi",
+            "und": "Genetiikka, kehitysbiologia, fysiologia"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta1184"
+    },
+    "ta119": {
+        "label": {
+            "en": "Other natural sciences",
+            "fi": "Muut luonnontieteet",
+            "sv": "\u00d6vrig naturvetenskap",
+            "und": "Muut luonnontieteet"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta119"
+    },
+    "ta2": {
+        "label": {
+            "en": "Engineering and technology",
+            "fi": "TEKNIIKKA",
+            "sv": "Teknik",
+            "und": "TEKNIIKKA"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta2"
+    },
+    "ta211": {
+        "label": {
+            "en": "Architecture",
+            "fi": "Arkkitehtuuri",
+            "sv": "Arkitektur",
+            "und": "Arkkitehtuuri"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta211"
+    },
+    "ta212": {
+        "label": {
+            "en": "Civil and Construction engineering",
+            "fi": "Rakennus- ja yhdyskuntatekniikka",
+            "sv": "Byggnads- och samh\u00e4llsteknik",
+            "und": "Rakennus- ja yhdyskuntatekniikka"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta212"
+    },
+    "ta213": {
+        "label": {
+            "en": "Electronic, automation and communications engineering, electronics",
+            "fi": "S\u00e4hk\u00f6-, automaatio- ja tietoliikennetekniikka, elektroniikka",
+            "sv": "El-, automations- och telekommunikationsteknik, elektronik",
+            "und": "S\u00e4hk\u00f6-, automaatio- ja tietoliikennetekniikka, elektroniikka"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta213"
+    },
+    "ta214": {
+        "label": {
+            "en": "Mechanical engineering",
+            "fi": "Kone- ja valmistustekniikka",
+            "sv": "Maskin- och produktionsteknik",
+            "und": "Kone- ja valmistustekniikka"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta214"
+    },
+    "ta215": {
+        "label": {
+            "en": "Chemical engineering",
+            "fi": "Teknillinen kemia, kemian prosessitekniikka",
+            "sv": "Teknisk kemi, kemisk processteknik",
+            "und": "Teknillinen kemia, kemian prosessitekniikka"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta215"
+    },
+    "ta216": {
+        "label": {
+            "en": "Materials engineering",
+            "fi": "Materiaalitekniikka",
+            "sv": "Materialteknik",
+            "und": "Materiaalitekniikka"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta216"
+    },
+    "ta217": {
+        "label": {
+            "en": "Medical engineering",
+            "fi": "L\u00e4\u00e4ketieteen tekniikka",
+            "sv": "Medicinsk teknik",
+            "und": "L\u00e4\u00e4ketieteen tekniikka"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta217"
+    },
+    "ta218": {
+        "label": {
+            "en": "Environmental engineering",
+            "fi": "Ymp\u00e4rist\u00f6tekniikka",
+            "sv": "Milj\u00f6teknik",
+            "und": "Ymp\u00e4rist\u00f6tekniikka"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta218"
+    },
+    "ta219": {
+        "label": {
+            "en": "Environmental biotechnology",
+            "fi": "Ymp\u00e4rist\u00f6n bioteknologia",
+            "sv": "Milj\u00f6bioteknologi",
+            "und": "Ymp\u00e4rist\u00f6n bioteknologia"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta219"
+    },
+    "ta220": {
+        "label": {
+            "en": "Industrial biotechnology",
+            "fi": "Teollinen bioteknologia",
+            "sv": "Industriell bioteknologi",
+            "und": "Teollinen bioteknologia"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta220"
+    },
+    "ta221": {
+        "label": {
+            "en": "Nano-technology",
+            "fi": "Nanoteknologia",
+            "sv": "Nanoteknologi",
+            "und": "Nanoteknologia"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta221"
+    },
+    "ta222": {
+        "label": {
+            "en": "Other engineering and technologies",
+            "fi": "Muu tekniikka",
+            "sv": "\u00d6vrig teknik och teknologi",
+            "und": "Muu tekniikka"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta222"
+    },
+    "ta3": {
+        "label": {
+            "en": "Medical and health sciences",
+            "fi": "L\u00c4\u00c4KE- JA TERVEYSTIETEET",
+            "sv": "Medicin och h\u00e4lsovetenskaper",
+            "und": "L\u00c4\u00c4KE- JA TERVEYSTIETEET"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta3"
+    },
+    "ta3111": {
+        "label": {
+            "en": "Biomedicine",
+            "fi": "Biol\u00e4\u00e4ketieteet",
+            "sv": "Biomedicinska vetenskaper",
+            "und": "Biol\u00e4\u00e4ketieteet"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta3111"
+    },
+    "ta3112": {
+        "label": {
+            "en": "Neurosciences",
+            "fi": "Neurotieteet",
+            "sv": "Neurovetenskaper",
+            "und": "Neurotieteet"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta3112"
+    },
+    "ta3121": {
+        "label": {
+            "en": "Internal medicine",
+            "fi": "Sis\u00e4taudit",
+            "sv": "Inre medicin",
+            "und": "Sis\u00e4taudit"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta3121"
+    },
+    "ta3122": {
+        "label": {
+            "en": "Cancers",
+            "fi": "Sy\u00f6p\u00e4taudit",
+            "sv": "Cancersjukdomar",
+            "und": "Sy\u00f6p\u00e4taudit"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta3122"
+    },
+    "ta3123": {
+        "label": {
+            "en": "Gynaecology and paediatrics",
+            "fi": "Naisten- ja lastentaudit",
+            "sv": "Kvinno- och barnsjukdomar",
+            "und": "Naisten- ja lastentaudit"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta3123"
+    },
+    "ta3124": {
+        "label": {
+            "en": "Neurology and psychiatry",
+            "fi": "Neurologia ja psykiatria",
+            "sv": "Neurologi och psykiatri",
+            "und": "Neurologia ja psykiatria"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta3124"
+    },
+    "ta3125": {
+        "label": {
+            "en": "Otorhinolaryngology, ophthalmology",
+            "fi": "Korva-, nen\u00e4- ja kurkkutaudit, silm\u00e4taudit",
+            "sv": "\u00d6ron-, n\u00e4s- och halssjukdomar, \u00f6gonsjukdomar",
+            "und": "Korva-, nen\u00e4- ja kurkkutaudit, silm\u00e4taudit"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta3125"
+    },
+    "ta3126": {
+        "label": {
+            "en": "Surgery, anesthesiology, intensive care, radiology",
+            "fi": "Kirurgia, anestesiologia, tehohoito, radiologia",
+            "sv": "Kirurgi, anestesiologi, intensivv\u00e5rd, radiologi",
+            "und": "Kirurgia, anestesiologia, tehohoito, radiologia"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta3126"
+    },
+    "ta313": {
+        "label": {
+            "en": "Dentistry",
+            "fi": "Hammasl\u00e4\u00e4ketieteet",
+            "sv": "Odontologi",
+            "und": "Hammasl\u00e4\u00e4ketieteet"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta313"
+    },
+    "ta3141": {
+        "label": {
+            "en": "Health care science",
+            "fi": "Terveystiede",
+            "sv": "H\u00e4lsovetenskap",
+            "und": "Terveystiede"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta3141"
+    },
+    "ta3142": {
+        "label": {
+            "en": "Public health care science, environmental and occupational health",
+            "fi": "Kansanterveystiede, ymp\u00e4rist\u00f6 ja ty\u00f6terveys",
+            "sv": "Folkh\u00e4lsovetenskap, milj\u00f6 och arbetsh\u00e4lsa",
+            "und": "Kansanterveystiede, ymp\u00e4rist\u00f6 ja ty\u00f6terveys"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta3142"
+    },
+    "ta315": {
+        "label": {
+            "en": "Sport and fitness sciences",
+            "fi": "Liikuntatiede",
+            "sv": "Gymnastik- och idrottsvetenskap",
+            "und": "Liikuntatiede"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta315"
+    },
+    "ta316": {
+        "label": {
+            "en": "Nursing",
+            "fi": "Hoitotiede",
+            "sv": "V\u00e5rdvetenskap",
+            "und": "Hoitotiede"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta316"
+    },
+    "ta317": {
+        "label": {
+            "en": "Pharmacy",
+            "fi": "Farmasia",
+            "sv": "Farmaci",
+            "und": "Farmasia"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta317"
+    },
+    "ta318": {
+        "label": {
+            "en": "Medical biotechnology",
+            "fi": "L\u00e4\u00e4ketieteen bioteknologia",
+            "sv": "Medicinsk bioteknologi",
+            "und": "L\u00e4\u00e4ketieteen bioteknologia"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta318"
+    },
+    "ta319": {
+        "label": {
+            "en": "Forensic science and other medical sciences",
+            "fi": "Oikeusl\u00e4\u00e4ketiede ja muut l\u00e4\u00e4ketieteet",
+            "sv": "R\u00e4ttsmedicin och \u00f6vrig medicinsk vetenskap",
+            "und": "Oikeusl\u00e4\u00e4ketiede ja muut l\u00e4\u00e4ketieteet"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta319"
+    },
+    "ta4": {
+        "label": {
+            "en": "Agriculture and forestry",
+            "fi": "MAATALOUS- JA METS\u00c4TIETEET",
+            "sv": "Jordbruks- och skogsvetenskaper",
+            "und": "MAATALOUS- JA METS\u00c4TIETEET"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta4"
+    },
+    "ta4111": {
+        "label": {
+            "en": "Agronomy",
+            "fi": "Maataloustiede",
+            "sv": "Jordbruksvetenskap",
+            "und": "Maataloustiede"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta4111"
+    },
+    "ta4112": {
+        "label": {
+            "en": "Forestry",
+            "fi": "Mets\u00e4tiede",
+            "sv": "Skogsvetenskap",
+            "und": "Mets\u00e4tiede"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta4112"
+    },
+    "ta412": {
+        "label": {
+            "en": "Animal science, dairy science",
+            "fi": "Kotiel\u00e4intiede, maitotaloustiede",
+            "sv": "Djursvetenskap, mj\u00f6lkproduktl\u00e4ra",
+            "und": "Kotiel\u00e4intiede, maitotaloustiede"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta412"
+    },
+    "ta413": {
+        "label": {
+            "en": "Veterinary science",
+            "fi": "El\u00e4inl\u00e4\u00e4ketiede",
+            "sv": "Veterin\u00e4rvetenskap",
+            "und": "El\u00e4inl\u00e4\u00e4ketiede"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta413"
+    },
+    "ta414": {
+        "label": {
+            "en": "Agricultural biotechnology",
+            "fi": "Maatalouden bioteknologia",
+            "sv": "Jordbruksbioteknologi",
+            "und": "Maatalouden bioteknologia"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta414"
+    },
+    "ta415": {
+        "label": {
+            "en": "Other agricultural sciences",
+            "fi": "Muut maataloustieteet",
+            "sv": "\u00d6vriga jordbruksvetenskaper",
+            "und": "Muut maataloustieteet"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta415"
+    },
+    "ta5": {
+        "label": {
+            "en": "Social sciences",
+            "fi": "YHTEISKUNTATIETEET",
+            "sv": "Samh\u00e4llsvetenskaper",
+            "und": "YHTEISKUNTATIETEET"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta5"
+    },
+    "ta511": {
+        "label": {
+            "en": "Economics",
+            "fi": "Kansantaloustiede",
+            "sv": "Nationalekonomi",
+            "und": "Kansantaloustiede"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta511"
+    },
+    "ta512": {
+        "label": {
+            "en": "Business and management",
+            "fi": "Liiketaloustiede",
+            "sv": "F\u00f6retagsekonomi",
+            "und": "Liiketaloustiede"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta512"
+    },
+    "ta513": {
+        "label": {
+            "en": "Law",
+            "fi": "Oikeustiede",
+            "sv": "Juridik",
+            "und": "Oikeustiede"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta513"
+    },
+    "ta5141": {
+        "label": {
+            "en": "Sociology",
+            "fi": "Sosiologia",
+            "sv": "Sociologi",
+            "und": "Sosiologia"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta5141"
+    },
+    "ta5142": {
+        "label": {
+            "en": "Social policy",
+            "fi": "Sosiaali- ja yhteiskuntapolitiikka",
+            "sv": "Social- och samh\u00e4llspolitik",
+            "und": "Sosiaali- ja yhteiskuntapolitiikka"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta5142"
+    },
+    "ta515": {
+        "label": {
+            "en": "Psychology",
+            "fi": "Psykologia",
+            "sv": "Psykologi",
+            "und": "Psykologia"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta515"
+    },
+    "ta516": {
+        "label": {
+            "en": "Educational sciences",
+            "fi": "Kasvatustieteet",
+            "sv": "Pedagogik",
+            "und": "Kasvatustieteet"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta516"
+    },
+    "ta517": {
+        "label": {
+            "en": "Political science",
+            "fi": "Valtio-oppi, hallintotiede",
+            "sv": "Statsvetenskap",
+            "und": "Valtio-oppi, hallintotiede"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta517"
+    },
+    "ta518": {
+        "label": {
+            "en": "Media and communications",
+            "fi": "Media- ja viestint\u00e4tieteet",
+            "sv": "Medie- och kommunikationsvetenskap",
+            "und": "Media- ja viestint\u00e4tieteet"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta518"
+    },
+    "ta519": {
+        "label": {
+            "en": "Social and economic geography",
+            "fi": "Yhteiskuntamaantiede, talousmaantiede",
+            "sv": "Socialgeografi och ekonomisk geografi",
+            "und": "Yhteiskuntamaantiede, talousmaantiede"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta519"
+    },
+    "ta520": {
+        "label": {
+            "en": "Other social sciences",
+            "fi": "Muut yhteiskuntatieteet",
+            "sv": "\u00d6vriga samh\u00e4llsvetenskaper",
+            "und": "Muut yhteiskuntatieteet"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta520"
+    },
+    "ta6": {
+        "label": {
+            "en": "Humanities",
+            "fi": "HUMANISTISET TIETEET",
+            "sv": "Humanistiska vetenskaper",
+            "und": "HUMANISTISET TIETEET"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta6"
+    },
+    "ta611": {
+        "label": {
+            "en": "Philosophy",
+            "fi": "Filosofia",
+            "sv": "Filosofi",
+            "und": "Filosofia"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta611"
+    },
+    "ta6121": {
+        "label": {
+            "en": "Languages",
+            "fi": "Kielitieteet",
+            "sv": "Spr\u00e5kvetenskaper",
+            "und": "Kielitieteet"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta6121"
+    },
+    "ta6122": {
+        "label": {
+            "en": "Literature studies",
+            "fi": "Kirjallisuuden tutkimus",
+            "sv": "Litteraturforskning",
+            "und": "Kirjallisuuden tutkimus"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta6122"
+    },
+    "ta6131": {
+        "label": {
+            "en": "Theatre, dance, music, other performing arts",
+            "fi": "Teatteri, tanssi, musiikki, muut esitt\u00e4v\u00e4t taiteet",
+            "sv": "Teater, dans, musik, \u00f6vrig scenkonst",
+            "und": "Teatteri, tanssi, musiikki, muut esitt\u00e4v\u00e4t taiteet"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta6131"
+    },
+    "ta6132": {
+        "label": {
+            "en": "Visual arts and design",
+            "fi": "Kuvataide ja muotoilu",
+            "sv": "Bildkonst och formgivning",
+            "und": "Kuvataide ja muotoilu"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta6132"
+    },
+    "ta614": {
+        "label": {
+            "en": "Theology",
+            "fi": "Teologia",
+            "sv": "Teologi",
+            "und": "Teologia"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta614"
+    },
+    "ta615": {
+        "label": {
+            "en": "History and archaeology",
+            "fi": "Historia ja arkeologia",
+            "sv": "Historia och arkeologi",
+            "und": "Historia ja arkeologia"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta615"
+    },
+    "ta616": {
+        "label": {
+            "en": "Other humanities",
+            "fi": "Muut humanistiset tieteet",
+            "sv": "\u00d6vriga humanistiska vetenskaper",
+            "und": "Muut humanistiset tieteet"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta616"
+    },
+    "ta9": {
+        "label": {
+            "en": "Other",
+            "fi": "MUUT",
+            "sv": "\u00d6vrigt",
+            "und": "MUUT"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta9"
+    },
+    "ta999": {
+        "label": {
+            "en": "Other",
+            "fi": "Muut",
+            "sv": "\u00d6vrigt",
+            "und": "Muut"
+        },
+        "uri": "http://www.yso.fi/onto/okm-tieteenala/ta999"
     }
 }
