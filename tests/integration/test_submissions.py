@@ -48,7 +48,6 @@ class TestSubmissions:
             LOG.debug(f"Reading submission {submission_id}")
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
             response = await resp.json()
-            LOG.error(response)
             assert len(response["submissions"]) == 1, len(response["submissions"])
             assert response["page"] == {
                 "page": 1,

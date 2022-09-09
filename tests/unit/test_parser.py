@@ -167,6 +167,7 @@ class ParserTestCase(unittest.TestCase):
         self.assertEqual(10, len(bp_sample_json))
         self.assertEqual("BiologicalBeing_qLNZYjYjyZ", bp_sample_json[0]["biologicalBeing"]["alias"])
         self.assertEqual("BiologicalBeing_qLNZYjYjyZ", bp_sample_json[2]["specimen"]["extractedFrom"]["refname"])
+        self.assertEqual(65.0, bp_sample_json[2]["specimen"]["attributes"]["numericAttribute"]["value"])
         self.assertEqual("sample_preparation", bp_sample_json[4]["block"]["attributes"]["attribute"]["tag"])
         self.assertEqual(2, len(bp_sample_json[7]["slide"]["attributes"]["attributeSet"]["attributeSet"]))
 
