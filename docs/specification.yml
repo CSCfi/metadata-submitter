@@ -126,6 +126,62 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
+  /v1/workflows:
+    get:
+      tags:
+        - Query
+      summary: Available workflows
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                description: Workflow name as key, and description as value
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+  /v1/workflows/{workflow}:
+    get:
+      tags:
+        - Query
+      summary: Retrieve a workflow definition by its name.
+      parameters:
+        - name: workflow
+          in: path
+          description: Name of the workflow
+          schema:
+            type: string
+          required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        404:
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/404NotFound"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
   /v1/schemas:
     get:
       tags:

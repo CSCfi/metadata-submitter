@@ -1,7 +1,7 @@
 """Handle HTTP methods for server."""
 import json
 from math import ceil
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple, Union
 
 import aiohttp_session
 import ujson
@@ -9,7 +9,7 @@ from aiohttp import web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
-from ...conf.conf import schema_types
+from ...conf.conf import WORKFLOWS, schema_types
 from ...helpers.logger import LOG
 from ...helpers.schema_loader import JSONSchemaLoader, SchemaNotFoundException
 from ...services.datacite_service_handler import DataciteServiceHandler
@@ -128,6 +128,16 @@ class RESTAPIHandler:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
+    @staticmethod
+    async def _json_response(data: Union[Dict, List[Dict]]) -> Response:
+        """Reusable json response, serializing data with ujson.
+
+        :param data: Data to be serialized and made into HTTP 200 response
+        """
+        return web.Response(
+            body=ujson.dumps(data, escape_forward_slashes=False), status=200, content_type="application/json"
+        )
+
     async def get_schema_types(self, _: Request) -> Response:
         """Get all possible metadata schema types from database.
 
@@ -135,9 +145,9 @@ class RESTAPIHandler:
         :param _: GET Request
         :returns: JSON list of schema types
         """
-        types_json = ujson.dumps([x["description"] for x in schema_types.values()], escape_forward_slashes=False)
+        data = [x["description"] for x in schema_types.values()]
         LOG.info(f"GET schema types. Retrieved {len(schema_types)} schemas.")
-        return web.Response(body=types_json, status=200, content_type="application/json")
+        return await self._json_response(data)
 
     async def get_json_schema(self, req: Request) -> Response:
         """Get all JSON Schema for a specific schema type.
@@ -157,14 +167,38 @@ class RESTAPIHandler:
             else:
                 schema = JSONSchemaLoader().get_schema(schema_type)
             LOG.info(f"{schema_type} schema loaded.")
-            return web.Response(
-                body=ujson.dumps(schema, escape_forward_slashes=False), status=200, content_type="application/json"
-            )
+            return await self._json_response(schema)
 
         except SchemaNotFoundException as error:
             reason = f"{error} ({schema_type})"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
+
+    async def get_workflows(self, _: Request) -> Response:
+        """Get all JSON workflows.
+
+        Workflows tell what are the requirements for different 'types of submissions' (aka workflow)
+        :param _: GET Request
+        :returns: JSON list of workflows
+        """
+        LOG.info(f"GET workflows. Retrieved {len(WORKFLOWS)} workflows.")
+        response = {workflow["name"]: workflow["description"] for workflow in WORKFLOWS.values()}
+        return await self._json_response(response)
+
+    async def get_workflow(self, req: Request) -> Response:
+        """Get a single workflow definition by name.
+
+        :param req: GET Request
+        :raises: HTTPNotFound if workflow doesn't exist
+        :returns: workflow as a JSON object
+        """
+        workflow_name = req.match_info["workflow"]
+        if workflow_name not in WORKFLOWS:
+            reason = f"Workflow {workflow_name} was not found."
+            LOG.exception(reason)
+            raise web.HTTPNotFound(reason=reason)
+        LOG.info(f"GET workflow {workflow_name}.")
+        return await self._json_response(WORKFLOWS[workflow_name])
 
     def _header_links(self, url: str, page: int, size: int, total_objects: int) -> CIMultiDict[str]:
         """Create link header for pagination.
