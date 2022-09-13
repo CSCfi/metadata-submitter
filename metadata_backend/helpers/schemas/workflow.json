@@ -1,0 +1,144 @@
+{
+    "type": "object",
+    "title": "Workflow",
+    "required": [
+        "name",
+        "description"
+    ],
+    "additionalProperties": false,
+    "properties": {
+        "name": {
+            "type": "string",
+            "title": "Workflow name"
+        },
+        "description": {
+            "type": "string",
+            "title": "Workflow description"
+        },
+        "steps": {
+            "type": "array",
+            "title": "Workflow steps",
+            "items": {
+                "type": "object",
+                "title": "Workflow step",
+                "required": [
+                    "title",
+                    "required"
+                ],
+                "uniqueItems": true,
+                "additionalProperties": false,
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "title": "Workflow step title"
+                    },
+                    "required": {
+                        "type": "boolean",
+                        "title": "Whether the step is required for publication"
+                    },
+                    "schemas": {
+                        "type": "array",
+                        "title": "Workflow step schemas",
+                        "description": "Schemas in the order they should be displayed",
+                        "items": {
+                            "type": "object",
+                            "title": "Schema that belongs to this workflow",
+                            "description": "The other of the schema is the order it will render in the front-end",
+                            "required": [
+                                "name",
+                                "required"
+                            ],
+                            "additionalProperties": false,
+                            "properties": {
+                                "name": {
+                                    "type": "string",
+                                    "title": "Name of the schema"
+                                },
+                                "required": {
+                                    "type": "boolean",
+                                    "title": "Whether the schema is required for publication"
+                                },
+                                "hide": {
+                                    "type": "array",
+                                    "title": "Schema fields to be hidden",
+                                    "description": "JsonPath fields to hide in the front-end"
+                                },
+                                "allowMultipleObjects": {
+                                    "type": "boolean",
+                                    "title": "Allow multiple objects",
+                                    "description": "Whether multiple instances of this schema is allowed"
+                                },
+                                "requires": {
+                                    "type": "array",
+                                    "title": "Requires schema",
+                                    "description": "List of schemas required by this schema",
+                                    "items": {
+                                        "type": "string",
+                                        "title": "Required schema name"
+                                    }
+                                },
+                                "requires_or": {
+                                    "type": "array",
+                                    "title": "Requires rule with OR logic",
+                                    "description": "At least one of these schemas must be present",
+                                    "items": {
+                                        "type": "string",
+                                        "title": "Required schema name"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "publish": {
+            "type": "array",
+            "title": "Endpoints to publish to",
+            "items": {
+                "type": "object",
+                "title": "Steps for publishing this workflow",
+                "required": [
+                    "name",
+                    "endpoint"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Service name",
+                        "description": "Name of the service to publish to",
+                        "enum": [
+                            "datacite",
+                            "metax",
+                            "rems"
+                        ]
+                    },
+                    "endpoint": {
+                        "type": "string",
+                        "title": "Publish endpoint",
+                        "description": "Endpoint for publishing the submission to"
+                    },
+                    "requires": {
+                        "type": "array",
+                        "title": "Required endpoints",
+                        "description": "Endpoints required before this endpoint can be called",
+                        "items": {
+                            "type": "string",
+                            "title": "endpoint name"
+                        }
+                    },
+                    "requiredSchemas": {
+                        "type": "array",
+                        "title": "Required schemas",
+                        "description": "Schemas required in the submission",
+                        "items": {
+                            "type": "string",
+                            "title": "Schema name"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
