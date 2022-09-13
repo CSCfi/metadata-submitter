@@ -16,12 +16,16 @@
 
 import time
 from functools import wraps
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Awaitable, Callable, Optional, Tuple, TypeVar
 
 from aiohttp import ClientConnectorError
 from aiohttp.web import HTTPServerError
+from typing_extensions import ParamSpec
 
 from ..helpers.logger import LOG
+
+T = TypeVar("T")
+P = ParamSpec("P")
 
 
 def retry(
@@ -29,7 +33,7 @@ def retry(
     total_tries: int = 4,
     initial_wait: float = 0.5,
     backoff_factor: int = 2,
-) -> Any:
+) -> Callable:
     """Call the decorated function and apply an exponential backoff.
 
     :param exceptions: Exception(s) that trigger a retry, can be a tuple
@@ -38,9 +42,9 @@ def retry(
     :param backoff_factor: Backoff multiplier (e.g. value of 2 will double the delay each retry).
     """
 
-    def retry_decorator(f: Callable) -> Callable:
+    def retry_decorator(f: Callable[P, Awaitable[T]]) -> Callable[P, Awaitable[Optional[T]]]:
         @wraps(f)
-        async def func_with_retries(*args: List, **kwargs: Dict) -> None:
+        async def func_with_retries(*args: P.args, **kwargs: P.kwargs) -> Optional[T]:
             _tries, _delay = total_tries, initial_wait
             while _tries > 1:
                 try:
@@ -63,6 +67,8 @@ def retry(
                     LOG.info(msg)
                     time.sleep(_delay)
                     _delay *= backoff_factor
+
+            return None
 
         return func_with_retries
 

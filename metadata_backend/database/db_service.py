@@ -15,7 +15,7 @@ def auto_reconnect(db_func: Callable) -> Callable:
     """Auto reconnection decorator."""
 
     @wraps(db_func)
-    async def retry(*args: Any, **kwargs: Any) -> Any:
+    async def retry(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
         """Retry given function for many times with increasing interval.
 
         By default increases interval by clients default timeout for five
@@ -165,7 +165,7 @@ class DBService:
             return False
 
     @auto_reconnect
-    async def update_study(self, collection: str, accession_id: str, patch_data: Any) -> bool:
+    async def update_study(self, collection: str, accession_id: str, patch_data: List[Dict]) -> bool:
         """Update and avoid duplicates for study object.
 
         Currently we don't allow duplicate studies in the same submission,
@@ -206,7 +206,7 @@ class DBService:
         return result.acknowledged
 
     @auto_reconnect
-    async def remove(self, collection: str, accession_id: str, data_to_be_removed: Any) -> bool:
+    async def remove(self, collection: str, accession_id: str, data_to_be_removed: Union[str, Dict]) -> bool:
         """Remove element of object by its accessionId.
 
         :param collection: Collection where document should be searched from
@@ -225,7 +225,7 @@ class DBService:
         return result
 
     @auto_reconnect
-    async def append(self, collection: str, accession_id: str, data_to_be_addded: Any) -> bool:
+    async def append(self, collection: str, accession_id: str, data_to_be_addded: Union[str, Dict]) -> bool:
         """Append data by to object with accessionId in collection.
 
         :param collection: Collection where document should be searched from

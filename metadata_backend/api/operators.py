@@ -211,7 +211,7 @@ class BaseOperator(ABC):
         LOG.error(reason)
         raise web.HTTPBadRequest(reason=reason)
 
-    async def _remove_object_from_db(self, operator: Any, schema_type: str, accession_id: str) -> bool:
+    async def _remove_object_from_db(self, schema_type: str, accession_id: str) -> bool:
         """Delete object from database.
 
         We can omit raising error for XMLOperator if id is not
@@ -252,29 +252,37 @@ class BaseOperator(ABC):
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
 
+    # no way around type Any here without breaking Liskov substitution principle
+
     @abstractmethod
-    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: Any) -> Union[Dict, List[dict]]:
+    async def _format_data_to_create_and_add_to_db(
+        self, schema_type: str, data: Any  # noqa: ANN401
+    ) -> Union[Dict, List[dict]]:
         """Format and add data to database.
 
         Must be implemented by subclass.
         """
 
     @abstractmethod
-    async def _format_data_to_replace_and_add_to_db(self, schema_type: str, accession_id: str, data: Any) -> Dict:
+    async def _format_data_to_replace_and_add_to_db(
+        self, schema_type: str, accession_id: str, data: Any  # noqa: ANN401
+    ) -> Dict:
         """Format and replace data in database.
 
         Must be implemented by subclass.
         """
 
     @abstractmethod
-    async def _format_data_to_update_and_add_to_db(self, schema_type: str, accession_id: str, data: Any) -> str:
+    async def _format_data_to_update_and_add_to_db(
+        self, schema_type: str, accession_id: str, data: Any  # noqa: ANN401
+    ) -> str:
         """Format and update data in database.
 
         Must be implemented by subclass.
         """
 
     @abstractmethod
-    async def _format_read_data(self, schema_type: str, data_raw: Any) -> Any:
+    async def _format_read_data(self, schema_type: str, data_raw: Any) -> Any:  # noqa: ANN401
         """Format data for API response.
 
         Must be implemented by subclass.
@@ -508,7 +516,7 @@ class Operator(BaseOperator):
         await self._replace_object_from_db(schema_type, accession_id, data)
         return data
 
-    async def _format_data_to_update_and_add_to_db(self, schema_type: str, accession_id: str, data: Any) -> str:
+    async def _format_data_to_update_and_add_to_db(self, schema_type: str, accession_id: str, data: Dict) -> str:
         """Format and update data in database.
 
         Will not allow to update ``metaxIdentifier`` and ``doi`` for ``study`` and ``dataset``
