@@ -61,6 +61,13 @@ Basically, a fixture is run before a new module/class/function/<fixture scope he
 is executed, according to its defined ``scope``. Statements before a ``yield`` statement function as a ``Setup``, and
 statements after are ``Teardown``. When there's no ``yield``, there's no teardown either, only setup.
 
+Running the tests without cleaning the database use the ``--nocleanup`` option, as follows:
+
+- ``pytest --nocleanup tests/integration`` for the whole test suite;
+- ``pytest --nocleanup tests/integration/test_module.py::TestClass::test_method`` for specific tests.
+
+Note that this option might cause some tests to fail and it is only recommended for debugging the data from the integration tests.
+
 Debugging tests
 ~~~~~~~~~~~~~~~
 
