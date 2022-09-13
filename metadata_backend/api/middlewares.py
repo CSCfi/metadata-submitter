@@ -27,8 +27,8 @@ async def http_error_handler(req: web.Request, handler: aiohttp_session.Handler)
     try:
         response = await handler(req)
         return response
-    except (web.HTTPSuccessful, web.HTTPRedirection):  # pylint: disable=try-except-raise
-        # Catches 200s and 300s
+    except web.HTTPRedirection:
+        # Catches 300s
         raise
     except web.HTTPError as error:
         # Catch 400s and 500s
