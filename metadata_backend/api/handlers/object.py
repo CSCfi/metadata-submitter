@@ -274,6 +274,9 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
                 )
 
         accession_id = await operator.delete_metadata_object(collection, accession_id)
+        # we try to delete the object from the xml-{schema_type} collection
+        xml_operator = XMLOperator(db_client)
+        await xml_operator.delete_metadata_object(f"xml-{collection}", accession_id)
 
         # Delete draft dataset from Metax catalog
         if self.metax_handler.enabled and collection in METAX_SCHEMAS:

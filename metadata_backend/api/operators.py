@@ -121,10 +121,9 @@ class BaseOperator(ABC):
         :raises: HTTPBadRequest if deleting was not successful
         :returns: Accession id for the object deleted from the database
         """
-        db_client = self.db_service.db_client
-        JSON_deletion_success = await self._remove_object_from_db(Operator(db_client), schema_type, accession_id)
-        XML_deletion_success = await self._remove_object_from_db(XMLOperator(db_client), schema_type, accession_id)
-        if JSON_deletion_success and XML_deletion_success:
+
+        _deletion_success = await self._remove_object_from_db(schema_type, accession_id)
+        if _deletion_success:
             LOG.info(f"{accession_id} successfully deleted from collection")
             return accession_id
 
@@ -224,14 +223,13 @@ class BaseOperator(ABC):
         :returns: True or False if object deleted from the database
         """
         try:
-            check_exists = await operator.db_service.exists(schema_type, accession_id)
-            if not check_exists and not isinstance(operator, XMLOperator):
+            check_exists = await self.db_service.exists(schema_type, accession_id)
+            if not check_exists and not schema_type.startswith("xml-"):
                 reason = f"Object with accession id {accession_id} was not found."
                 LOG.error(reason)
                 raise web.HTTPNotFound(reason=reason)
 
-            LOG.debug("XML is not in backup collection")
-            delete_success = await operator.db_service.delete(schema_type, accession_id)
+            delete_success = await self.db_service.delete(schema_type, accession_id)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while deleting object: {error}"
             LOG.error(reason)
