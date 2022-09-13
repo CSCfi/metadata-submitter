@@ -1105,46 +1105,6 @@ class UserOperator:
             raise web.HTTPBadRequest(reason=reason)
         return user
 
-    async def filter_user(self, query: Dict, item_type: str, page_num: int, page_size: int) -> Tuple[List, int]:
-        """Query database based on url query parameters.
-
-        :param query: Dict containing query information
-        :param item_type: schema type of the item
-        :param page_num: Page number
-        :param page_size: Results per page
-        :returns: Tuple with Paginated query result
-        """
-        skips = page_size * (page_num - 1)
-        _query = [
-            {"$match": query},
-            {
-                "$project": {
-                    "_id": 0,
-                    item_type: {"$slice": [f"${item_type}", skips, page_size]},
-                }
-            },
-        ]
-        data = await self.db_service.do_aggregate("user", _query)
-
-        if not data:
-            data = [{item_type: []}]
-
-        count_query = [
-            {"$match": query},
-            {
-                "$project": {
-                    "_id": 0,
-                    "item": 1,
-                    "total": {
-                        "$cond": {"if": {"$isArray": f"${item_type}"}, "then": {"$size": f"${item_type}"}, "else": 0}
-                    },
-                }
-            },
-        ]
-        total_users = await self.db_service.do_aggregate("user", count_query)
-
-        return data[0][item_type], total_users[0]["total"]
-
     async def update_user(self, user_id: str, patch: List) -> str:
         """Update user object from database.
 
@@ -1167,61 +1127,6 @@ class UserOperator:
 
         LOG.info(f"Updating user with id {user_id} to database succeeded.")
         return user_id
-
-    async def assign_objects(self, user_id: str, collection: str, object_ids: List) -> None:
-        """Assing object to user.
-
-        An object can be submission(s) or templates(s).
-
-        :param user_id: ID of user to update
-        :param collection: collection where to remove the id from
-        :param object_ids: ID or list of IDs of submission(s) to assign
-        :raises: HTTPBadRequest if assigning templates/submissions to user was not successful
-        returns: None
-        """
-        try:
-            await self._check_user_exists(user_id)
-            assign_success = await self.db_service.append(
-                "user", user_id, {collection: {"$each": object_ids, "$position": 0}}
-            )
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while assigning objects to user: {error}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        if not assign_success:
-            reason = "Assigning objects to user failed."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        LOG.info(f"Assigning {object_ids} from {user_id} succeeded.")
-
-    async def remove_objects(self, user_id: str, collection: str, object_ids: List) -> None:
-        """Remove object from user.
-
-        An object can be submission(s) or template(s).
-
-        :param user_id: ID of user to update
-        :param collection: collection where to remove the id from
-        :param object_ids: ID or list of IDs of submission(s) to remove
-        :raises: HTTPBadRequest if db connection fails
-        returns: None
-        """
-        remove_content: Dict
-        try:
-            await self._check_user_exists(user_id)
-            for obj in object_ids:
-                if collection == "templates":
-                    remove_content = {"templates": {"accessionId": obj}}
-                else:
-                    remove_content = {"submissions": obj}
-                await self.db_service.remove("user", user_id, remove_content)
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while removing objects from user: {error}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        LOG.info(f"Removing {object_ids} from {user_id} succeeded.")
 
     async def delete_user(self, user_id: str) -> str:
         """Delete user object from database.
