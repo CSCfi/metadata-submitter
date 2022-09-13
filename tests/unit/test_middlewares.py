@@ -78,7 +78,7 @@ def _create_improper_data():
     Submission method in API handlers raises Bad Request (400) error
     if 'submission' is not included on the first field of request
     """
-    path_to_file = Path(__file__).parent / "test_files" / "study" / "SRP000539_invalid.xml"
+    path_to_file = Path(__file__).parent.parent / "test_files" / "study" / "SRP000539_invalid.xml"
     data = FormData()
     data.add_field("STUDY", open(path_to_file.as_posix(), "r"), filename="file", content_type="text/xml")
     return data
