@@ -83,7 +83,7 @@ async def init(
 
     server.on_shutdown.append(close_http_clients)
 
-    _schema = RESTAPIHandler()
+    _common_api_handler = RESTAPIHandler()
     _object = ObjectAPIHandler(
         metax_handler=metax_handler, datacite_handler=datacite_handler, rems_handler=rems_handler
     )
@@ -96,9 +96,12 @@ async def init(
     )
     _template = TemplatesAPIHandler()
     api_routes = [
+        # retrieve workflows
+        web.get("/workflows", _common_api_handler.get_workflows),
+        web.get("/workflows/{workflow}", _common_api_handler.get_workflow),
         # retrieve schema and information about it
-        web.get("/schemas", _schema.get_schema_types),
-        web.get("/schemas/{schema}", _schema.get_json_schema),
+        web.get("/schemas", _common_api_handler.get_schema_types),
+        web.get("/schemas/{schema}", _common_api_handler.get_json_schema),
         # metadata objects operations
         web.get("/objects/{schema}", _object.query_objects),
         web.post("/objects/{schema}", _object.post_object),

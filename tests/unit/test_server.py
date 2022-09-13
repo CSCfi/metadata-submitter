@@ -47,11 +47,11 @@ class AppTestCase(AioHTTPTestCase):
         - /submissions/{submissionId}/doi
 
         NOTE: If there's swagger or frontend folder generated in metadata_backend
-        tests will see 22 or 23 routes
+        tests will see more routes
 
         """
         server = await self.get_application()
-        self.assertIs(len(server.router.routes()), 47)
+        self.assertIs(len(server.router.routes()), 51)
 
     async def test_frontend_routes_are_set(self):
         """Test correct routes are set when frontend folder exists."""

@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add advanced health checks for Datacite, REMS and Metax and performance checks for API response #585
 - pre-commit check to sort and remove duplicates in the dictionary
 - [vulture](https://github.com/jendrikseipp/vulture) as a tox env and pre-commit hook.
+- Add endpoint for fetching workflows #362
 
 ### Changed
 - schema loader now matches schema files by exact match with schema #481. This means that schema file naming in metadata_backend/helpers/schemas now have rules:
