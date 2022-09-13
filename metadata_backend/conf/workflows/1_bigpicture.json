@@ -1,0 +1,89 @@
+{
+    "name": "BigPicture",
+    "description": "",
+    "steps": [
+        {
+            "title": "Study, DAC and Policy",
+            "required": true,
+            "schemas": [
+                {
+                    "name": "study",
+                    "required": true,
+                    "allowMultipleObjects": false
+                },
+                {
+                    "name": "dac",
+                    "required": true,
+                    "allowMultipleObjects": true
+                },
+                {
+                    "name": "policy",
+                    "required": true,
+                    "requires": [
+                        "dac"
+                    ]
+                }
+            ]
+        },
+        {
+            "title": "Files",
+            "required": false,
+            "schemas": []
+        },
+        {
+            "title": "Describe",
+            "required": true,
+            "schemas": [
+                {
+                    "name": "bpsample",
+                    "required": false,
+                    "allowMultipleObjects": true
+                },
+                {
+                    "name": "image",
+                    "required": false,
+                    "allowMultipleObjects": true
+                },
+                {
+                    "name": "bpdataset",
+                    "required": false,
+                    "allowMultipleObjects": true,
+                    "requires": [
+                        "policy"
+                    ]
+                }
+            ]
+        },
+        {
+            "title": "Datacite",
+            "required": false,
+            "schemas": [
+                {
+                    "name": "datacite",
+                    "required": false,
+                    "allowMultipleObjects": false
+                }
+            ]
+        }
+    ],
+    "publish": [
+        {
+            "name": "datacite",
+            "endpoint": "datacite",
+            "requiredSchemas": [
+                "datacite"
+            ]
+        },
+        {
+            "name": "rems",
+            "endpoint": "rems",
+            "requires": [
+                "datacite"
+            ],
+            "requiredSchemas": [
+                "dac",
+                "policy"
+            ]
+        }
+    ]
+}

@@ -79,6 +79,11 @@ repos:
         name: Validate schemas
         files: ^metadata_backend/helpers/schemas/.*\.json$
 
+      - id: check-jsonschema
+        name: Validate workflows
+        files: ^metadata_backend/conf/workflows/.*\.json$
+        args: ["--schemafile", "metadata_backend/helpers/schemas/workflow.json"]
+
       - id: check-dependabot
       - id: check-github-workflows
 
