@@ -1,13 +1,12 @@
 """Handle HTTP methods for server."""
 import json
 from math import ceil
-from typing import AsyncGenerator, Dict, List, Tuple
+from typing import Dict, Tuple
 
 import aiohttp_session
 import ujson
 from aiohttp import web
 from aiohttp.web import Request, Response
-from motor.motor_asyncio import AsyncIOMotorClient
 from multidict import CIMultiDict
 
 from ...conf.conf import schema_types
@@ -113,23 +112,6 @@ class RESTAPIHandler:
             raise web.HTTPUnauthorized(reason=reason)
 
         return _check, project_id
-
-    async def _get_collection_objects(
-        self, submission_op: AsyncIOMotorClient, collection: str, seq: List
-    ) -> AsyncGenerator:
-        """Get objects ids based on submission and collection.
-
-        Considering that many objects will be returned good to have a generator.
-
-        :param req: HTTP request
-        :param collection: collection or schema of document
-        :param seq: list of submissions
-        :returns: AsyncGenerator
-        """
-        for el in seq:
-            result = await submission_op.get_collection_objects(el, collection)
-
-            yield result
 
     async def _get_data(self, req: Request) -> Dict:
         """Get the data content from a request.

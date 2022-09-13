@@ -307,17 +307,6 @@ class DBService:
         return self.database[collection].find(query, projection)
 
     @auto_reconnect
-    async def get_count(self, collection: str, query: Dict) -> int:
-        """Get (estimated) count of documents matching given query.
-
-        :param collection: Collection where document should be searched from
-        :param query: query to be used
-        :returns: Estimate of the number of documents
-        """
-        LOG.debug(f"DB doc count performed in {collection}.")
-        return await self.database[collection].count_documents(query)
-
-    @auto_reconnect
     async def do_aggregate(self, collection: str, query: List) -> List:
         """Peform aggregate query.
 
