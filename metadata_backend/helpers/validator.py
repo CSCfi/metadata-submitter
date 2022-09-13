@@ -2,15 +2,16 @@
 
 import re
 from io import StringIO
-from typing import Any, Dict
+from typing import Dict
 from urllib.error import URLError
 
 import ujson
 from aiohttp import web
 from defusedxml.ElementTree import ParseError
 from defusedxml.ElementTree import tostring as etree_tostring
-from jsonschema import Draft7Validator, validators
+from jsonschema import Draft202012Validator, validators
 from jsonschema.exceptions import ValidationError
+from jsonschema.protocols import Validator
 from xmlschema import XMLSchema, XMLSchemaValidationError
 
 from ..helpers.logger import LOG
@@ -85,7 +86,7 @@ class XMLValidator:
         return resp["isValid"]
 
 
-def extend_with_default(validator_class: Draft7Validator) -> Draft7Validator:
+def extend_with_default(validator_class: Draft202012Validator) -> Draft202012Validator:
     """Include default values present in JSON Schema.
 
     This feature is included even though some default values might cause
@@ -95,7 +96,9 @@ def extend_with_default(validator_class: Draft7Validator) -> Draft7Validator:
     """
     validate_properties = validator_class.VALIDATORS["properties"]
 
-    def set_defaults(validator: Draft7Validator, properties: Dict, instance: Draft7Validator, schema: str) -> Any:
+    def set_defaults(
+        validator: Draft202012Validator, properties: Dict, instance: Draft202012Validator, schema: str
+    ) -> Validator:
         for prop, subschema in properties.items():
             if "default" in subschema:
                 instance.setdefault(prop, subschema["default"])
@@ -115,7 +118,7 @@ def extend_with_default(validator_class: Draft7Validator) -> Draft7Validator:
     )
 
 
-DefaultValidatingDraft7Validator = extend_with_default(Draft7Validator)
+DefaultValidatingDraft202012Validator = extend_with_default(Draft202012Validator)
 
 
 class JSONValidator:
@@ -139,7 +142,7 @@ class JSONValidator:
         try:
             schema = JSONSchemaLoader().get_schema(self.schema_type)
             LOG.info("Validated against JSON schema.")
-            DefaultValidatingDraft7Validator(schema).validate(self.json_data)
+            DefaultValidatingDraft202012Validator(schema).validate(self.json_data)
         except SchemaNotFoundException as error:
             reason = f"{error} ({self.schema_type})"
             LOG.error(reason)
