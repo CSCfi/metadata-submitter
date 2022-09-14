@@ -145,7 +145,7 @@
                 "subjects": {
                     "type": "array",
                     "title": "Subjects",
-                    "description": "Subject, classification code, or key phrase describing the resources specified by OECD Fields of Science and Technology (FOS)",
+                    "description": "Information describing the subject of resources",
                     "items": {
                         "type": "object",
                         "title": "Single subject",
@@ -156,7 +156,7 @@
                             "subject": {
                                 "type": "string",
                                 "title": "Subject name",
-                                "description": "Subject, keyword, classification code, or key phrase describing the resource",
+                                "description": "Subject, keyword, classification code, or key phrase describing the resource. The accepted subject names are based on the field of science classification specified by OKM.",
                                 "enum": [
                                     "1 - Natural sciences",
                                     "111 - Mathematics",

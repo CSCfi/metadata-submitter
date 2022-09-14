@@ -18,11 +18,7 @@
   ],
   "subjects": [
     {
-      "subject": "999 - Other",
-      "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
-      "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
-      "valueUri": "http://www.yso.fi/onto/okm-tieteenala/ta999",
-      "classificationCode": "999"
+      "subject": "999 - Other"
     }
   ],
   "keywords": "test,keyword",
