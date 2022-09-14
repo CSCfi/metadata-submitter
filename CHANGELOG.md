@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Published datasets have a new field `dac` with `workflowId`, `organizationId`, `resourceId`, and `catalogueItemId`
 - Pylint static checks
 - Run integration tests with pytest
+  - run integration tests with `--nocleanup` option 
 
 ### Changed
 - schema loader now matches schema files by exact match with schema #481. This means that schema file naming in metadata_backend/helpers/schemas now have rules:
@@ -49,8 +50,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - we removed `namedtype` for `contributors` and `creators` we therefore allow `additionalProperties`
   - `subjectsSchema` is a given by frontend thus we allow via `additionalProperties`
 
+- remove unused code related to change from user to project ownership caused by faulty rebase or rollback of certain features #579
+
 ### Fixed
-- Schemas endpoint returned 400 for /v1/schemas/datacite #554
+- Schemas endpoint returned `400` for `/v1/schemas/datacite` #554
+- XML delete when an object or submission is deleted #579
+- small pylint issues e.g. web.HTTPSuccessful was never being raised #579
+- fix `Any` type wherever that is possible. #579
 
 ## [0.13.0] - 2022-04-07
 
