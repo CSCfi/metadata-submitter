@@ -283,6 +283,7 @@ http
 httperror
 https
 httpseeother
+HTTPSuccessful
 identifiertype
 identitypython
 ido
@@ -533,6 +534,7 @@ readspec
 readthedocs
 readtype
 realpath
+rebase
 redux
 refcenter
 referencealignment
