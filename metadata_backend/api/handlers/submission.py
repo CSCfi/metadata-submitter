@@ -83,6 +83,17 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
                 {"lang": None, "description": study_data["studyDescription"], "descriptionType": "Other"}
             )
 
+        # Add subject info related to the subject name
+        for i in range(len(general_info["subjects"])):
+            subject_code = general_info["subjects"][i]["subject"].split(" - ")[0]
+            subject_info = {
+                "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
+                "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
+                "valueUri": f"http://www.yso.fi/onto/okm-tieteenala/ta{subject_code}",
+                "classificationCode": subject_code,
+            }
+            general_info["subjects"][i].update(subject_info)
+
         study["data"]["attributes"].update(general_info)
         LOG.debug(f"prepared study info: {study}")
 
@@ -153,6 +164,17 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
                     "relatedIdentifierType": "DOI",
                 }
             )
+
+        # Add subject info related to the subject name
+        for i in range(len(general_info["subjects"])):
+            subject_code = general_info["subjects"][i]["subject"].split(" - ")[0]
+            subject_info = {
+                "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
+                "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
+                "valueUri": f"http://www.yso.fi/onto/okm-tieteenala/ta{subject_code}",
+                "classificationCode": subject_code,
+            }
+            general_info["subjects"][i].update(subject_info)
 
         dataset["data"]["attributes"].update(general_info)
         LOG.debug(f"prepared dataset info: {dataset}")
