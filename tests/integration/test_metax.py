@@ -182,7 +182,7 @@ class TestMetax:
                 assert metax_res["state"] == "published", f"{schema}  {metax_res}"
 
                 # this data is synced with /test_files/doi/test_doi.json
-                # if data changes inside the file it must data must be reflected here
+                # if data changes inside the file it must be reflected here
                 expected_rd = json.loads(await create_request_json_data("metax", "research_dataset.json"))
                 actual_rd = metax_res["research_dataset"]
 
@@ -206,6 +206,7 @@ class TestMetax:
                 assert actual_rd["spatial"] == expected_rd["spatial"]
                 assert actual_rd["temporal"] == expected_rd["temporal"]
                 assert actual_rd["language"] == expected_rd["language"]
+                assert actual_rd["field_of_science"] == expected_rd["field_of_science"]
 
                 if schema == "study":
                     assert "relation" in actual_rd

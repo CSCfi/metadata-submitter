@@ -11,7 +11,7 @@ from ..helpers.logger import LOG
 class MetaDataMapper:
     """Methods for mapping submitter's metadata to METAX service metadata.
 
-    This helpper class maps data from datacite, study and dataset schemas to Metax research_dataset
+    This helper class maps data from datacite, study and dataset schemas to Metax research_dataset
     schema:
     https://raw.githubusercontent.com/CSCfi/metax-api/master/src/metax_api/api/rest/v2/schemas/att_dataset_schema.json
     {
@@ -104,7 +104,6 @@ class MetaDataMapper:
                 "items": {"type": "object", "$ref": "#/definitions/Concept"},
             },
             # language
-            # TODO: cannot be mapped as is to Metax unless we take Lexvo schema in to use
             "language": {
                 "type": "array",
                 "items": {
@@ -203,7 +202,6 @@ class MetaDataMapper:
                     },
                 },
             },
-            # TODO: will be implemented later
             "field_of_science": {
                 "type": "array",
                 "items": {"type": "object", "$ref": "#/definitions/Concept"},
@@ -229,7 +227,9 @@ class MetaDataMapper:
     def __init__(self, object_type: str, metax_data: Dict, data: Dict) -> None:
         """Set variables.
 
+        :param object_type: Schema name (dataset or study)
         :param metax_data: Metax research_dataset metadata
+        :param data: Dict containing datacite data
         """
         self.object_type = object_type
         self.research_dataset = metax_data
@@ -239,6 +239,7 @@ class MetaDataMapper:
             metax_reference_data = json.load(ref_file)
         self.identifier_types = metax_reference_data["identifier_types"]
         self.languages = metax_reference_data["languages"]
+        self.fields_of_science = metax_reference_data["fields_of_science"]
         self.person: Dict[str, Any] = {
             "name": "",
             "@type": "Person",
@@ -269,6 +270,8 @@ class MetaDataMapper:
             if key == "language":
                 self.research_dataset["language"] = []
                 self.research_dataset["language"].append({"title": {"en": value}, "identifier": self.languages[value]})
+            if key == "subjects":
+                self._map_field_of_science(value)
 
         for key, value in self.datacite_data["extraInfo"].items():
             if self.object_type == "study" and key == "datasetIdentifiers":
@@ -448,6 +451,32 @@ class MetaDataMapper:
             other_identifier["type"]["identifier"] = identifier_type
             other_identifiers.append(other_identifier)
 
+    def _map_field_of_science(self, subjects: List) -> None:
+        """Map subjects to field of science.
+
+        :param subjects: Subjects data from datacite
+        :raises: Custom SubjectNotFoundException if subject cannot be mapped to metax field of science
+        """
+        LOG.info("Mapping subjects")
+        LOG.debug(subjects)
+
+        fos: Dict[str, Any] = {
+            "in_scheme": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
+            "identifier": "",
+            "pref_label": {},
+        }
+        field_of_science = self.research_dataset["field_of_science"] = []
+        for subject in subjects:
+            try:
+                subject_code = subject["subject"].split(" - ")[0]
+                code = [i for i in self.fields_of_science if i == f"ta{subject_code}"]
+                fos["identifier"] = self.fields_of_science[code[0]]["uri"]
+                fos["pref_label"] = self.fields_of_science[code[0]]["label"]
+            except IndexError as exc:
+                raise SubjectNotFoundException from exc
+
+            field_of_science.append(fos)
+
     def _map_relations(self, datasets: List) -> None:
         """Map datasets for study as a relation.
 
@@ -497,3 +526,11 @@ class MetaDataMapper:
                 "source_organization": self.affiliations,
             }
         ]
+
+
+class SubjectNotFoundException(Exception):
+    """Custom exception to be raised when subject cannot be mapped to metax field of science."""
+
+    def __init__(self) -> None:
+        """Set up exception message."""
+        Exception.__init__(self, "The provided subject does not correspond with any of the possible subject names.")

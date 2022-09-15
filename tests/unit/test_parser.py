@@ -1,4 +1,4 @@
-"""Test API endpoints from views module."""
+"""Test parser methods."""
 import unittest
 from pathlib import Path
 

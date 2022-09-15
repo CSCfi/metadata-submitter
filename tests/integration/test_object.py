@@ -116,8 +116,6 @@ class TestObjects:
             async with client_logged_in.get(f"{objects_url}/{_schema}/{item['accessionId']}") as resp:
                 LOG.debug(f"Checking that {item['accessionId']} JSON is in {_schema}")
                 assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-                res = await resp.json()
-                LOG.debug(res)
             async with client_logged_in.get(f"{objects_url}/{_schema}/{item['accessionId']}?format=xml") as resp:
                 LOG.debug(f"Checking that {item['accessionId']} XML is in {_schema}")
                 assert resp.status == 200, f"HTTP Status code error, got {resp.status}"

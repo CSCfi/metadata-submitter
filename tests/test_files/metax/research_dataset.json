@@ -114,5 +114,17 @@
             },
             "identifier": "http://lexvo.org/id/iso639-3/asm"
         }
+    ],
+    "field_of_science": [
+        {
+            "in_scheme": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
+            "identifier": "http://www.yso.fi/onto/okm-tieteenala/ta999",
+            "pref_label": {
+                "en": "Other",
+                "fi": "Muut",
+                "sv": "Övrigt",
+                "und": "Muut"
+            }
+        }
     ]
 }
