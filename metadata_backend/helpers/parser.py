@@ -8,11 +8,13 @@ from typing import Any, Dict, List, Optional, Type, Union
 from aiohttp import web
 from pymongo import UpdateOne
 from xmlschema import (
+    ElementData,
     XMLSchema,
     XMLSchemaConverter,
     XMLSchemaException,
     XsdElement,
     XsdType,
+    aliases,
 )
 
 from .logger import LOG
@@ -31,10 +33,11 @@ class MetadataXMLConverter(XMLSchemaConverter):
 
     def __init__(
         self,
-        namespaces: Any = None,
+        namespaces: Optional[aliases.NamespacesType] = None,
         dict_class: Optional[Type[Dict[str, Any]]] = None,
         list_class: Optional[Type[List[Any]]] = None,
-        **kwargs: Any,
+        # difficult to pinpoint type as xmlschema library does the same
+        **kwargs: Any,  # noqa: ANN401
     ) -> None:
         """Initialize converter and settings.
 
@@ -52,7 +55,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
         _under_regex = re.compile(r"_([a-z])")
         return _under_regex.sub(lambda x: x.group(1).upper(), name)
 
-    def _flatten(self, data: Any) -> Union[Dict, List, str, None]:
+    def _flatten(self, data: ElementData) -> Union[Dict, List, str, None]:
         """Address corner cases.
 
         :param schema_type: XML data
@@ -252,10 +255,10 @@ class MetadataXMLConverter(XMLSchemaConverter):
 
     def element_decode(
         self,
-        data: Any,
+        data: ElementData,
         xsd_element: XsdElement,
         xsd_type: XsdType = None,
-        level: int = 0,
+        level: int = 0,  # this is required for XMLSchemaConverter
     ) -> Union[Dict, List, str, None]:
         """Decode XML to JSON.
 
@@ -480,7 +483,7 @@ class CSVToJSONParser:
         return _parsed
 
 
-def jsonpatch_mongo(identifier: Dict, json_patch: List[Dict[str, Any]]) -> List:
+def jsonpatch_mongo(identifier: Dict, json_patch: List[Dict]) -> List:
     """Convert JSONpatch object to mongo query.
 
     :param identifier: object database ID

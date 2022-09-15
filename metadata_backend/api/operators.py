@@ -121,10 +121,9 @@ class BaseOperator(ABC):
         :raises: HTTPBadRequest if deleting was not successful
         :returns: Accession id for the object deleted from the database
         """
-        db_client = self.db_service.db_client
-        JSON_deletion_success = await self._remove_object_from_db(Operator(db_client), schema_type, accession_id)
-        XML_deletion_success = await self._remove_object_from_db(XMLOperator(db_client), schema_type, accession_id)
-        if JSON_deletion_success and XML_deletion_success:
+
+        _deletion_success = await self._remove_object_from_db(schema_type, accession_id)
+        if _deletion_success:
             LOG.info(f"{accession_id} successfully deleted from collection")
             return accession_id
 
@@ -211,7 +210,7 @@ class BaseOperator(ABC):
         LOG.error(reason)
         raise web.HTTPBadRequest(reason=reason)
 
-    async def _remove_object_from_db(self, operator: Any, schema_type: str, accession_id: str) -> bool:
+    async def _remove_object_from_db(self, schema_type: str, accession_id: str) -> bool:
         """Delete object from database.
 
         We can omit raising error for XMLOperator if id is not
@@ -224,14 +223,13 @@ class BaseOperator(ABC):
         :returns: True or False if object deleted from the database
         """
         try:
-            check_exists = await operator.db_service.exists(schema_type, accession_id)
-            if not check_exists and not isinstance(operator, XMLOperator):
+            check_exists = await self.db_service.exists(schema_type, accession_id)
+            if not check_exists and not schema_type.startswith("xml-"):
                 reason = f"Object with accession id {accession_id} was not found."
                 LOG.error(reason)
                 raise web.HTTPNotFound(reason=reason)
 
-            LOG.debug("XML is not in backup collection")
-            delete_success = await operator.db_service.delete(schema_type, accession_id)
+            delete_success = await self.db_service.delete(schema_type, accession_id)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while deleting object: {error}"
             LOG.error(reason)
@@ -252,29 +250,37 @@ class BaseOperator(ABC):
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
 
+    # no way around type Any here without breaking Liskov substitution principle
+
     @abstractmethod
-    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: Any) -> Union[Dict, List[dict]]:
+    async def _format_data_to_create_and_add_to_db(
+        self, schema_type: str, data: Any  # noqa: ANN401
+    ) -> Union[Dict, List[dict]]:
         """Format and add data to database.
 
         Must be implemented by subclass.
         """
 
     @abstractmethod
-    async def _format_data_to_replace_and_add_to_db(self, schema_type: str, accession_id: str, data: Any) -> Dict:
+    async def _format_data_to_replace_and_add_to_db(
+        self, schema_type: str, accession_id: str, data: Any  # noqa: ANN401
+    ) -> Dict:
         """Format and replace data in database.
 
         Must be implemented by subclass.
         """
 
     @abstractmethod
-    async def _format_data_to_update_and_add_to_db(self, schema_type: str, accession_id: str, data: Any) -> str:
+    async def _format_data_to_update_and_add_to_db(
+        self, schema_type: str, accession_id: str, data: Any  # noqa: ANN401
+    ) -> str:
         """Format and update data in database.
 
         Must be implemented by subclass.
         """
 
     @abstractmethod
-    async def _format_read_data(self, schema_type: str, data_raw: Any) -> Any:
+    async def _format_read_data(self, schema_type: str, data_raw: Any) -> Any:  # noqa: ANN401
         """Format data for API response.
 
         Must be implemented by subclass.
@@ -508,7 +514,7 @@ class Operator(BaseOperator):
         await self._replace_object_from_db(schema_type, accession_id, data)
         return data
 
-    async def _format_data_to_update_and_add_to_db(self, schema_type: str, accession_id: str, data: Any) -> str:
+    async def _format_data_to_update_and_add_to_db(self, schema_type: str, accession_id: str, data: Dict) -> str:
         """Format and update data in database.
 
         Will not allow to update ``metaxIdentifier`` and ``doi`` for ``study`` and ``dataset``
@@ -1097,46 +1103,6 @@ class UserOperator:
             raise web.HTTPBadRequest(reason=reason)
         return user
 
-    async def filter_user(self, query: Dict, item_type: str, page_num: int, page_size: int) -> Tuple[List, int]:
-        """Query database based on url query parameters.
-
-        :param query: Dict containing query information
-        :param item_type: schema type of the item
-        :param page_num: Page number
-        :param page_size: Results per page
-        :returns: Tuple with Paginated query result
-        """
-        skips = page_size * (page_num - 1)
-        _query = [
-            {"$match": query},
-            {
-                "$project": {
-                    "_id": 0,
-                    item_type: {"$slice": [f"${item_type}", skips, page_size]},
-                }
-            },
-        ]
-        data = await self.db_service.do_aggregate("user", _query)
-
-        if not data:
-            data = [{item_type: []}]
-
-        count_query = [
-            {"$match": query},
-            {
-                "$project": {
-                    "_id": 0,
-                    "item": 1,
-                    "total": {
-                        "$cond": {"if": {"$isArray": f"${item_type}"}, "then": {"$size": f"${item_type}"}, "else": 0}
-                    },
-                }
-            },
-        ]
-        total_users = await self.db_service.do_aggregate("user", count_query)
-
-        return data[0][item_type], total_users[0]["total"]
-
     async def update_user(self, user_id: str, patch: List) -> str:
         """Update user object from database.
 
@@ -1159,61 +1125,6 @@ class UserOperator:
 
         LOG.info(f"Updating user with id {user_id} to database succeeded.")
         return user_id
-
-    async def assign_objects(self, user_id: str, collection: str, object_ids: List) -> None:
-        """Assing object to user.
-
-        An object can be submission(s) or templates(s).
-
-        :param user_id: ID of user to update
-        :param collection: collection where to remove the id from
-        :param object_ids: ID or list of IDs of submission(s) to assign
-        :raises: HTTPBadRequest if assigning templates/submissions to user was not successful
-        returns: None
-        """
-        try:
-            await self._check_user_exists(user_id)
-            assign_success = await self.db_service.append(
-                "user", user_id, {collection: {"$each": object_ids, "$position": 0}}
-            )
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while assigning objects to user: {error}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        if not assign_success:
-            reason = "Assigning objects to user failed."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        LOG.info(f"Assigning {object_ids} from {user_id} succeeded.")
-
-    async def remove_objects(self, user_id: str, collection: str, object_ids: List) -> None:
-        """Remove object from user.
-
-        An object can be submission(s) or template(s).
-
-        :param user_id: ID of user to update
-        :param collection: collection where to remove the id from
-        :param object_ids: ID or list of IDs of submission(s) to remove
-        :raises: HTTPBadRequest if db connection fails
-        returns: None
-        """
-        remove_content: Dict
-        try:
-            await self._check_user_exists(user_id)
-            for obj in object_ids:
-                if collection == "templates":
-                    remove_content = {"templates": {"accessionId": obj}}
-                else:
-                    remove_content = {"submissions": obj}
-                await self.db_service.remove("user", user_id, remove_content)
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while removing objects from user: {error}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        LOG.info(f"Removing {object_ids} from {user_id} succeeded.")
 
     async def delete_user(self, user_id: str) -> str:
         """Delete user object from database.

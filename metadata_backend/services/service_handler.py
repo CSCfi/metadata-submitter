@@ -2,7 +2,7 @@
 
 It provides a http client with optional basic auth, and requests that retry automatically and come with error handling
 """
-from typing import Any, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from aiohttp import BasicAuth, ClientSession, ClientTimeout
 from aiohttp.web import HTTPError, HTTPGatewayTimeout, HTTPInternalServerError
@@ -24,7 +24,8 @@ class ServiceClientError(HTTPError):
     def __init__(
         self,
         status_code: int,
-        **kwargs: Any,
+        # difficult to pinpoint type
+        **kwargs: Any,  # noqa: ANN401
     ) -> None:
         """Class to raise for http client errors.
 
@@ -104,9 +105,9 @@ class ServiceHandler:
         url: URL = None,
         path: str = "",
         params: Union[str, dict] = None,
-        json_data: Any = None,
+        json_data: Union[Dict, List[Dict]] = None,
         timeout: int = 10,
-    ) -> Any:
+    ) -> Union[dict, str]:
         """Request to service REST API.
 
         :param method: HTTP method

@@ -452,14 +452,14 @@ class TestOperators(IsolatedAsyncioTestCase):
                     )
                     self.assertEqual(acc["accessionId"], self.accession_id)
 
-    async def test_deleting_metadata_deletes_json_and_xml(self):
+    async def test_deleting_metadata_deletes_json(self):
         """Test metadata is deleted."""
         operator = Operator(self.client)
         operator.db_service.db_client = self.client
         operator.db_service.exists.return_value = True
         operator.db_service.delete.return_value = True
         await operator.delete_metadata_object("sample", "EGA123456")
-        self.assertEqual(operator.db_service.delete.call_count, 2)
+        self.assertEqual(operator.db_service.delete.call_count, 1)
         operator.db_service.delete.assert_called_with("sample", "EGA123456")
 
     async def test_deleting_metadata_delete_raises(self):
@@ -470,7 +470,7 @@ class TestOperators(IsolatedAsyncioTestCase):
         operator.db_service.delete.return_value = True
         with self.assertRaises(HTTPNotFound):
             await operator.delete_metadata_object("sample", "EGA123456")
-            self.assertEqual(operator.db_service.delete.call_count, 2)
+            self.assertEqual(operator.db_service.delete.call_count, 1)
             operator.db_service.delete.assert_called_with("sample", "EGA123456")
 
     async def test_deleting_metadata_delete_raises_bad_request(self):
@@ -481,7 +481,7 @@ class TestOperators(IsolatedAsyncioTestCase):
         operator.db_service.delete.return_value = False
         with self.assertRaises(HTTPBadRequest):
             await operator.delete_metadata_object("sample", "EGA123456")
-            self.assertEqual(operator.db_service.delete.call_count, 2)
+            self.assertEqual(operator.db_service.delete.call_count, 1)
             operator.db_service.delete.assert_called_with("sample", "EGA123456")
 
     async def test_working_query_params_are_passed_to_db_query(self):

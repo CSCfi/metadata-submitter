@@ -25,6 +25,16 @@ from tests.integration.helpers import delete_submission, get_user_data, post_sub
 from tests.integration.mongo import Mongo
 
 
+def pytest_addoption(parser):
+    """Add command line options."""
+    parser.addoption(
+        "--nocleanup",
+        action="store_true",
+        default=False,
+        help="run tests without any cleanup",
+    )
+
+
 @pytest.fixture(scope="session")
 def event_loop():
     """Override `event_loop` with a different scope. default is `function`.
@@ -86,7 +96,7 @@ async def fixture_submission_id(client_logged_in: aiohttp.ClientSession, project
 
 
 @pytest.fixture(scope="session", name="mongo")
-async def fixture_mongo():
+async def fixture_mongo(request):
     """Initialize the db, and create a client."""
     if TLS:
         _params = "?tls=true&tlsCAFile=./config/cacert&tlsCertificateKeyFile=./config/combined"
@@ -99,7 +109,8 @@ async def fixture_mongo():
 
     yield mongo
 
-    await mongo.drop_db()
+    if not request.config.getoption("--nocleanup"):
+        await mongo.drop_db()
 
 
 @pytest.fixture(scope="class", name="database")
@@ -109,9 +120,10 @@ def fixture_database(mongo):
 
 
 @pytest.fixture(scope="class", name="recreate_db", autouse=True)
-async def fixture_recreate_db(mongo):
+async def fixture_recreate_db(request, mongo):
     """Recreate the schema after each scoped test."""
-    await mongo.recreate_db()
+    if not request.config.getoption("--nocleanup"):
+        await mongo.recreate_db()
 
 
 @pytest.fixture(scope="class", name="clear_cache", autouse=True)
