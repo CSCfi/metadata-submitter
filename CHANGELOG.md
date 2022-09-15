@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Submission now can have a new field, `dac`, with `workflowId`, `organizationId`, and `licenses` (array of int)
   - Published datasets have a new field `dac` with `workflowId`, `organizationId`, `resourceId`, and `catalogueItemId`
 - Pylint static checks
+- Added mapping for languages between the submitter and Metax-service #514
+- Added mapping for subjects from submission doi info to Metax field_of_science #556
 - Run integration tests with pytest
 
 ### Changed

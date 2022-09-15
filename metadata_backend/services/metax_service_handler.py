@@ -5,12 +5,12 @@ Swagger https://metax.fairdata.fi/swagger/v2
 """
 from typing import Any, Dict, List
 
-from aiohttp import BasicAuth
+from aiohttp import BasicAuth, web
 from yarl import URL
 
 from ..conf.conf import METAX_ENABLED, metax_config
 from ..helpers.logger import LOG
-from .metax_mapper import MetaDataMapper
+from .metax_mapper import MetaDataMapper, SubjectNotFoundException
 from .service_handler import ServiceHandler
 
 
@@ -213,6 +213,7 @@ class MetaxServiceHandler(ServiceHandler):
 
         :param datacite_info: Dict containing info to complete metax dataset metadata
         :param _metax_ids: List of Metax id of dataset to be updated
+        :raises: HTTPBadRequest if mapping datacite info to metax fails
         """
         LOG.info(
             "Updating metadata with datacite info for Metax datasets: "
@@ -224,7 +225,13 @@ class MetaxServiceHandler(ServiceHandler):
 
             # Map fields from doi info to Metax schema
             mapper = MetaDataMapper(metax_id["schema"], metax_data["research_dataset"], datacite_info)
-            mapped_metax_data = mapper.map_metadata()
+            try:
+                mapped_metax_data = mapper.map_metadata()
+            except SubjectNotFoundException as error:
+                # in case the datacite subject cannot be mapped to metax field of science
+                reason = f"{error}"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
 
             bulk_data.append({"identifier": metax_id["metaxIdentifier"], "research_dataset": mapped_metax_data})
 
