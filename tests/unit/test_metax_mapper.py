@@ -3,13 +3,16 @@ import json
 import unittest
 from pathlib import Path
 
-from metadata_backend.services.metax_mapper import MetaDataMapper
+from metadata_backend.services.metax_mapper import (
+    MetaDataMapper,
+    SubjectNotFoundException,
+)
 
 
 class MetaDataMapperTestCase(unittest.TestCase):
     """MetaDataMapper Test Cases."""
 
-    TESTFILES_ROOT = Path(__file__).parent / "test_files"
+    TESTFILES_ROOT = Path(__file__).parent.parent / "test_files"
 
     def setUp(self):
         """Configure variables for tests."""
@@ -19,8 +22,6 @@ class MetaDataMapperTestCase(unittest.TestCase):
         metax_file = self.TESTFILES_ROOT / "metax" / "research_dataset.json"
         self.test_metax = json.loads(metax_file.read_text())
 
-    # Below tests will be activated in future PR
-    '''
     def test_map_metadata(self):
         """Test that Metax metadata receives new data from DOI of a submission."""
         submission = {"doiInfo": self.test_doi, "extraInfo": {}}
@@ -54,7 +55,7 @@ class MetaDataMapperTestCase(unittest.TestCase):
         subjects = self.test_doi["subjects"]
         self.mapper._map_field_of_science(subjects)
         self.assertEqual(
-            self.test_doi["subjects"][0]["valueUri"],
+            "http://www.yso.fi/onto/okm-tieteenala/ta999",
             self.mapper.research_dataset["field_of_science"][0]["identifier"],
         )
         self.assertEqual("Other", self.mapper.research_dataset["field_of_science"][0]["pref_label"]["en"])
@@ -67,4 +68,3 @@ class MetaDataMapperTestCase(unittest.TestCase):
         ]
         with self.assertRaises(SubjectNotFoundException):
             self.mapper._map_field_of_science(bad_subjects)
-    '''

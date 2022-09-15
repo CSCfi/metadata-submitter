@@ -126,6 +126,3 @@ private
 static
 # ignore pyspelling dictionary
 *.dic
-
-# Generated files
-metadata_backend/conf/metax_references/metax_references.json
