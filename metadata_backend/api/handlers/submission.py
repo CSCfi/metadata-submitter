@@ -13,7 +13,13 @@ from multidict import CIMultiDict
 from ...conf.conf import DATACITE_SCHEMAS, METAX_SCHEMAS, doi_config
 from ...helpers.logger import LOG
 from ...helpers.validator import JSONValidator
-from ..operators import Operator, ProjectOperator, SubmissionOperator, UserOperator
+from ..operators import (
+    Operator,
+    ProjectOperator,
+    SubmissionOperator,
+    UserOperator,
+    XMLOperator,
+)
 from .restapi import RESTAPIIntegrationHandler
 
 
@@ -553,6 +559,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         db_client = req.app["db_client"]
         operator = SubmissionOperator(db_client)
         obj_op = Operator(db_client)
+        xml_ops = XMLOperator(db_client)
 
         await operator.check_submission_exists(submission_id)
 
@@ -568,7 +575,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         for _obj in submission["metadataObjects"]:
             accession_id = _obj["accessionId"]
             schema = _obj["schema"]
-            object_data, _ = await obj_op.read_metadata_object(schema, accession_id)  # pylint: disable=unused-variable
+            _, _ = await obj_op.read_metadata_object(schema, accession_id)
             if schema == "study":
                 has_study = True
             if self.rems_handler.enabled and "dac" not in submission:
@@ -660,6 +667,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         # Delete draft objects from the submission
         for obj in submission["drafts"]:
             await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
+            await xml_ops.delete_metadata_object(f"xml-{obj['schema']}", obj["accessionId"])
 
         # Patch the submission into a published state
         _now = int(datetime.now().timestamp())
@@ -708,11 +716,13 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         await self._handle_check_ownership(req, "submission", submission_id)
 
         obj_ops = Operator(db_client)
+        xml_ops = XMLOperator(db_client)
 
         submission = await operator.read_submission(submission_id)
 
         for obj in submission["drafts"] + submission["metadataObjects"]:
             await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
+            await xml_ops.delete_metadata_object(f"xml-{obj['schema']}", obj["accessionId"])
 
         _submission_id = await operator.delete_submission(submission_id)
 
@@ -749,7 +759,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
             raise web.HTTPNotFound(reason=f"'{req.path}' does not exist")
 
         submission[schema] = data
-        JSONValidator(submission, "submission").validate  # pylint: disable=expression-not-assigned
+        JSONValidator(submission, "submission").validate
 
         op = "add"
         if schema in submission:

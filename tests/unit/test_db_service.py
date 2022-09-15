@@ -120,13 +120,6 @@ class DatabaseTestCase(IsolatedAsyncioTestCase):
         self.test_service.query("testcollection", {})
         self.collection.find.assert_called_once_with({}, {"_id": False})
 
-    async def test_count_returns_amount(self):
-        """Test that get_count method works and returns amount."""
-        self.collection.count_documents.return_value = 100
-        count = await self.test_service.get_count("testcollection", {})
-        self.collection.count_documents.assert_called_once_with({})
-        self.assertEqual(count, 100)
-
     async def test_db_operation_is_retried_with_increasing_interval(self):
         """Patch timeout to be 0 sec instead of default, test autoreconnect."""
         self.collection.insert_one.side_effect = AutoReconnect

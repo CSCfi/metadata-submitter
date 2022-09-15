@@ -113,6 +113,7 @@ class HandlersTestCase(AioHTTPTestCase):
             "read_metadata_object.side_effect": self.fake_xmloperator_read_metadata_object,
             "create_metadata_object.side_effect": self.fake_xmloperator_create_metadata_object,
             "replace_metadata_object.side_effect": self.fake_xmloperator_replace_metadata_object,
+            "delete_metadata_object.side_effect": self.fake_operator_delete_metadata_object,
         }
         self.submissionoperator_config = {
             "create_submission.side_effect": self.fake_submissionoperator_create_submission,
@@ -123,7 +124,6 @@ class HandlersTestCase(AioHTTPTestCase):
         self.useroperator_config = {
             "create_user.side_effect": self.fake_useroperator_create_user,
             "read_user.side_effect": self.fake_useroperator_read_user,
-            "filter_user.side_effect": self.fake_useroperator_filter_user,
         }
 
         RESTAPIHandler._handle_check_ownership = make_mocked_coro(True)
@@ -227,10 +227,6 @@ class HandlersTestCase(AioHTTPTestCase):
     async def fake_useroperator_read_user(self, user_id):
         """Fake read operation to return mocked user."""
         return self.test_user
-
-    async def fake_useroperator_filter_user(self, query, item_type, page, per_page):
-        """Fake read operation to return mocked user."""
-        return self.test_user[item_type], len(self.test_user[item_type])
 
 
 class APIHandlerTestCase(HandlersTestCase):
@@ -820,12 +816,17 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         self.patch_operator = patch(class_operator, **self.operator_config, spec=True)
         self.MockedOperator = self.patch_operator.start()
 
+        class_xmloperator = "metadata_backend.api.handlers.submission.XMLOperator"
+        self.patch_xmloperator = patch(class_xmloperator, **self.xmloperator_config, spec=True)
+        self.MockedXMLOperator = self.patch_xmloperator.start()
+
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
         await super().tearDownAsync()
         self.patch_submissionoperator.stop()
         self.patch_useroperator.stop()
         self.patch_operator.stop()
+        self.patch_xmloperator.stop()
 
     async def test_submission_creation_works(self):
         """Test that submission is created and submission ID returned."""

@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import Any, Dict
+from typing import Dict
 
 import ujson
 
@@ -15,7 +15,7 @@ LOG = logging.getLogger("server")
 LOG.setLevel(os.getenv("LOG_LEVEL", "INFO"))
 
 
-def get_attributes(obj: Any) -> None:
+def get_attributes(obj: Dict) -> None:
     """Print all attributes of given object.
 
     :param obj: Any kind of object
