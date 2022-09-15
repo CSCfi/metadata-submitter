@@ -29,10 +29,10 @@
                 <TAG>specimen_type</TAG>
                 <VALUE>histology</VALUE>
             </ATTRIBUTE>
-            <ATTRIBUTE>
+            <NUMERIC_ATTRIBUTE>
                 <TAG>age_at_extraction</TAG>
                 <VALUE>65</VALUE>
-            </ATTRIBUTE>
+            </NUMERIC_ATTRIBUTE>
             <ATTRIBUTE>
                 <TAG>extraction_method</TAG>
                 <VALUE>biopsy</VALUE>
@@ -50,10 +50,10 @@
                 <TAG>specimen_type</TAG>
                 <VALUE>histology</VALUE>
             </ATTRIBUTE>
-            <ATTRIBUTE>
+            <NUMERIC_ATTRIBUTE>
                 <TAG>age_at_extraction</TAG>
                 <VALUE>50</VALUE>
-            </ATTRIBUTE>
+            </NUMERIC_ATTRIBUTE>
             <ATTRIBUTE>
                 <TAG>extraction_method</TAG>
                 <VALUE>biopsy</VALUE>
