@@ -1,0 +1,23 @@
+{
+    "ark": "http://uri.suomi.fi/codelist/fairdata/identifier_type/code/ark",
+    "arxiv": "http://uri.suomi.fi/codelist/fairdata/identifier_type/code/arxiv",
+    "bibcode": "http://uri.suomi.fi/codelist/fairdata/identifier_type/code/bibcode",
+    "doi": "http://uri.suomi.fi/codelist/fairdata/identifier_type/code/doi",
+    "ean13": "http://uri.suomi.fi/codelist/fairdata/identifier_type/code/ean13",
+    "eissn": "http://uri.suomi.fi/codelist/fairdata/identifier_type/code/eissn",
+    "handle": "http://uri.suomi.fi/codelist/fairdata/identifier_type/code/handle",
+    "igsn": "http://uri.suomi.fi/codelist/fairdata/identifier_type/code/igsn",
+    "isbn": "http://uri.suomi.fi/codelist/fairdata/identifier_type/code/isbn",
+    "issn": "http://uri.suomi.fi/codelist/fairdata/identifier_type/code/issn",
+    "istc": "http://uri.suomi.fi/codelist/fairdata/identifier_type/code/istc",
+    "lissn": "http://uri.suomi.fi/codelist/fairdata/identifier_type/code/lissn",
+    "lsid": "http://uri.suomi.fi/codelist/fairdata/identifier_type/code/lsid",
+    "orcid": "http://uri.suomi.fi/codelist/fairdata/identifier_type/code/orcid",
+    "pmid": "http://uri.suomi.fi/codelist/fairdata/identifier_type/code/pmid",
+    "purl": "http://uri.suomi.fi/codelist/fairdata/identifier_type/code/purl",
+    "upc": "http://uri.suomi.fi/codelist/fairdata/identifier_type/code/upc",
+    "uri": "http://uri.suomi.fi/codelist/fairdata/identifier_type/code/uri",
+    "url": "http://uri.suomi.fi/codelist/fairdata/identifier_type/code/url",
+    "urn": "http://uri.suomi.fi/codelist/fairdata/identifier_type/code/urn",
+    "virta": "http://uri.suomi.fi/codelist/fairdata/identifier_type/code/virta"
+}
