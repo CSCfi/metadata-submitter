@@ -72,6 +72,16 @@ repos:
       args: [validate]
       files: docs/specification.yml
 
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.18.3
+    hooks:
+      - id: check-metaschema
+        name: Validate schemas
+        files: ^metadata_backend/helpers/schemas/.*\.json$
+
+      - id: check-dependabot
+      - id: check-github-workflows
+
   - repo: local
     hooks:
     - id: pylint
@@ -85,6 +95,7 @@ repos:
           -rn, # Only display messages
           -sn, # Don't display the score
         ]
+
     - id: pyspelling-docs
       name: pyspelling-docs
       entry: ./scripts/pyspelling.sh

@@ -39,3 +39,5 @@ jobs:
         pip install tox tox-gh-actions
     - name: Run docs tests
       run: tox -e docs
+  - name: Run jsonschema validation
+      run: tox -e jsonschema

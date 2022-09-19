@@ -1,23 +1,22 @@
 {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "Sample",
-    "definitions": {
+    "$defs": {
         "Links": {
-            "$id": "#/definitions/Links",
             "title": "Link Type",
             "oneOf": [
                 {
-                    "$ref": "#/definitions/xrefLink"
+                    "$ref": "#/$defs/xrefLink"
                 },
                 {
-                    "$ref": "#/definitions/urlLink"
+                    "$ref": "#/$defs/urlLink"
                 },
                 {
-                    "$ref": "#/definitions/entrezLink"
+                    "$ref": "#/$defs/entrezLink"
                 }
             ]
         },
         "xrefLink": {
-            "$id": "#/definitions/xrefLink",
             "title": "XRef Link",
             "type": "object",
             "required": [
@@ -43,7 +42,6 @@
             }
         },
         "urlLink": {
-            "$id": "#/definitions/urlLink",
             "title": "URL Link",
             "type": "object",
             "required": [
@@ -65,7 +63,6 @@
             }
         },
         "entrezLink": {
-            "$id": "#/definitions/entrezLink",
             "title": "Entrez Link",
             "type": "object",
             "required": [
@@ -137,7 +134,6 @@
             }
         },
         "sampleAttribute": {
-            "$id": "#/definitions/sampleAttribute",
             "type": "object",
             "title": "Sample Attribute",
             "required": [
@@ -244,7 +240,7 @@
             "title": "Sample Links",
             "description": "Links to resources related to this experiment or experiment set (publication, datasets, online databases). Used to encode URL links, Entrez links, and xref DB links. ",
             "items": {
-                "$ref": "#/definitions/Links"
+                "$ref": "#/$defs/Links"
             }
         },
         "sampleAttributes": {
@@ -252,7 +248,7 @@
             "title": "Sample Attributes",
             "description": "Properties and attributes of a Sample.  These can be entered as free-form tag-value pairs. For certain studies, submitters may be asked to follow a community established ontology when describing the work.",
             "items": {
-                "$ref": "#/definitions/sampleAttribute"
+                "$ref": "#/$defs/sampleAttribute"
             }
         }
     }

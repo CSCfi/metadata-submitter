@@ -1,23 +1,22 @@
 {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "Run",
-    "definitions": {
+    "$defs": {
         "Links": {
-            "$id": "#/definitions/Links",
             "title": "Link Type",
             "oneOf": [
                 {
-                    "$ref": "#/definitions/xrefLink"
+                    "$ref": "#/$defs/xrefLink"
                 },
                 {
-                    "$ref": "#/definitions/urlLink"
+                    "$ref": "#/$defs/urlLink"
                 },
                 {
-                    "$ref": "#/definitions/entrezLink"
+                    "$ref": "#/$defs/entrezLink"
                 }
             ]
         },
         "xrefLink": {
-            "$id": "#/definitions/xrefLink",
             "title": "XRef Link",
             "type": "object",
             "required": [
@@ -43,7 +42,6 @@
             }
         },
         "urlLink": {
-            "$id": "#/definitions/urlLink",
             "title": "URL Link",
             "type": "object",
             "required": [
@@ -65,7 +63,6 @@
             }
         },
         "entrezLink": {
-            "$id": "#/definitions/entrezLink",
             "title": "Entrez Link",
             "type": "object",
             "required": [
@@ -137,7 +134,6 @@
             }
         },
         "runAttribute": {
-            "$id": "#/definitions/runAttribute",
             "type": "object",
             "title": "Run Attribute",
             "required": [
@@ -160,7 +156,6 @@
             }
         },
         "processingType": {
-            "$id": "#/definitions/processingType",
             "type": "object",
             "title": "Processing Type",
             "description": "Information about the processing type such as pipeline and sequencing directives.",
@@ -253,7 +248,6 @@
             }
         },
         "identifiers": {
-            "$id": "#/definitions/identifiers",
             "title": "Identifiers",
             "description": "Identifiers to be used in the International Nucleotide Sequence Database Collaboration (INSDC) namespace.",
             "type": "object",
@@ -306,7 +300,6 @@
             }
         },
         "reference": {
-            "$id": "#/definitions/reference",
             "additionalProperties": true,
             "type": "object",
             "properties": {
@@ -326,12 +319,11 @@
                     "title": "Center Namespace"
                 },
                 "identifiers": {
-                    "$ref": "#/definitions/identifiers"
+                    "$ref": "#/$defs/identifiers"
                 }
             }
         },
         "file": {
-            "$id": "#/definitions/file",
             "type": "object",
             "title": "File",
             "required": [
@@ -545,7 +537,7 @@
             "maxItems": 1,
             "type": "array",
             "items": {
-                "$ref": "#/definitions/reference"
+                "$ref": "#/$defs/reference"
             }
         },
         "spotDescriptor": {
@@ -763,14 +755,14 @@
         "processing": {
             "title": "Processing",
             "type": "object",
-            "$ref": "#/definitions/processingType"
+            "$ref": "#/$defs/processingType"
         },
         "files": {
             "type": "array",
             "title": "Files",
             "description": "Data files associated with the Run.",
             "items": {
-                "$ref": "#/definitions/file"
+                "$ref": "#/$defs/file"
             }
         },
         "runLinks": {
@@ -778,7 +770,7 @@
             "title": "Run Links",
             "description": "Links to resources related to this experiment or experiment set (publication, datasets, online databases). Used to encode URL links, Entrez links, and xref DB links. ",
             "items": {
-                "$ref": "#/definitions/Links"
+                "$ref": "#/$defs/Links"
             }
         },
         "runAttributes": {
@@ -786,7 +778,7 @@
             "title": "Run Attributes",
             "description": "Properties and attributes of the data set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
             "items": {
-                "$ref": "#/definitions/runAttribute"
+                "$ref": "#/$defs/runAttribute"
             }
         }
     }
