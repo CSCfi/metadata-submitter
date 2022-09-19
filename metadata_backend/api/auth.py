@@ -115,12 +115,10 @@ class AccessHandler:
             raise web.HTTPUnauthorized(reason="Invalid OIDC callback.")
 
         # User data is read from AAI /userinfo and is used to create the user model in database
-        user_data = {
+        user_data: Dict[str, Union[str, List[Dict[str, str]]]] = {
             "user_id": "",
             "real_name": f"{session['userinfo']['given_name']} {session['userinfo']['family_name']}",
-            # projects come from AAI in this form: "project1 project2 project3"
-            # if user is not affiliated to any projects the `sdSubmitProjects` key will be missing
-            "projects": session["userinfo"]["sdSubmitProjects"].split(" "),
+            "projects": [],
         }
         if "CSCUserName" in session["userinfo"]:
             user_data["user_id"] = session["userinfo"]["CSCUserName"]
@@ -136,8 +134,37 @@ class AccessHandler:
                 reason="Could not set user, missing claim CSCUserName, remoteUserIdentifier or sub."
             )
 
+        # Handle projects, they come in different formats depending on the service used.
+        # Current project sources: CSC projects, LS AAI groups
+        projects: List[Dict[str, str]] = []
+        if "sdSubmitProjects" in session["userinfo"]:
+            # CSC projects come in format "project1 project2"
+            csc_projects = session["userinfo"]["sdSubmitProjects"].split(" ")
+            for csc_project in csc_projects:
+                projects.append(
+                    {
+                        "project_name": csc_project,
+                        "origin": "csc",
+                    }
+                )
+        if "eduperson_entitlement" in session["userinfo"]:
+            # LS AAI groups come in format ["group1", "group2"]
+            for group in session["userinfo"]["eduperson_entitlement"]:
+                projects.append(
+                    {
+                        # remove the oidc client information, as it's not important to the user
+                        "project_name": group.split("#")[0],
+                        "origin": "lifescience",
+                    }
+                )
+
+        if len(projects) == 0:
+            # No project group information received, abort, as metadata-submitter
+            # object hierarchy depends on a project group to act as owner for objects
+            raise web.HTTPUnauthorized(reason="User is not a member of any project.")
+
         # Process project external IDs into the database and return accession IDs back to user_data
-        user_data["projects"] = await self._process_projects(req, user_data["projects"])
+        user_data["projects"] = await self._process_projects(req, projects)
 
         browser_session = await aiohttp_session.new_session(req)
         browser_session["at"] = time.time()
@@ -145,8 +172,6 @@ class AccessHandler:
         # Inject cookie to this request to let _set_user work as expected.
         browser_session["oidc_state"] = params["state"]
         browser_session["access_token"] = session["token"]
-
-        await self._set_user(req, browser_session, user_data)
 
         await self._set_user(req, browser_session, user_data)
         response = web.HTTPSeeOther(f"{self.redirect}/home")
@@ -181,7 +206,7 @@ class AccessHandler:
 
         return response
 
-    async def _process_projects(self, req: Request, projects: List[str]) -> List[Dict[str, str]]:
+    async def _process_projects(self, req: Request, projects: List[Dict[str, str]]) -> List[Dict[str, str]]:
         """Process project external IDs to internal accession IDs by getting IDs\
             from database and creating projects that are missing.
 
@@ -190,16 +215,16 @@ class AccessHandler:
         :param projects: A list of project external IDs
         :returns: A list of objects containing project accession IDs and project numbers
         """
-        projects.sort()  # sort project numbers to be increasing in order
         new_project_ids: List[Dict[str, str]] = []
 
         db_client = req.app["db_client"]
         operator = ProjectOperator(db_client)
         for project in projects:
-            project_id = await operator.create_project(project)
+            project_id = await operator.create_project(project["project_name"])
             project_data = {
                 "projectId": project_id,  # internal ID
-                "projectNumber": project,  # human friendly
+                "projectNumber": project["project_name"],  # human friendly
+                "origin": project["origin"],  # where this project came from: [csc | lifescience]
             }
             new_project_ids.append(project_data)
 
