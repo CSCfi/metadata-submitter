@@ -117,7 +117,7 @@ covid
 cp
 cpg
 crai
-createdFrom
+createdfrom
 createfromjson
 createfromxml
 createnewdraftsubmission
@@ -212,7 +212,7 @@ experimentlinks
 experimentref
 experimenttype
 externalid
-extractedFrom
+extractedfrom
 extrainfo
 fairdata
 faire
@@ -286,7 +286,7 @@ http
 httperror
 https
 httpseeother
-HTTPSuccessful
+httpsuccessful
 identifiertype
 identitypython
 ido
@@ -346,6 +346,7 @@ librarysource
 librarystrategy
 librarytype
 lifecycle
+lifescience
 limburgish
 lims
 lingala
@@ -483,6 +484,7 @@ pdb
 pdbcls
 pdf
 peerreview
+perun
 pgm
 phenome
 physicalobject
@@ -578,7 +580,7 @@ sampleattributes
 sampledata
 sampledemuxdirective
 sampledescriptor
-sampledFrom
+sampledfrom
 samplelinks
 samplename
 samplephenotype
@@ -623,7 +625,7 @@ src
 srf
 ssl
 ssrna
-StackOverflow
+stackoverflow
 stepindex
 studyabstract
 studyattribute
@@ -639,10 +641,10 @@ subjectsschema
 submissionid
 submissionslice
 submissiontype
-submitter's
 submitterdemultiplexed
 submitterid
 submitters
+submitter's
 svg
 swati
 tabix
