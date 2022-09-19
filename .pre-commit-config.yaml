@@ -84,6 +84,14 @@ repos:
 
   - repo: local
     hooks:
+    - id: sort
+      name: sort dictionary, remove unused and duplicates
+      entry: ./scripts/sort.sh
+      language: script
+      files: ^(docs|metadata_backend|.*md)
+      require_serial: true
+      pass_filenames: false
+
     - id: pylint
       name: pylint
       entry: pylint
