@@ -152,7 +152,8 @@ class AccessHandler:
             for group in session["userinfo"]["eduperson_entitlement"]:
                 projects.append(
                     {
-                        "project_name": group,
+                        # remove the oidc client information, as it's not important to the user
+                        "project_name": group.split("#")[0],
                         "origin": "lifescience",
                     }
                 )
