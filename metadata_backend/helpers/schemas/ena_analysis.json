@@ -1,23 +1,22 @@
 {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "Analysis",
-    "definitions": {
+    "$defs": {
         "Links": {
-            "$id": "#/definitions/Links",
             "title": "Link Type",
             "oneOf": [
                 {
-                    "$ref": "#/definitions/xrefLink"
+                    "$ref": "#/$defs/xrefLink"
                 },
                 {
-                    "$ref": "#/definitions/urlLink"
+                    "$ref": "#/$defs/urlLink"
                 },
                 {
-                    "$ref": "#/definitions/entrezLink"
+                    "$ref": "#/$defs/entrezLink"
                 }
             ]
         },
         "xrefLink": {
-            "$id": "#/definitions/xrefLink",
             "title": "XRef Link",
             "type": "object",
             "required": [
@@ -43,7 +42,6 @@
             }
         },
         "urlLink": {
-            "$id": "#/definitions/urlLink",
             "title": "URL Link",
             "type": "object",
             "required": [
@@ -65,7 +63,6 @@
             }
         },
         "entrezLink": {
-            "$id": "#/definitions/entrezLink",
             "title": "Entrez Link",
             "type": "object",
             "required": [
@@ -137,7 +134,6 @@
             }
         },
         "analysisAttribute": {
-            "$id": "#/definitions/analysisAttribute",
             "type": "object",
             "title": "Analysis Attribute",
             "required": [
@@ -160,7 +156,6 @@
             }
         },
         "sequenceType": {
-            "$id": "#/definitions/sequenceType",
             "title": "Reference Alignment",
             "additionalProperties": true,
             "type": "object",
@@ -243,7 +238,6 @@
             }
         },
         "identifiers": {
-            "$id": "#/definitions/identifiers",
             "title": "Identifiers",
             "description": "Identifiers to be used in the International Nucleotide Sequence Database Collaboration (INSDC) namespace.",
             "type": "object",
@@ -296,7 +290,6 @@
             }
         },
         "reference": {
-            "$id": "#/definitions/reference",
             "additionalProperties": true,
             "type": "object",
             "properties": {
@@ -316,12 +309,11 @@
                     "title": "Center Namespace"
                 },
                 "identifiers": {
-                    "$ref": "#/definitions/identifiers"
+                    "$ref": "#/$defs/identifiers"
                 }
             }
         },
         "file": {
-            "$id": "#/definitions/file",
             "type": "object",
             "title": "File",
             "required": [
@@ -394,7 +386,6 @@
             }
         },
         "referenceAlignment": {
-            "$id": "#/definitions/referenceAlignment",
             "type": "object",
             "title": "Reference Alignment",
             "required": [
@@ -404,12 +395,11 @@
                 "referenceAlignment": {
                     "type": "object",
                     "title": "Reference Alignment",
-                    "$ref": "#/definitions/sequenceType"
+                    "$ref": "#/$defs/sequenceType"
                 }
             }
         },
         "sequenceAssembly": {
-            "$id": "#/definitions/sequenceAssembly",
             "type": "object",
             "title": "Sequence Assembly",
             "required": [
@@ -483,7 +473,6 @@
             }
         },
         "sequenceVariation": {
-            "$id": "#/definitions/sequenceVariation",
             "type": "object",
             "title": "Sequence Variation",
             "required": [
@@ -600,7 +589,6 @@
             }
         },
         "sequenceFlatFile": {
-            "$id": "#/definitions/sequenceFlatFile",
             "type": "object",
             "title": "Sequence Flat File",
             "required": [
@@ -624,7 +612,6 @@
             }
         },
         "sequenceAnnotation": {
-            "$id": "#/definitions/sequenceAnnotation",
             "type": "object",
             "title": "Sequence Annotation",
             "required": [
@@ -634,12 +621,11 @@
                 "sequenceAnnotation": {
                     "type": "object",
                     "title": "Sequence Annotation",
-                    "$ref": "#/definitions/sequenceType"
+                    "$ref": "#/$defs/sequenceType"
                 }
             }
         },
         "processedReads": {
-            "$id": "#/definitions/processedReads",
             "type": "object",
             "title": "Processed Reads",
             "required": [
@@ -649,12 +635,11 @@
                 "processedReads": {
                     "type": "object",
                     "title": "Processed Reads",
-                    "$ref": "#/definitions/sequenceType"
+                    "$ref": "#/$defs/sequenceType"
                 }
             }
         },
         "referenceSequence": {
-            "$id": "#/definitions/referenceSequence",
             "type": "object",
             "title": "Reference Sequence",
             "required": [
@@ -675,7 +660,6 @@
             }
         },
         "samplePhenotype": {
-            "$id": "#/definitions/samplePhenotype",
             "type": "object",
             "title": "Sample Phenotype",
             "required": [
@@ -696,7 +680,6 @@
             }
         },
         "genomeMap": {
-            "$id": "#/definitions/genomeMap",
             "type": "object",
             "title": "Genome Map",
             "required": [
@@ -727,7 +710,6 @@
             }
         },
         "amrAntibiogram": {
-            "$id": "#/definitions/amrAntibiogram",
             "type": "object",
             "title": "AMR Antibiogram",
             "required": [
@@ -748,7 +730,6 @@
             }
         },
         "pathogenAnalysis": {
-            "$id": "#/definitions/pathogenAnalysis",
             "type": "object",
             "title": "Pathogen Analysis",
             "required": [
@@ -769,7 +750,6 @@
             }
         },
         "transcriptomeAssembly": {
-            "$id": "#/definitions/transcriptomeAssembly",
             "type": "object",
             "title": "Transcriptome Assembly",
             "required": [
@@ -818,7 +798,6 @@
             }
         },
         "taxonomicReferenceSet": {
-            "$id": "#/definitions/taxonomicReferenceSet",
             "type": "object",
             "title": "Taxonomic Reference Set",
             "required": [
@@ -865,7 +844,6 @@
             }
         },
         "assemblyAnnotation": {
-            "$id": "#/definitions/assemblyAnnotation",
             "type": "object",
             "title": "Assembly Annotation",
             "required": [
@@ -875,7 +853,7 @@
                 "assemblyAnnotation": {
                     "type": "object",
                     "title": "Assembly Annotation",
-                    "$ref": "#/definitions/sequenceType"
+                    "$ref": "#/$defs/sequenceType"
                 }
             }
         }
@@ -896,43 +874,43 @@
             "title": "Analysis Type",
             "oneOf": [
                 {
-                    "$ref": "#/definitions/referenceAlignment"
+                    "$ref": "#/$defs/referenceAlignment"
                 },
                 {
-                    "$ref": "#/definitions/sequenceVariation"
+                    "$ref": "#/$defs/sequenceVariation"
                 },
                 {
-                    "$ref": "#/definitions/sequenceAssembly"
+                    "$ref": "#/$defs/sequenceAssembly"
                 },
                 {
-                    "$ref": "#/definitions/sequenceFlatFile"
+                    "$ref": "#/$defs/sequenceFlatFile"
                 },
                 {
-                    "$ref": "#/definitions/sequenceAnnotation"
+                    "$ref": "#/$defs/sequenceAnnotation"
                 },
                 {
-                    "$ref": "#/definitions/referenceSequence"
+                    "$ref": "#/$defs/referenceSequence"
                 },
                 {
-                    "$ref": "#/definitions/samplePhenotype"
+                    "$ref": "#/$defs/samplePhenotype"
                 },
                 {
-                    "$ref": "#/definitions/processedReads"
+                    "$ref": "#/$defs/processedReads"
                 },
                 {
-                    "$ref": "#/definitions/amrAntibiogram"
+                    "$ref": "#/$defs/amrAntibiogram"
                 },
                 {
-                    "$ref": "#/definitions/pathogenAnalysis"
+                    "$ref": "#/$defs/pathogenAnalysis"
                 },
                 {
-                    "$ref": "#/definitions/transcriptomeAssembly"
+                    "$ref": "#/$defs/transcriptomeAssembly"
                 },
                 {
-                    "$ref": "#/definitions/taxonomicReferenceSet"
+                    "$ref": "#/$defs/taxonomicReferenceSet"
                 },
                 {
-                    "$ref": "#/definitions/assemblyAnnotation"
+                    "$ref": "#/$defs/assemblyAnnotation"
                 }
             ]
         },
@@ -955,19 +933,19 @@
         "studyRef": {
             "title": "Study Reference",
             "description": "Identifies the associated parent study.",
-            "$ref": "#/definitions/reference"
+            "$ref": "#/$defs/reference"
         },
         "experimentRef": {
             "title": "Experiment Reference",
             "description": "Identifies the associated experiment.",
-            "$ref": "#/definitions/reference"
+            "$ref": "#/$defs/reference"
         },
         "sampleRef": {
             "title": "Sample Reference",
             "description": "Identifies the associated sample(s).",
             "type": "array",
             "items": {
-                "$ref": "#/definitions/reference"
+                "$ref": "#/$defs/reference"
             }
         },
         "runRef": {
@@ -975,7 +953,7 @@
             "description": "Identifies the associated run.",
             "type": "array",
             "items": {
-                "$ref": "#/definitions/reference"
+                "$ref": "#/$defs/reference"
             }
         },
         "analysisRef": {
@@ -983,14 +961,14 @@
             "description": "Identifies the associated analysis.",
             "type": "array",
             "items": {
-                "$ref": "#/definitions/reference"
+                "$ref": "#/$defs/reference"
             }
         },
         "files": {
             "type": "array",
             "title": "Files",
             "items": {
-                "$ref": "#/definitions/file"
+                "$ref": "#/$defs/file"
             }
         },
         "analysisLinks": {
@@ -998,7 +976,7 @@
             "title": "Analysis Links",
             "description": "Links to resources related to this experiment or experiment set (publication, datasets, online databases). Used to encode URL links, Entrez links, and xref DB links. ",
             "items": {
-                "$ref": "#/definitions/Links"
+                "$ref": "#/$defs/Links"
             }
         },
         "analysisAttributes": {
@@ -1006,7 +984,7 @@
             "title": "Analysis Attributes",
             "description": "Properties and attributes of the data set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
             "items": {
-                "$ref": "#/definitions/analysisAttribute"
+                "$ref": "#/$defs/analysisAttribute"
             }
         }
     }

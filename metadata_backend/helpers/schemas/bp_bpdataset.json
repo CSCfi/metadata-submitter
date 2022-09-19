@@ -1,8 +1,8 @@
 {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "Dataset",
-    "definitions": {
+    "$defs": {
         "identifiers": {
-            "$id": "#/definitions/identifiers",
             "title": "Identifiers",
             "description": "Identifiers to be used in the International Nucleotide Sequence Database Collaboration (INSDC) namespace.",
             "type": "object",
@@ -55,7 +55,6 @@
             }
         },
         "reference": {
-            "$id": "#/definitions/reference",
             "additionalProperties": true,
             "type": "object",
             "properties": {
@@ -75,7 +74,7 @@
                     "title": "Center Namespace"
                 },
                 "identifiers": {
-                    "$ref": "#/definitions/identifiers"
+                    "$ref": "#/$defs/identifiers"
                 }
             }
         }
@@ -129,14 +128,14 @@
             "title": "Policy Reference",
             "description": "Identifies the data access policy controlling this data set.",
             "type": "object",
-            "$ref": "#/definitions/reference"
+            "$ref": "#/$defs/reference"
         },
         "imageRef": {
             "title": "Image Reference",
             "description": "Identifies the images which are part of this dataset.",
             "type": "array",
             "items": {
-                "$ref": "#/definitions/reference"
+                "$ref": "#/$defs/reference"
             }
         },
         "annotationRef": {
@@ -144,7 +143,7 @@
             "description": "Identifies the annotations which are part of this dataset.",
             "type": "array",
             "items": {
-                "$ref": "#/definitions/reference"
+                "$ref": "#/$defs/reference"
             }
         },
         "observationsRef": {
@@ -152,7 +151,7 @@
             "description": "Identifies the observations which are part of this dataset.",
             "type": "array",
             "items": {
-                "$ref": "#/definitions/reference"
+                "$ref": "#/$defs/reference"
             }
         },
         "complementsDatasetRef": {
@@ -160,7 +159,7 @@
             "title": "Complements Dataset Reference",
             "description": "Identifies the datasets which this dataset complements.",
             "items": {
-                "$ref": "#/definitions/reference"
+                "$ref": "#/$defs/reference"
             }
         }
     }

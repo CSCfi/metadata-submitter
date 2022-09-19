@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added mapping for languages between the submitter and Metax-service #514
 - Added mapping for subjects from submission doi info to Metax field_of_science #556
 - Run integration tests with pytest
-  - run integration tests with `--nocleanup` option 
+  - run integration tests with `--nocleanup` option
 
 ### Changed
 - schema loader now matches schema files by exact match with schema #481. This means that schema file naming in metadata_backend/helpers/schemas now have rules:
@@ -45,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Make using of discovery service (METAX) optional #467
 - Refactor api handlers to share a single instance of service handlers
 - Refactor metadata creation methods to parse and add separate metadata objects to db from a single XML file #525
+- Validate schema definitions, updating them to JSON schema 2020-12 #581
 
 ### Removed
 

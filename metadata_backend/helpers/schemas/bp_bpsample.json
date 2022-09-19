@@ -1,8 +1,8 @@
 {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "BP Sample",
-    "definitions": {
+    "$defs": {
         "Block": {
-            "$id": "#/definitions/Block",
             "title": "Block",
             "type": "object",
             "properties": {
@@ -13,7 +13,6 @@
             }
         },
         "Slide": {
-            "$id": "#/definitions/Slide",
             "title": "Slide",
             "type": "object",
             "properties": {
@@ -21,13 +20,12 @@
                     "title": "Staining Information",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/Stain"
+                        "$ref": "#/$defs/Stain"
                     }
                 }
             }
         },
         "Stain": {
-            "$id": "#/definitions/Stain",
             "title": "Stain",
             "type": "object",
             "properties": {
@@ -42,25 +40,35 @@
             }
         },
         "sampleAttribute": {
-            "$id": "#/definitions/sampleAttribute",
             "type": "object",
-            "title": "Sample Attribute",
-            "required": [
-                "tag",
-                "value"
-            ],
+            "title": "Sample Attributes",
+            "description": "Properties and attributes of the sample set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
             "properties": {
-                "tag": {
-                    "type": "string",
-                    "title": "Tag title"
-                },
-                "value": {
-                    "type": "string",
-                    "title": "Description"
-                },
-                "units": {
-                    "type": "string",
-                    "title": "Optional scientific units."
+                "attribute": {
+                    "type": "array",
+                    "title": "Sample attribute list",
+                    "items": {
+                        "type": "object",
+                        "title": "Sample attribute item",
+                        "required": [
+                            "tag",
+                            "value"
+                        ],
+                        "properties": {
+                            "tag": {
+                                "type": "string",
+                                "title": "Tag title"
+                            },
+                            "value": {
+                                "type": "string",
+                                "title": "Description"
+                            },
+                            "units": {
+                                "type": "string",
+                                "title": "Optional scientific units."
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -82,12 +90,7 @@
                             "type": "string"
                         },
                         "attributes": {
-                            "title": "Sample Attributes",
-                            "description": "Properties and attributes of the sample set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
-                            "type": "object",
-                            "properties": {
-                                "$ref": "#/definitions/sampleAttribute"
-                            }
+                            "$ref": "#/$defs/sampleAttribute"
                         }
                     }
                 }
@@ -107,12 +110,7 @@
                             "type": "string"
                         },
                         "attributes": {
-                            "title": "Sample Attributes",
-                            "description": "Properties and attributes of the sample set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
-                            "type": "object",
-                            "properties": {
-                                "$ref": "#/definitions/sampleAttribute"
-                            }
+                            "$ref": "#/$defs/sampleAttribute"
                         },
                         "extractedFrom": {
                             "title": "Extracted From Type",
@@ -143,12 +141,7 @@
                             "type": "string"
                         },
                         "attributes": {
-                            "title": "Sample Attributes",
-                            "description": "Properties and attributes of the sample set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
-                            "type": "object",
-                            "properties": {
-                                "$ref": "#/definitions/sampleAttribute"
-                            }
+                            "$ref": "#/$defs/sampleAttribute"
                         },
                         "sampledFrom": {
                             "title": "Sampled From Type",
@@ -179,12 +172,7 @@
                             "type": "string"
                         },
                         "attributes": {
-                            "title": "Sample Attributes",
-                            "description": "Properties and attributes of the sample set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
-                            "type": "object",
-                            "properties": {
-                                "$ref": "#/definitions/sampleAttribute"
-                            }
+                            "$ref": "#/$defs/sampleAttribute"
                         },
                         "createdFrom": {
                             "title": "Sampled From Type",
