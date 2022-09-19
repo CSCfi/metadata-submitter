@@ -182,8 +182,8 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
             response = await self.AccessHandler.login(request)
             assert isinstance(response, HTTPSeeOther)
 
-    async def test_callback_pass(self):
-        """Test callback correct validation."""
+    async def test_callback_pass_csc(self):
+        """Test callback correct validation (CSC format)."""
         request = Mock_Request()
         request.query["state"] = "state"
         request.query["code"] = "code"
@@ -191,7 +191,7 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
         session = {"iss": "http://auth.domain.com:5430", "auth_request": {}}
         finalize = {
             "token": "token",
-            "userinfo": {"sub": "user", "given_name": "name", "family_name": "name", "sdSubmitProjects": "1000"},
+            "userinfo": {"sub": "user", "given_name": "name", "family_name": "name", "sdSubmitProjects": "1000 2000"},
         }
         db_client = MagicMock()
         db_database = MagicMock()
@@ -206,6 +206,57 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
                 with patch("metadata_backend.api.auth.AccessHandler._set_user", return_value=None):
                     with self.p_new_sess:
                         await self.AccessHandler.callback(request)
+
+    async def test_callback_pass_ls(self):
+        """Test callback correct validation (LS format)."""
+        request = Mock_Request()
+        request.query["state"] = "state"
+        request.query["code"] = "code"
+
+        session = {"iss": "http://auth.domain.com:5430", "auth_request": {}}
+        finalize = {
+            "token": "token",
+            "userinfo": {
+                "sub": "user",
+                "given_name": "name",
+                "family_name": "name",
+                "eduperson_entitlement": ["group1", "group2"],
+            },
+        }
+        db_client = MagicMock()
+        db_database = MagicMock()
+        db_collection = AsyncMock()
+        db_client.__getitem__.return_value = db_database
+        db_database.__getitem__.return_value = db_collection
+
+        request.app["db_client"] = db_client
+
+        with patch("oidcrp.rp_handler.RPHandler.get_session_information", return_value=session):
+            with patch("oidcrp.rp_handler.RPHandler.finalize", return_value=finalize):
+                with patch("metadata_backend.api.auth.AccessHandler._set_user", return_value=None):
+                    with self.p_new_sess:
+                        await self.AccessHandler.callback(request)
+
+    async def test_callback_fail_no_projects(self):
+        """Test callback fails when user has not project group affiliations."""
+        request = Mock_Request()
+        request.query["state"] = "state"
+        request.query["code"] = "code"
+
+        session = {"iss": "http://auth.domain.com:5430", "auth_request": {}}
+        finalize = {
+            "token": "token",
+            "userinfo": {
+                "sub": "user",
+                "given_name": "name",
+                "family_name": "name",
+            },
+        }
+
+        with patch("oidcrp.rp_handler.RPHandler.get_session_information", return_value=session):
+            with patch("oidcrp.rp_handler.RPHandler.finalize", return_value=finalize):
+                with self.assertRaises(HTTPUnauthorized):
+                    await self.AccessHandler.callback(request)
 
     async def test_callback_missing_claim(self):
         """Test callback missing claim validation."""
