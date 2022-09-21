@@ -40,6 +40,17 @@ LOG.setLevel(logging.DEBUG)
 class TestUsers:
     """Test user operations."""
 
+    async def test_token_auth(self):
+        """Test token auth."""
+        async with aiohttp.ClientSession() as sess:
+            headers = {"Authorization": "Bearer test"}
+            user_data = await get_user_data(sess, headers=headers)
+            assert user_data["name"] == "Mock Family"
+            assert user_data["projects"][0]["projectNumber"] == "1000"
+            assert user_data["projects"][0]["origin"] == "csc"
+            assert user_data["projects"][5]["projectNumber"] == "test_namespace:test_root:group3"
+            assert user_data["projects"][5]["origin"] == "lifescience"
+
     async def test_multiple_user_submissions(self, client_logged_in):
         """Test different users can create a submission."""
         async with aiohttp.ClientSession() as sess:

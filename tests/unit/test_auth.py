@@ -309,3 +309,32 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
 
         with self.assertRaises(HTTPUnauthorized):
             await self.AccessHandler.callback(request)
+
+    async def test_create_user_data_pass(self):
+        """Test that user data is correctly parsed from userinfo."""
+        userinfo = {"sub": "user", "given_name": "given", "family_name": "family"}
+        user_data = await AccessHandler._create_user_data(self, userinfo)
+        assert user_data["user_id"] == "user"
+        assert user_data["real_name"] == "given family"
+        assert user_data["projects"] == []
+
+    async def test_create_user_data_fail(self):
+        """Test that user data parsing raises an error if data is missing."""
+        userinfo = {"given_name": "given", "family_name": "family"}
+        with self.assertRaises(HTTPUnauthorized):
+            await AccessHandler._create_user_data(self, userinfo)
+
+    async def test_get_projects_from_userinfo_pass(self):
+        """Test that projects are correctly parsed from userinfo."""
+        userinfo = {"sdSubmitProjects": "1000", "eduperson_entitlement": ["group"]}
+        projects = await AccessHandler._get_projects_from_userinfo(self, userinfo)
+        assert projects[0]["project_name"] == "1000"
+        assert projects[0]["origin"] == "csc"
+        assert projects[1]["project_name"] == "group"
+        assert projects[1]["origin"] == "lifescience"
+
+    async def test_get_projects_from_userinfo_fail(self):
+        """Test that no projects raises an error."""
+        userinfo = {}
+        with self.assertRaises(HTTPUnauthorized):
+            await AccessHandler._get_projects_from_userinfo(self, userinfo)
