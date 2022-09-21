@@ -12,6 +12,12 @@ from oidcrp.rp_handler import RPHandler
 from ..helpers.logger import LOG
 from .operators import ProjectOperator, UserOperator
 
+# Type aliases
+# ProjectList is a list of projects and their origins
+ProjectList = List[Dict[str, str]]
+# UserData contains user profile from AAI userinfo, such as name, username and projects
+UserData = Dict[str, Union[ProjectList, str]]
+
 
 class AccessHandler:
     """Handler for user access methods."""
@@ -115,8 +121,8 @@ class AccessHandler:
             raise web.HTTPUnauthorized(reason="Invalid OIDC callback.")
 
         # Parse data from the userinfo endpoint to create user data containing username, real name and projects/groups
-        user_data: Dict[str, Union[List[Dict[str, str]], str]] = await self._create_user_data(session["userinfo"])
-        projects: List[Dict[str, str]] = await self._get_projects_from_userinfo(session["userinfo"])
+        user_data: UserData = await self._create_user_data(session["userinfo"])
+        projects: ProjectList = await self._get_projects_from_userinfo(session["userinfo"])
 
         # Process project external IDs into the database and return accession IDs back to user_data
         user_data["projects"] = await self._process_projects(req, projects)
@@ -160,7 +166,7 @@ class AccessHandler:
 
         return response
 
-    async def _process_projects(self, req: Request, projects: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    async def _process_projects(self, req: Request, projects: ProjectList) -> ProjectList:
         """Process project external IDs to internal accession IDs by getting IDs\
             from database and creating projects that are missing.
 
@@ -169,7 +175,7 @@ class AccessHandler:
         :param projects: A list of project external IDs
         :returns: A list of objects containing project accession IDs and project numbers
         """
-        new_project_ids: List[Dict[str, str]] = []
+        new_project_ids: ProjectList = []
 
         db_client = req.app["db_client"]
         operator = ProjectOperator(db_client)
@@ -188,7 +194,7 @@ class AccessHandler:
         self,
         req: Request,
         browser_session: aiohttp_session.Session,
-        user_data: Dict[str, Union[List[Dict[str, str]], str]],
+        user_data: UserData,
     ) -> str:
         """Set user in current session and return user id based on result of create_user.
 
@@ -220,14 +226,14 @@ class AccessHandler:
         browser_session["user_info"] = user_id
         return user_id
 
-    async def _create_user_data(self, userinfo: Dict) -> Dict[str, Union[List[Dict[str, str]], str]]:
+    async def _create_user_data(self, userinfo: Dict) -> UserData:
         """Parse user profile data from userinfo endpoint response.
 
         :param userinfo: dict from userinfo containing user profile
         :returns: parsed user profile data containing username and real name
         """
         # User data is read from AAI /userinfo and is used to create the user model in database
-        user_data: Dict[str, Union[List[Dict[str, str]], str]] = {
+        user_data: UserData = {
             "user_id": "",
             "real_name": f"{userinfo['given_name']} {userinfo['family_name']}",
             "projects": [],
@@ -248,7 +254,7 @@ class AccessHandler:
 
         return user_data
 
-    async def _get_projects_from_userinfo(self, userinfo: Dict) -> List[Dict[str, str]]:
+    async def _get_projects_from_userinfo(self, userinfo: Dict) -> ProjectList:
         """Parse projects and groups from userinfo endpoint response.
 
         :param userinfo: dict from userinfo containing user profile
@@ -256,7 +262,7 @@ class AccessHandler:
         """
         # Handle projects, they come in different formats depending on the service used.
         # Current project sources: CSC projects, LS AAI groups
-        projects: List[Dict[str, str]] = []
+        projects: ProjectList = []
         if "sdSubmitProjects" in userinfo:
             # CSC projects come in format "project1 project2"
             csc_projects = userinfo["sdSubmitProjects"].split(" ")
