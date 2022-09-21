@@ -8,11 +8,13 @@ from tests.integration.conf import (
     datacite_url,
     drafts_url,
     objects_url,
+    publish_url,
     submit_url,
     testfiles_root,
 )
 from tests.integration.helpers import (
     create_multi_file_request_data,
+    create_request_data,
     create_request_json_data,
     create_submission,
     delete_object,
@@ -295,7 +297,7 @@ class TestSubmissionOperations:
         doi_data_raw = await create_request_json_data("doi", "test_doi.json")
         await put_submission_doi(client_logged_in, submission_id, doi_data_raw)
 
-        # add a study and dataset for publishing a submission
+        # Add a study and dataset for publishing a submission
         ds_1 = await post_object(client_logged_in, "dataset", submission_id, "dataset.xml")
         ds_1 = await get_object(client_logged_in, "dataset", ds_1[0])
 
@@ -310,7 +312,8 @@ class TestSubmissionOperations:
 
         submission_id = await publish_submission(client_logged_in, submission_id)
 
-        await get_draft(client_logged_in, "sample", draft_id, 404)  # checking the draft was deleted after publication
+        # Check the draft was deleted after publication
+        await get_draft(client_logged_in, "sample", draft_id, 404)
 
         async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
             LOG.debug(f"Checking that submission {submission_id} was patched")
@@ -322,7 +325,45 @@ class TestSubmissionOperations:
             assert res["drafts"] == [], "there are drafts in submission, expected empty"
             assert len(res["metadataObjects"]) == 4, "submission metadataObjects content mismatch"
 
-        # check that datacite has references between datasets and study
+        # Check that submission info and its objects cannot be updated and that publishing it again fails
+        async with client_logged_in.patch(
+            f"{submissions_url}/{submission_id}", data=json.dumps({"name": "new_name"})
+        ) as resp:
+            LOG.debug("Trying to update submission values")
+            assert resp.status == 401, f"HTTP Status code error, got {resp.status}"
+        async with client_logged_in.patch(
+            f"{objects_url}/sample/{accession_id}", params={"submission": submission_id}, json={}
+        ) as resp:
+            LOG.debug("Trying to update submission objects")
+            assert resp.status == 401, f"HTTP Status code error, got {resp.status}"
+        async with client_logged_in.patch(f"{publish_url}/{submission_id}") as resp:
+            LOG.debug(f"Trying to re-publish submission {submission_id}")
+            assert resp.status == 401, f"HTTP Status code error, got {resp.status}"
+
+        # Check submission objects cannot be replaced
+        sample = await create_request_data("sample", "SRS001433.xml")
+        async with client_logged_in.put(
+            f"{objects_url}/sample/{accession_id}", params={"submission": submission_id}, data=sample
+        ) as resp:
+            LOG.debug("Trying to replace submission objects")
+            assert resp.status == 401, f"HTTP Status code error, got {resp.status}"
+        async with client_logged_in.put(f"{submissions_url}/{submission_id}/doi", data=doi_data_raw) as resp:
+            LOG.debug("Trying to replace submission doi")
+            assert resp.status == 401, f"HTTP Status code error {resp.status} {ans}"
+        async with client_logged_in.put(f"{submissions_url}/{submission_id}/dac", data=dac_data) as resp:
+            LOG.debug("Trying to replace submission dac")
+            assert resp.status == 401, f"HTTP Status code error {resp.status} {ans}"
+
+        # Check new drafts or objects cannot be added under published submission
+        run = await create_request_json_data("run", "ERR000076.json")
+        async with client_logged_in.post(f"{drafts_url}/run", params={"submission": submission_id}, data=run) as resp:
+            LOG.debug("Trying to add draft object to already published submission")
+            assert resp.status == 401, f"HTTP Status code error, got {resp.status}"
+        async with client_logged_in.post(f"{objects_url}/run", params={"submission": submission_id}, data=run) as resp:
+            LOG.debug("Trying to add object to already published submission")
+            assert resp.status == 401, f"HTTP Status code error, got {resp.status}"
+
+        # Check that datacite has references between datasets and study
         async with client_logged_in.get(f"{datacite_url}/dois/{ds_1['doi']}") as datacite_resp:
             assert datacite_resp.status == 200, f"HTTP Status code error, got {datacite_resp.status}"
             datacite_res = await datacite_resp.json()
@@ -340,12 +381,8 @@ class TestSubmissionOperations:
         for id in study["data"]["attributes"]["relatedIdentifiers"]:
             assert id["relatedIdentifier"] in {ds_1["id"], ds_2["id"]}
 
-        # Delete submission
+        # Attempt deleting submission
         await delete_submission_publish(client_logged_in, submission_id)
-
-        async with client_logged_in.get(f"{drafts_url}/sample/{draft_id}") as resp:
-            LOG.debug(f"Checking that JSON object {accession_id} was deleted")
-            assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
 
     async def test_crud_submissions_works_no_publish(self, client_logged_in, project_id):
         """Test submissions REST API POST, GET, PATCH, PUBLISH and DELETE reqs.
