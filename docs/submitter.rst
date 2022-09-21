@@ -152,6 +152,11 @@ The REST API is structured as follows:
 - `Query Endpoints` used for data retrieval (``submissions``, ``objects``, ``users``) uses HTTP ``GET``;
 - `Management Endpoints` used for handling data updates and deletion, makes use of HTTP ``PUT``, ``PATCH`` and ``DELETE``.
 
+The REST API is protected and can be accessed in two ways:
+
+- Performing a successful login at frontend, which creates a session
+- Using a ``Bearer`` token, which is issued by ``OIDC_URL``
+
 .. important:: A logged in user can only perform operations on the data it has associated.
                The information for the current user can be retrieved at ``/v1/users/current`` (the user ID is ``current``), and
                any additional operations on other users are rejected.
