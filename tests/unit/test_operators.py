@@ -821,6 +821,18 @@ class TestOperators(IsolatedAsyncioTestCase):
         )
         self.assertEqual(result, (False, "", False))
 
+    async def test_check_object_submission_published(self):
+        """Test check object submission is published."""
+        operator = SubmissionOperator(self.client)
+        alt_test_submission = self.test_submission
+        alt_test_submission["published"] = True
+        operator.db_service.query.return_value = AsyncIterator([alt_test_submission])
+        result = await operator.check_object_in_submission("study", self.accession_id)
+        operator.db_service.query.assert_called_once_with(
+            "submission", {"metadataObjects": {"$elemMatch": {"accessionId": self.accession_id, "schema": "study"}}}
+        )
+        self.assertEqual(result, (True, self.submission_id, True))
+
     async def test_get_objects_submission_fails(self):
         """Test check object submission fails."""
         operator = SubmissionOperator(self.client)
@@ -939,7 +951,7 @@ class TestOperators(IsolatedAsyncioTestCase):
     async def test_delete_submission_fails(self):
         """Test submission delete fails."""
         operator = SubmissionOperator(self.client)
-        operator.db_service.published_submission.side_effect = ConnectionFailure
+        operator.db_service.delete.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
             await operator.delete_submission(self.submission_id)
 

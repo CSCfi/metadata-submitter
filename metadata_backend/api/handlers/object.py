@@ -122,6 +122,10 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         db_client = req.app["db_client"]
         submission_op = SubmissionOperator(db_client)
 
+        # check if submission is already published
+        # objects shouldn't be added to published submissions
+        await submission_op.check_submission_published(submission_id)
+
         # we need to check if there is already a study in a submission
         # we only allow one study per submission
         # this is not enough to catch duplicate entries if updates happen in parallel
@@ -341,11 +345,10 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
 
         submission_op = SubmissionOperator(db_client)
         exists, submission_id, published = await submission_op.check_object_in_submission(collection, accession_id)
-        if exists:
-            if published:
-                reason = "Published objects cannot be updated."
-                LOG.error(reason)
-                raise web.HTTPUnauthorized(reason=reason)
+        if exists and published:
+            reason = "Published objects cannot be updated."
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
 
         data = await operator.replace_metadata_object(collection, accession_id, content)
         patch = self._prepare_submission_patch_update_object(collection, data, filename)
@@ -398,11 +401,10 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
 
         submission_op = SubmissionOperator(db_client)
         exists, submission_id, published = await submission_op.check_object_in_submission(collection, accession_id)
-        if exists:
-            if published:
-                reason = "Published objects cannot be updated."
-                LOG.error(reason)
-                raise web.HTTPUnauthorized(reason=reason)
+        if exists and published:
+            reason = "Published objects cannot be updated."
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
 
         accession_id = await operator.update_metadata_object(collection, accession_id, content)
 
