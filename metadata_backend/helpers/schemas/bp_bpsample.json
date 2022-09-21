@@ -21,7 +21,10 @@
                                 "title": "Tag title"
                             },
                             "value": {
-                                "type": ["string","number"],
+                                "type": [
+                                    "string",
+                                    "number"
+                                ],
                                 "title": "Description"
                             },
                             "units": {
@@ -54,10 +57,14 @@
                                 "title": "Tag title"
                             },
                             "attribute": {
-                                "items": { "#ref": "#/$defs/sampleAttribute" }
+                                "items": {
+                                    "#ref": "#/$defs/sampleAttribute"
+                                }
                             },
                             "attributeSet": {
-                                "items": { "#ref": "#" }
+                                "items": {
+                                    "#ref": "#"
+                                }
                             }
                         }
                     }
@@ -74,10 +81,14 @@
                             "title": "Tag title"
                         },
                         "attribute": {
-                            "items": { "#ref": "#/$defs/sampleAttribute" }
+                            "items": {
+                                "#ref": "#/$defs/sampleAttribute"
+                            }
                         },
                         "attributeSet": {
-                            "items": { "#ref": "#" }
+                            "items": {
+                                "#ref": "#"
+                            }
                         }
                     }
                 }
