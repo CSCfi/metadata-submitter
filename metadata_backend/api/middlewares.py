@@ -1,7 +1,7 @@
 """Middleware methods for server."""
 import time
 from http import HTTPStatus
-from typing import Dict, List, Union
+from typing import List
 
 import aiohttp_session
 import ujson
@@ -11,7 +11,7 @@ from yarl import URL
 from ..conf.conf import OIDC_ENABLED, aai_config
 from ..helpers.logger import LOG
 from ..services.service_handler import ServiceHandler
-from .auth import AccessHandler
+from .auth import AccessHandler, ProjectList, UserData
 
 HTTP_ERROR_MESSAGE = "HTTP %r request to %r raised an HTTP %d exception."
 HTTP_ERROR_MESSAGE_BUG = "HTTP %r request to %r raised an HTTP %d exception. This IS a bug."
@@ -157,7 +157,6 @@ async def create_session_with_token(req: web.Request) -> aiohttp_session.Session
 
     # Validate token by sending it to AAI userinfo and getting back user profile
     headers = {"Authorization": f"Bearer {header_parts[1]}"}
-    # aai = ServiceHandler(base_url=URL(oidc_config["userinfo_endpoint"]), http_client_headers=headers)
     aai.base_url = oidc_config["userinfo_endpoint"]
     aai.http_client_headers = headers
     userinfo = await aai._request(method="GET")
@@ -166,8 +165,8 @@ async def create_session_with_token(req: web.Request) -> aiohttp_session.Session
 
     # Parse user profile data from userinfo endpoint response, these steps can raise 401
     single_session: AccessHandler = AccessHandler(aai_config)
-    user_data: Dict[str, Union[List[Dict[str, str]], str]] = await single_session._create_user_data(userinfo)
-    projects: List[Dict[str, str]] = await single_session._get_projects_from_userinfo(userinfo)
+    user_data: UserData = await single_session._create_user_data(userinfo)
+    projects: ProjectList = await single_session._get_projects_from_userinfo(userinfo)
     user_data["projects"] = await single_session._process_projects(req, projects)
 
     # Create session with required keys
