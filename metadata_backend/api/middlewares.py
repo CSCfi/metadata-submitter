@@ -1,14 +1,17 @@
 """Middleware methods for server."""
 import time
 from http import HTTPStatus
+from typing import Dict, List, Union
 
 import aiohttp_session
 import ujson
 from aiohttp import web
 from yarl import URL
 
-from ..conf.conf import OIDC_ENABLED
+from ..conf.conf import OIDC_ENABLED, aai_config
 from ..helpers.logger import LOG
+from ..services.service_handler import ServiceHandler
+from .auth import AccessHandler
 
 HTTP_ERROR_MESSAGE = "HTTP %r request to %r raised an HTTP %d exception."
 HTTP_ERROR_MESSAGE_BUG = "HTTP %r request to %r raised an HTTP %d exception. This IS a bug."
@@ -66,8 +69,13 @@ async def check_session(req: web.Request, handler: aiohttp_session.Handler) -> w
             LOG.debug(f"session: {session}")
 
             if session.empty:
-                session.invalidate()
-                raise _unauthorized("You must provide authentication to access SD-Submit API.")
+                if "Authorization" in req.headers:
+                    session = await create_session_with_token(req)
+                    if session.empty:
+                        raise _unauthorized("Invalid access token.")
+                else:
+                    session.invalidate()
+                    raise _unauthorized("You must provide authentication to access SD-Submit API.")
 
             if not all(k in session for k in ["access_token", "user_info", "at", "oidc_state"]):
                 LOG.error(f"Checked session parameter, session is invalid {session}. This could be a bug or abuse.")
@@ -121,3 +129,52 @@ def _json_problem(exception: web.HTTPError, url: URL, _type: str = "about:blank"
         escape_forward_slashes=False,
     )
     return body
+
+
+async def create_session_with_token(req: web.Request) -> aiohttp_session.Session:
+    """Create an authenticated session for the duration of a single request by using an access token.
+
+    :param req: request object containing database connection and request headers
+    :returns: session cookie
+    """
+    session = await aiohttp_session.get_session(req)
+
+    # Get bearer token from Authorization header
+    header = req.headers.get("Authorization", "")
+    header_parts: List[str] = header.split(" ")
+    if len(header_parts) == 2:
+        if header_parts[0] != "Bearer":
+            return session  # current empty session
+    else:
+        return session  # current empty session
+
+    # Get path to userinfo from OIDC config
+    aai = ServiceHandler(base_url=URL(aai_config["oidc_url"].rstrip("/")))
+    aai.service_name = "aai_for_single_session_token_auth"
+    oidc_config = await aai._request(method="GET", path="/.well-known/openid-configuration")
+    if not oidc_config or "userinfo_endpoint" not in oidc_config:
+        return session  # current empty session
+
+    # Validate token by sending it to AAI userinfo and getting back user profile
+    headers = {"Authorization": f"Bearer {header_parts[1]}"}
+    # aai = ServiceHandler(base_url=URL(oidc_config["userinfo_endpoint"]), http_client_headers=headers)
+    aai.base_url = oidc_config["userinfo_endpoint"]
+    aai.http_client_headers = headers
+    userinfo = await aai._request(method="GET")
+    if not userinfo:
+        return session  # current empty session
+
+    # Parse user profile data from userinfo endpoint response, these steps can raise 401
+    single_session: AccessHandler = AccessHandler(aai_config)
+    user_data: Dict[str, Union[List[Dict[str, str]], str]] = await single_session._create_user_data(userinfo)
+    projects: List[Dict[str, str]] = await single_session._get_projects_from_userinfo(userinfo)
+    user_data["projects"] = await single_session._process_projects(req, projects)
+
+    # Create session with required keys
+    session_cookie = await aiohttp_session.new_session(req)
+    session_cookie["at"] = time.time()
+    session_cookie["oidc_state"] = "unused"
+    session_cookie["access_token"] = header_parts[1]
+    session_cookie["user_info"] = await single_session._set_user(req, session_cookie, user_data)
+
+    return session_cookie  # validated session
