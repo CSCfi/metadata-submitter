@@ -8,7 +8,7 @@ import ujson
 from aiohttp import web
 from yarl import URL
 
-from ..conf.conf import OIDC_ENABLED, aai_config
+from ..conf.conf import aai_config
 from ..helpers.logger import LOG
 from ..services.service_handler import ServiceHandler
 from .auth import AccessHandler, ProjectList, UserData
@@ -63,40 +63,39 @@ async def check_session(req: web.Request, handler: aiohttp_session.Handler) -> w
     :raises: Reformatted HTTP Exceptions
     :returns: Successful requests unaffected
     """
-    if OIDC_ENABLED:
-        try:
-            session = await aiohttp_session.get_session(req)
-            LOG.debug(f"session: {session}")
+    try:
+        session = await aiohttp_session.get_session(req)
+        LOG.debug(f"session: {session}")
 
-            if session.empty:
-                if "Authorization" in req.headers:
-                    session = await create_session_with_token(req)
-                    if session.empty:
-                        raise _unauthorized("Invalid access token.")
-                else:
-                    session.invalidate()
-                    raise _unauthorized("You must provide authentication to access SD-Submit API.")
-
-            if not all(k in session for k in ["access_token", "user_info", "at", "oidc_state"]):
-                LOG.error(f"Checked session parameter, session is invalid {session}. This could be a bug or abuse.")
+        if session.empty:
+            if "Authorization" in req.headers:
+                session = await create_session_with_token(req)
+                if session.empty:
+                    raise _unauthorized("Invalid access token.")
+            else:
                 session.invalidate()
-                raise _unauthorized("Invalid session, authenticate again.")
+                raise _unauthorized("You must provide authentication to access SD-Submit API.")
 
-            if session["at"] + 28800 < time.time():
-                session.invalidate()
-                raise _unauthorized("Token expired.")
+        if not all(k in session for k in ["access_token", "user_info", "at", "oidc_state"]):
+            LOG.error(f"Checked session parameter, session is invalid {session}. This could be a bug or abuse.")
+            session.invalidate()
+            raise _unauthorized("Invalid session, authenticate again.")
 
-        except KeyError as error:
-            reason = f"No valid session. A session was invalidated due to invalid token. {error}"
-            LOG.info(reason)
-            raise _unauthorized(reason) from error
-        except web.HTTPException:
-            # HTTPExceptions are processed in the other middleware
-            raise
-        except Exception as error:
-            reason = f"No valid session. A session was invalidated due to another reason: {error}"
-            LOG.exception("No valid session. A session was invalidated due to another reason")
-            raise _unauthorized(reason) from error
+        if session["at"] + 28800 < time.time():
+            session.invalidate()
+            raise _unauthorized("Token expired.")
+
+    except KeyError as error:
+        reason = f"No valid session. A session was invalidated due to invalid token. {error}"
+        LOG.info(reason)
+        raise _unauthorized(reason) from error
+    except web.HTTPException:
+        # HTTPExceptions are processed in the other middleware
+        raise
+    except Exception as error:
+        reason = f"No valid session. A session was invalidated due to another reason: {error}"
+        LOG.exception("No valid session. A session was invalidated due to another reason")
+        raise _unauthorized(reason) from error
 
     return await handler(req)
 

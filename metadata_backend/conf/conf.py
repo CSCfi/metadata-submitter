@@ -143,9 +143,6 @@ swagger_static_path = Path(__file__).parent.parent / "swagger" / "index.html"
 
 
 # 5) Set up configurations for AAI server
-OIDC_ENABLED = False
-if "OIDC_URL" in os.environ and bool(os.getenv("OIDC_URL")):
-    OIDC_ENABLED = True
 
 aai_config = {
     "client_id": os.getenv("AAI_CLIENT_ID", "public"),
