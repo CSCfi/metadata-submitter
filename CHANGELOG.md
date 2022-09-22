@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added mapping for subjects from submission doi info to Metax field_of_science #556
 - Run integration tests with pytest
   - run integration tests with `--nocleanup` option
+- Support for LifeScience groups as a substitute to CSC projects #548
 
 ### Changed
 - schema loader now matches schema files by exact match with schema #481. This means that schema file naming in metadata_backend/helpers/schemas now have rules:

@@ -153,6 +153,11 @@ async def userinfo(request: web.Request) -> web.Response:
         "family_name": user_family_name,
         "email": user_sub,
         "sdSubmitProjects": "1000 2000 3000",
+        "eduperson_entitlement": [
+            "test_namespace:test_root:group1#client",
+            "test_namespace:test_root:group2#client",
+            "test_namespace:test_root:group3#client",
+        ],
     }
 
     LOG.info(user_info)
