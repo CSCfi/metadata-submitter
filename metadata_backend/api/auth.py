@@ -47,6 +47,25 @@ class AccessHandler:
                     "response_types": self.auth_method.split(" "),
                     "scope": self.scope.split(" "),
                 },
+                "add_ons": {
+                    # Re-activate this once we have implemented support on AAI side
+                    # "dpop": {
+                    #     "function": "oidcrp.oauth2.add_on.dpop.add_support",
+                    #     "kwargs": {
+                    #         "signing_algorithms": [
+                    #             "ES256",
+                    #             "ES512",
+                    #         ]
+                    #     },
+                    # },
+                    "pkce": {
+                        "function": "oidcrp.oauth2.add_on.pkce.add_support",
+                        "kwargs": {
+                            "code_challenge_length": 64,
+                            "code_challenge_method": "S256",
+                        },
+                    },
+                },
             },
         }
         self.rph = RPHandler(self.oidc_url, client_configs=self.oidc_conf)
