@@ -214,6 +214,18 @@ async def oidc_config(request: web.Request) -> web.Response:
         ],
         "userinfo_encryption_enc_values_supported": ["A128CBC-HS256"],
         "userinfo_signing_alg_values_supported": ["RS256", "RS384", "RS512", "HS256", "HS384", "HS512", "ES256"],
+        "dpop_signing_alg_values_supported": [
+            "none",
+            "RS256",
+            "RS384",
+            "RS512",
+            "HS256",
+            "HS384",
+            "HS512",
+            "ES256",
+            "ES384",
+            "ES512",
+        ],
         "request_object_signing_alg_values_supported": [
             "none",
             "RS256",

@@ -41,12 +41,12 @@ async def login(sess, sub, given, family):
         LOG.debug("Doing mock user login")
 
 
-async def get_user_data(sess):
+async def get_user_data(sess, headers={}):
     """Get current logged in user's data model.
 
     :param sess: HTTP session in which request call is made
     """
-    async with sess.get(f"{users_url}/current") as resp:
+    async with sess.get(f"{users_url}/current", headers=headers) as resp:
         LOG.debug("Get userdata")
         ans = await resp.json()
         assert resp.status == 200, f"HTTP Status code error {resp.status} {ans}"

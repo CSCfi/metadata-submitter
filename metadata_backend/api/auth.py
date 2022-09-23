@@ -12,6 +12,12 @@ from oidcrp.rp_handler import RPHandler
 from ..helpers.logger import LOG
 from .operators import ProjectOperator, UserOperator
 
+# Type aliases
+# ProjectList is a list of projects and their origins
+ProjectList = List[Dict[str, str]]
+# UserData contains user profile from AAI userinfo, such as name, username and projects
+UserData = Dict[str, Union[ProjectList, str]]
+
 
 class AccessHandler:
     """Handler for user access methods."""
@@ -40,6 +46,25 @@ class AccessHandler:
                 "behaviour": {
                     "response_types": self.auth_method.split(" "),
                     "scope": self.scope.split(" "),
+                },
+                "add_ons": {
+                    # Re-activate this once we have implemented support on AAI side
+                    # "dpop": {
+                    #     "function": "oidcrp.oauth2.add_on.dpop.add_support",
+                    #     "kwargs": {
+                    #         "signing_algorithms": [
+                    #             "ES256",
+                    #             "ES512",
+                    #         ]
+                    #     },
+                    # },
+                    "pkce": {
+                        "function": "oidcrp.oauth2.add_on.pkce.add_support",
+                        "kwargs": {
+                            "code_challenge_length": 64,
+                            "code_challenge_method": "S256",
+                        },
+                    },
                 },
             },
         }
@@ -114,68 +139,22 @@ class AccessHandler:
             LOG.error(f"OIDC Callback failed with: {e}")
             raise web.HTTPUnauthorized(reason="Invalid OIDC callback.")
 
-        # User data is read from AAI /userinfo and is used to create the user model in database
-        user_data: Dict[str, Union[str, List[Dict[str, str]]]] = {
-            "user_id": "",
-            "real_name": f"{session['userinfo']['given_name']} {session['userinfo']['family_name']}",
-            "projects": [],
-        }
-        if "CSCUserName" in session["userinfo"]:
-            user_data["user_id"] = session["userinfo"]["CSCUserName"]
-        elif "remoteUserIdentifier" in session["userinfo"]:
-            user_data["user_id"] = session["userinfo"]["remoteUserIdentifier"]
-        elif "sub" in session["userinfo"]:
-            user_data["user_id"] = session["userinfo"]["sub"]
-        else:
-            LOG.error(
-                "User was authenticated, but they are missing mandatory claim CSCUserName, remoteUserIdentifier or sub."
-            )
-            raise web.HTTPUnauthorized(
-                reason="Could not set user, missing claim CSCUserName, remoteUserIdentifier or sub."
-            )
-
-        # Handle projects, they come in different formats depending on the service used.
-        # Current project sources: CSC projects, LS AAI groups
-        projects: List[Dict[str, str]] = []
-        if "sdSubmitProjects" in session["userinfo"]:
-            # CSC projects come in format "project1 project2"
-            csc_projects = session["userinfo"]["sdSubmitProjects"].split(" ")
-            for csc_project in csc_projects:
-                projects.append(
-                    {
-                        "project_name": csc_project,
-                        "origin": "csc",
-                    }
-                )
-        if "eduperson_entitlement" in session["userinfo"]:
-            # LS AAI groups come in format ["group1", "group2"]
-            for group in session["userinfo"]["eduperson_entitlement"]:
-                projects.append(
-                    {
-                        # remove the oidc client information, as it's not important to the user
-                        "project_name": group.split("#")[0],
-                        "origin": "lifescience",
-                    }
-                )
-
-        if len(projects) == 0:
-            # No project group information received, abort, as metadata-submitter
-            # object hierarchy depends on a project group to act as owner for objects
-            raise web.HTTPUnauthorized(reason="User is not a member of any project.")
+        # Parse data from the userinfo endpoint to create user data containing username, real name and projects/groups
+        user_data: UserData = await self._create_user_data(session["userinfo"])
+        projects: ProjectList = await self._get_projects_from_userinfo(session["userinfo"])
 
         # Process project external IDs into the database and return accession IDs back to user_data
         user_data["projects"] = await self._process_projects(req, projects)
 
+        # Create session
         browser_session = await aiohttp_session.new_session(req)
         browser_session["at"] = time.time()
-
-        # Inject cookie to this request to let _set_user work as expected.
         browser_session["oidc_state"] = params["state"]
         browser_session["access_token"] = session["token"]
-
         await self._set_user(req, browser_session, user_data)
-        response = web.HTTPSeeOther(f"{self.redirect}/home")
 
+        # Create response
+        response = web.HTTPSeeOther(f"{self.redirect}/home")
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         response.headers["Pragma"] = "no-Cache"
         response.headers["Expires"] = "0"
@@ -206,7 +185,7 @@ class AccessHandler:
 
         return response
 
-    async def _process_projects(self, req: Request, projects: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    async def _process_projects(self, req: Request, projects: ProjectList) -> ProjectList:
         """Process project external IDs to internal accession IDs by getting IDs\
             from database and creating projects that are missing.
 
@@ -215,7 +194,7 @@ class AccessHandler:
         :param projects: A list of project external IDs
         :returns: A list of objects containing project accession IDs and project numbers
         """
-        new_project_ids: List[Dict[str, str]] = []
+        new_project_ids: ProjectList = []
 
         db_client = req.app["db_client"]
         operator = ProjectOperator(db_client)
@@ -224,7 +203,7 @@ class AccessHandler:
             project_data = {
                 "projectId": project_id,  # internal ID
                 "projectNumber": project["project_name"],  # human friendly
-                "origin": project["origin"],  # where this project came from: [csc | lifescience]
+                "projectOrigin": project["project_origin"],  # where this project came from: [csc | lifescience]
             }
             new_project_ids.append(project_data)
 
@@ -234,8 +213,8 @@ class AccessHandler:
         self,
         req: Request,
         browser_session: aiohttp_session.Session,
-        user_data: Dict[str, Union[List[Dict[str, str]], str]],
-    ) -> None:
+        user_data: UserData,
+    ) -> str:
         """Set user in current session and return user id based on result of create_user.
 
         :raises: HTTPBadRequest in could not get user info from AAI OIDC
@@ -264,3 +243,69 @@ class AccessHandler:
             user_id = await operator.update_user(user_id, update_operation)
 
         browser_session["user_info"] = user_id
+        return user_id
+
+    async def _create_user_data(self, userinfo: Dict) -> UserData:
+        """Parse user profile data from userinfo endpoint response.
+
+        :param userinfo: dict from userinfo containing user profile
+        :returns: parsed user profile data containing username and real name
+        """
+        # User data is read from AAI /userinfo and is used to create the user model in database
+        user_data: UserData = {
+            "user_id": "",
+            "real_name": f"{userinfo['given_name']} {userinfo['family_name']}",
+            "projects": [],
+        }
+        if "CSCUserName" in userinfo:
+            user_data["user_id"] = userinfo["CSCUserName"]
+        elif "remoteUserIdentifier" in userinfo:
+            user_data["user_id"] = userinfo["remoteUserIdentifier"]
+        elif "sub" in userinfo:
+            user_data["user_id"] = userinfo["sub"]
+        else:
+            LOG.error(
+                "User was authenticated, but they are missing mandatory claim CSCUserName, remoteUserIdentifier or sub."
+            )
+            raise web.HTTPUnauthorized(
+                reason="Could not set user, missing claim CSCUserName, remoteUserIdentifier or sub."
+            )
+
+        return user_data
+
+    async def _get_projects_from_userinfo(self, userinfo: Dict) -> ProjectList:
+        """Parse projects and groups from userinfo endpoint response.
+
+        :param userinfo: dict from userinfo containing user profile
+        :returns: parsed projects and groups and their origins
+        """
+        # Handle projects, they come in different formats depending on the service used.
+        # Current project sources: CSC projects, LS AAI groups
+        projects: ProjectList = []
+        if "sdSubmitProjects" in userinfo:
+            # CSC projects come in format "project1 project2"
+            csc_projects = userinfo["sdSubmitProjects"].split(" ")
+            for csc_project in csc_projects:
+                projects.append(
+                    {
+                        "project_name": csc_project,
+                        "project_origin": "csc",
+                    }
+                )
+        if "eduperson_entitlement" in userinfo:
+            # LS AAI groups come in format ["group1", "group2"]
+            for group in userinfo["eduperson_entitlement"]:
+                projects.append(
+                    {
+                        # remove the oidc client information, as it's not important to the user
+                        "project_name": group.split("#")[0],
+                        "project_origin": "lifescience",
+                    }
+                )
+
+        if len(projects) == 0:
+            # No project group information received, abort, as metadata-submitter
+            # object hierarchy depends on a project group to act as owner for objects
+            raise web.HTTPUnauthorized(reason="User is not a member of any project.")
+
+        return projects

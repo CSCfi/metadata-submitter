@@ -182,6 +182,7 @@ docstrings
 doi
 doiinfo
 dois
+dpop
 dt
 dzongkha
 ean
@@ -397,6 +398,7 @@ minitems
 minlength
 minmatch
 mirna
+misconfiguration
 miseq
 mkdir
 mnase
@@ -489,6 +491,7 @@ pgm
 phenome
 physicalobject
 pipesection
+pkce
 pmc
 pmid
 pointlatitude
