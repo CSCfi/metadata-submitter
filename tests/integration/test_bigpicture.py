@@ -48,12 +48,12 @@ class TestBigPicture:
         submission_id = await publish_submission(client_logged_in, submission_id)
 
         # check that datacite has references between datasets and study
-        async with client_logged_in.get(f"{datacite_url}/{bpdataset['doi']}") as datacite_resp:
+        async with client_logged_in.get(f"{datacite_url}/dois/{bpdataset['doi']}") as datacite_resp:
             assert datacite_resp.status == 200, f"HTTP Status code error, got {datacite_resp.status}"
             datacite_res = await datacite_resp.json()
             bpdataset = datacite_res
 
-        async with client_logged_in.get(f"{datacite_url}/{study['doi']}") as datacite_resp:
+        async with client_logged_in.get(f"{datacite_url}/dois/{study['doi']}") as datacite_resp:
             assert datacite_resp.status == 200, f"HTTP Status code error, got {datacite_resp.status}"
             datacite_res = await datacite_resp.json()
             study = datacite_res

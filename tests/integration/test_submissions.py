@@ -323,15 +323,15 @@ class TestSubmissionOperations:
             assert len(res["metadataObjects"]) == 4, "submission metadataObjects content mismatch"
 
         # check that datacite has references between datasets and study
-        async with client_logged_in.get(f"{datacite_url}/{ds_1['doi']}") as datacite_resp:
+        async with client_logged_in.get(f"{datacite_url}/dois/{ds_1['doi']}") as datacite_resp:
             assert datacite_resp.status == 200, f"HTTP Status code error, got {datacite_resp.status}"
             datacite_res = await datacite_resp.json()
             ds_1 = datacite_res
-        async with client_logged_in.get(f"{datacite_url}/{ds_2['doi']}") as datacite_resp:
+        async with client_logged_in.get(f"{datacite_url}/dois/{ds_2['doi']}") as datacite_resp:
             assert datacite_resp.status == 200, f"HTTP Status code error, got {datacite_resp.status}"
             datacite_res = await datacite_resp.json()
             ds_2 = datacite_res
-        async with client_logged_in.get(f"{datacite_url}/{study['doi']}") as datacite_resp:
+        async with client_logged_in.get(f"{datacite_url}/dois/{study['doi']}") as datacite_resp:
             assert datacite_resp.status == 200, f"HTTP Status code error, got {datacite_resp.status}"
             datacite_res = await datacite_resp.json()
             study = datacite_res
