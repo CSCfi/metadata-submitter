@@ -3,9 +3,11 @@
 API docs https://metax.fairdata.fi/docs/
 Swagger https://metax.fairdata.fi/swagger/v2
 """
+import time
 from typing import Any, Dict, List
 
 from aiohttp import BasicAuth, web
+from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
 from yarl import URL
 
 from ..conf.conf import METAX_ENABLED, metax_config
@@ -295,3 +297,36 @@ class MetaxServiceHandler(ServiceHandler):
         research_dataset["description"]["en"] = data["description"]
         LOG.debug(f"Created Metax dataset from Dataset with data: {research_dataset}")
         return research_dataset
+
+    async def _healtcheck(self) -> Dict:
+        """Check Metax service health.
+
+        This responds with pong, when pinged.
+
+        :returns: Dict with status of the datacite status
+        """
+        try:
+            start = time.time()
+            async with self._client.request(
+                method="GET",
+                url=f"{URL(metax_config['url'])}/watchman/ping/",
+                timeout=10,
+            ) as response:
+
+                LOG.info(f"Metax REST API status is {response.status}.")
+                content = await response.text()
+                if response.status == 200 and content == "pong":
+                    status = "Ok" if (time.time() - start) < 1000 else "Degraded"
+                else:
+                    status = "Down"
+
+                return {"status": status}
+        except ClientConnectorError as e:
+            LOG.info(f"Metax REST API is down with error {e}.")
+            return {"status": "Down"}
+        except InvalidURL as e:
+            LOG.info(f"Metax REST API status retrieval failed with {e}.")
+            return {"status": "Error"}
+        except web.HTTPError as e:
+            LOG.info(f"Metax REST API status retrieval failed with {e}.")
+            return {"status": "Error"}

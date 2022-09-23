@@ -10,8 +10,7 @@ from yarl import URL
 
 from ..conf.conf import aai_config
 from ..helpers.logger import LOG
-from ..services.service_handler import ServiceHandler
-from .auth import AccessHandler, ProjectList, UserData
+from .auth import AAIServiceHandler, AccessHandler, ProjectList, UserData
 
 HTTP_ERROR_MESSAGE = "HTTP %r request to %r raised an HTTP %d exception."
 HTTP_ERROR_MESSAGE_BUG = "HTTP %r request to %r raised an HTTP %d exception. This IS a bug."
@@ -147,9 +146,10 @@ async def create_session_with_token(req: web.Request) -> aiohttp_session.Session
     else:
         return session  # current empty session
 
-    # Get path to userinfo from OIDC config
-    aai = ServiceHandler(base_url=URL(aai_config["oidc_url"].rstrip("/")))
+    # we need to create a new instance every time, this is not something we can re-use
+    aai = AAIServiceHandler()
     aai.service_name = "aai_for_single_session_token_auth"
+    # Get path to userinfo from OIDC config
     oidc_config = await aai._request(method="GET", path="/.well-known/openid-configuration")
     if not oidc_config or "userinfo_endpoint" not in oidc_config:
         return session  # current empty session
@@ -161,6 +161,8 @@ async def create_session_with_token(req: web.Request) -> aiohttp_session.Session
     userinfo = await aai._request(method="GET")
     if not userinfo:
         return session  # current empty session
+
+    await aai.http_client_close()
 
     # Parse user profile data from userinfo endpoint response, these steps can raise 401
     single_session: AccessHandler = AccessHandler(aai_config)
