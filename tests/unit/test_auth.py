@@ -329,9 +329,9 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
         userinfo = {"sdSubmitProjects": "1000", "eduperson_entitlement": ["group"]}
         projects = await AccessHandler._get_projects_from_userinfo(self, userinfo)
         assert projects[0]["project_name"] == "1000"
-        assert projects[0]["origin"] == "csc"
+        assert projects[0]["project_origin"] == "csc"
         assert projects[1]["project_name"] == "group"
-        assert projects[1]["origin"] == "lifescience"
+        assert projects[1]["project_origin"] == "lifescience"
 
     async def test_get_projects_from_userinfo_fail(self):
         """Test that no projects raises an error."""

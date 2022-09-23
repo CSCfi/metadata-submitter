@@ -203,7 +203,7 @@ class AccessHandler:
             project_data = {
                 "projectId": project_id,  # internal ID
                 "projectNumber": project["project_name"],  # human friendly
-                "origin": project["origin"],  # where this project came from: [csc | lifescience]
+                "projectOrigin": project["project_origin"],  # where this project came from: [csc | lifescience]
             }
             new_project_ids.append(project_data)
 
@@ -289,7 +289,7 @@ class AccessHandler:
                 projects.append(
                     {
                         "project_name": csc_project,
-                        "origin": "csc",
+                        "project_origin": "csc",
                     }
                 )
         if "eduperson_entitlement" in userinfo:
@@ -299,7 +299,7 @@ class AccessHandler:
                     {
                         # remove the oidc client information, as it's not important to the user
                         "project_name": group.split("#")[0],
-                        "origin": "lifescience",
+                        "project_origin": "lifescience",
                     }
                 )
 
