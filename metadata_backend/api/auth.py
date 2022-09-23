@@ -5,11 +5,15 @@ from typing import Dict, List, Union
 
 import aiohttp_session
 from aiohttp import web
+from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
 from aiohttp.web import Request, Response
 from oidcrp.exception import OidcServiceError
 from oidcrp.rp_handler import RPHandler
+from yarl import URL
 
+from ..conf.conf import aai_config
 from ..helpers.logger import LOG
+from ..services.service_handler import ServiceHandler
 from .operators import ProjectOperator, UserOperator
 
 # Type aliases
@@ -309,3 +313,45 @@ class AccessHandler:
             raise web.HTTPUnauthorized(reason="User is not a member of any project.")
 
         return projects
+
+
+class AAIServiceHandler(ServiceHandler):
+    """AAI handler for API Calls."""
+
+    def __init__(self) -> None:
+        """Get AAI credentials from config."""
+        super().__init__(base_url=URL(aai_config["oidc_url"].rstrip("/")))
+
+    async def _healtcheck(self) -> Dict:
+        """Check AAI service hearthbeat.
+
+        This will return a JSON with well-known OIDC endpoints.
+
+        :returns: Dict with status of the datacite status
+        """
+
+        try:
+            start = time.time()
+            async with self._client.request(
+                method="GET",
+                url=f"{self.base_url}/.well-known/openid-configuration",
+                timeout=10,
+            ) as response:
+
+                content = await response.json()
+                LOG.info(f"AAI REST API status is {content}.")
+                if response.status == 200 and "userinfo_endpoint" in content:
+                    status = "Ok" if (time.time() - start) < 1000 else "Degraded"
+                else:
+                    status = "Down"
+
+                return {"status": status}
+        except ClientConnectorError as e:
+            LOG.info(f"AAI REST API is down with error {e}.")
+            return {"status": "Down"}
+        except InvalidURL as e:
+            LOG.info(f"AAI REST API status retrieval failed with {e}.")
+            return {"status": "Error"}
+        except web.HTTPError as e:
+            LOG.info(f"AAI REST API status retrieval failed with {e}.")
+            return {"status": "Error"}

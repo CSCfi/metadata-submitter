@@ -6,11 +6,13 @@ https://github.com/neicnordic/sda-orchestration/blob/master/sda_orchestrator/uti
 Api docs and reference: https://support.datacite.org/
 Test account access: https://doi.test.datacite.org/sign-in
 """
+import time
 from typing import Dict, Union
 from uuid import uuid4
 
 import ujson
-from aiohttp import BasicAuth, ClientTimeout
+from aiohttp import BasicAuth, ClientTimeout, web
+from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
 from yarl import URL
 
 from ..conf.conf import doi_config
@@ -95,7 +97,7 @@ class DataciteServiceHandler(ServiceHandler):
         # this payload is sufficient to get a draft DOI
         doi_payload = {"data": {"type": "dois", "attributes": {"doi": f"{self.doi_prefix}/{doi_suffix}"}}}
 
-        draft_resp = await self._request(method="POST", json_data=doi_payload)
+        draft_resp = await self._request(method="POST", path="/dois", json_data=doi_payload)
         full_doi = draft_resp["data"]["attributes"]["doi"]
         returned_suffix = draft_resp["data"]["attributes"]["suffix"]
         LOG.info(f"DOI draft created with doi: {full_doi}.")
@@ -117,7 +119,7 @@ class DataciteServiceHandler(ServiceHandler):
         :raises: HTTPInternalServerError if the Datacite DOI update fails
         """
         _id = datacite_payload["id"]
-        await self._request(method="PUT", path=_id, json_data=datacite_payload)
+        await self._request(method="PUT", path=f"/dois/{_id}", json_data=datacite_payload)
         LOG.info(f"Datacite doi {_id} updated ")
 
     async def delete(self, doi: str) -> None:
@@ -128,5 +130,38 @@ class DataciteServiceHandler(ServiceHandler):
         :param doi: identifier to be utilized for deleting draft DOI
         :raises: HTTPInternalServerError if we the Datacite draft DOI delete fails
         """
-        await self._request(method="DELETE", path=doi)
+        await self._request(method="DELETE", path=f"/dois/{doi}")
         LOG.info(f"Datacite doi {doi} deleted.")
+
+    async def _healtcheck(self) -> Dict:
+        """Check DOI service hearthbeat.
+
+        This can return only 200 or 500
+
+        :returns: Dict with status of the datacite status
+        """
+        try:
+            start = time.time()
+            async with self._client.request(
+                method="GET",
+                url=f"{self.base_url}/heartbeat",
+                timeout=10,
+            ) as response:
+
+                content = await response.text()
+                LOG.info(f"Datacite REST API status is {content}.")
+                if response.status == 200 and content == "OK":
+                    status = "Ok" if (time.time() - start) < 1000 else "Degraded"
+                else:
+                    status = "Down"
+
+                return {"status": status}
+        except ClientConnectorError as e:
+            LOG.info(f"Datacite REST API is down with error {e}.")
+            return {"status": "Down"}
+        except InvalidURL as e:
+            LOG.info(f"Metax Datacite API status retrieval failed with {e}.")
+            return {"status": "Error"}
+        except web.HTTPError as e:
+            LOG.info(f"Datacite REST API status retrieval failed with {e}.")
+            return {"status": "Error"}

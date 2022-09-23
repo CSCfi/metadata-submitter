@@ -11,9 +11,11 @@ license     ->  	policy
 resource    ->  	dataset
 
 """
+import time
 from typing import Dict, List
 
 from aiohttp import web
+from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
 from yarl import URL
 
 from ..conf.conf import REMS_ENABLED, rems_config
@@ -161,3 +163,36 @@ class RemsServiceHandler(ServiceHandler):
             await self.item_ok("license", organization_id, license_id)
         LOG.debug("All ok.")
         return True
+
+    async def _healtcheck(self) -> Dict:
+        """Check REMS service health.
+
+        This responds with status of healthy boolean, version and latest event information.
+
+        :returns: Dict with status of the datacite status
+        """
+        try:
+            start = time.time()
+            async with self._client.request(
+                method="GET",
+                url=f"{self.base_url}/health",
+                timeout=10,
+            ) as response:
+
+                LOG.info(f"REMS REST API status is {response.status}.")
+                content = await response.json()
+                if response.status == 200 and content["healthy"]:
+                    status = "Ok" if (time.time() - start) < 1000 else "Degraded"
+                else:
+                    status = "Down"
+
+                return {"status": status}
+        except ClientConnectorError as e:
+            LOG.info(f"REMS REST API is down with error {e}.")
+            return {"status": "Down"}
+        except InvalidURL as e:
+            LOG.info(f"REMS REST API status retrieval failed with {e}.")
+            return {"status": "Error"}
+        except web.HTTPError as e:
+            LOG.info(f"REMS REST API status retrieval failed with {e}.")
+            return {"status": "Error"}
