@@ -41,7 +41,18 @@ async def get_root(req: web.Request) -> web.Response:
     :params req: HTTP request with data for Metax dataset
     :return: HTTPNoContent
     """
+    if req.method == "HEAD":
+        return web.HTTPOk(body=None)
     return web.HTTPNoContent()
+
+
+async def ping_pong(req: web.Request) -> web.Response:
+    """Mock endpoint for testing server responds.
+
+    :params req: HTTP request with data for Metax dataset
+    :return: HTTPNoContent
+    """
+    return web.HTTPOk(body="pong")
 
 
 async def get_dataset(req: web.Request) -> web.Response:
@@ -369,7 +380,8 @@ async def init() -> web.Application:
     """Start server."""
     app = web.Application()
     api_routes = [
-        web.get("/", get_root),
+        web.get("/", get_root, allow_head=True),
+        web.get("/watchman/ping/", ping_pong),
         web.post("/rest/v2/datasets", post_dataset),
         web.put("/rest/v2/datasets/{metax_id}", update_dataset),
         web.delete("/rest/v2/datasets/{metax_id}", delete_dataset),

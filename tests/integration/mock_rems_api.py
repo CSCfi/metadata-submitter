@@ -301,9 +301,21 @@ async def post_catalogue_item(request: web.Request) -> web.Response:
     return web.json_response(data={"success": True, "id": catalogue_id})
 
 
+async def get_health(request: web.Request) -> web.Response:
+    """REMS create health status."""
+    healthy_response = {
+        "healthy": True,
+        "version": {"version": "v2.29-0-g16fbe58a7", "revision": "testing"},
+        "latest-event": "2022-09-22T00:04:08.554Z",
+    }
+
+    return web.json_response(data=healthy_response)
+
+
 async def init() -> web.Application:
     """Start server."""
     app = web.Application()
+    app.router.add_get("/api/health", get_health)
     app.router.add_get("/api/workflows", get_workflows)
     app.router.add_get("/api/workflows/{workflow_id}", get_workflow)
     app.router.add_get("/api/licenses", get_licenses)
