@@ -25,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Run integration tests with pytest
   - run integration tests with `--nocleanup` option 
 - Support for LifeScience groups as a substitute to CSC projects #548
+- Support for `Bearer` tokens, opening use of the API without frontend. Tokens are validated from the configured `OIDC_URL`
+- Made [PKCE](https://oidcrp.readthedocs.io/en/latest/add_on/pkce.html) settings explicit in `oidcrp` client auth
+- Added [DPOP](https://oidcrp.readthedocs.io/en/latest/add_on/dpop.html) placeholder settings for when AAI support has been implemented
 
 ### Changed
 - schema loader now matches schema files by exact match with schema #481. This means that schema file naming in metadata_backend/helpers/schemas now have rules:
@@ -52,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - remove `datacite.json` to render the form from `folder["doiInfo"]`
   - we removed `namedtype` for `contributors` and `creators` we therefore allow `additionalProperties`
   - `subjectsSchema` is a given by frontend thus we allow via `additionalProperties`
+- Removed `OIDC_ENABLED` testing variable which can cause misconfiguration incidents
 
 - remove unused code related to change from user to project ownership caused by faulty rebase or rollback of certain features #579
 
