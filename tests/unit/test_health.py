@@ -17,7 +17,16 @@ class HealthTestCase(AioHTTPTestCase):
 
     async def setUpAsync(self):
         """Configure values and patches for testing."""
-        self.health_status = {"services": {"database": {"status": "Ok"}}, "status": "Ok"}
+        self.health_status = {
+            "services": {
+                "database": {"status": "Ok"},
+                "datacite": {"status": "Down"},
+                "metax": {"status": "Down"},
+                "rems": {"status": "Down"},
+                "aai": {"status": "Error"},
+            },
+            "status": "Partially down",
+        }
 
         class_motorclient = "metadata_backend.api.health.AsyncIOMotorClient"
         motorclient_config = {"server_info.side_effect": self.fake_asynciomotorclient_server_info}
