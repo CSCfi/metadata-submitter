@@ -154,7 +154,7 @@ class ParserTestCase(unittest.TestCase):
         bp_dataset_xml = self.load_file_to_text("bpdataset", "template_dataset.xml")
         bp_dataset_json = self.xml_parser.parse("bpdataset", bp_dataset_xml)
         self.assertEqual("Dataset_QoRIPbAPlP", bp_dataset_json["alias"])
-        self.assertEqual("1", bp_dataset_json["attributes"]["attribute"][0]["value"])
+        self.assertEqual("1", bp_dataset_json["attributes"][0]["value"])
         self.assertEqual(list, type(bp_dataset_json["datasetType"]))
 
     def test_bp_sample_is_parsed(self):
@@ -167,8 +167,8 @@ class ParserTestCase(unittest.TestCase):
         self.assertEqual(10, len(bp_sample_json))
         self.assertEqual("BiologicalBeing_qLNZYjYjyZ", bp_sample_json[0]["biologicalBeing"]["alias"])
         self.assertEqual("BiologicalBeing_qLNZYjYjyZ", bp_sample_json[2]["specimen"]["extractedFrom"]["refname"])
-        self.assertEqual(65.0, bp_sample_json[2]["specimen"]["attributes"]["numericAttribute"]["value"])
-        self.assertEqual("sample_preparation", bp_sample_json[4]["block"]["attributes"]["attribute"]["tag"])
+        self.assertEqual(65.0, bp_sample_json[2]["specimen"]["attributes"][3]["value"])
+        self.assertEqual("sample_preparation", bp_sample_json[4]["block"]["attributes"][0]["tag"])
         self.assertEqual(2, len(bp_sample_json[7]["slide"]["attributes"]["attributeSet"]["attributeSet"]))
 
     def test_error_raised_when_schema_not_found(self):

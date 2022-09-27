@@ -1,23 +1,22 @@
 {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "Experiment",
-    "definitions": {
+    "$defs": {
         "Links": {
-            "$id": "#/definitions/Links",
             "title": "Link Type",
             "oneOf": [
                 {
-                    "$ref": "#/definitions/xrefLink"
+                    "$ref": "#/$defs/xrefLink"
                 },
                 {
-                    "$ref": "#/definitions/urlLink"
+                    "$ref": "#/$defs/urlLink"
                 },
                 {
-                    "$ref": "#/definitions/entrezLink"
+                    "$ref": "#/$defs/entrezLink"
                 }
             ]
         },
         "xrefLink": {
-            "$id": "#/definitions/xrefLink",
             "title": "XRef Link",
             "type": "object",
             "required": [
@@ -43,7 +42,6 @@
             }
         },
         "urlLink": {
-            "$id": "#/definitions/urlLink",
             "title": "URL Link",
             "type": "object",
             "required": [
@@ -65,7 +63,6 @@
             }
         },
         "entrezLink": {
-            "$id": "#/definitions/entrezLink",
             "title": "Entrez Link",
             "type": "object",
             "required": [
@@ -137,7 +134,6 @@
             }
         },
         "experimentAttribute": {
-            "$id": "#/definitions/experimentAttribute",
             "type": "object",
             "title": "Experiment Attribute",
             "required": [
@@ -160,7 +156,6 @@
             }
         },
         "pool": {
-            "$id": "#/definitions/pool",
             "title": "List of group/pool/multiplex sample members",
             "type": "object",
             "additionalProperties": false,
@@ -173,19 +168,18 @@
                         "defaultMember": {
                             "type": "object",
                             "title": "Default Member",
-                            "$ref": "#/definitions/poolMemberType"
+                            "$ref": "#/$defs/poolMemberType"
                         },
                         "member": {
                             "type": "object",
                             "title": "Member",
-                            "$ref": "#/definitions/poolMemberType"
+                            "$ref": "#/$defs/poolMemberType"
                         }
                     }
                 }
             }
         },
         "poolMemberType": {
-            "$id": "#/definitions/poolMemberType",
             "title": "Pool Member Type",
             "type": "object",
             "properties": {
@@ -204,7 +198,6 @@
             }
         },
         "libraryType": {
-            "$id": "#/definitions/libraryType",
             "type": "object",
             "title": "Library used for experiment design.",
             "required": [
@@ -223,11 +216,11 @@
                     "description": "Pick a sample to associate this experiment with. The sample may be an individual or a pool, depending on how it is specified.",
                     "oneOf": [
                         {
-                            "$ref": "#/definitions/pool"
+                            "$ref": "#/$defs/pool"
                         },
                         {
                             "title": "Individual Sample",
-                            "$ref": "#/definitions/reference"
+                            "$ref": "#/$defs/reference"
                         }
                     ]
                 },
@@ -553,7 +546,6 @@
             }
         },
         "processingType": {
-            "$id": "#/definitions/processingType",
             "type": "object",
             "title": "Processing Type",
             "description": "Information about the processing type such as pipeline and sequencing directives.",
@@ -646,7 +638,6 @@
             }
         },
         "identifiers": {
-            "$id": "#/definitions/identifiers",
             "title": "Identifiers",
             "description": "Identifiers to be used in the International Nucleotide Sequence Database Collaboration (INSDC) namespace.",
             "type": "object",
@@ -699,7 +690,6 @@
             }
         },
         "reference": {
-            "$id": "#/definitions/reference",
             "additionalProperties": false,
             "type": "object",
             "properties": {
@@ -719,7 +709,7 @@
                     "title": "Center Namespace"
                 },
                 "identifiers": {
-                    "$ref": "#/definitions/identifiers"
+                    "$ref": "#/$defs/identifiers"
                 }
             }
         }
@@ -814,23 +804,23 @@
         "studyRef": {
             "title": "Study Reference",
             "description": "Identifies the associated study.",
-            "$ref": "#/definitions/reference"
+            "$ref": "#/$defs/reference"
         },
         "design": {
             "title": "Design",
             "description": "The library design including library properties, layout, protocol, targeting information, and spot and gap descriptors. ",
-            "$ref": "#/definitions/libraryType"
+            "$ref": "#/$defs/libraryType"
         },
         "processing": {
             "title": "Processing",
-            "$ref": "#/definitions/processingType"
+            "$ref": "#/$defs/processingType"
         },
         "experimentLinks": {
             "type": "array",
             "title": "Experiment Links",
             "description": "Links to resources related to this experiment or experiment set (publication, datasets, online databases). Used to encode URL links, Entrez links, and xref DB links. ",
             "items": {
-                "$ref": "#/definitions/Links"
+                "$ref": "#/$defs/Links"
             }
         },
         "experimentAttributes": {
@@ -838,7 +828,7 @@
             "title": "Experiment Attributes",
             "description": "Properties and attributes of the data set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
             "items": {
-                "$ref": "#/definitions/experimentAttribute"
+                "$ref": "#/$defs/experimentAttribute"
             }
         }
     }

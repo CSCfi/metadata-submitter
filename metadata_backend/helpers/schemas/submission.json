@@ -1,6 +1,8 @@
 {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "description": "Submission that contains submitted metadata objects",
+    "title": "Submission",
     "type": "object",
-    "title": "Submission schema containing submitted metadata objects",
     "required": [
         "name",
         "description",

@@ -1,8 +1,8 @@
 {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "Image",
-    "definitions": {
+    "$defs": {
         "ImageFile": {
-            "$id": "#/definitions/ImageFile",
             "title": "Image File Type",
             "type": "object",
             "required": [
@@ -19,12 +19,11 @@
                 },
                 "fileBase": {
                     "title": "File Base Type",
-                    "$ref": "#/definitions/FileBase"
+                    "$ref": "#/$defs/FileBase"
                 }
             }
         },
         "FileBase": {
-            "$id": "#/definitions/FileBase",
             "title": "File Base",
             "type": "object",
             "required": [
@@ -60,7 +59,6 @@
             }
         },
         "identifiers": {
-            "$id": "#/definitions/identifiers",
             "title": "Identifiers",
             "description": "Identifiers to be used in the International Nucleotide Sequence Database Collaboration (INSDC) namespace.",
             "type": "object",
@@ -113,7 +111,6 @@
             }
         },
         "reference": {
-            "$id": "#/definitions/reference",
             "additionalProperties": true,
             "type": "object",
             "properties": {
@@ -133,7 +130,7 @@
                     "title": "Center Namespace"
                 },
                 "identifiers": {
-                    "$ref": "#/definitions/identifiers"
+                    "$ref": "#/$defs/identifiers"
                 }
             }
         }
@@ -276,14 +273,14 @@
             "title": "Study Reference",
             "description": "Identifies the parent study.",
             "type": "object",
-            "$ref": "#/definitions/reference"
+            "$ref": "#/$defs/reference"
         },
         "imageOf": {
             "title": "Image Of",
             "description": "One of more samples imaged by the image.",
             "type": "array",
             "items": {
-                "$ref": "#/definitions/reference"
+                "$ref": "#/$defs/reference"
             }
         },
         "imageType": {
@@ -300,7 +297,7 @@
             "description": "Data files associated with the image.",
             "type": "array",
             "items": {
-                "$ref": "#/definitions/ImageFile"
+                "$ref": "#/$defs/ImageFile"
             }
         }
     }

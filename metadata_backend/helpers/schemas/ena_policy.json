@@ -1,23 +1,22 @@
 {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "Policy",
-    "definitions": {
+    "$defs": {
         "Links": {
-            "$id": "#/definitions/Links",
             "title": "Link Type",
             "oneOf": [
                 {
-                    "$ref": "#/definitions/xrefLink"
+                    "$ref": "#/$defs/xrefLink"
                 },
                 {
-                    "$ref": "#/definitions/urlLink"
+                    "$ref": "#/$defs/urlLink"
                 },
                 {
-                    "$ref": "#/definitions/entrezLink"
+                    "$ref": "#/$defs/entrezLink"
                 }
             ]
         },
         "xrefLink": {
-            "$id": "#/definitions/xrefLink",
             "title": "XRef Link",
             "type": "object",
             "required": [
@@ -43,7 +42,6 @@
             }
         },
         "urlLink": {
-            "$id": "#/definitions/urlLink",
             "title": "URL Link",
             "type": "object",
             "required": [
@@ -65,7 +63,6 @@
             }
         },
         "entrezLink": {
-            "$id": "#/definitions/entrezLink",
             "title": "Entrez Link",
             "type": "object",
             "required": [
@@ -137,7 +134,6 @@
             }
         },
         "dataUseType": {
-            "$id": "#/definitions/dataUseType",
             "type": "object",
             "title": "Data Use Type",
             "description": "Data Use ontology",
@@ -157,7 +153,7 @@
                             "modifier": {
                                 "description": "Describes modifiers to the Data Use Restriction.",
                                 "title": "Modifier",
-                                "$ref": "#/definitions/xrefLink"
+                                "$ref": "#/$defs/xrefLink"
                             },
                             "url": {
                                 "type": "string",
@@ -188,7 +184,6 @@
             }
         },
         "policyAttribute": {
-            "$id": "#/definitions/policyAttribute",
             "type": "object",
             "title": "Policy Attribute",
             "required": [
@@ -211,7 +206,6 @@
             }
         },
         "identifiers": {
-            "$id": "#/definitions/identifiers",
             "title": "Identifiers",
             "description": "Identifiers to be used in the International Nucleotide Sequence Database Collaboration (INSDC) namespace.",
             "type": "object",
@@ -264,7 +258,6 @@
             }
         },
         "reference": {
-            "$id": "#/definitions/reference",
             "additionalProperties": true,
             "type": "object",
             "properties": {
@@ -284,7 +277,7 @@
                     "title": "Center Namespace"
                 },
                 "identifiers": {
-                    "$ref": "#/definitions/identifiers"
+                    "$ref": "#/$defs/identifiers"
                 }
             }
         }
@@ -304,7 +297,7 @@
         "dacRef": {
             "title": "Data Access Committee Reference",
             "description": "Identifies the data access committee to which this Policy pertains.",
-            "$ref": "#/definitions/reference"
+            "$ref": "#/$defs/reference"
         },
         "policy": {
             "title": "Policy",
@@ -345,7 +338,7 @@
             "type": "array",
             "description": "Data use ontologies (DUO) related to the Policy. More information at: https://github.com/EBISPOT/DUO .",
             "items": {
-                "$ref": "#/definitions/dataUseType"
+                "$ref": "#/$defs/dataUseType"
             },
             "title": "Data Use Ontology"
         },
@@ -354,7 +347,7 @@
             "title": "Policy Links",
             "description": "Links to resources related to this experiment or experiment set (publication, datasets, online databases). Used to encode URL links, Entrez links, and xref DB links. ",
             "items": {
-                "$ref": "#/definitions/Links"
+                "$ref": "#/$defs/Links"
             }
         },
         "policyAttributes": {
@@ -362,7 +355,7 @@
             "title": "Policy Attributes",
             "description": "Properties and attributes of the Policy. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
             "items": {
-                "$ref": "#/definitions/policyAttribute"
+                "$ref": "#/$defs/policyAttribute"
             }
         }
     }

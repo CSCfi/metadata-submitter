@@ -1,23 +1,22 @@
 {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "DAC - Data Access Committee",
-    "definitions": {
+    "$defs": {
         "Links": {
-            "$id": "#/definitions/Links",
             "title": "Link Type",
             "oneOf": [
                 {
-                    "$ref": "#/definitions/xrefLink"
+                    "$ref": "#/$defs/xrefLink"
                 },
                 {
-                    "$ref": "#/definitions/urlLink"
+                    "$ref": "#/$defs/urlLink"
                 },
                 {
-                    "$ref": "#/definitions/entrezLink"
+                    "$ref": "#/$defs/entrezLink"
                 }
             ]
         },
         "xrefLink": {
-            "$id": "#/definitions/xrefLink",
             "title": "XRef Link",
             "type": "object",
             "required": [
@@ -43,7 +42,6 @@
             }
         },
         "urlLink": {
-            "$id": "#/definitions/urlLink",
             "title": "URL Link",
             "type": "object",
             "required": [
@@ -65,7 +63,6 @@
             }
         },
         "entrezLink": {
-            "$id": "#/definitions/entrezLink",
             "title": "Entrez Link",
             "type": "object",
             "required": [
@@ -137,7 +134,6 @@
             }
         },
         "contact": {
-            "$id": "#/definitions/contact",
             "type": "object",
             "title": "Contact",
             "required": [
@@ -175,7 +171,6 @@
             }
         },
         "dacAttribute": {
-            "$id": "#/definitions/dacAttribute",
             "type": "object",
             "title": "DAC Attribute",
             "required": [
@@ -209,13 +204,13 @@
             "title": "Contacts",
             "description": "List of persons that ar part of the Data Access Committee. At least one main contact is required.",
             "items": {
-                "$ref": "#/definitions/contact"
+                "$ref": "#/$defs/contact"
             },
             "minItems": 1,
             "contains": {
                 "allOf": [
                     {
-                        "$ref": "#/definitions/contact"
+                        "$ref": "#/$defs/contact"
                     },
                     {
                         "required": [
@@ -241,7 +236,7 @@
             "title": "DAC Links",
             "description": "Links to resources related to this experiment or experiment set (publication, datasets, online databases). Used to encode URL links, Entrez links, and xref DB links. ",
             "items": {
-                "$ref": "#/definitions/Links"
+                "$ref": "#/$defs/Links"
             }
         },
         "dacAttributes": {
@@ -249,7 +244,7 @@
             "title": "Study Attributes",
             "description": "Properties and attributes of the DAC. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
             "items": {
-                "$ref": "#/definitions/dacAttribute"
+                "$ref": "#/$defs/dacAttribute"
             }
         }
     }
