@@ -103,6 +103,17 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 children[key] = attrs[0] if isinstance(attrs[0], list) else attrs
                 continue
 
+            if key == "attributes" and "attributeSet" not in value:
+                attribs = list(value.values())
+                attr_list = []
+                for i in attribs:
+                    if isinstance(i, list):
+                        attr_list += i
+                    else:
+                        attr_list.append(i)
+                children[key] = attr_list
+                continue
+
             if "studyType" in key:
                 children[key] = value["existingStudyType"]
                 continue

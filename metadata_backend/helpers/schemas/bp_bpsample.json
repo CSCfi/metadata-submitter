@@ -1,68 +1,87 @@
 {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "BP Sample",
-    "definitions": {
-        "Block": {
-            "$id": "#/definitions/Block",
-            "title": "Block",
-            "type": "object",
-            "properties": {
-                "sample_preparation": {
-                    "type": "string",
-                    "title": "Sample Preparation"
-                }
-            }
-        },
-        "Slide": {
-            "$id": "#/definitions/Slide",
-            "title": "Slide",
-            "type": "object",
-            "properties": {
-                "staining_information": {
-                    "title": "Staining Information",
+    "$defs": {
+        "sampleAttribute": {
+            "title": "Sample Attributes",
+            "description": "Properties and attributes of the sample set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
+            "anyOf": [
+                {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/Stain"
+                        "type": "object",
+                        "title": "Sample attribute item",
+                        "required": [
+                            "tag",
+                            "value"
+                        ],
+                        "properties": {
+                            "tag": {
+                                "type": "string",
+                                "title": "Tag title"
+                            },
+                            "value": {
+                                "type": ["string","number"],
+                                "title": "Description"
+                            },
+                            "units": {
+                                "type": "string",
+                                "title": "Optional scientific units."
+                            }
+                        }
+                    }
+                },
+                {
+                    "#ref": "#/$defs/sampleAttributeSet"
+                }
+            ]
+        },
+        "sampleAttributeSet": {
+            "title": "Sample Attribute Set",
+            "description": "Reusable set of attributes to encode multiple tag-value or tag-code value pairs.",
+            "anyOf": [
+                {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "title": "Sample attribute item",
+                        "required": [
+                            "tag"
+                        ],
+                        "properties": {
+                            "tag": {
+                                "type": "string",
+                                "title": "Tag title"
+                            },
+                            "attribute": {
+                                "items": { "#ref": "#/$defs/sampleAttribute" }
+                            },
+                            "attributeSet": {
+                                "items": { "#ref": "#" }
+                            }
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "title": "Sample attribute item",
+                    "required": [
+                        "tag"
+                    ],
+                    "properties": {
+                        "tag": {
+                            "type": "string",
+                            "title": "Tag title"
+                        },
+                        "attribute": {
+                            "items": { "#ref": "#/$defs/sampleAttribute" }
+                        },
+                        "attributeSet": {
+                            "items": { "#ref": "#" }
+                        }
                     }
                 }
-            }
-        },
-        "Stain": {
-            "$id": "#/definitions/Stain",
-            "title": "Stain",
-            "type": "object",
-            "properties": {
-                "staining_compound": {
-                    "title": "Staining Compound",
-                    "type": "string"
-                },
-                "staining_method": {
-                    "title": "Staining Method",
-                    "type": "string"
-                }
-            }
-        },
-        "sampleAttribute": {
-            "$id": "#/definitions/sampleAttribute",
-            "type": "object",
-            "title": "Sample Attribute",
-            "required": [
-                "tag",
-                "value"
-            ],
-            "properties": {
-                "tag": {
-                    "type": "string",
-                    "title": "Tag title"
-                },
-                "value": {
-                    "type": "string",
-                    "title": "Description"
-                },
-                "units": {
-                    "type": "string",
-                    "title": "Optional scientific units."
-                }
-            }
+            ]
         }
     },
     "type": "object",
@@ -76,18 +95,17 @@
                     "title": "Biological Being Type",
                     "description": "A human being or animal.",
                     "type": "object",
+                    "required": [
+                        "alias",
+                        "attributes"
+                    ],
                     "properties": {
                         "alias": {
                             "title": "Alias Type",
                             "type": "string"
                         },
                         "attributes": {
-                            "title": "Sample Attributes",
-                            "description": "Properties and attributes of the sample set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
-                            "type": "object",
-                            "properties": {
-                                "$ref": "#/definitions/sampleAttribute"
-                            }
+                            "$ref": "#/$defs/sampleAttribute"
                         }
                     }
                 }
@@ -101,18 +119,18 @@
                     "title": "Specimen Type",
                     "description": "A removed part of a human/animal being.",
                     "type": "object",
+                    "required": [
+                        "alias",
+                        "attributes",
+                        "extractedFrom"
+                    ],
                     "properties": {
                         "alias": {
                             "title": "Alias Type",
                             "type": "string"
                         },
                         "attributes": {
-                            "title": "Sample Attributes",
-                            "description": "Properties and attributes of the sample set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
-                            "type": "object",
-                            "properties": {
-                                "$ref": "#/definitions/sampleAttribute"
-                            }
+                            "$ref": "#/$defs/sampleAttribute"
                         },
                         "extractedFrom": {
                             "title": "Extracted From Type",
@@ -137,18 +155,18 @@
                     "title": "Block Type",
                     "description": "A part or a collection of parts of one or many Specimens that has/have been sampled and processed for further investigation.",
                     "type": "object",
+                    "required": [
+                        "alias",
+                        "attributes",
+                        "sampledFrom"
+                    ],
                     "properties": {
                         "alias": {
                             "title": "Alias Type",
                             "type": "string"
                         },
                         "attributes": {
-                            "title": "Sample Attributes",
-                            "description": "Properties and attributes of the sample set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
-                            "type": "object",
-                            "properties": {
-                                "$ref": "#/definitions/sampleAttribute"
-                            }
+                            "$ref": "#/$defs/sampleAttribute"
                         },
                         "sampledFrom": {
                             "title": "Sampled From Type",
@@ -173,18 +191,18 @@
                     "title": "Slide Type",
                     "description": "A physical slide that has been created out of one or more Blocks.",
                     "type": "object",
+                    "required": [
+                        "alias",
+                        "attributes",
+                        "createdFrom"
+                    ],
                     "properties": {
                         "alias": {
                             "title": "Alias Type",
                             "type": "string"
                         },
                         "attributes": {
-                            "title": "Sample Attributes",
-                            "description": "Properties and attributes of the sample set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
-                            "type": "object",
-                            "properties": {
-                                "$ref": "#/definitions/sampleAttribute"
-                            }
+                            "$ref": "#/$defs/sampleAttribute"
                         },
                         "createdFrom": {
                             "title": "Sampled From Type",
