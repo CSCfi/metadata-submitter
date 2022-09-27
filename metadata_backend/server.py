@@ -10,7 +10,7 @@ import uvloop
 from aiohttp import web
 from cryptography.fernet import Fernet
 
-from .api.auth import AccessHandler
+from .api.auth import AAIServiceHandler, AccessHandler
 from .api.handlers.object import ObjectAPIHandler
 from .api.handlers.rems_proxy import RemsAPIHandler
 from .api.handlers.restapi import RESTAPIHandler
@@ -67,6 +67,7 @@ async def init(
     metax_handler = MetaxServiceHandler()
     datacite_handler = DataciteServiceHandler()
     rems_handler = RemsServiceHandler()
+    aai_handler = AAIServiceHandler()
 
     async def close_http_clients(_: web.Application) -> None:
         """Close http client session."""
@@ -150,7 +151,12 @@ async def init(
     ]
     server.add_routes(aai_routes)
     LOG.info("AAI routes loaded")
-    _health = HealthHandler()
+    _health = HealthHandler(
+        metax_handler=metax_handler,
+        datacite_handler=datacite_handler,
+        rems_handler=rems_handler,
+        aai_handler=aai_handler,
+    )
     health_routes = [
         web.get("/health", _health.get_health_status),
     ]

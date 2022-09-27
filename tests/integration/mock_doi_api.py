@@ -171,9 +171,15 @@ async def delete(req: web.Request) -> web.Response:
     return web.json_response(status=204)
 
 
+async def heartbeat(req: web.Request) -> web.Response:
+    """DOI heartbeat endpoint."""
+    return web.Response(status=200, text="OK")
+
+
 async def init() -> web.Application:
     """Start server."""
     app = web.Application()
+    app.router.add_get("/heartbeat", heartbeat)
     app.router.add_get("/dois/{id:.*}", get)
     app.router.add_post("/dois", create)
     app.router.add_put("/dois/{id:.*}", update)

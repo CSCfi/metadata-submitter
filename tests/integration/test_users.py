@@ -40,7 +40,7 @@ LOG.setLevel(logging.DEBUG)
 class TestUsers:
     """Test user operations."""
 
-    async def test_token_auth(self):
+    async def test_token_auth(self, client_logged_in):
         """Test token auth."""
         async with aiohttp.ClientSession() as sess:
             headers = {"Authorization": "Bearer test"}

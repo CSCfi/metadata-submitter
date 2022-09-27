@@ -2,6 +2,7 @@
 
 It provides a http client with optional basic auth, and requests that retry automatically and come with error handling
 """
+from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Union
 
 from aiohttp import BasicAuth, ClientSession, ClientTimeout
@@ -37,7 +38,7 @@ class ServiceClientError(HTTPError):
         HTTPError.__init__(self, **kwargs)
 
 
-class ServiceHandler:
+class ServiceHandler(ABC):
     """General service class handler to have similar implementation between services.
 
     Classes inheriting should set the service_name and base_url
@@ -98,6 +99,10 @@ class ServiceHandler:
         """Override in subclass and return formatted error message."""
         return error
 
+    @abstractmethod
+    async def _healtcheck(self) -> Dict:
+        """Override in subclass and return formatted status message."""
+
     @retry(total_tries=5)
     async def _request(
         self,
@@ -115,7 +120,7 @@ class ServiceHandler:
         :param path: When requesting to self.base_url, provide only the path (shortcut).
         :param params: URL parameters, must be url encoded
         :param json_data: Dict with request data
-        :param timeout: Request timeout
+        :param timeout: Request timeout in seconds
         :returns: Response body parsed as JSON
         """
         if not self.enabled:
