@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Made [PKCE](https://oidcrp.readthedocs.io/en/latest/add_on/pkce.html) settings explicit in `oidcrp` client auth
 - Added [DPOP](https://oidcrp.readthedocs.io/en/latest/add_on/dpop.html) placeholder settings for when AAI support has been implemented
 - Add advanced health checks for Datacite, REMS and Metax and performance checks for API response #585
+- pre-commit check to sort and remove duplicates in the dictionary
 
 ### Changed
 - schema loader now matches schema files by exact match with schema #481. This means that schema file naming in metadata_backend/helpers/schemas now have rules:

@@ -78,7 +78,6 @@ bislama
 bisulfite
 blastdbinfo
 bokmål
-bookchapter
 boolean
 breakpoint
 bugfix
@@ -106,10 +105,7 @@ cloneend
 codeql
 commonname
 complementsdatasetref
-computationalnotebook
 conf
-conferencepaper
-conferenceproceeding
 config
 configs
 conftest
@@ -145,7 +141,6 @@ daclinks
 dacref
 datacite
 datadescription
-datapaper
 dataset
 datasetattribute
 datasetattributes
@@ -308,7 +303,6 @@ imagetype
 ini
 insdc
 integrations
-interactiveresource
 interlingua
 interlingue
 inupiaq
@@ -318,7 +312,6 @@ ipython
 isni
 issn
 istc
-journalarticle
 js
 json
 jsoncontent
@@ -474,7 +467,6 @@ oromo
 oss
 ossetian
 otorhinolaryngology
-outputmanagementplan
 ownedby
 pacbio
 paleo
@@ -488,11 +480,8 @@ pcsubstance
 pdb
 pdbcls
 pdf
-peerreview
-perun
 pgm
 phenome
-physicalobject
 pipesection
 pkce
 pmc
@@ -648,9 +637,9 @@ subjectsschema
 submissionid
 submissionslice
 submissiontype
-submitter's
 submitterdemultiplexed
 submitterid
+submitter's
 submitters
 svg
 swati
