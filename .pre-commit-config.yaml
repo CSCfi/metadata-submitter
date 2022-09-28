@@ -82,6 +82,12 @@ repos:
       - id: check-dependabot
       - id: check-github-workflows
 
+  - repo: https://github.com/jendrikseipp/vulture
+    rev: 'v2.6'
+    hooks:
+    - id: vulture 
+      args: [metadata_backend/, whitelist_dead_code.py]
+
   - repo: local
     hooks:
     - id: sort
