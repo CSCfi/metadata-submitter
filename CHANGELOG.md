@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added [DPOP](https://oidcrp.readthedocs.io/en/latest/add_on/dpop.html) placeholder settings for when AAI support has been implemented
 - Add advanced health checks for Datacite, REMS and Metax and performance checks for API response #585
 - pre-commit check to sort and remove duplicates in the dictionary
+- [vulture](https://github.com/jendrikseipp/vulture) as a tox env and pre-commit hook.
 
 ### Changed
 - schema loader now matches schema files by exact match with schema #481. This means that schema file naming in metadata_backend/helpers/schemas now have rules:
@@ -52,6 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactor api handlers to share a single instance of service handlers
 - Refactor metadata creation methods to parse and add separate metadata objects to db from a single XML file #525
 - Validate schema definitions, updating them to JSON schema 2020-12 #581
+- changed HTTP header `Server` to `metadata`
 
 ### Removed
 
