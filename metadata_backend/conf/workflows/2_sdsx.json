@@ -1,0 +1,89 @@
+{
+    "name": "SDSX",
+    "description": "",
+    "steps": [
+        {
+            "title": "Study, DAC and Policy",
+            "required": true,
+            "schemas": [
+                {
+                    "name": "study",
+                    "required": true,
+                    "allowMultipleObjects": false
+                },
+                {
+                    "name": "dac",
+                    "required": true,
+                    "allowMultipleObjects": true
+                },
+                {
+                    "name": "policy",
+                    "required": true,
+                    "allowMultipleObjects": true
+                }
+            ]
+        },
+        {
+            "title": "Files",
+            "required": false,
+            "schemas": []
+        },
+        {
+            "title": "Describe",
+            "required": true,
+            "schemas": [
+                {
+                    "name": "dataset",
+                    "required": true,
+                    "hide": [
+                        "runRef",
+                        "analysisRef"
+                    ],
+                    "allowMultipleObjects": true
+                },
+                {
+                    "name": "datacite",
+                    "required": true
+                }
+            ]
+        },
+        {
+            "title": "Datacite",
+            "required": false,
+            "schemas": [
+                {
+                    "name": "datacite",
+                    "required": false,
+                    "allowMultipleObjects": false
+                }
+            ]
+        }
+    ],
+    "publish": [
+        {
+            "name": "datacite",
+            "endpoint": "datacite",
+            "requiredSchemas": [
+                "datacite"
+            ]
+        },
+        {
+            "name": "metax",
+            "endpoint": "metax",
+            "requires": [
+                "datacite"
+            ]
+        },
+        {
+            "name": "rems",
+            "endpoint": "rems",
+            "requires": [
+                "datacite"
+            ],
+            "requiredSchemas": [
+                "dac",
+                "policy"
+            ]
+        }
+    ]
+}

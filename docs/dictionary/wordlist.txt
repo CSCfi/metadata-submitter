@@ -12,6 +12,7 @@ aiohttp
 ajv
 akan
 allof
+allowmultipleobjects
 alternateidentifier
 alternateidentifiers
 alternateidentifiertype
@@ -64,6 +65,7 @@ bashkir
 bcf
 bgiseq
 bibcode
+bigpicture
 bihari
 biocollections
 biologicalbeing
@@ -315,6 +317,7 @@ istc
 js
 json
 jsoncontent
+jsonpath
 jwk
 jwtconnect
 kalaallisut
@@ -551,6 +554,7 @@ relationtype
 relativeorder
 remoteuseridentifier
 reqs
+requiredschemas
 resequencing
 resourceid
 resourcetypegeneral
