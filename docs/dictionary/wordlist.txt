@@ -448,7 +448,6 @@ objecttype
 objecttypes
 observationsref
 occitan
-oecd
 oidc
 oidcrp
 ojibwe
