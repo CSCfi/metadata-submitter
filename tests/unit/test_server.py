@@ -65,6 +65,11 @@ class AppTestCase(AioHTTPTestCase):
                 self.assertIn(f"{tempdir}/static", routes)
                 self.assertIn("DynamicResource  /{path}", routes)
 
+    async def test_response_headers(self):
+        """Test response headers are set correctly in on_prepare_response."""
+        resp = await self.client.request("GET", "/")
+        self.assertEqual(resp.headers.get("Server", ""), "metadata")
+
     async def test_swagger_route_is_set(self):
         """Test correct routes are set when swagger folder exists."""
         swagger_static = "metadata_backend.server.swagger_static_path"
