@@ -75,6 +75,12 @@ async def init(
         await datacite_handler.http_client_close()
         await rems_handler.http_client_close()
 
+    async def on_prepare(_: web.Request, response: web.StreamResponse) -> None:
+        """Modify Server headers."""
+        response.headers["Server"] = "metadata"
+
+    server.on_response_prepare.append(on_prepare)
+
     server.on_shutdown.append(close_http_clients)
 
     _schema = RESTAPIHandler()

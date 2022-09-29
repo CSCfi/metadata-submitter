@@ -22,3 +22,4 @@ tox
 types-python-dateutil
 types-requests
 types-ujson
+vulture
