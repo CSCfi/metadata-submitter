@@ -99,30 +99,30 @@
         "provider": "Datacite"
     },
     "image": {
-      "priority": 12,
-      "description": {
-        "title": "BP Image",
-        "detail": "A BigPicture image object captures image objects.",
-        "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.1.1/src/BP.image.xsd"
-      },
-      "provider": "BP"
+        "priority": 12,
+        "description": {
+            "title": "BP Image",
+            "detail": "A BigPicture image object captures image objects.",
+            "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.1.1/src/BP.image.xsd"
+        },
+        "provider": "BP"
     },
     "bpdataset": {
-      "priority": 13,
-      "description": {
-        "title": "BP Dataset",
-        "detail": "A BP dataset.",
-        "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.1.1/src/BP.dataset.xsd"
-      },
-      "provider": "BP"
+        "priority": 13,
+        "description": {
+            "title": "BP Dataset",
+            "detail": "A BP dataset.",
+            "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.1.1/src/BP.dataset.xsd"
+        },
+        "provider": "BP"
     },
     "bpsample": {
-      "priority": 14,
-      "description": {
-        "title": "BP Sample",
-        "detail": "A BigPicture sample object.",
-        "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.1.1/src/BP.sample.xsd"
-      },
-      "provider": "BP"
+        "priority": 14,
+        "description": {
+            "title": "BP Sample",
+            "detail": "A BigPicture sample object.",
+            "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.1.1/src/BP.sample.xsd"
+        },
+        "provider": "BP"
     }
 }

@@ -1,0 +1,111 @@
+{
+    "name": "FEGA",
+    "description": "",
+    "steps": [
+        {
+            "title": "Study, DAC and Policy",
+            "required": true,
+            "schemas": [
+                {
+                    "name": "study",
+                    "required": true,
+                    "allowMultipleObjects": false
+                },
+                {
+                    "name": "dac",
+                    "required": true,
+                    "allowMultipleObjects": true
+                },
+                {
+                    "name": "policy",
+                    "required": true,
+                    "allowMultipleObjects": true
+                }
+            ]
+        },
+        {
+            "title": "Files",
+            "required": false,
+            "schemas": []
+        },
+        {
+            "title": "Describe",
+            "required": true,
+            "schemas": [
+                {
+                    "name": "sample",
+                    "required": false,
+                    "allowMultipleObjects": true
+                },
+                {
+                    "name": "experiment",
+                    "required": false,
+                    "allowMultipleObjects": true
+                },
+                {
+                    "name": "analysis",
+                    "required": false,
+                    "allowMultipleObjects": true
+                },
+                {
+                    "name": "run",
+                    "required": false,
+                    "allowMultipleObjects": true,
+                    "requires": [
+                        "experiment"
+                    ]
+                },
+                {
+                    "name": "dataset",
+                    "required": true,
+                    "allowMultipleObjects": true,
+                    "requires": [
+                        "policy"
+                    ],
+                    "requires_or": [
+                        "run",
+                        "analysis"
+                    ]
+                }
+            ]
+        },
+        {
+            "title": "Datacite",
+            "required": false,
+            "schemas": [
+                {
+                    "name": "datacite",
+                    "required": false,
+                    "allowMultipleObjects": false
+                }
+            ]
+        }
+    ],
+    "publish": [
+        {
+            "name": "datacite",
+            "endpoint": "datacite",
+            "requiredSchemas": [
+                "datacite"
+            ]
+        },
+        {
+            "name": "metax",
+            "endpoint": "metax",
+            "requires": [
+                "datacite"
+            ]
+        },
+        {
+            "name": "rems",
+            "endpoint": "rems",
+            "requires": [
+                "datacite"
+            ],
+            "requiredSchemas": [
+                "dac",
+                "policy"
+            ]
+        }
+    ]
+}

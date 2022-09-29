@@ -30,7 +30,6 @@ Change these if database structure changes.
 Production version gets frontend SPA from this folder, after it has been built
 and inserted here in projects Dockerfile.
 """
-
 import os
 from distutils.util import strtobool
 from pathlib import Path
@@ -107,12 +106,18 @@ def create_db_client() -> AsyncIOMotorClient:
     return AsyncIOMotorClient(url, connectTimeoutMS=connectTimeout, serverSelectionTimeoutMS=serverTimeout)
 
 
-# 2) Load schema types and descriptions from json
-# Default schemas will be ENA schemas
+# 2) Load schema types, descriptions and workflows from json
 path_to_schema_file = Path(__file__).parent / "schemas.json"
-with open(path_to_schema_file, encoding="utf-8") as schema_file:
+with open(path_to_schema_file, "rb") as schema_file:
     schema_types = ujson.load(schema_file)
 
+path_to_workflows = Path(__file__).parent / "workflows"
+WORKFLOWS: Dict[str, Dict] = {}
+
+for workflow_path in path_to_workflows.iterdir():
+    with open(workflow_path, "rb") as workflow_file:
+        workflow = ujson.load(workflow_file)
+        WORKFLOWS[workflow["name"]] = workflow
 
 # 3) Define mapping between url query parameters and mongodb queries
 query_map = {
