@@ -28,7 +28,6 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
     def _make_discovery_url(self, obj_data: Dict) -> str:
         """Make an url that points to a discovery service."""
-        # TODO: Proper URL creation when metax is disabled
         if self.metax_handler.enabled and "metaxIdentifier" in obj_data:
             url = f"{doi_config['discovery_url']}{obj_data['metaxIdentifier']}"
         else:
@@ -749,7 +748,6 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         if req.path.endswith("doi"):
             schema = "doiInfo"
         elif req.path.endswith("dac"):
-            # TODO: create an EGA DAC object from REMS contact information
             schema = "dac"
             if self.rems_handler.enabled:
                 await self.check_dac_ok({"dac": data})
