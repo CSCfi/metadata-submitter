@@ -159,7 +159,6 @@ disable=locally-disabled,
         broad-except,
         duplicate-code,
         missing-raises-doc,
-        useless-param-doc,
         R0801
 
 # Enable the message, report, category or checker with the given id(s). You can
@@ -168,6 +167,7 @@ disable=locally-disabled,
 # it should appear only once). See also the "--disable" option for examples.
 enable=raw-checker-failed,
        bad-inline-option,
+       useless-param-doc,
        fixme,
        file-ignored,
        useless-suppression,

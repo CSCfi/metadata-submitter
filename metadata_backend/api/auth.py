@@ -77,7 +77,6 @@ class AccessHandler:
     async def login(self, _: Request) -> web.HTTPSeeOther:
         """Redirect user to AAI login.
 
-        :param _: A HTTP request instance (unused)
         :raises: HTTPInternalServerError if OIDC configuration init failed
         :returns: HTTPSseeOther redirect to AAI
         """
