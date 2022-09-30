@@ -278,7 +278,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
         - Whitespace is parsed from strings
         - XML tags and their children are mostly converted to dict, except
           when there are multiple children with same name - then to list.
-        - All "accession" keys are converted to "accesionId", key used by
+        - All "accession" keys are converted to "accessionId", key used by
           this program
         - default value if tag is empty string
         Corner cases:
@@ -359,7 +359,7 @@ class XMLToJSONParser:
         :raises: HTTPBadRequest if error was raised during validation
         """
         schema = self._load_schema(schema_type)
-        LOG.info(f"{schema_type} schema loaded.")
+        LOG.info("%r XML schema loaded.", schema_type)
         validator = XMLValidator(schema, content)
         if not validator.is_valid:
             reason = "Current request could not be processed as the submitted file was not valid"
@@ -394,7 +394,7 @@ class XMLToJSONParser:
             schema = loader.get_schema(schema_type)
         except (SchemaNotFoundException, XMLSchemaException) as error:
             reason = f"{error} {schema_type}"
-            LOG.error(reason)
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
         return schema
 
@@ -474,7 +474,7 @@ class CSVToJSONParser:
 
         _parsed = []
         for row in rows:
-            LOG.debug(f"current row: {row}")
+            LOG.debug("current row: %d", row)
             _tmp: Dict[str, Any] = row
             # This is required to pass validation against current sample schema
             if schema_type == "sample" and "sampleName" not in row:
@@ -490,7 +490,7 @@ class CSVToJSONParser:
             JSONValidator(_tmp, schema_type.lower()).validate
             _parsed.append(_tmp)
 
-        LOG.info(f"CSV was successfully converted to {len(_parsed)} JSON object(s).")
+        LOG.info("CSV was successfully converted to %d JSON object(s).", len(_parsed))
         return _parsed
 
 

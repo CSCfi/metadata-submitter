@@ -74,7 +74,7 @@ def get_languages() -> None:
             n_matches += 1
         except KeyError:
             # We expect that not all languages will match.
-            log.error(f"No language match for '{k}' and '{v}'")
+            log.exception("No language match for %r and %r", k, v)
             no_matches += 1
             pass
     log.error(f"{n_matches} languages matched, and {no_matches} didn't")

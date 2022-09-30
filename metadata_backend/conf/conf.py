@@ -89,7 +89,7 @@ def set_conf() -> Tuple[str, str]:
 url, mongo_database = set_conf()
 
 
-LOG.debug(f"mongodb connection string is {url}")
+LOG.debug("mongodb connection string is: %s", url)
 
 serverTimeout = 15000
 connectTimeout = 15000

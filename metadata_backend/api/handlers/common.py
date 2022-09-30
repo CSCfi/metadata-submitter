@@ -31,8 +31,8 @@ async def multipart_content(
     try:
         reader = await req.multipart()
     except AssertionError as exc:
-        reason = "Request does not have valid multipart/form content"
-        LOG.error(reason)
+        reason = "Request does not have valid multipart/form content."
+        LOG.exception(reason)
         raise web.HTTPBadRequest(reason=reason) from exc
     while True:
         part = await reader.next()
@@ -94,7 +94,7 @@ async def _extract_upload(part: BodyPartReader) -> Tuple[str, str]:
             break
         data.append(chunk)
     xml_content = "".join(x.decode("UTF-8") for x in data)
-    LOG.debug(f"Processed file in {schema_type}")
+    LOG.debug("Processed file in collection: %r.", schema_type)
     return xml_content, schema_type
 
 
@@ -115,7 +115,7 @@ def _check_csv(content: str) -> bool:
         return True
     except csv.Error:
         reason = "Submitted file was not proper formatted as CSV."
-        LOG.error(reason)
+        LOG.exception(reason)
         return False
 
 
@@ -131,8 +131,8 @@ def _check_xml(content: str) -> bool:
         LOG.info("Valid XML content was extracted.")
         return True
     except ParseError as err:
-        reason = f"Submitted file was not proper XML. Error: {err}"
-        LOG.error(reason)
+        reason = f"Submitted file was not proper XML, err: {err}"
+        LOG.exception(reason)
         return False
 
 

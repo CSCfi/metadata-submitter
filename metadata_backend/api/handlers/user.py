@@ -24,7 +24,7 @@ class UserAPIHandler(RESTAPIHandler):
 
         user_id = req.match_info["userId"]
         if user_id != "current":
-            LOG.info(f"User ID {user_id} was requested")
+            LOG.info("User ID: %r was requested", user_id)
             raise web.HTTPUnauthorized(reason="Only current user retrieval is allowed")
 
         current_user = session["user_info"]
@@ -33,7 +33,7 @@ class UserAPIHandler(RESTAPIHandler):
         db_client = req.app["db_client"]
         operator = UserOperator(db_client)
         user = await operator.read_user(current_user)
-        LOG.info(f"GET user with ID {user_id} was successful.")
+        LOG.info("GET user with ID: %r was successful.", user_id)
         return web.Response(
             body=ujson.dumps(user, escape_forward_slashes=False), status=200, content_type="application/json"
         )
@@ -49,7 +49,7 @@ class UserAPIHandler(RESTAPIHandler):
 
         user_id = req.match_info["userId"]
         if user_id != "current":
-            LOG.info(f"User ID {user_id} delete was requested")
+            LOG.error("User ID: %r delete was requested, however the id is different than 'current'.", user_id)
             raise web.HTTPUnauthorized(reason="Only current user deletion is allowed")
         db_client = req.app["db_client"]
         operator = UserOperator(db_client)
@@ -57,9 +57,9 @@ class UserAPIHandler(RESTAPIHandler):
         current_user = session["user_info"]
 
         await operator.delete_user(current_user)
-        LOG.info(f"DELETE user with ID {current_user} was successful.")
+        LOG.info("DELETE user with ID: %r was successful.", current_user)
 
         session.invalidate()
 
-        LOG.debug(f"Logged out user {user_id}")
+        LOG.debug("Logged out user ID: %r.", user_id)
         return web.HTTPNoContent()

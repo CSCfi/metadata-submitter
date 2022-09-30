@@ -46,7 +46,7 @@ class BaseOperator(ABC):
         Data formatting and addition step for JSON or XML must be implemented
         by corresponding subclass.
 
-        :param schema_type: Schema type of the object to create.
+        :param schema_type: Schema type (collection) of the object to create.
         :param data: Data to be saved to database.
         :returns: Dict (or list of dicts) with accession id of the object inserted to database and its title
         """
@@ -54,7 +54,7 @@ class BaseOperator(ABC):
         data_list: List = formatted_data if isinstance(formatted_data, list) else [formatted_data]
         for obj in data_list:
             _id = obj["accessionId"]
-            LOG.info(f"Inserting object with schema {schema_type} to database succeeded with accession id: {_id}")
+            LOG.info("Inserting object in collection: %r to database succeeded with accession ID: %r", schema_type, _id)
         return formatted_data
 
     async def replace_metadata_object(self, schema_type: str, accession_id: str, data: Union[Dict, str]) -> Dict:
@@ -63,13 +63,17 @@ class BaseOperator(ABC):
         Data formatting and addition step for JSON or XML must be implemented
         by corresponding subclass.
 
-        :param schema_type: Schema type of the object to replace.
+        :param schema_type: Schema type (collection) of the object to replace.
         :param accession_id: Identifier of object to replace.
         :param data: Data to be saved to database.
         :returns: Tuple of Accession id for the object replaced to database and its title
         """
         data = await self._format_data_to_replace_and_add_to_db(schema_type, accession_id, data)
-        LOG.info(f"Replacing object with schema {schema_type} to database succeeded with accession id: {accession_id}")
+        LOG.info(
+            "Replacing object in collection: %r to database succeeded with accession ID: %r",
+            schema_type,
+            accession_id,
+        )
         return data
 
     async def update_metadata_object(self, schema_type: str, accession_id: str, data: Union[Dict, str]) -> str:
@@ -78,13 +82,17 @@ class BaseOperator(ABC):
         Data formatting and addition step for JSON or XML must be implemented
         by corresponding subclass.
 
-        :param schema_type: Schema type of the object to update.
+        :param schema_type: Schema type (collection) of the object to update.
         :param accession_id: Identifier of object to update.
         :param data: Data to be saved to database.
         :returns: Accession id for the object updated to database
         """
         await self._format_data_to_update_and_add_to_db(schema_type, accession_id, data)
-        LOG.info(f"Updated object with schema {schema_type} to database succeeded with accession id: {accession_id}")
+        LOG.info(
+            "Updated object in collection: %r to database succeeded with accession ID: %r",
+            schema_type,
+            accession_id,
+        )
         return accession_id
 
     async def read_metadata_object(self, schema_type: str, accession_id: str) -> Tuple[Union[Dict, str], str]:
@@ -101,12 +109,13 @@ class BaseOperator(ABC):
         try:
             data_raw = await self.db_service.read(schema_type, accession_id)
             if not data_raw:
-                LOG.error(f"Object with {accession_id} not found in schema: {schema_type}.")
-                raise web.HTTPNotFound()
+                reason = f"Object with '{accession_id}' not found in collection: '{schema_type}'."
+                LOG.error(reason)
+                raise web.HTTPNotFound(reason=reason)
             data = await self._format_read_data(schema_type, data_raw)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while reading object: {error}"
-            LOG.error(reason)
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
         return data, self.content_type
 
@@ -124,7 +133,7 @@ class BaseOperator(ABC):
 
         _deletion_success = await self._remove_object_from_db(schema_type, accession_id)
         if _deletion_success:
-            LOG.info(f"{accession_id} successfully deleted from collection")
+            LOG.info("%r successfully deleted from collection: %s", accession_id, schema_type)
             return accession_id
 
         reason = f"Deleting {accession_id} from database failed."
@@ -144,7 +153,7 @@ class BaseOperator(ABC):
             insert_success = await self.db_service.create(schema_type, data)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting object: {error}"
-            LOG.error(reason)
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
 
         if not insert_success:
@@ -165,13 +174,13 @@ class BaseOperator(ABC):
         try:
             check_exists = await self.db_service.exists(schema_type, accession_id)
             if not check_exists:
-                reason = f"Object with accession id {accession_id} was not found."
+                reason = f"Object with accession ID: '{accession_id}' was not found."
                 LOG.error(reason)
                 raise web.HTTPNotFound(reason=reason)
             replace_success = await self.db_service.replace(schema_type, accession_id, data)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting object: {error}"
-            LOG.error(reason)
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
         if not replace_success:
             reason = "Replacing object to database failed for some reason."
@@ -195,13 +204,13 @@ class BaseOperator(ABC):
         try:
             check_exists = await self.db_service.exists(schema_type, accession_id)
             if not check_exists:
-                reason = f"Object with accession id {accession_id} was not found."
+                reason = f"Object with accession id '{accession_id}' was not found."
                 LOG.error(reason)
                 raise web.HTTPNotFound(reason=reason)
             update_success = await self.db_service.update(schema_type, accession_id, data)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting object: {error}"
-            LOG.error(reason)
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
         if update_success:
             return accession_id
@@ -225,14 +234,14 @@ class BaseOperator(ABC):
         try:
             check_exists = await self.db_service.exists(schema_type, accession_id)
             if not check_exists and not schema_type.startswith("xml-"):
-                reason = f"Object with accession id {accession_id} was not found."
+                reason = f"Object with accession ID: '{accession_id}' was not found."
                 LOG.error(reason)
                 raise web.HTTPNotFound(reason=reason)
 
             delete_success = await self.db_service.delete(schema_type, accession_id)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while deleting object: {error}"
-            LOG.error(reason)
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
         return delete_success
 
@@ -244,9 +253,9 @@ class BaseOperator(ABC):
         :raises: HTTPNotFound if object does not exist
         """
         exists = await self.db_service.exists(schema_type, accession_id)
-        LOG.info(f"check_exists: {exists}")
+        LOG.debug("Check accession ID: %r exists resulted in: %s", accession_id, exists)
         if not exists:
-            reason = f"Object with id {accession_id} from schema {schema_type} was not found."
+            reason = f"Object with accession ID: '{accession_id}' from collection: '{schema_type}' was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
 
@@ -314,8 +323,8 @@ class Operator(BaseOperator):
             )
             templates = [template async for template in templates_cursor]
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting templates from project {project_id}: {error}"
-            LOG.error(reason)
+            reason = f"Error happened while getting templates from project {project_id}, err: {error}"
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
 
         if len(templates) == 1:
@@ -334,8 +343,8 @@ class Operator(BaseOperator):
             object_cursor = self.db_service.query(collection, {"accessionId": accession_id})
             objects = [object async for object in object_cursor]
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting object from {collection}: {error}"
-            LOG.error(reason)
+            reason = f"Error happened while getting object from {collection}, err: {error}"
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
 
         if len(objects) == 1:
@@ -343,8 +352,10 @@ class Operator(BaseOperator):
                 return objects[0]["projectId"]
             except KeyError as error:
                 # This should not be possible and should never happen, if the object was created properly
-                reason = f"{collection} {accession_id} does not have an associated project, err={error}"
-                LOG.error(reason)
+                reason = (
+                    f"In {collection}, accession ID {accession_id} does not have an associated project, err:{error}"
+                )
+                LOG.exception(reason)
                 raise web.HTTPBadRequest(reason=reason)
         else:
             reason = f"{collection} {accession_id} not found"
@@ -404,8 +415,8 @@ class Operator(BaseOperator):
                 else:
                     # Query with regex from just one field
                     mongo_query = {query_map[query]: regx}
-        LOG.debug(f"Query construct: {mongo_query}")
-        LOG.debug(f"redacted filter: {redacted_content}")
+        LOG.debug("Query construct: %r ", mongo_query)
+        LOG.debug("Redacted filter: %r", redacted_content)
         skips = page_size * (page_num - 1)
         aggregate_query = [
             {"$match": mongo_query},
@@ -418,7 +429,7 @@ class Operator(BaseOperator):
             result_aggregate = await self.db_service.do_aggregate(schema_type, aggregate_query)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting object: {error}"
-            LOG.error(reason)
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
         data = await self._format_read_data(schema_type, result_aggregate)
 
@@ -431,11 +442,13 @@ class Operator(BaseOperator):
         count_query = [{"$match": mongo_query}, redacted_content, {"$count": "total"}]
         total_objects = await self.db_service.do_aggregate(schema_type, count_query)
 
-        LOG.debug(f"DB query: {que}")
+        LOG.debug("DB query: %r", que)
         LOG.info(
-            f"DB query successful for query on {schema_type} "
-            f"resulted in {total_objects[0]['total']}. "
-            f"Requested was page {page_num} and page size {page_size}."
+            "DB query successful in collection: %r resulted in: %d objects. Requested was page: %d & page size: %d.",
+            schema_type,
+            total_objects[0]["total"],
+            page_num,
+            page_size,
         )
         return data, page_num, page_size, total_objects[0]["total"]
 
@@ -453,15 +466,15 @@ class Operator(BaseOperator):
         try:
             create_success = await self.db_service.update(schema_type, accession_id, data)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while updating object: {error}"
-            LOG.error(reason)
+            reason = f"Error happened while updating object, err: {error}"
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
         if not create_success:
             reason = "Updating object to database failed for some reason."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        LOG.info(f"Object {schema_type} with id {accession_id} metax info updated.")
+        LOG.info("Object in collection: %r with accession ID: %r metax info updated.", schema_type, accession_id)
         return True
 
     async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: Dict) -> Dict:
@@ -483,14 +496,14 @@ class Operator(BaseOperator):
         data["dateModified"] = datetime.utcnow()
         if schema_type == "study":
             data["publishDate"] = datetime.utcnow() + relativedelta(months=2)
-        LOG.debug(f"Operator formatted data for {schema_type} to add to DB.")
+        LOG.debug("Operator formatted data for collection: %r to add to DB.", schema_type)
         await self._insert_formatted_object_to_db(schema_type, data)
         return data
 
     async def _format_data_to_replace_and_add_to_db(self, schema_type: str, accession_id: str, data: Dict) -> Dict:
         """Format JSON metadata object and replace it in db.
 
-        Replace information in object before adding to db.
+        Replace information in object before adding to db.doc
 
         We will not replace ``accessionId``, ``publishDate`` or ``dateCreated``,
         as these are generated when created.
@@ -510,7 +523,7 @@ class Operator(BaseOperator):
             raise web.HTTPBadRequest(reason=reason)
         data["accessionId"] = accession_id
         data["dateModified"] = datetime.utcnow()
-        LOG.debug(f"Operator formatted data for {schema_type} to add to DB")
+        LOG.debug("Operator formatted data for collection: %r to add to DB.", schema_type)
         await self._replace_object_from_db(schema_type, accession_id, data)
         return data
 
@@ -533,7 +546,7 @@ class Operator(BaseOperator):
         data["accessionId"] = accession_id
         data["dateModified"] = datetime.utcnow()
 
-        LOG.debug(f"Operator formatted data for {schema_type} to add to DB")
+        LOG.debug("Operator formatted data for collection: %r to add to DB.", schema_type)
         return await self._update_object_from_db(schema_type, accession_id, data)
 
     def _generate_accession_id(self) -> str:
@@ -625,7 +638,7 @@ class XMLOperator(BaseOperator):
         for obj in data_objects:
             data_with_id = await Operator(db_client)._format_data_to_create_and_add_to_db(schema_type, obj)
             added_data.append(data_with_id)
-            LOG.debug(f"XMLOperator formatted data for xml-{schema_type} to add to DB")
+            LOG.debug("XMLOperator formatted data for collection: 'xml-%s' to add to DB.", schema_type)
             await self._insert_formatted_object_to_db(
                 f"xml-{schema_type}", {"accessionId": data_with_id["accessionId"], "content": data}
             )
@@ -650,7 +663,7 @@ class XMLOperator(BaseOperator):
         data_with_id = await Operator(db_client)._format_data_to_replace_and_add_to_db(
             schema_type, accession_id, data_as_json
         )
-        LOG.debug(f"XMLOperator formatted data for xml-{schema_type} to add to DB")
+        LOG.debug("XMLOperator formatted data for collection: 'xml-%s' to add to DB.", schema_type)
         await self._replace_object_from_db(
             f"xml-{schema_type}", accession_id, {"accessionId": accession_id, "content": data}
         )
@@ -704,8 +717,8 @@ class SubmissionOperator:
             submission_cursor = self.db_service.query("submission", {"submissionId": submission_id})
             submissions = [submission async for submission in submission_cursor]
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting submission: {error}"
-            LOG.error(reason)
+            reason = f"Error happened while getting submission, err: {error}"
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
 
         if len(submissions) == 1:
@@ -713,11 +726,11 @@ class SubmissionOperator:
                 return submissions[0]["projectId"]
             except KeyError as error:
                 # This should not be possible and should never happen, if the submission was created properly
-                reason = f"submission {submission_id} does not have an associated project, err={error}"
-                LOG.error(reason)
+                reason = f"Submission: '{submission_id}' does not have an associated project, err: {error}"
+                LOG.exception(reason)
                 raise web.HTTPBadRequest(reason=reason)
         else:
-            reason = f"submission {submission_id} not found"
+            reason = f"Submission: '{submission_id}' not found."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -737,12 +750,12 @@ class SubmissionOperator:
             )
             submission_check = [submission async for submission in submission_cursor]
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while checking object in submission: {error}"
-            LOG.error(reason)
+            reason = f"Error happened while checking object in submission, err: {error}"
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
 
         if len(submission_check) == 0:
-            LOG.info(f"doc {accession_id} belongs to no submission something is off")
+            LOG.info("Doc with accession ID: %r belongs to no submission something is off", accession_id)
             return False, "", False
 
         if len(submission_check) > 1:
@@ -751,7 +764,7 @@ class SubmissionOperator:
             raise web.HTTPUnprocessableEntity(reason=reason)
 
         submission_id = submission_check[0]["submissionId"]
-        LOG.info(f"found doc {accession_id} in {submission_id}")
+        LOG.info("Found doc with accession ID: %r in submission: %r.", accession_id, submission_id)
         return True, submission_id, submission_check[0]["published"]
 
     async def get_collection_objects(self, submission_id: str, collection: str) -> List:
@@ -770,8 +783,8 @@ class SubmissionOperator:
             )
             submissions = [submission async for submission in submission_cursor]
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting collection objects: {error}"
-            LOG.error(reason)
+            reason = f"Error happened while getting collection objects, err: {error}"
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
 
         if len(submissions) >= 1:
@@ -799,8 +812,8 @@ class SubmissionOperator:
         try:
             insert_success = await self.db_service.create("submission", data)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while inserting submission: {error}"
-            LOG.error(reason)
+            reason = f"Error happened while inserting submission, err: {error}"
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
 
         if not insert_success:
@@ -808,7 +821,7 @@ class SubmissionOperator:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        LOG.info(f"Inserting submission with id {submission_id} to database succeeded.")
+        LOG.info("Inserting submission with ID: %r to database succeeded.", submission_id)
         return submission_id
 
     async def query_submissions(
@@ -867,8 +880,8 @@ class SubmissionOperator:
         try:
             submission = await self.db_service.read("submission", submission_id)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting submission: {error}"
-            LOG.error(reason)
+            reason = f"Error happened while getting submission, err: {error}"
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
         return submission
 
@@ -889,8 +902,8 @@ class SubmissionOperator:
             else:
                 update_success = await self.db_service.patch("submission", submission_id, patch)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while updating submission: {error}"
-            LOG.error(reason)
+            reason = f"Error happened while updating submission, err: {error}"
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
 
         if not update_success:
@@ -901,7 +914,7 @@ class SubmissionOperator:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        LOG.info(f"Updating submission with id {submission_id} to database succeeded.")
+        LOG.info("Updating submission with ID: %r to database succeeded.", submission_id)
         return submission_id
 
     async def remove_object(self, submission_id: str, collection: str, accession_id: str) -> None:
@@ -917,11 +930,11 @@ class SubmissionOperator:
             upd_content = {submission_path: {"accessionId": accession_id}}
             await self.db_service.remove("submission", submission_id, upd_content)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while removing object from submission: {error}"
-            LOG.error(reason)
+            reason = f"Error happened while removing object from submission, err: {error}"
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        LOG.info(f"Removing object {accession_id} from {submission_id} succeeded.")
+        LOG.info("Removing doc with accession ID: %r from submission: %r succeeded.", accession_id, submission_id)
 
     async def delete_submission(self, submission_id: str) -> Union[str, None]:
         """Delete object submission from database.
@@ -937,15 +950,15 @@ class SubmissionOperator:
             else:
                 return None
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while deleting submission: {error}"
-            LOG.error(reason)
+            reason = f"Error happened while deleting submission, err: {error}"
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
         if not delete_success:
             reason = f"Deleting for {submission_id} from database failed."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        LOG.info(f"Deleting submission with id {submission_id} to database succeeded.")
+        LOG.info("Deleting submission with ID: %r to database succeeded.", submission_id)
         return submission_id
 
     async def check_submission_exists(self, submission_id: str) -> None:
@@ -955,7 +968,7 @@ class SubmissionOperator:
         """
         exists = await self.db_service.exists("submission", submission_id)
         if not exists:
-            reason = f"Submission with id {submission_id} was not found."
+            reason = f"Submission with ID: '{submission_id}' was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
 
@@ -966,7 +979,7 @@ class SubmissionOperator:
         """
         published = await self.db_service.published_submission(submission_id)
         if published:
-            reason = f"Submission with id {submission_id} is published and cannot be deleted."
+            reason = f"Submission with ID: '{submission_id}' is published and cannot be deleted."
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)
 
@@ -1008,7 +1021,12 @@ class UserOperator:
         :returns: True and project_id if accession_id belongs to user, False otherwise
         """
         session = await aiohttp_session.get_session(req)
-        LOG.debug(f"check that user {user_id} belongs to same project as {collection} {accession_id}")
+        LOG.debug(
+            "check that user %r belongs to same project as %r and has doc with accession ID:' %s'",
+            user_id,
+            collection,
+            accession_id,
+        )
 
         db_client = req.app["db_client"]
         user_operator = UserOperator(db_client)
@@ -1043,15 +1061,15 @@ class UserOperator:
             user_cursor = self.db_service.query("user", user_query)
             user_check = [user async for user in user_cursor]
             if user_check:
-                LOG.debug(f"user {user_id} has project {project_id} affiliation")
+                LOG.debug("User: %r has project: %r affiliation.", user_id, project_id)
                 return True
 
             reason = f"user {user_id} does not have project {project_id} affiliation"
             LOG.debug(reason)
             return False
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while reading user project affiliation: {error}"
-            LOG.error(reason)
+            reason = f"Error happened while reading user project affiliation, err: {error}"
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
 
     async def create_user(self, data: Dict[str, Union[list, str]]) -> str:
@@ -1066,7 +1084,7 @@ class UserOperator:
         try:
             existing_user_id = await self.db_service.exists_user_by_external_id(data["user_id"], data["real_name"])
             if existing_user_id:
-                LOG.info(f"User with identifier: {data['user_id']} exists, no need to create.")
+                LOG.info("User with ID: %r  exists, no need to create.", data["user_id"])
                 return existing_user_id
 
             user_data["projects"] = data["projects"]
@@ -1080,11 +1098,11 @@ class UserOperator:
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
 
-            LOG.info(f"Inserting user with id {user_id} to database succeeded.")
+            LOG.info("Inserting user with ID: '%s' to database succeeded.", user_id)
             return user_id
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while inserting user: {error}"
-            LOG.error(reason)
+            reason = f"Error happened while inserting user, err: {error}"
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
 
     async def read_user(self, user_id: str) -> Dict:
@@ -1098,8 +1116,8 @@ class UserOperator:
             await self._check_user_exists(user_id)
             user = await self.db_service.read("user", user_id)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting user: {error}"
-            LOG.error(reason)
+            reason = f"Error happened while getting user, err: {error}"
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
         return user
 
@@ -1114,8 +1132,8 @@ class UserOperator:
             await self._check_user_exists(user_id)
             update_success = await self.db_service.patch("user", user_id, patch)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while updating user: {error}"
-            LOG.error(reason)
+            reason = f"Error happened while updating user, err: {error}"
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
 
         if not update_success:
@@ -1123,7 +1141,7 @@ class UserOperator:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        LOG.info(f"Updating user with id {user_id} to database succeeded.")
+        LOG.info("Updating user with ID: %r to database succeeded.", user_id)
         return user_id
 
     async def delete_user(self, user_id: str) -> str:
@@ -1137,15 +1155,15 @@ class UserOperator:
             await self._check_user_exists(user_id)
             delete_success = await self.db_service.delete("user", user_id)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while deleting user: {error}"
-            LOG.error(reason)
+            reason = f"Error happened while deleting user, err: {error}"
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
         if not delete_success:
             reason = "Deleting for {user_id} from database failed."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        LOG.info(f"User {user_id} successfully deleted.")
+        LOG.info("User with ID: %r successfully deleted.", user_id)
         return user_id
 
     async def _check_user_exists(self, user_id: str) -> None:
@@ -1157,7 +1175,7 @@ class UserOperator:
         """
         exists = await self.db_service.exists("user", user_id)
         if not exists:
-            reason = f"User with id {user_id} was not found."
+            reason = f"User with ID: '{user_id}' was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
 
@@ -1198,7 +1216,7 @@ class ProjectOperator:
         try:
             existing_project_id = await self.db_service.exists_project_by_external_id(project_number)
             if existing_project_id:
-                LOG.info(f"Project with external ID: {project_number} exists, no need to create.")
+                LOG.info("Project with external ID: %r exists, no need to create.", project_number)
                 return existing_project_id
 
             project_id = self._generate_project_id()
@@ -1211,11 +1229,11 @@ class ProjectOperator:
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
 
-            LOG.info(f"Inserting project with id {project_id} to database succeeded.")
+            LOG.info("Inserting project with ID: %r to database succeeded.", project_id)
             return project_id
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while inserting project: {error}"
-            LOG.error(reason)
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
 
     async def check_project_exists(self, project_id: str) -> None:
@@ -1226,7 +1244,7 @@ class ProjectOperator:
         """
         exists = await self.db_service.exists("project", project_id)
         if not exists:
-            reason = f"Project with id {project_id} was not found."
+            reason = f"Project with ID: '{project_id}' was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
 
@@ -1244,8 +1262,8 @@ class ProjectOperator:
                 "project", project_id, {"templates": {"$each": object_ids, "$position": 0}}
             )
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting project: {error}"
-            LOG.error(reason)
+            reason = f"Error happened while getting project, err: {error}"
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
 
         if not assign_success:
@@ -1253,7 +1271,7 @@ class ProjectOperator:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        LOG.info(f"Assigning templates={object_ids} to project={project_id} succeeded.")
+        LOG.info("Assigning templates: %r to project: %r succeeded.", object_ids, project_id)
 
     async def remove_templates(self, project_id: str, object_ids: List) -> None:
         """Remove templates from project.
@@ -1270,11 +1288,11 @@ class ProjectOperator:
                 remove_content = {"templates": {"accessionId": obj}}
                 await self.db_service.remove("project", project_id, remove_content)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while removing templates from project: {error}"
-            LOG.error(reason)
+            reason = f"Error happened while removing templates from project, err: {error}"
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        LOG.info(f"Removing templates={object_ids} from project={project_id} succeeded.")
+        LOG.info("Removing templates: %r from project: %r succeeded.", ", ".join(object_ids), project_id)
 
     async def update_project(self, project_id: str, patch: List) -> str:
         """Update project object in database.
@@ -1287,8 +1305,8 @@ class ProjectOperator:
             await self.check_project_exists(project_id)
             update_success = await self.db_service.patch("project", project_id, patch)
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting project: {error}"
-            LOG.error(reason)
+            reason = f"Error happened while getting project, err: {error}"
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
 
         if not update_success:
@@ -1296,7 +1314,7 @@ class ProjectOperator:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        LOG.info(f"Updating project={project_id} to database succeeded.")
+        LOG.info("Updating project: %r to database succeeded.", project_id)
         return project_id
 
     def _generate_project_id(self) -> str:

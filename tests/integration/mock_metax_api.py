@@ -99,7 +99,7 @@ async def post_dataset(req: web.Request) -> web.Response:
         content = await req.json()
     except json.decoder.JSONDecodeError as e:
         reason = f"JSON is not correctly formatted. See: {e}"
-        LOG.error(f"Error while validating payload: {reason}")
+        LOG.exception(f"Error while validating payload: {reason}")
         raise web.HTTPBadRequest(
             reason={
                 "detail": reason,
@@ -154,7 +154,7 @@ async def update_dataset(req: web.Request) -> web.Response:
         content = await req.json()
     except json.decoder.JSONDecodeError as e:
         reason = f"JSON is not correctly formatted. See: {e}"
-        LOG.error(f"Error while validating payload: {reason}")
+        LOG.exception(f"Error while validating payload: {reason}")
         raise web.HTTPBadRequest(
             reason={
                 "detail": reason,
@@ -190,7 +190,7 @@ async def patch_datasets(req: web.Request) -> web.Response:
         content = await req.json()
     except json.decoder.JSONDecodeError as e:
         reason = f"JSON is not correctly formatted. See: {e}"
-        LOG.error(f"Error while validating payload: {reason}")
+        LOG.exception(f"Error while validating payload: {reason}")
         raise web.HTTPBadRequest(
             reason={
                 "detail": reason,
@@ -259,7 +259,7 @@ async def patch_dataset(req: web.Request) -> web.Response:
         content = await req.json()
     except json.decoder.JSONDecodeError as e:
         reason = f"JSON is not correctly formatted. See: {e}"
-        LOG.error(f"Error while validating payload: {reason}")
+        LOG.exception(f"Error while validating payload: {reason}")
         raise web.HTTPBadRequest(
             reason={
                 "detail": reason,

@@ -73,7 +73,7 @@ class RemsServiceHandler(ServiceHandler):
         :returns: id of the created resource
         """
         resource = {"resid": doi, "organization": {"organization/id": organization_id}, "licenses": licenses}
-        LOG.debug(f"Creating new resource '{resource}'")
+        LOG.debug("Creating new REMS resource: '%r'", resource)
         created = await self._request(method="POST", path="/resources/create", json_data=resource)
         return int(created["id"])
 
@@ -97,7 +97,7 @@ class RemsServiceHandler(ServiceHandler):
             "enabled": True,
             "archived": False,
         }
-        LOG.debug(f"Creating new catalogue item '{catalogue}'")
+        LOG.debug("Creating new REMS catalogue item: '%r'", catalogue)
         created = await self._request(method="POST", path="/catalogue-items/create", json_data=catalogue)
         return created["id"]
 
@@ -110,7 +110,7 @@ class RemsServiceHandler(ServiceHandler):
         :raises HTTPError
         :returns: True or raises
         """
-        LOG.debug(f"Checking that {item_type} '{_id}' is ok.")
+        LOG.debug("Checking that REMS: %s '%i' is ok.", item_type, item_id)
         capitalized_item_type = item_type.capitalize()
 
         try:
@@ -131,7 +131,7 @@ class RemsServiceHandler(ServiceHandler):
         except web.HTTPNotFound as exc:
             raise self.make_exception(reason=f"{capitalized_item_type} '{_id}' doesn't exist.", status=400) from exc
 
-        LOG.debug(f"{capitalized_item_type} '{_id}' is ok.")
+        LOG.debug("%s %r is ok.", capitalized_item_type, item_id)
         return True
 
     async def validate_workflow_licenses(self, organization_id: str, workflow_id: int, licenses: List[int]) -> bool:
@@ -144,13 +144,15 @@ class RemsServiceHandler(ServiceHandler):
         :returns: True
         """
         LOG.debug(
-            f"Checking that workflow '{workflow_id}' and licenses '{licenses}' "
-            f"belong to organization {organization_id}, and pass other checks."
+            "Checking that workflow: %r and licenses: '%r' belong to organization: %s, and pass other checks.",
+            workflow_id,
+            licenses,
+            organization_id,
         )
         if not isinstance(organization_id, str):
-            raise self.make_exception(reason=f"Organization id '{organization_id}' must be a string.", status=400)
+            raise self.make_exception(reason=f"Organization ID '{organization_id}' must be a string.", status=400)
         if not isinstance(workflow_id, int):
-            raise self.make_exception(reason=f"Workflow id '{workflow_id}' must be an integer.", status=400)
+            raise self.make_exception(reason=f"Workflow ID '{workflow_id}' must be an integer.", status=400)
         if not isinstance(licenses, list):
             raise self.make_exception(reason=f"Licenses '{licenses}' must be a list of integers.", status=400)
 
@@ -158,10 +160,10 @@ class RemsServiceHandler(ServiceHandler):
 
         for license_id in licenses:
             if not isinstance(license_id, int):
-                raise self.make_exception(reason=f"Workflow id '{license_id}' must be an integer.", status=400)
+                raise self.make_exception(reason=f"Workflow ID '{license_id}' must be an integer.", status=400)
 
             await self.item_ok("license", organization_id, license_id)
-        LOG.debug("All ok.")
+        LOG.debug("REMS All ok.")
         return True
 
     async def _healtcheck(self) -> Dict:
@@ -179,7 +181,7 @@ class RemsServiceHandler(ServiceHandler):
                 timeout=10,
             ) as response:
 
-                LOG.info(f"REMS REST API status is {response.status}.")
+                LOG.debug("REMS REST API status is: %s.", response.status)
                 content = await response.json()
                 if response.status == 200 and content["healthy"]:
                     status = "Ok" if (time.time() - start) < 1000 else "Degraded"
@@ -188,11 +190,11 @@ class RemsServiceHandler(ServiceHandler):
 
                 return {"status": status}
         except ClientConnectorError as e:
-            LOG.info(f"REMS REST API is down with error {e}.")
+            LOG.exception("REMS REST API is down with error %r.", e)
             return {"status": "Down"}
         except InvalidURL as e:
-            LOG.info(f"REMS REST API status retrieval failed with {e}.")
+            LOG.exception("REMS REST API status retrieval failed with %r.", e)
             return {"status": "Error"}
         except web.HTTPError as e:
-            LOG.info(f"REMS REST API status retrieval failed with {e}.")
+            LOG.exception("REMS REST API status retrieval failed with %r.", e)
             return {"status": "Error"}

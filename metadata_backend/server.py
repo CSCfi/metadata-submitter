@@ -198,7 +198,7 @@ def main() -> None:
     host = "0.0.0.0"  # nosec
     port = 5430
     web.run_app(init(), host=host, port=port, shutdown_timeout=0)
-    LOG.info(f"Started server on {host}:{port}")
+    LOG.info("Started server on %s:%d", host, port)
 
 
 if __name__ == "__main__":

@@ -120,7 +120,7 @@ async def create(req: web.Request) -> web.Response:
         ]
     except Exception as e:
         reason = f"Provided payload did not include required attributes: {e}"
-        LOG.info(reason)
+        LOG.exception(reason)
         raise web.HTTPBadRequest(reason=reason)
 
     data["data"]["attributes"]["created"] = str(datetime.utcnow())
@@ -138,7 +138,7 @@ async def update(req: web.Request) -> web.Response:
         _doi = req.match_info["id"]
     except json.decoder.JSONDecodeError as e:
         reason = f"JSON is not correctly formatted. See: {e}"
-        LOG.info(reason)
+        LOG.exception(reason)
         raise web.HTTPBadRequest(reason=reason)
 
     data = DATASETS[_doi]
@@ -148,7 +148,7 @@ async def update(req: web.Request) -> web.Response:
         data = update_dict(data, content)
     except Exception as e:
         reason = f"Provided payload did not include required attributes: {e}"
-        LOG.info(reason)
+        LOG.exception(reason)
         raise web.HTTPBadRequest(reason=reason)
     return web.json_response(data, status=200)
 
@@ -159,7 +159,7 @@ async def get(req: web.Request) -> web.Response:
         _doi = req.match_info["id"]
     except Exception as e:
         reason = f"No identifier is provided : {e}"
-        LOG.info(reason)
+        LOG.exception(reason)
         raise web.HTTPBadRequest(reason=reason)
 
     data = DATASETS[_doi]

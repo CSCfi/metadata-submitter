@@ -49,7 +49,7 @@ class XMLValidator:
             line = lines[error.position[0] - 1]  # line of instance
             instance = re.sub(r"^.*?<", "<", line)  # strip whitespaces
 
-            LOG.info("Submitted file does not not contain valid XML syntax.")
+            LOG.exception("Submitted file does not not contain valid XML syntax.")
             return ujson.dumps({"isValid": False, "detail": {"reason": reason, "instance": instance}})
 
         except XMLSchemaValidationError as error:
@@ -65,7 +65,7 @@ class XMLValidator:
                     response["detail"]["reason"] = reason
                 response["detail"]["instance"] = instance
 
-            LOG.info("Submitted file is not valid against schema.")
+            LOG.exception("Submitted file is not valid against schema.")
             return ujson.dumps(response)
 
         except URLError as error:
@@ -145,16 +145,16 @@ class JSONValidator:
             DefaultValidatingDraft202012Validator(schema).validate(self.json_data)
         except SchemaNotFoundException as error:
             reason = f"{error} ({self.schema_type})"
-            LOG.error(reason)
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
         except ValidationError as e:
             if len(e.path) > 0:
                 reason = f"Provided input does not seem correct for field: '{e.path[0]}'"
-                LOG.debug(f"Provided JSON input: '{e.instance}'")
+                LOG.debug("Provided JSON input: '%r'", e.instance)
                 LOG.exception(reason)
                 raise web.HTTPBadRequest(reason=reason)
 
             reason = f"Provided input does not seem correct because: '{e.message}'"
-            LOG.debug(f"Provided JSON input: '{e.instance}'")
-            LOG.error(reason)
+            LOG.debug("Provided JSON input: '%r'", e.instance)
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)

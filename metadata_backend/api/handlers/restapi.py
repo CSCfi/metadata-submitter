@@ -44,7 +44,7 @@ class RESTAPIHandler:
             param = int(req.query.get(name, str(default)))
         except ValueError as exc:
             reason = f"{name} parameter must be a number, now it is {req.query.get(name)}"
-            LOG.error(reason)
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason) from exc
         if param < 1:
             reason = f"{name} parameter must be over 0"
@@ -124,8 +124,8 @@ class RESTAPIHandler:
             content = await req.json()
             return content
         except json.decoder.JSONDecodeError as e:
-            reason = "JSON is not correctly formatted." f" See: {e}"
-            LOG.error(reason)
+            reason = f"JSON is not correctly formatted, err: {e}"
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
 
     @staticmethod
@@ -146,7 +146,7 @@ class RESTAPIHandler:
         :returns: JSON list of schema types
         """
         data = [x["description"] for x in schema_types.values()]
-        LOG.info(f"GET schema types. Retrieved {len(schema_types)} schemas.")
+        LOG.info("GET schema types. Retrieved %d schemas.", len(schema_types))
         return await self._json_response(data)
 
     async def get_json_schema(self, req: Request) -> Response:
@@ -166,12 +166,12 @@ class RESTAPIHandler:
                 schema = submission["properties"]["doiInfo"]
             else:
                 schema = JSONSchemaLoader().get_schema(schema_type)
-            LOG.info(f"{schema_type} schema loaded.")
+            LOG.info("%s JSON schema loaded.", schema_type)
             return await self._json_response(schema)
 
         except SchemaNotFoundException as error:
-            reason = f"{error} ({schema_type})"
-            LOG.error(reason)
+            reason = f"{error} Occured for JSON schema: '{schema_type}'."
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
 
     async def get_workflows(self, _: Request) -> Response:
@@ -181,7 +181,7 @@ class RESTAPIHandler:
         :param _: GET Request
         :returns: JSON list of workflows
         """
-        LOG.info(f"GET workflows. Retrieved {len(WORKFLOWS)} workflows.")
+        LOG.info("GET workflows. Retrieved %d workflows.", len(WORKFLOWS))
         response = {workflow["name"]: workflow["description"] for workflow in WORKFLOWS.values()}
         return await self._json_response(response)
 
@@ -195,9 +195,9 @@ class RESTAPIHandler:
         workflow_name = req.match_info["workflow"]
         if workflow_name not in WORKFLOWS:
             reason = f"Workflow {workflow_name} was not found."
-            LOG.exception(reason)
+            LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
-        LOG.info(f"GET workflow {workflow_name}.")
+        LOG.info("GET workflow: %r.", workflow_name)
         return await self._json_response(WORKFLOWS[workflow_name])
 
     def _header_links(self, url: str, page: int, size: int, total_objects: int) -> CIMultiDict[str]:
@@ -287,7 +287,7 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
         """
         _doi_data = await self.datacite_handler.create_draft(prefix=collection)
 
-        LOG.debug(f"doi created with doi: {_doi_data['fullDOI']}")
+        LOG.debug("DOI created with identifier: %r", _doi_data["fullDOI"])
 
         return _doi_data["fullDOI"]
 
