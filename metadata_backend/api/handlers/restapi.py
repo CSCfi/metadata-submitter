@@ -142,7 +142,7 @@ class RESTAPIHandler:
         """Get all possible metadata schema types from database.
 
         Basically returns which objects user can submit and query for.
-        :param _: GET Request
+
         :returns: JSON list of schema types
         """
         data = [x["description"] for x in schema_types.values()]
@@ -178,7 +178,7 @@ class RESTAPIHandler:
         """Get all JSON workflows.
 
         Workflows tell what are the requirements for different 'types of submissions' (aka workflow)
-        :param _: GET Request
+
         :returns: JSON list of workflows
         """
         LOG.info("GET workflows. Retrieved %d workflows.", len(WORKFLOWS))

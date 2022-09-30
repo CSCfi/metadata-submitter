@@ -101,12 +101,12 @@ class RemsServiceHandler(ServiceHandler):
         created = await self._request(method="POST", path="/catalogue-items/create", json_data=catalogue)
         return created["id"]
 
-    async def item_ok(self, item_type: str, organization_id: str, _id: int) -> bool:
+    async def item_ok(self, item_type: str, organization_id: str, item_id: int) -> bool:
         """Check that item exists.
 
         :param item_type: 'workflow' or 'license'
         :param organization_id: REMS organization/id
-        :param _id: REMS item id
+        :param item_id: REMS item id
         :raises HTTPError
         :returns: True or raises
         """
@@ -114,22 +114,22 @@ class RemsServiceHandler(ServiceHandler):
         capitalized_item_type = item_type.capitalize()
 
         try:
-            item = await self._request(method="GET", path=f"/{item_type}s/{_id}")
+            item = await self._request(method="GET", path=f"/{item_type}s/{item_id}")
             if not item["enabled"]:
-                raise self.make_exception(reason=f"{capitalized_item_type} '{_id}' is disabled", status=400)
+                raise self.make_exception(reason=f"{capitalized_item_type} '{item_id}' is disabled", status=400)
             if item["archived"]:
-                raise self.make_exception(reason=f"{capitalized_item_type} '{_id}' is archived", status=400)
+                raise self.make_exception(reason=f"{capitalized_item_type} '{item_id}' is archived", status=400)
             if item["organization"]["organization/id"] != organization_id:
                 raise self.make_exception(
-                    reason=f"{capitalized_item_type} '{_id}' doesn't belong to organization '{organization_id}'",
+                    reason=f"{capitalized_item_type} '{item_id}' doesn't belong to organization '{organization_id}'",
                     status=400,
                 )
         except KeyError as exc:
             raise self.make_exception(
-                reason=f"{capitalized_item_type} '{_id}' has unexpected structure.", status=400
+                reason=f"{capitalized_item_type} '{item_id}' has unexpected structure.", status=400
             ) from exc
         except web.HTTPNotFound as exc:
-            raise self.make_exception(reason=f"{capitalized_item_type} '{_id}' doesn't exist.", status=400) from exc
+            raise self.make_exception(reason=f"{capitalized_item_type} '{item_id}' doesn't exist.", status=400) from exc
 
         LOG.debug("%s %r is ok.", capitalized_item_type, item_id)
         return True

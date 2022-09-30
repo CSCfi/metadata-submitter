@@ -213,19 +213,19 @@ class MetaxServiceHandler(ServiceHandler):
         LOG.info("Deleting Metax draft dataset metax ID: %r", metax_id)
         await self._delete_draft(metax_id)
 
-    async def update_dataset_with_doi_info(self, datacite_info: Dict, _metax_ids: List) -> None:
+    async def update_dataset_with_doi_info(self, datacite_info: Dict, metax_ids: List) -> None:
         """Update dataset for publishing.
 
         :param datacite_info: Dict containing info to complete metax dataset metadata
-        :param _metax_ids: List of Metax id of dataset to be updated
+        :param metax_ids: List of Metax id of dataset to be updated
         :raises: HTTPBadRequest if mapping datacite info to metax fails
         """
         LOG.info(
             "Updating metadata with datacite info for Metax datasets: %r",
-            ",".join([id["metaxIdentifier"] for id in _metax_ids]),
+            ",".join([id["metaxIdentifier"] for id in metax_ids]),
         )
         bulk_data = []
-        for metax_id in _metax_ids:
+        for metax_id in metax_ids:
             metax_data: dict = await self._get(metax_id["metaxIdentifier"])
 
             # Map fields from doi info to Metax schema
@@ -255,16 +255,16 @@ class MetaxServiceHandler(ServiceHandler):
         metax_data = await self._put(metax_id, data)
         LOG.debug("Updated description of Metax ID: %r, new metadata is: %r", metax_id, metax_data)
 
-    async def publish_dataset(self, _metax_ids: List[Dict]) -> None:
+    async def publish_dataset(self, metax_ids: List[Dict]) -> None:
         """Publish draft dataset to Metax service.
 
         Iterate over the metax ids that need to be published.
 
-        :param _metax_ids: List of metax IDs that include study and datasets
+        :param metax_ids: List of metax IDs that include study and datasets
         """
-        LOG.info("Publishing Metax datasets: %s", ",".join([id["metaxIdentifier"] for id in _metax_ids]))
+        LOG.info("Publishing Metax datasets: %s", ",".join([id["metaxIdentifier"] for id in metax_ids]))
 
-        for obj in _metax_ids:
+        for obj in metax_ids:
             metax_id = obj["metaxIdentifier"]
             doi = obj["doi"]
             preferred_id = await self._publish(metax_id)
