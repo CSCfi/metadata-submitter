@@ -48,7 +48,7 @@ def retry(
             _tries, _delay = total_tries, initial_wait
             while _tries > 1:
                 try:
-                    LOG.info(f"Function: {f.__name__} {total_tries + 1 - _tries}. try")
+                    LOG.debug("Function: %s {total_tries + 1 - _tries}. try", f.__name__)
                     return await f(*args, **kwargs)
                 except exceptions as e:
                     _tries -= 1
@@ -58,13 +58,13 @@ def retry(
                             f"Function: {f.__name__} failed after {total_tries} tries. "
                             f"args: {print_args}, kwargs: {kwargs}"
                         )
-                        LOG.error(msg)
+                        LOG.exception(msg)
                         raise
                     msg = str(
                         f"Function: {f.__name__}, Exception: {e}\n"
                         f"Retrying in {_delay} seconds!, args: {print_args}, kwargs: {kwargs}\n"
                     )
-                    LOG.info(msg)
+                    LOG.debug(msg)
                     time.sleep(_delay)
                     _delay *= backoff_factor
 

@@ -24,10 +24,10 @@ class StaticHandler:
         serve_path = self.path.joinpath("./" + req.path)
 
         if not serve_path.exists() or not serve_path.is_file():
-            LOG.debug(f"{serve_path} was not found or is not a file - serving index.html")
+            LOG.debug("%s was not found or is not a file - serving index.html", serve_path)
             serve_path = self.path.joinpath("./index.html")
 
-        LOG.debug(f"Serve Frontend SPA {req.path} by {serve_path}.")
+        LOG.debug("Serve Frontend SPA %r by %r.", req.path, serve_path)
 
         mime_type = mimetypes.guess_type(serve_path.as_posix())
 
@@ -57,7 +57,7 @@ def html_handler_factory(html_static_path: Path) -> Handler:
     async def html_handler(_: Request) -> Response:
         serve_path = html_static_path
         if html_static_path.exists() and not html_static_path.is_file():
-            LOG.debug(f"{html_static_path} was not found or is not a file - serving index.html")
+            LOG.debug("%r was not found or is not a file - serving index.html", html_static_path)
             serve_path = html_static_path.joinpath("./index.html")
 
         mime_type = mimetypes.guess_type(serve_path.as_posix())

@@ -6,10 +6,8 @@ from typing import Dict
 
 import ujson
 
-FORMAT = (
-    "[%(asctime)s][%(name)s][%(process)d %(processName)s] [%(levelname)-8s](L:%(lineno)s) %(funcName)s: %(message)s"
-)
-logging.basicConfig(format=FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
+FORMAT = "[{asctime}][{name}][{process} {processName:<12}] [{levelname:8s}](L:{lineno}) {funcName}: {message}"
+logging.basicConfig(format=FORMAT, datefmt="%Y-%m-%d %H:%M:%S", style="{")
 
 LOG = logging.getLogger("server")
 LOG.setLevel(os.getenv("LOG_LEVEL", "INFO"))
@@ -22,9 +20,9 @@ def get_attributes(obj: Dict) -> None:
     """
     for attr in dir(obj):
         try:
-            LOG.info("obj.%s = %r", attr, getattr(obj, attr))
+            LOG.debug("obj.%s = %r", attr, getattr(obj, attr))
         except AttributeError as error:
-            LOG.info("Error: %r", error)
+            LOG.exception("Error: %r", error)
 
 
 def pprint_json(content: Dict) -> None:
@@ -32,4 +30,4 @@ def pprint_json(content: Dict) -> None:
 
     :param content: JSON-formatted content to be printed
     """
-    LOG.info(ujson.dumps(content, indent=4, escape_forward_slashes=False))
+    LOG.debug(ujson.dumps(content, indent=4, escape_forward_slashes=False))

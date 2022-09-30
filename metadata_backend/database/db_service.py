@@ -33,9 +33,8 @@ def auto_reconnect(db_func: Callable) -> Callable:
                 if attempt == max_attempts:
                     message = f"Connection to database failed after {attempt} tries"
                     raise ConnectionFailure(message=message) from exc
-                LOG.error(
-                    "Connection not successful, trying to reconnect. "
-                    "Reconnection attempt number %d, waiting for %d seconds.",
+                LOG.exception(
+                    "Connection not successful, trying to reconnect. Reconnection attempt: %d, waiting for %d seconds.",
                     attempt,
                     default_timeout,
                 )
@@ -74,7 +73,7 @@ class DBService:
         :returns: True if operation was successful
         """
         result = await self.database[collection].insert_one(document)
-        LOG.debug(f"DB document inserted in {collection}.")
+        LOG.debug("DB document inserted in collection: %r.", collection)
         return result.acknowledged
 
     @auto_reconnect
@@ -89,7 +88,7 @@ class DBService:
         projection = {"_id": False, "externalId": False} if collection == "user" else {"_id": False}
         find_by_id = {id_key: accession_id}
         exists = await self.database[collection].find_one(find_by_id, projection)
-        LOG.debug(f"DB check exists for {accession_id} in collection {collection}.")
+        LOG.debug("DB check exists for accession ID: %r in collection: %r.", accession_id, collection)
         return bool(exists)
 
     @auto_reconnect
@@ -101,7 +100,7 @@ class DBService:
         """
         find_by_id = {"externalId": external_id}
         project = await self.database["project"].find_one(find_by_id, {"_id": False, "externalId": False})
-        LOG.debug(f"DB check project exists for {external_id} returned {project}.")
+        LOG.debug("DB check project exists for: %r returned: '%r'.", external_id, project)
         return project["projectId"] if project else None
 
     @auto_reconnect
@@ -114,7 +113,7 @@ class DBService:
         """
         find_by_id = {"externalId": external_id, "name": name}
         user = await self.database["user"].find_one(find_by_id, {"_id": False, "externalId": False})
-        LOG.debug(f"DB check user exists for {external_id} returned {user}.")
+        LOG.debug("DB check user exists for: %r returned: %r.", external_id, user)
         return user["userId"] if user else None
 
     @auto_reconnect
@@ -127,7 +126,7 @@ class DBService:
         find_published = {"published": True, "submissionId": submission_id}
         exists = await self.database["submission"].find_one(find_published, {"_id": False})
         check = bool(exists)
-        LOG.debug(f"DB check submission {submission_id} published, result: {check}.")
+        LOG.debug("DB check submission: %r if published, result: %s.", submission_id, check)
         return check
 
     @auto_reconnect
@@ -141,7 +140,7 @@ class DBService:
         id_key = f"{collection}Id" if (collection in {"submission", "user"}) else "accessionId"
         projection = {"_id": False, "eppn": False} if collection == "user" else {"_id": False}
         find_by_id = {id_key: accession_id}
-        LOG.debug(f"DB doc in {collection} read for {accession_id}.")
+        LOG.debug("DB doc in collection: %r read for accession ID: %r.", collection, accession_id)
         return await self.database[collection].find_one(find_by_id, projection)
 
     @auto_reconnect
@@ -158,10 +157,15 @@ class DBService:
         requests = jsonpatch_mongo(find_by_id, patch_data)
         try:
             result = await self.database[collection].bulk_write(requests, ordered=False)
-            LOG.debug(f"DB doc in {collection} patched for {accession_id} with data {patch_data}.")
+            LOG.debug(
+                "DB doc in collection: %r patched for accession ID: %r with data: %r.",
+                collection,
+                accession_id,
+                patch_data,
+            )
             return result.acknowledged
         except BulkWriteError as bwe:
-            LOG.error(bwe.details)
+            LOG.exception(bwe.details)
             return False
 
     @auto_reconnect
@@ -183,7 +187,12 @@ class DBService:
             result = await self.database[collection].find_one_and_update(
                 find_by_id, req._doc, projection={"_id": False}, return_document=ReturnDocument.AFTER
             )
-            LOG.debug(f"DB doc in {collection} with data: {patch_data} modified for {accession_id}.")
+            LOG.debug(
+                "DB doc in collection: %r with data: %r modified for accession ID: %r.",
+                collection,
+                patch_data,
+                accession_id,
+            )
             if not result:
                 return False
         return True
@@ -202,7 +211,12 @@ class DBService:
         find_by_id = {id_key: accession_id}
         update_op = {"$set": data_to_be_updated}
         result = await self.database[collection].update_one(find_by_id, update_op)
-        LOG.debug(f"DB doc in {collection} updated for {accession_id} with data {data_to_be_updated}.")
+        LOG.debug(
+            "DB doc in collection: %r updated for accession ID: %r with data: %r.",
+            collection,
+            accession_id,
+            data_to_be_updated,
+        )
         return result.acknowledged
 
     @auto_reconnect
@@ -221,7 +235,12 @@ class DBService:
         result = await self.database[collection].find_one_and_update(
             find_by_id, remove_op, projection={"_id": False}, return_document=ReturnDocument.AFTER
         )
-        LOG.debug(f"DB doc in {collection} with data: {data_to_be_removed} removed from {accession_id}.")
+        LOG.debug(
+            "DB doc in collection: %r with data: %r removed the accesion ID: %r.",
+            collection,
+            data_to_be_removed,
+            accession_id,
+        )
         return result
 
     @auto_reconnect
@@ -243,7 +262,12 @@ class DBService:
         result = await self.database[collection].find_one_and_update(
             find_by_id, append_op, projection={"_id": False}, return_document=ReturnDocument.AFTER
         )
-        LOG.debug(f"DB doc in {collection} with data: {data_to_be_addded} appeneded for {accession_id}.")
+        LOG.debug(
+            "DB doc in collection: %r with data: %r appeneded for accession ID: %r.",
+            collection,
+            data_to_be_addded,
+            accession_id,
+        )
         return result
 
     @auto_reconnect
@@ -272,7 +296,12 @@ class DBService:
             if "publishDate" in old_data:
                 new_data["publishDate"] = old_data["publishDate"]
         result = await self.database[collection].replace_one(find_by_id, new_data)
-        LOG.debug(f"DB doc in {collection} replaced with {new_data} for {accession_id}.")
+        LOG.debug(
+            "DB doc in collection: %r replaced with data: %r for accession ID: %r.",
+            collection,
+            new_data,
+            accession_id,
+        )
         return result.acknowledged
 
     @auto_reconnect
@@ -286,7 +315,7 @@ class DBService:
         id_key = f"{collection}Id" if (collection in {"submission", "user"}) else "accessionId"
         find_by_id = {id_key: accession_id}
         result = await self.database[collection].delete_one(find_by_id)
-        LOG.debug(f"DB doc in {collection} deleted for {accession_id}.")
+        LOG.debug("DB doc in collection: %r deleted data for accession ID: %r.", collection, accession_id)
         return result.acknowledged
 
     def query(self, collection: str, query: Dict, custom_projection: Optional[Dict] = None) -> AsyncIOMotorCursor:
@@ -300,7 +329,7 @@ class DBService:
         :param custom_projection: overwrites default projection
         :returns: Async cursor instance which should be awaited when iterating
         """
-        LOG.debug(f"DB doc query performed in {collection}.")
+        LOG.debug("DB doc query performed in: %r.", collection)
         projection = {"_id": False, "eppn": False} if collection == "user" else {"_id": False}
         if custom_projection:
             projection = custom_projection
@@ -314,6 +343,6 @@ class DBService:
         :param query: query to be used
         :returns: aggregated query result list
         """
-        LOG.debug(f"DB aggregate performed in {collection}.")
+        LOG.debug("DB aggregate performed in collection: %r.", collection)
         aggregate = self.database[collection].aggregate(query)
         return [doc async for doc in aggregate]

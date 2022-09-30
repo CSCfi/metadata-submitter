@@ -56,7 +56,7 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
                                   extra information."""
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
-                LOG.debug(f"submission has action {action}")
+                LOG.debug("Submission has action %r", action)
                 if attr["schema"] in actions:
                     _set = []
                     _set.append(actions[attr["schema"]])
@@ -84,7 +84,7 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
                 results.append(result)
 
         body = ujson.dumps(results, escape_forward_slashes=False)
-        LOG.info(f"Processed a submission of {len(results)} actions.")
+        LOG.info("Processed a submission of %d actions.", len(results))
         return web.Response(body=body, status=200, content_type="application/json")
 
     async def validate(self, req: Request) -> Response:
@@ -108,12 +108,12 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
         """
         try:
             schema = XMLSchemaLoader().get_schema(schema_type)
-            LOG.info(f"{schema_type} schema loaded.")
+            LOG.info("%r XML schema loaded for XML validation.", schema_type)
             return XMLValidator(schema, xml_content)
 
         except (SchemaNotFoundException, XMLSchemaException) as error:
             reason = f"{error} ({schema_type})"
-            LOG.error(reason)
+            LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
 
     async def _execute_action(self, req: Request, schema: str, content: str, action: str, filename: str) -> Dict:
@@ -178,7 +178,7 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
             "accessionId": json_data["accessionId"],
             "schema": schema,
         }
-        LOG.debug(f"added some content in {schema} ...")
+        LOG.debug("Added some content in collection: %r ...", schema)
 
         # Gathering data for object to be added to submission
         patch = self._prepare_submission_patch_new_object(schema, [(json_data, filename)], "xml")
@@ -195,7 +195,7 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
                 await self.create_metax_dataset(req, schema, json_data)
         except Exception as e:
             # We don't care if it fails here
-            LOG.info(f"create_metax_dataset failed: {e} for schema {schema}")
+            LOG.exception("creating metax dataset failed with: %r for collection: %r.", e, schema)
 
         return result
 
@@ -259,7 +259,7 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
                     raise ValueError("Object's data must be dictionary")
         except Exception as e:
             # We don't care if it fails here
-            LOG.info(f"update_draft_dataset failed: {e} for schema {schema}")
+            LOG.exception("update draft metax dataset failed with: %r for collection: %r.", e, schema)
 
-        LOG.debug(f"modified some content in {schema} ...")
+        LOG.debug("Modified some content in collection: %r ...", schema)
         return result
