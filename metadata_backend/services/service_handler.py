@@ -129,7 +129,12 @@ class ServiceHandler(ABC):
             raise HTTPInternalServerError(reason=reason)
 
         LOG.debug(
-            f"{method} request to '{url or self.base_url}' path '{path}', params '{params}', payload '{json_data}'"
+            "%s request to: %r, path %r, params %r, request payload: %r",
+            method,
+            (url or self.base_url),
+            path,
+            params,
+            json_data,
         )
         if url is None:
             url = self.base_url
@@ -150,7 +155,12 @@ class ServiceHandler(ABC):
                 if not response.ok:
                     content = await response.text()
                     log_msg = (
-                        f"{method} request to {self.service_name} '{url}' returned a {response.status}: '{content}'"
+                        "%s request to: %s, path %r returned: %s and content: %r",
+                        method,
+                        self.service_name,
+                        url,
+                        response.status,
+                        content,
                     )
                     if content:
                         content = self._process_error(content)
@@ -173,13 +183,13 @@ class ServiceHandler(ABC):
             return content
 
         except TimeoutError as exc:
-            LOG.exception(f"{method} request to {self.service_name} '{url}' timed out.")
+            LOG.exception("%s request to %s %r timed out.", method, self.service_name, url)
             raise HTTPGatewayTimeout(reason=f"{self.service_name} error: Could not reach service provider.") from exc
         except HTTPError:
             # These are expected
             raise
         except Exception as exc:
-            LOG.exception(f"{method} request to {self.service_name} '{url}' raised an unexpected exception.")
+            LOG.exception("%s request to %s %r raised an unexpected exception.", method, self.service_name, url)
             message = f"{self.service_name} error 502: Unexpected issue when connecting to service provider."
             raise ServiceServerError(text=message, reason=message) from exc
 
@@ -191,7 +201,7 @@ class ServiceHandler(ABC):
         :returns MetaxServerError or MetaxClientError. HTTPInternalServerError on invalid input
         """
         if status < 400:
-            LOG.error(f"HTTP status code must be an error code, >400 received {status}.")
+            LOG.error("HTTP status code must be an error code, >400 received %s.", status)
             return HTTPInternalServerError(reason="Server encountered an unexpected situation.")
         reason = f"{self.service_name} error: {reason}"
         if status >= 500:

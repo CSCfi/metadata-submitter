@@ -75,7 +75,7 @@ class DataciteServiceHandler(ServiceHandler):
                     message = f"Attribute '{source}' in '{uid}': {title}"
                 error_messages.append(message)
         except (KeyError, UnicodeDecodeError, ujson.JSONDecodeError):
-            LOG.exception(f"Unexpected format for error message from Datacite: '{error}'.")
+            LOG.exception("Unexpected format for error message from Datacite, err: %r.", error)
 
         return " | ".join(error_messages)
 
@@ -100,7 +100,7 @@ class DataciteServiceHandler(ServiceHandler):
         draft_resp = await self._request(method="POST", path="/dois", json_data=doi_payload)
         full_doi = draft_resp["data"]["attributes"]["doi"]
         returned_suffix = draft_resp["data"]["attributes"]["suffix"]
-        LOG.info(f"DOI draft created with doi: {full_doi}.")
+        LOG.info("DOI draft created with identifier: %r.", full_doi)
         doi_data = {
             "fullDOI": full_doi,
             "dataset": str(self.base_url / returned_suffix.lower()),
@@ -120,7 +120,7 @@ class DataciteServiceHandler(ServiceHandler):
         """
         _id = datacite_payload["id"]
         await self._request(method="PUT", path=f"/dois/{_id}", json_data=datacite_payload)
-        LOG.info(f"Datacite doi {_id} updated ")
+        LOG.info("Datacite DOI: %r updated.", _id)
 
     async def delete(self, doi: str) -> None:
         """Delete DOI and associated metadata.
@@ -131,7 +131,7 @@ class DataciteServiceHandler(ServiceHandler):
         :raises: HTTPInternalServerError if we the Datacite draft DOI delete fails
         """
         await self._request(method="DELETE", path=f"/dois/{doi}")
-        LOG.info(f"Datacite doi {doi} deleted.")
+        LOG.info("Datacite DOI: %r deleted.", doi)
 
     async def _healtcheck(self) -> Dict:
         """Check DOI service hearthbeat.
@@ -149,7 +149,7 @@ class DataciteServiceHandler(ServiceHandler):
             ) as response:
 
                 content = await response.text()
-                LOG.info(f"Datacite REST API status is {content}.")
+                LOG.info("Datacite REST API response content is: %s.", content)
                 if response.status == 200 and content == "OK":
                     status = "Ok" if (time.time() - start) < 1000 else "Degraded"
                 else:
@@ -157,11 +157,11 @@ class DataciteServiceHandler(ServiceHandler):
 
                 return {"status": status}
         except ClientConnectorError as e:
-            LOG.info(f"Datacite REST API is down with error {e}.")
+            LOG.exception("Datacite REST API is down with error: %r.", e)
             return {"status": "Down"}
         except InvalidURL as e:
-            LOG.info(f"Metax Datacite API status retrieval failed with {e}.")
+            LOG.exception("Metax Datacite API status retrieval failed with: %r.", e)
             return {"status": "Error"}
         except web.HTTPError as e:
-            LOG.info(f"Datacite REST API status retrieval failed with {e}.")
+            LOG.exception("Datacite REST API status retrieval failed with: %r.", e)
             return {"status": "Error"}

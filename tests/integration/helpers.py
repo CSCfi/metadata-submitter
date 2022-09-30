@@ -564,7 +564,7 @@ async def create_submission(database, data):
         return submission_id
 
     except Exception as e:
-        LOG.error(f"Submission creation failed due to {str(e)}")
+        LOG.exception(f"Submission creation failed due to {str(e)}")
 
 
 async def delete_objects_metax_id(sess, database, collection, accession_id, metax_id):
@@ -579,11 +579,11 @@ async def delete_objects_metax_id(sess, database, collection, accession_id, meta
     try:
         await database[collection].find_one_and_update({"accessionId": accession_id}, {"$set": {"metaxIdentifier": ""}})
     except Exception as e:
-        LOG.error(f"Object update failed due to {str(e)}")
+        LOG.exception(f"Object update failed due to {str(e)}")
     try:
         await sess.delete(f"{metax_api}/{metax_id}")
     except Exception as e:
-        LOG.error(f"Object deletion from mocked Metax failed due to {str(e)}")
+        LOG.exception(f"Object deletion from mocked Metax failed due to {str(e)}")
 
 
 async def delete_user(sess, user_id):

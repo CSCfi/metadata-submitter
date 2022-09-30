@@ -89,7 +89,7 @@ class AccessHandler:
         except Exception as e:
             # This can be caused if config is improperly configured, and
             # oidcrp is unable to fetch oidc configuration from the given URL
-            LOG.error(f"OIDC authorization request failed: {e}")
+            LOG.exception("OIDC authorization request failed with: %r", e)
             raise web.HTTPInternalServerError(reason="OIDC authorization request failed.")
 
         # Redirect user to AAI
@@ -123,7 +123,7 @@ class AccessHandler:
             session = self.rph.get_session_information(params["state"])
         except KeyError as e:
             # This exception is raised if the RPHandler doesn't have the supplied "state"
-            LOG.error(f"Session not initialised: {e}")
+            LOG.exception("Session not initialised, failed with: %r", e)
             raise web.HTTPUnauthorized(reason="Bad user session.")
 
         # Place authorization_code to session for finalize step
@@ -133,14 +133,14 @@ class AccessHandler:
         try:
             session = self.rph.finalize(session["iss"], session["auth_request"])
         except KeyError as e:
-            LOG.error(f"Issuer {session['iss']} not found: {e}.")
+            LOG.exception("Issuer: %s not found, failed with: %r.", session["iss"], e)
             raise web.HTTPBadRequest(reason="Token issuer not found.")
         except OidcServiceError as e:
             # This exception is raised if RPHandler encounters an error due to:
             # 1. "code" is wrong, so token request failed
             # 2. token validation failed
             # 3. userinfo request failed
-            LOG.error(f"OIDC Callback failed with: {e}")
+            LOG.exception("OIDC Callback failed with: %r", e)
             raise web.HTTPUnauthorized(reason="Invalid OIDC callback.")
 
         # Parse data from the userinfo endpoint to create user data containing username, real name and projects/groups
@@ -180,12 +180,12 @@ class AccessHandler:
             session = await aiohttp_session.get_session(req)
             session.invalidate()
         except Exception as e:
-            LOG.info(f"Trying to log out an invalidated session: {e}")
+            LOG.exception("Trying to log out an invalidated session, failed with: %r", e)
             raise web.HTTPUnauthorized
 
         response = web.HTTPSeeOther(f"{self.redirect}/")
         response.headers["Location"] = "/" if self.redirect == self.domain else f"{self.redirect}/"
-        LOG.debug("Logged out user ")
+        LOG.debug("Logged out user.")
 
         return response
 
@@ -339,7 +339,7 @@ class AAIServiceHandler(ServiceHandler):
             ) as response:
 
                 content = await response.json()
-                LOG.info(f"AAI REST API status is {content}.")
+                LOG.debug("AAI REST API response content is: %r.", content)
                 if response.status == 200 and "userinfo_endpoint" in content:
                     status = "Ok" if (time.time() - start) < 1000 else "Degraded"
                 else:
@@ -347,11 +347,11 @@ class AAIServiceHandler(ServiceHandler):
 
                 return {"status": status}
         except ClientConnectorError as e:
-            LOG.info(f"AAI REST API is down with error {e}.")
+            LOG.exception("AAI REST API is down with error: %r.", e)
             return {"status": "Down"}
         except InvalidURL as e:
-            LOG.info(f"AAI REST API status retrieval failed with {e}.")
+            LOG.exception("AAI REST API status retrieval failed with: %r.", e)
             return {"status": "Error"}
         except web.HTTPError as e:
-            LOG.info(f"AAI REST API status retrieval failed with {e}.")
+            LOG.exception("AAI REST API status retrieval failed with: %r.", e)
             return {"status": "Error"}

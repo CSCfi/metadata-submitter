@@ -81,7 +81,7 @@ class HealthHandler:
         :returns: Coroutine-based Motor client for Mongo operations
         """
         new_client = AsyncIOMotorClient(url, connectTimeoutMS=4000, serverSelectionTimeoutMS=4000)
-        LOG.info("Initialised a new DB client as a test")
+        LOG.debug("Initialised a new DB client as a test")
         return new_client
 
     async def try_db_connection(self, db_client: AsyncIOMotorClient) -> Union[None, float]:
@@ -93,9 +93,9 @@ class HealthHandler:
         try:
             start = time.time()
             await db_client.server_info()
-            LOG.info("Connection to db succeeded.")
+            LOG.debug("Connection to db succeeded.")
             perf_time = time.time() - start
             return perf_time
         except ConnectionFailure:
-            LOG.info("Connection to db failed.")
+            LOG.exception("Connection to db failed.")
             return None

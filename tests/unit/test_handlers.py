@@ -273,7 +273,9 @@ class APIHandlerTestCase(HandlersTestCase):
             response = await self.client.get(f"{API_PREFIX}/schemas/project")
             self.assertEqual(response.status, 400)
             resp_json = await response.json()
-            self.assertEqual(resp_json["detail"], "The provided schema type could not be found. (project)")
+            self.assertEqual(
+                resp_json["detail"], "The provided schema type could not be found. Occured for JSON schema: 'project'."
+            )
 
 
 class XMLSubmissionHandlerTestCase(HandlersTestCase):
@@ -498,7 +500,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
             response = await self.client.post(
                 f"{API_PREFIX}/objects/study", params={"submission": "some id"}, data=json_req
             )
-            reason = "JSON is not correctly formatted. See: Expecting value: line 1 column 1"
+            reason = "JSON is not correctly formatted, err: Expecting value: line 1 column 1 (char 0)"
             self.assertEqual(response.status, 400)
             self.assertIn(reason, await response.text())
 
@@ -552,7 +554,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         call = f"{API_PREFIX}/drafts/study/EGA123456"
         with self.p_get_sess_restapi:
             response = await self.client.put(call, data=json_req)
-            reason = "JSON is not correctly formatted. See: Expecting value: line 1 column 1"
+            reason = "JSON is not correctly formatted, err: Expecting value: line 1 column 1 (char 0)"
             self.assertEqual(response.status, 400)
             self.assertIn(reason, await response.text())
 
@@ -562,7 +564,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         call = f"{API_PREFIX}/drafts/study/EGA123456"
         with self.p_get_sess_restapi:
             response = await self.client.patch(call, data=json_req)
-            reason = "JSON is not correctly formatted. See: Expecting value: line 1 column 1"
+            reason = "JSON is not correctly formatted, err: Expecting value: line 1 column 1 (char 0)"
             self.assertEqual(response.status, 400)
             self.assertIn(reason, await response.text())
 
@@ -865,7 +867,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             response = await self.client.post(f"{API_PREFIX}/submissions")
             json_resp = await response.json()
             self.assertEqual(response.status, 400)
-            self.assertIn("JSON is not correctly formatted.", json_resp["detail"])
+            self.assertIn("JSON is not correctly formatted", json_resp["detail"])
 
     async def test_get_submissions_with_1_submission(self):
         """Test get_submissions() endpoint returns list with 1 submission."""

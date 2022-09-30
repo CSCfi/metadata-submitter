@@ -54,8 +54,8 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         )
         url = f"{req.scheme}://{req.host}{req.path}"
         link_headers = self._header_links(url, page_num, per_page, total_objects)
-        LOG.debug(f"Pagination header links: {link_headers}")
-        LOG.info(f"Querying for objects in {collection} resulted in {total_objects} objects ")
+        LOG.debug("Pagination header links: %r", link_headers)
+        LOG.info("Querying for objects in collection: %r resulted in %d objects.", collection, total_objects)
         return web.Response(
             body=result,
             status=200,
@@ -89,7 +89,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         data, content_type = await operator.read_metadata_object(type_collection, accession_id)
 
         data = data if req_format == "xml" else ujson.dumps(data, escape_forward_slashes=False)
-        LOG.info(f"GET object with accesssion ID {accession_id} from schema {collection}.")
+        LOG.info("GET object with accesssion ID: %r from collection: %r.", accession_id, collection)
         return web.Response(body=data, status=200, content_type=content_type)
 
     async def post_object(self, req: Request) -> Response:
@@ -103,13 +103,15 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         """
         _allowed_csv = {"sample"}
         schema_type = req.match_info["schema"]
-        LOG.debug(f"Creating {schema_type} object")
+        LOG.debug("Creating in collection: %s an object", schema_type)
         filename = ""
         cont_type = ""
 
         submission_id = req.query.get("submission", "")
         if not submission_id:
-            reason = "Submission is required query parameter. Please provide submission id where object is added to."
+            reason = (
+                "Submission ID is a required query parameter. Please provide submission ID where object is added to."
+            )
             raise web.HTTPBadRequest(reason=reason)
 
         await self._handle_check_ownership(req, "submission", submission_id)
@@ -156,7 +158,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         data: Union[List[Dict[str, str]], Dict[str, str]]
         objects: List[Tuple[Dict[str, Any], str]] = []
         if isinstance(content, List):
-            LOG.debug(f"Inserting multiple objects for {schema_type}.")
+            LOG.debug("Inserting multiple objects for collection: %r.", schema_type)
             for item in content:
                 json_data = await operator.create_metadata_object(collection, item[0])
                 filename = item[2]
@@ -164,8 +166,9 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
                 for obj_from_json in listed_json:
                     objects.append((obj_from_json, filename))
                     LOG.info(
-                        f"POST object with accesssion ID {obj_from_json['accessionId']} "
-                        f"in schema {collection} was successful."
+                        "POST object with accesssion ID: %r in collection: %r was successful.",
+                        obj_from_json["accessionId"],
+                        collection,
                     )
         else:
             json_data = await operator.create_metadata_object(collection, content)
@@ -173,7 +176,9 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
             for listed_obj in listed_json:
                 objects.append((listed_obj, filename))
                 LOG.info(
-                    f"POST object with accession ID {listed_obj['accessionId']} in schema {collection} was successful."
+                    "POST object with accesssion ID: %r in collection: %r was successful.",
+                    listed_obj["accessionId"],
+                    collection,
                 )
 
         # Format like this to make it consistent with the response from /submit endpoint
@@ -200,7 +205,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
                         await self.create_metax_dataset(req, collection, obj)
                     except Exception as e:
                         # We don't care if it fails here
-                        LOG.exception(f"create_metax_dataset failed: {e} for collection {collection}")
+                        LOG.exception("create_metax_dataset failed: %r for collection: %r.", e, collection)
 
         body = ujson.dumps(data, escape_forward_slashes=False)
 
@@ -231,7 +236,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         """
         schema_type = req.match_info["schema"]
         accession_id = req.match_info["accessionId"]
-        LOG.debug(f"Deleting object {schema_type} {accession_id}")
+        LOG.debug("Deleting object in collection: %r with accession ID: %r.", schema_type, accession_id)
 
         self._check_schema_exists(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
@@ -269,8 +274,10 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
                     if self.metax_handler.enabled and collection in METAX_SCHEMAS:
                         metax_id = object_data["metaxIdentifier"]
             except KeyError:
-                LOG.warning(
-                    f"MetadataObject {collection} {accession_id} was never added to Metax or Datacite services."
+                LOG.exception(
+                    "MetadataObject in collection: %r with accession ID: %r was not to Metax or Datacite.",
+                    collection,
+                    accession_id,
                 )
 
         accession_id = await operator.delete_metadata_object(collection, accession_id)
@@ -284,11 +291,15 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
                 await self.metax_handler.delete_draft_dataset(metax_id)
             except Exception as e:
                 # We don't care if it fails here
-                LOG.exception(f"delete_draft_dataset failed: {e} for collection {collection}")
+                LOG.exception("delete_draft_dataset failed: %r for collection: %r", e, collection)
         if collection in DATACITE_SCHEMAS:
             await self.datacite_handler.delete(doi_id)
 
-        LOG.info(f"DELETE object with accession ID {accession_id} in schema {collection} was successful.")
+        LOG.info(
+            "DELETE object with accession ID: %s in collection: %s was successful.",
+            accession_id,
+            collection,
+        )
         return web.HTTPNoContent()
 
     async def put_object(self, req: Request) -> Response:
@@ -303,7 +314,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         """
         schema_type = req.match_info["schema"]
         accession_id = req.match_info["accessionId"]
-        LOG.debug(f"Replacing object {schema_type} {accession_id}")
+        LOG.debug("Replacing object in collection: %r with accession ID: %r.", schema_type, accession_id)
 
         self._check_schema_exists(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
@@ -350,10 +361,10 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
                     await self.create_metax_dataset(req, collection, data)
         except Exception as e:
             # We don't care if it fails here
-            LOG.exception(f"update_draft_dataset or create_metax_dataset failed: {e} for collection {collection}")
+            LOG.exception("update_draft_dataset or create_metax_dataset failed: %r for collection %r.", e, collection)
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
-        LOG.info(f"PUT object with accession ID {accession_id} in schema {collection} was successful.")
+        LOG.info("PUT object with accession ID: %r in collection: %r was successful.", accession_id, collection)
         return web.Response(body=body, status=200, content_type="application/json")
 
     async def patch_object(self, req: Request) -> Response:
@@ -367,7 +378,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         """
         schema_type = req.match_info["schema"]
         accession_id = req.match_info["accessionId"]
-        LOG.debug(f"Patching object {schema_type} {accession_id}")
+        LOG.debug("Patching object in collection: %r with accession ID: %r.", schema_type, accession_id)
 
         self._check_schema_exists(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
@@ -418,11 +429,11 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
                     raise ValueError("Object's data must be dictionary")
         except Exception as e:
             # We don't care if it fails here
-            LOG.exception(f"update_draft_dataset or create_metax_dataset failed: {e} for collection {collection}")
+            LOG.exception("update_draft_dataset or create_metax_dataset failed: %r for collection %s", e, collection)
             raise
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
-        LOG.info(f"PATCH object with accession ID {accession_id} in schema {collection} was successful.")
+        LOG.info("PATCH object with accession ID: %r in collection: %r was successful.", accession_id, collection)
         return web.Response(body=body, status=200, content_type="application/json")
 
     def _prepare_submission_patch_new_object(self, schema: str, objects: List, cont_type: str) -> List:
