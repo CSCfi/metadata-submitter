@@ -1,5 +1,5 @@
-# pylint: disable=too-many-lines
 """Operators for handling database-related operations."""
+# pylint: disable=too-many-lines
 import re
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -1098,7 +1098,7 @@ class UserOperator:
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
 
-            LOG.info("Inserting user with ID: '%s' to database succeeded.", user_id)
+            LOG.info("Inserting user with ID: %r to database succeeded.", user_id)
             return user_id
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while inserting user, err: {error}"
