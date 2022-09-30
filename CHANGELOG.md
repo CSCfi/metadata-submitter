@@ -55,6 +55,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactor metadata creation methods to parse and add separate metadata objects to db from a single XML file #525
 - Validate schema definitions, updating them to JSON schema 2020-12 #581
 - changed HTTP header `Server` to `metadata`
+- enabled new pylint checks #597 `logging-fstring-interpolation`, `fixme`, `useless-param-doc`, `suppress-message`
+- reformatted logs to style `{` and refactored some of the messages to be clearer #597
+- exceptions now default to `log.exception` with stacktrace #597
 
 ### Removed
 

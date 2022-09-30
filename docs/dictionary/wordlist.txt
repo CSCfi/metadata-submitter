@@ -226,6 +226,7 @@ figma
 filebase
 filename
 filetype
+fixme
 flatfile
 flx
 flybase
@@ -234,6 +235,7 @@ formdata
 fos
 fractionation
 frontend
+fstring
 fula
 funder
 funderidentifier
@@ -473,6 +475,7 @@ ownedby
 pacbio
 paleo
 panjabi
+param
 pashto
 pathogenanalysis
 pcassay
@@ -625,6 +628,7 @@ srf
 ssl
 ssrna
 stackoverflow
+stacktrace
 stepindex
 studyabstract
 studyattribute
@@ -640,9 +644,9 @@ subjectsschema
 submissionid
 submissionslice
 submissiontype
+submitter's
 submitterdemultiplexed
 submitterid
-submitter's
 submitters
 svg
 swati
