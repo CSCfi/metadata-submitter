@@ -34,7 +34,7 @@ async def http_error_handler(req: web.Request, handler: aiohttp_session.Handler)
         raise
     except web.HTTPError as error:
         # Catch 400s and 500s
-        LOG.error(HTTP_ERROR_MESSAGE, req.method, req.path, error.status)
+        LOG.exception(HTTP_ERROR_MESSAGE, req.method, req.path, error.status)
         problem = _json_problem(error, req.url)
         LOG.debug("Response payload is %r", problem)
 
@@ -64,7 +64,7 @@ async def check_session(req: web.Request, handler: aiohttp_session.Handler) -> w
     """
     try:
         session = await aiohttp_session.get_session(req)
-        LOG.debug(f"session: {session}")
+        LOG.debug("Identified session: %r", session)
 
         if session.empty:
             if "Authorization" in req.headers:
@@ -76,7 +76,7 @@ async def check_session(req: web.Request, handler: aiohttp_session.Handler) -> w
                 raise _unauthorized("You must provide authentication to access SD-Submit API.")
 
         if not all(k in session for k in ["access_token", "user_info", "at", "oidc_state"]):
-            LOG.error(f"Checked session parameter, session is invalid {session}. This could be a bug or abuse.")
+            LOG.error("Checked session parameter, session is invalid %r. This could be a bug or abuse.", session)
             session.invalidate()
             raise _unauthorized("Invalid session, authenticate again.")
 
@@ -86,7 +86,7 @@ async def check_session(req: web.Request, handler: aiohttp_session.Handler) -> w
 
     except KeyError as error:
         reason = f"No valid session. A session was invalidated due to invalid token. {error}"
-        LOG.info(reason)
+        LOG.exception(reason)
         raise _unauthorized(reason) from error
     except web.HTTPException:
         # HTTPExceptions are processed in the other middleware

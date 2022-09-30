@@ -28,7 +28,6 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
     def _make_discovery_url(self, obj_data: Dict) -> str:
         """Make an url that points to a discovery service."""
-        # TODO: Proper URL creation when metax is disabled
         if self.metax_handler.enabled and "metaxIdentifier" in obj_data:
             url = f"{doi_config['discovery_url']}{obj_data['metaxIdentifier']}"
         else:
@@ -101,7 +100,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
             general_info["subjects"][i].update(subject_info)
 
         study["data"]["attributes"].update(general_info)
-        LOG.debug(f"prepared study info: {study}")
+        LOG.debug("Prepared study info: %r", study)
 
         return study
 
@@ -183,7 +182,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
             general_info["subjects"][i].update(subject_info)
 
         dataset["data"]["attributes"].update(general_info)
-        LOG.debug(f"prepared dataset info: {dataset}")
+        LOG.debug("Prepared dataset info: %r", dataset)
 
         return dataset
 
@@ -269,7 +268,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
                     # there are cases where datasets are added first
                     datasets = [*datacite_datasets, *datacite_bpdatasets]
-                    LOG.info(f"datacite datasets: {datacite_datasets}")
+                    LOG.info("datacite datasets: %r", datacite_datasets)
                     for ds in datasets:
                         ds["data"]["attributes"]["relatedIdentifiers"].append(
                             {
@@ -440,8 +439,8 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         url = f"{req.scheme}://{req.host}{req.path}"
         link_headers = self._header_links(url, page, per_page, total_submissions)
-        LOG.debug(f"Pagination header links: {link_headers}")
-        LOG.info(f"Querying for project={project_id} submissions resulted in {total_submissions} submissions")
+        LOG.debug("Pagination header links: %r", link_headers)
+        LOG.info("Querying for project: %r submissions resulted in %d submissions.", project_id, total_submissions)
         return web.Response(
             body=result,
             status=200,
@@ -483,7 +482,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         url = f"{req.scheme}://{req.host}{req.path}"
         location_headers = CIMultiDict(Location=f"{url}/{submission}")
-        LOG.info(f"POST new submission with ID {submission} was successful.")
+        LOG.info("POST new submission with ID: %r was successful.", submission)
         return web.Response(body=body, status=201, headers=location_headers, content_type="application/json")
 
     async def get_submission(self, req: Request) -> Response:
@@ -503,7 +502,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         submission = await operator.read_submission(submission_id)
 
-        LOG.info(f"GET submission with ID {submission_id} was successful.")
+        LOG.info("GET submission with ID: %r was successful.", submission_id)
         return web.Response(
             body=ujson.dumps(submission, escape_forward_slashes=False), status=200, content_type="application/json"
         )
@@ -546,7 +545,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         upd_submission = await operator.update_submission(submission_id, patch_ops)
 
         body = ujson.dumps({"submissionId": upd_submission}, escape_forward_slashes=False)
-        LOG.info(f"PATCH submission with ID {upd_submission} was successful.")
+        LOG.info("PATCH submission with ID: %r was successful.", upd_submission)
         return web.Response(body=body, status=200, content_type="application/json")
 
     async def publish_submission(self, req: Request) -> Response:
@@ -695,7 +694,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         new_submission = await operator.update_submission(submission_id, patch)
 
         body = ujson.dumps({"submissionId": new_submission}, escape_forward_slashes=False)
-        LOG.info(f"Patching submission with ID {new_submission} was successful.")
+        LOG.info("Patching submission with ID: %r was successful.", new_submission)
         return web.Response(body=body, status=200, content_type="application/json")
 
     async def delete_submission(self, req: Request) -> web.HTTPNoContent:
@@ -726,7 +725,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         _submission_id = await operator.delete_submission(submission_id)
 
-        LOG.info(f"DELETE submission with ID {_submission_id} was successful.")
+        LOG.info("DELETE submission with ID: %r was successful.", _submission_id)
         return web.HTTPNoContent()
 
     async def put_submission_path(self, req: Request) -> Response:
@@ -749,7 +748,6 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         if req.path.endswith("doi"):
             schema = "doiInfo"
         elif req.path.endswith("dac"):
-            # TODO: create an EGA DAC object from REMS contact information
             schema = "dac"
             if self.rems_handler.enabled:
                 await self.check_dac_ok({"dac": data})
@@ -770,5 +768,5 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         upd_submission = await operator.update_submission(submission_id, patch)
 
         body = ujson.dumps({"submissionId": upd_submission}, escape_forward_slashes=False)
-        LOG.info(f"PUT '{schema}' in submission with ID {submission_id} was successful.")
+        LOG.info("PUT %r in submission with ID: %r was successful.", schema, submission_id)
         return web.Response(body=body, status=200, content_type="application/json")

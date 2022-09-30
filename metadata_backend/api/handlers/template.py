@@ -43,7 +43,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
             escape_forward_slashes=False,
         )
 
-        LOG.info(f"Querying for project={project_id} templates resulted in {len(templates)} templates")
+        LOG.info("Querying for project: %r templates resulted in %d templates", project_id, len(templates))
         return web.Response(
             body=result,
             status=200,
@@ -73,7 +73,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
         data, content_type = await operator.read_metadata_object(collection, accession_id)
 
         data = ujson.dumps(data, escape_forward_slashes=False)
-        LOG.info(f"GET template with accesssion ID {accession_id} from schema {collection}.")
+        LOG.info("GET template with accesssion ID: %r from collection: %s.", accession_id, collection)
         return web.Response(body=data, status=200, content_type=content_type)
 
     async def post_template(self, req: Request) -> Response:
@@ -170,7 +170,11 @@ class TemplatesAPIHandler(RESTAPIHandler):
 
         url = f"{req.scheme}://{req.host}{req.path}"
         location_headers = CIMultiDict(Location=f"{url}/{json_data['accessionId']}")
-        LOG.info(f"POST template with accesssion ID {json_data['accessionId']} in schema {collection} was successful.")
+        LOG.info(
+            "POST template with accesssion ID: %r in collection: %r was successful.",
+            json_data["accessionId"],
+            collection,
+        )
         return web.Response(
             body=body,
             status=201,
@@ -219,7 +223,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
         accession_id = await operator.update_metadata_object(collection, accession_id, content)
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
-        LOG.info(f"PATCH template with accession ID {accession_id} in schema {collection} was successful.")
+        LOG.info("PATCH template with accession ID: %r in collection: %r was successful.", accession_id, collection)
         return web.Response(body=body, status=200, content_type="application/json")
 
     async def delete_template(self, req: Request) -> web.HTTPNoContent:
@@ -251,5 +255,5 @@ class TemplatesAPIHandler(RESTAPIHandler):
 
         accession_id = await Operator(db_client).delete_metadata_object(collection, accession_id)
 
-        LOG.info(f"DELETE template with accession ID {accession_id} in schema {collection} was successful.")
+        LOG.info("DELETE template with accession ID: %r in collection: %r was successful.", accession_id, collection)
         return web.HTTPNoContent()
