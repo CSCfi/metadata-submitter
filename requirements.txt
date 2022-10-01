@@ -18,7 +18,7 @@ attrs==21.4.0
     # via
     #   aiohttp
     #   jsonschema
-certifi==2022.6.15
+certifi==2022.9.24
     # via requests
 cffi==1.15.1
     # via cryptography

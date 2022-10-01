@@ -44,7 +44,7 @@ bracex==2.3.post1
     # via wcmatch
 build==0.8.0
     # via pip-tools
-certifi==2022.6.15
+certifi==2022.9.24
     # via
     #   -r requirements-dev.in
     #   -r requirements.txt
@@ -297,6 +297,7 @@ toml==0.10.2
     # via
     #   pre-commit
     #   tox
+    #   vulture
 tomli==2.0.1
     # via
     #   black
