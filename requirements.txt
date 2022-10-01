@@ -88,7 +88,7 @@ six==1.16.0
     # via python-dateutil
 typing-extensions==4.3.0
     # via readerwriterlock
-ujson==5.4.0
+ujson==5.5.0
     # via -r requirements.in
 urllib3==1.26.10
     # via
