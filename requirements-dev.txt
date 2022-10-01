@@ -30,7 +30,7 @@ attrs==21.4.0
     #   aiohttp
     #   jsonschema
     #   pytest
-authlib==1.0.1
+authlib==1.1.0
     # via -r requirements-dev.in
 babel==2.10.3
     # via sphinx
