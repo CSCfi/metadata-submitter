@@ -4,7 +4,7 @@
 #
 #    pip-compile requirements-dev.in
 #
-aiofiles==0.8.0
+aiofiles==22.1.0
     # via -r requirements-dev.in
 aiohttp==3.8.1
     # via
@@ -297,6 +297,7 @@ toml==0.10.2
     # via
     #   pre-commit
     #   tox
+    #   vulture
 tomli==2.0.1
     # via
     #   black
