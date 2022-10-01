@@ -26,7 +26,7 @@ charset-normalizer==2.1.0
     # via
     #   aiohttp
     #   requests
-cryptography==37.0.4
+cryptography==38.0.1
     # via
     #   -r requirements.in
     #   cryptojwt
