@@ -39,6 +39,7 @@ import ujson
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from ..helpers.logger import LOG
+from ..helpers.workflow import Workflow
 
 # 1) Set up database client and custom timeouts for spesific parameters.
 # Set custom timeouts and other parameters here so they can be imported to
@@ -112,12 +113,12 @@ with open(path_to_schema_file, "rb") as schema_file:
     schema_types = ujson.load(schema_file)
 
 path_to_workflows = Path(__file__).parent / "workflows"
-WORKFLOWS: Dict[str, Dict] = {}
+WORKFLOWS: Dict[str, Workflow] = {}
 
 for workflow_path in path_to_workflows.iterdir():
     with open(workflow_path, "rb") as workflow_file:
         workflow = ujson.load(workflow_file)
-        WORKFLOWS[workflow["name"]] = workflow
+        WORKFLOWS[workflow["name"]] = Workflow(workflow)
 
 # 3) Define mapping between url query parameters and mongodb queries
 query_map = {
@@ -175,7 +176,6 @@ doi_config = {
     "discovery_url": os.getenv("DISCOVERY_URL", "https://etsin.fairdata.fi/dataset/"),
 }
 
-METAX_ENABLED = os.getenv("METAX_ENABLED", "") == "True"
 metax_config = {
     "username": os.getenv("METAX_USER", "sd"),
     "password": os.getenv("METAX_PASS", "test"),
@@ -191,14 +191,13 @@ METAX_REFERENCE_DATA: Dict[str, Dict] = {"identifier_types": {}, "languages": {}
 # Load metax reference data from different reference files into a single dict used by metax mapper
 for ref_file in file_names:
     ref_file_path = METAX_REFERENCE_ROOT / ref_file
-    if METAX_ENABLED and not ref_file_path.is_file():
+    if not ref_file_path.is_file():
         raise RuntimeError(
             "You must generate the metax references to run submitter: `bash scripts/metax_mappings/fetch_refs.sh`"
         )
     with open(ref_file_path, "r", encoding="utf-8") as file:
         METAX_REFERENCE_DATA[ref_file.replace(".json", "")] = ujson.load(file)
 
-REMS_ENABLED = os.getenv("REMS_ENABLED", "") == "True"
 rems_config = {
     "id": os.getenv("REMS_USER_ID", "sd"),
     "key": os.getenv("REMS_KEY", "test"),

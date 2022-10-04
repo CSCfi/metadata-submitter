@@ -131,8 +131,8 @@ async def post_object(sess, schema, submission_id, filename):
         data=request_data,
     ) as resp:
         LOG.debug(f"Adding new object to {schema}, via XML/CSV file {filename}")
-        assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
+        assert resp.status == 201, f"HTTP Status code error, got {resp.status}: {ans}"
         return ans if isinstance(ans, list) else ans["accessionId"], schema
 
 
@@ -152,8 +152,9 @@ async def post_multi_object(sess, schema, submission_id, filename):
         data=request_data,
     ) as resp:
         LOG.debug(f"Adding new object to {schema}, via XML/CSV file {filename}")
-        assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
-        return await resp.json()
+        ans = await resp.json()
+        assert resp.status == 201, f"HTTP Status code error, got {resp.status}: {ans}"
+        return ans
 
 
 async def post_object_expect_status(sess, schema, submission_id, filename, status):
@@ -195,8 +196,8 @@ async def post_object_json(sess, schema, submission_id, filename):
         data=request_data,
     ) as resp:
         LOG.debug(f"Adding new object to {schema}, via JSON file {filename}")
-        assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
+        assert resp.status == 201, f"HTTP Status code error, got {resp.status}: {ans}"
         return ans["accessionId"]
 
 

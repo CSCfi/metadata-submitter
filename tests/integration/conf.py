@@ -10,7 +10,7 @@ DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 logging.basicConfig(format=FORMAT, datefmt=DATE_FORMAT)
 
 testfiles_root = Path(__file__).parent.parent / "test_files"
-test_xml_files = [
+test_fega_xml_files = [
     ("study", "SRP000539.xml"),
     ("sample", "SRS001433.xml"),
     ("run", "ERR000076.xml"),
@@ -26,6 +26,8 @@ test_xml_files = [
     ("dac", "dac.xml"),
     ("policy", "policy.xml"),
     ("dataset", "dataset.xml"),
+]
+test_bigpicture_xml_files = [
     ("image", "images_single.xml"),
     ("bpdataset", "template_dataset.xml"),
 ]

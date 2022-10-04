@@ -18,7 +18,7 @@ from aiohttp import web
 from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
 from yarl import URL
 
-from ..conf.conf import REMS_ENABLED, rems_config
+from ..conf.conf import rems_config
 from ..helpers.logger import LOG
 from .service_handler import ServiceHandler
 
@@ -38,11 +38,6 @@ class RemsServiceHandler(ServiceHandler):
                 "accept": "application/json",
             },
         )
-
-    @property
-    def enabled(self) -> bool:
-        """Indicate whether service is enabled."""
-        return REMS_ENABLED
 
     @staticmethod
     def application_url(catalogue_id: str) -> str:

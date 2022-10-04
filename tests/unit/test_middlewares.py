@@ -54,13 +54,13 @@ class ErrorMiddlewareTestCase(AioHTTPTestCase):
         """Test that middleware reformats 400 error with problem details."""
         data = _create_improper_data()
         with self.p_get_sess_restapi:
-            response = await self.client.post(f"{API_PREFIX}/submit", data=data)
+            response = await self.client.post(f"{API_PREFIX}/submit/FEGA", data=data)
             self.assertEqual(response.status, 400)
             self.assertEqual(response.content_type, "application/problem+json")
             resp_dict = await response.json()
             self.assertEqual("Bad Request", resp_dict["title"])
             self.assertEqual("There must be a submission.xml file in submission.", resp_dict["detail"])
-            self.assertEqual(f"{API_PREFIX}/submit", resp_dict["instance"])
+            self.assertEqual(f"{API_PREFIX}/submit/FEGA", resp_dict["instance"])
 
     async def test_bad_url_returns_json_response(self):
         """Test that unrouted API url returns a 404 in JSON format."""

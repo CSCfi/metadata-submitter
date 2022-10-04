@@ -1,9 +1,9 @@
 {
-    "name": "SDSX",
+    "name": "valid",
     "description": "",
     "steps": [
         {
-            "title": "Study, DAC and Policy",
+            "title": "single step",
             "required": true,
             "schemas": [
                 {
@@ -18,33 +18,47 @@
                 },
                 {
                     "name": "policy",
-                    "required": true,
+                    "required": false,
                     "allowMultipleObjects": true
                 }
             ]
         },
         {
-            "title": "Files",
-            "required": false,
-            "schemas": []
-        },
-        {
-            "title": "Describe",
+            "title": "with 'require_or",
             "required": true,
             "schemas": [
                 {
-                    "name": "dataset",
+                    "name": "image",
                     "required": true,
-                    "hide": [
-                        "runRef",
-                        "analysisRef"
+                    "requires_or": [
+                        "dac",
+                        "policy"
                     ],
+                    "allowMultipleObjects": true
+                }
+            ]
+        },
+        {
+            "title": "step not required",
+            "required": false,
+            "schemas": [
+                {
+                    "name": "bpdataset",
+                    "required": true,
+                    "allowMultipleObjects": false
+                },
+                {
+                    "name": "experiment",
+                    "required": false,
                     "allowMultipleObjects": true
                 },
                 {
-                    "name": "datacite",
-                    "required": true,
-                    "allowMultipleObjects": false
+                    "name": "run",
+                    "required": false,
+                    "allowMultipleObjects": true,
+                    "requires": [
+                        "experiment"
+                    ]
                 }
             ]
         }
@@ -52,28 +66,7 @@
     "publish": [
         {
             "name": "datacite",
-            "endpoint": "datacite",
-            "requiredSchemas": [
-                "datacite"
-            ]
-        },
-        {
-            "name": "metax",
-            "endpoint": "metax",
-            "requires": [
-                "datacite"
-            ]
-        },
-        {
-            "name": "rems",
-            "endpoint": "rems",
-            "requires": [
-                "datacite"
-            ],
-            "requiredSchemas": [
-                "dac",
-                "policy"
-            ]
+            "endpoint": "datacite"
         }
     ]
 }

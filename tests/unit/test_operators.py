@@ -11,6 +11,7 @@ import aiohttp_session
 from aiohttp.test_utils import make_mocked_coro
 from aiohttp.web import (
     HTTPBadRequest,
+    HTTPInternalServerError,
     HTTPMethodNotAllowed,
     HTTPNotFound,
     HTTPUnprocessableEntity,
@@ -709,14 +710,14 @@ class TestOperators(IsolatedAsyncioTestCase):
         """Test get submission project, db connection failure."""
         operator = SubmissionOperator(self.client)
         operator.db_service.query.side_effect = ConnectionFailure
-        with self.assertRaises(HTTPBadRequest):
+        with self.assertRaises(HTTPInternalServerError):
             await operator.get_submission_project(self.submission_id)
 
     async def test_get_submission_project_opfail(self):
         """Test get submission project, db operation failure."""
         operator = SubmissionOperator(self.client)
         operator.db_service.query.side_effect = OperationFailure("err")
-        with self.assertRaises(HTTPBadRequest):
+        with self.assertRaises(HTTPInternalServerError):
             await operator.get_submission_project(self.submission_id)
 
     async def test_get_submission_project_passes(self):
@@ -724,7 +725,9 @@ class TestOperators(IsolatedAsyncioTestCase):
         operator = SubmissionOperator(self.client)
         operator.db_service.query.return_value = AsyncIterator([self.test_submission])
         result = await operator.get_submission_project(self.submission_id)
-        operator.db_service.query.assert_called_once_with("submission", {"submissionId": self.submission_id})
+        operator.db_service.query.assert_called_once_with(
+            "submission", {"submissionId": self.submission_id}, {"_id": False, "projectId": 1}, limit=1
+        )
         self.assertEqual(result, self.project_generated_id)
 
     async def test_get_submission_project_fails(self):
