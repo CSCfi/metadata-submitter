@@ -1,7 +1,7 @@
 """Handle HTTP methods for server."""
 import json
 from math import ceil
-from typing import Dict, List, Tuple, Union
+from typing import AsyncIterator, Dict, Iterator, List, Tuple, Union
 
 import aiohttp_session
 import ujson
@@ -12,6 +12,7 @@ from multidict import CIMultiDict
 from ...conf.conf import WORKFLOWS, schema_types
 from ...helpers.logger import LOG
 from ...helpers.schema_loader import JSONSchemaLoader, SchemaNotFoundException
+from ...helpers.workflow import Workflow
 from ...services.datacite_service_handler import DataciteServiceHandler
 from ...services.metax_service_handler import MetaxServiceHandler
 from ...services.rems_service_handler import RemsServiceHandler
@@ -180,10 +181,10 @@ class RESTAPIHandler:
         :returns: JSON list of workflows
         """
         LOG.info("GET workflows. Retrieved %d workflows.", len(WORKFLOWS))
-        response = {workflow["name"]: workflow["description"] for workflow in WORKFLOWS.values()}
+        response = {workflow.name: workflow.description for workflow in WORKFLOWS.values()}
         return await self._json_response(response)
 
-    async def get_workflow(self, req: Request) -> Response:
+    async def get_workflow_request(self, req: Request) -> Response:
         """Get a single workflow definition by name.
 
         :param req: GET Request
@@ -191,12 +192,22 @@ class RESTAPIHandler:
         :returns: workflow as a JSON object
         """
         workflow_name = req.match_info["workflow"]
+        LOG.info("GET workflow: %r.", workflow_name)
+        workflow = self.get_workflow(workflow_name)
+        return await self._json_response(workflow.workflow)
+
+    def get_workflow(self, workflow_name: str) -> Workflow:
+        """Get a single workflow definition by name.
+
+        :param workflow_name: Name of the workflow
+        :raises: HTTPNotFound if workflow doesn't exist
+        :returns: Workflow
+        """
         if workflow_name not in WORKFLOWS:
             reason = f"Workflow {workflow_name} was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
-        LOG.info("GET workflow: %r.", workflow_name)
-        return await self._json_response(WORKFLOWS[workflow_name])
+        return WORKFLOWS[workflow_name]
 
     def _header_links(self, url: str, page: int, size: int, total_objects: int) -> CIMultiDict[str]:
         """Create link header for pagination.
@@ -217,6 +228,39 @@ class RESTAPIHandler:
         link_headers = CIMultiDict(Link=f"{links}")
         LOG.debug("Link headers created")
         return link_headers
+
+    @staticmethod
+    def iter_submission_objects(submission: dict) -> Iterator[Tuple[str, str]]:
+        """Iterate over a submission's objects.
+
+        :param submission: Submission data
+
+        yields accession_id, schema
+        """
+        for _obj in submission["metadataObjects"]:
+            accession_id = _obj["accessionId"]
+            schema = _obj["schema"]
+
+            yield accession_id, schema
+
+    async def iter_submission_objects_data(
+        self, submission: dict, obj_op: Operator
+    ) -> AsyncIterator[Tuple[str, str, dict]]:
+        """Iterate over a submission's objects and retrieve their data.
+
+        :param submission: Submission data
+        :param obj_op: Object Operator
+
+        yields accession_id, schema, object_data
+        """
+        for accession_id, schema in self.iter_submission_objects(submission):
+            object_data, _ = await obj_op.read_metadata_object(schema, accession_id)
+
+            if not isinstance(object_data, dict):
+                LOG.error("Object with accession ID %r is not a Dict. This might be a bug", accession_id)
+                continue
+
+            yield accession_id, schema, object_data
 
 
 class RESTAPIIntegrationHandler(RESTAPIHandler):
@@ -247,30 +291,26 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
         metadata_provider_user = user["externalId"]
         return metadata_provider_user
 
-    async def create_metax_dataset(self, request: Request, collection: str, obj: Dict) -> str:
+    async def create_metax_dataset(self, obj_op: Operator, collection: str, obj: Dict, external_id: str) -> str:
         """Handle connection to Metax api handler for dataset creation.
 
         Dataset or Study object is assigned with DOI
         and it's data is sent to Metax api handler.
         Object database entry is updated with metax ID returned by Metax service.
 
-        :param request: HTTP request with user session
+        :param obj_op: Object Operator
         :param collection: object's schema
         :param obj: metadata object
+        :param external_id: user id
         :returns: Metax ID
         """
         LOG.info("Creating draft dataset to Metax.")
-        if not self.metax_handler.enabled:
-            LOG.error("Metax integration is disabled.")
-            return ""
-        operator = Operator(request.app["db_client"])
         new_info = {}
         if "doi" in obj:
             new_info["doi"] = obj["doi"]
-        external_id = await self.get_user_external_id(request)
         metax_id = await self.metax_handler.post_dataset_as_draft(external_id, collection, obj)
         new_info["metaxIdentifier"] = metax_id
-        await operator.update_identifiers(collection, obj["accessionId"], new_info)
+        await obj_op.update_identifiers(collection, obj["accessionId"], new_info)
 
         return metax_id
 

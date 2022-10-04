@@ -62,6 +62,7 @@ class TestUsers:
                 "name": "submission test 1",
                 "description": "submission test submission 1",
                 "projectId": other_test_user_project_id,
+                "workflow": "FEGA",
             }
             other_test_user_submission_id = await post_submission(sess, other_test_user_submission)
 
@@ -76,6 +77,7 @@ class TestUsers:
                 "name": "basic test",
                 "description": "basic test submission",
                 "projectId": test_user_project_id,
+                "workflow": "FEGA",
             }
             test_user_submission_id = await post_submission(sess, test_user_submission)
 
@@ -111,6 +113,7 @@ class TestUsers:
             "name": "Mock User Submission",
             "description": "Mock submission for testing users",
             "projectId": project_id,
+            "workflow": "FEGA",
         }
         submission_id = await post_submission(client_logged_in, submission_not_published)
 
@@ -124,6 +127,7 @@ class TestUsers:
             "name": "Another test Submission",
             "description": "Test published submission does not get deleted",
             "projectId": project_id,
+            "workflow": "FEGA",
         }
         publish_submission_id = await post_submission(client_logged_in, submission_published)
 
@@ -137,6 +141,7 @@ class TestUsers:
         # add a study and dataset for publishing a submission
         await post_object_json(client_logged_in, "study", publish_submission_id, "SRP000539.json")
         await post_object(client_logged_in, "dataset", publish_submission_id, "dataset.xml")
+        await post_object_json(client_logged_in, "run", publish_submission_id, "ERR000076.json")
 
         await publish_submission(client_logged_in, publish_submission_id)
         async with client_logged_in.get(f"{submissions_url}/{publish_submission_id}?projectId={project_id}") as resp:
@@ -148,6 +153,7 @@ class TestUsers:
             "name": "Delete Submission",
             "description": "Mock submission to delete while testing users",
             "projectId": project_id,
+            "workflow": "FEGA",
         }
         delete_submission_id = await post_submission(client_logged_in, submission_not_published)
         async with client_logged_in.get(f"{submissions_url}/{delete_submission_id}?projectId={project_id}") as resp:

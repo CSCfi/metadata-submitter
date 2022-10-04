@@ -707,32 +707,83 @@ class SubmissionOperator:
         """
         self.db_service = DBService(mongo_database, db_client)
 
+    async def get_submission_field(self, submission_id: str, field: str) -> Union[str, list, dict]:
+        """Get a field from the submission.
+
+        :param submission_id: internal accession ID of submission
+        :param field: field name
+        :returns: field value
+        """
+        try:
+            submission_cursor = self.db_service.query(
+                "submission", {"submissionId": submission_id}, {"_id": False, field: 1}, limit=1
+            )
+            submissions = [submission async for submission in submission_cursor]
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting submission, err: {error}"
+            LOG.exception(reason)
+            raise web.HTTPInternalServerError(reason=reason) from error
+        except AttributeError as error:
+            reason = f"Submission '{submission_id}' doesn't have the requested '{field}' field."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason) from error
+
+        if len(submissions) == 1:
+            try:
+                return submissions[0][field]
+            except KeyError as error:
+                # This should not be possible and should never happen, if the submission was created properly
+                reason = f"Submission: '{submission_id}' does not have a value for '{field}', err: {error}"
+                LOG.exception(reason)
+                raise web.HTTPBadRequest(reason=reason) from error
+
+        reason = f"Submission: '{submission_id}' not found."
+        LOG.error(reason)
+        raise web.HTTPBadRequest(reason=reason)
+
+    async def get_submission_field_str(self, submission_id: str, field: str) -> str:
+        """Get a string field from the submission.
+
+        :param submission_id: internal accession ID of submission
+        :param field: field name
+        :returns: string value
+        """
+        value = await self.get_submission_field(submission_id, field)
+        if isinstance(value, str):
+            return value
+
+        reason = (
+            f"Submission: '{submission_id}' has an invalid {field}, "
+            f"expected 'str', got {type(value)}. This is a bug."
+        )
+        LOG.error(reason)
+        raise web.HTTPInternalServerError(reason=reason)
+
+    async def get_submission_field_list(self, submission_id: str, field: str) -> list:
+        """Get an array field from the submission.
+
+        :param submission_id: internal accession ID of submission
+        :param field: field name
+        :returns: list value
+        """
+        value = await self.get_submission_field(submission_id, field)
+        if isinstance(value, list):
+            return value
+
+        reason = (
+            f"Submission: '{submission_id}' has an invalid {field}, expected 'list', "
+            f"got {type(value)}. This is a bug."
+        )
+        LOG.error(reason)
+        raise web.HTTPInternalServerError(reason=reason)
+
     async def get_submission_project(self, submission_id: str) -> str:
         """Get the project ID the submission is associated to.
 
         :param submission_id: internal accession ID of submission
         :returns: project ID submission is associated to
         """
-        try:
-            submission_cursor = self.db_service.query("submission", {"submissionId": submission_id})
-            submissions = [submission async for submission in submission_cursor]
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting submission, err: {error}"
-            LOG.exception(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        if len(submissions) == 1:
-            try:
-                return submissions[0]["projectId"]
-            except KeyError as error:
-                # This should not be possible and should never happen, if the submission was created properly
-                reason = f"Submission: '{submission_id}' does not have an associated project, err: {error}"
-                LOG.exception(reason)
-                raise web.HTTPBadRequest(reason=reason)
-        else:
-            reason = f"Submission: '{submission_id}' not found."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
+        return await self.get_submission_field_str(submission_id, "projectId")
 
     async def check_object_in_submission(self, collection: str, accession_id: str) -> Tuple[str, bool]:
         """Check a object/draft is in a submission.

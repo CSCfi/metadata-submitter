@@ -19,6 +19,7 @@
                 {
                     "name": "policy",
                     "required": true,
+                    "allowMultipleObjects": true,
                     "requires": [
                         "dac"
                     ]

@@ -41,7 +41,8 @@ POST {{backend_url}}/v1/submissions
 {
     "name": "submission test 1",
     "description": "submission test 1",
-    "projectId": "{{project_id}}"
+    "projectId": "{{project_id}}",
+    "workflow": "FEGA"
 }
 
 ### List submissions

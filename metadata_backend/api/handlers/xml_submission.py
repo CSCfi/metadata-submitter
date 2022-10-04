@@ -8,7 +8,7 @@ from aiohttp.web import Request, Response
 from multidict import MultiDict, MultiDictProxy
 from xmlschema import XMLSchemaException
 
-from ...conf.conf import API_PREFIX, DATACITE_SCHEMAS, METAX_SCHEMAS
+from ...conf.conf import API_PREFIX
 from ...helpers.logger import LOG
 from ...helpers.parser import XMLToJSONParser
 from ...helpers.schema_loader import SchemaNotFoundException, XMLSchemaLoader
@@ -45,6 +45,13 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
         submission_xml = files[0][0]
         submission_json = XMLToJSONParser().parse("submission", submission_xml)
 
+        workflow_name = req.match_info.get("workflow") or submission_json.get("workflow")
+        if not workflow_name:
+            reason = "Submission must have a workflow."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        workflow = self.get_workflow(workflow_name)
+
         # Check what actions should be performed, collect them to dictionary
         actions: Dict[str, List] = {}
         for action_set in submission_json["actions"]["action"]:
@@ -74,6 +81,10 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
             if schema_type == "submission":
                 LOG.debug("file has schema of submission type, continuing ...")
                 continue  # No need to use submission xml
+            if schema_type not in workflow.schemas:
+                reason = f"Submission of type '{workflow.name}' cannot have '{schema_type}' objects."
+                LOG.info(reason)
+                raise web.HTTPBadRequest(reason=reason)
             action = actions[schema_type]
             if isinstance(action, List):
                 for item in action:
@@ -184,19 +195,6 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
         patch = self._prepare_submission_patch_new_object(schema, [(json_data, filename)], "xml")
         await submission_op.update_submission(submission_id, patch)
 
-        # Add DOI to object
-        if schema in DATACITE_SCHEMAS:
-            json_data["doi"] = await self.create_draft_doi(schema)
-            await Operator(db_client).update_identifiers(schema, json_data["accessionId"], {"doi": json_data["doi"]})
-
-        # Create draft dataset to Metax catalog
-        try:
-            if self.metax_handler.enabled and schema in METAX_SCHEMAS:
-                await self.create_metax_dataset(req, schema, json_data)
-        except Exception as e:
-            # We don't care if it fails here
-            LOG.exception("creating metax dataset failed with: %r for collection: %r.", e, schema)
-
         return result
 
     async def _execute_action_modify(self, req: Request, schema: str, content: str, filename: str) -> Dict:
@@ -243,22 +241,8 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
             # should we overwrite filename as it is the name of file with partial update data
             patch = self._prepare_submission_patch_update_object(schema, data_as_json, filename)
             await submission_op.update_submission(submission_id, patch)
-        except (TypeError, KeyError):
-            pass
-
-        # Update draft dataset to Metax catalog
-        try:
-            if self.metax_handler.enabled and schema in METAX_SCHEMAS:
-                object_data, _ = await operator.read_metadata_object(schema, accession_id)
-                external_id = await self.get_user_external_id(req)
-                # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
-                if isinstance(object_data, Dict):
-                    await self.metax_handler.update_draft_dataset(external_id, schema, object_data)
-                else:
-                    raise ValueError("Object's data must be dictionary")
-        except Exception as e:
-            # We don't care if it fails here
-            LOG.exception("update draft metax dataset failed with: %r for collection: %r.", e, schema)
+        except (TypeError, KeyError) as error:
+            LOG.exception(error)
 
         LOG.debug("Modified some content in collection: %r ...", schema)
         return result

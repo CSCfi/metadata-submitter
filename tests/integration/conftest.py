@@ -4,6 +4,7 @@ Setting scope to `class` means that tests should be grouped in classes
 to share functionality of the `class` scoped fixtures.
 """
 import asyncio
+import logging
 from urllib.parse import urlencode
 
 import aiohttp
@@ -23,6 +24,9 @@ from tests.integration.conf import (
 )
 from tests.integration.helpers import delete_submission, get_user_data, post_submission
 from tests.integration.mongo import Mongo
+
+LOG = logging.getLogger(__name__)
+LOG.setLevel(logging.DEBUG)
 
 
 def pytest_addoption(parser):
@@ -76,23 +80,43 @@ async def fixture_project_id(client_logged_in: aiohttp.ClientSession):
     return user_data["projects"][0]["projectId"]
 
 
-@pytest.fixture(scope="class", name="submission_id")
-async def fixture_submission_id(client_logged_in: aiohttp.ClientSession, project_id):
-    """Create a submission to be reused across tests that are grouped under the same scope."""
+async def make_submission(client_logged_in: aiohttp.ClientSession, project_id: str, workflow: str):
+    """Create a submission to be reused across tests."""
     submission = {
         "name": "submission test 1",
         "description": "submission test submission 1",
         "projectId": project_id,
+        "workflow": workflow,
     }
     submission_id = await post_submission(client_logged_in, submission)
 
+    return submission_id
+
+
+@pytest.fixture(scope="class", name="submission_fega")
+async def fixture_submission_fega(client_logged_in: aiohttp.ClientSession, project_id: str):
+    """Create a FEGA submission to be reused across tests that are grouped under the same scope."""
+    submission_id = await make_submission(client_logged_in, project_id, "FEGA")
     yield submission_id
 
     try:
         await delete_submission(client_logged_in, submission_id)
     except AssertionError:
         # Published submissions can't be deleted
-        pass
+        LOG.debug("Attempted to delete %r, which failed", submission_id)
+
+
+@pytest.fixture(scope="class", name="submission_bigpicture")
+async def fixture_submission_bigpicture(client_logged_in: aiohttp.ClientSession, project_id: str):
+    """Create a BigPicture submission to be reused across tests that are grouped under the same scope."""
+    submission_id = await make_submission(client_logged_in, project_id, "BigPicture")
+    yield submission_id
+
+    try:
+        await delete_submission(client_logged_in, submission_id)
+    except AssertionError:
+        # Published submissions can't be deleted
+        LOG.debug("Attempted to delete %r, which failed", submission_id)
 
 
 @pytest.fixture(scope="session", name="mongo")
