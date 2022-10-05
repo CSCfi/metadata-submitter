@@ -232,11 +232,10 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
         }
 
         exists, submission_id, published = await submission_op.check_object_in_submission(schema, result["accessionId"])
-        if exists:
-            if published:
-                reason = "Published objects cannot be updated."
-                LOG.error(reason)
-                raise web.HTTPUnauthorized(reason=reason)
+        if exists and published:
+            reason = "Published objects cannot be updated."
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
 
         # If there's changed title it will be updated to submission
         try:

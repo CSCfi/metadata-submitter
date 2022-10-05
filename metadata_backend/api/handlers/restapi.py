@@ -91,8 +91,6 @@ class RESTAPIHandler:
 
             submission_op = SubmissionOperator(db_client)
             check, submission_id, _ = await submission_op.check_object_in_submission(collection, accession_id)
-            # if published:
-            #     _check = True
             if check:
                 # if the draft object is found in submission we just need to check if the submission belongs to user
                 _check, project_id = await user_op.check_user_has_doc(req, "submission", current_user, submission_id)
