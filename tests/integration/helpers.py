@@ -495,7 +495,7 @@ async def publish_submission(sess, submission_id):
 
 
 async def delete_submission(sess, submission_id):
-    """Delete object submission within session.
+    """Delete object submission within session successfully.
 
     :param sess: HTTP session in which request call is made
     :param submission_id: id of the submission
@@ -506,7 +506,7 @@ async def delete_submission(sess, submission_id):
 
 
 async def delete_submission_publish(sess, submission_id):
-    """Delete object submission within session.
+    """Delete object submission within session unsuccessfully because it's already published.
 
     :param sess: HTTP session in which request call is made
     :param submission_id: id of the submission

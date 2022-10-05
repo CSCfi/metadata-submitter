@@ -944,11 +944,7 @@ class SubmissionOperator:
         :returns: ID of the submission deleted from database
         """
         try:
-            published = await self.db_service.published_submission(submission_id)
-            if not published:
-                delete_success = await self.db_service.delete("submission", submission_id)
-            else:
-                return None
+            delete_success = await self.db_service.delete("submission", submission_id)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while deleting submission, err: {error}"
             LOG.exception(reason)
@@ -973,13 +969,13 @@ class SubmissionOperator:
             raise web.HTTPNotFound(reason=reason)
 
     async def check_submission_published(self, submission_id: str) -> None:
-        """Check the existance of a submission by its id in the database.
+        """Check whether a submission in the database is published.
 
         :raises: HTTPNotFound if submission does not exist
         """
         published = await self.db_service.published_submission(submission_id)
         if published:
-            reason = f"Submission with ID: '{submission_id}' is published and cannot be deleted."
+            reason = f"Submission with ID: '{submission_id}' is already published and cannot be modified or deleted."
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)
 

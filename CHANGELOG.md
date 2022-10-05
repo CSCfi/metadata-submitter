@@ -73,6 +73,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - XML delete when an object or submission is deleted #579
 - small pylint issues e.g. web.HTTPSuccessful was never being raised #579
 - fix `Any` type wherever that is possible. #579
+- Published submissions and its objects cannot be altered #584
 
 ## [0.13.1] - 2022-05-31
 ### Changed
