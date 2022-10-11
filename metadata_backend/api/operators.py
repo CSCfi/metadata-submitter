@@ -939,7 +939,7 @@ class SubmissionOperator:
     async def delete_submission(self, submission_id: str) -> Union[str, None]:
         """Delete object submission from database.
 
-        :param submission_id: ID of the submission to delete.
+        :param submission_id: ID of the submission to delete
         :raises: HTTPBadRequest if deleting was not successful
         :returns: ID of the submission deleted from database
         """
@@ -960,6 +960,7 @@ class SubmissionOperator:
     async def check_submission_exists(self, submission_id: str) -> None:
         """Check the existance of a submission by its id in the database.
 
+        :param submission_id: ID of the submission to check
         :raises: HTTPNotFound if submission does not exist
         """
         exists = await self.db_service.exists("submission", submission_id)
@@ -968,16 +969,18 @@ class SubmissionOperator:
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
 
-    async def check_submission_published(self, submission_id: str) -> None:
-        """Check whether a submission in the database is published.
+    async def check_submission_published(self, submission_id: str, method: str) -> None:
+        """Check the published status of a submission by its id in the database.
 
-        :raises: HTTPNotFound if submission does not exist
+        :param submission_id: ID of the submission to check
+        :param method: Name of HTTP method used when this check is executed
+        :raises: HTTPMethodNotAllowed if submission is not published
         """
         published = await self.db_service.published_submission(submission_id)
         if published:
             reason = f"Submission with ID: '{submission_id}' is already published and cannot be modified or deleted."
             LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
+            raise web.HTTPMethodNotAllowed(method=method, allowed_methods=["GET", "HEAD"], reason=reason)
 
     def _generate_submission_id(self) -> str:
         """Generate random submission id.

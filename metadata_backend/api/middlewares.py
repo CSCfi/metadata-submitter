@@ -38,7 +38,7 @@ async def http_error_handler(req: web.Request, handler: aiohttp_session.Handler)
         problem = _json_problem(error, req.url)
         LOG.debug("Response payload is %r", problem)
 
-        if error.status in {400, 401, 403, 404, 415, 422, 502, 504}:
+        if error.status in {400, 401, 403, 404, 405, 415, 422, 502, 504}:
             error.content_type = c_type
             error.text = problem
             raise error
