@@ -439,6 +439,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
+        405:
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/405MethodNotAllowed"
   /v1/objects/{schema}/{accessionId}:
     get:
       tags:
@@ -538,6 +544,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
+        405:
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/405MethodNotAllowed"
     put:
       tags:
         - Manage
@@ -586,6 +598,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
+        405:
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/405MethodNotAllowed"
     delete:
       tags:
         - Manage
@@ -624,6 +642,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
+        405:
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/405MethodNotAllowed"
   /v1/drafts/{schema}:
     post:
       tags:
@@ -674,6 +698,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/401Unauthorized"
+        405:
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/405MethodNotAllowed"
   /v1/drafts/{schema}/{accessionId}:
     get:
       tags:
@@ -773,6 +803,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
+        405:
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/405MethodNotAllowed"
     put:
       tags:
         - Manage
@@ -821,6 +857,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
+        405:
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/405MethodNotAllowed"
     delete:
       tags:
         - Manage
@@ -1221,6 +1263,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
+        405:
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/405MethodNotAllowed"
     delete:
       tags:
         - Manage
@@ -1253,6 +1301,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
+        405:
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/405MethodNotAllowed"
   /v1/submissions/{submissionId}/doi:
     put:
       tags:
@@ -1295,6 +1349,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
+        405:
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/405MethodNotAllowed"
   /v1/submissions/{submissionId}/dac:
     put:
       tags:
@@ -1337,6 +1397,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
+        405:
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/405MethodNotAllowed"
   /v1/publish/{submissionId}:
     patch:
       tags:
@@ -1374,6 +1440,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
+        405:
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/405MethodNotAllowed"
         502:
           description: Bad Gateway
           content:
@@ -1564,6 +1636,14 @@ components:
           example: Forbidden
         detail:
           example: the request does not contain the right permissions
+    405MethodNotAllowed:
+      allOf:
+        - $ref: "#/components/schemas/ErrorModel"
+      properties:
+        title:
+          example: Method Not Allowed
+        detail:
+          example: Submission is already published and cannot be modified or deleted.
     502BadGateway:
       allOf:
         - $ref: "#/components/schemas/ErrorModel"
