@@ -18,8 +18,8 @@ from tests.integration.helpers import (
     create_request_json_data,
     create_submission,
     delete_object,
+    delete_published_submission,
     delete_submission,
-    delete_submission_publish,
     get_draft,
     get_object,
     post_draft,
@@ -330,15 +330,15 @@ class TestSubmissionOperations:
             f"{submissions_url}/{submission_id}", data=json.dumps({"name": "new_name"})
         ) as resp:
             LOG.debug("Trying to update submission values")
-            assert resp.status == 401, f"HTTP Status code error, got {resp.status}"
+            assert resp.status == 405, f"HTTP Status code error, got {resp.status}"
         async with client_logged_in.patch(
             f"{objects_url}/sample/{accession_id}", params={"submission": submission_id}, json={}
         ) as resp:
             LOG.debug("Trying to update submission objects")
-            assert resp.status == 401, f"HTTP Status code error, got {resp.status}"
+            assert resp.status == 405, f"HTTP Status code error, got {resp.status}"
         async with client_logged_in.patch(f"{publish_url}/{submission_id}") as resp:
             LOG.debug(f"Trying to re-publish submission {submission_id}")
-            assert resp.status == 401, f"HTTP Status code error, got {resp.status}"
+            assert resp.status == 405, f"HTTP Status code error, got {resp.status}"
 
         # Check submission objects cannot be replaced
         sample = await create_request_data("sample", "SRS001433.xml")
@@ -346,22 +346,22 @@ class TestSubmissionOperations:
             f"{objects_url}/sample/{accession_id}", params={"submission": submission_id}, data=sample
         ) as resp:
             LOG.debug("Trying to replace submission objects")
-            assert resp.status == 401, f"HTTP Status code error, got {resp.status}"
+            assert resp.status == 405, f"HTTP Status code error, got {resp.status}"
         async with client_logged_in.put(f"{submissions_url}/{submission_id}/doi", data=doi_data_raw) as resp:
             LOG.debug("Trying to replace submission doi")
-            assert resp.status == 401, f"HTTP Status code error {resp.status} {ans}"
+            assert resp.status == 405, f"HTTP Status code error {resp.status} {ans}"
         async with client_logged_in.put(f"{submissions_url}/{submission_id}/dac", data=dac_data) as resp:
             LOG.debug("Trying to replace submission dac")
-            assert resp.status == 401, f"HTTP Status code error {resp.status} {ans}"
+            assert resp.status == 405, f"HTTP Status code error {resp.status} {ans}"
 
         # Check new drafts or objects cannot be added under published submission
         run = await create_request_json_data("run", "ERR000076.json")
         async with client_logged_in.post(f"{drafts_url}/run", params={"submission": submission_id}, data=run) as resp:
             LOG.debug("Trying to add draft object to already published submission")
-            assert resp.status == 401, f"HTTP Status code error, got {resp.status}"
+            assert resp.status == 405, f"HTTP Status code error, got {resp.status}"
         async with client_logged_in.post(f"{objects_url}/run", params={"submission": submission_id}, data=run) as resp:
             LOG.debug("Trying to add object to already published submission")
-            assert resp.status == 401, f"HTTP Status code error, got {resp.status}"
+            assert resp.status == 405, f"HTTP Status code error, got {resp.status}"
 
         # Check that datacite has references between datasets and study
         async with client_logged_in.get(f"{datacite_url}/dois/{ds_1['doi']}") as datacite_resp:
@@ -382,7 +382,7 @@ class TestSubmissionOperations:
             assert id["relatedIdentifier"] in {ds_1["id"], ds_2["id"]}
 
         # Attempt deleting submission
-        await delete_submission_publish(client_logged_in, submission_id)
+        await delete_published_submission(client_logged_in, submission_id)
 
     async def test_crud_submissions_works_no_publish(self, client_logged_in, project_id):
         """Test submissions REST API POST, GET, PATCH, PUBLISH and DELETE reqs.

@@ -9,7 +9,12 @@ from uuid import uuid4
 
 import aiohttp_session
 from aiohttp.test_utils import make_mocked_coro
-from aiohttp.web import HTTPBadRequest, HTTPNotFound, HTTPUnprocessableEntity
+from aiohttp.web import (
+    HTTPBadRequest,
+    HTTPMethodNotAllowed,
+    HTTPNotFound,
+    HTTPUnprocessableEntity,
+)
 from multidict import MultiDict, MultiDictProxy
 from pymongo.errors import ConnectionFailure, OperationFailure
 
@@ -917,19 +922,36 @@ class TestOperators(IsolatedAsyncioTestCase):
             await operator.remove_object(self.test_submission, "study", self.accession_id)
 
     async def test_check_submission_exists_passes(self):
-        """Test fails exists passes."""
+        """Test submission existance check passes."""
         operator = SubmissionOperator(self.client)
         operator.db_service.exists.return_value = True
         await operator.check_submission_exists(self.submission_id)
         operator.db_service.exists.assert_called_once()
 
     async def test_check_submission_exists_fails(self):
-        """Test fails exists fails."""
+        """Test submission existance check fails."""
         operator = SubmissionOperator(self.client)
         operator.db_service.exists.return_value = False
         with self.assertRaises(HTTPNotFound):
             await operator.check_submission_exists(self.submission_id)
             operator.db_service.exists.assert_called_once()
+
+    async def test_check_submission_published_passes(self):
+        """Test submission published check passes."""
+        operator = SubmissionOperator(self.client)
+        operator.db_service.published_submission.return_value = False
+        await operator.check_submission_published(self.submission_id, "PATCH")
+        operator.db_service.published_submission.assert_called_once()
+
+    async def test_check_submission_published_fails(self):
+        """Test submission published check fails."""
+        operator = SubmissionOperator(self.client)
+        operator.db_service.published_submission.return_value = True
+        with self.assertRaises(HTTPMethodNotAllowed) as context:
+            await operator.check_submission_published(self.submission_id, "PATCH")
+            operator.db_service.published_submission.assert_called_once()
+        self.assertEqual("PATCH", context.exception.method)
+        self.assertEqual({"GET", "HEAD"}, context.exception.allowed_methods)
 
     async def test_deleting_submission_passes(self):
         """Test submission is deleted correctly, if not published."""

@@ -2,7 +2,7 @@
 from tests.integration.conf import datacite_url
 from tests.integration.helpers import (
     create_request_json_data,
-    delete_submission_publish,
+    delete_published_submission,
     get_object,
     post_object,
     post_object_json,
@@ -62,4 +62,4 @@ class TestBigPicture:
             assert study["data"]["attributes"]["relatedIdentifiers"][0]["relatedIdentifier"] == bpdataset["id"]
 
         # Delete submission
-        await delete_submission_publish(client_logged_in, submission_id)
+        await delete_published_submission(client_logged_in, submission_id)

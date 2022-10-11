@@ -522,7 +522,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         # Check submission exists and is not already published
         await operator.check_submission_exists(submission_id)
-        await operator.check_submission_published(submission_id)
+        await operator.check_submission_published(submission_id, req.method)
 
         # Check patch operations in request are valid
         data = await self._get_data(req)
@@ -564,7 +564,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         # Check submission exists and is not already published
         await operator.check_submission_exists(submission_id)
-        await operator.check_submission_published(submission_id)
+        await operator.check_submission_published(submission_id, req.method)
 
         await self._handle_check_ownership(req, "submission", submission_id)
         if self.metax_handler.enabled:
@@ -715,7 +715,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         # Check submission exists and is not already published
         await operator.check_submission_exists(submission_id)
-        await operator.check_submission_published(submission_id)
+        await operator.check_submission_published(submission_id, req.method)
 
         await self._handle_check_ownership(req, "submission", submission_id)
 
@@ -745,7 +745,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         # Check submission exists and is not already published
         await operator.check_submission_exists(submission_id)
-        await operator.check_submission_published(submission_id)
+        await operator.check_submission_published(submission_id, req.method)
 
         await self._handle_check_ownership(req, "submission", submission_id)
 
