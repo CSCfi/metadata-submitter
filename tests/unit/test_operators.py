@@ -804,7 +804,7 @@ class TestOperators(IsolatedAsyncioTestCase):
         operator.db_service.query.assert_called_once_with(
             "submission", {"metadataObjects": {"$elemMatch": {"accessionId": self.accession_id, "schema": "study"}}}
         )
-        self.assertEqual(result, (True, self.submission_id, False))
+        self.assertEqual(result, (self.submission_id, False))
 
     async def test_check_object_submission_multiple_objects_fails(self):
         """Test check object submission returns multiple unique submissions."""
@@ -824,7 +824,7 @@ class TestOperators(IsolatedAsyncioTestCase):
         operator.db_service.query.assert_called_once_with(
             "submission", {"metadataObjects": {"$elemMatch": {"accessionId": self.accession_id, "schema": "study"}}}
         )
-        self.assertEqual(result, (False, "", False))
+        self.assertEqual(result, ("", False))
 
     async def test_check_object_submission_published(self):
         """Test check object submission is published."""
@@ -836,7 +836,7 @@ class TestOperators(IsolatedAsyncioTestCase):
         operator.db_service.query.assert_called_once_with(
             "submission", {"metadataObjects": {"$elemMatch": {"accessionId": self.accession_id, "schema": "study"}}}
         )
-        self.assertEqual(result, (True, self.submission_id, True))
+        self.assertEqual(result, (self.submission_id, True))
 
     async def test_get_objects_submission_fails(self):
         """Test check object submission fails."""

@@ -252,8 +252,8 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         await self._handle_check_ownership(req, collection, accession_id)
 
         submission_op = SubmissionOperator(db_client)
-        exists, submission_id, published = await submission_op.check_object_in_submission(collection, accession_id)
-        if exists and published:
+        submission_id, published = await submission_op.check_object_in_submission(collection, accession_id)
+        if published:
             reason = "Published objects cannot be deleted."
             LOG.error(reason)
             raise web.HTTPMethodNotAllowed(method=req.method, allowed_methods=["GET", "HEAD"], reason=reason)
@@ -339,8 +339,8 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         await self._handle_check_ownership(req, collection, accession_id)
 
         submission_op = SubmissionOperator(db_client)
-        exists, submission_id, published = await submission_op.check_object_in_submission(collection, accession_id)
-        if exists and published:
+        submission_id, published = await submission_op.check_object_in_submission(collection, accession_id)
+        if published:
             reason = "Published objects cannot be updated."
             LOG.error(reason)
             raise web.HTTPMethodNotAllowed(method=req.method, allowed_methods=["GET", "HEAD"], reason=reason)
@@ -395,8 +395,8 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         await self._handle_check_ownership(req, collection, accession_id)
 
         submission_op = SubmissionOperator(db_client)
-        exists, submission_id, published = await submission_op.check_object_in_submission(collection, accession_id)
-        if exists and published:
+        submission_id, published = await submission_op.check_object_in_submission(collection, accession_id)
+        if published:
             reason = "Published objects cannot be updated."
             LOG.error(reason)
             raise web.HTTPMethodNotAllowed(method=req.method, allowed_methods=["GET", "HEAD"], reason=reason)
