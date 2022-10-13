@@ -505,7 +505,7 @@ async def delete_submission(sess, submission_id):
         assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
 
-async def delete_submission_publish(sess, submission_id):
+async def delete_published_submission(sess, submission_id):
     """Delete object submission within session unsuccessfully because it's already published.
 
     :param sess: HTTP session in which request call is made
@@ -513,7 +513,7 @@ async def delete_submission_publish(sess, submission_id):
     """
     async with sess.delete(f"{submissions_url}/{submission_id}") as resp:
         LOG.debug(f"Deleting submission {submission_id}")
-        assert resp.status == 401, f"HTTP Status code error, got {resp.status}"
+        assert resp.status == 405, f"HTTP Status code error, got {resp.status}"
 
 
 async def put_submission_doi(sess, submission_id, data):
