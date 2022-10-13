@@ -231,8 +231,8 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
             "schema": schema,
         }
 
-        exists, submission_id, published = await submission_op.check_object_in_submission(schema, result["accessionId"])
-        if exists and published:
+        submission_id, published = await submission_op.check_object_in_submission(schema, result["accessionId"])
+        if published:
             reason = "Published objects cannot be updated."
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)

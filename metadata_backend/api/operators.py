@@ -734,13 +734,13 @@ class SubmissionOperator:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-    async def check_object_in_submission(self, collection: str, accession_id: str) -> Tuple[bool, str, bool]:
+    async def check_object_in_submission(self, collection: str, accession_id: str) -> Tuple[str, bool]:
         """Check a object/draft is in a submission.
 
         :param collection: collection it belongs to, it would be used as path
         :param accession_id: document by accession_id
         :raises: HTTPUnprocessableEntity if error occurs during the process and object in more than 1 submission
-        :returns: Tuple with True for the check, submission id and if published or not
+        :returns: Tuple with submission id if object is in submission and bool if published or not
         """
         try:
             submission_path = "drafts" if collection.startswith("draft") else "metadataObjects"
@@ -756,7 +756,7 @@ class SubmissionOperator:
 
         if len(submission_check) == 0:
             LOG.info("Doc with accession ID: %r belongs to no submission something is off", accession_id)
-            return False, "", False
+            return "", False
 
         if len(submission_check) > 1:
             reason = f"The {accession_id} is in more than 1 submission."
@@ -765,7 +765,7 @@ class SubmissionOperator:
 
         submission_id = submission_check[0]["submissionId"]
         LOG.info("Found doc with accession ID: %r in submission: %r.", accession_id, submission_id)
-        return True, submission_id, submission_check[0]["published"]
+        return submission_id, submission_check[0]["published"]
 
     async def get_collection_objects(self, submission_id: str, collection: str) -> List:
         """List objects ids per collection.
