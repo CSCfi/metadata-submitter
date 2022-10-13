@@ -58,6 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - enabled new pylint checks #597 `logging-fstring-interpolation`, `fixme`, `useless-param-doc`, `suppress-message`
 - reformatted logs to style `{` and refactored some of the messages to be clearer #597
 - exceptions now default to `log.exception` with stacktrace #597
+- POST/PATCH/PUT/DELETE requests on published submission responds with 405 instead of 401 HTTP response #618
 
 ### Removed
 

@@ -217,8 +217,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     async def fake_submissionoperator_check_object(self, schema_type, accession_id):
         """Fake check object in submission."""
-        data = True, self.submission_id, False
-        return data
+        return self.submission_id, False
 
     async def fake_useroperator_create_user(self, content):
         """Fake user operation to return mocked userId."""

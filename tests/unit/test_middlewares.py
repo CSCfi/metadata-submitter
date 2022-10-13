@@ -58,9 +58,9 @@ class ErrorMiddlewareTestCase(AioHTTPTestCase):
             self.assertEqual(response.status, 400)
             self.assertEqual(response.content_type, "application/problem+json")
             resp_dict = await response.json()
-            self.assertIn("Bad Request", resp_dict["title"])
-            self.assertIn("There must be a submission.xml file in submission.", resp_dict["detail"])
-            self.assertIn(f"{API_PREFIX}/submit", resp_dict["instance"])
+            self.assertEqual("Bad Request", resp_dict["title"])
+            self.assertEqual("There must be a submission.xml file in submission.", resp_dict["detail"])
+            self.assertEqual(f"{API_PREFIX}/submit", resp_dict["instance"])
 
     async def test_bad_url_returns_json_response(self):
         """Test that unrouted API url returns a 404 in JSON format."""
@@ -69,7 +69,7 @@ class ErrorMiddlewareTestCase(AioHTTPTestCase):
             self.assertEqual(response.status, 404)
             self.assertEqual(response.content_type, "application/problem+json")
             resp_dict = await response.json()
-            self.assertIn("Not Found", resp_dict["title"])
+            self.assertEqual("Not Found", resp_dict["title"])
 
 
 def _create_improper_data():

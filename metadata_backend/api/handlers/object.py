@@ -124,7 +124,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
 
         # check if submission is already published
         # objects shouldn't be added to published submissions
-        await submission_op.check_submission_published(submission_id)
+        await submission_op.check_submission_published(submission_id, req.method)
 
         # we need to check if there is already a study in a submission
         # we only allow one study per submission
@@ -252,20 +252,15 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         await self._handle_check_ownership(req, collection, accession_id)
 
         submission_op = SubmissionOperator(db_client)
-        exists, submission_id, published = await submission_op.check_object_in_submission(collection, accession_id)
-        if exists:
-            if published:
-                reason = "published objects cannot be deleted."
-                LOG.error(reason)
-                raise web.HTTPUnauthorized(reason=reason)
-            await submission_op.remove_object(submission_id, collection, accession_id)
-            _now = int(datetime.now().timestamp())
-            lastModified = {"op": "replace", "path": "/lastModified", "value": _now}
-            await submission_op.update_submission(submission_id, [lastModified])
-        else:
-            reason = "This object does not seem to belong to any user."
+        submission_id, published = await submission_op.check_object_in_submission(collection, accession_id)
+        if published:
+            reason = "Published objects cannot be deleted."
             LOG.error(reason)
-            raise web.HTTPUnprocessableEntity(reason=reason)
+            raise web.HTTPMethodNotAllowed(method=req.method, allowed_methods=["GET", "HEAD"], reason=reason)
+        await submission_op.remove_object(submission_id, collection, accession_id)
+        _now = int(datetime.now().timestamp())
+        lastModified = {"op": "replace", "path": "/lastModified", "value": _now}
+        await submission_op.update_submission(submission_id, [lastModified])
 
         metax_id: str = ""
         doi_id: str = ""
@@ -344,11 +339,11 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         await self._handle_check_ownership(req, collection, accession_id)
 
         submission_op = SubmissionOperator(db_client)
-        exists, submission_id, published = await submission_op.check_object_in_submission(collection, accession_id)
-        if exists and published:
+        submission_id, published = await submission_op.check_object_in_submission(collection, accession_id)
+        if published:
             reason = "Published objects cannot be updated."
             LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
+            raise web.HTTPMethodNotAllowed(method=req.method, allowed_methods=["GET", "HEAD"], reason=reason)
 
         data = await operator.replace_metadata_object(collection, accession_id, content)
         patch = self._prepare_submission_patch_update_object(collection, data, filename)
@@ -400,11 +395,11 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         await self._handle_check_ownership(req, collection, accession_id)
 
         submission_op = SubmissionOperator(db_client)
-        exists, submission_id, published = await submission_op.check_object_in_submission(collection, accession_id)
-        if exists and published:
+        submission_id, published = await submission_op.check_object_in_submission(collection, accession_id)
+        if published:
             reason = "Published objects cannot be updated."
             LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
+            raise web.HTTPMethodNotAllowed(method=req.method, allowed_methods=["GET", "HEAD"], reason=reason)
 
         accession_id = await operator.update_metadata_object(collection, accession_id, content)
 
