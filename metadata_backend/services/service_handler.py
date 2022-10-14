@@ -80,11 +80,6 @@ class ServiceHandler(ABC):
         if self._http_client is not None:
             await self._http_client.close()
 
-    @property
-    def enabled(self) -> bool:
-        """Indicate whether service is enabled."""
-        return True
-
     async def check_connection(self, timeout: int = 2) -> None:
         """Check service is reachable.
 
@@ -123,11 +118,6 @@ class ServiceHandler(ABC):
         :param timeout: Request timeout in seconds
         :returns: Response body parsed as JSON
         """
-        if not self.enabled:
-            reason = f"{self.service_name} is disabled, yet attempted to '{method}' '{url}' path '{path}'"
-            LOG.error(reason)
-            raise HTTPInternalServerError(reason=reason)
-
         LOG.debug(
             "%s request to: %r, path %r, params %r, request payload: %r",
             method,

@@ -12,6 +12,7 @@ from cryptography.fernet import Fernet
 
 from .api.auth import AAIServiceHandler, AccessHandler
 from .api.handlers.object import ObjectAPIHandler
+from .api.handlers.publish import PublishSubmissionAPIHandler
 from .api.handlers.rems_proxy import RemsAPIHandler
 from .api.handlers.restapi import RESTAPIHandler
 from .api.handlers.static import StaticHandler, html_handler_factory
@@ -23,7 +24,6 @@ from .api.health import HealthHandler
 from .api.middlewares import check_session, http_error_handler
 from .conf.conf import (
     API_PREFIX,
-    REMS_ENABLED,
     aai_config,
     create_db_client,
     frontend_static_files,
@@ -90,6 +90,9 @@ async def init(
     _submission = SubmissionAPIHandler(
         metax_handler=metax_handler, datacite_handler=datacite_handler, rems_handler=rems_handler
     )
+    _publish_submission = PublishSubmissionAPIHandler(
+        metax_handler=metax_handler, datacite_handler=datacite_handler, rems_handler=rems_handler
+    )
     _user = UserAPIHandler()
     _xml_submission = XMLSubmissionAPIHandler(
         metax_handler=metax_handler, datacite_handler=datacite_handler, rems_handler=rems_handler
@@ -98,7 +101,7 @@ async def init(
     api_routes = [
         # retrieve workflows
         web.get("/workflows", _common_api_handler.get_workflows),
-        web.get("/workflows/{workflow}", _common_api_handler.get_workflow),
+        web.get("/workflows/{workflow}", _common_api_handler.get_workflow_request),
         # retrieve schema and information about it
         web.get("/schemas", _common_api_handler.get_schema_types),
         web.get("/schemas/{schema}", _common_api_handler.get_json_schema),
@@ -126,27 +129,21 @@ async def init(
         web.post("/submissions", _submission.post_submission),
         web.get("/submissions/{submissionId}", _submission.get_submission),
         web.put("/submissions/{submissionId}/doi", _submission.put_submission_path),
+        web.put("/submissions/{submissionId}/dac", _submission.put_submission_path),
         web.patch("/submissions/{submissionId}", _submission.patch_submission),
         web.delete("/submissions/{submissionId}", _submission.delete_submission),
         # publish submissions
-        web.patch("/publish/{submissionId}", _submission.publish_submission),
+        web.patch("/publish/{submissionId}", _publish_submission.publish_submission),
         # users operations
         web.get("/users/{userId}", _user.get_user),
         web.delete("/users/{userId}", _user.delete_user),
-        # submit
-        web.post("/submit", _xml_submission.submit),
+        # XML submission
+        web.post("/submit/{workflow}", _xml_submission.submit),
         # validate
         web.post("/validate", _xml_submission.validate),
     ]
-    if REMS_ENABLED:
-        LOG.info("REMS is enabled, adding to list of api routes")
-        api_routes.append(
-            web.put("/submissions/{submissionId}/dac", _submission.put_submission_path),
-        )
-        _rems = RemsAPIHandler(
-            metax_handler=metax_handler, datacite_handler=datacite_handler, rems_handler=rems_handler
-        )
-        api_routes.append(web.get("/rems", _rems.get_workflows_licenses_from_rems))
+    _rems = RemsAPIHandler(metax_handler=metax_handler, datacite_handler=datacite_handler, rems_handler=rems_handler)
+    api_routes.append(web.get("/rems", _rems.get_workflows_licenses_from_rems))
 
     api.add_routes(api_routes)
     server.add_subapp(API_PREFIX, api)

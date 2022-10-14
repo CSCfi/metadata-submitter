@@ -6,7 +6,7 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
 from pymongo import ReturnDocument
 from pymongo.errors import AutoReconnect, BulkWriteError, ConnectionFailure
 
-from ..conf.conf import DATACITE_SCHEMAS, serverTimeout
+from ..conf.conf import serverTimeout
 from ..helpers.logger import LOG
 from ..helpers.parser import jsonpatch_mongo
 
@@ -289,10 +289,6 @@ class DBService:
         old_data = await self.database[collection].find_one(find_by_id)
         if not (len(new_data) == 2 and new_data["content"].startswith("<")):
             new_data["dateCreated"] = old_data["dateCreated"]
-            if collection in DATACITE_SCHEMAS:
-                new_data["doi"] = old_data["doi"]
-                if old_data.get("metaxIdentifier", None):
-                    new_data["metaxIdentifier"] = old_data["metaxIdentifier"]
             if "publishDate" in old_data:
                 new_data["publishDate"] = old_data["publishDate"]
         result = await self.database[collection].replace_one(find_by_id, new_data)
@@ -318,7 +314,9 @@ class DBService:
         LOG.debug("DB doc in collection: %r deleted data for accession ID: %r.", collection, accession_id)
         return result.acknowledged
 
-    def query(self, collection: str, query: Dict, custom_projection: Optional[Dict] = None) -> AsyncIOMotorCursor:
+    def query(
+        self, collection: str, query: Dict, custom_projection: Optional[Dict] = None, limit: int = 0
+    ) -> AsyncIOMotorCursor:
         """Query database with given query.
 
         Find() does no I/O and does not require an await expression, hence
@@ -327,13 +325,14 @@ class DBService:
         :param collection: Collection where document should be searched from
         :param query: query to be used
         :param custom_projection: overwrites default projection
+        :param limit: maximum number of results
         :returns: Async cursor instance which should be awaited when iterating
         """
         LOG.debug("DB doc query performed in: %r.", collection)
         projection = {"_id": False, "eppn": False} if collection == "user" else {"_id": False}
         if custom_projection:
             projection = custom_projection
-        return self.database[collection].find(query, projection)
+        return self.database[collection].find(query, projection, limit=limit)
 
     @auto_reconnect
     async def do_aggregate(self, collection: str, query: List) -> List:

@@ -52,6 +52,12 @@ paths:
         - Submission
       summary: XML submission endpoint, will also trigger validation.
       parameters:
+        - name: workflow
+          in: path
+          description: Name of submission workflow.
+          schema:
+            type: string
+          required: true
         - name: submission
           in: query
           schema:
@@ -1798,6 +1804,9 @@ components:
         submissionId:
           type: string
           description: Custom generated ID for the object submission.
+        published:
+          type: object
+          description: Integrated service as key (Datacite, Metax, REMS), and whether they are "published" or "failed" as value
     Submission:
       type: object
       required:

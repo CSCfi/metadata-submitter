@@ -118,7 +118,7 @@ class DatabaseTestCase(IsolatedAsyncioTestCase):
         """Test that find is executed, so cursor is returned."""
         self.collection.find.return_value = AsyncIOMotorCursor(None, None)
         self.test_service.query("testcollection", {})
-        self.collection.find.assert_called_once_with({}, {"_id": False})
+        self.collection.find.assert_called_once_with({}, {"_id": False}, limit=0)
 
     async def test_db_operation_is_retried_with_increasing_interval(self):
         """Patch timeout to be 0 sec instead of default, test autoreconnect."""

@@ -11,7 +11,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from tests.integration.conf import AUTHDB, DATABASE, HOST
 
 LOG = logging.getLogger(__name__)
-LOG.setLevel(logging.DEBUG)
+LOG.setLevel(logging.INFO)
 
 # === MongoDB setup ===
 COLLECTIONS = {"submission", "user"}

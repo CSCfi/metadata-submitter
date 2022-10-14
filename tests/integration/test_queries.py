@@ -2,7 +2,7 @@
 import asyncio
 import logging
 
-from tests.integration.conf import objects_url, test_xml_files
+from tests.integration.conf import objects_url, test_fega_xml_files
 from tests.integration.helpers import delete_object, post_object
 
 LOG = logging.getLogger(__name__)
@@ -12,14 +12,17 @@ LOG.setLevel(logging.DEBUG)
 class TestQueries:
     """Test querying."""
 
-    async def test_querying_works(self, client_logged_in, submission_id):
+    async def test_querying_works(self, client_logged_in, submission_fega):
         """Test query endpoint with working and failing query.
 
         :param client_logged_in: HTTP client in which request call is made
-        :param submission_id: id of the submission used to group submission objects
+        :param submission_fega: id of the submission used to group submission objects
         """
         files = await asyncio.gather(
-            *[post_object(client_logged_in, schema, submission_id, filename) for schema, filename in test_xml_files]
+            *[
+                post_object(client_logged_in, schema, submission_fega, filename)
+                for schema, filename in test_fega_xml_files
+            ]
         )
 
         queries = {
@@ -68,15 +71,15 @@ class TestQueries:
 class TestQueryPagination:
     """Testing getting objects & pagination."""
 
-    async def test_getting_all_objects_from_schema_works(self, client_logged_in, submission_id):
+    async def test_getting_all_objects_from_schema_works(self, client_logged_in, submission_fega):
         """Check that /objects/study returns objects with correct pagination.
 
         :param client_logged_in: HTTP client in which request call is made
-        :param submission_id: id of the submission used to group submission objects
+        :param submission_fega: id of the submission used to group submission objects
         """
         # Add objects
         files = await asyncio.gather(
-            *[post_object(client_logged_in, "sample", submission_id, "SRS001433.xml") for _ in range(13)]
+            *[post_object(client_logged_in, "sample", submission_fega, "SRS001433.xml") for _ in range(13)]
         )
 
         # Test default values

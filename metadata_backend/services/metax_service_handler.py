@@ -10,7 +10,7 @@ from aiohttp import BasicAuth, web
 from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
 from yarl import URL
 
-from ..conf.conf import METAX_ENABLED, metax_config
+from ..conf.conf import metax_config
 from ..helpers.logger import LOG
 from .metax_mapper import MetaDataMapper, SubjectNotFoundException
 from .service_handler import ServiceHandler
@@ -65,11 +65,6 @@ class MetaxServiceHandler(ServiceHandler):
             },
         }
 
-    @property
-    def enabled(self) -> bool:
-        """Indicate whether service is enabled."""
-        return METAX_ENABLED
-
     async def _get(self, metax_id: str) -> dict:
         result = await self._request(method="GET", path=metax_id)
         LOG.info("Got metax dataset with ID: %r.", metax_id)
@@ -122,13 +117,13 @@ class MetaxServiceHandler(ServiceHandler):
 
         return result
 
-    async def _delete_draft(self, metax_id: str) -> None:
-        """Delete draft dataset from Metax service.
-
-        :param metax_id: Identification string pointing to Metax dataset to be deleted
-        """
-        await self._request(method="DELETE", path=metax_id)
-        LOG.debug("Deleted draft dataset metax ID: %r from Metax service", metax_id)
+    # async def _delete_draft(self, metax_id: str) -> None:
+    #     """Delete draft dataset from Metax service.
+    #
+    #     :param metax_id: Identification string pointing to Metax dataset to be deleted
+    #     """
+    #     await self._request(method="DELETE", path=metax_id)
+    #     LOG.debug("Deleted draft dataset metax ID: %r from Metax service", metax_id)
 
     async def _publish(self, metax_id: str) -> str:
         """Post a call to Metax RPC publish endpoint.
@@ -181,37 +176,37 @@ class MetaxServiceHandler(ServiceHandler):
         await self._patch(metax_id, {"research_dataset": dataset_data})
         return metax_id
 
-    async def update_draft_dataset(self, external_id: str, collection: str, data: Dict) -> None:
-        """Update draft dataset to Metax.
-
-        Construct Metax draft dataset data from submitters' Study or Dataset and
-        send it to Metax Dataset API for update.
-
-        :param external_id: external user id, from OIDC provider
-        :param collection: Schema of incoming submitters' metadata
-        :param data: Validated Study or Dataset data dict
-        :raises: HTTPError depending on returned error from Metax
-        """
-        LOG.info("Updating collection: %r object data to Metax service.", collection)
-        await self.check_connection()
-        metax_dataset = self.minimal_dataset_template
-        metax_dataset["metadata_provider_user"] = external_id
-        if collection == "dataset":
-            dataset_data = self.create_metax_dataset_data_from_dataset(data)
-        else:
-            dataset_data = self.create_metax_dataset_data_from_study(data)
-        metax_dataset["research_dataset"] = dataset_data
-
-        metax_data = await self._put(data["metaxIdentifier"], metax_dataset)
-        LOG.debug("Updated metax ID: %r, new metadata is: %r", data["metaxIdentifier"], metax_data)
-
-    async def delete_draft_dataset(self, metax_id: str) -> None:
-        """Delete draft dataset from Metax service.
-
-        :param metax_id: Identification string pointing to Metax dataset to be deleted
-        """
-        LOG.info("Deleting Metax draft dataset metax ID: %r", metax_id)
-        await self._delete_draft(metax_id)
+    # async def update_draft_dataset(self, external_id: str, collection: str, data: Dict) -> None:
+    #     """Update draft dataset to Metax.
+    #
+    #     Construct Metax draft dataset data from submitters' Study or Dataset and
+    #     send it to Metax Dataset API for update.
+    #
+    #     :param external_id: external user id, from OIDC provider
+    #     :param collection: Schema of incoming submitters' metadata
+    #     :param data: Validated Study or Dataset data dict
+    #     :raises: HTTPError depending on returned error from Metax
+    #     """
+    #     LOG.info("Updating collection: %r object data to Metax service.", collection)
+    #     await self.check_connection()
+    #     metax_dataset = self.minimal_dataset_template
+    #     metax_dataset["metadata_provider_user"] = external_id
+    #     if collection == "dataset":
+    #         dataset_data = self.create_metax_dataset_data_from_dataset(data)
+    #     else:
+    #         dataset_data = self.create_metax_dataset_data_from_study(data)
+    #     metax_dataset["research_dataset"] = dataset_data
+    #
+    #     metax_data = await self._put(data["metaxIdentifier"], metax_dataset)
+    #     LOG.debug("Updated metax ID: %r, new metadata is: %r", data["metaxIdentifier"], metax_data)
+    #
+    # async def delete_draft_dataset(self, metax_id: str) -> None:
+    #     """Delete draft dataset from Metax service.
+    #
+    #     :param metax_id: Identification string pointing to Metax dataset to be deleted
+    #     """
+    #     LOG.info("Deleting Metax draft dataset metax ID: %r", metax_id)
+    #     await self._delete_draft(metax_id)
 
     async def update_dataset_with_doi_info(self, datacite_info: Dict, metax_ids: List) -> None:
         """Update dataset for publishing.

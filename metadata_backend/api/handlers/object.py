@@ -8,7 +8,7 @@ from aiohttp import web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
-from ...conf.conf import API_PREFIX, DATACITE_SCHEMAS, METAX_SCHEMAS
+from ...conf.conf import API_PREFIX
 from ...helpers.logger import LOG
 from ...helpers.validator import JSONValidator
 from ..operators import Operator, SubmissionOperator, XMLOperator
@@ -117,7 +117,6 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         await self._handle_check_ownership(req, "submission", submission_id)
 
         self._check_schema_exists(schema_type)
-        collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
 
         db_client = req.app["db_client"]
         submission_op = SubmissionOperator(db_client)
@@ -126,15 +125,13 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         # objects shouldn't be added to published submissions
         await submission_op.check_submission_published(submission_id, req.method)
 
-        # we need to check if there is already a study in a submission
-        # we only allow one study per submission
-        # this is not enough to catch duplicate entries if updates happen in parallel
-        # that is why we check in db_service.update_study
-        if not req.path.startswith(f"{API_PREFIX}/drafts") and schema_type == "study":
-            _ids = await submission_op.get_collection_objects(submission_id, collection)
-            if len(_ids) == 1:
-                reason = "Only one study is allowed per submission."
-                raise web.HTTPBadRequest(reason=reason)
+        workflow_name = await submission_op.get_submission_field_str(submission_id, "workflow")
+        workflow = self.get_workflow(workflow_name)
+
+        if schema_type not in workflow.schemas:
+            reason = f"Submission '{submission_id}' of type '{workflow.name}' cannot have '{schema_type}' objects."
+            LOG.info(reason)
+            raise web.HTTPBadRequest(reason=reason)
 
         content: Union[Dict[str, Any], str, List[Tuple[Any, str, str]]]
         operator: Union[Operator, XMLOperator]
@@ -157,12 +154,32 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
                 JSONValidator(content, schema_type).validate
             operator = Operator(db_client)
 
+        is_single_instance = schema_type in workflow.single_instance_schemas
+
+        # ensure only one object with the same schema exists in the submission
+        if is_single_instance:
+            schemas_in_submission = set()
+            submission = {
+                "metadataObjects": await submission_op.get_submission_field_list(submission_id, "metadataObjects")
+            }
+            for _, schema in self.iter_submission_objects(submission):
+                if schema in schemas_in_submission:
+                    reason = f"Submission of type {workflow.name} already has a '{schema}', and it can have only one."
+                    raise web.HTTPBadRequest(reason=reason)
+                schemas_in_submission.add(schema)
+
+        collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
+
         # Add a new metadata object or multiple objects if multiple were extracted
         url = f"{req.scheme}://{req.host}{req.path}"
         data: Union[List[Dict[str, str]], Dict[str, str]]
         objects: List[Tuple[Dict[str, Any], str]] = []
         if isinstance(content, List):
             LOG.debug("Inserting multiple objects for collection: %r.", schema_type)
+            if is_single_instance and len(content) > 1:
+                reason = f"Submission of type {workflow.name} can only have one '{schema_type}'. Cannot add multiple."
+                raise web.HTTPBadRequest(reason=reason)
+
             for item in content:
                 json_data = await operator.create_metadata_object(collection, item[0])
                 filename = item[2]
@@ -195,21 +212,6 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         # Gathering data for object to be added to submission
         patch = self._prepare_submission_patch_new_object(collection, objects, cont_type)
         await submission_op.update_submission(submission_id, patch)
-
-        # Add DOI to object
-        if collection in DATACITE_SCHEMAS:
-            obj: Dict[str, Any]
-            for obj, _ in objects:
-                obj["doi"] = await self.create_draft_doi(collection)
-                await Operator(db_client).update_identifiers(collection, obj["accessionId"], {"doi": obj["doi"]})
-
-                # Create draft dataset to Metax catalog
-                if self.metax_handler.enabled and collection in METAX_SCHEMAS:
-                    try:
-                        await self.create_metax_dataset(req, collection, obj)
-                    except Exception as e:
-                        # We don't care if it fails here
-                        LOG.exception("create_metax_dataset failed: %r for collection: %r.", e, collection)
 
         body = ujson.dumps(data, escape_forward_slashes=False)
 
@@ -262,37 +264,10 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         lastModified = {"op": "replace", "path": "/lastModified", "value": _now}
         await submission_op.update_submission(submission_id, [lastModified])
 
-        metax_id: str = ""
-        doi_id: str = ""
-        if collection in DATACITE_SCHEMAS:
-            try:
-                object_data, _ = await operator.read_metadata_object(collection, accession_id)
-                # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
-                if isinstance(object_data, dict):
-                    doi_id = object_data["doi"]
-                    if self.metax_handler.enabled and collection in METAX_SCHEMAS:
-                        metax_id = object_data["metaxIdentifier"]
-            except KeyError:
-                LOG.exception(
-                    "MetadataObject in collection: %r with accession ID: %r was not to Metax or Datacite.",
-                    collection,
-                    accession_id,
-                )
-
         accession_id = await operator.delete_metadata_object(collection, accession_id)
         # we try to delete the object from the xml-{schema_type} collection
         xml_operator = XMLOperator(db_client)
         await xml_operator.delete_metadata_object(f"xml-{collection}", accession_id)
-
-        # Delete draft dataset from Metax catalog
-        if self.metax_handler.enabled and collection in METAX_SCHEMAS:
-            try:
-                await self.metax_handler.delete_draft_dataset(metax_id)
-            except Exception as e:
-                # We don't care if it fails here
-                LOG.exception("delete_draft_dataset failed: %r for collection: %r", e, collection)
-        if collection in DATACITE_SCHEMAS:
-            await self.datacite_handler.delete(doi_id)
 
         LOG.info(
             "DELETE object with accession ID: %s in collection: %s was successful.",
@@ -349,18 +324,6 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         patch = self._prepare_submission_patch_update_object(collection, data, filename)
         await submission_op.update_submission(submission_id, patch)
 
-        # Update draft dataset to Metax catalog
-        try:
-            if self.metax_handler.enabled and collection in METAX_SCHEMAS:
-                if data.get("metaxIdentifier", None):
-                    external_id = await self.get_user_external_id(req)
-                    await self.metax_handler.update_draft_dataset(external_id, collection, data)
-                else:
-                    await self.create_metax_dataset(req, collection, data)
-        except Exception as e:
-            # We don't care if it fails here
-            LOG.exception("update_draft_dataset or create_metax_dataset failed: %r for collection %r.", e, collection)
-
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info("PUT object with accession ID: %r in collection: %r was successful.", accession_id, collection)
         return web.Response(body=body, status=200, content_type="application/json")
@@ -408,26 +371,8 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
             _ = content["descriptor"]["studyTitle"] if collection == "study" else content["title"]
             patch = self._prepare_submission_patch_update_object(collection, content)
             await submission_op.update_submission(submission_id, patch)
-        except (TypeError, KeyError):
-            pass
-
-        # Update draft dataset to Metax catalog
-        try:
-            if self.metax_handler.enabled and collection in METAX_SCHEMAS:
-                object_data, _ = await operator.read_metadata_object(collection, accession_id)
-                # MYPY related if statement, Operator (when not XMLOperator) always returns object_data as dict
-                if isinstance(object_data, Dict):
-                    external_id = await self.get_user_external_id(req)
-                    if object_data.get("metaxIdentifier", None):
-                        await self.metax_handler.update_draft_dataset(external_id, collection, object_data)
-                    else:
-                        await self.create_metax_dataset(req, collection, object_data)
-                else:
-                    raise ValueError("Object's data must be dictionary")
-        except Exception as e:
-            # We don't care if it fails here
-            LOG.exception("update_draft_dataset or create_metax_dataset failed: %r for collection %s", e, collection)
-            raise
+        except (TypeError, KeyError) as error:
+            LOG.exception(error)
 
         body = ujson.dumps({"accessionId": accession_id}, escape_forward_slashes=False)
         LOG.info("PATCH object with accession ID: %r in collection: %r was successful.", accession_id, collection)
