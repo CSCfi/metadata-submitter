@@ -74,7 +74,7 @@ async def get_dataset(req: web.Request) -> web.Response:
     datasets = list(drafts.keys()) + list(published.keys())
     if metax_id not in datasets:
         LOG.error(f"No dataset found with identifier {metax_id}")
-        raise web.HTTPNotFound(reason={"detail": "Not found."})
+        raise web.HTTPNotFound(reason={"detail": f"{metax_id} Not found."})
     try:
         content = drafts[metax_id]
     except KeyError:

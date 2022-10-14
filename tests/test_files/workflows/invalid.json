@@ -1,0 +1,34 @@
+{
+    "name": "invalid",
+    "description": "",
+    "steps": [
+        {
+            "title": "single step",
+            "schemas": [
+                {
+                    "name": "study",
+                    "required": true
+                },
+                {
+                    "name": "dac",
+                    "required": true,
+                    "allowMultipleObjects": true
+                },
+                {
+                    "name": "policy",
+                    "required": true,
+                    "allowMultipleObjects": true
+                }
+            ]
+        }
+    ],
+    "publish": [
+        {
+            "name": "datacite",
+            "endpoint": "datacite",
+            "requiredSchemas": [
+                "datacite"
+            ]
+        }
+    ]
+}

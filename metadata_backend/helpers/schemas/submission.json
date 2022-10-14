@@ -6,7 +6,8 @@
     "required": [
         "name",
         "description",
-        "projectId"
+        "projectId",
+        "workflow"
     ],
     "properties": {
         "projectId": {
@@ -28,6 +29,16 @@
         "description": {
             "type": "string",
             "title": "Submission Description"
+        },
+        "workflow": {
+            "type": "string",
+            "title": "Name of the workflow",
+            "description": "Each submission is created according a specific workflow, which is indicated by this field",
+            "enum": [
+                "FEGA",
+                "BigPicture",
+                "SDSX"
+            ]
         },
         "dateCreated": {
             "type": "integer",

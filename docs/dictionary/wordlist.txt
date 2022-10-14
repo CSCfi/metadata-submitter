@@ -222,6 +222,7 @@ faroese
 fasta
 fastq
 fbtr
+fega
 figma
 filebase
 filename
@@ -597,6 +598,7 @@ scientificname
 sda
 sdev
 sdsubmitprojects
+sdsx
 se
 secondaryid
 sectionname
@@ -644,9 +646,9 @@ subjectsschema
 submissionid
 submissionslice
 submissiontype
-submitter's
 submitterdemultiplexed
 submitterid
+submitter's
 submitters
 svg
 swati
@@ -719,6 +721,7 @@ wizardsubmissionslice
 wolof
 wordlist
 workflowid
+workflows
 wsiimage
 wxs
 xl

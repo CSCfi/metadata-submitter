@@ -18,7 +18,7 @@ LOG.setLevel(logging.DEBUG)
 class TestDrafts:
     """Test operations with draft."""
 
-    async def test_crud_drafts_works(self, client_logged_in, submission_id):
+    async def test_crud_drafts_works(self, client_logged_in, submission_fega):
         """Test drafts REST API POST, PUT and DELETE reqs.
 
         Tries to create new draft object, gets accession id and checks if correct
@@ -26,19 +26,19 @@ class TestDrafts:
         was deleted.
 
         :param client_logged_in: HTTP client in which request call is made
-        :param submission_id: id of the submission used to group submission objects
+        :param submission_fega: id of the submission used to group submission objects
         """
 
         async def crud_drafts_works(schema, original_file, update_file):
             """Individual tests to be run in parallel."""
-            draft_id = await post_draft_json(client_logged_in, schema, submission_id, original_file)
+            draft_id = await post_draft_json(client_logged_in, schema, submission_fega, original_file)
             async with client_logged_in.get(f"{drafts_url}/{schema}/{draft_id}") as resp:
                 assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
                 res = await resp.json()
                 title = res["descriptor"]["studyTitle"] if schema == "study" else res.get("title", "")
             await check_submissions_object_patch(
                 client_logged_in,
-                submission_id,
+                submission_fega,
                 draft_id,
                 schema,
                 title,
@@ -54,7 +54,7 @@ class TestDrafts:
                 title = res["descriptor"]["studyTitle"] if schema == "study" else res.get("title", "")
             await check_submissions_object_patch(
                 client_logged_in,
-                submission_id,
+                submission_fega,
                 schema,
                 accession_id,
                 title,
@@ -67,8 +67,8 @@ class TestDrafts:
                 LOG.debug(f"Checking that JSON object {accession_id} was deleted")
                 assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
 
-            async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
-                LOG.debug(f"Checking that JSON object {accession_id} was deleted from submission {submission_id}")
+            async with client_logged_in.get(f"{submissions_url}/{submission_fega}") as resp:
+                LOG.debug(f"Checking that JSON object {accession_id} was deleted from submission {submission_fega}")
                 res = await resp.json()
                 expected_true = not any(d["accessionId"] == accession_id for d in res["drafts"])
                 assert expected_true, f"draft object {accession_id} still exists"
@@ -80,7 +80,7 @@ class TestDrafts:
             gather_items.append(crud_drafts_works(schema, original_file, update_file))
         await asyncio.gather(*gather_items)
 
-    async def test_patch_drafts_works(self, client_logged_in, submission_id):
+    async def test_patch_drafts_works(self, client_logged_in, submission_fega):
         """Test REST API POST, PATCH and DELETE reqs.
 
         Tries to create put and patch object, gets accession id and
@@ -88,11 +88,11 @@ class TestDrafts:
         Finally deletes the object and checks it was deleted.
 
         :param client_logged_in: HTTP client in which request call is made
-        :param submission_id: id of the submission used to group submission objects
+        :param submission_fega: id of the submission used to group submission objects
         """
         files = [("study", "SRP000539.json", "patch.json")]
         for schema, original_file, update_file in files:
-            draft_id = await post_draft_json(client_logged_in, schema, submission_id, original_file)
+            draft_id = await post_draft_json(client_logged_in, schema, submission_fega, original_file)
             accession_id = await patch_draft(client_logged_in, schema, draft_id, update_file)
             async with client_logged_in.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
                 LOG.debug(f"Checking that {accession_id} JSON is in {schema}")
@@ -103,7 +103,7 @@ class TestDrafts:
                 assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
             await check_submissions_object_patch(
                 client_logged_in,
-                submission_id,
+                submission_fega,
                 schema,
                 accession_id,
                 title,

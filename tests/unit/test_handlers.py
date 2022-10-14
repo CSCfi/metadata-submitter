@@ -69,11 +69,13 @@ class HandlersTestCase(AioHTTPTestCase):
         self.accession_id = "EGA123456"
         self.submission_id = "FOL12345678"
         self.project_id = "1001"
+        self.workflow = "FEGA"
         self.test_submission = {
             "projectId": self.project_id,
             "submissionId": self.submission_id,
             "name": "mock submission",
             "description": "test mock submission",
+            "workflow": self.workflow,
             "published": False,
             "metadataObjects": [
                 {"accessionId": "EDAG3991701442770179", "schema": "study"},
@@ -120,6 +122,7 @@ class HandlersTestCase(AioHTTPTestCase):
             "read_submission.side_effect": self.fake_submissionoperator_read_submission,
             "delete_submission.side_effect": self.fake_submissionoperator_delete_submission,
             "check_object_in_submission.side_effect": self.fake_submissionoperator_check_object,
+            "get_submission_field_str.side_effect": self.fake_get_submission_field_str,
         }
         self.useroperator_config = {
             "create_user.side_effect": self.fake_useroperator_create_user,
@@ -219,6 +222,14 @@ class HandlersTestCase(AioHTTPTestCase):
         """Fake check object in submission."""
         return self.submission_id, False
 
+    async def fake_get_submission_field_str(self, submission_id, field):
+        """Fake get submission field."""
+        if field == "workflow":
+            return "FEGA"
+        elif field == "projectId":
+            return self.project_id
+        return ""
+
     async def fake_useroperator_create_user(self, content):
         """Fake user operation to return mocked userId."""
         return self.user_id
@@ -306,7 +317,7 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
         with self.p_get_sess_restapi:
             files = [("submission", "ERA521986_valid.xml")]
             data = self.create_submission_data(files)
-            response = await self.client.post(f"{API_PREFIX}/submit", data=data)
+            response = await self.client.post(f"{API_PREFIX}/submit/FEGA", data=data)
             self.assertEqual(response.status, 200)
             self.assertEqual(response.content_type, "application/json")
 
@@ -318,7 +329,7 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
         with self.p_get_sess_restapi:
             files = [("analysis", "ERZ266973.xml")]
             data = self.create_submission_data(files)
-            response = await self.client.post(f"{API_PREFIX}/submit", data=data)
+            response = await self.client.post(f"{API_PREFIX}/submit/FEGA", data=data)
             failure_text = "There must be a submission.xml file in submission."
             self.assertEqual(response.status, 400)
             self.assertIn(failure_text, await response.text())
@@ -331,7 +342,7 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
         with self.p_get_sess_restapi:
             files = [("submission", "ERA521986_valid.xml"), ("submission", "ERA521986_valid2.xml")]
             data = self.create_submission_data(files)
-            response = await self.client.post(f"{API_PREFIX}/submit", data=data)
+            response = await self.client.post(f"{API_PREFIX}/submit/FEGA", data=data)
             failure_text = "You should submit only one submission.xml file."
             self.assertEqual(response.status, 400)
             self.assertIn(failure_text, await response.text())
@@ -803,8 +814,6 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         """
         await super().setUpAsync()
 
-        self._mock_prepare_doi = "metadata_backend.api.handlers.submission.SubmissionAPIHandler._prepare_for_publishing"
-
         class_submissionoperator = "metadata_backend.api.handlers.submission.SubmissionOperator"
         self.patch_submissionoperator = patch(class_submissionoperator, **self.submissionoperator_config, spec=True)
         self.MockedSubmissionOperator = self.patch_submissionoperator.start()
@@ -831,7 +840,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
 
     async def test_submission_creation_works(self):
         """Test that submission is created and submission ID returned."""
-        json_req = {"name": "test", "description": "test submission", "projectId": "1000"}
+        json_req = {"name": "test", "description": "test submission", "projectId": "1000", "workflow": "FEGA"}
         with patch(
             "metadata_backend.api.operators.ProjectOperator.check_project_exists",
             return_value=True,
@@ -959,40 +968,6 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             json_resp = await response.json()
             self.assertEqual(json_resp["submissionId"], self.submission_id)
 
-    async def test_submission_is_published(self):
-        """Test that submission would be published and DOI would be added."""
-        self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
-        with patch(
-            self._mock_prepare_doi,
-            return_value=(
-                {"id": "prefix/suffix-study", "data": {"attributes": {"url": "http://metax_id", "types": {}}}},
-                [{"id": "prefix/suffix-dataset", "data": {"attributes": {"url": "http://metax_id", "types": {}}}}],
-                [
-                    {"doi": "prefix/suffix-study", "metaxIdentifier": "metax_id"},
-                    {"doi": "prefix/suffix-dataset", "metaxIdentifier": "metax_id"},
-                ],
-                [
-                    {
-                        "accession_id": "accId",
-                        "doi": "prefix/suffix-dataset",
-                        "description": "Dataset description",
-                        "localizations": {"en": "Dataset title"},
-                    }
-                ],
-            ),
-        ), patch(
-            "metadata_backend.services.datacite_service_handler.DataciteServiceHandler.publish", return_value=None
-        ), patch(
-            "metadata_backend.services.metax_service_handler.MetaxServiceHandler.update_dataset_with_doi_info",
-            return_value=None,
-        ), patch(
-            "metadata_backend.services.metax_service_handler.MetaxServiceHandler.publish_dataset", return_value=None
-        ), self.p_get_sess_restapi:
-            response = await self.client.patch(f"{API_PREFIX}/publish/FOL12345678")
-            self.assertEqual(response.status, 200)
-            json_resp = await response.json()
-            self.assertEqual(json_resp["submissionId"], self.submission_id)
-
     async def test_submission_deletion_is_called(self):
         """Test that submission would be deleted."""
         self.MockedSubmissionOperator().read_submission.return_value = self.test_submission
@@ -1017,3 +992,57 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             self.assertEqual(response.status, 200)
             json_resp = await response.json()
             self.assertIn("doiInfo", json_resp)
+
+
+class PublishSubmissionHandlerTestCase(HandlersTestCase):
+    """Submission API endpoint class test cases."""
+
+    async def setUpAsync(self):
+        """Configure default values for testing and other modules.
+
+        This patches used modules and sets default return values for their
+        methods.
+        """
+        await super().setUpAsync()
+
+        self._publish_handler = "metadata_backend.api.handlers.publish.PublishSubmissionAPIHandler"
+
+        self._mock_prepare_doi = f"{self._publish_handler}._prepare_datacite_publication"
+
+        class_submissionoperator = "metadata_backend.api.handlers.publish.SubmissionOperator"
+        self.patch_submissionoperator = patch(class_submissionoperator, **self.submissionoperator_config, spec=True)
+        self.MockedSubmissionOperator = self.patch_submissionoperator.start()
+
+        class_operator = "metadata_backend.api.handlers.publish.Operator"
+        self.patch_operator = patch(class_operator, **self.operator_config, spec=True)
+        self.MockedOperator = self.patch_operator.start()
+
+        class_xmloperator = "metadata_backend.api.handlers.publish.XMLOperator"
+        self.patch_xmloperator = patch(class_xmloperator, **self.xmloperator_config, spec=True)
+        self.MockedXMLOperator = self.patch_xmloperator.start()
+
+    async def tearDownAsync(self):
+        """Cleanup mocked stuff."""
+        await super().tearDownAsync()
+        self.patch_submissionoperator.stop()
+        self.patch_operator.stop()
+        self.patch_xmloperator.stop()
+
+    async def test_submission_is_published(self):
+        """Test that submission would be published and DOI would be added."""
+        self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
+        with patch(f"{self._publish_handler}.create_draft_doi", return_value=self.user_id), patch(
+            f"{self._publish_handler}.get_user_external_id", return_value=self.user_id
+        ), patch(
+            self._mock_prepare_doi,
+            return_value=(
+                {"id": "prefix/suffix-study", "data": {"attributes": {"url": "http://metax_id", "types": {}}}},
+                [{"id": "prefix/suffix-dataset", "data": {"attributes": {"url": "http://metax_id", "types": {}}}}],
+            ),
+        ), patch(
+            f"{self._publish_handler}.create_metax_dataset", return_value=None
+        ), self.p_get_sess_restapi:
+            response = await self.client.patch(f"{API_PREFIX}/publish/FOL12345678")
+            json_resp = await response.json()
+            self.assertEqual(response.status, 200)
+            self.assertEqual(json_resp["submissionId"], self.submission_id)

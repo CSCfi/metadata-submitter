@@ -43,10 +43,11 @@
                         "items": {
                             "type": "object",
                             "title": "Schema that belongs to this workflow",
-                            "description": "The other of the schema is the order it will render in the front-end",
+                            "description": "The order of the schemas is the order they will render in the front-end",
                             "required": [
                                 "name",
-                                "required"
+                                "required",
+                                "allowMultipleObjects"
                             ],
                             "additionalProperties": false,
                             "properties": {

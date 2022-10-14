@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - pre-commit check to sort and remove duplicates in the dictionary
 - [vulture](https://github.com/jendrikseipp/vulture) as a tox env and pre-commit hook.
 - Add endpoint for fetching workflows #362
+- Add checks so that submission conforms with the workflows #591
 
 ### Changed
 - schema loader now matches schema files by exact match with schema #481. This means that schema file naming in metadata_backend/helpers/schemas now have rules:
@@ -59,6 +60,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - reformatted logs to style `{` and refactored some of the messages to be clearer #597
 - exceptions now default to `log.exception` with stacktrace #597
 - POST/PATCH/PUT/DELETE requests on published submission responds with 405 instead of 401 HTTP response #618
+- Submissions must have a `workflow` #591
+- Refactor `publish` endpoint into its own python `class` and `module` #591
+- Refactored Mongo queries to return the value for a single field #591
+- There's more clear distinction between publishing to each integration: `datacite`, `metax`, and `rems` #591
 
 ### Removed
 
@@ -66,6 +71,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - we removed `namedtype` for `contributors` and `creators` we therefore allow `additionalProperties`
   - `subjectsSchema` is a given by frontend thus we allow via `additionalProperties`
 - Removed `OIDC_ENABLED` testing variable which can cause misconfiguration incidents
+- Removed `METAX_ENABLED` as superseded by the introduction of workflows #591
+- Removed `REMS_ENABLED` as superseded by the introduction of workflows #591
 
 - remove unused code related to change from user to project ownership caused by faulty rebase or rollback of certain features #579
 
@@ -75,6 +82,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - small pylint issues e.g. web.HTTPSuccessful was never being raised #579
 - fix `Any` type wherever that is possible. #579
 - Published submissions and its objects cannot be altered #584
+- Incorrectly marking a workflow schema as required because its step is required #591
+- Incorrectly marking a workflow schema as required when it appears in the `requires` field of a schema that is not required #591
 
 ## [0.13.1] - 2022-05-31
 ### Changed

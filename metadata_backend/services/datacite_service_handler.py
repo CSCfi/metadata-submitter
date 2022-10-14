@@ -79,12 +79,6 @@ class DataciteServiceHandler(ServiceHandler):
 
         return " | ".join(error_messages)
 
-    # @property
-    # def enabled(self) -> bool:
-    #     """True when service is enabled."""
-    #     # return doi_config["enabled"]
-    #     return True
-
     async def create_draft(self, prefix: Union[str, None] = None) -> Dict:
         """Generate random suffix and POST request a draft DOI to DataCite DOI API.
 
