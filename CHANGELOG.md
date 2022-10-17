@@ -33,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [vulture](https://github.com/jendrikseipp/vulture) as a tox env and pre-commit hook.
 - Add endpoint for fetching workflows #362
 - Add checks so that submission conforms with the workflows #591
+- Add new schema `file.json` to represent files which are linked to a submission #148
+  - Add a corresponding field to `submission` that lists files attached to a submission #148
 
 ### Changed
 - schema loader now matches schema files by exact match with schema #481. This means that schema file naming in metadata_backend/helpers/schemas now have rules:

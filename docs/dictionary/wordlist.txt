@@ -1,6 +1,7 @@
 aai
 abkhaz
 accessionid
+additionalitems
 additionalproperties
 addobjecttodrafts
 addobjecttosubmission
@@ -96,6 +97,7 @@ certreqs
 chamorro
 changelog
 checksummethod
+checksums
 chia
 chichewa
 chip
@@ -205,6 +207,7 @@ epigenetics
 eppn
 eslint
 eslintrc
+exclusiveminimum
 exome
 expectedbasecalltable
 experimentattribute
@@ -338,6 +341,7 @@ kwanyama
 kyrgyz
 lang
 lastmodified
+latestversion
 leaveaspool
 lexically
 libraryconstructionprotocol
