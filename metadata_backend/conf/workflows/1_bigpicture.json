@@ -85,6 +85,11 @@
                 "dac",
                 "policy"
             ]
+        },
+        {
+            "name": "messageBroker",
+            "endpoint": "bigpicture",
+            "exchange": "sda"
         }
     ]
 }

@@ -47,11 +47,87 @@ class MessageBroker(ABC):
             context.load_cert_chain(str(certfile), keyfile=str(keyfile))
         self.ssl_context = {"context": context, "server_hostname": None, "check_hostname": False}
 
-    def _create_connection(self) -> None:
-        """Create a connection.
+    def _error_message(
+        self, error_msg: Dict, exchange: str, queue: str = "error", correlation_id: Union[str, None] = None
+    ) -> None:
+        """Send formated error message to error queue."""
+        channel = self.connection.channel()  # type: ignore
+        properties = {
+            "content_type": "application/json",
+            "headers": {},
+            "delivery_mode": 2,
+        }
 
-        :return:
-        """
+        if correlation_id:
+            properties["correlation_id"] = correlation_id
+
+        error = Message.create(channel, error_msg, properties)
+        error.publish(queue, exchange)
+
+        channel.close()
+
+
+class MQPublisher(MessageBroker):
+    """Message Broker Publisher class.
+
+    Used for sending messages to a specific vhost and exchange.
+    """
+
+    def send_message(
+        self, queue: str, exchange: str, message: Dict, json_schema: str, correlation_id: Union[str, None] = None
+    ) -> None:
+        """Send message."""
+        LOG.debug(self.ssl)
+        LOG.debug(self.ssl_context)
+        with Connection(
+            self.hostname,
+            self.username,
+            self.password,
+            port=self.port,
+            ssl=self.ssl,
+            ssl_options=self.ssl_context,
+            virtual_host=self.vhost,
+        ) as connection:
+            channel = connection.channel()  # type: ignore
+            # we need to figure out if we can get the inbox correlation_id
+            # so we can track a file ingestion from inbox to the end
+            # for now we only add it if we know it
+            properties = {
+                "content_type": "application/json",
+                "headers": {},
+                "delivery_mode": 2,
+            }
+            if correlation_id:
+                properties["correlation_id"] = correlation_id
+            try:
+                _content = json.dumps(message)
+                JSONValidator(message, json_schema)
+
+                _msg = Message.create(channel, _content, properties)
+
+                _msg.publish(queue, exchange)
+                channel.close()
+            except ValidationError as error:
+                reason = f"Could not validate the ingestion mappings message. Not properly formatted, error: {error}."
+                LOG.error(reason)
+                raise web.HTTPInternalServerError(reason=reason)
+
+
+class MQConsumer(MessageBroker):
+    """Message Broker Consumer class.
+
+    Used for receiving messages from a specific vhost, exchange and queue.
+    ``handle_message`` will have to be handled by subclasses.
+    """
+
+    def __init__(self, vhost: str, queue: str, exchange: str) -> None:
+        """Get DOI credentials from config."""
+        super().__init__(vhost=vhost)
+        self.queue = queue
+        self.exchange = exchange
+
+    def _create_connection(self) -> None:
+        """Create a connection."""
         attempts = 0
         while True:
             attempts += 1
@@ -74,76 +150,6 @@ class MessageBroker(ABC):
                 time.sleep(min(attempts * 2, 30))
             except KeyboardInterrupt:
                 break
-
-    def _error_message(
-        self,
-        message: Message,
-        error_msg: Dict,
-        exchange: str,
-        queue: str = "error",
-    ) -> None:
-        """Send formated error message to error queue."""
-        channel = self.connection.channel()  # type: ignore
-        properties = {
-            "content_type": "application/json",
-            "headers": {},
-            "correlation_id": message.correlation_id,
-            "delivery_mode": 2,
-        }
-
-        error = Message.create(channel, error_msg, properties)
-        error.publish(queue, exchange)
-
-        channel.close()
-
-
-class MQPublisher(MessageBroker):
-    """Message Broker Publisher class.
-
-    Used for sending messages to a specific vhost and exchange.
-    """
-
-    def send_message(
-        self, queue: str, exchange: str, message: Dict, json_schema: str, correlation_id: Union[str, None] = None
-    ) -> None:
-        """Send message."""
-        channel = self.connection.channel()  # type: ignore
-        # for now we generated correlation_id
-        # however we need to figure out if we can get the inbox correlation_id
-        # so we can track a file ingestion from inbox to the end
-        properties = {
-            "content_type": "application/json",
-            "headers": {},
-            "delivery_mode": 2,
-        }
-        properties["correlation_id"] = correlation_id if correlation_id else None
-
-        try:
-            _content = json.dumps(message)
-            JSONValidator(message, json_schema)
-
-            _msg = Message.create(channel, _content, properties)
-
-            _msg.publish(queue, exchange)
-            channel.close()
-        except ValidationError as error:
-            reason = f"Could not validate the ingestion mappings message. Not properly formatted, error: {error}."
-            LOG.error(reason)
-            raise web.HTTPInternalServerError(reason=reason)
-
-
-class MQConsumer(MessageBroker):
-    """Message Broker Consumer class.
-
-    Used for receiving messages from a specific vhost, exchange and queue.
-    ``handle_message`` will have to be handled by subclasses.
-    """
-
-    def __init__(self, vhost: str, queue: str, exchange: str) -> None:
-        """Get DOI credentials from config."""
-        super().__init__(vhost=vhost)
-        self.queue = queue
-        self.exchange = exchange
 
     def start(self) -> None:
         """Start the Consumer."""
@@ -177,7 +183,7 @@ class MQConsumer(MessageBroker):
                 _msg_error = {
                     "reason": error,
                 }
-                self._error_message(message, _msg_error, self.exchange, "error")
+                self._error_message(_msg_error, self.exchange, "error", message.correlation_id)
             except ValidationError:
                 LOG.error("Could not validate the error message. Not properly formatted.")
             except Exception as general_error:

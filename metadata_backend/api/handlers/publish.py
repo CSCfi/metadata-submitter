@@ -6,6 +6,8 @@ import ujson
 from aiohttp import web
 from aiohttp.web import Request, Response
 
+from metadata_backend.message_broker.mq_service import MQPublisher
+
 from ...conf.conf import DATACITE_SCHEMAS, METAX_SCHEMAS, doi_config
 from ...helpers.logger import LOG
 from ..operators.object import Operator
@@ -513,6 +515,15 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         # Publish to external services - must already have DOI and Metax ID
         publish_status = {}
         datacite_study = {}
+        if "messageBroker" in workflow.endpoints:
+            ingest_msg = {"type": "ingest", "user": external_user_id, "filepath": "filepath"}
+            trigger_ingest = MQPublisher(workflow.get_endpoint_conf("messageBroker", "endpoint"))
+            trigger_ingest.send_message(
+                "ingest",
+                workflow.get_endpoint_conf("messageBroker", "exchange"),
+                ingest_msg,
+                "message_ingestion-trigger",
+            )
         if "datacite" in workflow.endpoints:
             try:
                 datacite_study = await self._publish_datacite(submission, obj_op, operator)
