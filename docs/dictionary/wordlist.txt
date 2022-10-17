@@ -229,6 +229,7 @@ fega
 figma
 filebase
 filename
+filepath
 filetype
 fixme
 flatfile
@@ -359,6 +360,7 @@ lims
 lingala
 linux
 lissn
+localega
 localhost
 locusname
 lossy
@@ -381,6 +383,7 @@ mda
 medgen
 medip
 membername
+messagebroker
 metadataobjects
 metagenome
 metagenomic
@@ -536,6 +539,7 @@ pyspelling
 pytest
 pyyaml
 quickstart
+rabbitmq
 randompriming
 rbcl
 readclass

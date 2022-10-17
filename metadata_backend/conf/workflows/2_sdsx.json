@@ -74,6 +74,11 @@
                 "dac",
                 "policy"
             ]
+        },
+        {
+            "name": "messageBroker",
+            "endpoint": "sdsx",
+            "exchange": "sda"
         }
     ]
 }
