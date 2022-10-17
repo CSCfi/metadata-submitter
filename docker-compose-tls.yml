@@ -1,5 +1,17 @@
 version: "3.4"
 services:
+  certfixer:
+    command:
+      - /bin/sh
+      - -c
+      - |
+        chown -R 100.101 /origcerts/mq/*
+        ls -la /origcerts/mq
+        ls -la /origcerts/
+    container_name: certfixer
+    image: alpine:latest
+    volumes:
+      - ./config:/origcerts
   backend:
     build:
       dockerfile: Dockerfile-dev
@@ -16,6 +28,7 @@ services:
       - mockauth
       - mockdoi
       - mockmetax
+      - messagebroker
     restart: on-failure
     environment:
       - "MONGO_HOST=${MONGO_HOST}"
@@ -44,6 +57,13 @@ services:
       - "REMS_USER_ID=${REMS_USER_ID}"
       - "REMS_KEY=${REMS_KEY}"
       - "REMS_URL=${REMS_URL}"
+      - "BROKER_SSL=True"
+      - "BROKER_HOST=${BROKER_HOST}"
+      - "BROKER_PORT=${BROKER_PORT_SSL}"
+      - "BROKER_USER=${RABBITMQ_USERNAME}"
+      - "BROKER_PASSWORD=${RABBITMQ_PASSWORD}"
+      - "BROKER_SSL_CLIENTKEY=${BROKER_SSL_CLIENTKEY}"
+      - "BROKER_SSL_CLIENTCERT=${BROKER_SSL_CLIENTCERT}"
   database:
     image: "mongo"
     container_name: "metadata_submitter_database_dev"
@@ -60,6 +80,26 @@ services:
       - 27017
     ports:
       - "27017:27017"
+  messagebroker:
+    image: "rabbitmq:3.11.1-management-alpine"
+    container_name: "metadata_submitter_rabbitmq_dev"
+    restart: on-failure
+    environment:
+      - "RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME}"
+      - "RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}"
+      - RABBITMQ_CONFIG_FILE=/etc/rabbitmq/rabbitmq-tls.conf
+    expose:
+      - 5672
+      - 5671
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+      - "5671:5671"
+    volumes:
+      - mq:/var/lib/rabbitmq
+      - ./config/mq:/tls
+      - ./scripts/rabbitmq-tls.conf:/etc/rabbitmq/rabbitmq-tls.conf
+      - ./scripts/rabbitmq-definitions.json:/etc/rabbitmq/rabbitmq-definitions.json
   mockauth:
     build:
       dockerfile: Dockerfile-dev
@@ -77,7 +117,7 @@ services:
       - 8000:8000
     volumes:
       - ./tests/integration/mock_auth.py:/mock_auth.py
-    entrypoint: ["python", "/mock_auth.py", "0.0.0.0", "8000"]
+    entrypoint: [ "python", "/mock_auth.py", "0.0.0.0", "8000" ]
   mockdoi:
     build:
       dockerfile: Dockerfile-dev
@@ -91,7 +131,7 @@ services:
       - "8001:8001"
     volumes:
       - ./tests/integration/mock_doi_api.py:/mock_doi_api.py
-    entrypoint: ["python", "/mock_doi_api.py", "0.0.0.0", "8001"]
+    entrypoint: [ "python", "/mock_doi_api.py", "0.0.0.0", "8001" ]
   mockmetax:
     build:
       dockerfile: Dockerfile-dev
@@ -105,7 +145,7 @@ services:
       - "8002:8002"
     volumes:
       - ./tests/integration/mock_metax_api.py:/mock_metax_api.py
-    entrypoint: ["python", "/mock_metax_api.py", "0.0.0.0", "8002"]
+    entrypoint: [ "python", "/mock_metax_api.py", "0.0.0.0", "8002" ]
   mockrems:
     build:
       dockerfile: Dockerfile-dev
@@ -119,6 +159,7 @@ services:
       - "8003:8003"
     volumes:
       - ./tests/integration/mock_rems_api.py:/mock_rems_api.py
-    entrypoint: ["python", "/mock_rems_api.py", "0.0.0.0", "8003"]
+    entrypoint: [ "python", "/mock_rems_api.py", "0.0.0.0", "8003" ]
 volumes:
   data:
+  mq:

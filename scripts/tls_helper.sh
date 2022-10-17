@@ -31,5 +31,21 @@ openssl x509 -req -CAcreateserial -sha256 \
               -out config/cert2 \
               -extfile scripts/extfile.ext
 
+openssl req -nodes -new -days 365 -newkey rsa:2048 \
+	    -sha256 -subj '/CN=messagebroker' \
+	    -keyout config/key3 \
+	    -out config/cert3.csr
+
+openssl x509 -req -CAcreateserial -sha256 \
+              -CA config/cacert \
+              -CAkey config/cakey \
+              -in config/cert3.csr \
+              -out config/cert3 \
+              -extfile scripts/extfile.ext
+
 cat config/key config/cert > config/combined
 cat config/key2 config/cert2 > config/combined2
+mkdir -p config/mq
+cp config/cacert config/mq/
+cp config/key3 config/mq/
+cp config/cert3 config/mq/
