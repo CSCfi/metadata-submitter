@@ -1196,6 +1196,52 @@
                     "title": "REMS id of the catalogue created. Created automatically during the publication process"
                 }
             }
+        },
+        "files": {
+            "type": "array",
+            "title": "The list of files attached to a submission and their status",
+            "items": {
+                "type": "object",
+                "title": "Submission objects",
+                "required": [
+                    "accessionId",
+                    "status"
+                ],
+                "properties": {
+                    "accessionId": {
+                        "type": "string",
+                        "title": "Accession Id"
+                    },
+                    "status": {
+                        "type": "string",
+                        "title": "Status to describe the file in the sda-pipeline.",
+                        "description": "Status can be one of: verified (file has been successfully ingested), completed (metadata and dataset ID has been assigned to the file), failed (an error has occurred in a step).",
+                        "enum": [
+                            "verified",
+                            "complete",
+                            "failed"
+                        ]
+                    },
+                    "error": {
+                        "type": "string",
+                        "title": "Ingestion error message",
+                        "description": "Error message in case the ingestion failed"
+                    }
+                },
+                "if": {
+                    "properties": {
+                        "status": {
+                            "const": "failed"
+                        }
+                    }
+                },
+                "then": {
+                    "required": [
+                        "error"
+                    ]
+                }
+            },
+            "uniqueItems": true
         }
     },
     "additionalProperties": false
