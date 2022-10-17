@@ -1,0 +1,159 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "title": "File",
+    "required": [
+        "name",
+        "path",
+        "project",
+        "encrypted_checksums"
+    ],
+    "$defs": {
+        "checksum-sha256": {
+            "type": "object",
+            "title": "The sha256 checksum schema",
+            "description": "A representation of a sha256 checksum value",
+            "examples": [
+                {
+                    "type": "sha256",
+                    "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d6"
+                }
+            ],
+            "required": [
+                "type",
+                "value"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "const": "sha256",
+                    "title": "The checksum type schema",
+                    "description": "We use sha256"
+                },
+                "value": {
+                    "type": "string",
+                    "title": "The checksum value in hex format",
+                    "description": "The checksum value in (case-insensitive) hex format",
+                    "pattern": "^[a-fA-F0-9]{64}$",
+                    "examples": [
+                        "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d6"
+                    ]
+                }
+            }
+        },
+        "checksum-md5": {
+            "type": "object",
+            "title": "The md5 checksum schema",
+            "description": "A representation of a md5 checksum value",
+            "examples": [
+                {
+                    "type": "md5",
+                    "value": "7Ac236b1a82dac89e7cf45d2b48"
+                }
+            ],
+            "required": [
+                "type",
+                "value"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "const": "md5",
+                    "title": "The checksum type schema",
+                    "description": "We use md5"
+                },
+                "value": {
+                    "type": "string",
+                    "title": "The checksum value in hex format",
+                    "description": "The checksum value in (case-insensitive) hex format",
+                    "pattern": "^[a-fA-F0-9]{32}$",
+                    "examples": [
+                        "7Ac236b1a82dac89e7cf45d2b48"
+                    ]
+                }
+            }
+        }
+    },
+    "properties": {
+        "accessionId": {
+            "type": "string",
+            "title": "File id in the database"
+        },
+        "name": {
+            "type": "string",
+            "title": "File name"
+        },
+        "path": {
+            "type": "string",
+            "title": "File path on disk"
+        },
+        "project": {
+            "type": "string",
+            "title": "Project which this file belongs to"
+        },
+        "bytes": {
+            "type": "integer",
+            "title": "File size in bytes",
+            "exclusiveMinimum": 0
+        },
+        "submissions": {
+            "type": "array",
+            "title": "Submissions which linked to this file",
+            "items": {
+                "type": "string",
+                "title": "Submission ID"
+            }
+        },
+        "published": {
+            "type": "boolean",
+            "default": "false",
+            "title": "Whether the file is in a published submission"
+        },
+        "encrypted_checksums": {
+            "type": "array",
+            "title": "The checksums of the encrypted file",
+            "description": "An explanation about the purpose of this instance.",
+            "examples": [
+                [
+                    {
+                        "type": "sha256",
+                        "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d6"
+                    },
+                    {
+                        "type": "md5",
+                        "value": "7Ac236b1a82dac89e7cf45d2b48"
+                    }
+                ]
+            ],
+            "additionalItems": false,
+            "items": {
+                "anyOf": [
+                    {
+                        "$ref": "#/$defs/checksum-sha256"
+                    },
+                    {
+                        "$ref": "#/$defs/checksum-md5"
+                    }
+                ]
+            }
+        },
+        "versions": {
+            "type": "array",
+            "title": "Current version of the file",
+            "description": "Handles file modifications",
+            "items": {
+                "type": "string",
+                "title": "Accession ID of a file"
+            }
+        },
+        "latestVersion": {
+            "type": [
+                "string",
+                "null"
+            ],
+            "title": "Accession ID of an updated file"
+        }
+    }
+}
