@@ -1,6 +1,7 @@
 """Constants and variables used in integration tests."""
 import logging
 import os
+from distutils.util import strtobool
 from pathlib import Path
 
 import aiohttp
@@ -74,7 +75,7 @@ auth = aiohttp.BasicAuth(os.getenv("METAX_USER", "sd"), os.getenv("METAX_PASS", 
 DATABASE = os.getenv("MONGO_DATABASE", "default")
 AUTHDB = os.getenv("MONGO_AUTHDB", "admin")
 HOST = os.getenv("MONGO_HOST", "localhost:27017")
-TLS = os.getenv("MONGO_SSL", False)
+TLS = strtobool(os.getenv("MONGO_SSL", "False"))
 
 user_id = "current"
 test_user_given = "Given"
