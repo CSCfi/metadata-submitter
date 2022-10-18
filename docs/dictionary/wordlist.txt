@@ -420,6 +420,8 @@ mongo
 mongodb
 motu
 mpeg
+MQConsumer
+MQPublisher
 mre
 msll
 mypy
