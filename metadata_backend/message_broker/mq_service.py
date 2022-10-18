@@ -30,28 +30,27 @@ class MessageBroker(ABC):
         self.port = mq_config["port"]
         self.vhost = vhost
         self.connection = None
-        self.max_retries = 5
         self.ssl = mq_config["ssl"]
         context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLSv1_2)
         context.check_hostname = False
-        cacertfile = Path(str(mq_config["cacertfile"]))
-        certfile = Path(str(mq_config["certfile"]))
-        keyfile = Path(str(mq_config["keyfile"]))
         context.verify_mode = ssl.CERT_NONE
-        # Require server verification
-        if cacertfile.exists():
-            context.verify_mode = ssl.CERT_REQUIRED
-            context.load_verify_locations(cafile=str(cacertfile))
-        # If client verification is required
-        if certfile.exists():
-            context.load_cert_chain(str(certfile), keyfile=str(keyfile))
+        if self.ssl:
+            cacertfile = Path(str(mq_config["cacertfile"]))
+            certfile = Path(str(mq_config["certfile"]))
+            keyfile = Path(str(mq_config["keyfile"]))
+            # Require server verification
+            if cacertfile.exists():
+                context.verify_mode = ssl.CERT_REQUIRED
+                context.load_verify_locations(cafile=str(cacertfile))
+            # If client verification is required
+            if certfile.exists():
+                context.load_cert_chain(str(certfile), keyfile=str(keyfile))
         self.ssl_context = {"context": context, "server_hostname": None, "check_hostname": False}
 
     def _error_message(
         self, error_msg: Dict, exchange: str, queue: str = "error", correlation_id: Union[str, None] = None
     ) -> None:
         """Send formated error message to error queue."""
-        channel = self.connection.channel()  # type: ignore
         properties = {
             "content_type": "application/json",
             "headers": {},
@@ -61,10 +60,21 @@ class MessageBroker(ABC):
         if correlation_id:
             properties["correlation_id"] = correlation_id
 
-        error = Message.create(channel, error_msg, properties)
-        error.publish(queue, exchange)
+        with Connection(
+            self.hostname,
+            self.username,
+            self.password,
+            port=self.port,
+            ssl=self.ssl,
+            ssl_options=self.ssl_context,
+            virtual_host=self.vhost,
+        ) as connection:
 
-        channel.close()
+            channel = connection.channel()  # type: ignore
+
+            error = Message.create(channel, error_msg, properties)
+            error.publish(queue, exchange)
+            channel.close()
 
 
 class MQPublisher(MessageBroker):
@@ -77,8 +87,17 @@ class MQPublisher(MessageBroker):
         self, queue: str, exchange: str, message: Dict, json_schema: str, correlation_id: Union[str, None] = None
     ) -> None:
         """Send message."""
-        LOG.debug(self.ssl)
-        LOG.debug(self.ssl_context)
+        # we need to figure out if we can get the inbox correlation_id
+        # so we can track a file ingestion from inbox to the end
+        # for now we only add it if we know it
+        properties = {
+            "content_type": "application/json",
+            "headers": {},
+            "delivery_mode": 2,
+        }
+        if correlation_id:
+            properties["correlation_id"] = correlation_id
+
         with Connection(
             self.hostname,
             self.username,
@@ -89,16 +108,7 @@ class MQPublisher(MessageBroker):
             virtual_host=self.vhost,
         ) as connection:
             channel = connection.channel()  # type: ignore
-            # we need to figure out if we can get the inbox correlation_id
-            # so we can track a file ingestion from inbox to the end
-            # for now we only add it if we know it
-            properties = {
-                "content_type": "application/json",
-                "headers": {},
-                "delivery_mode": 2,
-            }
-            if correlation_id:
-                properties["correlation_id"] = correlation_id
+
             try:
                 _content = json.dumps(message)
                 JSONValidator(message, json_schema)
@@ -107,6 +117,7 @@ class MQPublisher(MessageBroker):
 
                 _msg.publish(queue, exchange)
                 channel.close()
+
             except ValidationError as error:
                 reason = f"Could not validate the ingestion mappings message. Not properly formatted, error: {error}."
                 LOG.error(reason)
@@ -125,6 +136,7 @@ class MQConsumer(MessageBroker):
         super().__init__(vhost=vhost)
         self.queue = queue
         self.exchange = exchange
+        self.max_retries = 5
 
     def _create_connection(self) -> None:
         """Create a connection."""
