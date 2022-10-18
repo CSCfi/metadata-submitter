@@ -64,6 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactor `publish` endpoint into its own python `class` and `module` #591
 - Refactored Mongo queries to return the value for a single field #591
 - There's more clear distinction between publishing to each integration: `datacite`, `metax`, and `rems` #591
+- Separated operator classes into their own files for better readability #625
 
 ### Removed
 
