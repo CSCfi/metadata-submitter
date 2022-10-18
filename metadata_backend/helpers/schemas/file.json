@@ -3,10 +3,12 @@
     "type": "object",
     "title": "File",
     "required": [
+        "accessionId",
         "name",
         "path",
         "project",
-        "encrypted_checksums"
+        "versions",
+        "flagDeleted"
     ],
     "$defs": {
         "checksum-sha256": {
@@ -93,67 +95,106 @@
             "type": "string",
             "title": "Project which this file belongs to"
         },
-        "bytes": {
-            "type": "integer",
-            "title": "File size in bytes",
-            "exclusiveMinimum": 0
-        },
-        "submissions": {
-            "type": "array",
-            "title": "Submissions which linked to this file",
-            "items": {
-                "type": "string",
-                "title": "Submission ID"
-            }
-        },
-        "published": {
+        "flagDeleted": {
             "type": "boolean",
             "default": "false",
-            "title": "Whether the file is in a published submission"
-        },
-        "encrypted_checksums": {
-            "type": "array",
-            "title": "The checksums of the encrypted file",
-            "description": "An explanation about the purpose of this instance.",
-            "examples": [
-                [
-                    {
-                        "type": "sha256",
-                        "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d6"
-                    },
-                    {
-                        "type": "md5",
-                        "value": "7Ac236b1a82dac89e7cf45d2b48"
-                    }
-                ]
-            ],
-            "additionalItems": false,
-            "items": {
-                "anyOf": [
-                    {
-                        "$ref": "#/$defs/checksum-sha256"
-                    },
-                    {
-                        "$ref": "#/$defs/checksum-md5"
-                    }
-                ]
-            }
+            "title": "Whether the file was deleted or not."
         },
         "versions": {
             "type": "array",
             "title": "Current version of the file",
             "description": "Handles file modifications",
             "items": {
-                "type": "string",
-                "title": "Accession ID of a file"
+                "type": "object",
+                "title": "Details about a file version",
+                "properties": {
+                    "date": {
+                        "title": "File update Date",
+                        "description": "Date when the file was updated.",
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "version": {
+                        "type": "integer",
+                        "title": "Flag the version number for a specific file, this should be incremental.",
+                        "exclusiveMinimum": 0
+                    },
+                    "bytes": {
+                        "type": "integer",
+                        "title": "File size in bytes",
+                        "exclusiveMinimum": 0
+                    },
+                    "submissions": {
+                        "type": "array",
+                        "title": "Submissions which linked to this file",
+                        "items": {
+                            "type": "string",
+                            "title": "Submission ID"
+                        }
+                    },
+                    "published": {
+                        "type": "boolean",
+                        "default": "false",
+                        "title": "Whether the file is in a published submission"
+                    },
+                    "encrypted_checksums": {
+                        "type": "array",
+                        "title": "The checksums of the encrypted file",
+                        "description": "An explanation about the purpose of this instance.",
+                        "examples": [
+                            [
+                                {
+                                    "type": "sha256",
+                                    "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d6"
+                                },
+                                {
+                                    "type": "md5",
+                                    "value": "7Ac236b1a82dac89e7cf45d2b48"
+                                }
+                            ]
+                        ],
+                        "additionalItems": false,
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "$ref": "#/$defs/checksum-sha256"
+                                },
+                                {
+                                    "$ref": "#/$defs/checksum-md5"
+                                }
+                            ]
+                        }
+                    },
+                    "unencrypted_checksums": {
+                        "type": "array",
+                        "title": "The checksums of the un-encrypted file",
+                        "description": "An explanation about the purpose of this instance.",
+                        "examples": [
+                            [
+                                {
+                                    "type": "sha256",
+                                    "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d6"
+                                },
+                                {
+                                    "type": "md5",
+                                    "value": "7Ac236b1a82dac89e7cf45d2b48"
+                                }
+                            ]
+                        ],
+                        "additionalItems": false,
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "$ref": "#/$defs/checksum-sha256"
+                                },
+                                {
+                                    "$ref": "#/$defs/checksum-md5"
+                                }
+                            ]
+                        }
+                    }
+                }
             }
-        },
-        "latestVersion": {
-            "type": [
-                "string",
-                "null"
-            ],
-            "title": "Accession ID of an updated file"
         }
     }
 }
