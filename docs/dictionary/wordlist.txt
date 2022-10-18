@@ -232,6 +232,7 @@ filename
 filepath
 filetype
 fixme
+flagdeleted
 flatfile
 flx
 flybase
@@ -452,6 +453,7 @@ nuccore
 nuosu
 nynorsk
 objectdetails
+objectid
 objectinsidesubmission
 objectinsidesubmissionwithtags
 objectstatus
