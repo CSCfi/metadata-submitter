@@ -11,7 +11,9 @@ from multidict import CIMultiDict
 from ...conf.conf import API_PREFIX
 from ...helpers.logger import LOG
 from ...helpers.validator import JSONValidator
-from ..operators import Operator, SubmissionOperator, XMLOperator
+from ..operators.object import Operator
+from ..operators.submission import SubmissionOperator
+from ..operators.xml_object import XMLOperator
 from .common import multipart_content
 from .restapi import RESTAPIIntegrationHandler
 

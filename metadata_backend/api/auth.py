@@ -14,7 +14,8 @@ from yarl import URL
 from ..conf.conf import aai_config
 from ..helpers.logger import LOG
 from ..services.service_handler import ServiceHandler
-from .operators import ProjectOperator, UserOperator
+from .operators.project import ProjectOperator
+from .operators.user import UserOperator
 
 # Type aliases
 # ProjectList is a list of projects and their origins

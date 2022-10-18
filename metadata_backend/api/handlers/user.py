@@ -6,7 +6,7 @@ from aiohttp import web
 from aiohttp.web import Request, Response
 
 from ...helpers.logger import LOG
-from ..operators import UserOperator
+from ..operators.user import UserOperator
 from .restapi import RESTAPIHandler
 
 

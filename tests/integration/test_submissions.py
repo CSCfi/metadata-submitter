@@ -208,6 +208,8 @@ class TestSubmissions:
         for elem in root.iter("STUDY"):
             del elem.attrib["accession"]
         tree.write(mod_study, encoding="utf-8")
+        with open(mod_study, "a") as f:
+            f.write("\n")
 
 
 class TestSubmissionOperations:

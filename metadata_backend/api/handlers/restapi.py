@@ -16,7 +16,9 @@ from ...helpers.workflow import Workflow
 from ...services.datacite_service_handler import DataciteServiceHandler
 from ...services.metax_service_handler import MetaxServiceHandler
 from ...services.rems_service_handler import RemsServiceHandler
-from ..operators import Operator, SubmissionOperator, UserOperator
+from ..operators.object import Operator
+from ..operators.submission import SubmissionOperator
+from ..operators.user import UserOperator
 
 
 class RESTAPIHandler:

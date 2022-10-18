@@ -161,7 +161,7 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
         request.app["db_client"] = db_client
         user_data = {"sub": "user@test.fi", "given_name": "User", "family_name": "Test", "projects": "x_files, memes"}
 
-        with patch("metadata_backend.api.operators.UserOperator.create_user", return_value=new_user_id):
+        with patch("metadata_backend.api.operators.user.UserOperator.create_user", return_value=new_user_id):
             await self.AccessHandler._set_user(request, session_id, user_data)
 
         self.assertIn("user_info", session_id)
