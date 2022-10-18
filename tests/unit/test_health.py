@@ -20,6 +20,7 @@ class HealthTestCase(AioHTTPTestCase):
         self.health_status = {
             "services": {
                 "database": {"status": "Ok"},
+                "messageBroker": {"status": "Down"},
                 "datacite": {"status": "Down"},
                 "metax": {"status": "Down"},
                 "rems": {"status": "Down"},
