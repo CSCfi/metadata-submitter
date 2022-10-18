@@ -15,6 +15,7 @@ pyspelling
 pytest
 pytest-asyncio
 pytest-cov
+pytest-xdist
 PyYAML  # for building swagger html
 sphinx
 sphinx_rtd_theme
