@@ -13,7 +13,9 @@ from ...helpers.logger import LOG
 from ...helpers.parser import XMLToJSONParser
 from ...helpers.schema_loader import SchemaNotFoundException, XMLSchemaLoader
 from ...helpers.validator import XMLValidator
-from ..operators import Operator, SubmissionOperator, XMLOperator
+from ..operators.object import Operator
+from ..operators.submission import SubmissionOperator
+from ..operators.xml_object import XMLOperator
 from .common import multipart_content
 from .object import ObjectAPIHandler
 

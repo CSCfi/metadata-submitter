@@ -8,7 +8,9 @@ from aiohttp.web import Request, Response
 
 from ...conf.conf import DATACITE_SCHEMAS, METAX_SCHEMAS, doi_config
 from ...helpers.logger import LOG
-from ..operators import Operator, SubmissionOperator, XMLOperator
+from ..operators.object import Operator
+from ..operators.submission import SubmissionOperator
+from ..operators.xml_object import XMLOperator
 from .restapi import RESTAPIIntegrationHandler
 
 

@@ -12,13 +12,11 @@ from multidict import CIMultiDict
 
 from ...helpers.logger import LOG
 from ...helpers.validator import JSONValidator
-from ..operators import (
-    Operator,
-    ProjectOperator,
-    SubmissionOperator,
-    UserOperator,
-    XMLOperator,
-)
+from ..operators.object import Operator
+from ..operators.project import ProjectOperator
+from ..operators.submission import SubmissionOperator
+from ..operators.user import UserOperator
+from ..operators.xml_object import XMLOperator
 from .restapi import RESTAPIIntegrationHandler
 
 
