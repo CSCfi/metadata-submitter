@@ -28,8 +28,14 @@
         },
         {
             "title": "Files",
-            "required": false,
-            "schemas": []
+            "required": true,
+            "schemas": [
+                {
+                    "name": "file",
+                    "required": true,
+                    "allowMultipleObjects": true
+                }
+            ]
         },
         {
             "title": "Describe",
