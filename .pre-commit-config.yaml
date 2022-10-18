@@ -96,10 +96,10 @@ repos:
   - repo: local
     hooks:
     - id: sort
-      name: sort dictionary, remove unused and duplicates
+      name: sort dictionary
       entry: ./scripts/sort.sh
       language: script
-      files: ^(docs|metadata_backend|.*md)
+      files: ^(docs|.*md)
       require_serial: true
       pass_filenames: false
 
