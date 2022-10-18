@@ -8,7 +8,10 @@ from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
 from ...helpers.logger import LOG
-from ..operators import Operator, ProjectOperator, UserOperator, XMLOperator
+from ..operators.object import Operator
+from ..operators.project import ProjectOperator
+from ..operators.user import UserOperator
+from ..operators.xml_object import XMLOperator
 from .restapi import RESTAPIHandler
 
 
