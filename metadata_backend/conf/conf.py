@@ -211,10 +211,11 @@ METAX_SCHEMAS = {"study", "dataset"}
 mq_config = {
     "hostname": str(os.environ.get("BROKER_HOST")),
     "port": int(os.environ.get("BROKER_PORT", 5671)),
+    "managementPort": int(os.environ.get("BROKER_MANAGEMENT_PORT", 15671)),
     "username": os.environ.get("BROKER_USER", ""),
     "password": os.environ.get("BROKER_PASSWORD", ""),
     "ssl": bool(strtobool(os.environ.get("BROKER_SSL", "False"))),
-    "cacertfile": os.environ.get("BROKER_CA", "/tls/certs/ca.crt"),
-    "certfile": os.environ.get("BROKER_SSL_CLIENTCERT", "/tls/certs/orch.crt"),
-    "keyfile": os.environ.get("BROKER_SSL_CLIENTKEY", "/tls/certs/orch.key"),
+    "cacertfile": os.environ.get("BROKER_CA", ""),
+    "certfile": os.environ.get("BROKER_SSL_CLIENTCERT", ""),
+    "keyfile": os.environ.get("BROKER_SSL_CLIENTKEY", ""),
 }

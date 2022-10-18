@@ -62,6 +62,8 @@ services:
       - "BROKER_PORT=${BROKER_PORT_SSL}"
       - "BROKER_USER=${RABBITMQ_USERNAME}"
       - "BROKER_PASSWORD=${RABBITMQ_PASSWORD}"
+      - "BROKER_CA=${BROKER_CA}"
+      - "BROKER_MANAGEMENT_PORT=${BROKER_MANAGEMENT_PORT_SSL}"
       - "BROKER_SSL_CLIENTKEY=${BROKER_SSL_CLIENTKEY}"
       - "BROKER_SSL_CLIENTCERT=${BROKER_SSL_CLIENTCERT}"
   database:
@@ -89,11 +91,10 @@ services:
       - "RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}"
       - RABBITMQ_CONFIG_FILE=/etc/rabbitmq/rabbitmq-tls.conf
     expose:
-      - 5672
       - 5671
+      - 15671
     ports:
-      - "15672:15672"
-      - "5672:5672"
+      - "15671:15671"
       - "5671:5671"
     volumes:
       - mq:/var/lib/rabbitmq
