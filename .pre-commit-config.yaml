@@ -135,7 +135,7 @@ repos:
     - id: unit-tests
       name: unit-tests
       entry: py.test
-      args: [--exitfirst, --disable-warnings, tests/unit/]
+      args: [--exitfirst, --disable-warnings, --numprocesses, auto, tests/unit/]
       files: ^(metadata_backend|tests|scripts)
       language: system
       pass_filenames: false
