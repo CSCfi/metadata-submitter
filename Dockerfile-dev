@@ -14,7 +14,6 @@ COPY metadata_backend/ ./metadata_backend
 COPY scripts ./scripts
 
 RUN pip install authlib requests  # required for mockauth (integration test)
-RUN ./scripts/metax_mappings/fetch_refs.sh
 RUN pip install .
 EXPOSE 5430
 
