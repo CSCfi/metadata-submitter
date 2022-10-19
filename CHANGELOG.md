@@ -40,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - add cli tool for MQConsumer so that we can deploy multiple consumers independently of the web server
   - add message broker publishing to workflow
   - add rabbitmq + default config to integration tests
+- File operator that does database operations for files #148
+- Mongo indexes for `file` schema #148
 
 ### Changed
 - schema loader now matches schema files by exact match with schema #481. This means that schema file naming in metadata_backend/helpers/schemas now have rules:

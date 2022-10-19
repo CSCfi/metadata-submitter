@@ -64,6 +64,10 @@ class DBService:
         self.db_client = db_client
         self.database = db_client[database_name]
 
+    def _get_id_key(self, collection: str) -> str:
+        """Get id key based on the collection."""
+        return f"{collection}Id" if (collection in ["submission", "user", "project"]) else "accessionId"
+
     @auto_reconnect
     async def create(self, collection: str, document: Dict) -> bool:
         """Insert document or a submission to collection in database.
@@ -84,12 +88,26 @@ class DBService:
         :param accession_id: ID of the object/submission/user to be searched
         :returns: True if exists and False if it does not
         """
-        id_key = f"{collection}Id" if (collection in ["submission", "user", "project"]) else "accessionId"
+        id_key = self._get_id_key(collection)
         projection = {"_id": False, "externalId": False} if collection == "user" else {"_id": False}
         find_by_id = {id_key: accession_id}
         exists = await self.database[collection].find_one(find_by_id, projection)
         LOG.debug("DB check exists for accession ID: %r in collection: %r.", accession_id, collection)
         return bool(exists)
+
+    @auto_reconnect
+    async def exists_by_key_value(self, collection: str, key: str, value: str) -> Union[None, dict]:
+        """Check document exists by an arbitrary key and value.
+
+        :param collection: Collection to search in
+        :param key: document property
+        :param value: property value
+        :returns: document if exists and None if it does not
+        """
+        find_by_key_value = {key: value}
+        document = await self.database[collection].find_one(find_by_key_value, {"_id": False})
+        LOG.debug("DB check %r document exists for: %r returned: '%r'.", collection, find_by_key_value, document)
+        return document
 
     @auto_reconnect
     async def exists_project_by_external_id(self, external_id: str) -> Union[None, str]:
@@ -137,7 +155,7 @@ class DBService:
         :param accession_id: ID of the object/submission/user to be searched
         :returns: First document matching the accession_id
         """
-        id_key = f"{collection}Id" if (collection in {"submission", "user"}) else "accessionId"
+        id_key = self._get_id_key(collection)
         projection = {"_id": False, "eppn": False} if collection == "user" else {"_id": False}
         find_by_id = {id_key: accession_id}
         LOG.debug("DB doc in collection: %r read for accession ID: %r.", collection, accession_id)
@@ -207,7 +225,7 @@ class DBService:
         updated to object, can replace previous fields and add new ones.
         :returns: True if operation was successful
         """
-        id_key = f"{collection}Id" if (collection in {"submission", "user"}) else "accessionId"
+        id_key = self._get_id_key(collection)
         find_by_id = {id_key: accession_id}
         update_op = {"$set": data_to_be_updated}
         result = await self.database[collection].update_one(find_by_id, update_op)
@@ -229,7 +247,7 @@ class DBService:
         updated to removed.
         :returns: True if operation was successful
         """
-        id_key = f"{collection}Id" if (collection in ["submission", "user", "project"]) else "accessionId"
+        id_key = self._get_id_key(collection)
         find_by_id = {id_key: accession_id}
         remove_op = {"$pull": data_to_be_removed}
         result = await self.database[collection].find_one_and_update(
@@ -253,7 +271,7 @@ class DBService:
         updated to removed.
         :returns: True if operation was successful
         """
-        id_key = f"{collection}Id" if (collection in ["submission", "user", "project"]) else "accessionId"
+        id_key = self._get_id_key(collection)
         find_by_id = {id_key: accession_id}
         # push vs addtoSet
         # push allows us to specify the postion but it does not check the items are unique
@@ -308,7 +326,7 @@ class DBService:
         :param accession_id: ID for object/submission/user to be deleted
         :returns: True if operation was successful
         """
-        id_key = f"{collection}Id" if (collection in {"submission", "user"}) else "accessionId"
+        id_key = self._get_id_key(collection)
         find_by_id = {id_key: accession_id}
         result = await self.database[collection].delete_one(find_by_id)
         LOG.debug("DB doc in collection: %r deleted data for accession ID: %r.", collection, accession_id)
