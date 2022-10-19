@@ -1,0 +1,541 @@
+{
+    "rabbit_version": "3.11.1",
+    "rabbitmq_version": "3.11.1",
+    "product_name": "RabbitMQ",
+    "product_version": "3.11.1",
+    "users": [
+        {
+            "name": "admin",
+            "password_hash": "22cYRT3l6CSEJ10q3kROJvCpapTGS8KKp7uT9ZxvZje3sN9F",
+            "hashing_algorithm": "rabbit_password_hashing_sha256",
+            "tags": [
+                "administrator"
+            ],
+            "limits": {}
+        }
+    ],
+    "vhosts": [
+        {
+            "name": "bigpicture"
+        },
+        {
+            "name": "federated"
+        },
+        {
+            "name": "sdsx"
+        },
+        {
+            "name": "local"
+        }
+    ],
+    "permissions": [
+        {
+            "user": "admin",
+            "vhost": "sdsx",
+            "configure": ".*",
+            "write": ".*",
+            "read": ".*"
+        },
+        {
+            "user": "admin",
+            "vhost": "bigpicture",
+            "configure": ".*",
+            "write": ".*",
+            "read": ".*"
+        },
+        {
+            "user": "admin",
+            "vhost": "federated",
+            "configure": ".*",
+            "write": ".*",
+            "read": ".*"
+        },
+        {
+            "user": "admin",
+            "vhost": "local",
+            "configure": ".*",
+            "write": ".*",
+            "read": ".*"
+        }
+    ],
+    "topic_permissions": [],
+    "parameters": [],
+    "global_parameters": [],
+    "policies": [],
+    "queues": [
+        {
+            "name": "inbox",
+            "vhost": "bigpicture",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "archived",
+            "vhost": "bigpicture",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "error",
+            "vhost": "bigpicture",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "verified",
+            "vhost": "bigpicture",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "mappings",
+            "vhost": "bigpicture",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "ingest",
+            "vhost": "bigpicture",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "accessionIDs",
+            "vhost": "bigpicture",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "completed",
+            "vhost": "bigpicture",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "files",
+            "vhost": "bigpicture",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "ingest",
+            "vhost": "federated",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "backup",
+            "vhost": "federated",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "completed",
+            "vhost": "federated",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "files",
+            "vhost": "federated",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "verified",
+            "vhost": "federated",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "accessionIDs",
+            "vhost": "federated",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "error",
+            "vhost": "federated",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "archived",
+            "vhost": "federated",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "inbox",
+            "vhost": "federated",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "mappings",
+            "vhost": "federated",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "ingest",
+            "vhost": "sdsx",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "completed",
+            "vhost": "sdsx",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "files",
+            "vhost": "sdsx",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "backup",
+            "vhost": "sdsx",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "mappings",
+            "vhost": "sdsx",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "archived",
+            "vhost": "sdsx",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "inbox",
+            "vhost": "sdsx",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "verified",
+            "vhost": "sdsx",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "accessionIDs",
+            "vhost": "sdsx",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "error",
+            "vhost": "sdsx",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        },
+        {
+            "name": "errors",
+            "vhost": "local",
+            "durable": true,
+            "auto_delete": false,
+            "arguments": {}
+        }
+    ],
+    "exchanges": [
+        {
+            "name": "sda",
+            "vhost": "bigpicture",
+            "type": "topic",
+            "durable": true,
+            "auto_delete": false,
+            "internal": false,
+            "arguments": {}
+        },
+        {
+            "name": "sda",
+            "vhost": "federated",
+            "type": "topic",
+            "durable": true,
+            "auto_delete": false,
+            "internal": false,
+            "arguments": {}
+        },
+        {
+            "name": "to_error_stash",
+            "vhost": "federated",
+            "type": "topic",
+            "durable": true,
+            "auto_delete": false,
+            "internal": true,
+            "arguments": {}
+        },
+        {
+            "name": "sda",
+            "vhost": "sdsx",
+            "type": "topic",
+            "durable": true,
+            "auto_delete": false,
+            "internal": false,
+            "arguments": {}
+        }
+    ],
+    "bindings": [
+        {
+            "source": "sda",
+            "vhost": "bigpicture",
+            "destination": "accessionIDs",
+            "destination_type": "queue",
+            "routing_key": "accessionIDs",
+            "arguments": {}
+        },
+        {
+            "source": "sda",
+            "vhost": "bigpicture",
+            "destination": "archived",
+            "destination_type": "queue",
+            "routing_key": "archived",
+            "arguments": {}
+        },
+        {
+            "source": "sda",
+            "vhost": "bigpicture",
+            "destination": "backup",
+            "destination_type": "queue",
+            "routing_key": "backup",
+            "arguments": {}
+        },
+        {
+            "source": "sda",
+            "vhost": "bigpicture",
+            "destination": "completed",
+            "destination_type": "queue",
+            "routing_key": "completed",
+            "arguments": {}
+        },
+        {
+            "source": "sda",
+            "vhost": "bigpicture",
+            "destination": "error",
+            "destination_type": "queue",
+            "routing_key": "error",
+            "arguments": {}
+        },
+        {
+            "source": "sda",
+            "vhost": "bigpicture",
+            "destination": "inbox",
+            "destination_type": "queue",
+            "routing_key": "inbox",
+            "arguments": {}
+        },
+        {
+            "source": "sda",
+            "vhost": "bigpicture",
+            "destination": "ingest",
+            "destination_type": "queue",
+            "routing_key": "ingest",
+            "arguments": {}
+        },
+        {
+            "source": "sda",
+            "vhost": "bigpicture",
+            "destination": "mappings",
+            "destination_type": "queue",
+            "routing_key": "mappings",
+            "arguments": {}
+        },
+        {
+            "source": "amq.fanout",
+            "vhost": "federated",
+            "destination": "to_cega",
+            "destination_type": "exchange",
+            "routing_key": "files.error",
+            "arguments": {}
+        },
+        {
+            "source": "amq.fanout",
+            "vhost": "federated",
+            "destination": "to_error_stash",
+            "destination_type": "exchange",
+            "routing_key": "files.error",
+            "arguments": {}
+        },
+        {
+            "source": "sda",
+            "vhost": "federated",
+            "destination": "accessionIDs",
+            "destination_type": "queue",
+            "routing_key": "accessionIDs",
+            "arguments": {}
+        },
+        {
+            "source": "sda",
+            "vhost": "federated",
+            "destination": "archived",
+            "destination_type": "queue",
+            "routing_key": "archived",
+            "arguments": {}
+        },
+        {
+            "source": "sda",
+            "vhost": "federated",
+            "destination": "backup",
+            "destination_type": "queue",
+            "routing_key": "backup",
+            "arguments": {}
+        },
+        {
+            "source": "sda",
+            "vhost": "federated",
+            "destination": "completed",
+            "destination_type": "queue",
+            "routing_key": "completed",
+            "arguments": {}
+        },
+        {
+            "source": "sda",
+            "vhost": "federated",
+            "destination": "error",
+            "destination_type": "queue",
+            "routing_key": "error",
+            "arguments": {}
+        },
+        {
+            "source": "sda",
+            "vhost": "federated",
+            "destination": "files",
+            "destination_type": "queue",
+            "routing_key": "files",
+            "arguments": {}
+        },
+        {
+            "source": "sda",
+            "vhost": "federated",
+            "destination": "inbox",
+            "destination_type": "queue",
+            "routing_key": "inbox",
+            "arguments": {}
+        },
+        {
+            "source": "sda",
+            "vhost": "federated",
+            "destination": "ingest",
+            "destination_type": "queue",
+            "routing_key": "ingest",
+            "arguments": {}
+        },
+        {
+            "source": "sda",
+            "vhost": "federated",
+            "destination": "mappings",
+            "destination_type": "queue",
+            "routing_key": "mappings",
+            "arguments": {}
+        },
+        {
+            "source": "sda",
+            "vhost": "federated",
+            "destination": "verified",
+            "destination_type": "queue",
+            "routing_key": "verified",
+            "arguments": {}
+        },
+        {
+            "source": "sda",
+            "vhost": "sdsx",
+            "destination": "accessionIDs",
+            "destination_type": "queue",
+            "routing_key": "accessionIDs",
+            "arguments": {}
+        },
+        {
+            "source": "sda",
+            "vhost": "sdsx",
+            "destination": "archived",
+            "destination_type": "queue",
+            "routing_key": "archived",
+            "arguments": {}
+        },
+        {
+            "source": "sda",
+            "vhost": "sdsx",
+            "destination": "backup",
+            "destination_type": "queue",
+            "routing_key": "backup",
+            "arguments": {}
+        },
+        {
+            "source": "sda",
+            "vhost": "sdsx",
+            "destination": "completed",
+            "destination_type": "queue",
+            "routing_key": "completed",
+            "arguments": {}
+        },
+        {
+            "source": "sda",
+            "vhost": "sdsx",
+            "destination": "error",
+            "destination_type": "queue",
+            "routing_key": "error",
+            "arguments": {}
+        },
+        {
+            "source": "sda",
+            "vhost": "sdsx",
+            "destination": "inbox",
+            "destination_type": "queue",
+            "routing_key": "inbox",
+            "arguments": {}
+        },
+        {
+            "source": "sda",
+            "vhost": "sdsx",
+            "destination": "ingest",
+            "destination_type": "queue",
+            "routing_key": "ingest",
+            "arguments": {}
+        },
+        {
+            "source": "sda",
+            "vhost": "sdsx",
+            "destination": "mappings",
+            "destination_type": "queue",
+            "routing_key": "mappings",
+            "arguments": {}
+        }
+    ]
+}

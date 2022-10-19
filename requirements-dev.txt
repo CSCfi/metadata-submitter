@@ -18,6 +18,10 @@ aiosignal==1.2.0
     #   aiohttp
 alabaster==0.7.12
     # via sphinx
+amqpstorm==2.10.5
+    # via
+    #   -r requirements-dev.in
+    #   -r requirements.txt
 astroid==2.12.11
     # via pylint
 async-timeout==4.0.2
@@ -181,6 +185,10 @@ packaging==21.3
     #   pytest
     #   sphinx
     #   tox
+pamqp==2.3.0
+    # via
+    #   -r requirements.txt
+    #   amqpstorm
 pathspec==0.10.1
     # via black
 pbr==5.10.0

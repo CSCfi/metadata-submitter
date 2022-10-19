@@ -1021,6 +1021,8 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         self.patch_xmloperator = patch(class_xmloperator, **self.xmloperator_config, spec=True)
         self.MockedXMLOperator = self.patch_xmloperator.start()
 
+        self._mq_connection = "metadata_backend.api.handlers.publish.MQPublisher"
+
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
         await super().tearDownAsync()
@@ -1042,7 +1044,10 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         ), patch(
             f"{self._publish_handler}.create_metax_dataset", return_value=None
         ), self.p_get_sess_restapi:
-            response = await self.client.patch(f"{API_PREFIX}/publish/FOL12345678")
-            json_resp = await response.json()
-            self.assertEqual(response.status, 200)
-            self.assertEqual(json_resp["submissionId"], self.submission_id)
+            # we are not going to test the MQ connection here
+            # thus we don't need to return anything just pass this
+            with patch(f"{self._mq_connection}.send_message", return_value=None):
+                response = await self.client.patch(f"{API_PREFIX}/publish/FOL12345678")
+                json_resp = await response.json()
+                self.assertEqual(response.status, 200)
+                self.assertEqual(json_resp["submissionId"], self.submission_id)

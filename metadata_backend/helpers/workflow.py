@@ -95,4 +95,8 @@ class Workflow:
     @property
     def endpoints(self) -> Set[str]:
         """Get endpoint names that the submission should be published to."""
-        return {publish["endpoint"] for publish in self._workflow["publish"]}
+        return {publish["name"] for publish in self._workflow["publish"]}
+
+    def get_endpoint_conf(self, name: str, value: str) -> str:
+        """Get endpoint config value for a particular publishing endpoint."""
+        return next(publish[value] for publish in self._workflow["publish"] if publish["name"] == name)

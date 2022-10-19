@@ -36,6 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add new schema `file.json` to represent files which are linked to a submission #148
   - Add a corresponding field to `submission` that lists files attached to a submission #148
 - Add `pytest-xdist` to run unit tests faster, in parallel #626
+- add MessageBroker class with MQPublisher and MQConsumer separate classes functionality #148 #622
+  - add cli tool for MQConsumer so that we can deploy multiple consumers independently of the web server
+  - add message broker publishing to workflow
+  - add rabbitmq + default config to integration tests
 
 ### Changed
 - schema loader now matches schema files by exact match with schema #481. This means that schema file naming in metadata_backend/helpers/schemas now have rules:

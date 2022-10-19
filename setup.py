@@ -47,6 +47,11 @@ setup(
         ]
     },
     include_package_data=True,
-    entry_points={"console_scripts": ["metadata_submitter=metadata_backend.server:main"]},
+    entry_points={
+        "console_scripts": [
+            "metadata_submitter=metadata_backend.server:main",
+            "mqconsumer=metadata_backend.consumer:main",
+        ]
+    },
     project_urls={"Source": "https://github.com/CSCfi/metadata_submitter"},
 )

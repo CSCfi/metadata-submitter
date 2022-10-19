@@ -1205,20 +1205,45 @@
                 "title": "Submission objects",
                 "required": [
                     "accessionId",
-                    "status"
+                    "status",
+                    "version"
                 ],
                 "properties": {
                     "accessionId": {
                         "type": "string",
                         "title": "Accession Id"
                     },
+                    "version": {
+                        "type": "integer",
+                        "title": "Version of a file to identify it in the file collection."
+                    },
+                    "objectId": {
+                        "type": "object",
+                        "title": "Object the file is attached to. Note: we might need to verify checksums in object and on the version or somehow sync them.",
+                        "required": [
+                            "accessionId",
+                            "schema"
+                        ],
+                        "properties": {
+                            "accessionId": {
+                                "type": "string",
+                                "title": "Accession Id of the object."
+                            },
+                            "schema": {
+                                "type": "string",
+                                "title": "Schema to identify the collection for the accessionID of the object."
+                            }
+                        }
+                    },
                     "status": {
                         "type": "string",
                         "title": "Status to describe the file in the sda-pipeline.",
-                        "description": "Status can be one of: verified (file has been successfully ingested), completed (metadata and dataset ID has been assigned to the file), failed (an error has occurred in a step).",
+                        "description": "Status can be one of: added (initial status), ready (ready for ingestion, this status represents a metadata object has been assigned to a file), verified (file has been successfully ingested), completed (metadata and dataset ID has been assigned to the file), failed (an error has occurred in a step).",
                         "enum": [
+                            "added",
+                            "ready",
                             "verified",
-                            "complete",
+                            "completed",
                             "failed"
                         ]
                     },
