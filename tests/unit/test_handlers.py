@@ -302,7 +302,7 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
         self.patch_parser = patch(class_parser, spec=True)
         self.MockedParser = self.patch_parser.start()
 
-        class_xmloperator = "metadata_backend.api.handlers.xml_submission.XMLOperator"
+        class_xmloperator = "metadata_backend.api.handlers.xml_submission.XMLObjectOperator"
         self.patch_xmloperator = patch(class_xmloperator, **self.xmloperator_config, spec=True)
         self.MockedXMLOperator = self.patch_xmloperator.start()
 
@@ -406,11 +406,11 @@ class ObjectHandlerTestCase(HandlersTestCase):
         """
         await super().setUpAsync()
 
-        class_xmloperator = "metadata_backend.api.handlers.object.XMLOperator"
+        class_xmloperator = "metadata_backend.api.handlers.object.XMLObjectOperator"
         self.patch_xmloperator = patch(class_xmloperator, **self.xmloperator_config, spec=True)
         self.MockedXMLOperator = self.patch_xmloperator.start()
 
-        class_operator = "metadata_backend.api.handlers.object.Operator"
+        class_operator = "metadata_backend.api.handlers.object.ObjectOperator"
         self.patch_operator = patch(class_operator, **self.operator_config, spec=True)
         self.MockedOperator = self.patch_operator.start()
 
@@ -431,7 +431,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         self.patch_operator.stop()
 
     async def test_submit_object_works(self):
-        """Test that submission is handled, XMLOperator is called."""
+        """Test that submission is handled, XMLObjectOperator is called."""
         files = [("study", "SRP000539.xml")]
         data = self.create_submission_data(files)
         with patch(
@@ -618,7 +618,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
             self.MockedOperator().replace_metadata_object.assert_called_once()
 
     async def test_put_draft_works_with_xml(self):
-        """Test that put XML submisssion is handled, XMLOperator is called."""
+        """Test that put XML submisssion is handled, XMLObjectOperator is called."""
         files = [("study", "SRP000539.xml")]
         data = self.create_submission_data(files)
         call = f"{API_PREFIX}/drafts/study/EGA123456"
@@ -822,11 +822,11 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         self.patch_useroperator = patch(class_useroperator, **self.useroperator_config, spec=True)
         self.MockedUserOperator = self.patch_useroperator.start()
 
-        class_operator = "metadata_backend.api.handlers.submission.Operator"
+        class_operator = "metadata_backend.api.handlers.submission.ObjectOperator"
         self.patch_operator = patch(class_operator, **self.operator_config, spec=True)
         self.MockedOperator = self.patch_operator.start()
 
-        class_xmloperator = "metadata_backend.api.handlers.submission.XMLOperator"
+        class_xmloperator = "metadata_backend.api.handlers.submission.XMLObjectOperator"
         self.patch_xmloperator = patch(class_xmloperator, **self.xmloperator_config, spec=True)
         self.MockedXMLOperator = self.patch_xmloperator.start()
 
@@ -1013,11 +1013,11 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         self.patch_submissionoperator = patch(class_submissionoperator, **self.submissionoperator_config, spec=True)
         self.MockedSubmissionOperator = self.patch_submissionoperator.start()
 
-        class_operator = "metadata_backend.api.handlers.publish.Operator"
+        class_operator = "metadata_backend.api.handlers.publish.ObjectOperator"
         self.patch_operator = patch(class_operator, **self.operator_config, spec=True)
         self.MockedOperator = self.patch_operator.start()
 
-        class_xmloperator = "metadata_backend.api.handlers.publish.XMLOperator"
+        class_xmloperator = "metadata_backend.api.handlers.publish.XMLObjectOperator"
         self.patch_xmloperator = patch(class_xmloperator, **self.xmloperator_config, spec=True)
         self.MockedXMLOperator = self.patch_xmloperator.start()
 

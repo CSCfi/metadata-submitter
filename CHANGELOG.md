@@ -74,6 +74,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Separated operator classes into their own files for better readability #625
 - updated ENA XML and JSON schemas to 1.16 #628
   - XML to JSON parser had to be adjusted for `assemblyGraph`
+- Refactor `Operator` -> `ObjectOperator` #627
+- Refactor `xml_object.py` -> `object_xml.py` #627
+- Refactor operators to use a common base class called `BaseOperator` #627
 
 ### Removed
 

@@ -16,7 +16,7 @@ from ...helpers.workflow import Workflow
 from ...services.datacite_service_handler import DataciteServiceHandler
 from ...services.metax_service_handler import MetaxServiceHandler
 from ...services.rems_service_handler import RemsServiceHandler
-from ..operators.object import Operator
+from ..operators.object import ObjectOperator
 from ..operators.submission import SubmissionOperator
 from ..operators.user import UserOperator
 
@@ -246,12 +246,12 @@ class RESTAPIHandler:
             yield accession_id, schema
 
     async def iter_submission_objects_data(
-        self, submission: dict, obj_op: Operator
+        self, submission: dict, obj_op: ObjectOperator
     ) -> AsyncIterator[Tuple[str, str, dict]]:
         """Iterate over a submission's objects and retrieve their data.
 
         :param submission: Submission data
-        :param obj_op: Object Operator
+        :param obj_op: Object ObjectOperator
 
         yields accession_id, schema, object_data
         """
@@ -293,14 +293,14 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
         metadata_provider_user = user["externalId"]
         return metadata_provider_user
 
-    async def create_metax_dataset(self, obj_op: Operator, collection: str, obj: Dict, external_id: str) -> str:
+    async def create_metax_dataset(self, obj_op: ObjectOperator, collection: str, obj: Dict, external_id: str) -> str:
         """Handle connection to Metax api handler for dataset creation.
 
         Dataset or Study object is assigned with DOI
         and it's data is sent to Metax api handler.
         Object database entry is updated with metax ID returned by Metax service.
 
-        :param obj_op: Object Operator
+        :param obj_op: Object ObjectOperator
         :param collection: object's schema
         :param obj: metadata object
         :param external_id: user id
