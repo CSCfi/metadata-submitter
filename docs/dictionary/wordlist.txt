@@ -229,8 +229,10 @@ fega
 figma
 filebase
 filename
+filepath
 filetype
 fixme
+flagdeleted
 flatfile
 flx
 flybase
@@ -359,6 +361,7 @@ lims
 lingala
 linux
 lissn
+localega
 localhost
 locusname
 lossy
@@ -381,6 +384,7 @@ mda
 medgen
 medip
 membername
+messagebroker
 metadataobjects
 metagenome
 metagenomic
@@ -416,6 +420,8 @@ mongo
 mongodb
 motu
 mpeg
+MQConsumer
+MQPublisher
 mre
 msll
 mypy
@@ -449,6 +455,7 @@ nuccore
 nuosu
 nynorsk
 objectdetails
+objectid
 objectinsidesubmission
 objectinsidesubmissionwithtags
 objectstatus
@@ -536,6 +543,7 @@ pyspelling
 pytest
 pyyaml
 quickstart
+rabbitmq
 randompriming
 rbcl
 readclass
