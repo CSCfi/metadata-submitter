@@ -7,11 +7,11 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from ...conf.conf import mongo_database
 from ...helpers.logger import LOG
 from ...helpers.parser import XMLToJSONParser
-from .base import BaseOperator
-from .object import Operator
+from .object import ObjectOperator
+from .object_base import BaseObjectOperator
 
 
-class XMLOperator(BaseOperator):
+class XMLObjectOperator(BaseObjectOperator):
     """Alternative operator class for handling metadata object related database operations.
 
     We store the XML data in a database ``XML-{schema}``.
@@ -46,9 +46,9 @@ class XMLOperator(BaseOperator):
         data_objects = parsed_data if isinstance(parsed_data, list) else [parsed_data]
         added_data: List = []
         for obj in data_objects:
-            data_with_id = await Operator(db_client)._format_data_to_create_and_add_to_db(schema_type, obj)
+            data_with_id = await ObjectOperator(db_client)._format_data_to_create_and_add_to_db(schema_type, obj)
             added_data.append(data_with_id)
-            LOG.debug("XMLOperator formatted data for collection: 'xml-%s' to add to DB.", schema_type)
+            LOG.debug("XMLObjectOperator formatted data for collection: 'xml-%s' to add to DB.", schema_type)
             await self._insert_formatted_object_to_db(
                 f"xml-{schema_type}", {"accessionId": data_with_id["accessionId"], "content": data}
             )
@@ -70,10 +70,10 @@ class XMLOperator(BaseOperator):
         # remove `draft-` from schema type
         schema = schema_type[6:] if schema_type.startswith("draft") else schema_type
         data_as_json = XMLToJSONParser().parse(schema, data)
-        data_with_id = await Operator(db_client)._format_data_to_replace_and_add_to_db(
+        data_with_id = await ObjectOperator(db_client)._format_data_to_replace_and_add_to_db(
             schema_type, accession_id, data_as_json
         )
-        LOG.debug("XMLOperator formatted data for collection: 'xml-%s' to add to DB.", schema_type)
+        LOG.debug("XMLObjectOperator formatted data for collection: 'xml-%s' to add to DB.", schema_type)
         await self._replace_object_from_db(
             f"xml-{schema_type}", accession_id, {"accessionId": accession_id, "content": data}
         )

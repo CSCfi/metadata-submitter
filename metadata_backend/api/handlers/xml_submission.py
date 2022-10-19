@@ -13,9 +13,9 @@ from ...helpers.logger import LOG
 from ...helpers.parser import XMLToJSONParser
 from ...helpers.schema_loader import SchemaNotFoundException, XMLSchemaLoader
 from ...helpers.validator import XMLValidator
-from ..operators.object import Operator
+from ..operators.object import ObjectOperator
+from ..operators.object_xml import XMLObjectOperator
 from ..operators.submission import SubmissionOperator
-from ..operators.xml_object import XMLOperator
 from .common import multipart_content
 from .object import ObjectAPIHandler
 
@@ -184,7 +184,7 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
                 reason = "Only one study is allowed per submission."
                 raise web.HTTPBadRequest(reason=reason)
 
-        json_data = await XMLOperator(db_client).create_metadata_object(schema, content)
+        json_data = await XMLObjectOperator(db_client).create_metadata_object(schema, content)
         json_data = json_data[0]
 
         result = {
@@ -211,7 +211,7 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
         """
         db_client = req.app["db_client"]
         submission_op = SubmissionOperator(db_client)
-        operator = Operator(db_client)
+        operator = ObjectOperator(db_client)
         data_as_json = XMLToJSONParser().parse(schema, content)
         if "accessionId" in data_as_json:
             accession_id = data_as_json["accessionId"]

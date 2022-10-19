@@ -11,9 +11,9 @@ from multidict import CIMultiDict
 from ...conf.conf import API_PREFIX
 from ...helpers.logger import LOG
 from ...helpers.validator import JSONValidator
-from ..operators.object import Operator
+from ..operators.object import ObjectOperator
+from ..operators.object_xml import XMLObjectOperator
 from ..operators.submission import SubmissionOperator
-from ..operators.xml_object import XMLOperator
 from .common import multipart_content
 from .restapi import RESTAPIIntegrationHandler
 
@@ -38,7 +38,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         db_client = req.app["db_client"]
 
         filter_list: List = []  # DEPRECATED, users don't own submissions anymore
-        data, page_num, page_size, total_objects = await Operator(db_client).query_metadata_database(
+        data, page_num, page_size, total_objects = await ObjectOperator(db_client).query_metadata_database(
             collection, req.query, page, per_page, filter_list
         )
 
@@ -81,7 +81,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
 
         req_format = req.query.get("format", "json").lower()
         db_client = req.app["db_client"]
-        operator = XMLOperator(db_client) if req_format == "xml" else Operator(db_client)
+        operator = XMLObjectOperator(db_client) if req_format == "xml" else ObjectOperator(db_client)
         type_collection = f"xml-{collection}" if req_format == "xml" else collection
 
         await operator.check_exists(collection, accession_id)
@@ -136,7 +136,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
             raise web.HTTPBadRequest(reason=reason)
 
         content: Union[Dict[str, Any], str, List[Tuple[Any, str, str]]]
-        operator: Union[Operator, XMLOperator]
+        operator: Union[ObjectOperator, XMLObjectOperator]
         if req.content_type == "multipart/form-data":
             _only_xml = schema_type not in _allowed_csv
             files, cont_type = await multipart_content(req, extract_one=True, expect_xml=_only_xml)
@@ -149,12 +149,12 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
                 content = files
             # If multipart request contains XML, XML operator is used.
             # Else the multipart request is expected to contain CSV file(s) which are converted into JSON.
-            operator = XMLOperator(db_client) if cont_type == "xml" else Operator(db_client)
+            operator = XMLObjectOperator(db_client) if cont_type == "xml" else ObjectOperator(db_client)
         else:
             content = await self._get_data(req)
             if not req.path.startswith(f"{API_PREFIX}/drafts"):
                 JSONValidator(content, schema_type).validate
-            operator = Operator(db_client)
+            operator = ObjectOperator(db_client)
 
         is_single_instance = schema_type in workflow.single_instance_schemas
 
@@ -250,7 +250,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
         db_client = req.app["db_client"]
 
-        operator = Operator(db_client)
+        operator = ObjectOperator(db_client)
         await operator.check_exists(collection, accession_id)
 
         await self._handle_check_ownership(req, collection, accession_id)
@@ -268,7 +268,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
 
         accession_id = await operator.delete_metadata_object(collection, accession_id)
         # we try to delete the object from the xml-{schema_type} collection
-        xml_operator = XMLOperator(db_client)
+        xml_operator = XMLObjectOperator(db_client)
         await xml_operator.delete_metadata_object(f"xml-{collection}", accession_id)
 
         LOG.info(
@@ -297,19 +297,19 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
 
         db_client = req.app["db_client"]
         content: Union[Dict, str]
-        operator: Union[Operator, XMLOperator]
+        operator: Union[ObjectOperator, XMLObjectOperator]
         filename = ""
         if req.content_type == "multipart/form-data":
             files, _ = await multipart_content(req, extract_one=True, expect_xml=True)
             content, _, _ = files[0]
-            operator = XMLOperator(db_client)
+            operator = XMLObjectOperator(db_client)
         else:
             content = await self._get_data(req)
             if not req.path.startswith(f"{API_PREFIX}/drafts"):
                 reason = "Replacing objects only allowed for XML."
                 LOG.error(reason)
                 raise web.HTTPUnsupportedMediaType(reason=reason)
-            operator = Operator(db_client)
+            operator = ObjectOperator(db_client)
 
         await operator.check_exists(collection, accession_id)
 
@@ -347,13 +347,13 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
 
         db_client = req.app["db_client"]
-        operator: Union[Operator, XMLOperator]
+        operator: Union[ObjectOperator, XMLObjectOperator]
         if req.content_type == "multipart/form-data":
             reason = "XML patching is not possible."
             raise web.HTTPUnsupportedMediaType(reason=reason)
 
         content = await self._get_data(req)
-        operator = Operator(db_client)
+        operator = ObjectOperator(db_client)
 
         await operator.check_exists(collection, accession_id)
 

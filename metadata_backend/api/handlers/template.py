@@ -8,10 +8,10 @@ from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
 from ...helpers.logger import LOG
-from ..operators.object import Operator
+from ..operators.object import ObjectOperator
+from ..operators.object_xml import XMLObjectOperator
 from ..operators.project import ProjectOperator
 from ..operators.user import UserOperator
-from ..operators.xml_object import XMLOperator
 from .restapi import RESTAPIHandler
 
 
@@ -38,7 +38,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)
 
-        operator = Operator(db_client)
+        operator = ObjectOperator(db_client)
         templates = await operator.query_templates_by_project(project_id)
 
         result = ujson.dumps(
@@ -67,7 +67,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
         collection = f"template-{schema_type}"
 
         db_client = req.app["db_client"]
-        operator = Operator(db_client)
+        operator = ObjectOperator(db_client)
 
         await operator.check_exists(collection, accession_id)
 
@@ -100,7 +100,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
         # Operators
         project_op = ProjectOperator(db_client)
         user_op = UserOperator(db_client)
-        operator = Operator(db_client)
+        operator = ObjectOperator(db_client)
 
         if isinstance(content, list):
             tmpl_list = []
@@ -198,10 +198,10 @@ class TemplatesAPIHandler(RESTAPIHandler):
         collection = f"template-{schema_type}"
 
         db_client = req.app["db_client"]
-        operator: Union[Operator, XMLOperator]
+        operator: Union[ObjectOperator, XMLObjectOperator]
 
         content = await self._get_data(req)
-        operator = Operator(db_client)
+        operator = ObjectOperator(db_client)
 
         await operator.check_exists(collection, accession_id)
 
@@ -245,7 +245,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
         accession_id = req.match_info["accessionId"]
         db_client = req.app["db_client"]
 
-        await Operator(db_client).check_exists(collection, accession_id)
+        await ObjectOperator(db_client).check_exists(collection, accession_id)
         project_operator = ProjectOperator(db_client)
 
         project_ok, project_id = await self._handle_check_ownership(req, collection, accession_id)
@@ -256,7 +256,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
             LOG.error(reason)
             raise web.HTTPUnprocessableEntity(reason=reason)
 
-        accession_id = await Operator(db_client).delete_metadata_object(collection, accession_id)
+        accession_id = await ObjectOperator(db_client).delete_metadata_object(collection, accession_id)
 
         LOG.info("DELETE template with accession ID: %r in collection: %r was successful.", accession_id, collection)
         return web.HTTPNoContent()

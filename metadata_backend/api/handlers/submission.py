@@ -12,11 +12,11 @@ from multidict import CIMultiDict
 
 from ...helpers.logger import LOG
 from ...helpers.validator import JSONValidator
-from ..operators.object import Operator
+from ..operators.object import ObjectOperator
+from ..operators.object_xml import XMLObjectOperator
 from ..operators.project import ProjectOperator
 from ..operators.submission import SubmissionOperator
 from ..operators.user import UserOperator
-from ..operators.xml_object import XMLOperator
 from .restapi import RESTAPIIntegrationHandler
 
 
@@ -257,8 +257,8 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         await self._handle_check_ownership(req, "submission", submission_id)
 
-        obj_ops = Operator(db_client)
-        xml_ops = XMLOperator(db_client)
+        obj_ops = ObjectOperator(db_client)
+        xml_ops = XMLObjectOperator(db_client)
 
         submission = await operator.read_submission(submission_id)
 

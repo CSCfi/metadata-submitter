@@ -1,30 +1,18 @@
 """Project operator class."""
 from typing import Dict, List, Union
-from uuid import uuid4
 
 from aiohttp import web
-from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import ConnectionFailure, OperationFailure
 
-from ...conf.conf import mongo_database
-from ...database.db_service import DBService
 from ...helpers.logger import LOG
+from .base import BaseOperator
 
 
-class ProjectOperator:
-    """Operator class for handling database operations of project groups.
+class ProjectOperator(BaseOperator):
+    """ObjectOperator class for handling database operations of project groups.
 
     Operations are implemented with JSON format.
     """
-
-    def __init__(self, db_client: AsyncIOMotorClient) -> None:
-        """Init db_service.
-
-        :param db_client: Motor client used for database connections. Should be
-        running on same loop with aiohttp, so needs to be passed from aiohttp
-        Application.
-        """
-        self.db_service = DBService(mongo_database, db_client)
 
     async def create_project(self, project_number: str) -> str:
         """Create new object project to database.
@@ -41,7 +29,7 @@ class ProjectOperator:
                 LOG.info("Project with external ID: %r exists, no need to create.", project_number)
                 return existing_project_id
 
-            project_id = self._generate_project_id()
+            project_id = self._generate_accession_id()
             project_data["templates"] = []
             project_data["projectId"] = project_id
             project_data["externalId"] = project_number
@@ -138,12 +126,3 @@ class ProjectOperator:
 
         LOG.info("Updating project: %r to database succeeded.", project_id)
         return project_id
-
-    def _generate_project_id(self) -> str:
-        """Generate random project id.
-
-        :returns: str with project id
-        """
-        sequence = uuid4().hex
-        LOG.debug("Generated project ID.")
-        return sequence
