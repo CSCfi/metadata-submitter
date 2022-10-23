@@ -96,20 +96,6 @@ class DBService:
         return bool(exists)
 
     @auto_reconnect
-    async def exists_by_key_value(self, collection: str, key: str, value: str) -> Union[None, dict]:
-        """Check document exists by an arbitrary key and value.
-
-        :param collection: Collection to search in
-        :param key: document property
-        :param value: property value
-        :returns: document if exists and None if it does not
-        """
-        find_by_key_value = {key: value}
-        document = await self.database[collection].find_one(find_by_key_value, {"_id": False})
-        LOG.debug("DB check %r document exists for: %r returned: '%r'.", collection, find_by_key_value, document)
-        return document
-
-    @auto_reconnect
     async def exists_project_by_external_id(self, external_id: str) -> Union[None, str]:
         """Check project exists by its external id.
 
@@ -160,6 +146,26 @@ class DBService:
         find_by_id = {id_key: accession_id}
         LOG.debug("DB doc in collection: %r read for accession ID: %r.", collection, accession_id)
         return await self.database[collection].find_one(find_by_id, projection)
+
+    @auto_reconnect
+    async def read_by_key_value(
+        self, collection: str, key: str, value: str, projection: Optional[dict] = None
+    ) -> Union[None, dict]:
+        """Check document exists by an arbitrary key and value.
+
+        :param collection: Collection to search in
+        :param key: document property
+        :param value: property value
+        :param projection: mongodb projection of the result. defaults to hiding the internal mongodb _id field
+        :returns: document if exists and None if it does not
+        """
+        if projection is None:
+            projection = {"_id": False}
+
+        find_by_key_value = {key: value}
+        document = await self.database[collection].find_one(find_by_key_value, projection)
+        LOG.debug("DB check %r document exists for: %r returned: '%r'.", collection, find_by_key_value, document)
+        return document
 
     @auto_reconnect
     async def patch(self, collection: str, accession_id: str, patch_data: List[Dict]) -> bool:
