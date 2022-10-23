@@ -191,6 +191,7 @@ class DatabaseTestCase(IsolatedAsyncioTestCase):
             {"accessionId": self.id_stub},
             {"$push": self.data_stub},
             projection={"_id": False},
+            upsert=False,
             return_document=True,
         )
         self.assertEqual(success, self.data_stub)

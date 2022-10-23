@@ -262,13 +262,16 @@ class DBService:
         return result
 
     @auto_reconnect
-    async def append(self, collection: str, accession_id: str, data_to_be_addded: Union[str, Dict]) -> bool:
+    async def append(
+        self, collection: str, accession_id: str, data_to_be_addded: Union[str, Dict], upsert: bool = False
+    ) -> bool:
         """Append data by to object with accessionId in collection.
 
         :param collection: Collection where document should be searched from
         :param accession_id: ID of the object/submission/user to be appended to
         :param data_to_be_addded: str or JSON representing the data that should be
         updated to removed.
+        :param upsert: If the document does not exist add it
         :returns: True if operation was successful
         """
         id_key = self._get_id_key(collection)
@@ -278,7 +281,7 @@ class DBService:
         # addToSet cannot easily specify position
         append_op = {"$push": data_to_be_addded}
         result = await self.database[collection].find_one_and_update(
-            find_by_id, append_op, projection={"_id": False}, return_document=ReturnDocument.AFTER
+            find_by_id, append_op, projection={"_id": False}, upsert=upsert, return_document=ReturnDocument.AFTER
         )
         LOG.debug(
             "DB doc in collection: %r with data: %r appeneded for accession ID: %r.",
