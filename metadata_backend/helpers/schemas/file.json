@@ -6,7 +6,7 @@
         "accessionId",
         "name",
         "path",
-        "project",
+        "projectId",
         "versions",
         "flagDeleted"
     ],
@@ -91,7 +91,7 @@
             "type": "string",
             "title": "File path on disk"
         },
-        "project": {
+        "projectId": {
             "type": "string",
             "title": "Project which this file belongs to"
         },
