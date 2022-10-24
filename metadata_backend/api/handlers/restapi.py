@@ -1,13 +1,15 @@
 """Handle HTTP methods for server."""
 import json
 from math import ceil
-from typing import AsyncIterator, Dict, Iterator, List, Tuple, Union
+from typing import AsyncIterator, Dict, Iterator, List, Optional, Tuple, Union
 
 import aiohttp_session
 import ujson
 from aiohttp import web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
+
+from metadata_backend.message_broker.mq_service import MQPublisher
 
 from ...conf.conf import WORKFLOWS, schema_types
 from ...helpers.logger import LOG
@@ -273,11 +275,14 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
         metax_handler: MetaxServiceHandler,
         datacite_handler: DataciteServiceHandler,
         rems_handler: RemsServiceHandler,
+        mq_publisher: Optional[MQPublisher] = None,
     ) -> None:
         """Endpoints should have access to metax and datacite services."""
         self.metax_handler = metax_handler
         self.datacite_handler = datacite_handler
         self.rems_handler = rems_handler
+        if mq_publisher:
+            self.mq_publisher = mq_publisher
 
     @staticmethod
     async def get_user_external_id(request: web.Request) -> str:

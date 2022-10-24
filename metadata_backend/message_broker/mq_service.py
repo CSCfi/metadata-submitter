@@ -11,7 +11,8 @@ from aiohttp import web
 from amqpstorm import AMQPError, Connection, Message
 from jsonschema.exceptions import ValidationError
 
-from ..conf.conf import mq_config
+from ..api.operators.file import FileOperator
+from ..conf.conf import create_db_client, mq_config
 from ..helpers.logger import LOG
 from ..helpers.validator import JSONValidator
 
@@ -21,14 +22,12 @@ class MessageBroker(ABC):
 
     def __init__(
         self,
-        vhost: str = "/",
     ) -> None:
         """Consumer init function."""
         self.hostname = mq_config["hostname"]
         self.username = mq_config["username"]
         self.password = mq_config["password"]
         self.port = mq_config["port"]
-        self.vhost = vhost
         self.connection = None
         self.ssl = mq_config["ssl"]
         context = ssl.SSLContext(protocol=ssl.PROTOCOL_TLSv1_2)
@@ -48,7 +47,7 @@ class MessageBroker(ABC):
         self.ssl_context = {"context": context, "server_hostname": None, "check_hostname": False}
 
     def _error_message(
-        self, error_msg: Dict, exchange: str, queue: str = "error", correlation_id: Union[str, None] = None
+        self, error_msg: Dict, vhost: str, exchange: str, queue: str = "error", correlation_id: Union[str, None] = None
     ) -> None:
         """Send formated error message to error queue."""
         properties = {
@@ -67,7 +66,7 @@ class MessageBroker(ABC):
             port=self.port,
             ssl=self.ssl,
             ssl_options=self.ssl_context,
-            virtual_host=self.vhost,
+            virtual_host=vhost,
         ) as connection:
 
             channel = connection.channel()  # type: ignore
@@ -84,7 +83,13 @@ class MQPublisher(MessageBroker):
     """
 
     def send_message(
-        self, queue: str, exchange: str, message: Dict, json_schema: str, correlation_id: Union[str, None] = None
+        self,
+        vhost: str,
+        queue: str,
+        exchange: str,
+        message: Dict,
+        json_schema: str,
+        correlation_id: Union[str, None] = None,
     ) -> None:
         """Send message."""
         # we need to figure out if we can get the inbox correlation_id
@@ -105,7 +110,7 @@ class MQPublisher(MessageBroker):
             port=self.port,
             ssl=self.ssl,
             ssl_options=self.ssl_context,
-            virtual_host=self.vhost,
+            virtual_host=vhost,
         ) as connection:
             channel = connection.channel()  # type: ignore
 
@@ -133,10 +138,12 @@ class MQConsumer(MessageBroker):
 
     def __init__(self, vhost: str, queue: str, exchange: str) -> None:
         """Get DOI credentials from config."""
-        super().__init__(vhost=vhost)
+        super().__init__()
         self.queue = queue
         self.exchange = exchange
         self.max_retries = 5
+        self.vhost = vhost
+        self.db_client = create_db_client()
 
     def _create_connection(self) -> None:
         """Create a connection."""
@@ -182,14 +189,22 @@ class MQConsumer(MessageBroker):
                 self.connection.close()  # type: ignore
                 break
 
-    def handle_message(self, message: Message) -> None:
+    async def handle_message(self, message: Message) -> None:
         """Handle message."""
-        return message
+        # TO_DO: adjust for real code
+        file_operator = FileOperator(self.db_client)
+        content = json.loads(message.body)
+        if content["operation"] == "upload":
+            await file_operator.create_file_or_version(content["data"])
+        elif content["operation"] == "remove":
+            await file_operator.flag_file_deleted(content["filepath"])
+        else:
+            LOG.error("Un-identified inbox operation.")
 
-    def __call__(self, message: Message) -> None:
+    async def __call__(self, message: Message) -> None:
         """Process the message body."""
         try:
-            self.handle_message(message)
+            await self.handle_message(message)
         except (ValidationError, Exception) as error:
             try:
                 _msg_error = {

@@ -2,7 +2,7 @@
 from datetime import datetime
 from distutils.util import strtobool
 from math import ceil
-from typing import Dict, Union
+from typing import Dict, List, Union
 
 import aiohttp_session
 import ujson
@@ -12,6 +12,7 @@ from multidict import CIMultiDict
 
 from ...helpers.logger import LOG
 from ...helpers.validator import JSONValidator
+from ..operators.file import FileOperator
 from ..operators.object import ObjectOperator
 from ..operators.object_xml import XMLObjectOperator
 from ..operators.project import ProjectOperator
@@ -313,3 +314,61 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         body = ujson.dumps({"submissionId": upd_submission}, escape_forward_slashes=False)
         LOG.info("PUT %r in submission with ID: %r was successful.", schema, submission_id)
         return web.Response(body=body, status=200, content_type="application/json")
+
+    async def get_submission_files(self, req: Request) -> Response:
+        """Get files from a submission with the version present in submission.
+
+        :param req: GET request
+        :returns: HTTP No Content response
+        """
+        submission_id = req.match_info["submissionId"]
+        db_client = req.app["db_client"]
+        submission_operator = SubmissionOperator(db_client)
+
+        # Check submission exists and is not already published
+        await submission_operator.check_submission_exists(submission_id)
+        await submission_operator.check_submission_published(submission_id, req.method)
+
+        await self._handle_check_ownership(req, "submission", submission_id)
+
+        file_operator = FileOperator(db_client)
+
+        files = await file_operator.read_submission_files(submission_id)
+
+        LOG.info("GET files for submission with ID: %r was successful.", submission_id)
+        return web.Response(
+            body=ujson.dumps(files, escape_forward_slashes=False), status=200, content_type="application/json"
+        )
+
+    async def add_submission_files(self, req: Request) -> Response:
+        """Add files to a submission.
+
+        Body needs to contain a list of files with accessionId and version.
+
+        :param req: POST request with metadata schema in the body
+        :returns: HTTP No Content response
+        """
+        submission_id = req.match_info["submissionId"]
+        db_client = req.app["db_client"]
+        submission_operator = SubmissionOperator(db_client)
+
+        # Check submission exists and is not already published
+        await submission_operator.check_submission_exists(submission_id)
+        await submission_operator.check_submission_published(submission_id, req.method)
+
+        await self._handle_check_ownership(req, "submission", submission_id)
+
+        file_operator = FileOperator(db_client)
+
+        data: List[Dict] = await req.json()
+
+        if all("accessionId" in d and "version" in d for d in data):
+            # add status to
+            data = [{**item, "status": "added"} for item in data]
+            await file_operator.add_files_submission(data, submission_id)
+            LOG.info("Adding files to submission with ID: %r was successful.", submission_id)
+            return web.HTTPNoContent()
+
+        reason = "Request does not contain a list of Objects each with `accessionId` and `version`"
+        LOG.error(reason)
+        raise web.HTTPBadRequest(reason=reason)
