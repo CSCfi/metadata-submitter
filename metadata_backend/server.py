@@ -10,6 +10,8 @@ import uvloop
 from aiohttp import web
 from cryptography.fernet import Fernet
 
+from metadata_backend.message_broker.mq_service import MQPublisher
+
 from .api.auth import AAIServiceHandler, AccessHandler
 from .api.handlers.object import ObjectAPIHandler
 from .api.handlers.publish import PublishSubmissionAPIHandler
@@ -68,6 +70,7 @@ async def init(
     datacite_handler = DataciteServiceHandler()
     rems_handler = RemsServiceHandler()
     aai_handler = AAIServiceHandler()
+    mq_publisher = MQPublisher()
 
     async def close_http_clients(_: web.Application) -> None:
         """Close http client session."""
@@ -91,7 +94,10 @@ async def init(
         metax_handler=metax_handler, datacite_handler=datacite_handler, rems_handler=rems_handler
     )
     _publish_submission = PublishSubmissionAPIHandler(
-        metax_handler=metax_handler, datacite_handler=datacite_handler, rems_handler=rems_handler
+        metax_handler=metax_handler,
+        datacite_handler=datacite_handler,
+        rems_handler=rems_handler,
+        mq_publisher=mq_publisher,
     )
     _user = UserAPIHandler()
     _xml_submission = XMLSubmissionAPIHandler(
@@ -128,6 +134,8 @@ async def init(
         web.get("/submissions", _submission.get_submissions),
         web.post("/submissions", _submission.post_submission),
         web.get("/submissions/{submissionId}", _submission.get_submission),
+        web.get("/submissions/{submissionId}/files", _submission.get_submission_files),
+        web.post("/submissions/{submissionId}/files", _submission.add_submission_files),
         web.put("/submissions/{submissionId}/doi", _submission.put_submission_path),
         web.put("/submissions/{submissionId}/dac", _submission.put_submission_path),
         web.patch("/submissions/{submissionId}", _submission.patch_submission),

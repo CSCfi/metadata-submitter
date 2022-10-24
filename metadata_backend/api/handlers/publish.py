@@ -6,7 +6,7 @@ import ujson
 from aiohttp import web
 from aiohttp.web import Request, Response
 
-from metadata_backend.message_broker.mq_service import MQPublisher
+from metadata_backend.api.operators.file import FileOperator
 
 from ...conf.conf import DATACITE_SCHEMAS, METAX_SCHEMAS, doi_config
 from ...helpers.logger import LOG
@@ -445,6 +445,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         operator = SubmissionOperator(db_client)
         obj_op = ObjectOperator(db_client)
         xml_ops = XMLObjectOperator(db_client)
+        file_operator = FileOperator(db_client)
 
         # Check submission exists and is not already published
         await operator.check_submission_exists(submission_id)
@@ -516,14 +517,22 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         publish_status = {}
         datacite_study = {}
         if "messageBroker" in workflow.endpoints:
-            ingest_msg = {"type": "ingest", "user": external_user_id, "filepath": "filepath"}
-            trigger_ingest = MQPublisher(workflow.get_endpoint_conf("messageBroker", "endpoint"))
-            trigger_ingest.send_message(
-                "ingest",
-                workflow.get_endpoint_conf("messageBroker", "exchange"),
-                ingest_msg,
-                "message_ingestion-trigger",
-            )
+
+            files = await file_operator.read_submission_files(submission_id)
+            for file in files:
+                ingest_msg = {
+                    "type": "ingest",
+                    "user": external_user_id,
+                    "filepath": file["path"],
+                    "encrypted_checksums": file["encrypted_checksums"],
+                }
+                self.mq_publisher.send_message(
+                    workflow.get_endpoint_conf("messageBroker", "endpoint"),
+                    "ingest",
+                    workflow.get_endpoint_conf("messageBroker", "exchange"),
+                    ingest_msg,
+                    "message_ingestion-trigger",
+                )
         if "datacite" in workflow.endpoints:
             try:
                 datacite_study = await self._publish_datacite(submission, obj_op, operator)
