@@ -164,7 +164,7 @@ class DBService:
 
         find_by_key_value = {key: value}
         document = await self.database[collection].find_one(find_by_key_value, projection)
-        LOG.debug("DB check %r document exists for: %r returned: '%r'.", collection, find_by_key_value, document)
+        LOG.debug("DB collection %r for document matching: %r returned: '%r'.", collection, find_by_key_value, document)
         return document
 
     @auto_reconnect
@@ -239,6 +239,28 @@ class DBService:
             "DB doc in collection: %r updated for accession ID: %r with data: %r.",
             collection,
             accession_id,
+            data_to_be_updated,
+        )
+        return result.acknowledged
+
+    @auto_reconnect
+    async def update_by_key_value(self, collection: str, key: str, value: str, data_to_be_updated: Dict) -> bool:
+        """Update some elements of object by its accessionId.
+
+        :param collection: Collection to search in
+        :param key: document property
+        :param value: property value
+        :param data_to_be_updated: JSON representing the data that should be
+        updated to object, can replace previous fields and add new ones.
+        :returns: True if operation was successful
+        """
+        find_by_key_value = {key: value}
+        update_op = {"$set": data_to_be_updated}
+        result = await self.database[collection].update_one(find_by_key_value, update_op)
+        LOG.debug(
+            "DB collection: %r updated for document matching: %r with data: %r.",
+            collection,
+            find_by_key_value,
             data_to_be_updated,
         )
         return result.acknowledged
