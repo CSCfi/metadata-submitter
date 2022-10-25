@@ -2,19 +2,17 @@
 
 import re
 from io import StringIO
-from typing import Dict
-from urllib.error import URLError
+from typing import Dict, List
 
 import ujson
 from aiohttp import web
-from defusedxml.ElementTree import ParseError
-from defusedxml.ElementTree import tostring as etree_tostring
+from defusedxml.ElementTree import ParseError, parse
 from jsonschema import Draft202012Validator, validators
 from jsonschema.exceptions import ValidationError
 from jsonschema.protocols import Validator
-from xmlschema import XMLSchema, XMLSchemaValidationError
+from xmlschema import XMLSchema, XMLSchemaChildrenValidationError
 
-from ..helpers.logger import LOG
+from .logger import LOG
 from .schema_loader import JSONSchemaLoader, SchemaNotFoundException
 
 
@@ -38,9 +36,15 @@ class XMLValidator:
         :raises: HTTPBadRequest if URLError was raised during validation
         """
         try:
-            self.schema.validate(self.xml_content)
-            LOG.info("Submitted file is totally valid.")
-            return ujson.dumps({"isValid": True})
+            root = parse(StringIO(self.xml_content)).getroot()
+            errors: List = list(self.schema.iter_errors(root))
+            if errors:
+                LOG.info("Submitted file contains some errors.")
+                response = self._format_xml_validation_error_reason(errors)
+            else:
+                LOG.info("Submitted file is totally valid.")
+                response = {"isValid": True}
+            return ujson.dumps(response)
 
         except ParseError as error:
             reason = self._parse_error_reason(error)
@@ -52,32 +56,39 @@ class XMLValidator:
             LOG.exception("Submitted file does not not contain valid XML syntax.")
             return ujson.dumps({"isValid": False, "detail": {"reason": reason, "instance": instance}})
 
-        except XMLSchemaValidationError as error:
-            # Parse reason and instance from the validation error message
-            reason = str(error.reason)
-            response: Dict = {"isValid": False, "detail": {"reason": reason}}
-            if error.elem:
-                instance = etree_tostring(error.elem, encoding="unicode")
-                # Replace element address in reason with instance element
-                if "<" in reason and ">" in reason:
-                    instance_parent = "".join((instance.split(">")[0], ">"))
-                    reason = re.sub("<[^>]*>", instance_parent + " ", reason)
-                    response["detail"]["reason"] = reason
-                response["detail"]["instance"] = instance
-
-            LOG.exception("Submitted file is not valid against schema.")
-            return ujson.dumps(response)
-
-        except URLError as error:
-            reason = f"Faulty file was provided. {error.reason}."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
     def _parse_error_reason(self, error: ParseError) -> str:
-        """Generate better error reason."""
+        """Generate better error reason for ParseError."""
         reason = str(error).split(":", maxsplit=1)[0]
         position = (str(error).split(":")[1])[1:]
         return f"Faulty XML file was given, {reason} at {position}"
+
+    def _format_xml_validation_error_reason(self, errors: List) -> Dict:
+        """Generate the response json object for validation error(s)."""
+        response: Dict = {"isValid": False, "detail": {"reason": "", "instance": ""}}
+        found_lines = []
+        for error in errors:
+            reason = str(error.reason)
+            instance = str(error.path)
+
+            # Add line number to error reason
+            lines = self.xml_content.split("\n")
+            elem_name = error.obj[error.index].tag if isinstance(error, XMLSchemaChildrenValidationError) else error.obj
+            for (i, line) in enumerate(lines, 1):
+                if elem_name in line and i not in found_lines:
+                    line_num = i
+                    found_lines.append(i)
+                    break
+            if re.match(r"^.*at position [0-9]+", reason):
+                # line number replaces element position which is more valuable information
+                reason = re.sub(r"position [0-9]+", f"line {line_num}", reason)
+            else:
+                # line number still added as extra info to error reason
+                reason = reason + f" (line {line_num})"
+            response["detail"]["reason"] = response["detail"]["reason"] + reason + "\n"
+            response["detail"]["instance"] = response["detail"]["instance"] + instance + "\n"
+
+        response["detail"] = response["detail"][0] if len(response["detail"]) == 1 else response["detail"]
+        return response
 
     @property
     def is_valid(self) -> bool:

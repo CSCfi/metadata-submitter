@@ -46,7 +46,7 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
-  /v1/submit:
+  /v1/submit/{workflow}:
     post:
       tags:
         - Submission
@@ -1823,10 +1823,10 @@ components:
       properties:
         isValid:
           type: boolean
-          description: true of false if valid. if false a detail key would be good to detail the error but not required
+          description: True or false if valid. If false, a detail key is included that details the error
         detail:
           type: object
-          description: details of the error if there was one.
+          description: details of the error if there were some
           properties:
             reason:
               type: string
@@ -1834,6 +1834,7 @@ components:
             instance:
               type: string
               description: specific element(s) where error occurred
+
     SubmissionCreated:
       type: object
       required:
