@@ -133,6 +133,57 @@
                 }
             }
         },
+        "assembly": {
+            "type": "object",
+            "title": "Reference assembly details",
+            "oneOf": [
+                {
+                    "type": "object",
+                    "title": "Standard",
+                    "description": "A standard genome assembly.",
+                    "required": [
+                        "accession"
+                    ],
+                    "properties": {
+                        "refname": {
+                            "type": "string",
+                            "description": "A recognized name for the genome assembly.",
+                            "title": "Reference name"
+                        },
+                        "accession": {
+                            "type": "string",
+                            "description": "Accession.version with version being mandatory.",
+                            "title": "Accession.version"
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "title": "Custom",
+                    "description": "Other genome assembly.",
+                    "required": [
+                        "description"
+                    ],
+                    "properties": {
+                        "label": {
+                            "type": "string",
+                            "title": "Label",
+                            "description": "Text label to display for the link."
+                        },
+                        "url": {
+                            "type": "string",
+                            "title": "URL",
+                            "description": "The internet service link (http(s), ftp) etc.",
+                            "pattern": "^(https?|ftp)://"
+                        },
+                        "description": {
+                            "type": "string",
+                            "title": "Description"
+                        }
+                    }
+                }
+            ]
+        },
         "analysisAttribute": {
             "type": "object",
             "title": "Analysis Attribute",
@@ -161,55 +212,7 @@
             "type": "object",
             "properties": {
                 "assembly": {
-                    "type": "object",
-                    "title": "Reference assembly details",
-                    "oneOf": [
-                        {
-                            "type": "object",
-                            "title": "Standard",
-                            "description": "A standard genome assembly.",
-                            "required": [
-                                "accession"
-                            ],
-                            "properties": {
-                                "refname": {
-                                    "type": "string",
-                                    "description": "A recognized name for the genome assembly.",
-                                    "title": "Reference name"
-                                },
-                                "accession": {
-                                    "type": "string",
-                                    "description": "Accession.version with version being mandatory.",
-                                    "title": "Accession.version"
-                                }
-                            }
-                        },
-                        {
-                            "type": "object",
-                            "title": "Custom",
-                            "description": "Other genome assembly.",
-                            "required": [
-                                "description"
-                            ],
-                            "properties": {
-                                "label": {
-                                    "type": "string",
-                                    "title": "Label",
-                                    "description": "Text label to display for the link."
-                                },
-                                "url": {
-                                    "type": "string",
-                                    "title": "URL",
-                                    "description": "The internet service link (http(s), ftp) etc.",
-                                    "pattern": "^(https?|ftp)://"
-                                },
-                                "description": {
-                                    "type": "string",
-                                    "title": "Description"
-                                }
-                            }
-                        }
-                    ]
+                    "$ref": "#/$defs/assembly"
                 },
                 "sequence": {
                     "type": "array",
@@ -346,6 +349,7 @@
                         "fastq",
                         "flatfile",
                         "gff",
+                        "gfa",
                         "info",
                         "Kallisto native",
                         "manifest",
@@ -511,55 +515,7 @@
                         }
                     },
                     "assembly": {
-                        "type": "object",
-                        "title": "Reference assembly details",
-                        "oneOf": [
-                            {
-                                "type": "object",
-                                "title": "Standard",
-                                "description": "A standard genome assembly.",
-                                "required": [
-                                    "accession"
-                                ],
-                                "properties": {
-                                    "refname": {
-                                        "type": "string",
-                                        "description": "A recognized name for the genome assembly.",
-                                        "title": "Reference name"
-                                    },
-                                    "accession": {
-                                        "type": "string",
-                                        "description": "Accession.version with version being mandatory.",
-                                        "title": "Accession.version"
-                                    }
-                                }
-                            },
-                            {
-                                "type": "object",
-                                "title": "Custom",
-                                "description": "Other genome assembly.",
-                                "required": [
-                                    "description"
-                                ],
-                                "properties": {
-                                    "label": {
-                                        "type": "string",
-                                        "title": "Label",
-                                        "description": "Text label to display for the link."
-                                    },
-                                    "url": {
-                                        "type": "string",
-                                        "title": "URL",
-                                        "description": "The internet service link (http(s), ftp) etc.",
-                                        "pattern": "^(https?|ftp)://"
-                                    },
-                                    "description": {
-                                        "type": "string",
-                                        "title": "Description"
-                                    }
-                                }
-                            }
-                        ]
+                        "$ref": "#/$defs/assembly"
                     },
                     "sequence": {
                         "type": "array",
@@ -856,6 +812,107 @@
                     "$ref": "#/$defs/sequenceType"
                 }
             }
+        },
+        "sequenceConsensus": {
+            "type": "object",
+            "title": "Sequence Consensus",
+            "required": [
+                "sequenceConsensus"
+            ],
+            "properties": {
+                "sequenceConsensus": {
+                    "type": "object",
+                    "title": "Sequence Consensus",
+                    "additionalProperties": true,
+                    "properties": {
+                        "description": {
+                            "type": "string",
+                            "title": "Sequence Consensus Description"
+                        }
+                    }
+                }
+            }
+        },
+        "filteredVariation": {
+            "type": "object",
+            "title": "Filtered Variation",
+            "required": [
+                "filteredVariation"
+            ],
+            "properties": {
+                "filteredVariation": {
+                    "type": "object",
+                    "title": "Filtered Variation",
+                    "additionalProperties": true,
+                    "properties": {
+                        "description": {
+                            "type": "string",
+                            "title": "Filtered Variation Description"
+                        }
+                    }
+                }
+            }
+        },
+        "covid19Consensus": {
+            "type": "object",
+            "title": "COVID19 Consensus",
+            "required": [
+                "covid19Consensus"
+            ],
+            "properties": {
+                "covid19Consensus": {
+                    "type": "object",
+                    "title": "COVID19 Consensus",
+                    "additionalProperties": true,
+                    "properties": {
+                        "description": {
+                            "type": "string",
+                            "title": "COVID19 Consensus Description"
+                        }
+                    }
+                }
+            }
+        },
+        "covid19FilteredVCF": {
+            "type": "object",
+            "title": "COVID19 Filtered VCF",
+            "required": [
+                "covid19FilteredVCF"
+            ],
+            "properties": {
+                "covid19FilteredVCF": {
+                    "type": "object",
+                    "title": "COVID19 Filtered VCF",
+                    "additionalProperties": true,
+                    "properties": {
+                        "description": {
+                            "type": "string",
+                            "title": "COVID19 Filtered VCF Description"
+                        }
+                    }
+                }
+            }
+        },
+        "assemblyGraph": {
+            "type": "object",
+            "title": "Assembly Graph",
+            "required": [
+                "assemblyGraph"
+            ],
+            "properties": {
+                "assemblyGraph": {
+                    "type": "array",
+                    "title": "Assembly Graph",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "assembly": {
+                                "$ref": "#/$defs/assembly"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "type": "object",
@@ -911,6 +968,21 @@
                 },
                 {
                     "$ref": "#/$defs/assemblyAnnotation"
+                },
+                {
+                    "$ref": "#/$defs/sequenceConsensus"
+                },
+                {
+                    "$ref": "#/$defs/filteredVariation"
+                },
+                {
+                    "$ref": "#/$defs/covid19Consensus"
+                },
+                {
+                    "$ref": "#/$defs/covid19FilteredVCF"
+                },
+                {
+                    "$ref": "#/$defs/assemblyGraph"
                 }
             ]
         },
