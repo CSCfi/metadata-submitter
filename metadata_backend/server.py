@@ -13,6 +13,7 @@ from cryptography.fernet import Fernet
 from metadata_backend.message_broker.mq_service import MQPublisher
 
 from .api.auth import AAIServiceHandler, AccessHandler
+from .api.handlers.files import FilesAPIHandler
 from .api.handlers.object import ObjectAPIHandler
 from .api.handlers.publish import PublishSubmissionAPIHandler
 from .api.handlers.rems_proxy import RemsAPIHandler
@@ -104,6 +105,7 @@ async def init(
         metax_handler=metax_handler, datacite_handler=datacite_handler, rems_handler=rems_handler
     )
     _template = TemplatesAPIHandler()
+    _file = FilesAPIHandler()
     api_routes = [
         # retrieve workflows
         web.get("/workflows", _common_api_handler.get_workflows),
@@ -149,6 +151,8 @@ async def init(
         web.post("/submit/{workflow}", _xml_submission.submit),
         # validate
         web.post("/validate", _xml_submission.validate),
+        # File operations
+        web.get("/files", _file.get_project_files),
     ]
     _rems = RemsAPIHandler(metax_handler=metax_handler, datacite_handler=datacite_handler, rems_handler=rems_handler)
     api_routes.append(web.get("/rems", _rems.get_workflows_licenses_from_rems))
