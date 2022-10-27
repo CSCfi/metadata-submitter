@@ -39,6 +39,7 @@ apisauce
 aragonese
 arxiv
 assemblyannotation
+assemblygraph
 assignees
 async
 asyncio
@@ -231,6 +232,8 @@ filebase
 filename
 filepath
 filetype
+filteredvariation
+filteredvcf
 fixme
 flagdeleted
 flatfile
@@ -267,6 +270,7 @@ geolocationpolygon
 geolocations
 geoprofiles
 geosciences
+gfa
 gff
 gh
 github
@@ -420,8 +424,8 @@ mongo
 mongodb
 motu
 mpeg
-MQConsumer
-MQPublisher
+mqconsumer
+mqpublisher
 mre
 msll
 mypy
@@ -619,9 +623,11 @@ seqannot
 sequenceable
 sequenceannotation
 sequenceassembly
+sequenceconsensus
 sequenceflatfile
 sequencetype
 sequencevariation
+sequencevonsensus
 servicehandler
 sff
 sha
