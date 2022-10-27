@@ -408,7 +408,7 @@ paths:
           example: "submission=12345"
       requestBody:
         content:
-          multipart/form-data::
+          multipart/form-data:
             schema:
               type: object
               properties:
@@ -675,7 +675,7 @@ paths:
           example: "submission=12345"
       requestBody:
         content:
-          multipart/form-data::
+          multipart/form-data:
             schema:
               type: object
               properties:
@@ -1566,6 +1566,44 @@ paths:
       responses:
         204:
           description: No Content
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
+  /v1/files:
+    get:
+      tags:
+        - File
+      summary: Get files for a project
+      parameters:
+        - name: projectId
+          in: query
+          description: Project ID to get files for
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/REMS"
         400:
           description: Bad Request
           content:
@@ -2885,3 +2923,35 @@ components:
                 - type: string
                 - type: array
             example: [object]
+    Checksum:
+      type: array
+      items:
+        type: object
+        properties:
+          type:
+            type: string
+            enum: [ "md5", "sha256" ]
+            title: Checksum type
+          value:
+            type: string
+            title: Checksum value
+    File:
+      type: object
+      description: Describes a file that can be attached to a submission
+      properties:
+        name:
+          type: string
+          title: File name
+        path:
+          type: string
+          title: File path, including file name
+        project:
+          type: string
+          title: Project ID this file belongs to
+        bytes:
+          type: integer
+          title: File size in bytes
+        encrypted_checksums:
+          $ref: "#/components/schemas/Checksum"
+        unencrypted_checksums:
+          $ref: "#/components/schemas/Checksum"

@@ -1386,5 +1386,6 @@ class TestOperators(IsolatedAsyncioTestCase):
         self.assertEqual(file_id, self.file_id)
         self.assertEqual(version, 3)
 
+
 if __name__ == "__main__":
     unittest.main()

@@ -42,6 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - add rabbitmq + default config to integration tests
 - File operator that does database operations for files #148
 - Mongo indexes for `file` schema #148
+- `/files` endpoint to retrieve files attached to a project #148 #627
 
 ### Changed
 - schema loader now matches schema files by exact match with schema #481. This means that schema file naming in metadata_backend/helpers/schemas now have rules:
