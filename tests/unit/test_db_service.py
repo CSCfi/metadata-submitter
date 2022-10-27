@@ -114,10 +114,10 @@ class DatabaseTestCase(IsolatedAsyncioTestCase):
         self.collection.delete_one.assert_called_once_with({"accessionId": self.id_stub})
         self.assertTrue(success)
 
-    def test_query_executes_find(self):
+    async def test_query_executes_find(self):
         """Test that find is executed, so cursor is returned."""
         self.collection.find.return_value = AsyncIOMotorCursor(None, None)
-        self.test_service.query("testcollection", {})
+        await self.test_service.query("testcollection", {})
         self.collection.find.assert_called_once_with({}, {"_id": False}, limit=0)
 
     async def test_db_operation_is_retried_with_increasing_interval(self):
