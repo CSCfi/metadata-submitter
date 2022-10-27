@@ -125,13 +125,29 @@ class MetadataXMLConverter(XMLSchemaConverter):
                     children[key] = value
                 continue
 
-            if "assembly" in key:
-                if next(iter(value)) in {"standard", "custom"}:
-                    children[key] = next(iter(value.values()))
-                    if "accessionId" in children[key]:
-                        children[key]["accession"] = children[key].pop("accessionId")
+            if key in {"processedReads", "referenceAlignment", "sequenceAnnotation", "assemblyAnnotation"}:
+                if next(iter(value)) in {"assembly"}:
+                    if next(iter(value["assembly"])) in {"standard", "custom"}:
+                        value["assembly"] = next(iter(value["assembly"].values()))
+                        if "accessionId" in value["assembly"]:
+                            value["assembly"]["accession"] = value["assembly"].pop("accessionId")
+                children[key] = value
+                continue
+
+            if key == "assemblyGraph" and "assembly" in value:
+                attribs = value["assembly"]
+                attr_list = []
+                if isinstance(attribs, list):
+                    for d in attribs:
+                        for k, v in d.items():
+                            v["accession"] = v.pop("accessionId")
+                            attr_list.append(v)
                 else:
-                    children[key] = value
+                    v = next(iter(attribs.values()))
+                    v["accession"] = v.pop("accessionId")
+                    attr_list.append(v)
+
+                children[key] = attr_list
                 continue
 
             if key == "sequence":
