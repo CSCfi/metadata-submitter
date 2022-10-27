@@ -132,7 +132,7 @@ class RESTAPIHandler:
             raise web.HTTPBadRequest(reason=reason)
 
     @staticmethod
-    async def _json_response(data: Union[Dict, List[Dict]]) -> Response:
+    def _json_response(data: Union[Dict, List[Dict]]) -> Response:
         """Reusable json response, serializing data with ujson.
 
         :param data: Data to be serialized and made into HTTP 200 response
@@ -150,7 +150,7 @@ class RESTAPIHandler:
         """
         data = [x["description"] for x in schema_types.values()]
         LOG.info("GET schema types. Retrieved %d schemas.", len(schema_types))
-        return await self._json_response(data)
+        return self._json_response(data)
 
     async def get_json_schema(self, req: Request) -> Response:
         """Get all JSON Schema for a specific schema type.
@@ -170,7 +170,7 @@ class RESTAPIHandler:
             else:
                 schema = JSONSchemaLoader().get_schema(schema_type)
             LOG.info("%s JSON schema loaded.", schema_type)
-            return await self._json_response(schema)
+            return self._json_response(schema)
 
         except SchemaNotFoundException as error:
             reason = f"{error} Occured for JSON schema: '{schema_type}'."
@@ -186,7 +186,7 @@ class RESTAPIHandler:
         """
         LOG.info("GET workflows. Retrieved %d workflows.", len(WORKFLOWS))
         response = {workflow.name: workflow.description for workflow in WORKFLOWS.values()}
-        return await self._json_response(response)
+        return self._json_response(response)
 
     async def get_workflow_request(self, req: Request) -> Response:
         """Get a single workflow definition by name.
@@ -198,7 +198,7 @@ class RESTAPIHandler:
         workflow_name = req.match_info["workflow"]
         LOG.info("GET workflow: %r.", workflow_name)
         workflow = self.get_workflow(workflow_name)
-        return await self._json_response(workflow.workflow)
+        return self._json_response(workflow.workflow)
 
     def get_workflow(self, workflow_name: str) -> Workflow:
         """Get a single workflow definition by name.
