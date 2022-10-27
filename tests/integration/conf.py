@@ -20,6 +20,7 @@ test_fega_xml_files = [
     ("experiment", "sample_description.xml"),
     ("analysis", "ERZ266973.xml"),
     ("analysis", "processed_reads_analysis.xml"),
+    ("analysis", "assembly_graph_analysis.xml"),
     ("analysis", "reference_alignment_analysis.xml"),
     ("analysis", "reference_sequence_analysis.xml"),
     ("analysis", "sequence_assembly_analysis.xml"),
