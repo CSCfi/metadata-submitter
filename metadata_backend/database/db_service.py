@@ -149,20 +149,18 @@ class DBService:
 
     @auto_reconnect
     async def read_by_key_value(
-        self, collection: str, key: str, value: str, projection: Optional[dict] = None
+        self, collection: str, find_by_key_value: dict, projection: Optional[dict] = None
     ) -> Union[None, dict]:
         """Check document exists by an arbitrary key and value.
 
         :param collection: Collection to search in
-        :param key: document property
-        :param value: property value
+        :param find_by_key_value: Key-value of document property as key and value
         :param projection: mongodb projection of the result. defaults to hiding the internal mongodb _id field
         :returns: document if exists and None if it does not
         """
         if projection is None:
             projection = {"_id": False}
 
-        find_by_key_value = {key: value}
         document = await self.database[collection].find_one(find_by_key_value, projection)
         LOG.debug("DB collection %r for document matching: %r returned: '%r'.", collection, find_by_key_value, document)
         return document
@@ -385,7 +383,7 @@ class DBService:
 
     @auto_reconnect
     async def do_aggregate(self, collection: str, query: List) -> List:
-        """Peform aggregate query.
+        """Perform aggregate query.
 
         :param collection: Collection where document should be searched from
         :param query: query to be used

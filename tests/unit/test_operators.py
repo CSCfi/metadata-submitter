@@ -19,6 +19,7 @@ from aiohttp.web import (
 from multidict import MultiDict, MultiDictProxy
 from pymongo.errors import ConnectionFailure, OperationFailure
 
+from metadata_backend.api.operators.file import File, FileOperator
 from metadata_backend.api.operators.object import ObjectOperator
 from metadata_backend.api.operators.object_xml import XMLObjectOperator
 from metadata_backend.api.operators.project import ProjectOperator
@@ -87,6 +88,7 @@ class TestOperators(IsolatedAsyncioTestCase):
         self.project_generated_id = "64fbdce1c69b436e8d6c91fd746064d4"
         self.accession_id = uuid4().hex
         self.submission_id = uuid4().hex
+        self.file_id = uuid4().hex
         self.test_submission = {
             "submissionId": self.submission_id,
             "projectId": self.project_generated_id,
@@ -102,6 +104,20 @@ class TestOperators(IsolatedAsyncioTestCase):
             "published": False,
             "metadataObjects": [{"accessionId": "EGA1234567", "schema": "study"}],
         }
+        self.test_file = File(
+            name="test-file.png",
+            path="Bucket-name/subfolder/test-file.png",
+            bytes=3765457,
+            project=self.project_id,
+            encrypted_checksums=[
+                {"type": "sha256", "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d6"},
+                {"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b48"},
+            ],
+            unencrypted_checksums=[
+                {"type": "sha256", "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d6"},
+                {"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b48"},
+            ],
+        )
         self.user_id = "current"
         self.user_generated_id = "5fb82fa1dcf9431fa5fcfb72e2d2ee14"
         self.test_user = {
@@ -138,6 +154,12 @@ class TestOperators(IsolatedAsyncioTestCase):
             autospec=True,
         )
         self.patch_project.start()
+        self.patch_file = patch(
+            "metadata_backend.api.operators.file.FileOperator._generate_accession_id",
+            return_value=self.file_id,
+            autospec=True,
+        )
+        self.patch_file.start()
 
         self.session_return = aiohttp_session.Session(
             "test-identity",
@@ -165,6 +187,7 @@ class TestOperators(IsolatedAsyncioTestCase):
         self.patch_submission.stop()
         self.patch_user.stop()
         self.patch_project.stop()
+        self.patch_file.stop()
 
     async def test_reading_metadata_works(self):
         """Test JSON is read from db correctly."""
@@ -1322,6 +1345,46 @@ class TestOperators(IsolatedAsyncioTestCase):
             pid = await operator.update_project(self.project_generated_id, [])
             self.assertEqual(pid, self.project_generated_id)
 
+    async def test_create_file_pass(self):
+        """Test create file passes."""
+        operator = FileOperator(self.client)
+
+        operator.db_service.read_by_key_value = AsyncMock(return_value=None)
+        operator.db_service.create = AsyncMock(return_value=True)
+
+        file_id, version = await operator.create_file_or_version(self.test_file)
+        self.assertEqual(file_id, self.file_id)
+        self.assertEqual(version, 1)
+
+    async def test_create_file_version_pass(self):
+        """Test create file version passes."""
+        operator = FileOperator(self.client)
+
+        file_in_db = {
+            "accessionId": self.file_id,
+            "currentVersion": {
+                "version": 2,
+                "date": "iso-date",
+                "published": True,
+                "bytes": 20,
+                "submissions": ["s1"],
+                "encrypted_checksums": [
+                    {"type": "sha256", "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d6"},
+                    {"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b48"},
+                ],
+                "unencrypted_checksums": [
+                    {"type": "sha256", "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d6"},
+                    {"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b48"},
+                ],
+            },
+        }
+        operator.db_service.read_by_key_value = AsyncMock(return_value=file_in_db)
+
+        operator.db_service.append = AsyncMock(return_value=None)
+
+        file_id, version = await operator.create_file_or_version(self.test_file)
+        self.assertEqual(file_id, self.file_id)
+        self.assertEqual(version, 3)
 
 if __name__ == "__main__":
     unittest.main()

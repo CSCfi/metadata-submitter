@@ -12,7 +12,7 @@ from .base import BaseOperator
 
 @dataclass
 class File:
-    """File class that should be used for adding files to DB."""
+    """File class that should be used for handling a file version."""
 
     name: str
     path: str
@@ -44,22 +44,6 @@ class FileOperator(BaseOperator):
             "unencrypted_checksums": file.unencrypted_checksums,
         }
 
-    # def _file_from_data(self, file: dict) -> File:
-    #     """Make a File from last version of a file document.
-
-    #     :param file: file data as dict, as in `file` schema
-    #     :param version: version number to extract. Defaults to latest
-    #     :returns: File object
-    #     """
-    #     return File(
-    #         name=file["name"],
-    #         path=file["path"],
-    #         project=file["project"],
-    #         bytes=file["bytes"],
-    #         encrypted_checksums=file["encrypted_checksums"],
-    #         unencrypted_checksums=file["unencrypted_checksums"],
-    #     )
-
     async def _create_file(self, file: File) -> str:
         """Create new object file to database.
 
@@ -88,7 +72,7 @@ class FileOperator(BaseOperator):
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while inserting file to DB: {error}"
             LOG.exception(reason)
-            raise web.HTTPInternalServerError(reason=reason)
+            raise web.HTTPInternalServerError(reason=reason) from error
 
     async def create_file_or_version(self, file: File) -> Tuple[str, int]:
         """Create new object file to database.
@@ -98,21 +82,24 @@ class FileOperator(BaseOperator):
         :param file: file data as in the `file.json` schema
         :returns: Tuple of file accession id and file version
         """
+
         _projection = {
             "_id": 0,
+            "accessionId": 1,
+            # get only the last version of a file
             "currentVersion": {"$first": {"$sortArray": {"input": "$versions", "sortBy": {"version": -1}}}},
         }
         try:
-            file_in_db = await self.db_service.read_by_key_value("file", "path", file.path, _projection)
+            file_in_db = await self.db_service.read_by_key_value(
+                "file", {"path": file.path, "projectId": file.project}, _projection
+            )
             if file_in_db:
-                if file_in_db["project"] != file.project:
-                    reason = f"File '{file.path}' already belongs to another project."
-                    LOG.error(reason)
-                    raise web.HTTPBadRequest(reason=reason)
-                # pass in list of versions, which returns the file version with the highest version number
-                _current_version = file_in_db["currentVersion"]["version"]
-                file_version = _current_version + 1
                 accession_id = file_in_db["accessionId"]
+                file_in_db = file_in_db["currentVersion"]
+
+                # pass in list of versions, which returns the file version with the highest version number
+                _current_version = file_in_db["version"]
+                file_version = _current_version + 1
                 version_data = self._from_version_template(file, file_version)
                 await self.db_service.append(
                     "file",
@@ -121,6 +108,7 @@ class FileOperator(BaseOperator):
                     {"$set": {"flagDeleted": False}, "$addToSet": {"versions": version_data}},
                     upsert=True,
                 )
+                return accession_id, file_version
 
             accession_id = await self._create_file(file)
             LOG.info("Inserting file with ID: %r to database succeeded.", accession_id)
@@ -128,7 +116,7 @@ class FileOperator(BaseOperator):
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while inserting file: {error}"
             LOG.exception(reason)
-            raise web.HTTPInternalServerError(reason=reason)
+            raise web.HTTPInternalServerError(reason=reason) from error
 
     async def read_file(self, accession_id: str, version: Optional[int] = None) -> Dict:
         """Read file object from database.
@@ -166,7 +154,7 @@ class FileOperator(BaseOperator):
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting file, err: {error}"
             LOG.exception(reason)
-            raise web.HTTPInternalServerError(reason=reason)
+            raise web.HTTPInternalServerError(reason=reason) from error
         if not file:
             reason = f"File '{accession_id}' was not found."
             LOG.error(reason)
@@ -174,47 +162,36 @@ class FileOperator(BaseOperator):
 
         return file[0]
 
-    # TO_DO figure out if we need this
-    # async def read_files(self, filter_type: str, identifiers: List[str]) -> List[Dict]:
-    #     """Read files from DB based on a specific filter type and corresponding identifier.
+    async def read_project_files(self, project_id: str) -> List[Dict]:
+        """Read files from DB based on a specific filter type and corresponding identifier.
 
-    #     The files are read by the latest version, filtered either by list of projectId or accessionId.
+        The files are read by the latest version, and filtered either by projectId.
 
-    #     :param filter_type: Type of filter for the query. Can be accessionId or projectId
-    #     :param identifiers: list of accession IDs or project IDs to get files
-    #     :returns: List of files
-    #     """
-    #     _specific_version = {"$filter": {"input": "$versions", "as": "item", "cond": {"$eq": ["$$item.version", 2]}}}
-    #     aggregate_query = [
-    #         {"$match": {"$expr": {"$in": [f"${filter_type}", identifiers]}}},
-    #         {
-    #             "$project": {
-    #                 "_id": 0,
-    #                 "name": 1,
-    #                 "path": 1,
-    #                 "project": 1,
-    #                 "version": {"$first": {"$sortArray": {"input": "$versions", "sortBy": {"version": -1}}}},
-    #             }
-    #         },
-    #         {
-    #             "$project": {
-    #                 "_id": 0,
-    #                 "name": 1,
-    #                 "path": 1,
-    #                 "project": 1,
-    #                 "bytes": "$version.bytes",
-    #                 "encrypted_checksums": "$version.encrypted_checksums",
-    #                 "unencrypted_checksums": "$version.unencrypted_checksums",
-    #             }
-    #         },
-    #     ]
-    #     try:
-    #         files = await self.db_service.do_aggregate("file", aggregate_query)
-    #     except (ConnectionFailure, OperationFailure) as error:
-    #         reason = f"Error happened while getting file, err: {error}"
-    #         LOG.exception(reason)
-    #         raise web.HTTPInternalServerError(reason=reason)
-    #     return files
+        :param project_id: Project ID to get files for
+        :returns: List of files
+        """
+        aggregate_query = [
+            {"$match": {"projectId": project_id}},
+            {"$sort": {"versions.version": -1}},
+            {"$unwind": "$versions"},
+            {
+                "$project": {
+                    "_id": 0,
+                    "name": 1,
+                    "path": 1,
+                    "project": 1,
+                    "bytes": "$version.bytes",
+                    "encrypted_checksums": "$version.encrypted_checksums",
+                    "unencrypted_checksums": "$version.unencrypted_checksums",
+                }
+            },
+        ]
+        try:
+            return await self.db_service.do_aggregate("file", aggregate_query)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting files for project {project_id}, err: {error}"
+            LOG.exception(reason)
+            raise web.HTTPInternalServerError(reason=reason) from error
 
     async def read_submission_files(self, submission_id: str) -> List[Dict]:
         """Get files in a submission.
@@ -226,7 +203,7 @@ class FileOperator(BaseOperator):
         """
         # TO_DO: add check for ready status
         aggregate_query = [
-            {"$match": {"submissionId": 1}},
+            {"$match": {"submissionId": submission_id}},
             {"$unwind": "$files"},
             {"$project": {"_id": 0, "accessionId": "$files.accessionId", "version": "$files.version"}},
         ]
@@ -262,7 +239,7 @@ class FileOperator(BaseOperator):
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while flagging file as deleted, err: {error}"
             LOG.exception(reason)
-            raise web.HTTPBadRequest(reason=reason)
+            raise web.HTTPBadRequest(reason=reason) from error
         if not delete_success:
             reason = f"Flagging file with '{file_path}' as deleted failed."
             LOG.error(reason)
