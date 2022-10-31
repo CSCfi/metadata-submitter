@@ -6,13 +6,13 @@ import ujson
 from aiohttp import web
 from aiohttp.web import Request, Response
 
-from metadata_backend.message_broker.mq_service import MQPublisher
+from metadata_backend.api.operators.file import FileOperator
 
 from ...conf.conf import DATACITE_SCHEMAS, METAX_SCHEMAS, doi_config
 from ...helpers.logger import LOG
-from ..operators.object import Operator
+from ..operators.object import ObjectOperator
+from ..operators.object_xml import XMLObjectOperator
 from ..operators.submission import SubmissionOperator
-from ..operators.xml_object import XMLOperator
 from .restapi import RESTAPIIntegrationHandler
 
 
@@ -181,7 +181,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         return dataset
 
-    async def _prepare_datacite_publication(self, obj_op: Operator, submission: Dict) -> Tuple[dict, list]:
+    async def _prepare_datacite_publication(self, obj_op: ObjectOperator, submission: Dict) -> Tuple[dict, list]:
         """Prepare dictionary with values for the Datacite DOI update.
 
         We need to prepare data for Study and Datasets, publish doi for each,
@@ -190,7 +190,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         as well as ``extraInfo`` which contains the draft DOIs created for the Study
         and each Dataset.
 
-        :param obj_op: Operator for reading objects from database.
+        :param obj_op: ObjectOperator for reading objects from database.
         :param submission: Submission data
         :returns: Tuple with the Study and list of Datasets and list of identifiers for publishing to Metax
         """
@@ -291,11 +291,11 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         return datacite_study, datacite_datasets
 
-    async def _publish_datacite(self, submission: dict, obj_op: Operator, operator: SubmissionOperator) -> dict:
+    async def _publish_datacite(self, submission: dict, obj_op: ObjectOperator, operator: SubmissionOperator) -> dict:
         """Prepare dictionary with values to be published to Metax.
 
         :param submission: Submission data
-        :param obj_op: Operator for reading objects from database.
+        :param obj_op: ObjectOperator for reading objects from database.
         :returns: Whether publishing to Datacite succeeded
         """
         datacite_study, datacite_datasets = await self._prepare_datacite_publication(obj_op, submission)
@@ -337,13 +337,13 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         return datacite_study
 
     async def _pre_publish_metax(
-        self, submission: dict, obj_op: Operator, operator: SubmissionOperator, external_user_id: str
+        self, submission: dict, obj_op: ObjectOperator, operator: SubmissionOperator, external_user_id: str
     ) -> List[dict]:
         """Prepare dictionary with values to be published to Metax.
 
         :param submission: Submission data
-        :param obj_op: Operator for reading objects from database.
-        :param operator: Operator for updating the submission in the database.
+        :param obj_op: ObjectOperator for reading objects from database.
+        :param operator: ObjectOperator for updating the submission in the database.
         :param external_user_id: user_id
         :returns: Whether publishing to Metax succeeded
         """
@@ -375,11 +375,11 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         )
         return metax_datasets
 
-    async def _publish_rems(self, submission: dict, obj_op: Operator) -> None:
+    async def _publish_rems(self, submission: dict, obj_op: ObjectOperator) -> None:
         """Prepare dictionary with values to be published to REMS.
 
         :param submission: Submission data
-        :param obj_op: Operator for reading objects from database.
+        :param obj_op: ObjectOperator for reading objects from database.
         :returns: Whether publishing to REMS succeeded
         """
         rems_datasets: List[dict] = []
@@ -443,8 +443,9 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         submission_id = req.match_info["submissionId"]
         db_client = req.app["db_client"]
         operator = SubmissionOperator(db_client)
-        obj_op = Operator(db_client)
-        xml_ops = XMLOperator(db_client)
+        obj_op = ObjectOperator(db_client)
+        xml_ops = XMLObjectOperator(db_client)
+        file_operator = FileOperator(db_client)
 
         # Check submission exists and is not already published
         await operator.check_submission_exists(submission_id)
@@ -516,14 +517,22 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         publish_status = {}
         datacite_study = {}
         if "messageBroker" in workflow.endpoints:
-            ingest_msg = {"type": "ingest", "user": external_user_id, "filepath": "filepath"}
-            trigger_ingest = MQPublisher(workflow.get_endpoint_conf("messageBroker", "endpoint"))
-            trigger_ingest.send_message(
-                "ingest",
-                workflow.get_endpoint_conf("messageBroker", "exchange"),
-                ingest_msg,
-                "message_ingestion-trigger",
-            )
+
+            files = await file_operator.read_submission_files(submission_id)
+            for file in files:
+                ingest_msg = {
+                    "type": "ingest",
+                    "user": external_user_id,
+                    "filepath": file["path"],
+                    "encrypted_checksums": file["encrypted_checksums"],
+                }
+                self.mq_publisher.send_message(
+                    workflow.get_endpoint_conf("messageBroker", "endpoint"),
+                    "ingest",
+                    workflow.get_endpoint_conf("messageBroker", "exchange"),
+                    ingest_msg,
+                    "message_ingestion-trigger",
+                )
         if "datacite" in workflow.endpoints:
             try:
                 datacite_study = await self._publish_datacite(submission, obj_op, operator)

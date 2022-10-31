@@ -40,6 +40,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - add cli tool for MQConsumer so that we can deploy multiple consumers independently of the web server
   - add message broker publishing to workflow
   - add rabbitmq + default config to integration tests
+- File operator that does database operations for files #148
+- Mongo indexes for `file` schema #148
+- `/files` endpoint to retrieve files attached to a project #148 #627
 
 ### Changed
 - schema loader now matches schema files by exact match with schema #481. This means that schema file naming in metadata_backend/helpers/schemas now have rules:
@@ -74,6 +77,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Separated operator classes into their own files for better readability #625
 - updated ENA XML and JSON schemas to 1.16 #628
   - XML to JSON parser had to be adjusted for `assemblyGraph`
+- Refactor `Operator` -> `ObjectOperator` #627
+- Refactor `xml_object.py` -> `object_xml.py` #627
+- Refactor operators to use a common base class called `BaseOperator` #627
 
 ### Removed
 

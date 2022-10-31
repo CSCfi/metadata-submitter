@@ -19,11 +19,12 @@ from aiohttp.web import (
 from multidict import MultiDict, MultiDictProxy
 from pymongo.errors import ConnectionFailure, OperationFailure
 
-from metadata_backend.api.operators.object import Operator
+from metadata_backend.api.operators.file import File, FileOperator
+from metadata_backend.api.operators.object import ObjectOperator
+from metadata_backend.api.operators.object_xml import XMLObjectOperator
 from metadata_backend.api.operators.project import ProjectOperator
 from metadata_backend.api.operators.submission import SubmissionOperator
 from metadata_backend.api.operators.user import UserOperator
-from metadata_backend.api.operators.xml_object import XMLOperator
 
 from .mockups import Mock_Request
 
@@ -87,6 +88,7 @@ class TestOperators(IsolatedAsyncioTestCase):
         self.project_generated_id = "64fbdce1c69b436e8d6c91fd746064d4"
         self.accession_id = uuid4().hex
         self.submission_id = uuid4().hex
+        self.file_id = uuid4().hex
         self.test_submission = {
             "submissionId": self.submission_id,
             "projectId": self.project_generated_id,
@@ -102,48 +104,62 @@ class TestOperators(IsolatedAsyncioTestCase):
             "published": False,
             "metadataObjects": [{"accessionId": "EGA1234567", "schema": "study"}],
         }
+        self.test_file = File(
+            name="test-file.png",
+            path="Bucket-name/subfolder/test-file.png",
+            bytes=3765457,
+            project=self.project_id,
+            encrypted_checksums=[
+                {"type": "sha256", "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d6"},
+                {"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b48"},
+            ],
+            unencrypted_checksums=[
+                {"type": "sha256", "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d6"},
+                {"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b48"},
+            ],
+        )
         self.user_id = "current"
         self.user_generated_id = "5fb82fa1dcf9431fa5fcfb72e2d2ee14"
         self.test_user = {
             "userId": self.user_generated_id,
             "name": "tester",
         }
+        class_dbservice = "metadata_backend.api.operators.object_base.DBService"
+        self.patch_object_dbservice = patch(class_dbservice, spec=True)
+        self.MockedObjectDbService = self.patch_object_dbservice.start()
         class_dbservice = "metadata_backend.api.operators.base.DBService"
         self.patch_dbservice = patch(class_dbservice, spec=True)
         self.MockedDbService = self.patch_dbservice.start()
-        class_dbservice = "metadata_backend.api.operators.project.DBService"
-        self.patch_dbservice = patch(class_dbservice, spec=True)
-        self.MockedProjectDbService = self.patch_dbservice.start()
-        class_dbservice = "metadata_backend.api.operators.submission.DBService"
-        self.patch_dbservice = patch(class_dbservice, spec=True)
-        self.MockedSubmissionDbService = self.patch_dbservice.start()
-        class_dbservice = "metadata_backend.api.operators.user.DBService"
-        self.patch_dbservice = patch(class_dbservice, spec=True)
-        self.MockedUserDbService = self.patch_dbservice.start()
         self.patch_accession = patch(
-            "metadata_backend.api.operators.object.Operator._generate_accession_id",
+            "metadata_backend.api.operators.object.ObjectOperator._generate_accession_id",
             return_value=self.accession_id,
             autospec=True,
         )
         self.patch_accession.start()
         self.patch_submission = patch(
-            ("metadata_backend.api.operators.submission.SubmissionOperator._generate_submission_id"),
+            "metadata_backend.api.operators.submission.SubmissionOperator._generate_accession_id",
             return_value=self.submission_id,
             autospec=True,
         )
         self.patch_submission.start()
         self.patch_user = patch(
-            ("metadata_backend.api.operators.user.UserOperator._generate_user_id"),
+            "metadata_backend.api.operators.user.UserOperator._generate_accession_id",
             return_value=self.user_generated_id,
             autospec=True,
         )
         self.patch_user.start()
         self.patch_project = patch(
-            ("metadata_backend.api.operators.project.ProjectOperator._generate_project_id"),
+            "metadata_backend.api.operators.project.ProjectOperator._generate_accession_id",
             return_value=self.project_generated_id,
             autospec=True,
         )
         self.patch_project.start()
+        self.patch_file = patch(
+            "metadata_backend.api.operators.file.FileOperator._generate_accession_id",
+            return_value=self.file_id,
+            autospec=True,
+        )
+        self.patch_file.start()
 
         self.session_return = aiohttp_session.Session(
             "test-identity",
@@ -165,15 +181,17 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     def tearDown(self):
         """Stop patchers."""
+        self.patch_object_dbservice.stop()
         self.patch_dbservice.stop()
         self.patch_accession.stop()
         self.patch_submission.stop()
         self.patch_user.stop()
         self.patch_project.stop()
+        self.patch_file.stop()
 
     async def test_reading_metadata_works(self):
         """Test JSON is read from db correctly."""
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         data = {
             "dateCreated": datetime.datetime(2020, 6, 14, 0, 0),
             "dateModified": datetime.datetime(2020, 6, 14, 0, 0),
@@ -196,7 +214,7 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     async def test_reading_metadata_works_with_xml(self):
         """Test XML is read from db correctly."""
-        operator = XMLOperator(self.client)
+        operator = XMLObjectOperator(self.client)
         data = {"accessionId": "EGA123456", "content": "<MOCK_ELEM></MOCK_ELEM>"}
         operator.db_service.read = AsyncMock(return_value=data)
         r_data, c_type = await operator.read_metadata_object("sample", "EGA123456")
@@ -206,14 +224,14 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     async def test_reading_with_non_valid_id_raises_error(self):
         """Test read metadata HTTPNotFound is raised."""
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         operator.db_service.read = AsyncMock(return_value=False)
         with self.assertRaises(HTTPNotFound):
             await operator.read_metadata_object("study", "EGA123456")
 
     async def test_db_error_raises_400_error(self):
         """Test read metadata HTTPBadRequest is raised."""
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         operator.db_service.read.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
             await operator.read_metadata_object("study", "EGA123456")
@@ -226,7 +244,7 @@ class TestOperators(IsolatedAsyncioTestCase):
             "dateCreated": datetime.datetime(2020, 6, 14, 0, 0),
             "dateModified": datetime.datetime(2020, 6, 14, 0, 0),
         }
-        result = Operator(self.client)._format_single_dict("study", study_test)
+        result = ObjectOperator(self.client)._format_single_dict("study", study_test)
         self.assertEqual(result["publishDate"], "2020-06-14T00:00:00")
         self.assertEqual(result["dateCreated"], "2020-06-14T00:00:00")
         self.assertEqual(result["dateModified"], "2020-06-14T00:00:00")
@@ -235,7 +253,7 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     async def test_json_create_passes_and_returns_accessionId(self):
         """Test create method for JSON works."""
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         data = {
             "centerName": "GEO",
             "alias": "GSE10966",
@@ -253,7 +271,7 @@ class TestOperators(IsolatedAsyncioTestCase):
             "alias": "GSE10966",
             "descriptor": {"studyTitle": "Highly", "studyType": "Other"},
         }
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         operator.db_service.exists = AsyncMock(return_value=True)
         operator.db_service.replace = AsyncMock(return_value=True)
         data = await operator.replace_metadata_object("study", self.accession_id, data)
@@ -262,7 +280,7 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     async def test_json_replace_raises_if_not_exists(self):
         """Test replace method raises error."""
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         operator.db_service.exists = AsyncMock(return_value=False)
         operator.db_service.replace = AsyncMock(return_value=True)
         with self.assertRaises(HTTPNotFound):
@@ -271,7 +289,7 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     async def test_db_error_replace_raises_400_error(self):
         """Test replace metadata HTTPBadRequest is raised."""
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         operator.db_service.exists.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
             await operator.replace_metadata_object("study", self.accession_id, {})
@@ -284,7 +302,7 @@ class TestOperators(IsolatedAsyncioTestCase):
             "alias": "GSE10966",
             "descriptor": {"studyTitle": "Highly", "studyType": "Other"},
         }
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         operator.db_service.read.return_value = db_data
         operator.db_service.exists = AsyncMock(return_value=True)
         operator.db_service.update = AsyncMock(return_value=True)
@@ -294,7 +312,7 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     async def test_json_update_raises_if_not_exists(self):
         """Test update method raises error."""
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         operator.db_service.exists = AsyncMock(return_value=False)
         with self.assertRaises(HTTPNotFound):
             await operator.update_metadata_object("study", self.accession_id, {})
@@ -302,31 +320,31 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     async def test_db_error_update_raises_400_error(self):
         """Test update metadata HTTPBadRequest is raised."""
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         operator.db_service.exists.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
             await operator.update_metadata_object("study", self.accession_id, {})
 
     async def test_xml_create_passes_and_returns_accessionId(self):
         """Test create method for XML works. Patch JSON related calls."""
-        operator = XMLOperator(self.client)
+        operator = XMLObjectOperator(self.client)
         operator.db_service.db_client = self.client
         operator.db_service.create.return_value = True
         operator.db_service.create = AsyncMock(return_value=True)
         with patch(
-            ("metadata_backend.api.operators.object.Operator._format_data_to_create_and_add_to_db"),
+            ("metadata_backend.api.operators.object.ObjectOperator._format_data_to_create_and_add_to_db"),
             return_value={"accessionId": self.accession_id},
         ):
-            with patch("metadata_backend.api.operators.xml_object.XMLToJSONParser"):
+            with patch("metadata_backend.api.operators.object_xml.XMLToJSONParser"):
                 data = await operator.create_metadata_object("study", "<MOCK_ELEM></MOCK_ELEM>")
         operator.db_service.create.assert_called_once()
         self.assertEqual(data[0]["accessionId"], self.accession_id)
 
     async def test_correct_data_is_set_to_json_when_creating(self):
         """Test operator creates object and adds necessary info."""
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         with patch(
-            ("metadata_backend.api.operators.object.Operator._insert_formatted_object_to_db"),
+            ("metadata_backend.api.operators.object.ObjectOperator._insert_formatted_object_to_db"),
             return_value=True,
         ) as mocked_insert:
             with patch("metadata_backend.api.operators.object.datetime") as m_date:
@@ -345,9 +363,10 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     async def test_wrong_data_is_set_to_json_when_replacing(self):
         """Test operator replace catches error."""
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         with patch(
-            "metadata_backend.api.operators.object.Operator._replace_object_from_db", return_value=self.accession_id
+            "metadata_backend.api.operators.object.ObjectOperator._replace_object_from_db",
+            return_value=self.accession_id,
         ):
             with patch("metadata_backend.api.operators.object.datetime") as m_date:
                 m_date.utcnow.return_value = datetime.datetime(2020, 4, 14)
@@ -367,9 +386,10 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     async def test_correct_data_is_set_to_json_when_replacing(self):
         """Test operator replaces object and adds necessary info."""
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         with patch(
-            "metadata_backend.api.operators.object.Operator._replace_object_from_db", return_value=self.accession_id
+            "metadata_backend.api.operators.object.ObjectOperator._replace_object_from_db",
+            return_value=self.accession_id,
         ) as mocked_insert:
             with patch("metadata_backend.api.operators.object.datetime") as m_date:
                 m_date.utcnow.return_value = datetime.datetime(2020, 4, 14)
@@ -387,9 +407,9 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     async def test_correct_data_is_set_to_json_when_updating(self):
         """Test operator updates object and adds necessary info."""
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         with patch(
-            ("metadata_backend.api.operators.object.Operator._update_object_from_db"),
+            ("metadata_backend.api.operators.object.ObjectOperator._update_object_from_db"),
             return_value=self.accession_id,
         ) as mocked_insert:
             with patch("metadata_backend.api.operators.object.datetime") as m_date:
@@ -404,9 +424,9 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     async def test_wrong_data_is_set_to_json_when_updating(self):
         """Test operator update catches error."""
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         with patch(
-            ("metadata_backend.api.operators.object.Operator._update_object_from_db"),
+            ("metadata_backend.api.operators.object.ObjectOperator._update_object_from_db"),
             return_value=self.accession_id,
         ):
             with patch("metadata_backend.api.operators.object.datetime") as m_date:
@@ -427,18 +447,18 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     async def test_correct_data_is_set_to_xml_when_creating(self):
         """Test XMLoperator creates object and adds necessary info."""
-        operator = XMLOperator(self.client)
+        operator = XMLObjectOperator(self.client)
         operator.db_service.db_client = self.client
         xml_data = "<MOCK_ELEM></MOCK_ELEM>"
         with patch(
-            ("metadata_backend.api.operators.object.Operator._format_data_to_create_and_add_to_db"),
+            ("metadata_backend.api.operators.object.ObjectOperator._format_data_to_create_and_add_to_db"),
             return_value={"accessionId": self.accession_id},
         ):
             with patch(
-                ("metadata_backend.api.operators.xml_object.XMLOperator._insert_formatted_object_to_db"),
+                ("metadata_backend.api.operators.object_xml.XMLObjectOperator._insert_formatted_object_to_db"),
                 return_value=True,
             ) as m_insert:
-                with patch("metadata_backend.api.operators.xml_object.XMLToJSONParser"):
+                with patch("metadata_backend.api.operators.object_xml.XMLToJSONParser"):
                     acc = await (operator._format_data_to_create_and_add_to_db("study", xml_data))
                     m_insert.assert_called_once_with(
                         "xml-study", {"accessionId": self.accession_id, "content": xml_data}
@@ -447,18 +467,18 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     async def test_correct_data_is_set_to_xml_when_replacing(self):
         """Test XMLoperator replaces object and adds necessary info."""
-        operator = XMLOperator(self.client)
+        operator = XMLObjectOperator(self.client)
         operator.db_service.db_client = self.client
         xml_data = "<MOCK_ELEM></MOCK_ELEM>"
         with patch(
-            "metadata_backend.api.operators.object.Operator._format_data_to_replace_and_add_to_db",
+            "metadata_backend.api.operators.object.ObjectOperator._format_data_to_replace_and_add_to_db",
             return_value={"accessionId": self.accession_id},
         ):
             with patch(
-                "metadata_backend.api.operators.xml_object.XMLOperator._replace_object_from_db",
+                "metadata_backend.api.operators.object_xml.XMLObjectOperator._replace_object_from_db",
                 return_value=self.accession_id,
             ) as m_insert:
-                with patch("metadata_backend.api.operators.xml_object.XMLToJSONParser"):
+                with patch("metadata_backend.api.operators.object_xml.XMLToJSONParser"):
                     acc = await (operator._format_data_to_replace_and_add_to_db("study", self.accession_id, xml_data))
                     m_insert.assert_called_once_with(
                         "xml-study",
@@ -469,7 +489,7 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     async def test_deleting_metadata_deletes_json(self):
         """Test metadata is deleted."""
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         operator.db_service.db_client = self.client
         operator.db_service.exists = AsyncMock(return_value=True)
         operator.db_service.delete = AsyncMock(return_value=True)
@@ -479,7 +499,7 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     async def test_deleting_metadata_delete_raises(self):
         """Test error raised with delete."""
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         operator.db_service.db_client = self.client
         operator.db_service.exists = AsyncMock(return_value=False)
         operator.db_service.delete = AsyncMock(return_value=True)
@@ -490,7 +510,7 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     async def test_deleting_metadata_delete_raises_bad_request(self):
         """Test bad request error raised with delete."""
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         operator.db_service.db_client = self.client
         operator.db_service.exists = AsyncMock(return_value=True)
         operator.db_service.delete = AsyncMock(return_value=False)
@@ -501,7 +521,7 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     async def test_working_query_params_are_passed_to_db_query(self):
         """Test that database is called with correct query."""
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         study_test = [
             {
                 "publishDate": datetime.datetime(2020, 6, 14, 0, 0),
@@ -553,7 +573,7 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     async def test_non_working_query_params_are_not_passed_to_db_query(self):
         """Test that database with empty query, when url params are wrong."""
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         study_test = [
             {
                 "publishDate": datetime.datetime(2020, 6, 14, 0, 0),
@@ -566,7 +586,7 @@ class TestOperators(IsolatedAsyncioTestCase):
         operator.db_service.do_aggregate = AsyncMock(side_effect=[study_test, study_total])
         query = MultiDictProxy(MultiDict([("swag", "littinen")]))
         with patch(
-            "metadata_backend.api.operators.object.Operator._format_read_data",
+            "metadata_backend.api.operators.object.ObjectOperator._format_read_data",
             return_value=study_test,
         ):
             await operator.query_metadata_database("study", query, 1, 10, [])
@@ -595,7 +615,7 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     async def test_query_result_is_parsed_correctly(self):
         """Test JSON is read and correct pagination values are returned."""
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         multiple_result = [
             {
                 "dateCreated": datetime.datetime(2020, 6, 14, 0, 0),
@@ -631,11 +651,11 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     async def test_non_empty_query_result_raises_notfound(self):
         """Test that 404 is raised with empty query result."""
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         operator.db_service.do_aggregate = AsyncMock(return_value=None)
         query = MultiDictProxy(MultiDict([]))
         with patch(
-            "metadata_backend.api.operators.object.Operator._format_read_data",
+            "metadata_backend.api.operators.object.ObjectOperator._format_read_data",
             return_value=[],
         ):
             with self.assertRaises(HTTPNotFound):
@@ -643,12 +663,12 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     async def test_query_skip_and_limit_are_set_correctly(self):
         """Test custom skip and limits."""
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         data = {"foo": "bar"}
         result = []
         operator.db_service.do_aggregate = AsyncMock(side_effect=[result, [{"total": 0}]])
         with patch(
-            "metadata_backend.api.operators.object.Operator._format_read_data",
+            "metadata_backend.api.operators.object.ObjectOperator._format_read_data",
             return_value=data,
         ):
             await operator.query_metadata_database("sample", {}, 3, 50, [])
@@ -677,21 +697,21 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     async def test_get_object_project_connfail(self):
         """Test get object project, db connection failure."""
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         operator.db_service.query.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
             await operator.get_object_project("template", self.accession_id)
 
     async def test_get_object_project_opfail(self):
         """Test get object project, db operation failure."""
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         operator.db_service.query.side_effect = OperationFailure("err")
         with self.assertRaises(HTTPBadRequest):
             await operator.get_object_project("template", self.accession_id)
 
     async def test_get_object_project_passes(self):
         """Test get object project returns project id."""
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         operator.db_service.query.return_value = AsyncIterator([self.test_submission])
         result = await operator.get_object_project("template", self.accession_id)
         operator.db_service.query.assert_called_once_with("template", {"accessionId": self.accession_id})
@@ -699,21 +719,21 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     async def test_get_object_project_fails(self):
         """Test get object project returns nothing and raises an error."""
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         operator.db_service.query.return_value = AsyncIterator([])
         with self.assertRaises(HTTPBadRequest):
             await operator.get_object_project("template", self.accession_id)
 
     async def test_get_object_project_fails_missing_project(self):
         """Test get object project returns faulty object record that is missing project id."""
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         operator.db_service.query.return_value = AsyncIterator([self.test_submission_no_project])
         with self.assertRaises(HTTPBadRequest):
             await operator.get_object_project("template", self.accession_id)
 
     async def test_get_object_project_fails_invalid_collection(self):
         """Test get object project raises bad request on invalid collection."""
-        operator = Operator(self.client)
+        operator = ObjectOperator(self.client)
         operator.db_service.query.return_value = AsyncIterator([])
         with self.assertRaises(HTTPBadRequest):
             await operator.get_object_project("something", self.accession_id)
@@ -807,7 +827,7 @@ class TestOperators(IsolatedAsyncioTestCase):
     async def test_check_object_submission_fails(self):
         """Test check object submission fails."""
         operator = SubmissionOperator(self.client)
-        self.MockedSubmissionDbService().query.side_effect = ConnectionFailure
+        self.MockedDbService().query.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
             await operator.check_object_in_submission("study", self.accession_id)
 
@@ -1172,7 +1192,7 @@ class TestOperators(IsolatedAsyncioTestCase):
     async def test_check_user_has_no_project(self):
         """Test check user does not have project and raises unauthorised."""
         operator = UserOperator(self.client)
-        self.MockedUserDbService().query.return_value = AsyncIterator([])
+        self.MockedDbService().query.return_value = AsyncIterator([])
         result = await operator.check_user_has_project(self.project_generated_id, self.user_generated_id)
         operator.db_service.query.assert_called_once_with(
             "user",
@@ -1223,7 +1243,7 @@ class TestOperators(IsolatedAsyncioTestCase):
     async def test_create_project_fails(self):
         """Test create project fails."""
         operator = ProjectOperator(self.client)
-        self.MockedProjectDbService().exists_project_by_external_id.side_effect = ConnectionFailure
+        self.MockedDbService().exists_project_by_external_id.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
             await operator.create_project(self.project_id)
 
@@ -1324,6 +1344,47 @@ class TestOperators(IsolatedAsyncioTestCase):
         with patch("metadata_backend.api.operators.project.ProjectOperator.check_project_exists", return_value=True):
             pid = await operator.update_project(self.project_generated_id, [])
             self.assertEqual(pid, self.project_generated_id)
+
+    async def test_create_file_pass(self):
+        """Test create file passes."""
+        operator = FileOperator(self.client)
+
+        operator.db_service.read_by_key_value = AsyncMock(return_value=None)
+        operator.db_service.create = AsyncMock(return_value=True)
+
+        file_id, version = await operator.create_file_or_version(self.test_file)
+        self.assertEqual(file_id, self.file_id)
+        self.assertEqual(version, 1)
+
+    async def test_create_file_version_pass(self):
+        """Test create file version passes."""
+        operator = FileOperator(self.client)
+
+        file_in_db = {
+            "accessionId": self.file_id,
+            "currentVersion": {
+                "version": 2,
+                "date": "iso-date",
+                "published": True,
+                "bytes": 20,
+                "submissions": ["s1"],
+                "encrypted_checksums": [
+                    {"type": "sha256", "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d6"},
+                    {"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b48"},
+                ],
+                "unencrypted_checksums": [
+                    {"type": "sha256", "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d6"},
+                    {"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b48"},
+                ],
+            },
+        }
+        operator.db_service.read_by_key_value = AsyncMock(return_value=file_in_db)
+
+        operator.db_service.append = AsyncMock(return_value=None)
+
+        file_id, version = await operator.create_file_or_version(self.test_file)
+        self.assertEqual(file_id, self.file_id)
+        self.assertEqual(version, 3)
 
 
 if __name__ == "__main__":

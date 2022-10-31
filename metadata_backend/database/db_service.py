@@ -64,6 +64,10 @@ class DBService:
         self.db_client = db_client
         self.database = db_client[database_name]
 
+    def _get_id_key(self, collection: str) -> str:
+        """Get id key based on the collection."""
+        return f"{collection}Id" if (collection in ["submission", "user", "project"]) else "accessionId"
+
     @auto_reconnect
     async def create(self, collection: str, document: Dict) -> bool:
         """Insert document or a submission to collection in database.
@@ -84,7 +88,7 @@ class DBService:
         :param accession_id: ID of the object/submission/user to be searched
         :returns: True if exists and False if it does not
         """
-        id_key = f"{collection}Id" if (collection in ["submission", "user", "project"]) else "accessionId"
+        id_key = self._get_id_key(collection)
         projection = {"_id": False, "externalId": False} if collection == "user" else {"_id": False}
         find_by_id = {id_key: accession_id}
         exists = await self.database[collection].find_one(find_by_id, projection)
@@ -137,11 +141,29 @@ class DBService:
         :param accession_id: ID of the object/submission/user to be searched
         :returns: First document matching the accession_id
         """
-        id_key = f"{collection}Id" if (collection in {"submission", "user"}) else "accessionId"
+        id_key = self._get_id_key(collection)
         projection = {"_id": False, "eppn": False} if collection == "user" else {"_id": False}
         find_by_id = {id_key: accession_id}
         LOG.debug("DB doc in collection: %r read for accession ID: %r.", collection, accession_id)
         return await self.database[collection].find_one(find_by_id, projection)
+
+    @auto_reconnect
+    async def read_by_key_value(
+        self, collection: str, find_by_key_value: dict, projection: Optional[dict] = None
+    ) -> Union[None, dict]:
+        """Check document exists by an arbitrary key and value.
+
+        :param collection: Collection to search in
+        :param find_by_key_value: Key-value of document property as key and value
+        :param projection: mongodb projection of the result. defaults to hiding the internal mongodb _id field
+        :returns: document if exists and None if it does not
+        """
+        if projection is None:
+            projection = {"_id": False}
+
+        document = await self.database[collection].find_one(find_by_key_value, projection)
+        LOG.debug("DB collection %r for document matching: %r returned: '%r'.", collection, find_by_key_value, document)
+        return document
 
     @auto_reconnect
     async def patch(self, collection: str, accession_id: str, patch_data: List[Dict]) -> bool:
@@ -207,7 +229,7 @@ class DBService:
         updated to object, can replace previous fields and add new ones.
         :returns: True if operation was successful
         """
-        id_key = f"{collection}Id" if (collection in {"submission", "user"}) else "accessionId"
+        id_key = self._get_id_key(collection)
         find_by_id = {id_key: accession_id}
         update_op = {"$set": data_to_be_updated}
         result = await self.database[collection].update_one(find_by_id, update_op)
@@ -215,6 +237,28 @@ class DBService:
             "DB doc in collection: %r updated for accession ID: %r with data: %r.",
             collection,
             accession_id,
+            data_to_be_updated,
+        )
+        return result.acknowledged
+
+    @auto_reconnect
+    async def update_by_key_value(self, collection: str, key: str, value: str, data_to_be_updated: Dict) -> bool:
+        """Update some elements of object by its accessionId.
+
+        :param collection: Collection to search in
+        :param key: document property
+        :param value: property value
+        :param data_to_be_updated: JSON representing the data that should be
+        updated to object, can replace previous fields and add new ones.
+        :returns: True if operation was successful
+        """
+        find_by_key_value = {key: value}
+        update_op = {"$set": data_to_be_updated}
+        result = await self.database[collection].update_one(find_by_key_value, update_op)
+        LOG.debug(
+            "DB collection: %r updated for document matching: %r with data: %r.",
+            collection,
+            find_by_key_value,
             data_to_be_updated,
         )
         return result.acknowledged
@@ -229,7 +273,7 @@ class DBService:
         updated to removed.
         :returns: True if operation was successful
         """
-        id_key = f"{collection}Id" if (collection in ["submission", "user", "project"]) else "accessionId"
+        id_key = self._get_id_key(collection)
         find_by_id = {id_key: accession_id}
         remove_op = {"$pull": data_to_be_removed}
         result = await self.database[collection].find_one_and_update(
@@ -244,23 +288,26 @@ class DBService:
         return result
 
     @auto_reconnect
-    async def append(self, collection: str, accession_id: str, data_to_be_addded: Union[str, Dict]) -> bool:
+    async def append(
+        self, collection: str, accession_id: str, data_to_be_addded: Union[str, Dict], upsert: bool = False
+    ) -> bool:
         """Append data by to object with accessionId in collection.
 
         :param collection: Collection where document should be searched from
         :param accession_id: ID of the object/submission/user to be appended to
         :param data_to_be_addded: str or JSON representing the data that should be
         updated to removed.
+        :param upsert: If the document does not exist add it
         :returns: True if operation was successful
         """
-        id_key = f"{collection}Id" if (collection in ["submission", "user", "project"]) else "accessionId"
+        id_key = self._get_id_key(collection)
         find_by_id = {id_key: accession_id}
         # push vs addtoSet
         # push allows us to specify the postion but it does not check the items are unique
         # addToSet cannot easily specify position
         append_op = {"$push": data_to_be_addded}
         result = await self.database[collection].find_one_and_update(
-            find_by_id, append_op, projection={"_id": False}, return_document=ReturnDocument.AFTER
+            find_by_id, append_op, projection={"_id": False}, upsert=upsert, return_document=ReturnDocument.AFTER
         )
         LOG.debug(
             "DB doc in collection: %r with data: %r appeneded for accession ID: %r.",
@@ -308,7 +355,7 @@ class DBService:
         :param accession_id: ID for object/submission/user to be deleted
         :returns: True if operation was successful
         """
-        id_key = f"{collection}Id" if (collection in {"submission", "user"}) else "accessionId"
+        id_key = self._get_id_key(collection)
         find_by_id = {id_key: accession_id}
         result = await self.database[collection].delete_one(find_by_id)
         LOG.debug("DB doc in collection: %r deleted data for accession ID: %r.", collection, accession_id)
@@ -336,7 +383,7 @@ class DBService:
 
     @auto_reconnect
     async def do_aggregate(self, collection: str, query: List) -> List:
-        """Peform aggregate query.
+        """Perform aggregate query.
 
         :param collection: Collection where document should be searched from
         :param query: query to be used

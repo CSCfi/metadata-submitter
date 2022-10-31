@@ -13,10 +13,10 @@ from pymongo.errors import ConnectionFailure, OperationFailure
 from ...conf.conf import DATACITE_SCHEMAS, mongo_database, query_map
 from ...database.db_service import auto_reconnect
 from ...helpers.logger import LOG
-from .base import BaseOperator
+from .object_base import BaseObjectOperator
 
 
-class Operator(BaseOperator):
+class ObjectOperator(BaseObjectOperator):
     """Default operator class for handling metadata object related database operations.
 
     Operations are implemented with JSON format.
@@ -216,7 +216,7 @@ class Operator(BaseOperator):
         data["dateModified"] = datetime.utcnow()
         if schema_type == "study":
             data["publishDate"] = datetime.utcnow() + relativedelta(months=2)
-        LOG.debug("Operator formatted data for collection: %r to add to DB.", schema_type)
+        LOG.debug("ObjectOperator formatted data for collection: %r to add to DB.", schema_type)
         await self._insert_formatted_object_to_db(schema_type, data)
         return data
 
@@ -243,7 +243,7 @@ class Operator(BaseOperator):
             raise web.HTTPBadRequest(reason=reason)
         data["accessionId"] = accession_id
         data["dateModified"] = datetime.utcnow()
-        LOG.debug("Operator formatted data for collection: %r to add to DB.", schema_type)
+        LOG.debug("ObjectOperator formatted data for collection: %r to add to DB.", schema_type)
         await self._replace_object_from_db(schema_type, accession_id, data)
         return data
 
@@ -266,7 +266,7 @@ class Operator(BaseOperator):
         data["accessionId"] = accession_id
         data["dateModified"] = datetime.utcnow()
 
-        LOG.debug("Operator formatted data for collection: %r to add to DB.", schema_type)
+        LOG.debug("ObjectOperator formatted data for collection: %r to add to DB.", schema_type)
         return await self._update_object_from_db(schema_type, accession_id, data)
 
     def _generate_accession_id(self) -> str:
