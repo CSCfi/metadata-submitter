@@ -54,13 +54,13 @@ services:
       - "MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}"
     volumes:
       - data:/data/db
-      - ./scripts/init_mongo.js:/docker-entrypoint-initdb.d/init_mongo.js:ro
+      - ./scripts/mongodb/init_mongo.js:/docker-entrypoint-initdb.d/init_mongo.js:ro
     expose:
       - 27017
     ports:
       - "27017:27017"
   messagebroker:
-    image: "rabbitmq:3.11.1-management-alpine"
+    image: "rabbitmq:3.11.2-management-alpine"
     container_name: "metadata_submitter_rabbitmq_dev"
     restart: on-failure
     environment:
@@ -75,8 +75,8 @@ services:
       - "5672:5672"
     volumes:
       - mq:/var/lib/rabbitmq
-      - ./scripts/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
-      - ./scripts/rabbitmq-definitions.json:/etc/rabbitmq/rabbitmq-definitions.json
+      - ./scripts/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+      - ./scripts/rabbitmq/rabbitmq-definitions.json:/etc/rabbitmq/rabbitmq-definitions.json
   mockauth:
     build:
       dockerfile: Dockerfile-dev
