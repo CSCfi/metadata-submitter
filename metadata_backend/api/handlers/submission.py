@@ -363,7 +363,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         data: List[Dict] = await req.json()
 
         if all("accessionId" in d and "version" in d for d in data):
-            # add status to
+            # set status to file as added
             data = [{**item, "status": "added"} for item in data]
             await file_operator.add_files_submission(data, submission_id)
             LOG.info("Adding files to submission with ID: %r was successful.", submission_id)

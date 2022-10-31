@@ -49,6 +49,9 @@ class FileOperator(BaseOperator):
 
         If a file with the same path already exists, add a new file version instead.
 
+        :raises: HTTPBadRequest if file creation in the db was not successful
+        :raises: HTTPInternalServerError if db operation failed because of connection
+        or other db issue
         :param file: file data as in the `file.json` schema
         :returns: Tuple of File id and file version
         """
@@ -80,9 +83,10 @@ class FileOperator(BaseOperator):
         If a file with the same path already exists, add a new file version instead.
 
         :param file: file data as in the `file.json` schema
+        :raises: HTTPInternalServerError if db operation failed because of connection
+        or other db issue
         :returns: Tuple of file accession id and file version
         """
-
         _projection = {
             "_id": 0,
             "accessionId": 1,
@@ -97,7 +101,7 @@ class FileOperator(BaseOperator):
                 accession_id = file_in_db["accessionId"]
                 file_in_db = file_in_db["currentVersion"]
 
-                # pass in list of versions, which returns the file version with the highest version number
+                # pass latest versions number
                 _current_version = file_in_db["version"]
                 file_version = _current_version + 1
                 version_data = self._from_version_template(file, file_version)
@@ -124,6 +128,9 @@ class FileOperator(BaseOperator):
         :param accession_id: Accession ID of the file to read
         :param version: version number to extract. Defaults to latest
         :raises: HTTPBadRequest if reading was not successful
+        :raises: HTTPNotFound if file not found
+        :raises: HTTPInternalServerError if db operation failed because of connection
+        or other db issue
         :returns: File object of the latest file version
         """
         aggregate_query = [
@@ -168,6 +175,8 @@ class FileOperator(BaseOperator):
         The files are read by the latest version, and filtered either by projectId.
 
         :param project_id: Project ID to get files for
+        :raises: HTTPInternalServerError if db operation failed because of connection
+        or other db issue
         :returns: List of files
         """
         aggregate_query = [
@@ -198,10 +207,11 @@ class FileOperator(BaseOperator):
 
         The files are identified in a submission by version.
 
-        :param submission_id: Submission ID to get files for
+        :param submission_id: Submission ID to read files associated with a submission
+        :raises: HTTPInternalServerError if db operation failed because of connection
+        or other db issue or db aggregate does not return a list
         :returns: List of files specific to a submission
         """
-        # TO_DO: add check for ready status
         aggregate_query = [
             {"$match": {"submissionId": submission_id}},
             {"$unwind": "$files"},
@@ -231,6 +241,8 @@ class FileOperator(BaseOperator):
         :param file_path: Path of the file to flag as deleted
         :param deleted: Whether file is marked as deleted, set to `False` to mark a file as available again
         :raises: HTTPBadRequest if deleting was not successful
+        :raises: HTTPInternalServerError if db operation failed because of connection
+        or other db issue
         """
         try:
             delete_success = await self.db_service.update_by_key_value(
@@ -239,7 +251,7 @@ class FileOperator(BaseOperator):
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while flagging file as deleted, err: {error}"
             LOG.exception(reason)
-            raise web.HTTPBadRequest(reason=reason) from error
+            raise web.HTTPInternalServerError(reason=reason) from error
         if not delete_success:
             reason = f"Flagging file with '{file_path}' as deleted failed."
             LOG.error(reason)
