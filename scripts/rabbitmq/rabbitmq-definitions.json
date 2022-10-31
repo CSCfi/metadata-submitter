@@ -1,8 +1,8 @@
 {
-    "rabbit_version": "3.11.1",
-    "rabbitmq_version": "3.11.1",
+    "rabbit_version": "3.11.2",
+    "rabbitmq_version": "3.11.2",
     "product_name": "RabbitMQ",
-    "product_version": "3.11.1",
+    "product_version": "3.11.2",
     "users": [
         {
             "name": "admin",

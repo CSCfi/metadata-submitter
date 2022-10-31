@@ -77,13 +77,13 @@ services:
     volumes:
       - data:/data/db
       - ./config:/tls
-      - ./scripts/init_mongo.js:/docker-entrypoint-initdb.d/init_mongo.js:ro
+      - ./scripts/mongodb/init_mongo.js:/docker-entrypoint-initdb.d/init_mongo.js:ro
     expose:
       - 27017
     ports:
       - "27017:27017"
   messagebroker:
-    image: "rabbitmq:3.11.1-management-alpine"
+    image: "rabbitmq:3.11.2-management-alpine"
     container_name: "metadata_submitter_rabbitmq_dev"
     restart: on-failure
     environment:
@@ -99,8 +99,8 @@ services:
     volumes:
       - mq:/var/lib/rabbitmq
       - ./config/mq:/tls
-      - ./scripts/rabbitmq-tls.conf:/etc/rabbitmq/rabbitmq-tls.conf
-      - ./scripts/rabbitmq-definitions.json:/etc/rabbitmq/rabbitmq-definitions.json
+      - ./scripts/rabbitmq/rabbitmq-tls.conf:/etc/rabbitmq/rabbitmq-tls.conf
+      - ./scripts/rabbitmq/rabbitmq-definitions.json:/etc/rabbitmq/rabbitmq-definitions.json
   mockauth:
     build:
       dockerfile: Dockerfile-dev

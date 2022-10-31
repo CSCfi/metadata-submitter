@@ -53,7 +53,7 @@ jobs:
         sleep 30
 
     - name: Create TLS keys and certificates
-      run: ./scripts/tls_helper.sh
+      run: ./scripts/tls/tls_helper.sh
 
     - name: Start services with TLS enabled
       run: |

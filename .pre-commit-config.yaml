@@ -97,7 +97,7 @@ repos:
     hooks:
     - id: sort
       name: sort dictionary
-      entry: ./scripts/sort.sh
+      entry: ./scripts/dictionary/sort.sh
       language: script
       files: ^(docs|.*md)
       require_serial: true
@@ -117,7 +117,7 @@ repos:
 
     - id: pyspelling-docs
       name: pyspelling-docs
-      entry: ./scripts/pyspelling.sh
+      entry: ./scripts/dictionary/pyspelling.sh
       language: script
       args: [markdown]
       types_or: [markdown, rst]
@@ -125,7 +125,7 @@ repos:
 
     - id: pyspelling-schemas
       name: pyspelling-schemas
-      entry: ./scripts/pyspelling.sh
+      entry: ./scripts/dictionary/pyspelling.sh
       language: script
       args: [json-schemas]
       files: ^metadata_backend/helpers/schemas/
