@@ -71,7 +71,7 @@ jobs:
         run: docker kill ms && sleep 20
 
       - name: Create TLS keys and certificates
-        run: ./scripts/tls_helper.sh
+        run: ./scripts/tls/tls_helper.sh
 
       - name: Start production container with TLS
         run: |
