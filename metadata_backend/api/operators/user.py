@@ -3,20 +3,32 @@ from typing import Dict, List, Tuple, Union
 
 import aiohttp_session
 from aiohttp import web
+from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import ConnectionFailure, OperationFailure
 
+from ...conf.conf import mongo_database
+from ...database.db_service import DBService
 from ...helpers.logger import LOG
 from ...helpers.validator import JSONValidator
-from .base import BaseOperator
+from .common import _generate_accession_id
 from .object import ObjectOperator
 from .submission import SubmissionOperator
 
 
-class UserOperator(BaseOperator):
+class UserOperator:
     """ObjectOperator class for handling database operations of users.
 
     Operations are implemented with JSON format.
     """
+
+    def __init__(self, db_client: AsyncIOMotorClient) -> None:
+        """Init db_service.
+
+        :param db_client: Motor client used for database connections. Should be
+        running on same loop with aiohttp, so needs to be passed from aiohttp
+        Application.
+        """
+        self.db_service = DBService(mongo_database, db_client)
 
     async def check_user_has_doc(
         self, req: web.Request, collection: str, user_id: str, accession_id: str
@@ -98,7 +110,7 @@ class UserOperator(BaseOperator):
                 return existing_user_id
 
             user_data["projects"] = data["projects"]
-            user_data["userId"] = user_id = self._generate_accession_id()
+            user_data["userId"] = user_id = _generate_accession_id()
             user_data["name"] = data["real_name"]
             user_data["externalId"] = data["user_id"]
             JSONValidator(user_data, "users")

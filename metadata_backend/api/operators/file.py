@@ -4,10 +4,13 @@ from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
 from aiohttp import web
+from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import ConnectionFailure, OperationFailure
 
+from ...conf.conf import mongo_database
+from ...database.db_service import DBService
 from ...helpers.logger import LOG
-from .base import BaseOperator
+from .common import _generate_accession_id
 
 
 @dataclass
@@ -24,8 +27,17 @@ class File:
     unencrypted_checksums: List[Dict[str, str]]
 
 
-class FileOperator(BaseOperator):
+class FileOperator:
     """FileOperator class for handling database operations of files."""
+
+    def __init__(self, db_client: AsyncIOMotorClient) -> None:
+        """Init db_service.
+
+        :param db_client: Motor client used for database connections. Should be
+        running on same loop with aiohttp, so needs to be passed from aiohttp
+        Application.
+        """
+        self.db_service = DBService(mongo_database, db_client)
 
     @staticmethod
     def _from_version_template(file: File, version: int) -> dict:
@@ -53,7 +65,7 @@ class FileOperator(BaseOperator):
         :returns: Tuple of File id and file version
         """
         try:
-            file_id = self._generate_accession_id()
+            file_id = _generate_accession_id()
             file_data = {
                 "accessionId": file_id,
                 "name": file.name,

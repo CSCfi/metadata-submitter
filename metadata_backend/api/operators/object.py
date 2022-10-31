@@ -2,7 +2,6 @@
 import re
 from datetime import datetime
 from typing import Any, Dict, List, Tuple, Union
-from uuid import uuid4
 
 from aiohttp import web
 from dateutil.relativedelta import relativedelta
@@ -13,6 +12,7 @@ from pymongo.errors import ConnectionFailure, OperationFailure
 from ...conf.conf import DATACITE_SCHEMAS, mongo_database, query_map
 from ...database.db_service import auto_reconnect
 from ...helpers.logger import LOG
+from .common import _generate_accession_id
 from .object_base import BaseObjectOperator
 
 
@@ -210,7 +210,7 @@ class ObjectOperator(BaseObjectOperator):
         :param data: Metadata object
         :returns: Metadata object with some additional keys/values
         """
-        accession_id = self._generate_accession_id()
+        accession_id = _generate_accession_id()
         data["accessionId"] = accession_id
         data["dateCreated"] = datetime.utcnow()
         data["dateModified"] = datetime.utcnow()
@@ -268,15 +268,6 @@ class ObjectOperator(BaseObjectOperator):
 
         LOG.debug("ObjectOperator formatted data for collection: %r to add to DB.", schema_type)
         return await self._update_object_from_db(schema_type, accession_id, data)
-
-    def _generate_accession_id(self) -> str:
-        """Generate random accession id.
-
-        Will be replaced later with external id generator.
-        """
-        sequence = uuid4().hex
-        LOG.debug("Generated accession ID.")
-        return sequence
 
     @auto_reconnect
     async def _format_read_data(

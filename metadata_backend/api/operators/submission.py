@@ -4,17 +4,29 @@ from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Union
 
 from aiohttp import web
+from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import ConnectionFailure, OperationFailure
 
+from ...conf.conf import mongo_database
+from ...database.db_service import DBService
 from ...helpers.logger import LOG
-from .base import BaseOperator
+from .common import _generate_accession_id
 
 
-class SubmissionOperator(BaseOperator):
+class SubmissionOperator:
     """ObjectOperator class for handling database operations of submissions.
 
     Operations are implemented with JSON format.
     """
+
+    def __init__(self, db_client: AsyncIOMotorClient) -> None:
+        """Init db_service.
+
+        :param db_client: Motor client used for database connections. Should be
+        running on same loop with aiohttp, so needs to be passed from aiohttp
+        Application.
+        """
+        self.db_service = DBService(mongo_database, db_client)
 
     async def get_submission_field(self, submission_id: str, field: str) -> Union[str, list, dict]:
         """Get a field from the submission.
@@ -159,7 +171,7 @@ class SubmissionOperator(BaseOperator):
         :raises: HTTPBadRequest if error occurs during the process of insert
         :returns: Submission id for the submission inserted to database
         """
-        submission_id = self._generate_accession_id()
+        submission_id = _generate_accession_id()
         _now = int(datetime.now().timestamp())
         data["submissionId"] = submission_id
         data["text_name"] = " ".join(re.split("[\\W_]", data["name"]))
