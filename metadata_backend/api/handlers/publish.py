@@ -516,6 +516,8 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         # Publish to external services - must already have DOI and Metax ID
         publish_status = {}
         datacite_study = {}
+        # check first if all the files are ready, if not return HTTPBadRequest
+        await file_operator.check_submission_files_ready(submission_id)
         if "messageBroker" in workflow.endpoints:
 
             files = await file_operator.read_submission_files(submission_id)

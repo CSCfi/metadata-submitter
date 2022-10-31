@@ -144,6 +144,7 @@ class HandlersTestCase(AioHTTPTestCase):
         }
         self.fileoperator_config = {
             "read_submission_files.side_effect": self.fake_read_submission_files,
+            "check_submission_files_ready.side_effect": self.fake_check_submission_files,
         }
 
         RESTAPIHandler._handle_check_ownership = make_mocked_coro(True)
@@ -258,6 +259,10 @@ class HandlersTestCase(AioHTTPTestCase):
     async def fake_read_submission_files(self, submission_id):
         """Fake read submission files."""
         return [self.projected_file_example]
+
+    async def fake_check_submission_files(self, submission_id):
+        """Fake check submission files."""
+        return True, []
 
 
 class APIHandlerTestCase(HandlersTestCase):
@@ -1063,8 +1068,6 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         class_xmloperator = "metadata_backend.api.handlers.publish.XMLObjectOperator"
         self.patch_xmloperator = patch(class_xmloperator, **self.xmloperator_config, spec=True)
         self.MockedXMLOperator = self.patch_xmloperator.start()
-
-        self._mq_connection = "metadata_backend.api.handlers.publish.MQPublisher"
 
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""

@@ -202,6 +202,46 @@ class FileOperator(BaseOperator):
             LOG.exception(reason)
             raise web.HTTPInternalServerError(reason=reason) from error
 
+    async def check_submission_files_ready(self, submission_id: str) -> None:
+        """Check all files in a submission are marked as ready.
+
+        Files marked as ready in a submission, means an metadata object has been
+        attached to the file.
+
+        :param submission_id: Submission ID to get associated files status
+        :raises: HTTPInternalServerError if db operation failed because of connection
+        or other db issue
+        """
+        aggregate_query = [
+            {"$match": {"submissionId": submission_id}},
+            {"$unwind": "$files"},
+            # check the status is not in failed or added
+            # failed can occour when an file ingestion/verification/mapping fails
+            {"$match": {"files.status": {"$in": ["added", "failed"]}}},
+            {
+                "$project": {
+                    "_id": 0,
+                    "accessionId": "$files.accessionId",
+                    "version": "$files.version",
+                    "status": "$files.status",
+                }
+            },
+        ]
+        try:
+            problematic_files = await self.db_service.do_aggregate("submission", aggregate_query)
+            if len(problematic_files) > 0:
+                reason = (
+                    f"There are a problematic files: {','.join([i['accessionId'] for i in problematic_files])} "
+                    f"in the submission with id: {submission_id}"
+                )
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+            LOG.debug("All files have been marked as ready")
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting submission, err: {error}"
+            LOG.exception(reason)
+            raise web.HTTPInternalServerError(reason=reason) from error
+
     async def read_submission_files(self, submission_id: str) -> List[Dict]:
         """Get files in a submission.
 
