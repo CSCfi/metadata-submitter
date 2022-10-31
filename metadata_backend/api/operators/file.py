@@ -215,6 +215,8 @@ class FileOperator(BaseOperator):
         aggregate_query = [
             {"$match": {"submissionId": submission_id}},
             {"$unwind": "$files"},
+            # we match only the files that have the status ready
+            {"$match": {"files.status": "ready"}},
             {"$project": {"_id": 0, "accessionId": "$files.accessionId", "version": "$files.version"}},
         ]
         files = []
