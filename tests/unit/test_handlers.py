@@ -2,7 +2,7 @@
 
 import time
 from pathlib import Path
-from unittest.mock import AsyncMock, call, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import aiohttp_session
 import ujson
@@ -83,13 +83,27 @@ class HandlersTestCase(AioHTTPTestCase):
             ],
             "drafts": [],
             "doiInfo": {"creators": [{"name": "Creator, Test"}]},
+            "files": [{"accessionId": "file1", "version": 1, "status": "added"}],
         }
         self.user_id = "USR12345678"
         self.test_user = {
             "userId": self.user_id,
             "name": "tester",
         }
-
+        self.projected_file_example = {
+            "accessionId": "file1",
+            "name": "file1",
+            "path": "bucketname/file1",
+            "project": "project1",
+            "encrypted_checksums": [
+                {"type": "sha256", "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d6"},
+                {"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b48"},
+            ],
+            "unencrypted_checksums": [
+                {"type": "sha256", "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d6"},
+                {"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b48"},
+            ],
+        }
         self._draft_doi_data = {
             "identifier": {
                 "identifierType": "DOI",
@@ -127,6 +141,9 @@ class HandlersTestCase(AioHTTPTestCase):
         self.useroperator_config = {
             "create_user.side_effect": self.fake_useroperator_create_user,
             "read_user.side_effect": self.fake_useroperator_read_user,
+        }
+        self.fileoperator_config = {
+            "read_submission_files.side_effect": self.fake_read_submission_files,
         }
 
         RESTAPIHandler._handle_check_ownership = make_mocked_coro(True)
@@ -238,6 +255,10 @@ class HandlersTestCase(AioHTTPTestCase):
         """Fake read operation to return mocked user."""
         return self.test_user
 
+    async def fake_read_submission_files(self, submission_id):
+        """Fake read submission files."""
+        return [self.projected_file_example]
+
 
 class APIHandlerTestCase(HandlersTestCase):
     """Schema API endpoint class test cases."""
@@ -302,7 +323,7 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
         self.patch_parser = patch(class_parser, spec=True)
         self.MockedParser = self.patch_parser.start()
 
-        class_xmloperator = "metadata_backend.api.handlers.xml_submission.XMLOperator"
+        class_xmloperator = "metadata_backend.api.handlers.xml_submission.XMLObjectOperator"
         self.patch_xmloperator = patch(class_xmloperator, **self.xmloperator_config, spec=True)
         self.MockedXMLOperator = self.patch_xmloperator.start()
 
@@ -406,11 +427,11 @@ class ObjectHandlerTestCase(HandlersTestCase):
         """
         await super().setUpAsync()
 
-        class_xmloperator = "metadata_backend.api.handlers.object.XMLOperator"
+        class_xmloperator = "metadata_backend.api.handlers.object.XMLObjectOperator"
         self.patch_xmloperator = patch(class_xmloperator, **self.xmloperator_config, spec=True)
         self.MockedXMLOperator = self.patch_xmloperator.start()
 
-        class_operator = "metadata_backend.api.handlers.object.Operator"
+        class_operator = "metadata_backend.api.handlers.object.ObjectOperator"
         self.patch_operator = patch(class_operator, **self.operator_config, spec=True)
         self.MockedOperator = self.patch_operator.start()
 
@@ -431,7 +452,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         self.patch_operator.stop()
 
     async def test_submit_object_works(self):
-        """Test that submission is handled, XMLOperator is called."""
+        """Test that submission is handled, XMLObjectOperator is called."""
         files = [("study", "SRP000539.xml")]
         data = self.create_submission_data(files)
         with patch(
@@ -618,7 +639,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
             self.MockedOperator().replace_metadata_object.assert_called_once()
 
     async def test_put_draft_works_with_xml(self):
-        """Test that put XML submisssion is handled, XMLOperator is called."""
+        """Test that put XML submisssion is handled, XMLObjectOperator is called."""
         files = [("study", "SRP000539.xml")]
         data = self.create_submission_data(files)
         call = f"{API_PREFIX}/drafts/study/EGA123456"
@@ -822,11 +843,11 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         self.patch_useroperator = patch(class_useroperator, **self.useroperator_config, spec=True)
         self.MockedUserOperator = self.patch_useroperator.start()
 
-        class_operator = "metadata_backend.api.handlers.submission.Operator"
+        class_operator = "metadata_backend.api.handlers.submission.ObjectOperator"
         self.patch_operator = patch(class_operator, **self.operator_config, spec=True)
         self.MockedOperator = self.patch_operator.start()
 
-        class_xmloperator = "metadata_backend.api.handlers.submission.XMLOperator"
+        class_xmloperator = "metadata_backend.api.handlers.submission.XMLObjectOperator"
         self.patch_xmloperator = patch(class_xmloperator, **self.xmloperator_config, spec=True)
         self.MockedXMLOperator = self.patch_xmloperator.start()
 
@@ -1013,11 +1034,15 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         self.patch_submissionoperator = patch(class_submissionoperator, **self.submissionoperator_config, spec=True)
         self.MockedSubmissionOperator = self.patch_submissionoperator.start()
 
-        class_operator = "metadata_backend.api.handlers.publish.Operator"
+        class_fileoperator = "metadata_backend.api.handlers.publish.FileOperator"
+        self.patch_fileoperator = patch(class_fileoperator, **self.fileoperator_config, spec=True)
+        self.MockedFileOperator = self.patch_fileoperator.start()
+
+        class_operator = "metadata_backend.api.handlers.publish.ObjectOperator"
         self.patch_operator = patch(class_operator, **self.operator_config, spec=True)
         self.MockedOperator = self.patch_operator.start()
 
-        class_xmloperator = "metadata_backend.api.handlers.publish.XMLOperator"
+        class_xmloperator = "metadata_backend.api.handlers.publish.XMLObjectOperator"
         self.patch_xmloperator = patch(class_xmloperator, **self.xmloperator_config, spec=True)
         self.MockedXMLOperator = self.patch_xmloperator.start()
 
@@ -1027,6 +1052,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         """Cleanup mocked stuff."""
         await super().tearDownAsync()
         self.patch_submissionoperator.stop()
+        self.patch_fileoperator.stop()
         self.patch_operator.stop()
         self.patch_xmloperator.stop()
 
@@ -1046,7 +1072,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         ), self.p_get_sess_restapi:
             # we are not going to test the MQ connection here
             # thus we don't need to return anything just pass this
-            with patch(f"{self._mq_connection}.send_message", return_value=None):
+            with patch("metadata_backend.message_broker.mq_service.Connection", return_value=MagicMock()):
                 response = await self.client.patch(f"{API_PREFIX}/publish/FOL12345678")
                 json_resp = await response.json()
                 self.assertEqual(response.status, 200)

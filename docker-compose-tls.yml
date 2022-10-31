@@ -60,8 +60,8 @@ services:
       - "BROKER_SSL=True"
       - "BROKER_HOST=${BROKER_HOST}"
       - "BROKER_PORT=${BROKER_PORT_SSL}"
-      - "BROKER_USER=${RABBITMQ_USERNAME}"
-      - "BROKER_PASSWORD=${RABBITMQ_PASSWORD}"
+      - "BROKER_USERNAME=${BROKER_USERNAME}"
+      - "BROKER_PASSWORD=${BROKER_PASSWORD}"
       - "BROKER_CA=${BROKER_CA}"
       - "BROKER_MANAGEMENT_PORT=${BROKER_MANAGEMENT_PORT_SSL}"
       - "BROKER_SSL_CLIENTKEY=${BROKER_SSL_CLIENTKEY}"
@@ -87,8 +87,8 @@ services:
     container_name: "metadata_submitter_rabbitmq_dev"
     restart: on-failure
     environment:
-      - "RABBITMQ_DEFAULT_USER=${RABBITMQ_USERNAME}"
-      - "RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}"
+      - "RABBITMQ_DEFAULT_USER=${BROKER_USERNAME}"
+      - "RABBITMQ_DEFAULT_PASS=${BROKER_PASSWORD}"
       - RABBITMQ_CONFIG_FILE=/etc/rabbitmq/rabbitmq-tls.conf
     expose:
       - 5671

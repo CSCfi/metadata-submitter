@@ -1,13 +1,15 @@
 """Handle HTTP methods for server."""
 import json
 from math import ceil
-from typing import AsyncIterator, Dict, Iterator, List, Tuple, Union
+from typing import AsyncIterator, Dict, Iterator, List, Optional, Tuple, Union
 
 import aiohttp_session
 import ujson
 from aiohttp import web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
+
+from metadata_backend.message_broker.mq_service import MQPublisher
 
 from ...conf.conf import WORKFLOWS, schema_types
 from ...helpers.logger import LOG
@@ -16,7 +18,7 @@ from ...helpers.workflow import Workflow
 from ...services.datacite_service_handler import DataciteServiceHandler
 from ...services.metax_service_handler import MetaxServiceHandler
 from ...services.rems_service_handler import RemsServiceHandler
-from ..operators.object import Operator
+from ..operators.object import ObjectOperator
 from ..operators.submission import SubmissionOperator
 from ..operators.user import UserOperator
 
@@ -130,7 +132,7 @@ class RESTAPIHandler:
             raise web.HTTPBadRequest(reason=reason)
 
     @staticmethod
-    async def _json_response(data: Union[Dict, List[Dict]]) -> Response:
+    def _json_response(data: Union[Dict, List[Dict]]) -> Response:
         """Reusable json response, serializing data with ujson.
 
         :param data: Data to be serialized and made into HTTP 200 response
@@ -148,7 +150,7 @@ class RESTAPIHandler:
         """
         data = [x["description"] for x in schema_types.values()]
         LOG.info("GET schema types. Retrieved %d schemas.", len(schema_types))
-        return await self._json_response(data)
+        return self._json_response(data)
 
     async def get_json_schema(self, req: Request) -> Response:
         """Get all JSON Schema for a specific schema type.
@@ -168,7 +170,7 @@ class RESTAPIHandler:
             else:
                 schema = JSONSchemaLoader().get_schema(schema_type)
             LOG.info("%s JSON schema loaded.", schema_type)
-            return await self._json_response(schema)
+            return self._json_response(schema)
 
         except SchemaNotFoundException as error:
             reason = f"{error} Occured for JSON schema: '{schema_type}'."
@@ -184,7 +186,7 @@ class RESTAPIHandler:
         """
         LOG.info("GET workflows. Retrieved %d workflows.", len(WORKFLOWS))
         response = {workflow.name: workflow.description for workflow in WORKFLOWS.values()}
-        return await self._json_response(response)
+        return self._json_response(response)
 
     async def get_workflow_request(self, req: Request) -> Response:
         """Get a single workflow definition by name.
@@ -196,7 +198,7 @@ class RESTAPIHandler:
         workflow_name = req.match_info["workflow"]
         LOG.info("GET workflow: %r.", workflow_name)
         workflow = self.get_workflow(workflow_name)
-        return await self._json_response(workflow.workflow)
+        return self._json_response(workflow.workflow)
 
     def get_workflow(self, workflow_name: str) -> Workflow:
         """Get a single workflow definition by name.
@@ -246,12 +248,12 @@ class RESTAPIHandler:
             yield accession_id, schema
 
     async def iter_submission_objects_data(
-        self, submission: dict, obj_op: Operator
+        self, submission: dict, obj_op: ObjectOperator
     ) -> AsyncIterator[Tuple[str, str, dict]]:
         """Iterate over a submission's objects and retrieve their data.
 
         :param submission: Submission data
-        :param obj_op: Object Operator
+        :param obj_op: Object ObjectOperator
 
         yields accession_id, schema, object_data
         """
@@ -273,11 +275,14 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
         metax_handler: MetaxServiceHandler,
         datacite_handler: DataciteServiceHandler,
         rems_handler: RemsServiceHandler,
+        mq_publisher: Optional[MQPublisher] = None,
     ) -> None:
         """Endpoints should have access to metax and datacite services."""
         self.metax_handler = metax_handler
         self.datacite_handler = datacite_handler
         self.rems_handler = rems_handler
+        if mq_publisher:
+            self.mq_publisher = mq_publisher
 
     @staticmethod
     async def get_user_external_id(request: web.Request) -> str:
@@ -293,14 +298,14 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
         metadata_provider_user = user["externalId"]
         return metadata_provider_user
 
-    async def create_metax_dataset(self, obj_op: Operator, collection: str, obj: Dict, external_id: str) -> str:
+    async def create_metax_dataset(self, obj_op: ObjectOperator, collection: str, obj: Dict, external_id: str) -> str:
         """Handle connection to Metax api handler for dataset creation.
 
         Dataset or Study object is assigned with DOI
         and it's data is sent to Metax api handler.
         Object database entry is updated with metax ID returned by Metax service.
 
-        :param obj_op: Object Operator
+        :param obj_op: Object ObjectOperator
         :param collection: object's schema
         :param obj: metadata object
         :param external_id: user id
