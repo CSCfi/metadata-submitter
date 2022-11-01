@@ -242,12 +242,13 @@ class FileOperator(BaseOperator):
             LOG.exception(reason)
             raise web.HTTPInternalServerError(reason=reason) from error
 
-    async def read_submission_files(self, submission_id: str) -> List[Dict]:
+    async def read_submission_files(self, submission_id: str, expected_status: Optional[List] = None) -> List[Dict]:
         """Get files in a submission.
 
         The files are identified in a submission by version.
 
         :param submission_id: Submission ID to read files associated with a submission
+        :param expected_status: List of expected statuses (can be one or more statuses)
         :raises: HTTPInternalServerError if db operation failed because of connection
         or other db issue or db aggregate does not return a list
         :returns: List of files specific to a submission
@@ -255,10 +256,14 @@ class FileOperator(BaseOperator):
         aggregate_query = [
             {"$match": {"submissionId": submission_id}},
             {"$unwind": "$files"},
-            # we match only the files that have the status ready
-            {"$match": {"files.status": "ready"}},
             {"$project": {"_id": 0, "accessionId": "$files.accessionId", "version": "$files.version"}},
         ]
+        if expected_status:
+            # we match only the files that have a specific status
+            aggregate_query.insert(
+                2,
+                {"$match": {"files.status": {"$in": expected_status}}},
+            )
         files = []
         try:
             submission_files = await self.db_service.do_aggregate("submission", aggregate_query)

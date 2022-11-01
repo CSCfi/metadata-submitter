@@ -256,7 +256,7 @@ class HandlersTestCase(AioHTTPTestCase):
         """Fake read operation to return mocked user."""
         return self.test_user
 
-    async def fake_read_submission_files(self, submission_id):
+    async def fake_read_submission_files(self, submission_id, status_list):
         """Fake read submission files."""
         return [self.projected_file_example]
 
