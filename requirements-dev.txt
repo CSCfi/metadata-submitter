@@ -150,7 +150,7 @@ mccabe==0.7.0
     # via
     #   flake8
     #   pylint
-motor==3.0.0
+motor==3.1.1
     # via -r requirements.txt
 multidict==6.0.2
     # via
