@@ -53,7 +53,7 @@ idna==3.4
     #   yarl
 jsonschema==4.16.0
     # via -r requirements.in
-motor==3.0.0
+motor==3.1.1
     # via -r requirements.in
 multidict==6.0.2
     # via
