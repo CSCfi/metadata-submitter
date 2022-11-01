@@ -1,5 +1,5 @@
 #=======================
-FROM node:16-alpine as BUILD-FRONTEND
+FROM node:19-alpine as BUILD-FRONTEND
 #=======================
 
 RUN apk add --update \
