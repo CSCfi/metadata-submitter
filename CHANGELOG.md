@@ -80,6 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactor `Operator` -> `ObjectOperator` #627
 - Refactor `xml_object.py` -> `object_xml.py` #627
 - Refactor operators to use a common base class called `BaseOperator` #627
+- XML validation errors now compile all the failing elements into same error message and include the line number in the error reason #630
 
 ### Removed
 
