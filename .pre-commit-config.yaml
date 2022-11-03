@@ -73,7 +73,7 @@ repos:
       files: docs/specification.yml
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.18.3
+    rev: 0.18.4
     hooks:
       - id: check-metaschema
         name: Validate schemas
