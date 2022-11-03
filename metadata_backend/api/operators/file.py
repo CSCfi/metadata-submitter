@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
+import ujson
 from aiohttp import web
 from pymongo.errors import ConnectionFailure, OperationFailure
 
@@ -235,7 +236,11 @@ class FileOperator(BaseOperator):
                     f"in the submission with id: {submission_id}"
                 )
                 LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
+                raise web.HTTPBadRequest(
+                    reason=reason,
+                    text=ujson.dumps({"problematic-files": problematic_files}),
+                    content_type="application/json",
+                )
             LOG.debug("All files have been marked as ready")
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting submission, err: {error}"
