@@ -114,16 +114,25 @@ def _json_problem(exception: web.HTTPError, url: URL, _type: str = "about:blank"
     :param _type: Url to a document describing the error
     :returns: Problem detail JSON object as a string
     """
+    _problem = {
+        # Replace type value with an URL to
+        # a custom error document when one exists
+        "type": _type,
+        "title": HTTPStatus(exception.status).phrase,
+        "detail": exception.reason,
+        "status": exception.status,
+        "instance": url.path,  # optional
+    }
+    # we require the additional members to be sent as dict
+    # so that we can easily append them to preformated response
+    if exception.text != exception.reason and exception.content_type == "application/json":
+        # we use the content to append to extend application/problem+json
+        # response, with additional members
+        # typecasting necessary for mypy
+        _problem.update(ujson.loads(str(exception.text)))
+
     body = ujson.dumps(
-        {
-            # Replace type value with an URL to
-            # a custom error document when one exists
-            "type": _type,
-            "title": HTTPStatus(exception.status).phrase,
-            "detail": exception.reason,
-            "status": exception.status,
-            "instance": url.path,  # optional
-        },
+        _problem,
         escape_forward_slashes=False,
     )
     return body
