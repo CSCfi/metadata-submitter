@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
 ### Added
 - `lastModified` to folder to keep track when a folder or the objects in a folder change and be able to filter via the `lastModified`
 - connection checking and `retry`-mechanism for calls to Metax-service in case of server and connection errors
@@ -43,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - File operator that does database operations for files #148
 - Mongo indexes for `file` schema #148
 - `/files` endpoint to retrieve files attached to a project #148 #627
+- option to add additional members to `application/problem+json` #642
 
 ### Changed
 - schema loader now matches schema files by exact match with schema #481. This means that schema file naming in metadata_backend/helpers/schemas now have rules:
