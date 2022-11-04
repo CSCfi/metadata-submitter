@@ -29,8 +29,8 @@ from tests.integration.helpers import (
     post_submission,
     post_template_json,
     publish_submission,
-    put_submission_dac,
     put_submission_doi,
+    put_submission_rems,
 )
 
 LOG = logging.getLogger(__name__)
@@ -135,8 +135,8 @@ class TestUsers:
         doi_data_raw = await create_request_json_data("doi", "test_doi.json")
         await put_submission_doi(client_logged_in, publish_submission_id, doi_data_raw)
 
-        dac_data = await create_request_json_data("dac", "dac_rems.json")
-        await put_submission_dac(client_logged_in, publish_submission_id, dac_data)
+        rems_data = await create_request_json_data("dac", "dac_rems.json")
+        await put_submission_rems(client_logged_in, publish_submission_id, rems_data)
 
         # add a study and dataset for publishing a submission
         await post_object_json(client_logged_in, "study", publish_submission_id, "SRP000539.json")

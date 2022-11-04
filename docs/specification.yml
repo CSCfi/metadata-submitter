@@ -1361,11 +1361,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/405MethodNotAllowed"
-  /v1/submissions/{submissionId}/dac:
+  /v1/submissions/{submissionId}/rems:
     put:
       tags:
         - Manage
-      summary: Update DAC for the submission with a specified submission ID.
+      summary: Update REMS (DAC) for the submission with a specified submission ID.
       parameters:
         - name: submissionId
           in: path
@@ -1377,7 +1377,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/DAC"
+              $ref: "#/components/schemas/REMS_DAC"
       responses:
         200:
           description: OK
@@ -2842,7 +2842,7 @@ components:
             type: object
           type: array
           uniqueItems: true
-    DAC:
+    REMS_DAC:
       type: object
       required:
         - workflowId
