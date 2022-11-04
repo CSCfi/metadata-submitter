@@ -300,15 +300,16 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         else:
             raise web.HTTPNotFound(reason=f"'{req.path}' does not exist")
 
-        submission[schema] = data
-        JSONValidator(submission, "submission").validate
-
         op = "add"
         if schema in submission:
             op = "replace"
         patch = [
             {"op": op, "path": f"/{schema}", "value": data},
         ]
+
+        submission[schema] = data
+        JSONValidator(submission, "submission").validate
+
         upd_submission = await operator.update_submission(submission_id, patch)
 
         body = ujson.dumps({"submissionId": upd_submission}, escape_forward_slashes=False)
