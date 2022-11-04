@@ -12,8 +12,8 @@ from tests.integration.helpers import (
     publish_submission,
     put_object_json,
     put_object_xml,
-    put_submission_dac,
     put_submission_doi,
+    put_submission_rems,
 )
 
 LOG = logging.getLogger(__name__)
@@ -39,8 +39,8 @@ async def test_metax_id_created(client_logged_in, submission_fega):
 
     doi_data_raw = await create_request_json_data("doi", "test_doi.json")
     await put_submission_doi(client_logged_in, submission_fega, doi_data_raw)
-    # dac_data = await create_request_json_data("dac", "dac_rems.json")
-    # await put_submission_dac(client_logged_in, submission_fega, dac_data)
+    # rems_data = await create_request_json_data("dac", "dac_rems.json")
+    # await put_submission_rems(client_logged_in, submission_fega, rems_data)
     await post_object_json(client_logged_in, "run", submission_fega, "ERR000076.json")
     await publish_submission(client_logged_in, submission_fega)
 
@@ -190,8 +190,8 @@ async def test_metax_publish_dataset(client_logged_in, submission_fega):
     # Add DOI and publish the submission
     doi_data_raw = await create_request_json_data("doi", "test_doi.json")
     await put_submission_doi(client_logged_in, submission_fega, doi_data_raw)
-    dac_data = await create_request_json_data("dac", "dac_rems.json")
-    await put_submission_dac(client_logged_in, submission_fega, dac_data)
+    rems_data = await create_request_json_data("dac", "dac_rems.json")
+    await put_submission_rems(client_logged_in, submission_fega, rems_data)
     await post_object_json(client_logged_in, "run", submission_fega, "ERR000076.json")
     await publish_submission(client_logged_in, submission_fega)
 
@@ -286,8 +286,8 @@ async def test_metax_publish_dataset(client_logged_in, submission_fega):
 #         # Add DOI and publish the submission
 #         doi_data_raw = await create_request_json_data("doi", "test_doi.json")
 #         await put_submission_doi(client_logged_in, submission_fega, doi_data_raw)
-#         dac_data = await create_request_json_data("dac", "dac_rems.json")
-#         await put_submission_dac(client_logged_in, submission_fega, dac_data)
+#         rems_data = await create_request_json_data("dac", "dac_rems.json")
+#         await put_submission_rems(client_logged_in, submission_fega, rems_data)
 #         await publish_submission(client_logged_in, submission_fega)
 #
 #         for schema, accession_id in objects:

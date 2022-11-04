@@ -7,8 +7,8 @@ from tests.integration.helpers import (
     post_object,
     post_object_json,
     publish_submission,
-    put_submission_dac,
     put_submission_doi,
+    put_submission_rems,
 )
 
 
@@ -30,8 +30,8 @@ class TestBigPicture:
         doi_data_raw = await create_request_json_data("doi", "test_doi.json")
         await put_submission_doi(client_logged_in, submission_bigpicture, doi_data_raw)
 
-        dac_data = await create_request_json_data("dac", "dac_rems.json")
-        await put_submission_dac(client_logged_in, submission_bigpicture, dac_data)
+        rems_data = await create_request_json_data("dac", "dac_rems.json")
+        await put_submission_rems(client_logged_in, submission_bigpicture, rems_data)
 
         await publish_submission(client_logged_in, submission_bigpicture)
 

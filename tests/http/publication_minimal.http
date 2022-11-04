@@ -68,7 +68,7 @@ PUT {{backend_url}}/v1/submissions/{{submission_id}}/doi
 < ../test_files/doi/test_doi.json
 
 ### Update DAC in submission
-PUT {{backend_url}}/v1/submissions/{{submission_id}}/dac
+PUT {{backend_url}}/v1/submissions/{{submission_id}}/rems
 
 < ../test_files/dac/dac_rems.json
 
