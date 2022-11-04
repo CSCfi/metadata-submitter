@@ -264,14 +264,14 @@ class DBService:
         return result.acknowledged
 
     @auto_reconnect
-    async def remove(self, collection: str, accession_id: str, data_to_be_removed: Union[str, Dict]) -> bool:
+    async def remove(self, collection: str, accession_id: str, data_to_be_removed: Union[str, Dict]) -> dict:
         """Remove element of object by its accessionId.
 
         :param collection: Collection where document should be searched from
         :param accession_id: ID of the object/submission/user to be updated
         :param data_to_be_removed: str or JSON representing the data that should be
         updated to removed.
-        :returns: True if operation was successful
+        :returns: JSON after remove if operaation was successful
         """
         id_key = self._get_id_key(collection)
         find_by_id = {id_key: accession_id}
@@ -280,7 +280,7 @@ class DBService:
             find_by_id, remove_op, projection={"_id": False}, return_document=ReturnDocument.AFTER
         )
         LOG.debug(
-            "DB doc in collection: %r with data: %r removed the accesion ID: %r.",
+            "DB doc in collection: %r with data: %r removed the accession ID: %r.",
             collection,
             data_to_be_removed,
             accession_id,
@@ -290,7 +290,7 @@ class DBService:
     @auto_reconnect
     async def append(
         self, collection: str, accession_id: str, data_to_be_addded: Union[str, Dict], upsert: bool = False
-    ) -> bool:
+    ) -> dict:
         """Append data by to object with accessionId in collection.
 
         :param collection: Collection where document should be searched from
@@ -298,7 +298,7 @@ class DBService:
         :param data_to_be_addded: str or JSON representing the data that should be
         updated to removed.
         :param upsert: If the document does not exist add it
-        :returns: True if operation was successful
+        :returns: JSON after remove if operaation was successful
         """
         id_key = self._get_id_key(collection)
         find_by_id = {id_key: accession_id}
