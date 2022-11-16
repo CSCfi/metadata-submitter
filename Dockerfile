@@ -43,7 +43,8 @@ RUN pip install --upgrade pip pyyaml && \
 FROM python:3.8-alpine3.15
 #=======================
 
-RUN apk add --no-cache --update libstdc++
+RUN apk add --update \
+    && apk add --no-cache libstdc++
 
 LABEL maintainer="CSC Developers"
 LABEL org.label-schema.schema-version="1.0"
