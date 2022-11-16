@@ -284,7 +284,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
         self,
         data: ElementData,
         xsd_element: XsdElement,
-        xsd_type: XsdType = None,
+        xsd_type: Optional[XsdType] = None,
         level: int = 0,  # this is required for XMLSchemaConverter
     ) -> Union[Dict, List, str, None]:
         """Decode XML to JSON.

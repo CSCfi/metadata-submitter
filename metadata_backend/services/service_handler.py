@@ -50,9 +50,9 @@ class ServiceHandler(ABC):
     def __init__(
         self,
         base_url: URL,
-        auth: BasicAuth = None,
-        http_client_timeout: ClientTimeout = None,
-        http_client_headers: dict = None,
+        auth: Optional[BasicAuth] = None,
+        http_client_timeout: Optional[ClientTimeout] = None,
+        http_client_headers: Optional[dict] = None,
     ) -> None:
         """Create an instance with db_client and aiohttp client attached.
 
@@ -102,10 +102,10 @@ class ServiceHandler(ABC):
     async def _request(
         self,
         method: str = "GET",
-        url: URL = None,
+        url: Optional[URL] = None,
         path: str = "",
-        params: Union[str, dict] = None,
-        json_data: Union[Dict, List[Dict]] = None,
+        params: Optional[Union[str, dict]] = None,
+        json_data: Optional[Union[Dict, List[Dict]]] = None,
         timeout: int = 10,
     ) -> Union[dict, str]:
         """Request to service REST API.
