@@ -104,7 +104,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Published submissions and its objects cannot be altered #584
 - Incorrectly marking a workflow schema as required because its step is required #591
 - Incorrectly marking a workflow schema as required when it appears in the `requires` field of a schema that is not required #591
-- deprecated syntax in github publish action for `::set-output`
+- deprecated syntax in github publish action for `::set-output` and better default param. Dockerfile fix for github actions
 - mypy complaining about default values `None` in service handler
 
 ## [0.13.1] - 2022-05-31
