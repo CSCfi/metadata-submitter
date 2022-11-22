@@ -428,9 +428,11 @@ class XMLToJSONParser:
                 return [{title: i} for i in item]
             return [{title: item}] if isinstance(item, dict) else []
 
-        # Separate biological beings, specimen, blocks and slides from the data that was extracted from the XML
+        # Separate biological beings, cases, specimen, blocks and slides from the data that was extracted from the XML
         bio_beings = data["biologicalBeing"] if "biologicalBeing" in data else []
         bio_beings = _separate_samples(bio_beings, "biologicalBeing")
+        cases = data["case"] if "case" in data else []
+        cases = _separate_samples(cases, "case")
         specimens = data["specimen"] if "specimen" in data else []
         specimens = _separate_samples(specimens, "specimen")
         blocks = data["block"] if "block" in data else []
@@ -439,7 +441,7 @@ class XMLToJSONParser:
         slides = _separate_samples(slides, "slide")
 
         # Return all samples as an array under bpsample schema name
-        samples: List[Dict] = bio_beings + specimens + blocks + slides
+        samples: List[Dict] = bio_beings + cases + specimens + blocks + slides
         return {"bpsample": samples}
 
 

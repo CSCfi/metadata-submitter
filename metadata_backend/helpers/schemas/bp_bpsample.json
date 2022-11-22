@@ -126,6 +126,38 @@
             "type": "object",
             "additionalProperties": false,
             "properties": {
+                "case": {
+                    "title": "Case Type",
+                    "description": "A pathological case that references one biological being.",
+                    "type": "object",
+                    "required": [
+                        "alias",
+                        "biologicalBeing"
+                    ],
+                    "properties": {
+                        "alias": {
+                            "title": "Alias Type",
+                            "type": "string"
+                        },
+                        "biologicalBeing": {
+                            "title": "Biological Being Type",
+                            "description": "Identifies the biological being the case is for.",
+                            "type": "object",
+                            "properties": {
+                                "refname": {
+                                    "title": "Reference name",
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
                 "specimen": {
                     "title": "Specimen Type",
                     "description": "A removed part of a human/animal being.",
@@ -204,8 +236,8 @@
                     "type": "object",
                     "required": [
                         "alias",
-                        "attributes",
-                        "createdFrom"
+                        "createdFrom",
+                        "stainingInformation"
                     ],
                     "properties": {
                         "alias": {
@@ -218,6 +250,17 @@
                         "createdFrom": {
                             "title": "Sampled From Type",
                             "description": "The alias of the block object where slide is created from.",
+                            "type": "object",
+                            "properties": {
+                                "refname": {
+                                    "title": "Reference name",
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "stainingInformation": {
+                            "title": "Staining of the slide",
+                            "description": "The alias of the staining object for the slide.",
                             "type": "object",
                             "properties": {
                                 "refname": {
