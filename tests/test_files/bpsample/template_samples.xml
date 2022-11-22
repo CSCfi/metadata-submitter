@@ -3,12 +3,14 @@
         <ATTRIBUTES>
             <ATTRIBUTE>
                 <TAG>sex</TAG>
-                <VALUE>w</VALUE>
+                <VALUE>F</VALUE>
             </ATTRIBUTE>
-            <ATTRIBUTE>
+            <CODED_ATTRIBUTE>
                 <TAG>animal_species</TAG>
-                <VALUE>homo_sapiens</VALUE>
-            </ATTRIBUTE>
+                <CODE>337915000</CODE>
+                <SCHEME>SNOMED-CT</SCHEME>
+                <MEANING>Homo sapiens</MEANING>
+            </CODED_ATTRIBUTE>
         </ATTRIBUTES>
     </BIOLOGICAL_BEING>
     <BIOLOGICAL_BEING alias="BiologicalBeing_NhlAsXgDXz">
@@ -23,6 +25,12 @@
             </ATTRIBUTE>
         </ATTRIBUTES>
     </BIOLOGICAL_BEING>
+    <CASE alias="Case_GMGVsazraj">
+        <BIOLOGICAL_BEING refname="BiologicalBeing_qLNZYjYjyZ"/>
+    </CASE>
+    <CASE alias="Case_SRGHsrtjsm">
+        <BIOLOGICAL_BEING refname="BiologicalBeing_NhlAsXgDXz"/>
+    </CASE>
     <SPECIMEN alias="Specimen_agzPROKqfe">
         <ATTRIBUTES>
             <ATTRIBUTE>
@@ -93,93 +101,15 @@
         <SAMPLED_FROM refname="Specimen_zMfXLUhmrV"/>
     </BLOCK>
     <SLIDE alias="Slide_BkyUrCfBxx">
-        <ATTRIBUTES>
-            <ATTRIBUTE_SET>
-                <TAG>staining_information</TAG>
-                <ATTRIBUTE_SET>
-                    <TAG>stain</TAG>
-                    <ATTRIBUTE>
-                        <TAG>staining_compound</TAG>
-                        <VALUE>eosin</VALUE>
-                    </ATTRIBUTE>
-                    <ATTRIBUTE>
-                        <TAG>staining_method</TAG>
-                        <VALUE>chemical</VALUE>
-                    </ATTRIBUTE>
-                </ATTRIBUTE_SET>
-                <ATTRIBUTE_SET>
-                    <TAG>stain</TAG>
-                    <ATTRIBUTE>
-                        <TAG>staining_compound</TAG>
-                        <VALUE>hematoxilin</VALUE>
-                    </ATTRIBUTE>
-                    <ATTRIBUTE>
-                        <TAG>staining_method</TAG>
-                        <VALUE>chemical</VALUE>
-                    </ATTRIBUTE>
-                </ATTRIBUTE_SET>
-            </ATTRIBUTE_SET>
-        </ATTRIBUTES>
         <CREATED_FROM refname="Block_novHraeLUH"/>
+        <STAINING_INFORMATION refname="something"/>
     </SLIDE>
     <SLIDE alias="Slide_OYFDfQXRhr">
-        <ATTRIBUTES>
-            <ATTRIBUTE_SET>
-                <TAG>staining_information</TAG>
-                <ATTRIBUTE_SET>
-                    <TAG>stain</TAG>
-                    <ATTRIBUTE>
-                        <TAG>staining_compound</TAG>
-                        <VALUE>eosin</VALUE>
-                    </ATTRIBUTE>
-                    <ATTRIBUTE>
-                        <TAG>staining_method</TAG>
-                        <VALUE>chemical</VALUE>
-                    </ATTRIBUTE>
-                </ATTRIBUTE_SET>
-                <ATTRIBUTE_SET>
-                    <TAG>stain</TAG>
-                    <ATTRIBUTE>
-                        <TAG>staining_compound</TAG>
-                        <VALUE>hematoxilin</VALUE>
-                    </ATTRIBUTE>
-                    <ATTRIBUTE>
-                        <TAG>staining_method</TAG>
-                        <VALUE>chemical</VALUE>
-                    </ATTRIBUTE>
-                </ATTRIBUTE_SET>
-            </ATTRIBUTE_SET>
-        </ATTRIBUTES>
         <CREATED_FROM refname="Block_SRbwyUAbuF"/>
+        <STAINING_INFORMATION refname="something other"/>
     </SLIDE>
     <SLIDE alias="Slide_OYFDfQXRhr">
-        <ATTRIBUTES>
-            <ATTRIBUTE_SET>
-                <TAG>staining_information</TAG>
-                <ATTRIBUTE_SET>
-                    <TAG>stain</TAG>
-                    <ATTRIBUTE>
-                        <TAG>staining_compound</TAG>
-                        <VALUE>eosin</VALUE>
-                    </ATTRIBUTE>
-                    <ATTRIBUTE>
-                        <TAG>staining_method</TAG>
-                        <VALUE>chemical</VALUE>
-                    </ATTRIBUTE>
-                </ATTRIBUTE_SET>
-                <ATTRIBUTE_SET>
-                    <TAG>stain</TAG>
-                    <ATTRIBUTE>
-                        <TAG>staining_compound</TAG>
-                        <VALUE>hematoxilin</VALUE>
-                    </ATTRIBUTE>
-                    <ATTRIBUTE>
-                        <TAG>staining_method</TAG>
-                        <VALUE>chemical</VALUE>
-                    </ATTRIBUTE>
-                </ATTRIBUTE_SET>
-            </ATTRIBUTE_SET>
-        </ATTRIBUTES>
         <CREATED_FROM refname="Block_rYkFuzYviO"/>
+        <STAINING_INFORMATION refname="something else"/>
     </SLIDE>
 </SAMPLE_SET>

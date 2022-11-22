@@ -120,7 +120,7 @@ class TestObjects:
                 LOG.debug(f"Checking that {item['accessionId']} XML is in {_schema}")
                 assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
-        assert len(items) == 14, "Wrong amount of items were added during previous requests."
+        assert len(items) == 16, "Wrong amount of items were added during previous requests."
         for item in items:
             _id, _schema = item["accessionId"], item["schema"]
             await delete_object(client_logged_in, _schema, _id)

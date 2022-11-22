@@ -164,12 +164,14 @@ class ParserTestCase(unittest.TestCase):
         """
         bp_sample_xml = self.load_file_to_text("bpsample", "template_samples.xml")
         bp_sample_json = self.xml_parser.parse("bpsample", bp_sample_xml)
-        self.assertEqual(10, len(bp_sample_json))
-        self.assertEqual("BiologicalBeing_qLNZYjYjyZ", bp_sample_json[0]["biologicalBeing"]["alias"])
-        self.assertEqual("BiologicalBeing_qLNZYjYjyZ", bp_sample_json[2]["specimen"]["extractedFrom"]["refname"])
-        self.assertEqual(65.0, bp_sample_json[2]["specimen"]["attributes"][3]["value"])
-        self.assertEqual("sample_preparation", bp_sample_json[4]["block"]["attributes"][0]["tag"])
-        self.assertEqual(2, len(bp_sample_json[7]["slide"]["attributes"]["attributeSet"]["attributeSet"]))
+        self.assertEqual(12, len(bp_sample_json))
+        bb_alias = "BiologicalBeing_qLNZYjYjyZ"
+        self.assertEqual(bb_alias, bp_sample_json[0]["biologicalBeing"]["alias"])
+        self.assertEqual(bb_alias, bp_sample_json[2]["case"]["biologicalBeing"]["refname"])
+        self.assertEqual(bb_alias, bp_sample_json[4]["specimen"]["extractedFrom"]["refname"])
+        self.assertEqual(65.0, bp_sample_json[4]["specimen"]["attributes"][3]["value"])
+        self.assertEqual("sample_preparation", bp_sample_json[6]["block"]["attributes"][0]["tag"])
+        self.assertEqual("something", bp_sample_json[9]["slide"]["stainingInformation"]["refname"])
 
     def test_error_raised_when_schema_not_found(self):
         """Test 400 is returned when schema type is invalid."""
