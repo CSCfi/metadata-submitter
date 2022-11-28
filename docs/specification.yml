@@ -1409,6 +1409,56 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/405MethodNotAllowed"
+  /v1/submissions/{submissionId}/files:
+    put:
+      tags:
+        - Manage
+      summary: Update Files for the submission with a specified submission ID.
+      parameters:
+        - name: submissionId
+          in: path
+          description: ID of the object submission.
+          schema:
+            type: string
+          required: true
+      requestBody:
+        content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SubmissionFile"
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmissionCreated"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
+        405:
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/405MethodNotAllowed"
   /v1/publish/{submissionId}:
     patch:
       tags:
@@ -1603,7 +1653,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/REMS"
+                  $ref: "#/components/schemas/File"
         400:
           description: Bad Request
           content:
@@ -1747,7 +1797,7 @@ components:
         - dateUpdated
       additionalProperties: true
       properties:
-        accessioniId:
+        accessionId:
           type: string
           description: accession id generated to identify an object
         publishedDate:
@@ -2956,3 +3006,31 @@ components:
           $ref: "#/components/schemas/Checksum"
         unencrypted_checksums:
           $ref: "#/components/schemas/Checksum"
+    SubmissionFile:
+      type: object
+      description: Describes a submission file information that can be attached to a submission
+      properties:
+        accesionId:
+          type: string
+          title: Accession Id for file
+        version:
+          type: integer
+          title: Version of the file
+        status:
+          type: string
+          title: Status of the file
+          enum: ["added","ready","verified","completed","failed"]
+        objectId:
+          type: object
+          title: File size in bytes
+          properties:
+            accessionId:
+              type: string
+              description: accession id generated to identify an object
+            schema:
+                type: string
+                description: type of schema this Accession ID relates to and was added in submit
+        error:
+          type: string
+          title: Accession Id for file
+          description: required only if status is failed

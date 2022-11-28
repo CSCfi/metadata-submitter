@@ -297,20 +297,37 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         elif req.path.endswith("rems"):
             schema = "rems"
             await self.check_rems_ok({"rems": data})
+        elif req.path.endswith("files"):
+            schema = "files"
         else:
             raise web.HTTPNotFound(reason=f"'{req.path}' does not exist")
 
-        op = "add"
-        if schema in submission:
-            op = "replace"
-        patch = [
-            {"op": op, "path": f"/{schema}", "value": data},
-        ]
+        if schema == "files":
+            file_operator = FileOperator(db_client)
+            # we expect to get a list of dict for files
+            # that matches the json schema when added to submission object
+            submission[schema] = data
+            JSONValidator(submission, "submission").validate
+            for file in data:
+                if "accessionId" not in file:
+                    reason = f"Updating {submission_id} failed files requires accessionId."
+                    LOG.error(reason)
+                    raise web.HTTPBadRequest(reason=reason)
+                _file_accessionId = file.pop("accessionId")
+                _file_update_op = {f"files.$.{k}": v for k, v in file.items()}
+                await file_operator.update_file_submission(_file_accessionId, submission_id, _file_update_op)
+        else:
+            op = "add"
+            if schema in submission:
+                op = "replace"
+            patch = [
+                {"op": op, "path": f"/{schema}", "value": data},
+            ]
 
-        submission[schema] = data
-        JSONValidator(submission, "submission").validate
+            submission[schema] = data
+            JSONValidator(submission, "submission").validate
 
-        upd_submission = await operator.update_submission(submission_id, patch)
+            upd_submission = await operator.update_submission(submission_id, patch)
 
         body = ujson.dumps({"submissionId": upd_submission}, escape_forward_slashes=False)
         LOG.info("PUT %r in submission with ID: %r was successful.", schema, submission_id)

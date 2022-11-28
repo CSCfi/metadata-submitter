@@ -126,7 +126,7 @@
                     },
                     "submissions": {
                         "type": "array",
-                        "title": "Submissions which linked to this file",
+                        "title": "Submissions which are linked to this version of the file. This will only be updated when a file is published",
                         "items": {
                             "type": "string",
                             "title": "Submission ID"
