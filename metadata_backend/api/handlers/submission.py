@@ -390,3 +390,28 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         reason = "Request does not contain a list of Objects each with `accessionId` and `version`"
         LOG.error(reason)
         raise web.HTTPBadRequest(reason=reason)
+
+    async def delete_submission_files(self, req: Request) -> Response:
+        """Remove files from a submission.
+
+        Body needs to contain a list of accessionId for files.
+
+        :param req: POST request with metadata schema in the body
+        :returns: HTTP No Content response
+        """
+        submission_id = req.match_info["submissionId"]
+        file_accession_id = req.match_info["fileId"]
+        db_client = req.app["db_client"]
+        submission_operator = SubmissionOperator(db_client)
+
+        # Check submission exists and is not already published
+        await submission_operator.check_submission_exists(submission_id)
+        await submission_operator.check_submission_published(submission_id, req.method)
+
+        await self._handle_check_ownership(req, "submission", submission_id)
+
+        file_operator = FileOperator(db_client)
+
+        await file_operator.remove_file_submission(file_accession_id, "accessionId", submission_id)
+        LOG.info("Removing file: %r from submission with ID: %r was successful.", file_accession_id, submission_id)
+        return web.HTTPNoContent()

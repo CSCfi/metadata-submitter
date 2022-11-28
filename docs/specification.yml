@@ -1410,6 +1410,90 @@ paths:
               schema:
                 $ref: "#/components/schemas/405MethodNotAllowed"
   /v1/submissions/{submissionId}/files:
+    post:
+      tags:
+        - Submission
+      summary: Add new files to a submission.
+      parameters:
+        - name: submissionId
+          in: path
+          description: ID of the object submission.
+          schema:
+            type: string
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  accessionId:
+                    type: string
+                    title: Accession Id for file
+                  version:
+                    type: integer
+                    title: Version of the file
+      responses:
+        204:
+          description: No Content
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
+    get:
+      tags:
+        - Query
+      summary: Retrieve all files with detailed info specific to a submission.
+      parameters:
+        - name: submissionId
+          in: path
+          description: ID of the object submission.
+          schema:
+            type: string
+          required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/File"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
     put:
       tags:
         - Manage
@@ -1459,6 +1543,45 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/405MethodNotAllowed"
+  /v1/submissions/{submissionId}/files/{fileId}:
+    delete:
+      tags:
+        - Manage
+      summary: Remove file from a submission.
+      parameters:
+        - name: submissionId
+          in: path
+          description: ID of the object submission.
+          schema:
+            type: string
+          required: true
+        - name: fileId
+          in: path
+          description: ID of the object submission.
+          schema:
+            type: string
+          required: true
+      responses:
+        204:
+          description: No Content
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
   /v1/publish/{submissionId}:
     patch:
       tags:
@@ -3010,7 +3133,7 @@ components:
       type: object
       description: Describes a submission file information that can be attached to a submission
       properties:
-        accesionId:
+        accessionId:
           type: string
           title: Accession Id for file
         version:
@@ -3032,5 +3155,5 @@ components:
                 description: type of schema this Accession ID relates to and was added in submit
         error:
           type: string
-          title: Accession Id for file
+          title: Error for file if status is failed
           description: required only if status is failed
