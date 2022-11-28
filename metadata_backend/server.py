@@ -140,6 +140,7 @@ async def init(
         web.post("/submissions/{submissionId}/files", _submission.add_submission_files),
         web.put("/submissions/{submissionId}/doi", _submission.put_submission_path),
         web.put("/submissions/{submissionId}/rems", _submission.put_submission_path),
+        web.put("/submissions/{submissionId}/files", _submission.put_submission_path),
         web.patch("/submissions/{submissionId}", _submission.patch_submission),
         web.delete("/submissions/{submissionId}", _submission.delete_submission),
         # publish submissions
