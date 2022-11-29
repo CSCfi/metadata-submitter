@@ -310,7 +310,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
             JSONValidator(submission, "submission").validate
             for file in data:
                 if "accessionId" not in file:
-                    reason = f"Updating {submission_id} failed files requires accessionId."
+                    reason = f"Updating {submission_id} failed. Files require an accessionId."
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
                 _file_accessionId = file.pop("accessionId")
@@ -396,7 +396,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         Body needs to contain a list of accessionId for files.
 
-        :param req: POST request with metadata schema in the body
+        :param req: DELETE request
         :returns: HTTP No Content response
         """
         submission_id = req.match_info["submissionId"]
