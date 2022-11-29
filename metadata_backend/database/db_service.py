@@ -269,7 +269,7 @@ class DBService:
         :param accession_id: ID of the object/submission/user to be updated
         :param data_to_be_removed: str or JSON representing the data that should be
         updated to removed.
-        :returns: JSON after remove if operaation was successful
+        :returns: JSON after remove if operation was successful
         """
         id_key = self._get_id_key(collection)
         find_by_id = {id_key: accession_id}
@@ -314,7 +314,7 @@ class DBService:
         :param data_to_be_addded: str or JSON representing the data that should be
         updated to removed.
         :param upsert: If the document does not exist add it
-        :returns: JSON after remove if operaation was successful
+        :returns: JSON after remove if operation was successful
         """
         id_key = self._get_id_key(collection)
         find_by_id = {id_key: accession_id}
