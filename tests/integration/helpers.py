@@ -532,18 +532,18 @@ async def put_submission_doi(sess, submission_id, data):
         return ans["submissionId"]
 
 
-async def put_submission_dac(sess, submission_id, data):
-    """Put DAC into submission within session, returns submissionId.
+async def put_submission_rems(sess, submission_id, data):
+    """Put REMS (DAC) into submission within session, returns submissionId.
 
     :param sess: HTTP session in which request call is made
     :param submission_id: id of the submission
-    :param data: dac data used to update the submission
+    :param data: REMS data used to update the submission
     :returns: Submission id for the submission inserted to database
     """
-    async with sess.put(f"{submissions_url}/{submission_id}/dac", data=data) as resp:
+    async with sess.put(f"{submissions_url}/{submission_id}/rems", data=data) as resp:
         ans = await resp.json()
         assert resp.status == 200, f"HTTP Status code error {resp.status} {ans}"
-        LOG.debug(f"Adding DAC to submission {ans['submissionId']}")
+        LOG.debug(f"Adding REMS DAC to submission {ans['submissionId']}")
         return ans["submissionId"]
 
 

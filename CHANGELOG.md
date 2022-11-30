@@ -18,8 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - New rems service handler
   - New rems mock api service for integration tests
   - New API endpoint `/v1/rems` for the frontend to retrieve DAC and Policies
-  - Submission now can have a new field, `dac`, with `workflowId`, `organizationId`, and `licenses` (array of int)
-  - Published datasets have a new field `dac` with `workflowId`, `organizationId`, `resourceId`, and `catalogueItemId`
+  - Submission now can have a new field, `dac` (changed to `rems` in #648), with `workflowId`, `organizationId`, and `licenses` (array of int)
+  - Published datasets have a new field `dac` (changed to `rems` in #648) with `workflowId`, `organizationId`, `resourceId`, and `catalogueItemId`
 - Pylint static checks
 - Added mapping for languages between the submitter and Metax-service #514
 - Added mapping for subjects from submission doi info to Metax field_of_science #556
@@ -83,6 +83,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactor `xml_object.py` -> `object_xml.py` #627
 - Refactor operators to use a common base class called `BaseOperator` #627
 - XML validation errors now compile all the failing elements into same error message and include the line number in the error reason #630
+- Changed the submission object's `dac` field to `rems` and its subsequent endpoints similarly #648
 
 ### Removed
 

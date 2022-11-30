@@ -336,12 +336,12 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
 
         return _doi_data["fullDOI"]
 
-    async def check_dac_ok(self, submission: dict) -> bool:
-        """Check that DAC in object is ok."""
-        if "dac" not in submission:
-            raise web.HTTPBadRequest(reason="DAC is missing.")
+    async def check_rems_ok(self, submission: dict) -> bool:
+        """Check that REMS DAC in object is ok."""
+        if "rems" not in submission:
+            raise web.HTTPBadRequest(reason="REMS field is missing.")
 
-        dac = submission["dac"]
+        dac = submission["rems"]
 
         if "workflowId" in dac and "organizationId" in dac and "licenses" in dac:
             await self.rems_handler.validate_workflow_licenses(
@@ -349,7 +349,7 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
             )
         else:
             raise web.HTTPBadRequest(
-                reason="DAC is missing one or more of the required fields: "
+                reason="REMS DAC is missing one or more of the required fields: "
                 "'workflowId', 'organizationId', or 'licenses'."
             )
 

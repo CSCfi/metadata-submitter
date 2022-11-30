@@ -1162,7 +1162,7 @@
             },
             "uniqueItems": true
         },
-        "dac": {
+        "rems": {
             "type": "object",
             "title": "REMS DAC for datasets",
             "required": [

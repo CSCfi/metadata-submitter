@@ -27,8 +27,8 @@ from tests.integration.helpers import (
     post_object_json,
     post_submission,
     publish_submission,
-    put_submission_dac,
     put_submission_doi,
+    put_submission_rems,
     submissions_url,
 )
 
@@ -307,8 +307,8 @@ class TestSubmissionOperations:
 
         ds_2 = await post_object(client_logged_in, "dataset", submission_fega, "dataset_put.xml")
 
-        dac_data = await create_request_json_data("dac", "dac_rems.json")
-        await put_submission_dac(client_logged_in, submission_fega, dac_data)
+        rems_data = await create_request_json_data("dac", "dac_rems.json")
+        await put_submission_rems(client_logged_in, submission_fega, rems_data)
 
         await post_object_json(client_logged_in, "run", submission_fega, "ERR000076.json")
 
@@ -329,6 +329,7 @@ class TestSubmissionOperations:
             assert "extraInfo" in res.keys()
             assert res["drafts"] == [], "there are drafts in submission, expected empty"
             assert len(res["metadataObjects"]) == 5, "submission metadataObjects content mismatch"
+            assert "rems" in res.keys(), "submission does not have rems dac data"
 
         # Check that submission info and its objects cannot be updated and that publishing it again fails
         async with client_logged_in.patch(
@@ -355,8 +356,8 @@ class TestSubmissionOperations:
         async with client_logged_in.put(f"{submissions_url}/{submission_fega}/doi", data=doi_data_raw) as resp:
             LOG.debug("Trying to replace submission doi")
             assert resp.status == 405, f"HTTP Status code error {resp.status} {ans}"
-        async with client_logged_in.put(f"{submissions_url}/{submission_fega}/dac", data=dac_data) as resp:
-            LOG.debug("Trying to replace submission dac")
+        async with client_logged_in.put(f"{submissions_url}/{submission_fega}/rems", data=rems_data) as resp:
+            LOG.debug("Trying to replace submission rems")
             assert resp.status == 405, f"HTTP Status code error {resp.status} {ans}"
 
         # Check new drafts or objects cannot be added under published submission
@@ -568,8 +569,8 @@ class TestSubmissionPagination:
             await post_object_json(client_logged_in, "study", submission_fega, "SRP000539.json")
             doi_data_raw = await create_request_json_data("doi", "test_doi.json")
             await put_submission_doi(client_logged_in, submission_fega, doi_data_raw)
-            dac_data = await create_request_json_data("dac", "dac_rems.json")
-            await put_submission_dac(client_logged_in, submission_fega, dac_data)
+            rems_data = await create_request_json_data("dac", "dac_rems.json")
+            await put_submission_rems(client_logged_in, submission_fega, rems_data)
             await publish_submission(client_logged_in, submission_fega)
 
         # Test default values
