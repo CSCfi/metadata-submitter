@@ -401,9 +401,9 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                 }
                 rems_datasets.append(rems_ds)
 
-        org_id = submission["dac"]["organizationId"]
-        licenses = submission["dac"]["licenses"]
-        workflow_id = submission["dac"]["workflowId"]
+        org_id = submission["rems"]["organizationId"]
+        licenses = submission["rems"]["licenses"]
+        workflow_id = submission["rems"]["workflowId"]
         for ds in rems_datasets:
             resource_id = await self.rems_handler.create_resource(
                 doi=ds["doi"], organization_id=org_id, licenses=licenses
@@ -418,13 +418,13 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
             # Add rems URL to metax dataset description
             rems_url = self.rems_handler.application_url(catalogue_id)
             if "metaxIdentifier" in ds:
-                new_description = ds["description"] + f"\n\nDAC: {rems_url}"
+                new_description = ds["description"] + f"\n\nREMS DAC: {rems_url}"
                 await self.metax_handler.update_draft_dataset_description(ds["metaxIdentifier"], new_description)
             await obj_op.update_metadata_object(
                 ds["schema"],
                 ds["accession_id"],
                 {
-                    "dac": {
+                    "rems": {
                         "url": rems_url,
                         "workflowId": workflow_id,
                         "organizationId": org_id,
@@ -473,8 +473,8 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                 raise web.HTTPBadRequest(reason=reason)
             schemas_in_submission.add(schema)
             # TO_DO: Can only be enabled after we have unified the DAC from EGA and REMS
-            # if "dac" in workflow.required_schemas and "dac" not in submission:
-            #     raise web.HTTPBadRequest(reason=f"Submission '{accession_id}' must have DAC.")
+            # if "dac" in workflow.required_schemas and "rems" not in submission:
+            #     raise web.HTTPBadRequest(reason=f"Submission '{accession_id}' must have rems.")
         if not has_study:
             raise web.HTTPBadRequest(reason=f"Submission '{submission_id}' must have a study.")
 

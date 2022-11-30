@@ -294,9 +294,9 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         if req.path.endswith("doi"):
             schema = "doiInfo"
-        elif req.path.endswith("dac"):
-            schema = "dac"
-            await self.check_dac_ok({"dac": data})
+        elif req.path.endswith("rems"):
+            schema = "rems"
+            await self.check_rems_ok({"rems": data})
         else:
             raise web.HTTPNotFound(reason=f"'{req.path}' does not exist")
 
