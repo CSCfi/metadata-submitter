@@ -42,6 +42,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - add message broker publishing to workflow
   - add rabbitmq + default config to integration tests
 - File operator that does database operations for files #148
+  - introduced `/v1/submissions/{submissionId}/files` to update and remove files in a submission #633
+  - file flagged for deletion also removed from submission and check files have the status ready when being read from the submission #633
+  - prevent publish if files have in submission have status added (added but no metadata object) or failed (failed in ingestion, completion, or for any other reason) #633
 - Mongo indexes for `file` schema #148
 - `/files` endpoint to retrieve files attached to a project #148 #627
 - option to add additional members to `application/problem+json` #642
