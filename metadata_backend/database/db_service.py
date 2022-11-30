@@ -242,17 +242,15 @@ class DBService:
         return result.acknowledged
 
     @auto_reconnect
-    async def update_by_key_value(self, collection: str, key: str, value: str, data_to_be_updated: Dict) -> bool:
+    async def update_by_key_value(self, collection: str, find_by_key_value: dict, data_to_be_updated: Dict) -> bool:
         """Update some elements of object by its accessionId.
 
         :param collection: Collection to search in
-        :param key: document property
-        :param value: property value
+        :param find_by_key_value: Key-value of document property as key and value
         :param data_to_be_updated: JSON representing the data that should be
         updated to object, can replace previous fields and add new ones.
         :returns: True if operation was successful
         """
-        find_by_key_value = {key: value}
         update_op = {"$set": data_to_be_updated}
         result = await self.database[collection].update_one(find_by_key_value, update_op)
         LOG.debug(
@@ -264,14 +262,14 @@ class DBService:
         return result.acknowledged
 
     @auto_reconnect
-    async def remove(self, collection: str, accession_id: str, data_to_be_removed: Union[str, Dict]) -> bool:
+    async def remove(self, collection: str, accession_id: str, data_to_be_removed: Union[str, Dict]) -> dict:
         """Remove element of object by its accessionId.
 
         :param collection: Collection where document should be searched from
         :param accession_id: ID of the object/submission/user to be updated
         :param data_to_be_removed: str or JSON representing the data that should be
         updated to removed.
-        :returns: True if operation was successful
+        :returns: JSON after remove if operation was successful
         """
         id_key = self._get_id_key(collection)
         find_by_id = {id_key: accession_id}
@@ -280,7 +278,7 @@ class DBService:
             find_by_id, remove_op, projection={"_id": False}, return_document=ReturnDocument.AFTER
         )
         LOG.debug(
-            "DB doc in collection: %r with data: %r removed the accesion ID: %r.",
+            "DB doc in collection: %r with data: %r removed the accession ID: %r.",
             collection,
             data_to_be_removed,
             accession_id,
@@ -288,9 +286,27 @@ class DBService:
         return result
 
     @auto_reconnect
+    async def remove_many(self, collection: str, data_to_be_removed: Union[str, Dict]) -> bool:
+        """Remove element of object by its accessionId.
+
+        :param collection: Collection where document should be searched from
+        :param data_to_be_removed: str or JSON representing the data that should be
+        updated to removed.
+        :returns: True if operation was successful
+        """
+        remove_op = {"$pull": data_to_be_removed}
+        result = await self.database[collection].update_many({}, remove_op)
+        LOG.debug(
+            "DB doc in collection: %r with data: %r removed.",
+            collection,
+            data_to_be_removed,
+        )
+        return result.acknowledged
+
+    @auto_reconnect
     async def append(
         self, collection: str, accession_id: str, data_to_be_addded: Union[str, Dict], upsert: bool = False
-    ) -> bool:
+    ) -> dict:
         """Append data by to object with accessionId in collection.
 
         :param collection: Collection where document should be searched from
@@ -298,7 +314,7 @@ class DBService:
         :param data_to_be_addded: str or JSON representing the data that should be
         updated to removed.
         :param upsert: If the document does not exist add it
-        :returns: True if operation was successful
+        :returns: JSON after remove if operation was successful
         """
         id_key = self._get_id_key(collection)
         find_by_id = {id_key: accession_id}
