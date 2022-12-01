@@ -136,7 +136,7 @@ isort==5.10.1
     #   pylint
 jinja2==3.1.2
     # via sphinx
-jsonschema==4.16.0
+jsonschema==4.17.3
     # via -r requirements.txt
 lazy-object-proxy==1.7.1
     # via astroid
