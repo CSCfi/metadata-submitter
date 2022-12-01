@@ -70,7 +70,7 @@ click==8.1.3
     #   pip-tools
 coverage[toml]==6.5.0
     # via pytest-cov
-cryptography==38.0.1
+cryptography==38.0.4
     # via
     #   -r requirements.txt
     #   authlib
@@ -316,15 +316,7 @@ toml==0.10.2
     #   responses
     #   vulture
 tomli==2.0.1
-    # via
-    #   black
-    #   build
-    #   coverage
-    #   mypy
-    #   pep517
-    #   pylint
-    #   pytest
-    #   tox
+    # via pytest
 tomlkit==0.11.5
     # via pylint
 tox==3.26.0
