@@ -105,9 +105,11 @@ chichewa
 chip
 chmod
 classificationcode
+cleartext
 cli
 clinvar
 cloneend
+codedattribute
 codeql
 commonname
 complementsdatasetref
@@ -175,6 +177,7 @@ demultiplexing
 demux
 dependabot
 descriptiontype
+designator
 designdescription
 destructure
 dev
@@ -457,6 +460,7 @@ novaseq
 npm
 npx
 nuccore
+numericattribute
 nuosu
 nynorsk
 objectdetails
@@ -612,6 +616,7 @@ schemaorg
 schemas
 schemetype
 schemeuri
+schemeversion
 scientificname
 sda
 sdev
