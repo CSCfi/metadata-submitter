@@ -1,7 +1,151 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "title": "Dataset",
+    "title": "BP Dataset",
     "$defs": {
+        "DatasetAttribute": {
+            "title": "Dataset Attributes",
+            "description": "Properties and attributes of the Dataset set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
+            "oneOf": [
+                {
+                    "type": "array",
+                    "title": "Attribute list",
+                    "items": {
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "title": "Dataset attribute item",
+                                "required": [
+                                    "tag",
+                                    "value"
+                                ],
+                                "properties": {
+                                    "tag": {
+                                        "type": "string",
+                                        "title": "Attribute tag"
+                                    },
+                                    "value": {
+                                        "type": [
+                                            "string",
+                                            "number"
+                                        ],
+                                        "title": "Attribute value"
+                                    },
+                                    "units": {
+                                        "type": "string",
+                                        "title": "Optional scientific units"
+                                    }
+                                }
+                            },
+                            {
+                                "type": "object",
+                                "title": "Coded attribute item",
+                                "required": [
+                                    "tag",
+                                    "code",
+                                    "scheme",
+                                    "meaning"
+                                ],
+                                "properties": {
+                                    "tag": {
+                                        "type": "string",
+                                        "title": "Attribute tag"
+                                    },
+                                    "code": {
+                                        "type": "string",
+                                        "title": "Attribute code"
+                                    },
+                                    "scheme": {
+                                        "type": "string",
+                                        "title": "Attribute scheme designator"
+                                    },
+                                    "meaning": {
+                                        "type": "string",
+                                        "title": "Attribute cleartext meaning"
+                                    },
+                                    "schemeVersion": {
+                                        "type": "string",
+                                        "title": "Attribute scheme version"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "type": "object",
+                    "title": "Attribute object",
+                    "properties": {
+                        "attribute": {
+                            "#ref": "#"
+                        },
+                        "attributeSet": {
+                            "#ref": "#/$defs/DatasetAttributeSet"
+                        }
+                    }
+                }
+            ]
+        },
+        "DatasetAttributeSet": {
+            "title": "Dataset Attribute Set list",
+            "description": "Reusable set of attributes to encode multiple tag-value or tag-code value pairs.",
+            "type": "array",
+            "items": {
+                "type": "object",
+                "title": "Dataset attribute item",
+                "properties": {
+                    "tag": {
+                        "type": "string",
+                        "title": "Tag title"
+                    },
+                    "attribute": {
+                        "items": {
+                            "#ref": "#/$defs/DatasetAttribute"
+                        }
+                    },
+                    "numericAttribute": {
+                        "items": {
+                            "#ref": "#/$defs/DatasetAttribute"
+                        }
+                    },
+                    "codedAttribute": {
+                        "items": {
+                            "#ref": "#/$defs/DatasetAttribute"
+                        }
+                    },
+                    "attributeSet": {
+                        "items": {
+                            "#ref": "#"
+                        }
+                    }
+                },
+                "required": [
+                    "tag"
+                ],
+                "oneOf": [
+                    {
+                        "required": [
+                            "attribute"
+                        ]
+                    },
+                    {
+                        "required": [
+                            "numericAttribute"
+                        ]
+                    },
+                    {
+                        "required": [
+                            "codedAttribute"
+                        ]
+                    },
+                    {
+                        "required": [
+                            "attributeSet"
+                        ]
+                    }
+                ],
+                "additionalProperties": false
+            }
+        },
         "identifiers": {
             "title": "Identifiers",
             "description": "Identifiers to be used in the International Nucleotide Sequence Database Collaboration (INSDC) namespace.",
@@ -87,21 +231,8 @@
         "policyRef"
     ],
     "properties": {
-        "version": {
-            "title": "Version",
-            "type": "integer"
-        },
-        "metadata_standard": {
-            "title": "Metadata Standard",
-            "type": "string"
-        },
-        "ethical_approval": {
-            "title": "Ethical Approval",
-            "type": "string"
-        },
-        "contains_personal_data": {
-            "title": "Contains Personal Data",
-            "type": "boolean"
+        "attributes": {
+            "$ref": "#/$defs/DatasetAttribute"
         },
         "title": {
             "title": "Dataset Title",
