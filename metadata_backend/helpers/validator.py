@@ -72,7 +72,9 @@ class XMLValidator:
 
             # Add line number to error reason
             lines = self.xml_content.split("\n")
-            elem_name = error.obj[error.index].tag if isinstance(error, XMLSchemaChildrenValidationError) else error.obj
+            elem_name = (
+                error.obj[error.index].tag if isinstance(error, XMLSchemaChildrenValidationError) else error.elem.tag
+            )
             for (i, line) in enumerate(lines, 1):
                 if elem_name in line and i not in found_lines:
                     line_num = i
