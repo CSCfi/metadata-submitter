@@ -1,12 +1,159 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "title": "Image",
+    "title": "BP Image",
     "$defs": {
+        "ImageAttribute": {
+            "title": "Image Attributes",
+            "description": "Properties and attributes of the Image set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
+            "oneOf": [
+                {
+                    "type": "array",
+                    "title": "Attribute list",
+                    "items": {
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "title": "Image attribute item",
+                                "required": [
+                                    "tag",
+                                    "value"
+                                ],
+                                "properties": {
+                                    "tag": {
+                                        "type": "string",
+                                        "title": "Attribute tag"
+                                    },
+                                    "value": {
+                                        "type": [
+                                            "string",
+                                            "number"
+                                        ],
+                                        "title": "Attribute value"
+                                    },
+                                    "units": {
+                                        "type": "string",
+                                        "title": "Optional scientific units"
+                                    }
+                                }
+                            },
+                            {
+                                "type": "object",
+                                "title": "Coded attribute item",
+                                "required": [
+                                    "tag",
+                                    "code",
+                                    "scheme",
+                                    "meaning"
+                                ],
+                                "properties": {
+                                    "tag": {
+                                        "type": "string",
+                                        "title": "Attribute tag"
+                                    },
+                                    "code": {
+                                        "type": "string",
+                                        "title": "Attribute code"
+                                    },
+                                    "scheme": {
+                                        "type": "string",
+                                        "title": "Attribute scheme designator"
+                                    },
+                                    "meaning": {
+                                        "type": "string",
+                                        "title": "Attribute cleartext meaning"
+                                    },
+                                    "schemeVersion": {
+                                        "type": "string",
+                                        "title": "Attribute scheme version"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                },
+                {
+                    "type": "object",
+                    "title": "Attribute object",
+                    "properties": {
+                        "attribute": {
+                            "#ref": "#"
+                        },
+                        "attributeSet": {
+                            "#ref": "#/$defs/ImageAttributeSet"
+                        }
+                    }
+                }
+            ]
+        },
+        "ImageAttributeSet": {
+            "title": "Image Attribute Set list",
+            "description": "Reusable set of attributes to encode multiple tag-value or tag-code value pairs.",
+            "type": "array",
+            "items": {
+                "type": "object",
+                "title": "Image attribute item",
+                "properties": {
+                    "tag": {
+                        "type": "string",
+                        "title": "Tag title"
+                    },
+                    "attribute": {
+                        "items": {
+                            "#ref": "#/$defs/ImageAttribute"
+                        }
+                    },
+                    "numericAttribute": {
+                        "items": {
+                            "#ref": "#/$defs/ImageAttribute"
+                        }
+                    },
+                    "codedAttribute": {
+                        "items": {
+                            "#ref": "#/$defs/ImageAttribute"
+                        }
+                    },
+                    "attributeSet": {
+                        "items": {
+                            "#ref": "#"
+                        }
+                    }
+                },
+                "required": [
+                    "tag"
+                ],
+                "oneOf": [
+                    {
+                        "required": [
+                            "attribute"
+                        ]
+                    },
+                    {
+                        "required": [
+                            "numericAttribute"
+                        ]
+                    },
+                    {
+                        "required": [
+                            "codedAttribute"
+                        ]
+                    },
+                    {
+                        "required": [
+                            "attributeSet"
+                        ]
+                    }
+                ],
+                "additionalProperties": false
+            }
+        },
         "ImageFile": {
             "title": "Image File Type",
             "type": "object",
             "required": [
-                "filetype"
+                "filetype",
+                "filename",
+                "checksumMethod",
+                "checksum"
             ],
             "properties": {
                 "filetype": {
@@ -17,27 +164,12 @@
                         "dcm"
                     ]
                 },
-                "fileBase": {
-                    "title": "File Base Type",
-                    "$ref": "#/$defs/FileBase"
-                }
-            }
-        },
-        "FileBase": {
-            "title": "File Base",
-            "type": "object",
-            "required": [
-                "file_name",
-                "checksum_method",
-                "checksum"
-            ],
-            "properties": {
-                "file_name": {
+                "filename": {
                     "title": "File Name",
                     "description": "The file name.",
                     "type": "string"
                 },
-                "checksum_method": {
+                "checksumMethod": {
                     "title": "Checksum Method",
                     "description": "The checksum method generated by the MD5 method (md5sum in unix) or the SHA256 method.",
                     "type": "string",
@@ -51,7 +183,7 @@
                     "description": "The file checksum.",
                     "type": "string"
                 },
-                "unencrypted_checksum": {
+                "unencryptedChecksum": {
                     "title": "Checksum",
                     "description": "The checksum of the unencrypted file (used in conjunction with the checksum of an encrypted file).",
                     "type": "string"
@@ -143,136 +275,16 @@
         "files"
     ],
     "properties": {
-        "acquisition_date_time": {
-            "title": "Acquisition Date Time",
+        "alias": {
+            "title": "Object alias",
             "type": "string"
         },
-        "lossy_image_compression_methods": {
-            "title": "Lossy Image Compression Methods",
-            "type": "string"
-        },
-        "compression_status": {
-            "title": "Compression Status",
-            "type": "boolean"
-        },
-        "has_overview": {
-            "title": "Has Overview",
-            "type": "boolean"
-        },
-        "has_label": {
-            "title": "Has Label",
-            "type": "boolean"
-        },
-        "tma_status": {
-            "title": "TMA Status",
-            "type": "boolean"
-        },
-        "scanner": {
-            "title": "Scanner",
-            "type": "object",
-            "properties": {
-                "scanner_manufactors_name": {
-                    "title": "Scanner Manufactors Name",
-                    "type": "string"
-                },
-                "manufacturers_model_name": {
-                    "title": "Manufacturers Model Name",
-                    "type": "string"
-                },
-                "device_serial_number": {
-                    "title": "Device Serial Number",
-                    "type": "string"
-                },
-                "software_versions": {
-                    "title": "Software Versions",
-                    "type": "string"
-                }
-            }
-        },
-        "imaging_setting": {
-            "title": "imaging_setting",
-            "type": "object",
-            "properties": {
-                "image_resolution": {
-                    "title": "Image Resolution",
-                    "type": "string"
-                },
-                "optical_paths": {
-                    "title": "Optical Paths",
-                    "type": "object",
-                    "properties": {
-                        "color_space": {
-                            "title": "Color Space",
-                            "type": "string"
-                        },
-                        "color_depth": {
-                            "title": "Color Depth",
-                            "type": "number"
-                        },
-                        "illumination": {
-                            "title": "Illumination",
-                            "type": "object",
-                            "properties": {
-                                "type": {
-                                    "title": "Type",
-                                    "type": "string"
-                                },
-                                "color_code": {
-                                    "title": "Color Code",
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    }
-                },
-                "focus": {
-                    "title": "Focus",
-                    "type": "object",
-                    "properties": {
-                        "focus_method": {
-                            "title": "Focus Method",
-                            "type": "string"
-                        },
-                        "extended_depth_of_field": {
-                            "title": "Extended Depth Of Field",
-                            "type": "boolean"
-                        }
-                    }
-                }
-            }
-        },
-        "base_layer_tile_size": {
-            "title": "Base Layer Tile Size",
-            "type": "object",
-            "properties": {
-                "width": {
-                    "title": "Width",
-                    "type": "number"
-                },
-                "height": {
-                    "title": "Height",
-                    "type": "number"
-                }
-            }
-        },
-        "image_shape": {
-            "title": "Image Shape",
-            "type": "object",
-            "properties": {
-                "width": {
-                    "title": "Width",
-                    "type": "number"
-                },
-                "height": {
-                    "title": "Height",
-                    "type": "number"
-                }
-            }
+        "attributes": {
+            "$ref": "#/$defs/ImageAttribute"
         },
         "studyRef": {
             "title": "Study Reference",
             "description": "Identifies the parent study.",
-            "type": "object",
             "$ref": "#/$defs/reference"
         },
         "imageOf": {
