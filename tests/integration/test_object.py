@@ -2,7 +2,12 @@
 import asyncio
 import logging
 
-from tests.integration.conf import objects_url, submissions_url, test_fega_xml_files
+from tests.integration.conf import (
+    objects_url,
+    submissions_url,
+    test_bigpicture_xml_files,
+    test_fega_xml_files,
+)
 from tests.integration.helpers import (
     check_submissions_object_patch,
     delete_object,
@@ -20,7 +25,7 @@ LOG.setLevel(logging.DEBUG)
 class TestObjects:
     """Test adding and getting objects with XML and CSV files."""
 
-    async def test_crud_works(self, client_logged_in, submission_fega):
+    async def test_crud_works(self, client_logged_in, submission_fega, submission_bigpicture):
         """Test REST API POST, GET and DELETE reqs.
 
         Tries to create new object, gets accession id and checks if correct
@@ -30,12 +35,13 @@ class TestObjects:
         :param client_logged_in: HTTP client_logged_in_logged_inion in which request call is made
         :param schema: name of the schema (submission) used for testing
         :param filename: name of the file used for testing
-        :param submission_fega: id of the submission used to group submission
+        :param submission_fega: id of the submission used to group fega submission
+        :param submission_bigpicture: id of submission used to group BP submission
         """
 
-        async def crud_works(schema, filename):
+        async def crud_works(schema, filename, submission_id):
             """Individual tests to be run in parallel."""
-            accession_id = await post_object(client_logged_in, schema, submission_fega, filename)
+            accession_id = await post_object(client_logged_in, schema, submission_id, filename)
             async with client_logged_in.get(f"{objects_url}/{schema}/{accession_id[0]}") as resp:
                 LOG.debug(f"Checking that {accession_id[0]} JSON is in {schema}")
                 res = await resp.json()
@@ -43,7 +49,7 @@ class TestObjects:
                 title = res["descriptor"].get("studyTitle", "") if schema == "study" else res.get("title", "")
             await check_submissions_object_patch(
                 client_logged_in,
-                submission_fega,
+                submission_id,
                 schema,
                 accession_id[0],
                 title,
@@ -61,15 +67,17 @@ class TestObjects:
                 LOG.debug(f"Checking that XML object {accession_id[0]} was deleted")
                 assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
 
-            async with client_logged_in.get(f"{submissions_url}/{submission_fega}") as resp:
-                LOG.debug(f"Checking that object {accession_id[0]} was deleted from submission {submission_fega}")
+            async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
+                LOG.debug(f"Checking that object {accession_id[0]} was deleted from submission {submission_id}")
                 res = await resp.json()
                 expected_true = not any(d["accessionId"] == accession_id[0] for d in res["metadataObjects"])
                 assert expected_true, f"object {accession_id[0]} still exists"
 
         gather_items = []
         for schema, filename in test_fega_xml_files:
-            gather_items.append(crud_works(schema, filename))
+            gather_items.append(crud_works(schema, filename, submission_fega))
+        for schema, filename in test_bigpicture_xml_files:
+            gather_items.append(crud_works(schema, filename, submission_bigpicture))
         # Run in parallel to test concurrent uploads
         await asyncio.gather(*gather_items)
 
@@ -81,7 +89,8 @@ class TestObjects:
         was deleted.
 
         :param client_logged_in: HTTP client in which request call is made
-        :param submission_fega: id of the submission used to group submission
+        :param submission_fega: id of the submission used to group fega submission
+        :param submission_bigpicture: id of submission used to group BP submission
         """
         items = []
         _schema = "policy"

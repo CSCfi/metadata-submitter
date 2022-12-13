@@ -284,6 +284,10 @@ class APIHandlerTestCase(HandlersTestCase):
                 "policy",
                 "dataset",
                 "project",
+                "image",
+                "BP Dataset",
+                "BP Sample",
+                "observation",
             ]
 
             for schema_type in schema_types:

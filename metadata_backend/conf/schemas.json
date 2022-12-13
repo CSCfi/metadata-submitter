@@ -124,5 +124,14 @@
             "url": "https://github.com/imi-bigpicture/metadata-schema/blob/main/src/BP.sample.xsd"
         },
         "provider": "BP"
+    },
+    "observation": {
+        "priority": 15,
+        "description": {
+            "title": "BP observation",
+            "detail": "A BigPicture observation object.",
+            "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.2.0/src/BP.observation.xsd"
+        },
+        "provider": "BP"
     }
 }
