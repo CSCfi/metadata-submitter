@@ -48,6 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Mongo indexes for `file` schema #148
 - `/files` endpoint to retrieve files attached to a project #148 #627
 - option to add additional members to `application/problem+json` #642
+- Bigpicture sample, image and dataset XML schemas were added and JSON schemas for those objects were produced #445 #481 #491
 
 ### Changed
 - schema loader now matches schema files by exact match with schema #481. This means that schema file naming in metadata_backend/helpers/schemas now have rules:
@@ -87,6 +88,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Refactor operators to use a common base class called `BaseOperator` #627
 - XML validation errors now compile all the failing elements into same error message and include the line number in the error reason #630
 - Changed the submission object's `dac` field to `rems` and its subsequent endpoints similarly #648
+- XML to JSON parser/converter was enhanced to accommodate for the new Bigpicture XML objects #445 #481 #491
+- Updated BP sample XML and JSON schema, its parsing method and its related example file and tests #650
 
 ### Removed
 

@@ -5,94 +5,146 @@
         "sampleAttribute": {
             "title": "Sample Attributes",
             "description": "Properties and attributes of the sample set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
-            "anyOf": [
+            "oneOf": [
                 {
                     "type": "array",
+                    "title": "Attribute list",
                     "items": {
-                        "type": "object",
-                        "title": "Sample attribute item",
-                        "required": [
-                            "tag",
-                            "value"
-                        ],
-                        "properties": {
-                            "tag": {
-                                "type": "string",
-                                "title": "Tag title"
-                            },
-                            "value": {
-                                "type": [
-                                    "string",
-                                    "number"
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "title": "Sample attribute item",
+                                "required": [
+                                    "tag",
+                                    "value"
                                 ],
-                                "title": "Description"
-                            },
-                            "units": {
-                                "type": "string",
-                                "title": "Optional scientific units."
-                            }
-                        }
-                    }
-                },
-                {
-                    "#ref": "#/$defs/sampleAttributeSet"
-                }
-            ]
-        },
-        "sampleAttributeSet": {
-            "title": "Sample Attribute Set",
-            "description": "Reusable set of attributes to encode multiple tag-value or tag-code value pairs.",
-            "anyOf": [
-                {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "title": "Sample attribute item",
-                        "required": [
-                            "tag"
-                        ],
-                        "properties": {
-                            "tag": {
-                                "type": "string",
-                                "title": "Tag title"
-                            },
-                            "attribute": {
-                                "items": {
-                                    "#ref": "#/$defs/sampleAttribute"
+                                "properties": {
+                                    "tag": {
+                                        "type": "string",
+                                        "title": "Attribute tag"
+                                    },
+                                    "value": {
+                                        "type": [
+                                            "string",
+                                            "number"
+                                        ],
+                                        "title": "Attribute value"
+                                    },
+                                    "units": {
+                                        "type": "string",
+                                        "title": "Optional scientific units"
+                                    }
                                 }
                             },
-                            "attributeSet": {
-                                "items": {
-                                    "#ref": "#"
+                            {
+                                "type": "object",
+                                "title": "Coded attribute item",
+                                "required": [
+                                    "tag",
+                                    "code",
+                                    "scheme",
+                                    "meaning"
+                                ],
+                                "properties": {
+                                    "tag": {
+                                        "type": "string",
+                                        "title": "Attribute tag"
+                                    },
+                                    "code": {
+                                        "type": "string",
+                                        "title": "Attribute code"
+                                    },
+                                    "scheme": {
+                                        "type": "string",
+                                        "title": "Attribute scheme designator"
+                                    },
+                                    "meaning": {
+                                        "type": "string",
+                                        "title": "Attribute cleartext meaning"
+                                    },
+                                    "schemeVersion": {
+                                        "type": "string",
+                                        "title": "Attribute scheme version"
+                                    }
                                 }
                             }
-                        }
+                        ]
                     }
                 },
                 {
                     "type": "object",
-                    "title": "Sample attribute item",
-                    "required": [
-                        "tag"
-                    ],
+                    "title": "Attribute object",
                     "properties": {
-                        "tag": {
-                            "type": "string",
-                            "title": "Tag title"
-                        },
                         "attribute": {
-                            "items": {
-                                "#ref": "#/$defs/sampleAttribute"
-                            }
+                            "#ref": "#"
                         },
                         "attributeSet": {
-                            "items": {
-                                "#ref": "#"
-                            }
+                            "#ref": "#/$defs/sampleAttributeSet"
                         }
                     }
                 }
             ]
+        },
+        "sampleAttributeSet": {
+            "title": "Sample Attribute Set list",
+            "description": "Reusable set of attributes to encode multiple tag-value or tag-code value pairs.",
+            "type": "array",
+            "items": {
+                "type": "object",
+                "title": "Sample attribute item",
+                "properties": {
+                    "tag": {
+                        "type": "string",
+                        "title": "Tag title"
+                    },
+                    "attribute": {
+                        "items": {
+                            "#ref": "#/$defs/sampleAttribute"
+                        }
+                    },
+                    "numericAttribute": {
+                        "items": {
+                            "#ref": "#/$defs/sampleAttribute"
+                        }
+                    },
+                    "codedAttribute": {
+                        "items": {
+                            "#ref": "#/$defs/sampleAttribute"
+                        }
+                    },
+                    "attributeSet": {
+                        "items": {
+                            "#ref": "#"
+                        }
+                    }
+                },
+                "required": [
+                    "tag"
+                ],
+                "oneOf": [
+                    {
+                        "required": [
+                            "attribute"
+                        ]
+                    },
+                    {
+                        "required": [
+                            "numericAttribute"
+                        ]
+                    },
+                    {
+                        "required": [
+                            "codedAttribute"
+                        ]
+                    },
+                    {
+                        "required": [
+                            "attributeSet"
+                        ]
+                    }
+                ],
+                "additionalProperties": false
+            }
         }
     },
     "type": "object",
@@ -107,8 +159,7 @@
                     "description": "A human being or animal.",
                     "type": "object",
                     "required": [
-                        "alias",
-                        "attributes"
+                        "alias"
                     ],
                     "properties": {
                         "alias": {
@@ -126,13 +177,44 @@
             "type": "object",
             "additionalProperties": false,
             "properties": {
+                "case": {
+                    "title": "Case Type",
+                    "description": "A pathological case that references one biological being.",
+                    "type": "object",
+                    "required": [
+                        "alias",
+                        "biologicalBeing"
+                    ],
+                    "properties": {
+                        "alias": {
+                            "title": "Alias Type",
+                            "type": "string"
+                        },
+                        "biologicalBeing": {
+                            "title": "Biological Being Type",
+                            "description": "Identifies the biological being the case is for.",
+                            "type": "object",
+                            "properties": {
+                                "refname": {
+                                    "title": "Reference name",
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
                 "specimen": {
                     "title": "Specimen Type",
                     "description": "A removed part of a human/animal being.",
                     "type": "object",
                     "required": [
                         "alias",
-                        "attributes",
                         "extractedFrom"
                     ],
                     "properties": {
@@ -168,7 +250,6 @@
                     "type": "object",
                     "required": [
                         "alias",
-                        "attributes",
                         "sampledFrom"
                     ],
                     "properties": {
@@ -204,8 +285,8 @@
                     "type": "object",
                     "required": [
                         "alias",
-                        "attributes",
-                        "createdFrom"
+                        "createdFrom",
+                        "stainingInformation"
                     ],
                     "properties": {
                         "alias": {
@@ -218,6 +299,17 @@
                         "createdFrom": {
                             "title": "Sampled From Type",
                             "description": "The alias of the block object where slide is created from.",
+                            "type": "object",
+                            "properties": {
+                                "refname": {
+                                    "title": "Reference name",
+                                    "type": "string"
+                                }
+                            }
+                        },
+                        "stainingInformation": {
+                            "title": "Staining of the slide",
+                            "description": "The alias of the staining object for the slide.",
                             "type": "object",
                             "properties": {
                                 "refname": {
