@@ -182,7 +182,7 @@ class ParserTestCase(unittest.TestCase):
         observation_json = self.xml_parser.parse("observation", observation_xml)
         self.assertEqual("Observation_gHJhZLyAMP", observation_json["alias"])
         self.assertEqual("Case_GMGVsazraj", observation_json["observedOn"]["case"]["refname"])
-        self.assertEqual("Diagnose", observation_json["statement"]["codedAttributesSet"]["codedAttribute"]["tag"])
+        self.assertEqual("Diagnose", observation_json["statement"]["codedAttributesSet"][0]["tag"])
 
     def test_error_raised_when_schema_not_found(self):
         """Test 400 is returned when schema type is invalid."""
