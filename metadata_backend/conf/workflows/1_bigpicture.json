@@ -58,6 +58,14 @@
                     "requires": [
                         "policy"
                     ]
+                },
+                {
+                    "name": "observation",
+                    "required": false,
+                    "allowMultipleObjects": true,
+                    "requires": [
+                        "study"
+                    ]
                 }
             ]
         },
