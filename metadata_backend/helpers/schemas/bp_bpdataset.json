@@ -258,7 +258,6 @@
         "policyRef": {
             "title": "Policy Reference",
             "description": "Identifies the data access policy controlling this data set.",
-            "type": "object",
             "$ref": "#/$defs/reference"
         },
         "imageRef": {
