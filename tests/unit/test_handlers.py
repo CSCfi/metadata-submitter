@@ -288,6 +288,7 @@ class APIHandlerTestCase(HandlersTestCase):
                 "BP Dataset",
                 "BP Sample",
                 "BP Observation",
+                "BP Staining",
             ]
 
             for title in schema_titles:
