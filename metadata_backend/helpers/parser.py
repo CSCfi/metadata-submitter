@@ -90,6 +90,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
             "contacts",
             "dataUses",
             "attributeSet",
+            "stain",
         ]
 
         refs = {"analysisRef", "sampleRef", "runRef", "experimentRef"}
