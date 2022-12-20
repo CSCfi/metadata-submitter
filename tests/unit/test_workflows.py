@@ -87,8 +87,8 @@ class TestWorkflow(HandlersTestCase):
         """Test Workflow properties."""
         workflow = self.WORKFLOWS["valid"]
         self.assertEqual(workflow.single_instance_schemas, {"study", "bpdataset"})
-        self.assertEqual(workflow.required_schemas, {"study", "dac", "image", "bpdataset"})
-        schemas_in_workflow = {"study", "dac", "policy", "image", "bpdataset", "experiment", "run"}
+        self.assertEqual(workflow.required_schemas, {"study", "dac", "bpimage", "bpdataset"})
+        schemas_in_workflow = {"study", "dac", "policy", "bpimage", "bpdataset", "experiment", "run"}
         self.assertEqual(workflow.schemas, schemas_in_workflow)
         self.assertEqual(set(workflow.schemas_dict.keys()), schemas_in_workflow)
         self.assertEqual(workflow.schemas, set(workflow.schemas_dict.keys()))

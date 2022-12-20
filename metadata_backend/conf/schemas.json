@@ -98,7 +98,7 @@
         },
         "provider": "Datacite"
     },
-    "image": {
+    "bpimage": {
         "priority": 12,
         "description": {
             "title": "BP Image",
@@ -121,7 +121,7 @@
         "description": {
             "title": "BP Sample",
             "detail": "A BigPicture sample object.",
-            "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.1.1/src/BP.sample.xsd"
+            "url": "https://github.com/imi-bigpicture/metadata-schema/blob/main/src/BP.sample.xsd"
         },
         "provider": "BP"
     }
