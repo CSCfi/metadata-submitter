@@ -392,11 +392,12 @@ class XMLToJSONParser:
         if _schema_type == "bpsample":
             result = self._organize_bp_sample_objects(result)
         # Validate each JSON object separately if an array of objects is parsed
-        results = result[_schema_type] if isinstance(result[_schema_type], list) else [result[_schema_type]]
+        obj_name = _schema_type[2:] if _schema_type in ["bpimage"] else _schema_type
+        results = result[obj_name] if isinstance(result[obj_name], list) else [result[obj_name]]
         if _schema_type != "submission":
             for obj in results:
                 JSONValidator(obj, _schema_type).validate
-        return result[_schema_type]
+        return result[obj_name]
 
     @staticmethod
     def _load_schema(schema_type: str) -> XMLSchema:
