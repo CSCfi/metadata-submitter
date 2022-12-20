@@ -60,7 +60,7 @@
                     ]
                 },
                 {
-                    "name": "observation",
+                    "name": "bpobservation",
                     "required": false,
                     "allowMultipleObjects": true,
                     "requires": [

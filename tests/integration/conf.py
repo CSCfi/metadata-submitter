@@ -32,7 +32,7 @@ test_fega_xml_files = [
 test_bigpicture_xml_files = [
     ("bpimage", "images_single.xml"),
     ("bpdataset", "template_dataset.xml"),
-    ("observation", "observations.xml"),
+    ("bpobservation", "observations.xml"),
 ]
 test_json_files = [
     ("study", "SRP000539.json", "SRP000539.json"),
@@ -56,6 +56,7 @@ test_schemas = [
     ("bpimage", 200),
     ("bpdataset", 200),
     ("bpsample", 200),
+    ("bpobservation", 200),
 ]
 API_PREFIX = "/v1"
 base_url = os.getenv("BASE_URL", "http://localhost:5430")

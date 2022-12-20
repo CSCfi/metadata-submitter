@@ -273,25 +273,25 @@ class APIHandlerTestCase(HandlersTestCase):
         with self.p_get_sess_restapi:
             response = await self.client.get(f"{API_PREFIX}/schemas")
             response_text = await response.text()
-            schema_types = [
-                "submission",
-                "study",
-                "sample",
-                "experiment",
-                "run",
-                "analysis",
-                "dac",
-                "policy",
-                "dataset",
-                "project",
-                "image",
+            schema_titles = [
+                "Submission",
+                "Study",
+                "Sample",
+                "Experiment",
+                "Run",
+                "Analysis",
+                "DAC",
+                "Policy",
+                "Dataset",
+                "Project",
+                "BP Image",
                 "BP Dataset",
                 "BP Sample",
-                "observation",
+                "BP Observation",
             ]
 
-            for schema_type in schema_types:
-                self.assertIn(schema_type, response_text)
+            for title in schema_titles:
+                self.assertIn(title, response_text)
 
     async def test_correct_study_schema_are_returned(self):
         """Test API endpoint for study schema types."""

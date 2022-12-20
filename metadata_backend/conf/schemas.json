@@ -125,10 +125,10 @@
         },
         "provider": "BP"
     },
-    "observation": {
+    "bpobservation": {
         "priority": 15,
         "description": {
-            "title": "BP observation",
+            "title": "BP Observation",
             "detail": "A BigPicture observation object.",
             "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.2.0/src/BP.observation.xsd"
         },

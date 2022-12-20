@@ -240,7 +240,7 @@
             "$ref": "#/$defs/reference"
         },
         "observedOn": {
-            "title": "Observation On",
+            "title": "Observed On",
             "description": "Identifies the object where observation made.",
             "type": "object",
             "oneOf": [
