@@ -404,7 +404,7 @@ class XMLToJSONParser:
         if _schema_type == "bpsample":
             result = self._organize_bp_sample_objects(result)
         # Validate each JSON object separately if an array of objects is parsed
-        obj_name = _schema_type[2:] if _schema_type in ["bpimage", "bpobservation"] else _schema_type
+        obj_name = _schema_type[2:] if _schema_type in ["bpimage", "bpobservation", "bpstaining"] else _schema_type
         results = result[obj_name] if isinstance(result[obj_name], list) else [result[obj_name]]
         if _schema_type != "submission":
             for obj in results:

@@ -119,7 +119,7 @@ class TestObjects:
         data = await post_multi_object(client_logged_in, _schema, submission_bigpicture, _filename)
         await test_query(data, _schema)
 
-        _schema = "staining"
+        _schema = "bpstaining"
         _filename = "stainings.xml"
         data = await post_multi_object(client_logged_in, _schema, submission_bigpicture, _filename)
         await test_query(data, _schema)

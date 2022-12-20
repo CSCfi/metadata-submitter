@@ -134,7 +134,7 @@
         },
         "provider": "BP"
     },
-    "staining": {
+    "bpstaining": {
         "priority": 16,
         "description": {
             "title": "BP Staining",

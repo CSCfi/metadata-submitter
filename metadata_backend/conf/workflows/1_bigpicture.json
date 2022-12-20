@@ -68,7 +68,7 @@
                     ]
                 },
                 {
-                    "name": "staining",
+                    "name": "bpstaining",
                     "required": false,
                     "allowMultipleObjects": true
                 }
