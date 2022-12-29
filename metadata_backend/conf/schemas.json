@@ -133,5 +133,14 @@
             "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.2.0/src/BP.observation.xsd"
         },
         "provider": "BP"
+    },
+    "bpstaining": {
+        "priority": 16,
+        "description": {
+            "title": "BP Staining",
+            "detail": "A BigPicture staining object.",
+            "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.2.0/src/BP.staining.xsd"
+        },
+        "provider": "BP"
     }
 }

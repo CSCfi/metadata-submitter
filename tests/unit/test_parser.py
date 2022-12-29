@@ -184,6 +184,17 @@ class ParserTestCase(unittest.TestCase):
         self.assertEqual("Case_GMGVsazraj", observation_json["observedOn"]["case"]["refname"])
         self.assertEqual("Diagnose", observation_json["statement"]["codedAttributesSet"][0]["tag"])
 
+        def test_bp_staining_is_parsed(self):
+            """Test that BP staining is parsed correctly.
+
+            Tests for some values that converted JSON should have.
+            """
+            staining_xml = self.load_file_to_text("bpstaining", "stainings.xml")
+            staining_json = self.xml_parser.parse("bpstaining", staining_xml)
+            self.assertEqual(2, len(staining_json))
+            self.assertEqual("StainingList_IjPhKpeLmO", staining_json[0]["alias"])
+            self.assertEqual("104210008", staining_json[1]["procedureInformation"]["codedAttribute"]["code"])
+
     def test_error_raised_when_schema_not_found(self):
         """Test 400 is returned when schema type is invalid."""
         with self.assertRaises(web.HTTPBadRequest):

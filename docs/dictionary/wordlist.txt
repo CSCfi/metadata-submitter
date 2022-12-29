@@ -544,6 +544,7 @@ prettierrc
 prevstepindex
 primaryid
 probeset
+procedureinformation
 processedreads
 processingtype
 procfile

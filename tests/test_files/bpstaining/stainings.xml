@@ -1,0 +1,38 @@
+<STAINING_SET>
+    <STAINING alias="StainingList_IjPhKpeLmO">
+        <STAIN>
+            <ATTRIBUTE>
+                <TAG>staining_method</TAG>
+                <VALUE>chemical</VALUE>
+            </ATTRIBUTE>
+            <CODED_ATTRIBUTE>
+                <TAG>staining_compound</TAG>
+                <CODE>12710003</CODE>
+                <SCHEME>SNOMED-CT</SCHEME>
+                <MEANING>hematoxylin stain</MEANING>
+            </CODED_ATTRIBUTE>
+        </STAIN>
+        <STAIN>
+            <ATTRIBUTE>
+                <TAG>staining_method</TAG>
+                <VALUE>chemical</VALUE>
+            </ATTRIBUTE>
+            <CODED_ATTRIBUTE>
+                <TAG>staining_compound</TAG>
+                <CODE>36879007</CODE>
+                <SCHEME>SNOMED-CT</SCHEME>
+                <MEANING>water soluble eosin stain</MEANING>
+            </CODED_ATTRIBUTE>
+        </STAIN>
+    </STAINING>
+    <STAINING alias="StainingProcedure_RZKigwpbVK">
+        <PROCEDURE_INFORMATION>
+            <CODED_ATTRIBUTE>
+                <TAG>staining_procedure</TAG>
+                <CODE>104210008</CODE>
+                <SCHEME>SNOMED-CT</SCHEME>
+                <MEANING>Hematoxylin and eosin stain method</MEANING>
+            </CODED_ATTRIBUTE>
+        </PROCEDURE_INFORMATION>
+    </STAINING>
+</STAINING_SET>
