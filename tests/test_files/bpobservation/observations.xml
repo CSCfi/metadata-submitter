@@ -1,0 +1,21 @@
+<OBSERVATION_SET>
+    <OBSERVATION alias="Observation_gHJhZLyAMP">
+        <STUDY_REF refname="Study_lLsDbNVEiX"/>
+        <OBSERVED_ON>
+            <CASE refname="Case_GMGVsazraj"/>
+        </OBSERVED_ON>
+        <OBSERVER refname="Observer_HLItGrrbGc"/>
+        <STATEMENT>
+            <STATEMENT_TYPE>Diagnosis</STATEMENT_TYPE>
+            <STATEMENT_STATUS>Summary</STATEMENT_STATUS>
+            <CODED_ATTRIBUTES_SET>
+                <CODED_ATTRIBUTE>
+                    <TAG>Diagnose</TAG>
+                    <CODE>93655004</CODE>
+                    <SCHEME>SNOMED-CT</SCHEME>
+                    <MEANING>Malignant melanoma of skin (disorder)</MEANING>
+                </CODED_ATTRIBUTE>
+            </CODED_ATTRIBUTES_SET>
+        </STATEMENT>
+    </OBSERVATION>
+</OBSERVATION_SET>

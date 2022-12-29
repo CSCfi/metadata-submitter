@@ -115,6 +115,17 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 children[key] = attr_list
                 continue
 
+            if "codedAttributesSet" in key or "customAttributesSet" in key:
+                attribs = list(value.values())
+                attr_list = []
+                for i in attribs:
+                    if isinstance(i, list):
+                        attr_list += i
+                    else:
+                        attr_list.append(i)
+                children[key] = attr_list
+                continue
+
             if "studyType" in key:
                 children[key] = value["existingStudyType"]
                 continue
@@ -392,7 +403,7 @@ class XMLToJSONParser:
         if _schema_type == "bpsample":
             result = self._organize_bp_sample_objects(result)
         # Validate each JSON object separately if an array of objects is parsed
-        obj_name = _schema_type[2:] if _schema_type in ["bpimage"] else _schema_type
+        obj_name = _schema_type[2:] if _schema_type in ["bpimage", "bpobservation"] else _schema_type
         results = result[obj_name] if isinstance(result[obj_name], list) else [result[obj_name]]
         if _schema_type != "submission":
             for obj in results:
