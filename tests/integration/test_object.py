@@ -96,7 +96,7 @@ class TestObjects:
                 LOG.debug(f"Checking that {item['accessionId']} XML is in {_schema}")
                 assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
-        _schema = "image"
+        _schema = "bpimage"
         _filename = "images_multi.xml"
         data = await post_multi_object(client_logged_in, _schema, submission_bigpicture, _filename)
         for item in data:
