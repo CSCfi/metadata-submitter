@@ -1,10 +1,42 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "title": "BP Dataset",
+    "title": "BP Observation",
     "$defs": {
-        "DatasetAttribute": {
-            "title": "Dataset Attributes",
-            "description": "Properties and attributes of the Dataset set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
+        "CodedAttributes": {
+            "type": "object",
+            "title": "Coded attribute item",
+            "required": [
+                "tag",
+                "code",
+                "scheme",
+                "meaning"
+            ],
+            "properties": {
+                "tag": {
+                    "type": "string",
+                    "title": "Attribute tag"
+                },
+                "code": {
+                    "type": "string",
+                    "title": "Attribute code"
+                },
+                "scheme": {
+                    "type": "string",
+                    "title": "Attribute scheme designator"
+                },
+                "meaning": {
+                    "type": "string",
+                    "title": "Attribute cleartext meaning"
+                },
+                "schemeVersion": {
+                    "type": "string",
+                    "title": "Attribute scheme version"
+                }
+            }
+        },
+        "ObservationAttribute": {
+            "title": "Observation Attributes",
+            "description": "Properties and attributes of the Observation set. These can be entered as free-form tag-value pairs. Submitters may be asked to follow a community established ontology when describing the work.",
             "oneOf": [
                 {
                     "type": "array",
@@ -13,7 +45,7 @@
                         "oneOf": [
                             {
                                 "type": "object",
-                                "title": "Dataset attribute item",
+                                "title": "Observation attribute item",
                                 "required": [
                                     "tag",
                                     "value"
@@ -37,36 +69,7 @@
                                 }
                             },
                             {
-                                "type": "object",
-                                "title": "Coded attribute item",
-                                "required": [
-                                    "tag",
-                                    "code",
-                                    "scheme",
-                                    "meaning"
-                                ],
-                                "properties": {
-                                    "tag": {
-                                        "type": "string",
-                                        "title": "Attribute tag"
-                                    },
-                                    "code": {
-                                        "type": "string",
-                                        "title": "Attribute code"
-                                    },
-                                    "scheme": {
-                                        "type": "string",
-                                        "title": "Attribute scheme designator"
-                                    },
-                                    "meaning": {
-                                        "type": "string",
-                                        "title": "Attribute cleartext meaning"
-                                    },
-                                    "schemeVersion": {
-                                        "type": "string",
-                                        "title": "Attribute scheme version"
-                                    }
-                                }
+                                "#ref": "#/$defs/CodedAttributes"
                             }
                         ]
                     }
@@ -79,19 +82,19 @@
                             "#ref": "#"
                         },
                         "attributeSet": {
-                            "#ref": "#/$defs/DatasetAttributeSet"
+                            "#ref": "#/$defs/ObservationAttributeSet"
                         }
                     }
                 }
             ]
         },
-        "DatasetAttributeSet": {
-            "title": "Dataset Attribute Set list",
+        "ObservationAttributeSet": {
+            "title": "Observation Attribute Set list",
             "description": "Reusable set of attributes to encode multiple tag-value or tag-code value pairs.",
             "type": "array",
             "items": {
                 "type": "object",
-                "title": "Dataset attribute item",
+                "title": "Observation attribute item",
                 "properties": {
                     "tag": {
                         "type": "string",
@@ -99,17 +102,17 @@
                     },
                     "attribute": {
                         "items": {
-                            "#ref": "#/$defs/DatasetAttribute"
+                            "#ref": "#/$defs/ObservationAttribute"
                         }
                     },
                     "numericAttribute": {
                         "items": {
-                            "#ref": "#/$defs/DatasetAttribute"
+                            "#ref": "#/$defs/ObservationAttribute"
                         }
                     },
                     "codedAttribute": {
                         "items": {
-                            "#ref": "#/$defs/DatasetAttribute"
+                            "#ref": "#/$defs/ObservationAttribute"
                         }
                     },
                     "attributeSet": {
@@ -223,73 +226,150 @@
             }
         }
     },
-    "type": "object",
     "description": "Describes an object that contains the samples in the data set.",
     "additionalProperties": true,
     "required": [
-        "title",
-        "policyRef"
+        "studyRef",
+        "observedOn",
+        "statement"
     ],
     "properties": {
-        "attributes": {
-            "$ref": "#/$defs/DatasetAttribute"
-        },
-        "title": {
-            "title": "Dataset Title",
-            "description": "Short text that can be used to call out data sets in searches or in displays.",
-            "type": "string"
-        },
-        "description": {
-            "title": "Dataset Description",
-            "description": "Free-form text describing the data sets.",
-            "type": "string"
-        },
-        "datasetType": {
-            "title": "Dataset Type",
-            "type": "array",
-            "items": {
-                "type": "string",
-                "enum": [
-                    "Whole slide imaging"
-                ]
-            },
-            "uniqueItems": true
-        },
-        "policyRef": {
-            "title": "Policy Reference",
-            "description": "Identifies the data access policy controlling this data set.",
+        "studyRef": {
+            "title": "Study Reference",
+            "description": "Identifies the parent study.",
             "$ref": "#/$defs/reference"
         },
-        "imageRef": {
-            "title": "Image Reference",
-            "description": "Identifies the images which are part of this dataset.",
-            "type": "array",
-            "items": {
-                "$ref": "#/$defs/reference"
+        "observedOn": {
+            "title": "Observed On",
+            "description": "Identifies the object where observation made.",
+            "type": "object",
+            "oneOf": [
+                {
+                    "required": [
+                        "annotation"
+                    ]
+                },
+                {
+                    "required": [
+                        "case"
+                    ]
+                },
+                {
+                    "required": [
+                        "biologicalbeing"
+                    ]
+                },
+                {
+                    "required": [
+                        "specimen"
+                    ]
+                },
+                {
+                    "required": [
+                        "block"
+                    ]
+                },
+                {
+                    "required": [
+                        "slide"
+                    ]
+                },
+                {
+                    "required": [
+                        "image"
+                    ]
+                }
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "annotation": {
+                    "title": "Annotation reference",
+                    "description": "Identifies the referenced annotation.",
+                    "$ref": "#/$defs/reference"
+                },
+                "case": {
+                    "title": "Case reference",
+                    "description": "Identifies the referenced case.",
+                    "$ref": "#/$defs/reference"
+                },
+                "biologicalbeing": {
+                    "title": "Biological being reference",
+                    "description": "Identifies the referenced biological being.",
+                    "$ref": "#/$defs/reference"
+                },
+                "specimen": {
+                    "title": "Specimen reference",
+                    "description": "Identifies the referenced specimen.",
+                    "$ref": "#/$defs/reference"
+                },
+                "block": {
+                    "title": "Block reference",
+                    "description": "Identifies the referenced block.",
+                    "$ref": "#/$defs/reference"
+                },
+                "slide": {
+                    "title": "Slide reference",
+                    "description": "Identifies the referenced slide.",
+                    "$ref": "#/$defs/reference"
+                },
+                "image": {
+                    "title": "Image reference",
+                    "description": "Identifies the referenced image.",
+                    "$ref": "#/$defs/reference"
+                }
             }
         },
-        "annotationRef": {
-            "title": "Annotation Reference",
-            "description": "Identifies the annotations which are part of this dataset.",
-            "type": "array",
-            "items": {
-                "$ref": "#/$defs/reference"
-            }
+        "observer": {
+            "title": "Observer reference",
+            "description": "Identifies the observer.",
+            "$ref": "#/$defs/reference"
         },
-        "observationsRef": {
-            "title": "Observation Reference",
-            "description": "Identifies the observations which are part of this dataset.",
-            "type": "array",
-            "items": {
-                "$ref": "#/$defs/reference"
-            }
-        },
-        "complementsDatasetRef": {
-            "type": "array",
-            "title": "Complements Dataset Reference",
-            "description": "Identifies the datasets which this dataset complements.",
-            "items": {
-                "$ref": "#/$defs/reference"
+        "statement": {
+            "title": "Statement",
+            "description": "A BP statement object describes the statements for an observation.",
+            "type": "object",
+            "required": [
+                "statementType",
+                "statementStatus"
+            ],
+            "properties": {
+                "statementType": {
+                    "type": "string",
+                    "description": "The type of the statement.",
+                    "enum": [
+                        "Diagnosis",
+                        "Macroscopic Description",
+                        "Microscopic Description",
+                        "Finding"
+                    ]
+                },
+                "statementStatus": {
+                    "type": "string",
+                    "description": "The status of the statement.",
+                    "enum": [
+                        "Summary",
+                        "Distinct"
+                    ]
+                },
+                "codedAttributesSet": {
+                    "type": "array",
+                    "description": "Attributes that can be coded by the means of some internationally or at least published schema, classification, nomenclature or ontology.",
+                    "items": {
+                        "#ref": "#/$defs/CodedAttributes"
+                    }
+                },
+                "customAttributesSet": {
+                    "description": "Information which can be stored by the means of a 'TAG' > 'VALUE' concept.",
+                    "#ref": "#/$defs/ObservationAttribute"
+                },
+                "freetext": {
+                    "type": "string",
+                    "description": "This section of a statement comprises information that is only available as free text."
+                },
+                "attributes": {
+                    "description": "General attributes",
+                    "#ref": "#/$defs/ObservationAttribute"
+                }
             }
         }
     }
