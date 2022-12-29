@@ -28,7 +28,7 @@
             "required": true,
             "schemas": [
                 {
-                    "name": "image",
+                    "name": "bpimage",
                     "required": true,
                     "requires_or": [
                         "dac",

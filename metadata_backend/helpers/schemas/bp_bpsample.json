@@ -158,9 +158,6 @@
                     "title": "Biological Being Type",
                     "description": "A human being or animal.",
                     "type": "object",
-                    "required": [
-                        "alias"
-                    ],
                     "properties": {
                         "alias": {
                             "title": "Alias Type",
@@ -182,7 +179,6 @@
                     "description": "A pathological case that references one biological being.",
                     "type": "object",
                     "required": [
-                        "alias",
                         "biologicalBeing"
                     ],
                     "properties": {
@@ -214,7 +210,6 @@
                     "description": "A removed part of a human/animal being.",
                     "type": "object",
                     "required": [
-                        "alias",
                         "extractedFrom"
                     ],
                     "properties": {
@@ -249,7 +244,6 @@
                     "description": "A part or a collection of parts of one or many Specimens that has/have been sampled and processed for further investigation.",
                     "type": "object",
                     "required": [
-                        "alias",
                         "sampledFrom"
                     ],
                     "properties": {
@@ -284,7 +278,6 @@
                     "description": "A physical slide that has been created out of one or more Blocks.",
                     "type": "object",
                     "required": [
-                        "alias",
                         "createdFrom",
                         "stainingInformation"
                     ],

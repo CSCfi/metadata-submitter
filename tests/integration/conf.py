@@ -30,7 +30,7 @@ test_fega_xml_files = [
     ("dataset", "dataset.xml"),
 ]
 test_bigpicture_xml_files = [
-    ("image", "images_single.xml"),
+    ("bpimage", "images_single.xml"),
     ("bpdataset", "template_dataset.xml"),
 ]
 test_json_files = [
@@ -52,7 +52,7 @@ test_schemas = [
     ("policy", 200),
     ("dataset", 200),
     ("datacite", 200),
-    ("image", 200),
+    ("bpimage", 200),
     ("bpdataset", 200),
     ("bpsample", 200),
 ]

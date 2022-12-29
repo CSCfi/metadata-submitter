@@ -47,7 +47,7 @@
                     "allowMultipleObjects": true
                 },
                 {
-                    "name": "image",
+                    "name": "bpimage",
                     "required": false,
                     "allowMultipleObjects": true
                 },

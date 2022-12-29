@@ -90,6 +90,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed the submission object's `dac` field to `rems` and its subsequent endpoints similarly #648
 - XML to JSON parser/converter was enhanced to accommodate for the new Bigpicture XML objects #445 #481 #491
 - Updated BP sample XML and JSON schema, its parsing method and its related example file and tests #650
+- Updated BP image and dataset JSON schemas for better functionality #664
 
 ### Removed
 
