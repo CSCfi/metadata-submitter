@@ -93,43 +93,38 @@ class TestObjects:
         :param submission_bigpicture: id of submission used to group BP submission
         """
         items = []
+
+        async def test_query(data, schema):
+            for item in data:
+                items.append(item)
+                async with client_logged_in.get(f"{objects_url}/{schema}/{item['accessionId']}") as resp:
+                    LOG.debug(f"Checking that {item['accessionId']} JSON is in {schema}")
+                    assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+                async with client_logged_in.get(f"{objects_url}/{schema}/{item['accessionId']}?format=xml") as resp:
+                    LOG.debug(f"Checking that {item['accessionId']} XML is in {schema}")
+                    assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+
         _schema = "policy"
         _filename = "policy2.xml"
         data = await post_multi_object(client_logged_in, _schema, submission_fega, _filename)
-        for item in data:
-            items.append(item)
-            async with client_logged_in.get(f"{objects_url}/{_schema}/{item['accessionId']}") as resp:
-                LOG.debug(f"Checking that {item['accessionId']} JSON is in {_schema}")
-                assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-            async with client_logged_in.get(f"{objects_url}/{_schema}/{item['accessionId']}?format=xml") as resp:
-                LOG.debug(f"Checking that {item['accessionId']} XML is in {_schema}")
-                assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+        await test_query(data, _schema)
 
         _schema = "bpimage"
         _filename = "images_multi.xml"
         data = await post_multi_object(client_logged_in, _schema, submission_bigpicture, _filename)
-        for item in data:
-            items.append(item)
-            async with client_logged_in.get(f"{objects_url}/{_schema}/{item['accessionId']}") as resp:
-                LOG.debug(f"Checking that {item['accessionId']} JSON is in {_schema}")
-                assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-            async with client_logged_in.get(f"{objects_url}/{_schema}/{item['accessionId']}?format=xml") as resp:
-                LOG.debug(f"Checking that {item['accessionId']} XML is in {_schema}")
-                assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+        await test_query(data, _schema)
 
         _schema = "bpsample"
         _filename = "template_samples.xml"
         data = await post_multi_object(client_logged_in, _schema, submission_bigpicture, _filename)
-        for item in data:
-            items.append(item)
-            async with client_logged_in.get(f"{objects_url}/{_schema}/{item['accessionId']}") as resp:
-                LOG.debug(f"Checking that {item['accessionId']} JSON is in {_schema}")
-                assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-            async with client_logged_in.get(f"{objects_url}/{_schema}/{item['accessionId']}?format=xml") as resp:
-                LOG.debug(f"Checking that {item['accessionId']} XML is in {_schema}")
-                assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+        await test_query(data, _schema)
 
-        assert len(items) == 16, "Wrong amount of items were added during previous requests."
+        _schema = "bpstaining"
+        _filename = "stainings.xml"
+        data = await post_multi_object(client_logged_in, _schema, submission_bigpicture, _filename)
+        await test_query(data, _schema)
+
+        assert len(items) == 18, "Wrong amount of items were added during previous requests."
         for item in items:
             _id, _schema = item["accessionId"], item["schema"]
             await delete_object(client_logged_in, _schema, _id)

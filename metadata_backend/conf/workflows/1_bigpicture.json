@@ -66,6 +66,11 @@
                     "requires": [
                         "study"
                     ]
+                },
+                {
+                    "name": "bpstaining",
+                    "required": false,
+                    "allowMultipleObjects": true
                 }
             ]
         },
