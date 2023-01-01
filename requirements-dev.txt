@@ -42,7 +42,7 @@ bandit==1.7.4
     # via -r requirements-dev.in
 beautifulsoup4==4.11.1
     # via pyspelling
-black==22.10.0
+black==22.12.0
     # via -r requirements-dev.in
 bracex==2.3.post1
     # via wcmatch
