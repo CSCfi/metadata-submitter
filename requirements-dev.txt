@@ -243,7 +243,7 @@ pytest==7.2.0
     #   pytest-cov
     #   pytest-forked
     #   pytest-xdist
-pytest-asyncio==0.20.2
+pytest-asyncio==0.20.3
     # via -r requirements-dev.in
 pytest-cov==4.0.0
     # via -r requirements-dev.in
