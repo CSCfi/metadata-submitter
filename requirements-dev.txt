@@ -48,7 +48,7 @@ bracex==2.3.post1
     # via wcmatch
 build==0.8.0
     # via pip-tools
-certifi==2022.9.24
+certifi==2022.12.7
     # via
     #   -r requirements-dev.in
     #   -r requirements.txt
