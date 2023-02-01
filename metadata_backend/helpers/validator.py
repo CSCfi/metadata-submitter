@@ -75,7 +75,7 @@ class XMLValidator:
             elem_name = (
                 error.obj[error.index].tag if isinstance(error, XMLSchemaChildrenValidationError) else error.elem.tag
             )
-            for (i, line) in enumerate(lines, 1):
+            for i, line in enumerate(lines, 1):
                 if elem_name in line and i not in found_lines:
                     line_num = i
                     found_lines.append(i)
