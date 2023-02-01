@@ -175,7 +175,6 @@ class RemsServiceHandler(ServiceHandler):
                 url=f"{self.base_url}/health",
                 timeout=10,
             ) as response:
-
                 LOG.debug("REMS REST API status is: %s.", response.status)
                 content = await response.json()
                 if response.status == 200 and content["healthy"]:
