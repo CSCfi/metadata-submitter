@@ -96,7 +96,7 @@ types-toml==0.10.8
     # via responses
 typing-extensions==4.4.0
     # via readerwriterlock
-ujson==5.6.0
+ujson==5.7.0
     # via -r requirements.in
 urllib3==1.26.12
     # via
