@@ -68,7 +68,6 @@ class MessageBroker(ABC):
             ssl_options=self.ssl_context,
             virtual_host=vhost,
         ) as connection:
-
             channel = connection.channel()  # type: ignore
 
             error = Message.create(channel, error_msg, properties)

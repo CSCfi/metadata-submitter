@@ -247,7 +247,6 @@ async def post_resource(request: web.Request) -> web.Response:
     """REMS create resource and return id."""
     global resource_id
     try:
-
         resource = await request.json()
         oid = resource["organization"]["organization/id"]
         if oid not in organizations:

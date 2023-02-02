@@ -141,7 +141,6 @@ class ServiceHandler(ABC):
                 json=json_data,
                 timeout=timeout,
             ) as response:
-
                 if not response.ok:
                     content = await response.text()
                     log_msg = (

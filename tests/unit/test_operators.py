@@ -349,7 +349,7 @@ class TestOperators(IsolatedAsyncioTestCase):
         ) as mocked_insert:
             with patch("metadata_backend.api.operators.object.datetime") as m_date:
                 m_date.utcnow.return_value = datetime.datetime(2020, 4, 14)
-                acc = await (operator._format_data_to_create_and_add_to_db("study", {}))
+                acc = await operator._format_data_to_create_and_add_to_db("study", {})
                 mocked_insert.assert_called_once_with(
                     "study",
                     {
@@ -371,17 +371,15 @@ class TestOperators(IsolatedAsyncioTestCase):
             with patch("metadata_backend.api.operators.object.datetime") as m_date:
                 m_date.utcnow.return_value = datetime.datetime(2020, 4, 14)
                 with self.assertRaises(HTTPBadRequest):
-                    await (
-                        operator._format_data_to_replace_and_add_to_db(
-                            "study",
-                            self.accession_id,
-                            {
-                                "accessionId": self.accession_id,
-                                "dateCreated": datetime.datetime(2020, 4, 14),
-                                "dateModified": datetime.datetime(2020, 4, 14),
-                                "publishDate": datetime.datetime(2020, 6, 14),
-                            },
-                        )
+                    await operator._format_data_to_replace_and_add_to_db(
+                        "study",
+                        self.accession_id,
+                        {
+                            "accessionId": self.accession_id,
+                            "dateCreated": datetime.datetime(2020, 4, 14),
+                            "dateModified": datetime.datetime(2020, 4, 14),
+                            "publishDate": datetime.datetime(2020, 6, 14),
+                        },
                     )
 
     async def test_correct_data_is_set_to_json_when_replacing(self):
@@ -397,7 +395,7 @@ class TestOperators(IsolatedAsyncioTestCase):
                     "accessionId": self.accession_id,
                     "dateModified": datetime.datetime(2020, 4, 14),
                 }
-                acc = await (operator._format_data_to_replace_and_add_to_db("study", self.accession_id, {}))
+                acc = await operator._format_data_to_replace_and_add_to_db("study", self.accession_id, {})
                 mocked_insert.assert_called_once_with(
                     "study",
                     self.accession_id,
@@ -414,7 +412,7 @@ class TestOperators(IsolatedAsyncioTestCase):
         ) as mocked_insert:
             with patch("metadata_backend.api.operators.object.datetime") as m_date:
                 m_date.utcnow.return_value = datetime.datetime(2020, 4, 14)
-                acc = await (operator._format_data_to_update_and_add_to_db("study", self.accession_id, {}))
+                acc = await operator._format_data_to_update_and_add_to_db("study", self.accession_id, {})
                 mocked_insert.assert_called_once_with(
                     "study",
                     self.accession_id,
@@ -432,17 +430,15 @@ class TestOperators(IsolatedAsyncioTestCase):
             with patch("metadata_backend.api.operators.object.datetime") as m_date:
                 m_date.utcnow.return_value = datetime.datetime(2020, 4, 14)
                 with self.assertRaises(HTTPBadRequest):
-                    await (
-                        operator._format_data_to_update_and_add_to_db(
-                            "study",
-                            self.accession_id,
-                            {
-                                "accessionId": self.accession_id,
-                                "dateCreated": datetime.datetime(2020, 4, 14),
-                                "dateModified": datetime.datetime(2020, 4, 14),
-                                "publishDate": datetime.datetime(2020, 6, 14),
-                            },
-                        )
+                    await operator._format_data_to_update_and_add_to_db(
+                        "study",
+                        self.accession_id,
+                        {
+                            "accessionId": self.accession_id,
+                            "dateCreated": datetime.datetime(2020, 4, 14),
+                            "dateModified": datetime.datetime(2020, 4, 14),
+                            "publishDate": datetime.datetime(2020, 6, 14),
+                        },
                     )
 
     async def test_correct_data_is_set_to_xml_when_creating(self):
@@ -459,7 +455,7 @@ class TestOperators(IsolatedAsyncioTestCase):
                 return_value=True,
             ) as m_insert:
                 with patch("metadata_backend.api.operators.object_xml.XMLToJSONParser"):
-                    acc = await (operator._format_data_to_create_and_add_to_db("study", xml_data))
+                    acc = await operator._format_data_to_create_and_add_to_db("study", xml_data)
                     m_insert.assert_called_once_with(
                         "xml-study", {"accessionId": self.accession_id, "content": xml_data}
                     )
@@ -479,7 +475,7 @@ class TestOperators(IsolatedAsyncioTestCase):
                 return_value=self.accession_id,
             ) as m_insert:
                 with patch("metadata_backend.api.operators.object_xml.XMLToJSONParser"):
-                    acc = await (operator._format_data_to_replace_and_add_to_db("study", self.accession_id, xml_data))
+                    acc = await operator._format_data_to_replace_and_add_to_db("study", self.accession_id, xml_data)
                     m_insert.assert_called_once_with(
                         "xml-study",
                         self.accession_id,

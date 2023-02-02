@@ -350,7 +350,6 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         metax_datasets: List[dict] = []
         async for _, schema, object_data in self.iter_submission_objects_data(submission, obj_op):
             if schema in DATACITE_SCHEMAS:
-
                 doi = object_data["doi"]
                 # in case object is not added to metax due to server error
                 if schema in METAX_SCHEMAS:
@@ -519,7 +518,6 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         # check first if all the files are ready, if not return HTTPBadRequest
         await file_operator.check_submission_files_ready(submission_id)
         if "messageBroker" in workflow.endpoints:
-
             # we will only publish the files which are ready
             files = await file_operator.read_submission_files(submission_id, ["ready"])
             for file in files:

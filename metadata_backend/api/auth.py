@@ -337,7 +337,6 @@ class AAIServiceHandler(ServiceHandler):
                 url=f"{self.base_url}/.well-known/openid-configuration",
                 timeout=10,
             ) as response:
-
                 content = await response.json()
                 LOG.debug("AAI REST API response content is: %r.", content)
                 if response.status == 200 and "userinfo_endpoint" in content:
