@@ -18,7 +18,7 @@ aiosignal==1.2.0
     #   aiohttp
 alabaster==0.7.12
     # via sphinx
-amqpstorm==2.10.5
+amqpstorm==2.10.6
     # via
     #   -r requirements-dev.in
     #   -r requirements.txt
