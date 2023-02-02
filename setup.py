@@ -29,7 +29,7 @@ setup(
     packages=find_packages(exclude=["tests"]),
     install_requires=requirements,
     extras_require={
-        "test": ["coverage==7.0.1", "pytest==7.2.0", "pytest-cov==4.0.0", "pytest-xdist==3.1.0", "tox==3.28.0"],
+        "test": ["coverage==7.1.0", "pytest==7.2.0", "pytest-cov==4.0.0", "pytest-xdist==3.1.0", "tox==3.28.0"],
         "docs": ["sphinx >= 1.4", "sphinx_rtd_theme==1.1.1"],
     },
     package_data={
