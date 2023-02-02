@@ -9,7 +9,7 @@
                 <TAG>animal_species</TAG>
                 <CODE>337915000</CODE>
                 <SCHEME>SNOMED-CT</SCHEME>
-                <MEANING>Homo sapiens</MEANING>
+                <MEANING>Homo sapiens (organism) |</MEANING>
             </CODED_ATTRIBUTE>
         </ATTRIBUTES>
     </BIOLOGICAL_BEING>
@@ -37,18 +37,20 @@
                 <TAG>specimen_type</TAG>
                 <VALUE>histology</VALUE>
             </ATTRIBUTE>
-            <NUMERIC_ATTRIBUTE>
+            <ATTRIBUTE>
                 <TAG>age_at_extraction</TAG>
-                <VALUE>65</VALUE>
-            </NUMERIC_ATTRIBUTE>
+                <VALUE>P65Y</VALUE>
+            </ATTRIBUTE>
             <ATTRIBUTE>
                 <TAG>extraction_method</TAG>
                 <VALUE>biopsy</VALUE>
             </ATTRIBUTE>
-            <ATTRIBUTE>
+            <CODED_ATTRIBUTE>
                 <TAG>anatomical_site</TAG>
-                <VALUE>liver</VALUE>
-            </ATTRIBUTE>
+                <CODE>39607008</CODE>
+                <SCHEME>SNOMED-CT</SCHEME>
+                <MEANING>lung structure</MEANING>
+            </CODED_ATTRIBUTE>
         </ATTRIBUTES>
         <EXTRACTED_FROM refname="BiologicalBeing_qLNZYjYjyZ"/>
     </SPECIMEN>
@@ -58,18 +60,20 @@
                 <TAG>specimen_type</TAG>
                 <VALUE>histology</VALUE>
             </ATTRIBUTE>
-            <NUMERIC_ATTRIBUTE>
+            <ATTRIBUTE>
                 <TAG>age_at_extraction</TAG>
-                <VALUE>50</VALUE>
-            </NUMERIC_ATTRIBUTE>
+                <VALUE>P20Y3M2W4D</VALUE>
+            </ATTRIBUTE>
             <ATTRIBUTE>
                 <TAG>extraction_method</TAG>
                 <VALUE>biopsy</VALUE>
             </ATTRIBUTE>
-            <ATTRIBUTE>
+            <CODED_ATTRIBUTE>
                 <TAG>anatomical_site</TAG>
-                <VALUE>liver</VALUE>
-            </ATTRIBUTE>
+                <CODE>39607008</CODE>
+                <SCHEME>SNOMED-CT</SCHEME>
+                <MEANING>lung structure</MEANING>
+            </CODED_ATTRIBUTE>
         </ATTRIBUTES>
         <EXTRACTED_FROM refname="BiologicalBeing_NhlAsXgDXz"/>
     </SPECIMEN>

@@ -94,6 +94,8 @@ elementpath==3.0.2
     # via
     #   -r requirements.txt
     #   xmlschema
+exceptiongroup==1.1.0
+    # via pytest
 execnet==1.9.0
     # via pytest-xdist
 filelock==3.8.0
@@ -130,6 +132,10 @@ imagesize==1.4.1
     # via sphinx
 iniconfig==1.1.1
     # via pytest
+isodate==0.6.1
+    # via
+    #   -r requirements-dev.in
+    #   -r requirements.txt
 isort==5.12.0
     # via
     #   -r requirements-dev.in
@@ -278,6 +284,7 @@ six==1.16.0
     # via
     #   -r requirements.txt
     #   html5lib
+    #   isodate
     #   python-dateutil
     #   tox
 smmap==5.0.0
@@ -313,6 +320,16 @@ toml==0.10.2
     #   -r requirements.txt
     #   responses
     #   vulture
+tomli==2.0.1
+    # via
+    #   black
+    #   build
+    #   coverage
+    #   mypy
+    #   pep517
+    #   pylint
+    #   pytest
+    #   tox
 tomlkit==0.11.5
     # via pylint
 tox==3.28.0
