@@ -41,7 +41,7 @@ jobs:
           echo "BUILD_BRANCH=$BRANCH" >> $GITHUB_ENV
 
       - name: Build
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           context: .
           push: true
