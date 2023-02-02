@@ -93,7 +93,6 @@ class RESTAPIHandler:
 
         project_id = ""
         if collection != "submission":
-
             submission_op = SubmissionOperator(db_client)
             submission_id, _ = await submission_op.check_object_in_submission(collection, accession_id)
             if submission_id:

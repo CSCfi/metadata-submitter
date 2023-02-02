@@ -141,7 +141,6 @@ class DataciteServiceHandler(ServiceHandler):
                 url=f"{self.base_url}/heartbeat",
                 timeout=10,
             ) as response:
-
                 content = await response.text()
                 LOG.info("Datacite REST API response content is: %s.", content)
                 if response.status == 200 and content == "OK":

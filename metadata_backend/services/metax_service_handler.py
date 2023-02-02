@@ -312,7 +312,6 @@ class MetaxServiceHandler(ServiceHandler):
                 url=f"{URL(metax_config['url'])}/watchman/ping/",
                 timeout=10,
             ) as response:
-
                 LOG.debug("Metax REST API status is: %s.", response.status)
                 content = await response.text()
                 if response.status == 200 and content == "pong":
