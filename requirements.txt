@@ -51,6 +51,8 @@ idna==3.4
     # via
     #   requests
     #   yarl
+isodate==0.6.1
+    # via -r requirements.in
 jsonschema==4.17.3
     # via -r requirements.in
 motor==3.1.1
@@ -89,7 +91,9 @@ requests==2.28.2
 responses==0.22.0
     # via oidcrp
 six==1.16.0
-    # via python-dateutil
+    # via
+    #   isodate
+    #   python-dateutil
 toml==0.10.2
     # via responses
 types-toml==0.10.8

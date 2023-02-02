@@ -158,7 +158,7 @@ class ParserTestCase(unittest.TestCase):
         self.assertEqual(list, type(bp_dataset_json["datasetType"]))
 
     def test_bp_sample_is_parsed(self):
-        """Test that BP sample is parsed correctly.
+        """Test that BP samples (all types) are parsed correctly.
 
         Tests for some values that converted JSON should have.
         """
@@ -169,7 +169,8 @@ class ParserTestCase(unittest.TestCase):
         self.assertEqual(bb_alias, bp_sample_json[0]["biologicalBeing"]["alias"])
         self.assertEqual(bb_alias, bp_sample_json[2]["case"]["biologicalBeing"]["refname"])
         self.assertEqual(bb_alias, bp_sample_json[4]["specimen"]["extractedFrom"]["refname"])
-        self.assertEqual(65.0, bp_sample_json[4]["specimen"]["attributes"][3]["value"])
+        self.assertEqual("P65Y", bp_sample_json[4]["specimen"]["attributes"][1]["value"])
+        self.assertEqual("lung structure", bp_sample_json[4]["specimen"]["attributes"][3]["meaning"])
         self.assertEqual("sample_preparation", bp_sample_json[6]["block"]["attributes"][0]["tag"])
         self.assertEqual("something", bp_sample_json[9]["slide"]["stainingInformation"]["refname"])
 
