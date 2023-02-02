@@ -347,7 +347,7 @@ virtualenv==20.16.5
     # via
     #   pre-commit
     #   tox
-vulture==2.6
+vulture==2.7
     # via -r requirements-dev.in
 wcmatch==8.4.1
     # via pyspelling
