@@ -264,7 +264,7 @@ readerwriterlock==1.0.9
     # via
     #   -r requirements.txt
     #   cryptojwt
-requests==2.28.1
+requests==2.28.2
     # via
     #   -r requirements.txt
     #   cryptojwt
