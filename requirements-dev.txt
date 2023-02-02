@@ -334,7 +334,7 @@ typing-extensions==4.4.0
     #   -r requirements.txt
     #   mypy
     #   readerwriterlock
-ujson==5.6.0
+ujson==5.7.0
     # via -r requirements.txt
 urllib3==1.26.12
     # via
