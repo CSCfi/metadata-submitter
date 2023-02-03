@@ -6,7 +6,7 @@ from io import StringIO
 from typing import Any, Dict, List, Optional, Type, Union
 
 from aiohttp import web
-from isodate import parse_duration
+from isodate import isoerror, parse_duration
 from pymongo import UpdateOne
 from xmlschema import (
     ElementData,
@@ -107,13 +107,24 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 continue
 
             if key == "attributes" and "attributeSet" not in value:
-                attribs = list(value.values())
+                attributes = list(value.values())
                 attr_list = []
-                for i in attribs:
-                    if isinstance(i, list):
-                        attr_list += i
+                # Bring 'attribute' list under 'attributes'
+                # and parse ISO-8601 durations to number of days
+                for attribs in attributes:
+                    if isinstance(attribs, list):
+                        for a in attribs:
+                            if a["tag"] == "age_at_extraction":
+                                a["originalValue"] = a["value"]
+                                a["value"] = self._convert_iso_duration(a["value"])
+                                a["units"] = "days"
+                            attr_list.append(a)
                     else:
-                        attr_list.append(i)
+                        if attribs["tag"] == "age_at_extraction":
+                            attribs["originalValue"] = attribs["value"]
+                            attribs["value"] = self._convert_iso_duration(attribs["value"])
+                            attribs["units"] = "days"
+                        attr_list.append(attribs)
                 children[key] = attr_list
                 continue
 
@@ -288,6 +299,26 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 children[key] = self.list([children[key], value])
 
         return children
+
+    def _convert_iso_duration(self, duration: str) -> int:
+        """Convert ISO-8601 formatted duration string to a number of days.
+
+        Expectation is that 'age_at_extraction' tag is always submitted
+        as a string according to the ISO-8601 duration format. The duration
+        is expected to only have date information and not time.
+
+        :param: Duration string
+        :returns: Number of days
+        :raises: HTTPBadRequest if parsing fails
+        """
+        try:
+            iso_duration = parse_duration(duration)
+            total_days = iso_duration.years * 365 + iso_duration.months * 30 + iso_duration.days
+            return int(total_days)
+        except isoerror.ISO8601Error as exc:
+            reason = "Unable to parse duration string of age_at_extraction."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason) from exc
 
     @property
     def lossy(self) -> bool:

@@ -30,6 +30,11 @@
                                         ],
                                         "title": "Attribute value"
                                     },
+                                    "originalValue": {
+                                        "type": "string",
+                                        "title": "Attributes original value",
+                                        "description": "Used for storing the original value of the attribute in case it gets converted to something else."
+                                    },
                                     "units": {
                                         "type": "string",
                                         "title": "Optional scientific units"
