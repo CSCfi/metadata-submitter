@@ -7,7 +7,6 @@ black
 certifi
 flake8
 honcho  # Runs Procfile
-isodate
 isort
 mypy
 pip-tools  # pip depedencies management

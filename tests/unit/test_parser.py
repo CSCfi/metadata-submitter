@@ -169,9 +169,9 @@ class ParserTestCase(unittest.TestCase):
         self.assertEqual(bb_alias, bp_sample_json[0]["biologicalBeing"]["alias"])
         self.assertEqual(bb_alias, bp_sample_json[2]["case"]["biologicalBeing"]["refname"])
         self.assertEqual(bb_alias, bp_sample_json[4]["specimen"]["extractedFrom"]["refname"])
-        self.assertEqual(7408, bp_sample_json[5]["specimen"]["attributes"][1]["value"])
+        self.assertEqual(7394, bp_sample_json[5]["specimen"]["attributes"][1]["value"])
         self.assertEqual("days", bp_sample_json[5]["specimen"]["attributes"][1]["units"])
-        self.assertEqual("P20Y3M2W4D", bp_sample_json[5]["specimen"]["attributes"][1]["originalValue"])
+        self.assertEqual("P20Y3M4D", bp_sample_json[5]["specimen"]["attributes"][1]["originalValue"])
         self.assertEqual("lung structure", bp_sample_json[4]["specimen"]["attributes"][3]["meaning"])
         self.assertEqual("sample_preparation", bp_sample_json[6]["block"]["attributes"][0]["tag"])
         self.assertEqual("something", bp_sample_json[9]["slide"]["stainingInformation"]["refname"])
@@ -188,7 +188,7 @@ class ParserTestCase(unittest.TestCase):
         with self.assertRaises(web.HTTPBadRequest):
             self.xml_parser.parse("bpsample", test_minimal_xml.format("ABCD"))
         with self.assertRaises(web.HTTPBadRequest):
-            self.xml_parser.parse("bpsample", test_minimal_xml.format("10"))
+            self.xml_parser.parse("bpsample", test_minimal_xml.format(10))
 
     def test_bp_observation_is_parsed(self):
         """Test that BP observation is parsed correctly.
