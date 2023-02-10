@@ -4,7 +4,7 @@ amqpstorm
 cryptography
 defusedxml
 gunicorn
-isodate
+metomi-isodatetime
 jsonschema
 motor
 oidcrp

@@ -6,7 +6,8 @@ from io import StringIO
 from typing import Any, Dict, List, Optional, Type, Union
 
 from aiohttp import web
-from isodate import isoerror, parse_duration
+from metomi.isodatetime.exceptions import ISO8601SyntaxError
+from metomi.isodatetime.parsers import DurationParser
 from pymongo import UpdateOne
 from xmlschema import (
     ElementData,
@@ -312,10 +313,10 @@ class MetadataXMLConverter(XMLSchemaConverter):
         :raises: HTTPBadRequest if parsing fails
         """
         try:
-            iso_duration = parse_duration(duration)
-            total_days = iso_duration.years * 365 + iso_duration.months * 30 + iso_duration.days
+            iso_duration = DurationParser().parse(duration)
+            total_days = iso_duration.get_days_and_seconds()[0]
             return int(total_days)
-        except isoerror.ISO8601Error as exc:
+        except ISO8601SyntaxError as exc:
             reason = "Unable to parse duration string of age_at_extraction."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason) from exc
