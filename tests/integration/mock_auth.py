@@ -7,10 +7,7 @@ from time import time
 from typing import Tuple
 
 from aiohttp import web
-from authlib.jose import jwk, jwt
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
+from authlib.jose import RSAKey, jwt
 
 FORMAT = "[%(asctime)s][%(levelname)-8s](L:%(lineno)s) %(funcName)s: %(message)s"
 logging.basicConfig(format=FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
@@ -21,20 +18,12 @@ LOG.setLevel(getenv("LOG_LEVEL", "INFO"))
 
 def generate_token() -> Tuple:
     """Generate RSA Key pair to be used to sign token and the JWT Token itself."""
-    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048, backend=default_backend())
-    public_key = private_key.public_key().public_bytes(
-        encoding=serialization.Encoding.PEM, format=serialization.PublicFormat.SubjectPublicKeyInfo
-    )
-    pem = private_key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.TraditionalOpenSSL,
-        encryption_algorithm=serialization.NoEncryption(),
-    )
+    key = RSAKey.generate_key(is_private=True)
     # we set no `exp` and other claims as they are optional in a real scenario these should bde set
     # See available claims here: https://www.iana.org/assignments/jwt/jwt.xhtml
     # the important claim is the "authorities"
-    public_jwk = jwk.dumps(public_key, kty="RSA")
-    private_jwk = jwk.dumps(pem, kty="RSA")
+    public_jwk = key.as_dict(is_private=False)
+    private_jwk = dict(key)
 
     return (public_jwk, private_jwk)
 
@@ -54,7 +43,12 @@ user_family_name = "test"
 mock_auth_url_docker = getenv("OIDC_URL", "http://mockauth:8000")  # called from inside docker-network
 mock_auth_url_local = getenv("OIDC_URL_TEST", "http://localhost:8000")  # called from local machine
 
-header = {"jku": f"{mock_auth_url_docker}/jwk", "kid": "rsa1", "alg": "RS256", "typ": "JWT"}
+header = {
+    "jku": f"{mock_auth_url_docker}/jwk",
+    "kid": "rsa1",
+    "alg": "RS256",
+    "typ": "JWT",
+}
 
 
 async def setmock(req: web.Request) -> web.Response:
@@ -200,7 +194,15 @@ async def oidc_config(request: web.Request) -> web.Response:
             "A256GCMKW",
         ],
         "id_token_encryption_enc_values_supported": ["A128CBC-HS256"],
-        "id_token_signing_alg_values_supported": ["RS256", "RS384", "RS512", "HS256", "HS384", "HS512", "ES256"],
+        "id_token_signing_alg_values_supported": [
+            "RS256",
+            "RS384",
+            "RS512",
+            "HS256",
+            "HS384",
+            "HS512",
+            "ES256",
+        ],
         "userinfo_encryption_alg_values_supported": [
             "RSA1_5",
             "RSA-OAEP",
@@ -213,7 +215,15 @@ async def oidc_config(request: web.Request) -> web.Response:
             "A256GCMKW",
         ],
         "userinfo_encryption_enc_values_supported": ["A128CBC-HS256"],
-        "userinfo_signing_alg_values_supported": ["RS256", "RS384", "RS512", "HS256", "HS384", "HS512", "ES256"],
+        "userinfo_signing_alg_values_supported": [
+            "RS256",
+            "RS384",
+            "RS512",
+            "HS256",
+            "HS384",
+            "HS512",
+            "ES256",
+        ],
         "dpop_signing_alg_values_supported": [
             "none",
             "RS256",
