@@ -93,6 +93,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - XML to JSON parser/converter was enhanced to accommodate for the new Bigpicture XML objects #445 #481 #491
 - Updated BP sample XML and JSON schema, its parsing method and its related example file and tests #650
 - Updated BP image and dataset JSON schemas for better functionality #664
+- Updated XML to JSON converter to parse ISO-8601 duration strings into numbers in BP sample attributes #696
 
 ### Removed
 
