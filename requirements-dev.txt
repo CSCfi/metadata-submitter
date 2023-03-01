@@ -6,7 +6,7 @@
 #
 aiofiles==23.1.0
     # via -r requirements-dev.in
-aiohttp==3.8.3
+aiohttp==3.8.4
     # via
     #   -r requirements.txt
     #   aiohttp-session
@@ -128,8 +128,6 @@ idna==3.4
     #   yarl
 imagesize==1.4.1
     # via sphinx
-importlib-resources==5.10.2
-    # via -r requirements.txt
 iniconfig==1.1.1
     # via pytest
 isort==5.12.0
@@ -194,8 +192,6 @@ pep517==0.13.0
     # via build
 pip-tools==6.12.2
     # via -r requirements-dev.in
-pkgutil-resolve-name==1.3.10
-    # via -r requirements.txt
 platformdirs==2.5.2
     # via
     #   black
@@ -368,8 +364,6 @@ yarl==1.8.1
     # via
     #   -r requirements.txt
     #   aiohttp
-zipp==3.13.0
-    # via -r requirements.txt
 
 # The following packages are considered to be unsafe in a requirements file:
 # pip
