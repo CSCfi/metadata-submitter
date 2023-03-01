@@ -22,7 +22,7 @@ amqpstorm==2.10.6
     # via
     #   -r requirements-dev.in
     #   -r requirements.txt
-astroid==2.12.11
+astroid==2.14.2
     # via pylint
 async-timeout==4.0.2
     # via
@@ -82,7 +82,7 @@ cryptojwt==1.6.1
     #   oidcmsg
 defusedxml==0.7.1
     # via -r requirements.txt
-dill==0.3.5.1
+dill==0.3.6
     # via pylint
 distlib==0.3.6
     # via virtualenv
@@ -221,7 +221,7 @@ pyflakes==3.0.1
     # via flake8
 pygments==2.13.0
     # via sphinx
-pylint==2.15.4
+pylint==2.16.2
     # via -r requirements-dev.in
 pymongo==4.2.0
     # via
