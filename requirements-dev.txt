@@ -235,7 +235,7 @@ pyrsistent==0.18.1
     # via
     #   -r requirements.txt
     #   jsonschema
-pyspelling==2.8.1
+pyspelling==2.8.2
     # via -r requirements-dev.in
 pytest==7.2.0
     # via
