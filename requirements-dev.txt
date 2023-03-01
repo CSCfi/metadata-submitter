@@ -192,7 +192,7 @@ pbr==5.10.0
     # via stevedore
 pep517==0.13.0
     # via build
-pip-tools==6.11.0
+pip-tools==6.12.2
     # via -r requirements-dev.in
 pkgutil-resolve-name==1.3.10
     # via -r requirements.txt
