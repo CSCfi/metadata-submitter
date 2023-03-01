@@ -90,7 +90,7 @@ docutils==0.17.1
     # via
     #   sphinx
     #   sphinx-rtd-theme
-elementpath==3.0.2
+elementpath==4.0.1
     # via
     #   -r requirements.txt
     #   xmlschema
@@ -358,7 +358,7 @@ wheel==0.38.1
     # via pip-tools
 wrapt==1.14.1
     # via astroid
-xmlschema==2.1.1
+xmlschema==2.2.1
     # via -r requirements.txt
 yarl==1.8.1
     # via
