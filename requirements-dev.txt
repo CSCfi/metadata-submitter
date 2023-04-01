@@ -293,7 +293,8 @@ sphinx==5.3.0
     # via
     #   -r requirements-dev.in
     #   sphinx-rtd-theme
-sphinx-rtd-theme==1.0.0
+    #   sphinxcontrib-jquery
+sphinx-rtd-theme==1.2.0
     # via -r requirements-dev.in
 sphinxcontrib-applehelp==1.0.2
     # via sphinx
@@ -301,6 +302,8 @@ sphinxcontrib-devhelp==1.0.2
     # via sphinx
 sphinxcontrib-htmlhelp==2.0.0
     # via sphinx
+sphinxcontrib-jquery==4.1
+    # via sphinx-rtd-theme
 sphinxcontrib-jsmath==1.0.1
     # via sphinx
 sphinxcontrib-qthelp==1.0.3
