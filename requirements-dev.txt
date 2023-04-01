@@ -22,7 +22,7 @@ amqpstorm==2.10.6
     # via
     #   -r requirements-dev.in
     #   -r requirements.txt
-astroid==2.14.2
+astroid==2.15.1
     # via pylint
 async-timeout==4.0.2
     # via
@@ -223,7 +223,7 @@ pygments==2.13.0
     # via
     #   rich
     #   sphinx
-pylint==2.16.2
+pylint==2.17.1
     # via -r requirements-dev.in
 pymongo==4.2.0
     # via
