@@ -86,7 +86,7 @@ dill==0.3.6
     # via pylint
 distlib==0.3.6
     # via virtualenv
-docutils==0.17.1
+docutils==0.18.1
     # via
     #   sphinx
     #   sphinx-rtd-theme
@@ -292,7 +292,7 @@ soupsieve==2.3.2.post1
     # via
     #   beautifulsoup4
     #   pyspelling
-sphinx==5.3.0
+sphinx==6.1.3
     # via
     #   -r requirements-dev.in
     #   sphinx-rtd-theme
