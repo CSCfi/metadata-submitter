@@ -364,7 +364,7 @@ wheel==0.38.1
     # via pip-tools
 wrapt==1.14.1
     # via astroid
-xmlschema==2.2.2
+xmlschema==2.2.3
     # via -r requirements.txt
 yarl==1.8.1
     # via
