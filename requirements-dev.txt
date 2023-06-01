@@ -246,7 +246,7 @@ pytest-asyncio==0.21.0
     # via -r requirements-dev.in
 pytest-cov==4.0.0
     # via -r requirements-dev.in
-pytest-xdist==3.2.1
+pytest-xdist==3.3.1
     # via -r requirements-dev.in
 python-dateutil==2.8.2
     # via -r requirements.txt
