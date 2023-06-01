@@ -244,7 +244,7 @@ pytest==7.3.1
     #   pytest-xdist
 pytest-asyncio==0.21.0
     # via -r requirements-dev.in
-pytest-cov==4.0.0
+pytest-cov==4.1.0
     # via -r requirements-dev.in
 pytest-xdist==3.3.1
     # via -r requirements-dev.in
