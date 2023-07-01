@@ -33,7 +33,7 @@ attrs==22.1.0
     #   -r requirements.txt
     #   aiohttp
     #   jsonschema
-authlib==1.2.0
+authlib==1.2.1
     # via -r requirements-dev.in
 babel==2.10.3
     # via sphinx
