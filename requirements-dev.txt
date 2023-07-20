@@ -220,7 +220,7 @@ pycparser==2.21
     #   cffi
 pyflakes==3.0.1
     # via flake8
-pygments==2.13.0
+pygments==2.15.0
     # via
     #   rich
     #   sphinx
