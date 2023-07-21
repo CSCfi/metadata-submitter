@@ -1,8 +1,9 @@
 #=======================
-FROM cscfi/python:3.8-slim-git as appbase
+FROM python:3.11-slim-bullseye as appbase
 #=======================
 
-RUN apt-get install ca-certificates
+RUN apt-get update \
+    && apt-get install -y ca-certificates git
 
 WORKDIR /usr/src/app
 
