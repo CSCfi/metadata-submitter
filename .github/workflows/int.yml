@@ -26,8 +26,8 @@ jobs:
 
       - name: Start Services
         run: |
-          docker-compose --env-file .env.example up -d --build
-          sleep 30
+          docker compose --env-file .env.example up -d --build
+          sleep 45
 
       - name: Run Integration test
         run: |
@@ -38,7 +38,7 @@ jobs:
 
       - name: Collect logs from docker
         if: ${{ failure() }}
-        run: docker-compose logs --no-color -t > tests/dockerlogs || true
+        run: docker compose logs --no-color -t > tests/dockerlogs || true
 
       - name: Persist log files
         if: ${{ failure() }}
@@ -49,7 +49,7 @@ jobs:
 
       - name: Shut down services and remove volumes
         run: |
-          docker-compose down -v
+          docker compose down -v
           sleep 30
 
       - name: Create TLS keys and certificates
@@ -57,8 +57,8 @@ jobs:
 
       - name: Start services with TLS enabled
         run: |
-          docker-compose -f docker-compose-tls.yml --env-file .env.example up -d
-          sleep 30
+          docker compose -f docker-compose-tls.yml --env-file .env.example up -d
+          sleep 45
 
       - name: Run Integration test
         run: |
@@ -70,7 +70,7 @@ jobs:
 
       - name: Collect logs from docker
         if: ${{ failure() }}
-        run: docker-compose logs --no-color -t > tests/dockerlogs || true
+        run: docker compose logs --no-color -t > tests/dockerlogs || true
 
       - name: Persist log files
         if: ${{ failure() }}
