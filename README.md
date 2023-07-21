@@ -20,7 +20,7 @@ Service also validates submitted metadata objects against EGA XSD metadata model
 
 ### For quick testing:
 - copy the contents of .env.example file to .env file
-- launch both server and database with Docker by running `docker-compose up --build` (add `-d` flag to run containers in background).
+- launch both server and database with Docker by running `docker compose up --build` (add `-d` flag to run containers in background).
 
 Server can then be found from `http://localhost:5430`.
 
@@ -34,7 +34,7 @@ Server can then be found from `http://localhost:5430`.
     - `MONGO_DATABASE`, If a specific database is to be used, set the name here.
     - `MONGO_AUTHDB`, if `MONGO_DATABASE` is set and the user doesn't exists in the database, set this to the database where the user exists (e.g. `admin`)
   - Out of the box, metadata submitter is configured with default values from MongoDB Docker image
-  - Suitable mongodb instance can be launched with Docker by running `docker-compose up database`
+  - Suitable mongodb instance can be launched with Docker by running `docker compose up database`
 - After installing and setting up database, server can be launched with `metadata_submitter`
 
 If you also need frontend for development, check out [frontend repository](https://github.com/CSCfi/metadata-submitter-frontend/). You will also need to uncomment `REDIRECT_URL` environment variable from .env file.
@@ -116,7 +116,7 @@ If it doesn't work right away, check your settings in `.env` and restart the ser
 
 1. Install `pip-tools`:
     * `pip install pip-tools`
-    * if using docker-compose pip-tools are installed automatically
+    * if using docker compose pip-tools are installed automatically
 
 2. Add new packages to `requirements.in` or `requirements-dev.in`
 
