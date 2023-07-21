@@ -151,7 +151,12 @@ class MetadataXMLConverter(XMLSchemaConverter):
                     children[key] = value
                 continue
 
-            if key in {"processedReads", "referenceAlignment", "sequenceAnnotation", "assemblyAnnotation"}:
+            if key in {
+                "processedReads",
+                "referenceAlignment",
+                "sequenceAnnotation",
+                "assemblyAnnotation",
+            }:
                 if next(iter(value)) in {"assembly"}:
                     if next(iter(value["assembly"])) in {"standard", "custom"}:
                         value["assembly"] = next(iter(value["assembly"].values()))
@@ -583,7 +588,12 @@ def jsonpatch_mongo(identifier: Dict, json_patch: List[Dict]) -> List:
                     )
                 )
             else:
-                queries.append(UpdateOne(identifier, {"$set": {op["path"][1:].replace("/", "."): op["value"]}}))
+                queries.append(
+                    UpdateOne(
+                        identifier,
+                        {"$set": {op["path"][1:].replace("/", "."): op["value"]}},
+                    )
+                )
         elif op["op"] == "replace":
             path = op["path"][1:-2] if op["path"].endswith("/-") else op["path"][1:].replace("/", ".")
             if op.get("match", None):
@@ -591,3 +601,25 @@ def jsonpatch_mongo(identifier: Dict, json_patch: List[Dict]) -> List:
             queries.append(UpdateOne(identifier, {"$set": {path: op["value"]}}))
 
     return queries
+
+
+def str_to_bool(val: str) -> bool:
+    """Convert string to tool, because distutils.util is a deprecated module in python 3.12 ."""
+    val = val.lower()
+    if val in {
+        "y",
+        "yes",
+        "yep",
+        "yup",
+        "t",
+        "true",
+        "on",
+        "enable",
+        "enabled",
+        "1",
+    }:
+        return True
+    if val in {"n", "no", "f", "false", "off", "disable", "disabled", "0"}:
+        return False
+
+    raise ValueError(f"Invalid truth value {val}")
