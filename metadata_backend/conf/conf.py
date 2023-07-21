@@ -31,7 +31,6 @@ Production version gets frontend SPA from this folder, after it has been built
 and inserted here in projects Dockerfile.
 """
 import os
-from distutils.util import strtobool
 from pathlib import Path
 from typing import Dict, Tuple
 
@@ -39,6 +38,7 @@ import ujson
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from ..helpers.logger import LOG
+from ..helpers.parser import str_to_bool
 from ..helpers.workflow import Workflow
 
 # 1) Set up database client and custom timeouts for spesific parameters.
@@ -60,7 +60,7 @@ def set_conf() -> Tuple[str, str]:
     mongo_host = os.getenv("MONGO_HOST", "localhost:27017")
     mongo_db = os.getenv("MONGO_DATABASE", "")
     _base = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}/{mongo_db}"
-    if strtobool(os.getenv("MONGO_SSL", "False")):
+    if str_to_bool(os.getenv("MONGO_SSL", "False")):
         _ca = os.getenv("MONGO_SSL_CA", None)
         # Instead of using ssl_certfile and ssl_keyfile to specify
         # the certificate and private key files respectively, use tlsCertificateKeyFile
@@ -130,14 +130,29 @@ query_map = {
     "studyType": "descriptor.studyType",
     "studyAbstract": "descriptor.studyAbstract",
     "studyAttributes": {"base": "studyAttributes", "keys": ["tag", "value"]},
-    "sampleName": {"base": "sampleName", "keys": ["taxonId", "scientificName", "commonName"]},
+    "sampleName": {
+        "base": "sampleName",
+        "keys": ["taxonId", "scientificName", "commonName"],
+    },
     "scientificName": "sampleName.scientificName",
     "fileType": "files.filetype",
-    "studyReference": {"base": "studyRef", "keys": ["accessionId", "refname", "refcenter"]},
-    "sampleReference": {"base": "sampleRef", "keys": ["accessionId", "label", "refname", "refcenter"]},
-    "experimentReference": {"base": "experimentRef", "keys": ["accessionId", "refname", "refcenter"]},
+    "studyReference": {
+        "base": "studyRef",
+        "keys": ["accessionId", "refname", "refcenter"],
+    },
+    "sampleReference": {
+        "base": "sampleRef",
+        "keys": ["accessionId", "label", "refname", "refcenter"],
+    },
+    "experimentReference": {
+        "base": "experimentRef",
+        "keys": ["accessionId", "refname", "refcenter"],
+    },
     "runReference": {"base": "runRef", "keys": ["accessionId", "refname", "refcenter"]},
-    "analysisReference": {"base": "analysisRef", "keys": ["accessionId", "refname", "refcenter"]},
+    "analysisReference": {
+        "base": "analysisRef",
+        "keys": ["accessionId", "refname", "refcenter"],
+    },
 }
 
 
@@ -187,7 +202,11 @@ metax_config = {
 
 file_names = ["identifier_types.json", "languages.json", "fields_of_science.json"]
 METAX_REFERENCE_ROOT = Path(__file__).parent.parent / "conf" / "metax_references"
-METAX_REFERENCE_DATA: Dict[str, Dict] = {"identifier_types": {}, "languages": {}, "fields_of_science": {}}
+METAX_REFERENCE_DATA: Dict[str, Dict] = {
+    "identifier_types": {},
+    "languages": {},
+    "fields_of_science": {},
+}
 # Load metax reference data from different reference files into a single dict used by metax mapper
 for ref_file in file_names:
     ref_file_path = METAX_REFERENCE_ROOT / ref_file
@@ -207,7 +226,7 @@ rems_config = {
 DATACITE_SCHEMAS = {"study", "dataset", "bpdataset"}
 METAX_SCHEMAS = {"study", "dataset"}
 
-mq_ssl = bool(strtobool(os.environ.get("BROKER_SSL", "False")))
+mq_ssl = bool(str_to_bool(os.environ.get("BROKER_SSL", "False")))
 mq_port_var = "BROKER_PORT_SSL" if mq_ssl else "BROKER_PORT"
 mq_management_port_var = "BROKER_MANAGEMENT_PORT_SSL" if mq_ssl else "BROKER_MANAGEMENT_PORT"
 mq_config = {
