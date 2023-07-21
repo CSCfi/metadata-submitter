@@ -16,7 +16,7 @@ RUN npx --quiet pinst --disable \
     && npm run build --production
 
 #=======================
-FROM python:3.8-alpine3.15 as BUILD-BACKEND
+FROM python:3.11-alpine3.17 as BUILD-BACKEND
 #=======================
 
 RUN apk add --update \
@@ -40,7 +40,7 @@ RUN pip install --upgrade pip pyyaml && \
     pip install /root/submitter
 
 #=======================
-FROM python:3.8-alpine3.15
+FROM python:3.11-alpine3.17
 #=======================
 
 RUN apk add --update \
@@ -50,7 +50,7 @@ LABEL maintainer="CSC Developers"
 LABEL org.label-schema.schema-version="1.0"
 LABEL org.label-schema.vcs-url="https://github.com/CSCfi/metadata-submitter"
 
-COPY --from=BUILD-BACKEND /usr/local/lib/python3.8/ /usr/local/lib/python3.8/
+COPY --from=BUILD-BACKEND /usr/local/lib/python3.11/ /usr/local/lib/python3.11/
 
 COPY --from=BUILD-BACKEND /usr/local/bin/gunicorn /usr/local/bin/
 
