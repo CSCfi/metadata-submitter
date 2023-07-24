@@ -10,7 +10,7 @@ WORKDIR /usr/src/app
 RUN pip install --upgrade pip
 
 COPY pyproject.toml .
-# COPY requirements.txt .
+COPY requirements.txt .
 COPY metadata_backend/ ./metadata_backend
 COPY scripts ./scripts
 
