@@ -34,6 +34,16 @@ docs = [
     "sphinx_rtd_theme==1.2.2",
 ]
 
+[tool.black]
+line-length = 120
+target-version = ['py311']
+
+[tool.isort]
+atomic = true
+profile = "black"
+line_length = 120
+py_version=311
+
 [project.scripts]
 metadata_submitter = "metadata_backend.server:main"
 mqconsumer = "metadata_backend.consumer:main"
