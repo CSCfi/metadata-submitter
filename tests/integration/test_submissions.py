@@ -4,14 +4,7 @@ import logging
 import xml.etree.ElementTree as ET
 from datetime import datetime
 
-from tests.integration.conf import (
-    datacite_url,
-    drafts_url,
-    objects_url,
-    publish_url,
-    submit_url,
-    testfiles_root,
-)
+from tests.integration.conf import datacite_url, drafts_url, objects_url, publish_url, submit_url, testfiles_root
 from tests.integration.helpers import (
     create_multi_file_request_data,
     create_request_data,

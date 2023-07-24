@@ -2,12 +2,7 @@
 import asyncio
 import logging
 
-from tests.integration.conf import (
-    objects_url,
-    submissions_url,
-    test_bigpicture_xml_files,
-    test_fega_xml_files,
-)
+from tests.integration.conf import objects_url, submissions_url, test_bigpicture_xml_files, test_fega_xml_files
 from tests.integration.helpers import (
     check_submissions_object_patch,
     delete_object,

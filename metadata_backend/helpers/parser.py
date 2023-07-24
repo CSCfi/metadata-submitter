@@ -9,15 +9,7 @@ from aiohttp import web
 from metomi.isodatetime.exceptions import ISO8601SyntaxError
 from metomi.isodatetime.parsers import DurationParser
 from pymongo import UpdateOne
-from xmlschema import (
-    ElementData,
-    XMLSchema,
-    XMLSchemaConverter,
-    XMLSchemaException,
-    XsdElement,
-    XsdType,
-    aliases,
-)
+from xmlschema import ElementData, XMLSchema, XMLSchemaConverter, XMLSchemaException, XsdElement, XsdType, aliases
 
 from .logger import LOG
 from .schema_loader import SchemaNotFoundException, XMLSchemaLoader
