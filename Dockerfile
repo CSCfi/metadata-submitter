@@ -35,7 +35,6 @@ COPY --from=BUILD-FRONTEND /metadata-submitter-frontend/build \
     /root/submitter/metadata_backend/frontend
 
 RUN pip install --upgrade pip pyyaml && \
-    pip install -r /root/submitter/requirements.txt && \
     ./root/submitter/scripts/swagger/generate.sh && \
     pip install /root/submitter
 
