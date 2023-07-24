@@ -26,7 +26,7 @@ RUN apk add --update \
 
 COPY requirements.txt /root/submitter/requirements.txt
 COPY README.md /root/submitter/README.md
-COPY setup.py /root/submitter/setup.py
+COPY pyproject.toml /root/submitter/pyproject.toml
 COPY metadata_backend /root/submitter/metadata_backend
 COPY scripts /root/submitter/scripts
 COPY docs/specification.yml /root/submitter/docs/specification.yml
