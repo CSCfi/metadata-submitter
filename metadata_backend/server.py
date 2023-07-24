@@ -25,13 +25,7 @@ from .api.handlers.user import UserAPIHandler
 from .api.handlers.xml_submission import XMLSubmissionAPIHandler
 from .api.health import HealthHandler
 from .api.middlewares import check_session, http_error_handler
-from .conf.conf import (
-    API_PREFIX,
-    aai_config,
-    create_db_client,
-    frontend_static_files,
-    swagger_static_path,
-)
+from .conf.conf import API_PREFIX, aai_config, create_db_client, frontend_static_files, swagger_static_path
 from .helpers.logger import LOG
 from .services.datacite_service_handler import DataciteServiceHandler
 from .services.metax_service_handler import MetaxServiceHandler
