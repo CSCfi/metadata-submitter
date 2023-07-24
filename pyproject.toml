@@ -1,0 +1,58 @@
+[build-system]
+requires = ["hatchling", "hatch-requirements-txt"]
+build-backend = "hatchling.build"
+
+[project]
+name = "metadata_backend"
+dynamic = ["version", "dependencies"]
+description = "metadata_backend"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT License"}
+authors = [
+    { name = "CSC Developers" },
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+]
+
+[project.optional-dependencies]
+test = [
+    "coverage==7.2.7",
+    "pytest==7.4.0",
+    "pytest-cov==4.1.0",
+    "pytest-xdist==3.3.1",
+    "tox==4.6.4",
+]
+docs = [
+    "sphinx >= 1.4",
+    "sphinx_rtd_theme==1.2.2",
+]
+
+[tool.black]
+line-length = 120
+target-version = ['py311']
+
+[tool.isort]
+atomic = true
+profile = "black"
+line_length = 120
+py_version=311
+
+[project.scripts]
+metadata_submitter = "metadata_backend.server:main"
+mqconsumer = "metadata_backend.consumer:main"
+
+[project.urls]
+Source = "https://github.com/CSCfi/metadata_submitter"
+
+[tool.hatch.version]
+path = "metadata_backend/__init__.py"
+
+[tool.hatch.metadata.hooks.requirements_txt]
+files = ["requirements.txt"]

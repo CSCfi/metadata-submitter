@@ -5,12 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp_session
 from aiohttp.test_utils import AioHTTPTestCase
-from aiohttp.web_exceptions import (
-    HTTPBadRequest,
-    HTTPInternalServerError,
-    HTTPSeeOther,
-    HTTPUnauthorized,
-)
+from aiohttp.web_exceptions import HTTPBadRequest, HTTPInternalServerError, HTTPSeeOther, HTTPUnauthorized
 
 from metadata_backend.api.auth import AccessHandler
 from metadata_backend.server import init

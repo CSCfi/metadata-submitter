@@ -9,7 +9,8 @@ WORKDIR /usr/src/app
 
 RUN pip install --upgrade pip
 
-COPY setup.py .
+COPY pyproject.toml .
+COPY README.md .
 COPY requirements.txt .
 COPY metadata_backend/ ./metadata_backend
 COPY scripts ./scripts
@@ -28,8 +29,8 @@ CMD ["metadata_submitter"]
 FROM appbase as local
 #=======================
 
-COPY requirements-dev.txt .
+COPY requirements-dev.txt requirements.txt
 
-RUN pip install --no-cache-dir -r requirements-dev.txt
+RUN pip install --no-cache-dir
 
 ENV PYTHONUNBUFFERED=1
