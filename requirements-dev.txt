@@ -54,7 +54,7 @@ build==0.10.0
     # via pip-tools
 cachetools==5.3.1
     # via tox
-certifi==2023.5.7
+certifi==2023.7.22
     # via
     #   -r requirements-dev.in
     #   -r requirements.txt
@@ -109,11 +109,6 @@ elementpath==4.1.4
     # via
     #   -r requirements.txt
     #   xmlschema
-exceptiongroup==1.1.2
-    # via
-    #   -r requirements.txt
-    #   anyio
-    #   pytest
 execnet==2.0.2
     # via pytest-xdist
 filelock==3.12.2
@@ -364,18 +359,6 @@ stevedore==5.1.0
     # via bandit
 toml==0.10.2
     # via vulture
-tomli==2.0.1
-    # via
-    #   black
-    #   build
-    #   coverage
-    #   mypy
-    #   pip-tools
-    #   pylint
-    #   pyproject-api
-    #   pyproject-hooks
-    #   pytest
-    #   tox
 tomlkit==0.11.8
     # via pylint
 tox==4.6.4
@@ -395,7 +378,6 @@ types-urllib3==1.26.25.14
 typing-extensions==4.7.1
     # via
     #   -r requirements.txt
-    #   astroid
     #   mypy
     #   readerwriterlock
 ujson==5.8.0
