@@ -226,7 +226,7 @@ rems_config = {
 DATACITE_SCHEMAS = {"study", "dataset", "bpdataset"}
 METAX_SCHEMAS = {"study", "dataset"}
 
-mq_ssl = bool(str_to_bool(os.environ.get("BROKER_SSL", "False")))
+mq_ssl = str_to_bool(os.environ.get("BROKER_SSL", "False"))
 mq_port_var = "BROKER_PORT_SSL" if mq_ssl else "BROKER_PORT"
 mq_management_port_var = "BROKER_MANAGEMENT_PORT_SSL" if mq_ssl else "BROKER_MANAGEMENT_PORT"
 mq_config = {
