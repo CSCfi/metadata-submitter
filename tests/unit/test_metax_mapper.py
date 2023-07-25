@@ -3,10 +3,7 @@ import json
 import unittest
 from pathlib import Path
 
-from metadata_backend.services.metax_mapper import (
-    MetaDataMapper,
-    SubjectNotFoundException,
-)
+from metadata_backend.services.metax_mapper import MetaDataMapper, SubjectNotFoundException
 
 
 class MetaDataMapperTestCase(unittest.TestCase):

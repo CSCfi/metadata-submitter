@@ -16,7 +16,7 @@ RUN npx --quiet pinst --disable \
     && npm run build --production
 
 #=======================
-FROM python:3.8-alpine3.15 as BUILD-BACKEND
+FROM python:3.11-alpine3.17 as BUILD-BACKEND
 #=======================
 
 RUN apk add --update \
@@ -26,7 +26,7 @@ RUN apk add --update \
 
 COPY requirements.txt /root/submitter/requirements.txt
 COPY README.md /root/submitter/README.md
-COPY setup.py /root/submitter/setup.py
+COPY pyproject.toml /root/submitter/pyproject.toml
 COPY metadata_backend /root/submitter/metadata_backend
 COPY scripts /root/submitter/scripts
 COPY docs/specification.yml /root/submitter/docs/specification.yml
@@ -35,12 +35,11 @@ COPY --from=BUILD-FRONTEND /metadata-submitter-frontend/build \
     /root/submitter/metadata_backend/frontend
 
 RUN pip install --upgrade pip pyyaml && \
-    pip install -r /root/submitter/requirements.txt && \
     ./root/submitter/scripts/swagger/generate.sh && \
     pip install /root/submitter
 
 #=======================
-FROM python:3.8-alpine3.15
+FROM python:3.11-alpine3.17
 #=======================
 
 RUN apk add --update \
@@ -50,7 +49,7 @@ LABEL maintainer="CSC Developers"
 LABEL org.label-schema.schema-version="1.0"
 LABEL org.label-schema.vcs-url="https://github.com/CSCfi/metadata-submitter"
 
-COPY --from=BUILD-BACKEND /usr/local/lib/python3.8/ /usr/local/lib/python3.8/
+COPY --from=BUILD-BACKEND /usr/local/lib/python3.11/ /usr/local/lib/python3.11/
 
 COPY --from=BUILD-BACKEND /usr/local/bin/gunicorn /usr/local/bin/
 

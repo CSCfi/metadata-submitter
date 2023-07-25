@@ -4,13 +4,12 @@ name: Try build and start of production container
 on: [pull_request]
 
 jobs:
-
   build:
     strategy:
       max-parallel: 4
       matrix:
         os: [ubuntu-latest]
-        python-version: [3.8]
+        python-version: ["3.11"]
 
     runs-on: ${{ matrix.os }}
 
@@ -75,12 +74,12 @@ jobs:
 
       - name: Start production container with TLS
         run: |
-           docker run --rm -p 5430:5430 -d --name mss \
-             -v $PWD/config:/config \
-             -e SERVE_KEY=/config/key \
-             -e SERVE_CERT=/config/cert \
-             -e SERVE_CA=/config/cacert \
-             localhost:5000/metadata-submitter:latest
+          docker run --rm -p 5430:5430 -d --name mss \
+            -v $PWD/config:/config \
+            -e SERVE_KEY=/config/key \
+            -e SERVE_CERT=/config/cert \
+            -e SERVE_CA=/config/cacert \
+            localhost:5000/metadata-submitter:latest
 
       - name: Wait for secure production container to get ready
         run: .github/workflows/wait_container.sh mss "Listening at"

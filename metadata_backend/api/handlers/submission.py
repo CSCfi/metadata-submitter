@@ -1,6 +1,5 @@
 """Handle HTTP methods for server."""
 from datetime import datetime
-from distutils.util import strtobool
 from math import ceil
 from typing import Dict, List, Union
 
@@ -11,6 +10,7 @@ from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
 from ...helpers.logger import LOG
+from ...helpers.parser import str_to_bool
 from ...helpers.validator import JSONValidator
 from ..operators.file import FileOperator
 from ..operators.object import ObjectOperator
@@ -53,7 +53,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         if "published" in req.query:
             pub_param = req.query.get("published", "").title()
             if pub_param in {"True", "False"}:
-                submission_query["published"] = {"$eq": bool(strtobool(pub_param))}
+                submission_query["published"] = {"$eq": str_to_bool(pub_param)}
             else:
                 reason = "'published' parameter must be either 'true' or 'false'"
                 LOG.error(reason)
@@ -92,7 +92,10 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
             ):
                 query_start = datetime.strptime(date_param_start + " 00:00:00", format_query).timestamp()
                 query_end = datetime.strptime(date_param_end + " 23:59:59", format_query).timestamp()
-                submission_query["lastModified"] = {"$gte": query_start, "$lte": query_end}
+                submission_query["lastModified"] = {
+                    "$gte": query_start,
+                    "$lte": query_end,
+                }
             else:
                 reason = (
                     f"'date_modified_start' and 'date_modified_end' parameters must be formated as {format_incoming}"
@@ -130,7 +133,11 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         url = f"{req.scheme}://{req.host}{req.path}"
         link_headers = self._header_links(url, page, per_page, total_submissions)
         LOG.debug("Pagination header links: %r", link_headers)
-        LOG.info("Querying for project: %r submissions resulted in %d submissions.", project_id, total_submissions)
+        LOG.info(
+            "Querying for project: %r submissions resulted in %d submissions.",
+            project_id,
+            total_submissions,
+        )
         return web.Response(
             body=result,
             status=200,
@@ -173,7 +180,12 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         url = f"{req.scheme}://{req.host}{req.path}"
         location_headers = CIMultiDict(Location=f"{url}/{submission}")
         LOG.info("POST new submission with ID: %r was successful.", submission)
-        return web.Response(body=body, status=201, headers=location_headers, content_type="application/json")
+        return web.Response(
+            body=body,
+            status=201,
+            headers=location_headers,
+            content_type="application/json",
+        )
 
     async def get_submission(self, req: Request) -> Response:
         """Get one object submission by its submission id.
@@ -194,7 +206,9 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         LOG.info("GET submission with ID: %r was successful.", submission_id)
         return web.Response(
-            body=ujson.dumps(submission, escape_forward_slashes=False), status=200, content_type="application/json"
+            body=ujson.dumps(submission, escape_forward_slashes=False),
+            status=200,
+            content_type="application/json",
         )
 
     async def patch_submission(self, req: Request) -> Response:
@@ -355,7 +369,9 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         LOG.info("GET files for submission with ID: %r was successful.", submission_id)
         return web.Response(
-            body=ujson.dumps(files, escape_forward_slashes=False), status=200, content_type="application/json"
+            body=ujson.dumps(files, escape_forward_slashes=False),
+            status=200,
+            content_type="application/json",
         )
 
     async def add_submission_files(self, req: Request) -> Response:
@@ -413,5 +429,9 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         file_operator = FileOperator(db_client)
 
         await file_operator.remove_file_submission(file_accession_id, "accessionId", submission_id)
-        LOG.info("Removing file: %r from submission with ID: %r was successful.", file_accession_id, submission_id)
+        LOG.info(
+            "Removing file: %r from submission with ID: %r was successful.",
+            file_accession_id,
+            submission_id,
+        )
         return web.HTTPNoContent()

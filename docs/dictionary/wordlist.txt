@@ -499,7 +499,7 @@ openid
 orcid
 organizationid
 orgtrack
-originalValue
+originalvalue
 oromo
 oss
 ossetian
