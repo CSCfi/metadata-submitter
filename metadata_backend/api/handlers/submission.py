@@ -53,7 +53,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         if "published" in req.query:
             pub_param = req.query.get("published", "").title()
             if pub_param in {"True", "False"}:
-                submission_query["published"] = {"$eq": bool(str_to_bool(pub_param))}
+                submission_query["published"] = {"$eq": str_to_bool(pub_param)}
             else:
                 reason = "'published' parameter must be either 'true' or 'false'"
                 LOG.error(reason)
