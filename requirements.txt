@@ -44,7 +44,7 @@ defusedxml==0.7.1
     # via -r requirements.in
 dnspython==2.4.0
     # via pymongo
-elementpath==4.1.4
+elementpath==4.1.5
     # via xmlschema
 filelock==3.12.2
     # via oidcmsg
@@ -132,7 +132,7 @@ urllib3==2.0.4
     #   responses
 uvloop==0.17.0
     # via -r requirements.in
-xmlschema==2.3.1
+xmlschema==2.4.0
     # via -r requirements.in
 yarl==1.9.2
     # via aiohttp
