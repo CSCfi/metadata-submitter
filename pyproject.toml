@@ -56,3 +56,10 @@ path = "metadata_backend/__init__.py"
 
 [tool.hatch.metadata.hooks.requirements_txt]
 files = ["requirements.txt"]
+
+[tool.mypy]
+strict = true
+ignore_missing_imports = true
+follow_imports = "silent"
+namespace_packages = false
+strict_optional = false
