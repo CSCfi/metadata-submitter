@@ -1,11 +1,11 @@
 """Handle health check endpoint."""
 import time
-from typing import Dict, Union
+from typing import Dict
 
 import ujson
 from aiohttp import web
 from aiohttp.web import Request, Response
-from amqpstorm import management
+from amqpstorm import management  # type: ignore[import, unused-ignore]
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import ConnectionFailure
 
@@ -40,8 +40,8 @@ class HealthHandler:
         :returns: JSON response containing health statuses
         """
         db_client = await self.create_test_db_client()
-        services: Dict[str, Dict] = {}
-        full_status: Dict[str, Union[Dict, str]] = {}
+        services: Dict[str, Dict[str, str]] = {}
+        full_status: Dict[str, Dict[str, Dict[str, str]] | str] = {}
         _conn_db = await self.try_db_connection(db_client)
         # Determine database load status
         if _conn_db:
@@ -91,7 +91,7 @@ class HealthHandler:
         LOG.debug("Initialised a new DB client as a test")
         return new_client
 
-    async def try_db_connection(self, db_client: AsyncIOMotorClient) -> Union[None, float]:
+    async def try_db_connection(self, db_client: AsyncIOMotorClient) -> None | float:
         """Check the connection to database.
 
         :param db_client: Motor client used for database connections
@@ -107,7 +107,7 @@ class HealthHandler:
             LOG.exception("Connection to db failed.")
             return None
 
-    async def try_mq_connection(self) -> Union[None, float]:
+    async def try_mq_connection(self) -> None | float:
         """Check the connection to RabbitMQ.
 
         :returns: Connection time or None if connection fails

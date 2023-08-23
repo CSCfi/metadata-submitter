@@ -1,7 +1,7 @@
 """Handle HTTP methods for server."""
 from datetime import datetime
 from math import ceil
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple
 
 import ujson
 from aiohttp import web
@@ -37,7 +37,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         per_page = self._get_page_param(req, "per_page", 10)
         db_client = req.app["db_client"]
 
-        filter_list: List = []  # DEPRECATED, users don't own submissions anymore
+        filter_list: List[Any] = []  # DEPRECATED, users don't own submissions anymore
         data, page_num, page_size, total_objects = await ObjectOperator(db_client).query_metadata_database(
             collection, req.query, page, per_page, filter_list
         )
@@ -135,8 +135,8 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
             LOG.info(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        content: Union[Dict[str, Any], str, List[Tuple[Any, str, str]]]
-        operator: Union[ObjectOperator, XMLObjectOperator]
+        content: Dict[str, Any] | str | List[Tuple[Any, str, str]]
+        operator: ObjectOperator | XMLObjectOperator
         if req.content_type == "multipart/form-data":
             _only_xml = schema_type not in _allowed_csv
             files, cont_type = await multipart_content(req, extract_one=True, expect_xml=_only_xml)
@@ -174,7 +174,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
 
         # Add a new metadata object or multiple objects if multiple were extracted
         url = f"{req.scheme}://{req.host}{req.path}"
-        data: Union[List[Dict[str, str]], Dict[str, str]]
+        data: List[Dict[str, str]] | Dict[str, str]
         objects: List[Tuple[Dict[str, Any], str]] = []
         if isinstance(content, List):
             LOG.debug("Inserting multiple objects for collection: %r.", schema_type)
@@ -185,7 +185,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
             for item in content:
                 json_data = await operator.create_metadata_object(collection, item[0])
                 filename = item[2]
-                listed_json = json_data if isinstance(json_data, list) else [json_data]
+                listed_json = json_data if isinstance(json_data, List) else [json_data]
                 for obj_from_json in listed_json:
                     objects.append((obj_from_json, filename))
                     LOG.info(
@@ -195,7 +195,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
                     )
         else:
             json_data = await operator.create_metadata_object(collection, content)
-            listed_json = json_data if isinstance(json_data, list) else [json_data]
+            listed_json = json_data if isinstance(json_data, List) else [json_data]
             for listed_obj in listed_json:
                 objects.append((listed_obj, filename))
                 LOG.info(
@@ -296,8 +296,8 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
 
         db_client = req.app["db_client"]
-        content: Union[Dict, str]
-        operator: Union[ObjectOperator, XMLObjectOperator]
+        content: Dict[str, Any] | str
+        operator: ObjectOperator | XMLObjectOperator
         filename = ""
         if req.content_type == "multipart/form-data":
             files, _ = await multipart_content(req, extract_one=True, expect_xml=True)
@@ -347,7 +347,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
 
         db_client = req.app["db_client"]
-        operator: Union[ObjectOperator, XMLObjectOperator]
+        operator: ObjectOperator | XMLObjectOperator
         if req.content_type == "multipart/form-data":
             reason = "XML patching is not possible."
             raise web.HTTPUnsupportedMediaType(reason=reason)
@@ -380,7 +380,9 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         LOG.info("PATCH object with accession ID: %r in collection: %r was successful.", accession_id, collection)
         return web.Response(body=body, status=200, content_type="application/json")
 
-    def _prepare_submission_patch_new_object(self, schema: str, objects: List, cont_type: str) -> List:
+    def _prepare_submission_patch_new_object(
+        self, schema: str, objects: List[Any], cont_type: str
+    ) -> List[Dict[str, Any]]:
         """Prepare patch operations list for adding an object or objects to a submission.
 
         :param schema: schema of objects to be added to the submission
@@ -429,7 +431,9 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
 
         return patch
 
-    def _prepare_submission_patch_update_object(self, schema: str, data: Dict, filename: str = "") -> List:
+    def _prepare_submission_patch_update_object(
+        self, schema: str, data: Dict[str, Any], filename: str = ""
+    ) -> List[Dict[str, Any]]:
         """Prepare patch operation for updating object's title in a submission.
 
         :param schema: schema of object to be updated

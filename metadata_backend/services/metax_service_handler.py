@@ -65,7 +65,7 @@ class MetaxServiceHandler(ServiceHandler):
             },
         }
 
-    async def _get(self, metax_id: str) -> dict:
+    async def _get(self, metax_id: str) -> Dict:
         result = await self._request(method="GET", path=metax_id)
         LOG.info("Got metax dataset with ID: %r.", metax_id)
 
@@ -221,7 +221,7 @@ class MetaxServiceHandler(ServiceHandler):
         )
         bulk_data = []
         for metax_id in metax_ids:
-            metax_data: dict = await self._get(metax_id["metaxIdentifier"])
+            metax_data: Dict = await self._get(metax_id["metaxIdentifier"])
 
             # Map fields from doi info to Metax schema
             mapper = MetaDataMapper(metax_id["schema"], metax_data["research_dataset"], datacite_info)
@@ -298,7 +298,7 @@ class MetaxServiceHandler(ServiceHandler):
         LOG.debug("Created Metax dataset from Dataset with data: %r", research_dataset)
         return research_dataset
 
-    async def _healtcheck(self) -> Dict:
+    async def _healtcheck(self) -> Dict[str, str]:
         """Check Metax service health.
 
         This responds with pong, when pinged.

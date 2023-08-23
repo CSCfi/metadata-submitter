@@ -1,5 +1,5 @@
 """User operator class."""
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Tuple
 
 import aiohttp_session
 from aiohttp import web
@@ -82,14 +82,14 @@ class UserOperator(BaseOperator):
             LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-    async def create_user(self, data: Dict[str, Union[list, str]]) -> str:
+    async def create_user(self, data: Dict[str, List | str]) -> str:
         """Create new user object to database.
 
         :param data: User Data to identify user
         :raises: HTTPBadRequest if error occurs during the process of creating user
         :returns: User id for the user object inserted to database
         """
-        user_data: Dict[str, Union[list, str]] = {}
+        user_data: Dict[str, List | str] = {}
 
         try:
             existing_user_id = await self.db_service.exists_user_by_external_id(data["user_id"], data["real_name"])

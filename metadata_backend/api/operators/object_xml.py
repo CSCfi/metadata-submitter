@@ -27,7 +27,7 @@ class XMLObjectOperator(BaseObjectOperator):
         """
         super().__init__(mongo_database, "text/xml", db_client)
 
-    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: str) -> List[dict]:
+    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: str) -> List[Dict]:
         """Format XML metadata object and add it to db.
 
         XML is validated, then parsed to JSON, which is added to database.
@@ -43,7 +43,7 @@ class XMLObjectOperator(BaseObjectOperator):
         parsed_data = XMLToJSONParser().parse(schema, data)
 
         # Parser may return a list of objects and each object should be added separately
-        data_objects = parsed_data if isinstance(parsed_data, list) else [parsed_data]
+        data_objects = parsed_data if isinstance(parsed_data, List) else [parsed_data]
         added_data: List = []
         for obj in data_objects:
             data_with_id = await ObjectOperator(db_client)._format_data_to_create_and_add_to_db(schema_type, obj)

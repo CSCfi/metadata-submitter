@@ -2,11 +2,11 @@
 
 import re
 from io import StringIO
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import ujson
 from aiohttp import web
-from defusedxml.ElementTree import ParseError, parse
+from defusedxml.ElementTree import ParseError, parse  # type: ignore[import, unused-ignore]
 from jsonschema import Draft202012Validator, validators
 from jsonschema.exceptions import ValidationError
 from jsonschema.protocols import Validator
@@ -37,7 +37,7 @@ class XMLValidator:
         """
         try:
             root = parse(StringIO(self.xml_content)).getroot()
-            errors: List = list(self.schema.iter_errors(root))
+            errors: List[Any] = list(self.schema.iter_errors(root))
             if errors:
                 LOG.info("Submitted file contains some errors.")
                 response = self._format_xml_validation_error_reason(errors)
@@ -62,9 +62,9 @@ class XMLValidator:
         position = (str(error).split(":")[1])[1:]
         return f"Faulty XML file was given, {reason} at {position}"
 
-    def _format_xml_validation_error_reason(self, errors: List) -> Dict:
+    def _format_xml_validation_error_reason(self, errors: List[Any]) -> Dict[str, Any]:
         """Generate the response json object for validation error(s)."""
-        response: Dict = {"isValid": False, "detail": {"reason": "", "instance": ""}}
+        response: Dict[str, Any] = {"isValid": False, "detail": {"reason": "", "instance": ""}}
         found_lines = []
         for error in errors:
             reason = str(error.reason)
@@ -96,7 +96,7 @@ class XMLValidator:
     def is_valid(self) -> bool:
         """Quick method for checking validation result."""
         resp = ujson.loads(self.resp_body)
-        return resp["isValid"]
+        return bool(resp["isValid"])
 
 
 def extend_with_default(validator_class: Draft202012Validator) -> Draft202012Validator:
@@ -110,7 +110,7 @@ def extend_with_default(validator_class: Draft202012Validator) -> Draft202012Val
     validate_properties = validator_class.VALIDATORS["properties"]
 
     def set_defaults(
-        validator: Draft202012Validator, properties: Dict, instance: Draft202012Validator, schema: str
+        validator: Draft202012Validator, properties: Dict[str, Any], instance: Draft202012Validator, schema: str
     ) -> Validator:
         for prop, subschema in properties.items():
             if "default" in subschema:
@@ -137,7 +137,7 @@ DefaultValidatingDraft202012Validator = extend_with_default(Draft202012Validator
 class JSONValidator:
     """JSON Validator implementation."""
 
-    def __init__(self, json_data: Dict, schema_type: str) -> None:
+    def __init__(self, json_data: Dict[str, Any], schema_type: str) -> None:
         """Set variables.
 
         :param json_data: JSON content to be validated

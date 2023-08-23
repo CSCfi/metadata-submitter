@@ -1,5 +1,6 @@
 """Handle HTTP methods for server."""
-from typing import Union
+
+from typing import List
 
 import aiohttp_session
 import ujson
@@ -102,7 +103,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
         user_op = UserOperator(db_client)
         operator = ObjectOperator(db_client)
 
-        if isinstance(content, list):
+        if isinstance(content, List):
             tmpl_list = []
             for num, tmpl in enumerate(content):
                 if "template" not in tmpl:
@@ -163,7 +164,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
             # Move projectId to template structure, so that it is saved in mongo
             content["template"]["projectId"] = content["projectId"]
             json_data = await operator.create_metadata_object(collection, content["template"])
-            json_data = json_data[0] if isinstance(json_data, list) else json_data
+            json_data = json_data[0] if isinstance(json_data, List) else json_data
             data = [{"accessionId": json_data["accessionId"], "schema": collection}]
             if "tags" in content:
                 data[0]["tags"] = content["tags"]
@@ -198,7 +199,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
         collection = f"template-{schema_type}"
 
         db_client = req.app["db_client"]
-        operator: Union[ObjectOperator, XMLObjectOperator]
+        operator: ObjectOperator | XMLObjectOperator
 
         content = await self._get_data(req)
         operator = ObjectOperator(db_client)

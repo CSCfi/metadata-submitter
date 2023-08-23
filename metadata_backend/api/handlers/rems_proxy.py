@@ -1,5 +1,5 @@
 """Get and process REMS data for the frontend."""
-from typing import Dict, List, TypedDict, Union
+from typing import Dict, List, TypedDict
 
 from aiohttp import web
 
@@ -22,7 +22,7 @@ class RemsAPIHandler(RESTAPIIntegrationHandler):
     """
 
     @staticmethod
-    def _get_localized(language: str, _dict: dict, fallback_language: str = "en") -> Union[str, dict]:
+    def _get_localized(language: str, _dict: Dict, fallback_language: str = "en") -> str | Dict:
         """Get correct language string from dict.
 
         REMS provides certain properties as a dict with language, but no way to know which are available.
@@ -30,7 +30,7 @@ class RemsAPIHandler(RESTAPIIntegrationHandler):
         """
         if len(_dict) == 0:
             return ""
-        if not isinstance(_dict, dict):
+        if not isinstance(_dict, Dict):
             if isinstance(_dict, str):
                 return _dict
             return ""

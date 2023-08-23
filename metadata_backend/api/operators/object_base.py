@@ -1,6 +1,6 @@
 """Base object operator class shared by object operators."""
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple
 
 from aiohttp import web
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -30,7 +30,7 @@ class BaseObjectOperator(ABC):
         self.db_service = DBService(db_name, db_client)
         self.content_type = content_type
 
-    async def create_metadata_object(self, schema_type: str, data: Union[Dict, str]) -> Union[Dict, List[dict]]:
+    async def create_metadata_object(self, schema_type: str, data: Dict | str) -> Dict | List[Dict]:
         """Create new metadata object to database.
 
         Data formatting and addition step for JSON or XML must be implemented
@@ -41,13 +41,13 @@ class BaseObjectOperator(ABC):
         :returns: Dict (or list of dicts) with accession id of the object inserted to database and its title
         """
         formatted_data = await self._format_data_to_create_and_add_to_db(schema_type, data)
-        data_list: List = formatted_data if isinstance(formatted_data, list) else [formatted_data]
+        data_list: List = formatted_data if isinstance(formatted_data, List) else [formatted_data]
         for obj in data_list:
             _id = obj["accessionId"]
             LOG.info("Inserting object in collection: %r to database succeeded with accession ID: %r", schema_type, _id)
         return formatted_data
 
-    async def replace_metadata_object(self, schema_type: str, accession_id: str, data: Union[Dict, str]) -> Dict:
+    async def replace_metadata_object(self, schema_type: str, accession_id: str, data: Dict | str) -> Dict:
         """Replace metadata object from database.
 
         Data formatting and addition step for JSON or XML must be implemented
@@ -66,7 +66,7 @@ class BaseObjectOperator(ABC):
         )
         return data
 
-    async def update_metadata_object(self, schema_type: str, accession_id: str, data: Union[Dict, str]) -> str:
+    async def update_metadata_object(self, schema_type: str, accession_id: str, data: Dict | str) -> str:
         """Update metadata object from database.
 
         Data formatting and addition step for JSON or XML must be implemented
@@ -85,7 +85,7 @@ class BaseObjectOperator(ABC):
         )
         return accession_id
 
-    async def read_metadata_object(self, schema_type: str, accession_id: str) -> Tuple[Union[Dict, str], str]:
+    async def read_metadata_object(self, schema_type: str, accession_id: str) -> Tuple[Dict | str, str]:
         """Read metadata object from database.
 
         Data formatting to JSON or XML must be implemented by corresponding
@@ -254,7 +254,7 @@ class BaseObjectOperator(ABC):
     @abstractmethod
     async def _format_data_to_create_and_add_to_db(
         self, schema_type: str, data: Any  # noqa: ANN401
-    ) -> Union[Dict, List[dict]]:
+    ) -> Dict | List[Dict]:
         """Format and add data to database.
 
         Must be implemented by subclass.

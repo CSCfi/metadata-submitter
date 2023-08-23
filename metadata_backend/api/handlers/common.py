@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Tuple
 
 from aiohttp import BodyPartReader, MultipartReader, hdrs, web
 from aiohttp.web import Request
-from defusedxml.ElementTree import ParseError
+from defusedxml.ElementTree import ParseError  # type: ignore[import, unused-ignore]
 from xmlschema import XMLResource
 
 from ...conf.conf import schema_types
@@ -27,7 +27,7 @@ async def multipart_content(
     :returns: content and schema type for each uploaded file and file type of the upload
     """
     xml_files: List[Tuple[str, str, str]] = []
-    csv_files: List[Tuple[Dict, str, str]] = []
+    csv_files: List[Tuple[Dict[str, Any], str, str]] = []
     try:
         reader = await req.multipart()
     except AssertionError as exc:
@@ -137,7 +137,7 @@ def _check_xml(content: str) -> bool:
 
 
 def _get_content_with_type(
-    xml_files: List[Tuple[str, str, str]], csv_files: List[Tuple[Dict, str, str]]
+    xml_files: List[Tuple[str, str, str]], csv_files: List[Tuple[Dict[str, Any], str, str]]
 ) -> Tuple[List[Tuple[Any, str, str]], str]:
     """Return either list of XML or CSV files with the file type info.
 

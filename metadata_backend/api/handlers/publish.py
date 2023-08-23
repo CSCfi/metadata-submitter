@@ -1,6 +1,6 @@
 """Handle HTTP methods for server."""
 from datetime import date, datetime
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import ujson
 from aiohttp import web
@@ -20,7 +20,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
     """API Handler for publishing submissions."""
 
     @staticmethod
-    def _make_discovery_url(obj_data: Dict) -> str:
+    def _make_discovery_url(obj_data: Dict[str, Any]) -> str:
         """Make an url that points to a discovery service."""
         if "metaxIdentifier" in obj_data:
             url = f"{doi_config['discovery_url']}{obj_data['metaxIdentifier']}"
@@ -29,7 +29,9 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         return url
 
     @staticmethod
-    def _prepare_datacite_study(study_data: Dict, general_info: Dict, discovery_url: str) -> Dict:
+    def _prepare_datacite_study(
+        study_data: Dict[str, Any], general_info: Dict[str, Any], discovery_url: str
+    ) -> Dict[str, Any]:
         """Prepare Study object for publishing.
 
         :param study_data: Study Object read from the database
@@ -181,7 +183,9 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         return dataset
 
-    async def _prepare_datacite_publication(self, obj_op: ObjectOperator, submission: Dict) -> Tuple[dict, list]:
+    async def _prepare_datacite_publication(
+        self, obj_op: ObjectOperator, submission: Dict
+    ) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
         """Prepare dictionary with values for the Datacite DOI update.
 
         We need to prepare data for Study and Datasets, publish doi for each,
@@ -194,9 +198,9 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         :param submission: Submission data
         :returns: Tuple with the Study and list of Datasets and list of identifiers for publishing to Metax
         """
-        datacite_study = {}
-        datacite_datasets: List[dict] = []
-        datacite_bpdatasets: List[dict] = []
+        datacite_study: Dict[str, Any] = {}
+        datacite_datasets: List[Dict[str, Any]] = []
+        datacite_bpdatasets: List[Dict[str, Any]] = []
 
         # we need to re-format these for Datacite, as in the JSON schemas
         # we split the words so that front-end will display them nicely
@@ -291,7 +295,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         return datacite_study, datacite_datasets
 
-    async def _publish_datacite(self, submission: dict, obj_op: ObjectOperator, operator: SubmissionOperator) -> dict:
+    async def _publish_datacite(self, submission: Dict, obj_op: ObjectOperator, operator: SubmissionOperator) -> dict:
         """Prepare dictionary with values to be published to Metax.
 
         :param submission: Submission data
@@ -337,8 +341,8 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         return datacite_study
 
     async def _pre_publish_metax(
-        self, submission: dict, obj_op: ObjectOperator, operator: SubmissionOperator, external_user_id: str
-    ) -> List[dict]:
+        self, submission: Dict, obj_op: ObjectOperator, operator: SubmissionOperator, external_user_id: str
+    ) -> List[Dict]:
         """Prepare dictionary with values to be published to Metax.
 
         :param submission: Submission data
@@ -347,7 +351,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         :param external_user_id: user_id
         :returns: Whether publishing to Metax succeeded
         """
-        metax_datasets: List[dict] = []
+        metax_datasets: List[Dict] = []
         async for _, schema, object_data in self.iter_submission_objects_data(submission, obj_op):
             if schema in DATACITE_SCHEMAS:
                 doi = object_data["doi"]
@@ -374,14 +378,14 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         )
         return metax_datasets
 
-    async def _publish_rems(self, submission: dict, obj_op: ObjectOperator) -> None:
+    async def _publish_rems(self, submission: Dict, obj_op: ObjectOperator) -> None:
         """Prepare dictionary with values to be published to REMS.
 
         :param submission: Submission data
         :param obj_op: ObjectOperator for reading objects from database.
         :returns: Whether publishing to REMS succeeded
         """
-        rems_datasets: List[dict] = []
+        rems_datasets: List[Dict[str, Any]] = []
 
         async for accession_id, schema, object_data in self.iter_submission_objects_data(submission, obj_op):
             if schema in {"dataset", "bpdataset"}:

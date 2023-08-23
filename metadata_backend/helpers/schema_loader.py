@@ -7,7 +7,7 @@ probably be replaced with database searching in the future.
 import re
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Union
+from typing import Dict
 
 import ujson
 from xmlschema import XMLSchema
@@ -55,7 +55,7 @@ class SchemaLoader(ABC):
         return schema_file
 
     @abstractmethod
-    def get_schema(self, schema_type: str) -> Union[XMLSchema, dict]:
+    def get_schema(self, schema_type: str) -> XMLSchema | Dict:
         """Find schema which is used to match files against.
 
         Must be implemented by subclass.
@@ -95,7 +95,7 @@ class JSONSchemaLoader(SchemaLoader):
         """Select loader type on initialization."""
         super().__init__("json")
 
-    def get_schema(self, schema_type: str) -> dict:
+    def get_schema(self, schema_type: str) -> Dict:
         """Find schema which is used to match JSON files against.
 
         :param schema_type: Schema type to be searched for

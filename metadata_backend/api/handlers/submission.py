@@ -1,7 +1,7 @@
 """Handle HTTP methods for server."""
 from datetime import datetime
 from math import ceil
-from typing import Dict, List, Union
+from typing import Dict, List
 
 import aiohttp_session
 import ujson
@@ -48,7 +48,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)
 
-        submission_query: Dict[str, Union[str, Dict[str, Union[str, bool, float]]]] = {"projectId": project_id}
+        submission_query: Dict[str, str | Dict[str, str | bool | float]] = {"projectId": project_id}
         # Check if only published or draft submissions are requested
         if "published" in req.query:
             pub_param = req.query.get("published", "").title()
@@ -230,7 +230,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         # Check patch operations in request are valid
         data = await self._get_data(req)
-        if not isinstance(data, dict):
+        if not isinstance(data, Dict):
             reason = "Patch submission operation should be provided as a JSON object"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
