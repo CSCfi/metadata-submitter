@@ -7,7 +7,7 @@ Api docs and reference: https://support.datacite.org/
 Test account access: https://doi.test.datacite.org/sign-in
 """
 import time
-from typing import Dict, Union
+from typing import Dict
 from uuid import uuid4
 
 import ujson
@@ -79,7 +79,7 @@ class DataciteServiceHandler(ServiceHandler):
 
         return " | ".join(error_messages)
 
-    async def create_draft(self, prefix: Union[str, None] = None) -> Dict:
+    async def create_draft(self, prefix: str | None = None) -> Dict:
         """Generate random suffix and POST request a draft DOI to DataCite DOI API.
 
         :param prefix: Custom prefix to add to the DOI e.g. study/dataset

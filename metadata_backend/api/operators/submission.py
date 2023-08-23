@@ -1,7 +1,7 @@
 """Submission operator class."""
 import re
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 
 from aiohttp import web
 from pymongo.errors import ConnectionFailure, OperationFailure
@@ -16,7 +16,7 @@ class SubmissionOperator(BaseOperator):
     Operations are implemented with JSON format.
     """
 
-    async def get_submission_field(self, submission_id: str, field: str) -> Union[str, list, dict]:
+    async def get_submission_field(self, submission_id: str, field: str) -> str | List | Dict:
         """Get a field from the submission.
 
         :param submission_id: internal accession ID of submission
@@ -68,7 +68,7 @@ class SubmissionOperator(BaseOperator):
         LOG.error(reason)
         raise web.HTTPInternalServerError(reason=reason)
 
-    async def get_submission_field_list(self, submission_id: str, field: str) -> list:
+    async def get_submission_field_list(self, submission_id: str, field: str) -> List:
         """Get an array field from the submission.
 
         :param submission_id: internal accession ID of submission
@@ -76,7 +76,7 @@ class SubmissionOperator(BaseOperator):
         :returns: list value
         """
         value = await self.get_submission_field(submission_id, field)
-        if isinstance(value, list):
+        if isinstance(value, List):
             return value
 
         reason = (
@@ -185,7 +185,7 @@ class SubmissionOperator(BaseOperator):
         return submission_id
 
     async def query_submissions(
-        self, query: Dict, page_num: int, page_size: int, sort_param: Optional[dict] = None
+        self, query: Dict, page_num: int, page_size: int, sort_param: Optional[Dict] = None
     ) -> Tuple[List, int]:
         """Query database based on url query parameters.
 
@@ -296,7 +296,7 @@ class SubmissionOperator(BaseOperator):
 
         LOG.info("Removing doc with accession ID: %r from submission: %r succeeded.", accession_id, submission_id)
 
-    async def delete_submission(self, submission_id: str) -> Union[str, None]:
+    async def delete_submission(self, submission_id: str) -> str | None:
         """Delete object submission from database.
 
         :param submission_id: ID of the submission to delete

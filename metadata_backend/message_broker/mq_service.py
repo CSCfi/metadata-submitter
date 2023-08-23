@@ -5,10 +5,10 @@ import ssl
 import time
 from abc import ABC
 from pathlib import Path
-from typing import Dict, Union
+from typing import Any, Dict
 
 from aiohttp import web
-from amqpstorm import AMQPError, Connection, Message
+from amqpstorm import AMQPError, Connection, Message  # type: ignore[import, unused-ignore]
 from jsonschema.exceptions import ValidationError
 
 from ..api.operators.file import FileOperator
@@ -47,7 +47,12 @@ class MessageBroker(ABC):
         self.ssl_context = {"context": context, "server_hostname": None, "check_hostname": False}
 
     def _error_message(
-        self, error_msg: Dict, vhost: str, exchange: str, queue: str = "error", correlation_id: Union[str, None] = None
+        self,
+        error_msg: Dict[str, Any],
+        vhost: str,
+        exchange: str,
+        queue: str = "error",
+        correlation_id: str | None = None,
     ) -> None:
         """Send formated error message to error queue."""
         properties = {
@@ -68,7 +73,7 @@ class MessageBroker(ABC):
             ssl_options=self.ssl_context,
             virtual_host=vhost,
         ) as connection:
-            channel = connection.channel()  # type: ignore
+            channel = connection.channel()
 
             error = Message.create(channel, error_msg, properties)
             error.publish(queue, exchange)
@@ -86,9 +91,9 @@ class MQPublisher(MessageBroker):
         vhost: str,
         queue: str,
         exchange: str,
-        message: Dict,
+        message: Dict[str, Any],
         json_schema: str,
-        correlation_id: Union[str, None] = None,
+        correlation_id: str | None = None,
     ) -> None:
         """Send message."""
         # we need to figure out if we can get the inbox correlation_id
@@ -111,7 +116,7 @@ class MQPublisher(MessageBroker):
             ssl_options=self.ssl_context,
             virtual_host=vhost,
         ) as connection:
-            channel = connection.channel()  # type: ignore
+            channel = connection.channel()
 
             try:
                 _content = json.dumps(message)

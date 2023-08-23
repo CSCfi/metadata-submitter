@@ -29,7 +29,9 @@ class FileOperator(BaseOperator):
     """FileOperator class for handling database operations of files."""
 
     @staticmethod
-    def _from_version_template(file: File, version: int) -> dict:
+    def _from_version_template(
+        file: File, version: int
+    ) -> Dict[str, List[Dict[str, str]] | Dict[str, str] | int | bool]:
         """Create a file version.
 
         :param file: File to be used for the new file version
@@ -272,7 +274,7 @@ class FileOperator(BaseOperator):
         files = []
         try:
             submission_files = await self.db_service.do_aggregate("submission", aggregate_query)
-            if not isinstance(submission_files, list):
+            if not isinstance(submission_files, List):
                 reason = f"Reading submission files for '{submission_id}' failed"
                 LOG.error(reason)
                 raise web.HTTPInternalServerError(reason=reason)
@@ -358,7 +360,7 @@ class FileOperator(BaseOperator):
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-    async def update_file_submission(self, accession_id: str, submission_id: str, update_data: dict) -> None:
+    async def update_file_submission(self, accession_id: str, submission_id: str, update_data: Dict) -> None:
         """Update file in a submission.
 
         File should not be deleted from DB, only flagged as not available anymore
@@ -391,7 +393,7 @@ class FileOperator(BaseOperator):
 
         LOG.info("Updating file with file ID: %r in submission %r succeeded.", accession_id, submission_id)
 
-    async def add_files_submission(self, files: List[dict], submission_id: str) -> bool:
+    async def add_files_submission(self, files: List[Dict], submission_id: str) -> bool:
         """Add files to a submission.
 
         Doesn't check if files are already present in the submission.

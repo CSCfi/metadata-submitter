@@ -1,5 +1,5 @@
 """Project operator class."""
-from typing import Dict, List, Union
+from typing import Dict, List
 
 from aiohttp import web
 from pymongo.errors import ConnectionFailure, OperationFailure
@@ -21,7 +21,7 @@ class ProjectOperator(BaseOperator):
         :raises: HTTPBadRequest if error occurs during the process of insert
         :returns: Project id for the project inserted to database
         """
-        project_data: Dict[str, Union[str, List[str]]] = {}
+        project_data: Dict[str, str | List[str]] = {}
 
         try:
             existing_project_id = await self.db_service.exists_project_by_external_id(project_number)

@@ -148,7 +148,7 @@ class RemsServiceHandler(ServiceHandler):
             raise self.make_exception(reason=f"Organization ID '{organization_id}' must be a string.", status=400)
         if not isinstance(workflow_id, int):
             raise self.make_exception(reason=f"Workflow ID '{workflow_id}' must be an integer.", status=400)
-        if not isinstance(licenses, list):
+        if not isinstance(licenses, List):
             raise self.make_exception(reason=f"Licenses '{licenses}' must be a list of integers.", status=400)
 
         await self.item_ok("workflow", organization_id, workflow_id)

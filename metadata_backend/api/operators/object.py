@@ -1,12 +1,12 @@
 """Object operator class."""
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple
 from uuid import uuid4
 
 from aiohttp import web
 from dateutil.relativedelta import relativedelta
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor  # type: ignore
 from multidict import MultiDictProxy
 from pymongo.errors import ConnectionFailure, OperationFailure
 
@@ -31,7 +31,7 @@ class ObjectOperator(BaseObjectOperator):
         """
         super().__init__(mongo_database, "application/json", db_client)
 
-    async def query_templates_by_project(self, project_id: str) -> List[Dict[str, Union[Dict[str, str], str]]]:
+    async def query_templates_by_project(self, project_id: str) -> List[Dict[str, Dict[str, str] | str]]:
         """Get templates list from given project ID.
 
         :param project_id: project internal ID that owns templates
@@ -114,7 +114,7 @@ class ObjectOperator(BaseObjectOperator):
         for query, value in que.items():
             if query in query_map:
                 regx = re.compile(f".*{value}.*", re.IGNORECASE)
-                if isinstance(query_map[query], dict):
+                if isinstance(query_map[query], Dict):
                     # Make or-query for keys in dictionary
                     base = query_map[query]["base"]  # type: ignore
                     if "$or" not in mongo_query:
@@ -279,9 +279,7 @@ class ObjectOperator(BaseObjectOperator):
         return sequence
 
     @auto_reconnect
-    async def _format_read_data(
-        self, schema_type: str, data_raw: Union[Dict, AsyncIOMotorCursor]
-    ) -> Union[Dict, List[Dict]]:
+    async def _format_read_data(self, schema_type: str, data_raw: Dict | AsyncIOMotorCursor) -> Dict | List[Dict]:
         """Get JSON content from given mongodb data.
 
         Data can be either one result or cursor containing multiple
@@ -294,7 +292,7 @@ class ObjectOperator(BaseObjectOperator):
         :param data_raw: Data from mongodb query, can contain multiple results
         :returns: MongoDB query result, formatted to readable dicts
         """
-        if isinstance(data_raw, dict):
+        if isinstance(data_raw, Dict):
             return self._format_single_dict(schema_type, data_raw)
 
         return [self._format_single_dict(schema_type, doc) for doc in data_raw]

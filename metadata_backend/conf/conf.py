@@ -32,7 +32,7 @@ and inserted here in projects Dockerfile.
 """
 import os
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Any, Dict, Tuple
 
 import ujson
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -202,7 +202,7 @@ metax_config = {
 
 file_names = ["identifier_types.json", "languages.json", "fields_of_science.json"]
 METAX_REFERENCE_ROOT = Path(__file__).parent.parent / "conf" / "metax_references"
-METAX_REFERENCE_DATA: Dict[str, Dict] = {
+METAX_REFERENCE_DATA: Dict[str, Dict[Any, Any]] = {
     "identifier_types": {},
     "languages": {},
     "fields_of_science": {},

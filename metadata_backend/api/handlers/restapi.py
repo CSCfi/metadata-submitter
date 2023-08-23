@@ -1,7 +1,7 @@
 """Handle HTTP methods for server."""
 import json
 from math import ceil
-from typing import AsyncIterator, Dict, Iterator, List, Optional, Tuple, Union
+from typing import AsyncIterator, Dict, Iterator, List, Optional, Tuple
 
 import aiohttp_session
 import ujson
@@ -131,7 +131,7 @@ class RESTAPIHandler:
             raise web.HTTPBadRequest(reason=reason)
 
     @staticmethod
-    def _json_response(data: Union[Dict, List[Dict]]) -> Response:
+    def _json_response(data: Dict | List[Dict]) -> Response:
         """Reusable json response, serializing data with ujson.
 
         :param data: Data to be serialized and made into HTTP 200 response
@@ -233,7 +233,7 @@ class RESTAPIHandler:
         return link_headers
 
     @staticmethod
-    def iter_submission_objects(submission: dict) -> Iterator[Tuple[str, str]]:
+    def iter_submission_objects(submission: Dict) -> Iterator[Tuple[str, str]]:
         """Iterate over a submission's objects.
 
         :param submission: Submission data
@@ -247,8 +247,8 @@ class RESTAPIHandler:
             yield accession_id, schema
 
     async def iter_submission_objects_data(
-        self, submission: dict, obj_op: ObjectOperator
-    ) -> AsyncIterator[Tuple[str, str, dict]]:
+        self, submission: Dict, obj_op: ObjectOperator
+    ) -> AsyncIterator[Tuple[str, str, Dict]]:
         """Iterate over a submission's objects and retrieve their data.
 
         :param submission: Submission data
@@ -259,7 +259,7 @@ class RESTAPIHandler:
         for accession_id, schema in self.iter_submission_objects(submission):
             object_data, _ = await obj_op.read_metadata_object(schema, accession_id)
 
-            if not isinstance(object_data, dict):
+            if not isinstance(object_data, Dict):
                 LOG.error("Object with accession ID %r is not a Dict. This might be a bug", accession_id)
                 continue
 
@@ -335,7 +335,7 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
 
         return _doi_data["fullDOI"]
 
-    async def check_rems_ok(self, submission: dict) -> bool:
+    async def check_rems_ok(self, submission: Dict) -> bool:
         """Check that REMS DAC in object is ok."""
         if "rems" not in submission:
             raise web.HTTPBadRequest(reason="REMS field is missing.")
