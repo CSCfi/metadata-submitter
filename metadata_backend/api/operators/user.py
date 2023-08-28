@@ -1,5 +1,5 @@
 """User operator class."""
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import aiohttp_session
 from aiohttp import web
@@ -82,17 +82,17 @@ class UserOperator(BaseOperator):
             LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-    async def create_user(self, data: Dict[str, List | str]) -> str:
+    async def create_user(self, data: Dict[str, List[Any] | str]) -> str:
         """Create new user object to database.
 
         :param data: User Data to identify user
         :raises: HTTPBadRequest if error occurs during the process of creating user
         :returns: User id for the user object inserted to database
         """
-        user_data: Dict[str, List | str] = {}
+        user_data: Dict[str, List[Any] | str] = {}
 
         try:
-            existing_user_id = await self.db_service.exists_user_by_external_id(data["user_id"], data["real_name"])
+            existing_user_id: str = await self.db_service.exists_user_by_external_id(data["user_id"], data["real_name"])
             if existing_user_id:
                 LOG.info("User with ID: %r  exists, no need to create.", data["user_id"])
                 return existing_user_id
@@ -115,7 +115,7 @@ class UserOperator(BaseOperator):
             LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-    async def read_user(self, user_id: str) -> Dict:
+    async def read_user(self, user_id: str) -> Dict[str, Any]:
         """Read user object from database.
 
         :param user_id: User ID of the object to read
@@ -124,14 +124,14 @@ class UserOperator(BaseOperator):
         """
         try:
             await self._check_user_exists(user_id)
-            user = await self.db_service.read("user", user_id)
+            user: Dict[str, Any] = await self.db_service.read("user", user_id)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting user, err: {error}"
             LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
         return user
 
-    async def update_user(self, user_id: str, patch: List) -> str:
+    async def update_user(self, user_id: str, patch: List[Dict[str, Any]]) -> str:
         """Update user object from database.
 
         :param user_id: ID of user to update

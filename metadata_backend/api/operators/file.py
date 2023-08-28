@@ -1,7 +1,7 @@
 """File operator class."""
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import ujson
 from aiohttp import web
@@ -125,7 +125,7 @@ class FileOperator(BaseOperator):
             LOG.exception(reason)
             raise web.HTTPInternalServerError(reason=reason) from error
 
-    async def read_file(self, accession_id: str, version: Optional[int] = None) -> Dict:
+    async def read_file(self, accession_id: str, version: Optional[int] = None) -> Dict[str, Any]:
         """Read file object from database.
 
         :param accession_id: Accession ID of the file to read
@@ -160,7 +160,7 @@ class FileOperator(BaseOperator):
             # get only the latest version
             aggregate_query.insert(3, {"$limit": 1})
         try:
-            file = await self.db_service.do_aggregate("file", aggregate_query)
+            file: List[Dict[str, Any]] = await self.db_service.do_aggregate("file", aggregate_query)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting file, err: {error}"
             LOG.exception(reason)
@@ -172,7 +172,7 @@ class FileOperator(BaseOperator):
 
         return file[0]
 
-    async def read_project_files(self, project_id: str) -> List[Dict]:
+    async def read_project_files(self, project_id: str) -> List[Dict[str, Any]]:
         """Read files from DB based on a specific filter type and corresponding identifier.
 
         The files are read by the latest version, and filtered either by projectId.
@@ -199,7 +199,8 @@ class FileOperator(BaseOperator):
             },
         ]
         try:
-            return await self.db_service.do_aggregate("file", aggregate_query)
+            result: List[Dict[str, Any]] = await self.db_service.do_aggregate("file", aggregate_query)
+            return result
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting files for project {project_id}, err: {error}"
             LOG.exception(reason)
@@ -249,7 +250,9 @@ class FileOperator(BaseOperator):
             LOG.exception(reason)
             raise web.HTTPInternalServerError(reason=reason) from error
 
-    async def read_submission_files(self, submission_id: str, expected_status: Optional[List] = None) -> List[Dict]:
+    async def read_submission_files(
+        self, submission_id: str, expected_status: Optional[List[Any]] = None
+    ) -> List[Dict[str, Any]]:
         """Get files in a submission.
 
         The files are identified in a submission by version.
@@ -360,7 +363,7 @@ class FileOperator(BaseOperator):
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-    async def update_file_submission(self, accession_id: str, submission_id: str, update_data: Dict) -> None:
+    async def update_file_submission(self, accession_id: str, submission_id: str, update_data: Dict[str, Any]) -> None:
         """Update file in a submission.
 
         File should not be deleted from DB, only flagged as not available anymore
@@ -393,7 +396,7 @@ class FileOperator(BaseOperator):
 
         LOG.info("Updating file with file ID: %r in submission %r succeeded.", accession_id, submission_id)
 
-    async def add_files_submission(self, files: List[Dict], submission_id: str) -> bool:
+    async def add_files_submission(self, files: List[Dict[str, Any]], submission_id: str) -> bool:
         """Add files to a submission.
 
         Doesn't check if files are already present in the submission.
@@ -402,4 +405,7 @@ class FileOperator(BaseOperator):
         :param submission_id: Submission ID to add files to
         :returns: True if operation to append was successful
         """
-        return await self.db_service.append("submission", submission_id, {"$addToSet": {"files": {"$each": files}}})
+        success: bool = await self.db_service.append(
+            "submission", submission_id, {"$addToSet": {"files": {"$each": files}}}
+        )
+        return success

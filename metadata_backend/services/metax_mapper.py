@@ -223,7 +223,7 @@ class MetaDataMapper:
     }
     """
 
-    def __init__(self, object_type: str, metax_data: Dict, data: Dict) -> None:
+    def __init__(self, object_type: str, metax_data: Dict[str, Any], data: Dict[str, Any]) -> None:
         """Set variables.
 
         :param object_type: Schema name (dataset or study)
@@ -233,7 +233,7 @@ class MetaDataMapper:
         self.object_type = object_type
         self.research_dataset = metax_data
         self.datacite_data = data
-        self.affiliations: List = []
+        self.affiliations: List[Any] = []
         self.identifier_types = METAX_REFERENCE_DATA["identifier_types"]
         self.languages = METAX_REFERENCE_DATA["languages"]
         self.fields_of_science = METAX_REFERENCE_DATA["fields_of_science"]
@@ -277,7 +277,7 @@ class MetaDataMapper:
                 self._map_is_output_of(value)
         return self.research_dataset
 
-    def _map_creators(self, creators: List) -> None:
+    def _map_creators(self, creators: List[Any]) -> None:
         """Map creators.
 
         :param creators: Creators data from datacite
@@ -306,7 +306,7 @@ class MetaDataMapper:
                 del metax_creator["identifier"]
             self.research_dataset["creator"].append(metax_creator)
 
-    def _map_contributors(self, contributors: List) -> None:
+    def _map_contributors(self, contributors: List[Any]) -> None:
         """Map contributors.
 
         :param contributors: Contributors data from
@@ -351,7 +351,7 @@ class MetaDataMapper:
         if not self.research_dataset["curator"]:
             del self.research_dataset["curator"]
 
-    def _map_dates(self, dates: List) -> None:
+    def _map_dates(self, dates: List[Any]) -> None:
         """Map dates.
 
         :param dates: Dates data from datacite
@@ -372,7 +372,7 @@ class MetaDataMapper:
 
         # format of date must be forced
         for date in dates:
-            date_list: List = list(filter(None, date["date"].split("/")))
+            date_list: List[Any] = list(filter(None, date["date"].split("/")))
             if date["dateType"] == "Issued":
                 if not self.research_dataset.get("issued", None) or datetime.strptime(
                     self.research_dataset["issued"], "%Y-%m-%d"
@@ -391,7 +391,7 @@ class MetaDataMapper:
         if not self.research_dataset["temporal"]:
             del self.research_dataset["temporal"]
 
-    def _map_spatial(self, locations: List) -> None:
+    def _map_spatial(self, locations: List[Any]) -> None:
         """Map geoLocations.
 
         If geoLocationPoint or geoLocationBox is comming with location data
@@ -405,7 +405,7 @@ class MetaDataMapper:
 
         spatials = self.research_dataset["spatial"] = []
         for location in locations:
-            spatial: Dict = {}
+            spatial: Dict[str, Any] = {}
             spatial["as_wkt"] = []
             if location.get("geoLocationPlace", None):
                 spatial["geographic_name"] = location["geoLocationPlace"]
@@ -426,7 +426,7 @@ class MetaDataMapper:
                 del spatial["as_wkt"]
             spatials.append(spatial)
 
-    def _map_other_identifier(self, identifiers: List) -> None:
+    def _map_other_identifier(self, identifiers: List[Any]) -> None:
         """Map alternateIdentifiers.
 
         :param identifiers: Alternate identifiers data from datacite
@@ -448,7 +448,7 @@ class MetaDataMapper:
             other_identifier["type"]["identifier"] = identifier_type
             other_identifiers.append(other_identifier)
 
-    def _map_field_of_science(self, subjects: List) -> None:
+    def _map_field_of_science(self, subjects: List[Any]) -> None:
         """Map subjects to field of science.
 
         :param subjects: Subjects data from datacite
@@ -474,7 +474,7 @@ class MetaDataMapper:
 
             field_of_science.append(fos)
 
-    def _map_relations(self, datasets: List) -> None:
+    def _map_relations(self, datasets: List[Any]) -> None:
         """Map datasets for study as a relation.
 
         :param datasets: Datasets identifiers object
@@ -504,7 +504,7 @@ class MetaDataMapper:
             rel["entity"]["identifier"] = dataset["url"]
             relations.append(rel)
 
-    def _map_is_output_of(self, study: Dict) -> None:
+    def _map_is_output_of(self, study: Dict[str, Any]) -> None:
         """Map study for datasets as a output of.
 
         :param study: Study identifier object

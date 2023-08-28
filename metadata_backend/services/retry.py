@@ -16,7 +16,7 @@
 
 import time
 from functools import wraps
-from typing import Awaitable, Callable, Optional, Tuple, TypeVar
+from typing import Any, Awaitable, Callable, Optional, Tuple, TypeVar
 
 from aiohttp import ClientConnectorError
 from aiohttp.web import HTTPServerError
@@ -29,11 +29,11 @@ P = ParamSpec("P")
 
 
 def retry(
-    exceptions: Tuple = (HTTPServerError, ClientConnectorError),
+    exceptions: Tuple[Any, Any] = (HTTPServerError, ClientConnectorError),
     total_tries: int = 4,
     initial_wait: float = 0.5,
     backoff_factor: int = 2,
-) -> Callable:
+) -> Callable:  # type: ignore
     """Call the decorated function and apply an exponential backoff.
 
     :param exceptions: Exception(s) that trigger a retry, can be a tuple
