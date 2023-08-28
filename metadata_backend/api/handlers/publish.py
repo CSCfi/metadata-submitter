@@ -101,7 +101,9 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         return study
 
-    def _prepare_datacite_dataset(self, study_doi: str, dataset_data: Dict, general_info: Dict) -> Dict:
+    def _prepare_datacite_dataset(
+        self, study_doi: str, dataset_data: Dict[str, Any], general_info: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Prepare Dataset object for publishing.
 
         :param study_doi: Study DOI to link dataset to study at Datacite
@@ -184,7 +186,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         return dataset
 
     async def _prepare_datacite_publication(
-        self, obj_op: ObjectOperator, submission: Dict
+        self, obj_op: ObjectOperator, submission: Dict[str, Any]
     ) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
         """Prepare dictionary with values for the Datacite DOI update.
 
@@ -295,7 +297,9 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         return datacite_study, datacite_datasets
 
-    async def _publish_datacite(self, submission: Dict, obj_op: ObjectOperator, operator: SubmissionOperator) -> dict:
+    async def _publish_datacite(
+        self, submission: Dict[str, Any], obj_op: ObjectOperator, operator: SubmissionOperator
+    ) -> Dict[str, Any]:
         """Prepare dictionary with values to be published to Metax.
 
         :param submission: Submission data
@@ -341,8 +345,8 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         return datacite_study
 
     async def _pre_publish_metax(
-        self, submission: Dict, obj_op: ObjectOperator, operator: SubmissionOperator, external_user_id: str
-    ) -> List[Dict]:
+        self, submission: Dict[str, Any], obj_op: ObjectOperator, operator: SubmissionOperator, external_user_id: str
+    ) -> List[Dict[str, Any]]:
         """Prepare dictionary with values to be published to Metax.
 
         :param submission: Submission data
@@ -351,7 +355,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         :param external_user_id: user_id
         :returns: Whether publishing to Metax succeeded
         """
-        metax_datasets: List[Dict] = []
+        metax_datasets: List[Dict[str, Any]] = []
         async for _, schema, object_data in self.iter_submission_objects_data(submission, obj_op):
             if schema in DATACITE_SCHEMAS:
                 doi = object_data["doi"]
@@ -378,7 +382,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         )
         return metax_datasets
 
-    async def _publish_rems(self, submission: Dict, obj_op: ObjectOperator) -> None:
+    async def _publish_rems(self, submission: Dict[str, Any], obj_op: ObjectOperator) -> None:
         """Prepare dictionary with values to be published to REMS.
 
         :param submission: Submission data
@@ -576,7 +580,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         # Patch the submission into a published state
         _now = int(datetime.now().timestamp())
-        patch = [
+        patch: List[Dict[str, Any]] = [
             {"op": "replace", "path": "/published", "value": True},
             {"op": "replace", "path": "/drafts", "value": []},
             {"op": "add", "path": "/datePublished", "value": _now},

@@ -1,5 +1,5 @@
 """Get and process REMS data for the frontend."""
-from typing import Dict, List, TypedDict
+from typing import Any, Dict, List, TypedDict
 
 from aiohttp import web
 
@@ -22,7 +22,7 @@ class RemsAPIHandler(RESTAPIIntegrationHandler):
     """
 
     @staticmethod
-    def _get_localized(language: str, _dict: Dict, fallback_language: str = "en") -> str | Dict:
+    def _get_localized(language: str, _dict: Dict[str, Any], fallback_language: str = "en") -> str | Dict[str, Any]:
         """Get correct language string from dict.
 
         REMS provides certain properties as a dict with language, but no way to know which are available.
@@ -35,12 +35,15 @@ class RemsAPIHandler(RESTAPIIntegrationHandler):
                 return _dict
             return ""
         if language in _dict:
-            return _dict[language]
+            lang_dict: str | Dict[str, Any] = _dict[language]
+            return lang_dict
         if fallback_language in _dict:
-            return _dict[fallback_language]
+            lang_dict = _dict[fallback_language]
+            return lang_dict
 
         # return first element
-        return next(iter(_dict.values()))
+        lang_dict = next(iter(_dict.values()))
+        return lang_dict
 
     async def get_workflows_licenses_from_rems(self, request: web.Request) -> web.Response:
         """Get workflows and Policies for frontend."""
@@ -75,3 +78,6 @@ class RemsAPIHandler(RESTAPIIntegrationHandler):
             organizations[org_id]["licenses"].append({"id": lic["id"], **title})
 
         return web.json_response(data=list(organizations.values()))
+
+
+# : Dict[str, Dict[str, Dict[str, Any] | Any] | Any]

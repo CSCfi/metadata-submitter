@@ -375,6 +375,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
           add it with default gender unknown
         """
         xsd_type = xsd_type or xsd_element.type
+        children: Dict[str, Any] | str | None
 
         if xsd_type.simple_type is not None:
             children = data.text if data.text is not None and data.text != "" else None
@@ -439,7 +440,7 @@ class XMLToJSONParser:
         if _schema_type != "submission":
             for obj in results:
                 JSONValidator(obj, _schema_type).validate
-        return result[obj_name]
+        return result[obj_name]  # type: ignore[no-any-return]
 
     @staticmethod
     def _load_schema(schema_type: str) -> XMLSchema:

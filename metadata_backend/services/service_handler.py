@@ -52,7 +52,7 @@ class ServiceHandler(ABC):
         base_url: URL,
         auth: Optional[BasicAuth] = None,
         http_client_timeout: Optional[ClientTimeout] = None,
-        http_client_headers: Optional[Dict] = None,
+        http_client_headers: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Create an instance with db_client and aiohttp client attached.
 
@@ -95,7 +95,7 @@ class ServiceHandler(ABC):
         return error
 
     @abstractmethod
-    async def _healtcheck(self) -> Dict:
+    async def _healtcheck(self) -> Dict[str, Any]:
         """Override in subclass and return formatted status message."""
 
     @retry(total_tries=5)
@@ -104,10 +104,10 @@ class ServiceHandler(ABC):
         method: str = "GET",
         url: Optional[URL] = None,
         path: str = "",
-        params: Optional[str | Dict] = None,
-        json_data: Optional[Dict | List[Dict]] = None,
+        params: Optional[str | Dict[str, Any]] = None,
+        json_data: Optional[Dict[str, Any] | List[Dict[str, Any]]] = None,
         timeout: int = 10,
-    ) -> Dict | str:
+    ) -> Dict[str, Any] | str:
         """Request to service REST API.
 
         :param method: HTTP method

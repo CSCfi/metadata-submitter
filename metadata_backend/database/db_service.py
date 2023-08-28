@@ -2,8 +2,7 @@
 from functools import wraps
 from typing import Any, Callable, Dict, List, Optional
 
-import bson
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor  # type: ignore
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor, AsyncIOMotorDatabase  # type: ignore
 from pymongo import ReturnDocument
 from pymongo.errors import AutoReconnect, BulkWriteError, ConnectionFailure
 
@@ -62,8 +61,8 @@ class DBService:
         created during first read-write operation if not already present.
         :param database_name: Name of database to be used
         """
-        self.db_client = db_client
-        self.database = db_client[database_name]
+        self.db_client: AsyncIOMotorClient = db_client
+        self.database: AsyncIOMotorDatabase = db_client[database_name]
 
     def _get_id_key(self, collection: str) -> str:
         """Get id key based on the collection."""
@@ -79,7 +78,7 @@ class DBService:
         """
         result = await self.database[collection].insert_one(document)
         LOG.debug("DB document inserted in collection: %r.", collection)
-        return result.acknowledged  # type:ignore
+        return result.acknowledged
 
     @auto_reconnect
     async def exists(self, collection: str, accession_id: str) -> bool:
@@ -92,7 +91,7 @@ class DBService:
         id_key = self._get_id_key(collection)
         projection = {"_id": False, "externalId": False} if collection == "user" else {"_id": False}
         find_by_id = {id_key: accession_id}
-        exists = await self.database[collection].find_one(find_by_id, projection)
+        exists: Any | None = await self.database[collection].find_one(find_by_id, projection)
         LOG.debug("DB check exists for accession ID: %r in collection: %r.", accession_id, collection)
         return bool(exists)
 
@@ -104,9 +103,11 @@ class DBService:
         :returns: Id if exists and None if it does not
         """
         find_by_id = {"externalId": external_id}
-        project = await self.database["project"].find_one(find_by_id, {"_id": False, "externalId": False})
+        project: Dict[str, str] | None = await self.database["project"].find_one(
+            find_by_id, {"_id": False, "externalId": False}
+        )
         LOG.debug("DB check project exists for: %r returned: '%r'.", external_id, project)
-        return project["projectId"] if project else None  # type:ignore
+        return project["projectId"] if project else None
 
     @auto_reconnect
     async def exists_user_by_external_id(self, external_id: str, name: str) -> None | str:
@@ -117,9 +118,11 @@ class DBService:
         :returns: User ID if exists and None if it does not
         """
         find_by_id = {"externalId": external_id, "name": name}
-        user = await self.database["user"].find_one(find_by_id, {"_id": False, "externalId": False})
+        user: Dict[str, str] | None = await self.database["user"].find_one(
+            find_by_id, {"_id": False, "externalId": False}
+        )
         LOG.debug("DB check user exists for: %r returned: %r.", external_id, user)
-        return user["userId"] if user else None  # type:ignore
+        return user["userId"] if user else None
 
     @auto_reconnect
     async def published_submission(self, submission_id: str) -> bool:
@@ -129,13 +132,13 @@ class DBService:
         :returns: True if exists and False if it does not
         """
         find_published = {"published": True, "submissionId": submission_id}
-        exists = await self.database["submission"].find_one(find_published, {"_id": False})
+        exists: Any | None = await self.database["submission"].find_one(find_published, {"_id": False})
         check = bool(exists)
         LOG.debug("DB check submission: %r if published, result: %s.", submission_id, check)
         return check
 
     @auto_reconnect
-    async def read(self, collection: str, accession_id: str) -> Optional[bson.typings._DocumentType]:
+    async def read(self, collection: str, accession_id: str) -> None | Dict[str, Any]:
         """Find object, submission or user by its generated ID.
 
         :param collection: Collection where document should be searched from
@@ -146,12 +149,12 @@ class DBService:
         projection = {"_id": False, "eppn": False} if collection == "user" else {"_id": False}
         find_by_id = {id_key: accession_id}
         LOG.debug("DB doc in collection: %r read for accession ID: %r.", collection, accession_id)
-        return await self.database[collection].find_one(find_by_id, projection)  # type:ignore
+        return await self.database[collection].find_one(find_by_id, projection)
 
     @auto_reconnect
     async def read_by_key_value(
-        self, collection: str, find_by_key_value: Dict[Any, Any], projection: Optional[Dict[Any, Any]] = None
-    ) -> None | Dict[Any, Any]:
+        self, collection: str, find_by_key_value: Dict[Any, Any], projection: Optional[Dict[str, Any]] = None
+    ) -> None | Dict[str, Any]:
         """Check document exists by an arbitrary key and value.
 
         :param collection: Collection to search in
@@ -162,9 +165,9 @@ class DBService:
         if projection is None:
             projection = {"_id": False}
 
-        document = await self.database[collection].find_one(find_by_key_value, projection)
+        document: Dict[str, Any] | None = await self.database[collection].find_one(find_by_key_value, projection)
         LOG.debug("DB collection %r for document matching: %r returned: '%r'.", collection, find_by_key_value, document)
-        return document  # type:ignore
+        return document
 
     @auto_reconnect
     async def patch(self, collection: str, accession_id: str, patch_data: List[Dict[str, Any]]) -> bool:
@@ -186,7 +189,7 @@ class DBService:
                 accession_id,
                 patch_data,
             )
-            return result.acknowledged  # type:ignore
+            return result.acknowledged
         except BulkWriteError as bwe:
             LOG.exception(bwe.details)
             return False
@@ -207,7 +210,7 @@ class DBService:
         find_by_id = {f"{collection}Id": accession_id, "metadataObjects.schema": {"$ne": "study"}}
         requests = jsonpatch_mongo(find_by_id, patch_data)
         for req in requests:
-            result = await self.database[collection].find_one_and_update(
+            result: Dict[str, Any] | None = await self.database[collection].find_one_and_update(
                 find_by_id, req._doc, projection={"_id": False}, return_document=ReturnDocument.AFTER
             )
             LOG.debug(
@@ -240,7 +243,7 @@ class DBService:
             accession_id,
             data_to_be_updated,
         )
-        return result.acknowledged  # type:ignore
+        return result.acknowledged
 
     @auto_reconnect
     async def update_by_key_value(
@@ -262,7 +265,7 @@ class DBService:
             find_by_key_value,
             data_to_be_updated,
         )
-        return result.acknowledged  # type:ignore
+        return result.acknowledged
 
     @auto_reconnect
     async def remove(
@@ -279,7 +282,7 @@ class DBService:
         id_key = self._get_id_key(collection)
         find_by_id = {id_key: accession_id}
         remove_op = {"$pull": data_to_be_removed}
-        result = await self.database[collection].find_one_and_update(
+        result: Dict[str, Any] = await self.database[collection].find_one_and_update(
             find_by_id, remove_op, projection={"_id": False}, return_document=ReturnDocument.AFTER
         )
         LOG.debug(
@@ -288,7 +291,7 @@ class DBService:
             data_to_be_removed,
             accession_id,
         )
-        return result  # type:ignore
+        return result
 
     @auto_reconnect
     async def remove_many(self, collection: str, data_to_be_removed: str | Dict[str, Any]) -> bool:
@@ -306,7 +309,7 @@ class DBService:
             collection,
             data_to_be_removed,
         )
-        return result.acknowledged  # type:ignore
+        return result.acknowledged
 
     @auto_reconnect
     async def append(
@@ -327,7 +330,7 @@ class DBService:
         # push allows us to specify the postion but it does not check the items are unique
         # addToSet cannot easily specify position
         append_op = {"$push": data_to_be_addded}
-        result = await self.database[collection].find_one_and_update(
+        result: Dict[str, Any] = await self.database[collection].find_one_and_update(
             find_by_id, append_op, projection={"_id": False}, upsert=upsert, return_document=ReturnDocument.AFTER
         )
         LOG.debug(
@@ -336,7 +339,7 @@ class DBService:
             data_to_be_addded,
             accession_id,
         )
-        return result  # type:ignore
+        return result
 
     @auto_reconnect
     async def replace(self, collection: str, accession_id: str, new_data: Dict[str, Any]) -> bool:
@@ -354,8 +357,8 @@ class DBService:
         :returns: True if operation was successful
         """
         find_by_id = {"accessionId": accession_id}
-        old_data = await self.database[collection].find_one(find_by_id)
-        if not (len(new_data) == 2 and new_data["content"].startswith("<")):
+        old_data: Dict[str, Any] | None = await self.database[collection].find_one(find_by_id)
+        if not (len(new_data) == 2 and new_data["content"].startswith("<")) and old_data is not None:
             new_data["dateCreated"] = old_data["dateCreated"]
             if "publishDate" in old_data:
                 new_data["publishDate"] = old_data["publishDate"]
@@ -366,7 +369,7 @@ class DBService:
             new_data,
             accession_id,
         )
-        return result.acknowledged  # type:ignore
+        return result.acknowledged
 
     @auto_reconnect
     async def delete(self, collection: str, accession_id: str) -> bool:
@@ -380,7 +383,7 @@ class DBService:
         find_by_id = {id_key: accession_id}
         result = await self.database[collection].delete_one(find_by_id)
         LOG.debug("DB doc in collection: %r deleted data for accession ID: %r.", collection, accession_id)
-        return result.acknowledged  # type:ignore
+        return result.acknowledged
 
     def query(
         self, collection: str, query: Dict[str, Any], custom_projection: Optional[Dict[str, Any]] = None, limit: int = 0
@@ -411,5 +414,5 @@ class DBService:
         :returns: aggregated query result list
         """
         LOG.debug("DB aggregate performed in collection: %r.", collection)
-        aggregate = self.database[collection].aggregate(query)
+        aggregate: Any = self.database[collection].aggregate(query)
         return [doc async for doc in aggregate]
