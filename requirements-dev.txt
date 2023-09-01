@@ -4,7 +4,7 @@
 #
 #    pip-compile requirements-dev.in
 #
-aiofiles==23.1.0
+aiofiles==23.2.1
     # via -r requirements-dev.in
 aiohttp==3.8.5
     # via
