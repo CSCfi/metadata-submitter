@@ -4,7 +4,7 @@ API docs https://metax.fairdata.fi/docs/
 Swagger https://metax.fairdata.fi/swagger/v2
 """
 import time
-from typing import Any, Dict, List
+from typing import Any
 
 from aiohttp import BasicAuth, web
 from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
@@ -38,7 +38,7 @@ class MetaxServiceHandler(ServiceHandler):
         self.connection_check_url = metax_url
         self.publish_route = metax_url / metax_config["publish_route"][1:]
 
-        self.minimal_dataset_template: Dict[Any, Any] = {
+        self.minimal_dataset_template: dict[Any, Any] = {
             "data_catalog": metax_config["catalog_pid"],
             "metadata_provider_org": "csc.fi",
             "research_dataset": {
@@ -65,54 +65,54 @@ class MetaxServiceHandler(ServiceHandler):
             },
         }
 
-    async def _get(self, metax_id: str) -> Dict[str, Any]:
-        result: Dict[str, Any] = await self._request(method="GET", path=metax_id)
+    async def _get(self, metax_id: str) -> dict[str, Any]:
+        result: dict[str, Any] = await self._request(method="GET", path=metax_id)
         LOG.info("Got metax dataset with ID: %r.", metax_id)
 
         return result
 
-    async def _post_draft(self, json_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def _post_draft(self, json_data: dict[str, Any]) -> dict[str, Any]:
         """Post call to Metax REST API.
 
         :param json_data: Dict with request data
         :returns: Dict with full Metax dataset
         """
-        result: Dict[str, Any] = await self._request(method="POST", json_data=json_data, params="draft")
+        result: dict[str, Any] = await self._request(method="POST", json_data=json_data, params="draft")
         LOG.info("Created Metax draft dataset with ID: %r.", result["identifier"])
 
         return result
 
-    async def _put(self, metax_id: str, json_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def _put(self, metax_id: str, json_data: dict[str, Any]) -> dict[str, Any]:
         """Put call to Metax REST API.
 
         :param metax_id: ID of dataset to be updated
         :param json_data: Dict with request data
         :returns: Dict with full Metax dataset
         """
-        result: Dict[str, Any] = await self._request(method="PUT", path=metax_id, json_data=json_data)
+        result: dict[str, Any] = await self._request(method="PUT", path=metax_id, json_data=json_data)
         LOG.info("Metax dataset with ID: %r updated.", metax_id)
 
         return result
 
-    async def _patch(self, metax_id: str, json_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def _patch(self, metax_id: str, json_data: dict[str, Any]) -> dict[str, Any]:
         """Patch call to Metax REST API.
 
         :param metax_id: ID of dataset to be updated
         :param json_data: Dict with request data
         :returns: Dict with full Metax dataset
         """
-        result: Dict[str, Any] = await self._request(method="PATCH", path=metax_id, json_data=json_data)
+        result: dict[str, Any] = await self._request(method="PATCH", path=metax_id, json_data=json_data)
         LOG.info("Patch completed for metax dataset with ID: %r.", metax_id)
 
         return result
 
-    async def _bulk_patch(self, json_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+    async def _bulk_patch(self, json_data: list[dict[str, Any]]) -> dict[str, Any]:
         """Bulk patch call to Metax REST API.
 
         :param json_data: Dict with request data
         :returns: Dict with full Metax dataset
         """
-        result: Dict[str, Any] = await self._request(method="PATCH", json_data=json_data)
+        result: dict[str, Any] = await self._request(method="PATCH", json_data=json_data)
         LOG.info("Bulk patch completed for metax datasets")
 
         return result
@@ -131,7 +131,7 @@ class MetaxServiceHandler(ServiceHandler):
         :param metax_id: ID of dataset to be updated
         :returns: Dict with full Metax dataset
         """
-        result: Dict[str, Any] = await self._request(
+        result: dict[str, Any] = await self._request(
             method="POST", url=self.publish_route, params={"identifier": metax_id}
         )
         LOG.info("Metax ID %s was published to Metax service.", metax_id)
@@ -139,7 +139,7 @@ class MetaxServiceHandler(ServiceHandler):
         dataset: str = result["preferred_identifier"]
         return dataset
 
-    async def post_dataset_as_draft(self, external_id: str, collection: str, data: Dict[str, Any]) -> str:
+    async def post_dataset_as_draft(self, external_id: str, collection: str, data: dict[str, Any]) -> str:
         """Send draft dataset to Metax.
 
         Construct Metax dataset data from submitters' Study or Dataset and
@@ -212,7 +212,7 @@ class MetaxServiceHandler(ServiceHandler):
     #     await self._delete_draft(metax_id)
 
     async def update_dataset_with_doi_info(
-        self, datacite_info: Dict[str, Any], metax_ids: List[Dict[str, Any]]
+        self, datacite_info: dict[str, Any], metax_ids: list[dict[str, Any]]
     ) -> None:
         """Update dataset for publishing.
 
@@ -226,7 +226,7 @@ class MetaxServiceHandler(ServiceHandler):
         )
         bulk_data = []
         for metax_id in metax_ids:
-            metax_data: Dict[str, Any] = await self._get(metax_id["metaxIdentifier"])
+            metax_data: dict[str, Any] = await self._get(metax_id["metaxIdentifier"])
 
             # Map fields from doi info to Metax schema
             mapper = MetaDataMapper(metax_id["schema"], metax_data["research_dataset"], datacite_info)
@@ -255,7 +255,7 @@ class MetaxServiceHandler(ServiceHandler):
         metax_data = await self._put(metax_id, data)
         LOG.debug("Updated description of Metax ID: %r, new metadata is: %r", metax_id, metax_data)
 
-    async def publish_dataset(self, metax_ids: List[Dict[str, Any]]) -> None:
+    async def publish_dataset(self, metax_ids: list[dict[str, Any]]) -> None:
         """Publish draft dataset to Metax service.
 
         Iterate over the metax ids that need to be published.
@@ -277,33 +277,33 @@ class MetaxServiceHandler(ServiceHandler):
                 obj["doi"],
             )
 
-    def create_metax_dataset_data_from_study(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def create_metax_dataset_data_from_study(self, data: dict[str, Any]) -> dict[str, Any]:
         """Construct Metax dataset's research dataset dictionary from Submitters Study.
 
         :param data: Study data
         :returns: Constructed research dataset
         """
-        research_dataset: Dict[str, Any] = self.minimal_dataset_template["research_dataset"]
+        research_dataset: dict[str, Any] = self.minimal_dataset_template["research_dataset"]
         research_dataset["preferred_identifier"] = data["doi"]
         research_dataset["title"]["en"] = data["descriptor"]["studyTitle"]
         research_dataset["description"]["en"] = data["descriptor"]["studyAbstract"]
         LOG.debug("Created Metax dataset from Study with data: %r", research_dataset)
         return research_dataset
 
-    def create_metax_dataset_data_from_dataset(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def create_metax_dataset_data_from_dataset(self, data: dict[str, Any]) -> dict[str, Any]:
         """Construct Metax dataset's research dataset dictionary from Submitters Dataset.
 
         :param data: Dataset data
         :returns: constructed research dataset
         """
-        research_dataset: Dict[str, Any] = self.minimal_dataset_template["research_dataset"]
+        research_dataset: dict[str, Any] = self.minimal_dataset_template["research_dataset"]
         research_dataset["preferred_identifier"] = data["doi"]
         research_dataset["title"]["en"] = data["title"]
         research_dataset["description"]["en"] = data["description"]
         LOG.debug("Created Metax dataset from Dataset with data: %r", research_dataset)
         return research_dataset
 
-    async def _healtcheck(self) -> Dict[str, str]:
+    async def _healtcheck(self) -> dict[str, str]:
         """Check Metax service health.
 
         This responds with pong, when pinged.

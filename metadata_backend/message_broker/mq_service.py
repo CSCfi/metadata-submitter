@@ -5,7 +5,7 @@ import ssl
 import time
 from abc import ABC
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 from aiohttp import web
 from amqpstorm import AMQPError, Connection, Message  # type: ignore[import, unused-ignore]
@@ -48,7 +48,7 @@ class MessageBroker(ABC):
 
     def _error_message(
         self,
-        error_msg: Dict[str, Any],
+        error_msg: dict[str, Any],
         vhost: str,
         exchange: str,
         queue: str = "error",
@@ -91,7 +91,7 @@ class MQPublisher(MessageBroker):
         vhost: str,
         queue: str,
         exchange: str,
-        message: Dict[str, Any],
+        message: dict[str, Any],
         json_schema: str,
         correlation_id: str | None = None,
     ) -> None:

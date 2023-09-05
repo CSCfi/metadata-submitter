@@ -1,6 +1,6 @@
 """Handle HTTP methods for server."""
 
-from typing import Any, Dict, List
+from typing import Any
 
 import aiohttp_session
 import ujson
@@ -103,7 +103,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
         user_op = UserOperator(db_client)
         operator = ObjectOperator(db_client)
 
-        if isinstance(content, List):
+        if isinstance(content, list):
             tmpl_list = []
             for num, tmpl in enumerate(content):
                 if "template" not in tmpl:
@@ -131,7 +131,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
                 # Move projectId to template structure, so that it is saved in mongo
                 tmpl["template"]["projectId"] = tmpl["projectId"]
                 json_data = await operator.create_metadata_object(collection, tmpl["template"])
-                data: List[Dict[str, Any]] = [{"accessionId": json_data["accessionId"], "schema": collection}]
+                data: list[dict[str, Any]] = [{"accessionId": json_data["accessionId"], "schema": collection}]
                 if "tags" in tmpl:
                     data[0]["tags"] = tmpl["tags"]
                 await project_op.assign_templates(tmpl["projectId"], data)
@@ -164,7 +164,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
             # Move projectId to template structure, so that it is saved in mongo
             content["template"]["projectId"] = content["projectId"]
             json_data = await operator.create_metadata_object(collection, content["template"])
-            json_data = json_data[0] if isinstance(json_data, List) else json_data
+            json_data = json_data[0] if isinstance(json_data, list) else json_data
             data = [{"accessionId": json_data["accessionId"], "schema": collection}]
             if "tags" in content:
                 data[0]["tags"] = content["tags"]

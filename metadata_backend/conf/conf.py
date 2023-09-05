@@ -32,7 +32,7 @@ and inserted here in projects Dockerfile.
 """
 import os
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any, Tuple
 
 import ujson
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -113,7 +113,7 @@ with open(path_to_schema_file, "rb") as schema_file:
     schema_types = ujson.load(schema_file)
 
 path_to_workflows = Path(__file__).parent / "workflows"
-WORKFLOWS: Dict[str, Workflow] = {}
+WORKFLOWS: dict[str, Workflow] = {}
 
 for workflow_path in path_to_workflows.iterdir():
     with open(workflow_path, "rb") as workflow_file:
@@ -202,7 +202,7 @@ metax_config = {
 
 file_names = ["identifier_types.json", "languages.json", "fields_of_science.json"]
 METAX_REFERENCE_ROOT = Path(__file__).parent.parent / "conf" / "metax_references"
-METAX_REFERENCE_DATA: Dict[str, Dict[Any, Any]] = {
+METAX_REFERENCE_DATA: dict[str, dict[Any, Any]] = {
     "identifier_types": {},
     "languages": {},
     "fields_of_science": {},

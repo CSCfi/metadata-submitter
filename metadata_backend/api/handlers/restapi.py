@@ -1,7 +1,7 @@
 """Handle HTTP methods for server."""
 import json
 from math import ceil
-from typing import Any, AsyncIterator, Dict, Iterator, List, Optional, Tuple
+from typing import Any, AsyncIterator, Iterator, Optional, Tuple
 
 import aiohttp_session
 import ujson
@@ -115,7 +115,7 @@ class RESTAPIHandler:
 
         return _check, project_id
 
-    async def _get_data(self, req: Request) -> Dict[str, Any]:
+    async def _get_data(self, req: Request) -> dict[str, Any]:
         """Get the data content from a request.
 
         :param req: POST/PUT/PATCH request
@@ -123,7 +123,7 @@ class RESTAPIHandler:
         :returns: JSON content of the request
         """
         try:
-            content: Dict[str, Any] = await req.json()
+            content: dict[str, Any] = await req.json()
             return content
         except json.decoder.JSONDecodeError as e:
             reason = f"JSON is not correctly formatted, err: {e}"
@@ -131,7 +131,7 @@ class RESTAPIHandler:
             raise web.HTTPBadRequest(reason=reason)
 
     @staticmethod
-    def _json_response(data: Dict[str, Any] | List[Dict[str, Any]]) -> Response:
+    def _json_response(data: dict[str, Any] | list[dict[str, Any]]) -> Response:
         """Reusable json response, serializing data with ujson.
 
         :param data: Data to be serialized and made into HTTP 200 response
@@ -233,7 +233,7 @@ class RESTAPIHandler:
         return link_headers
 
     @staticmethod
-    def iter_submission_objects(submission: Dict[str, Any]) -> Iterator[Tuple[str, str]]:
+    def iter_submission_objects(submission: dict[str, Any]) -> Iterator[Tuple[str, str]]:
         """Iterate over a submission's objects.
 
         :param submission: Submission data
@@ -247,8 +247,8 @@ class RESTAPIHandler:
             yield accession_id, schema
 
     async def iter_submission_objects_data(
-        self, submission: Dict[str, Any], obj_op: ObjectOperator
-    ) -> AsyncIterator[Tuple[str, str, Dict[str, Any]]]:
+        self, submission: dict[str, Any], obj_op: ObjectOperator
+    ) -> AsyncIterator[Tuple[str, str, dict[str, Any]]]:
         """Iterate over a submission's objects and retrieve their data.
 
         :param submission: Submission data
@@ -259,7 +259,7 @@ class RESTAPIHandler:
         for accession_id, schema in self.iter_submission_objects(submission):
             object_data, _ = await obj_op.read_metadata_object(schema, accession_id)
 
-            if not isinstance(object_data, Dict):
+            if not isinstance(object_data, dict):
                 LOG.error("Object with accession ID %r is not a Dict. This might be a bug", accession_id)
                 continue
 
@@ -298,7 +298,7 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
         return metadata_provider_user
 
     async def create_metax_dataset(
-        self, obj_op: ObjectOperator, collection: str, obj: Dict[str, Any], external_id: str
+        self, obj_op: ObjectOperator, collection: str, obj: dict[str, Any], external_id: str
     ) -> str:
         """Handle connection to Metax api handler for dataset creation.
 
@@ -338,7 +338,7 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
 
         return doi
 
-    async def check_rems_ok(self, submission: Dict[str, Any]) -> bool:
+    async def check_rems_ok(self, submission: dict[str, Any]) -> bool:
         """Check that REMS DAC in object is ok."""
         if "rems" not in submission:
             raise web.HTTPBadRequest(reason="REMS field is missing.")

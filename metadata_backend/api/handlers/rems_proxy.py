@@ -1,5 +1,5 @@
 """Get and process REMS data for the frontend."""
-from typing import Any, Dict, List, TypedDict
+from typing import Any, TypedDict
 
 from aiohttp import web
 
@@ -11,8 +11,8 @@ class Organization(TypedDict):
 
     id: str
     name: str
-    workflows: List[Dict[str, str]]
-    licenses: List[Dict[str, str]]
+    workflows: list[dict[str, str]]
+    licenses: list[dict[str, str]]
 
 
 class RemsAPIHandler(RESTAPIIntegrationHandler):
@@ -22,7 +22,7 @@ class RemsAPIHandler(RESTAPIIntegrationHandler):
     """
 
     @staticmethod
-    def _get_localized(language: str, _dict: Dict[str, Any], fallback_language: str = "en") -> str | Dict[str, Any]:
+    def _get_localized(language: str, _dict: dict[str, Any], fallback_language: str = "en") -> str | dict[str, Any]:
         """Get correct language string from dict.
 
         REMS provides certain properties as a dict with language, but no way to know which are available.
@@ -30,12 +30,12 @@ class RemsAPIHandler(RESTAPIIntegrationHandler):
         """
         if len(_dict) == 0:
             return ""
-        if not isinstance(_dict, Dict):
+        if not isinstance(_dict, dict):
             if isinstance(_dict, str):
                 return _dict
             return ""
         if language in _dict:
-            lang_dict: str | Dict[str, Any] = _dict[language]
+            lang_dict: str | dict[str, Any] = _dict[language]
             return lang_dict
         if fallback_language in _dict:
             lang_dict = _dict[fallback_language]
@@ -51,7 +51,7 @@ class RemsAPIHandler(RESTAPIIntegrationHandler):
         workflows = await self.rems_handler.get_workflows()
         licenses = await self.rems_handler.get_licenses()
 
-        organizations: Dict[str, Organization] = {}
+        organizations: dict[str, Organization] = {}
 
         def add_organization(organization_id: str, organization_name: str) -> None:
             organizations[organization_id] = {
@@ -80,4 +80,4 @@ class RemsAPIHandler(RESTAPIIntegrationHandler):
         return web.json_response(data=list(organizations.values()))
 
 
-# : Dict[str, Dict[str, Dict[str, Any] | Any] | Any]
+# : dict[str, dict[str, dict[str, Any] | Any] | Any]

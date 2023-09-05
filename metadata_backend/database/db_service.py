@@ -1,6 +1,6 @@
 """Services that handle database connections. Implemented with MongoDB."""
 from functools import wraps
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Optional
 
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor, AsyncIOMotorDatabase  # type: ignore
 from pymongo import ReturnDocument
@@ -69,7 +69,7 @@ class DBService:
         return f"{collection}Id" if (collection in ["submission", "user", "project"]) else "accessionId"
 
     @auto_reconnect
-    async def create(self, collection: str, document: Dict[str, Dict[Any, Any]]) -> bool:
+    async def create(self, collection: str, document: dict[str, dict[Any, Any]]) -> bool:
         """Insert document or a submission to collection in database.
 
         :param collection: Collection where document should be inserted
@@ -103,7 +103,7 @@ class DBService:
         :returns: Id if exists and None if it does not
         """
         find_by_id = {"externalId": external_id}
-        project: Dict[str, str] | None = await self.database["project"].find_one(
+        project: dict[str, str] | None = await self.database["project"].find_one(
             find_by_id, {"_id": False, "externalId": False}
         )
         LOG.debug("DB check project exists for: %r returned: '%r'.", external_id, project)
@@ -118,7 +118,7 @@ class DBService:
         :returns: User ID if exists and None if it does not
         """
         find_by_id = {"externalId": external_id, "name": name}
-        user: Dict[str, str] | None = await self.database["user"].find_one(
+        user: dict[str, str] | None = await self.database["user"].find_one(
             find_by_id, {"_id": False, "externalId": False}
         )
         LOG.debug("DB check user exists for: %r returned: %r.", external_id, user)
@@ -138,7 +138,7 @@ class DBService:
         return check
 
     @auto_reconnect
-    async def read(self, collection: str, accession_id: str) -> None | Dict[str, Any]:
+    async def read(self, collection: str, accession_id: str) -> None | dict[str, Any]:
         """Find object, submission or user by its generated ID.
 
         :param collection: Collection where document should be searched from
@@ -153,8 +153,8 @@ class DBService:
 
     @auto_reconnect
     async def read_by_key_value(
-        self, collection: str, find_by_key_value: Dict[Any, Any], projection: Optional[Dict[str, Any]] = None
-    ) -> None | Dict[str, Any]:
+        self, collection: str, find_by_key_value: dict[Any, Any], projection: Optional[dict[str, Any]] = None
+    ) -> None | dict[str, Any]:
         """Check document exists by an arbitrary key and value.
 
         :param collection: Collection to search in
@@ -165,12 +165,12 @@ class DBService:
         if projection is None:
             projection = {"_id": False}
 
-        document: Dict[str, Any] | None = await self.database[collection].find_one(find_by_key_value, projection)
+        document: dict[str, Any] | None = await self.database[collection].find_one(find_by_key_value, projection)
         LOG.debug("DB collection %r for document matching: %r returned: '%r'.", collection, find_by_key_value, document)
         return document
 
     @auto_reconnect
-    async def patch(self, collection: str, accession_id: str, patch_data: List[Dict[str, Any]]) -> bool:
+    async def patch(self, collection: str, accession_id: str, patch_data: list[dict[str, Any]]) -> bool:
         """Patch some elements of object by its accessionId.
 
         :param collection: Collection where document should be searched from
@@ -195,7 +195,7 @@ class DBService:
             return False
 
     @auto_reconnect
-    async def update_study(self, collection: str, accession_id: str, patch_data: List[Dict[str, Any]]) -> bool:
+    async def update_study(self, collection: str, accession_id: str, patch_data: list[dict[str, Any]]) -> bool:
         """Update and avoid duplicates for study object.
 
         Currently we don't allow duplicate studies in the same submission,
@@ -210,7 +210,7 @@ class DBService:
         find_by_id = {f"{collection}Id": accession_id, "metadataObjects.schema": {"$ne": "study"}}
         requests = jsonpatch_mongo(find_by_id, patch_data)
         for req in requests:
-            result: Dict[str, Any] | None = await self.database[collection].find_one_and_update(
+            result: dict[str, Any] | None = await self.database[collection].find_one_and_update(
                 find_by_id, req._doc, projection={"_id": False}, return_document=ReturnDocument.AFTER
             )
             LOG.debug(
@@ -224,7 +224,7 @@ class DBService:
         return True
 
     @auto_reconnect
-    async def update(self, collection: str, accession_id: str, data_to_be_updated: Dict[str, Any]) -> bool:
+    async def update(self, collection: str, accession_id: str, data_to_be_updated: dict[str, Any]) -> bool:
         """Update some elements of object by its accessionId.
 
         :param collection: Collection where document should be searched from
@@ -247,7 +247,7 @@ class DBService:
 
     @auto_reconnect
     async def update_by_key_value(
-        self, collection: str, find_by_key_value: Dict[Any, Any], data_to_be_updated: Dict[str, Any]
+        self, collection: str, find_by_key_value: dict[str, Any], data_to_be_updated: dict[str, Any]
     ) -> bool:
         """Update some elements of object by its accessionId.
 
@@ -269,8 +269,8 @@ class DBService:
 
     @auto_reconnect
     async def remove(
-        self, collection: str, accession_id: str, data_to_be_removed: str | Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, collection: str, accession_id: str, data_to_be_removed: str | dict[str, Any]
+    ) -> dict[str, Any]:
         """Remove element of object by its accessionId.
 
         :param collection: Collection where document should be searched from
@@ -282,7 +282,7 @@ class DBService:
         id_key = self._get_id_key(collection)
         find_by_id = {id_key: accession_id}
         remove_op = {"$pull": data_to_be_removed}
-        result: Dict[str, Any] = await self.database[collection].find_one_and_update(
+        result: dict[str, Any] = await self.database[collection].find_one_and_update(
             find_by_id, remove_op, projection={"_id": False}, return_document=ReturnDocument.AFTER
         )
         LOG.debug(
@@ -294,7 +294,7 @@ class DBService:
         return result
 
     @auto_reconnect
-    async def remove_many(self, collection: str, data_to_be_removed: str | Dict[str, Any]) -> bool:
+    async def remove_many(self, collection: str, data_to_be_removed: str | dict[str, Any]) -> bool:
         """Remove element of object by its accessionId.
 
         :param collection: Collection where document should be searched from
@@ -313,8 +313,8 @@ class DBService:
 
     @auto_reconnect
     async def append(
-        self, collection: str, accession_id: str, data_to_be_addded: str | Dict[str, Any], upsert: bool = False
-    ) -> Dict[str, Any]:
+        self, collection: str, accession_id: str, data_to_be_addded: str | dict[str, Any], upsert: bool = False
+    ) -> dict[str, Any]:
         """Append data by to object with accessionId in collection.
 
         :param collection: Collection where document should be searched from
@@ -330,7 +330,7 @@ class DBService:
         # push allows us to specify the postion but it does not check the items are unique
         # addToSet cannot easily specify position
         append_op = {"$push": data_to_be_addded}
-        result: Dict[str, Any] = await self.database[collection].find_one_and_update(
+        result: dict[str, Any] = await self.database[collection].find_one_and_update(
             find_by_id, append_op, projection={"_id": False}, upsert=upsert, return_document=ReturnDocument.AFTER
         )
         LOG.debug(
@@ -342,7 +342,7 @@ class DBService:
         return result
 
     @auto_reconnect
-    async def replace(self, collection: str, accession_id: str, new_data: Dict[str, Any]) -> bool:
+    async def replace(self, collection: str, accession_id: str, new_data: dict[str, Any]) -> bool:
         """Replace whole object by its accessionId.
 
         We keep the dateCreated and publishDate dates as these
@@ -357,7 +357,7 @@ class DBService:
         :returns: True if operation was successful
         """
         find_by_id = {"accessionId": accession_id}
-        old_data: Dict[str, Any] | None = await self.database[collection].find_one(find_by_id)
+        old_data: dict[str, Any] | None = await self.database[collection].find_one(find_by_id)
         if not (len(new_data) == 2 and new_data["content"].startswith("<")) and old_data is not None:
             new_data["dateCreated"] = old_data["dateCreated"]
             if "publishDate" in old_data:
@@ -386,7 +386,7 @@ class DBService:
         return result.acknowledged
 
     def query(
-        self, collection: str, query: Dict[str, Any], custom_projection: Optional[Dict[str, Any]] = None, limit: int = 0
+        self, collection: str, query: dict[str, Any], custom_projection: Optional[dict[str, Any]] = None, limit: int = 0
     ) -> AsyncIOMotorCursor:
         """Query database with given query.
 
@@ -406,7 +406,7 @@ class DBService:
         return self.database[collection].find(query, projection, limit=limit)
 
     @auto_reconnect
-    async def do_aggregate(self, collection: str, query: List[Any]) -> List[Any]:
+    async def do_aggregate(self, collection: str, query: list[Any]) -> list[Any]:
         """Perform aggregate query.
 
         :param collection: Collection where document should be searched from

@@ -1,5 +1,5 @@
 """Project operator class."""
-from typing import Any, Dict, List
+from typing import Any
 
 from aiohttp import web
 from pymongo.errors import ConnectionFailure, OperationFailure
@@ -21,7 +21,7 @@ class ProjectOperator(BaseOperator):
         :raises: HTTPBadRequest if error occurs during the process of insert
         :returns: Project id for the project inserted to database
         """
-        project_data: Dict[str, str | List[str]] = {}
+        project_data: dict[str, str | list[str]] = {}
 
         try:
             existing_project_id: None | str = await self.db_service.exists_project_by_external_id(project_number)
@@ -58,7 +58,7 @@ class ProjectOperator(BaseOperator):
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
 
-    async def assign_templates(self, project_id: str, object_ids: List[str] | str) -> None:
+    async def assign_templates(self, project_id: str, object_ids: list[str] | str) -> None:
         """Assing templates to project.
 
         :param project_id: ID of project to update
@@ -83,7 +83,7 @@ class ProjectOperator(BaseOperator):
 
         LOG.info("Assigning templates: %r to project: %r succeeded.", object_ids, project_id)
 
-    async def remove_templates(self, project_id: str, object_ids: List[str]) -> None:
+    async def remove_templates(self, project_id: str, object_ids: list[str]) -> None:
         """Remove templates from project.
 
         :param project_id: ID of project to update
@@ -91,7 +91,7 @@ class ProjectOperator(BaseOperator):
         :raises: HTTPBadRequest if db connection fails
         returns: None
         """
-        remove_content: Dict[str, Dict[str, str]]
+        remove_content: dict[str, dict[str, str]]
         try:
             await self.check_project_exists(project_id)
             for obj in object_ids:
@@ -104,7 +104,7 @@ class ProjectOperator(BaseOperator):
 
         LOG.info("Removing templates: %r from project: %r succeeded.", ", ".join(object_ids), project_id)
 
-    async def update_project(self, project_id: str, patch: List[Dict[str, Any]]) -> str:
+    async def update_project(self, project_id: str, patch: list[dict[str, Any]]) -> str:
         """Update project object in database.
 
         :param project_id: ID of project to update
