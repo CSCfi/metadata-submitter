@@ -1,5 +1,5 @@
 """Utilities for processing a workflow."""
-from typing import Any, Dict, Set
+from typing import Any, Set
 
 from aiohttp import web
 
@@ -9,7 +9,7 @@ from .validator import JSONValidator
 class Workflow:
     """Submission workflow."""
 
-    def __init__(self, workflow: Dict[str, Any]) -> None:
+    def __init__(self, workflow: dict[str, Any]) -> None:
         """Submission workflow.
 
         :param workflow: Workflow data
@@ -27,7 +27,7 @@ class Workflow:
             return False
 
     @property
-    def workflow(self) -> Dict[str, Any]:
+    def workflow(self) -> dict[str, Any]:
         """Return workflow, no set method, only get."""
         return self._workflow
 
@@ -43,7 +43,7 @@ class Workflow:
         return schemas_in_workflow
 
     @property
-    def schemas_dict(self) -> Dict[str, Any]:
+    def schemas_dict(self) -> dict[str, Any]:
         """Get all workflow schemas as a dictionary, schema name as key."""
         schemas_dict = {}
 

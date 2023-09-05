@@ -1,7 +1,7 @@
 """File operator class."""
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional, Tuple
 
 import ujson
 from aiohttp import web
@@ -21,8 +21,8 @@ class File:
 
     # specific to each file version
     bytes: int
-    encrypted_checksums: List[Dict[str, str]]
-    unencrypted_checksums: List[Dict[str, str]]
+    encrypted_checksums: list[dict[str, str]]
+    unencrypted_checksums: list[dict[str, str]]
 
 
 class FileOperator(BaseOperator):
@@ -31,7 +31,7 @@ class FileOperator(BaseOperator):
     @staticmethod
     def _from_version_template(
         file: File, version: int
-    ) -> Dict[str, List[Dict[str, str]] | Dict[str, str] | int | bool]:
+    ) -> dict[str, list[dict[str, str]] | dict[str, str] | int | bool]:
         """Create a file version.
 
         :param file: File to be used for the new file version
@@ -125,7 +125,7 @@ class FileOperator(BaseOperator):
             LOG.exception(reason)
             raise web.HTTPInternalServerError(reason=reason) from error
 
-    async def read_file(self, accession_id: str, version: Optional[int] = None) -> Dict[str, Any]:
+    async def read_file(self, accession_id: str, version: Optional[int] = None) -> dict[str, Any]:
         """Read file object from database.
 
         :param accession_id: Accession ID of the file to read
@@ -160,7 +160,7 @@ class FileOperator(BaseOperator):
             # get only the latest version
             aggregate_query.insert(3, {"$limit": 1})
         try:
-            file: List[Dict[str, Any]] = await self.db_service.do_aggregate("file", aggregate_query)
+            file: list[dict[str, Any]] = await self.db_service.do_aggregate("file", aggregate_query)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting file, err: {error}"
             LOG.exception(reason)
@@ -172,7 +172,7 @@ class FileOperator(BaseOperator):
 
         return file[0]
 
-    async def read_project_files(self, project_id: str) -> List[Dict[str, Any]]:
+    async def read_project_files(self, project_id: str) -> list[dict[str, Any]]:
         """Read files from DB based on a specific filter type and corresponding identifier.
 
         The files are read by the latest version, and filtered either by projectId.
@@ -199,7 +199,7 @@ class FileOperator(BaseOperator):
             },
         ]
         try:
-            result: List[Dict[str, Any]] = await self.db_service.do_aggregate("file", aggregate_query)
+            result: list[dict[str, Any]] = await self.db_service.do_aggregate("file", aggregate_query)
             return result
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting files for project {project_id}, err: {error}"
@@ -251,8 +251,8 @@ class FileOperator(BaseOperator):
             raise web.HTTPInternalServerError(reason=reason) from error
 
     async def read_submission_files(
-        self, submission_id: str, expected_status: Optional[List[Any]] = None
-    ) -> List[Dict[str, Any]]:
+        self, submission_id: str, expected_status: Optional[list[Any]] = None
+    ) -> list[dict[str, Any]]:
         """Get files in a submission.
 
         The files are identified in a submission by version.
@@ -277,7 +277,7 @@ class FileOperator(BaseOperator):
         files = []
         try:
             submission_files = await self.db_service.do_aggregate("submission", aggregate_query)
-            if not isinstance(submission_files, List):
+            if not isinstance(submission_files, list):
                 reason = f"Reading submission files for '{submission_id}' failed"
                 LOG.error(reason)
                 raise web.HTTPInternalServerError(reason=reason)
@@ -363,7 +363,7 @@ class FileOperator(BaseOperator):
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-    async def update_file_submission(self, accession_id: str, submission_id: str, update_data: Dict[str, Any]) -> None:
+    async def update_file_submission(self, accession_id: str, submission_id: str, update_data: dict[str, Any]) -> None:
         """Update file in a submission.
 
         File should not be deleted from DB, only flagged as not available anymore
@@ -396,7 +396,7 @@ class FileOperator(BaseOperator):
 
         LOG.info("Updating file with file ID: %r in submission %r succeeded.", accession_id, submission_id)
 
-    async def add_files_submission(self, files: List[Dict[str, Any]], submission_id: str) -> bool:
+    async def add_files_submission(self, files: list[dict[str, Any]], submission_id: str) -> bool:
         """Add files to a submission.
 
         Doesn't check if files are already present in the submission.

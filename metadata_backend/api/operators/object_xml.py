@@ -1,5 +1,5 @@
 """XML object operator class."""
-from typing import Any, Dict, List
+from typing import Any
 
 from aiohttp import web
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -27,7 +27,7 @@ class XMLObjectOperator(BaseObjectOperator):
         """
         super().__init__(mongo_database, "text/xml", db_client)
 
-    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: str) -> List[Dict[str, Any]]:
+    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: str) -> list[dict[str, Any]]:
         """Format XML metadata object and add it to db.
 
         XML is validated, then parsed to JSON, which is added to database.
@@ -43,8 +43,8 @@ class XMLObjectOperator(BaseObjectOperator):
         parsed_data = XMLToJSONParser().parse(schema, data)
 
         # Parser may return a list of objects and each object should be added separately
-        data_objects = parsed_data if isinstance(parsed_data, List) else [parsed_data]
-        added_data: List[Dict[str, Any]] = []
+        data_objects = parsed_data if isinstance(parsed_data, list) else [parsed_data]
+        added_data: list[dict[str, Any]] = []
         for obj in data_objects:
             data_with_id = await ObjectOperator(db_client)._format_data_to_create_and_add_to_db(schema_type, obj)
             added_data.append(data_with_id)
@@ -57,7 +57,7 @@ class XMLObjectOperator(BaseObjectOperator):
 
     async def _format_data_to_replace_and_add_to_db(
         self, schema_type: str, accession_id: str, data: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Format XML metadata object and add it to db.
 
         XML is validated, then parsed to JSON, which is added to database.
@@ -94,7 +94,7 @@ class XMLObjectOperator(BaseObjectOperator):
         reason = "XML patching is not possible."
         raise web.HTTPUnsupportedMediaType(reason=reason)
 
-    async def _format_read_data(self, schema_type: str, data_raw: Dict[str, Any]) -> str:
+    async def _format_read_data(self, schema_type: str, data_raw: dict[str, Any]) -> str:
         """Get XML content from given mongodb data.
 
         :param schema_type: Schema type of the object to read.

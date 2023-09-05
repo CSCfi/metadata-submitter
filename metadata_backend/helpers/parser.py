@@ -3,7 +3,7 @@
 import csv
 import re
 from io import StringIO
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Optional, Type
 
 from aiohttp import web
 from metomi.isodatetime.exceptions import ISO8601SyntaxError  # type: ignore[import, unused-ignore]
@@ -28,8 +28,8 @@ class MetadataXMLConverter(XMLSchemaConverter):
     def __init__(
         self,
         namespaces: Optional[aliases.NamespacesType] = None,
-        dict_class: Optional[Type[Dict[str, Any]]] = None,
-        list_class: Optional[Type[List[Any]]] = None,
+        dict_class: Optional[Type[dict[str, Any]]] = None,
+        list_class: Optional[Type[list[Any]]] = None,
         # difficult to pinpoint type as xmlschema library does the same
         **kwargs: Any,  # noqa: ANN401
     ) -> None:
@@ -49,7 +49,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
         _under_regex = re.compile(r"_([a-z])")
         return _under_regex.sub(lambda x: x.group(1).upper(), name)
 
-    def _flatten(self, data: ElementData) -> Dict[str, Any]:
+    def _flatten(self, data: ElementData) -> dict[str, Any]:
         """Address corner cases.
 
         :param schema_type: XML data
@@ -89,14 +89,14 @@ class MetadataXMLConverter(XMLSchemaConverter):
 
         refs = {"analysisRef", "sampleRef", "runRef", "experimentRef"}
 
-        children: Dict[str, Any] = self.dict()
+        children: dict[str, Any] = self.dict()
 
         for key, value, _ in self.map_content(data.content):
             key = self._to_camel(key.lower())
 
             if key in set(attrs) and len(value) == 1:
                 attrs = list(value.values())
-                children[key] = attrs[0] if isinstance(attrs[0], List) else attrs
+                children[key] = attrs[0] if isinstance(attrs[0], list) else attrs
                 continue
 
             if key == "attributes" and "attributeSet" not in value:
@@ -105,7 +105,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 # Bring 'attribute' list under 'attributes'
                 # and parse ISO-8601 durations to number of days
                 for attribs in attributes:
-                    if isinstance(attribs, List):
+                    if isinstance(attribs, list):
                         for a in attribs:
                             if a["tag"] == "age_at_extraction":
                                 a["originalValue"] = a["value"]
@@ -125,7 +125,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 attribs = list(value.values())
                 attr_list = []
                 for i in attribs:
-                    if isinstance(i, List):
+                    if isinstance(i, list):
                         attr_list += i
                     else:
                         attr_list.append(i)
@@ -137,7 +137,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 continue
 
             if "platform" in key:
-                if isinstance(value, Dict):
+                if isinstance(value, dict):
                     children[key] = list(value.values())[0]["instrumentModel"]
                 else:
                     children[key] = value
@@ -160,7 +160,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
             if key == "assemblyGraph" and "assembly" in value:
                 attribs = value["assembly"]
                 attr_list = []
-                if isinstance(attribs, List):
+                if isinstance(attribs, list):
                     for d in attribs:
                         for k, v in d.items():
                             v["accession"] = v.pop("accessionId")
@@ -193,9 +193,9 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 continue
 
             if "files" in key:
-                if isinstance(value["file"], Dict):
+                if isinstance(value["file"], dict):
                     children["files"] = list(value.values())
-                elif isinstance(value["file"], List):
+                elif isinstance(value["file"], list):
                     children["files"] = value["file"]
                 continue
 
@@ -264,7 +264,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
 
             if key in links and len(value) == 1:
                 grp = []
-                if isinstance(value[key[:-1]], Dict):
+                if isinstance(value[key[:-1]], dict):
                     grp = list(value[key[:-1]].values())
                     ks = list(value[key[:-1]])[0][:-4]
                     if ks == "url":
@@ -287,9 +287,9 @@ class MetadataXMLConverter(XMLSchemaConverter):
             try:
                 children[key].append(value)
             except KeyError:
-                if isinstance(value, (self.list, List)) and value:
+                if isinstance(value, (self.list, list)) and value:
                     children[key] = self.list([value])
-                elif isinstance(value, (self.dict, Dict)) and len(value) == 1 and {} in value.values():
+                elif isinstance(value, (self.dict, dict)) and len(value) == 1 and {} in value.values():
                     children[key] = list(value.keys())[0]
                 else:
                     children[key] = value
@@ -329,7 +329,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
         xsd_element: XsdElement,
         xsd_type: Optional[XsdType] = None,
         level: int = 0,  # this is required for XMLSchemaConverter
-    ) -> Dict[str, Any] | List[Any] | str | None:
+    ) -> dict[str, Any] | list[Any] | str | None:
         """Decode XML to JSON.
 
         Decoding strategy:
@@ -375,7 +375,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
           add it with default gender unknown
         """
         xsd_type = xsd_type or xsd_element.type
-        children: Dict[str, Any] | str | None
+        children: dict[str, Any] | str | None
 
         if xsd_type.simple_type is not None:
             children = data.text if data.text is not None and data.text != "" else None
@@ -393,7 +393,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
             if "sampleName" in tmp and "sampleData" not in tmp:
                 tmp["sampleData"] = {"gender": "unknown"}
             if children is not None:
-                if isinstance(children, Dict):
+                if isinstance(children, dict):
                     for key, value in children.items():
                         value = value if value != {} else "true"
                         tmp[key] = value
@@ -407,7 +407,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
 class XMLToJSONParser:
     """Methods to parse necessary data from different XML types."""
 
-    def parse(self, schema_type: str, content: str) -> Dict[str, Any]:
+    def parse(self, schema_type: str, content: str) -> dict[str, Any]:
         """Validate XML file and parse it to JSON.
 
         We validate resulting JSON against a JSON schema
@@ -426,8 +426,8 @@ class XMLToJSONParser:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         # result is of type:
-        # Union[Any, List[Any], Tuple[None, List[XMLSchemaValidationError]],
-        # Tuple[Any, List[XMLSchemaValidationError]], Tuple[List[Any], List[XMLSchemaValidationError]]]
+        # Union[Any, list[Any], Tuple[None, list[XMLSchemaValidationError]],
+        # Tuple[Any, list[XMLSchemaValidationError]], Tuple[list[Any], list[XMLSchemaValidationError]]]
         # however we expect any type as it is easier to work with
         result: Any = schema.to_dict(content, converter=MetadataXMLConverter, decimal_type=float, dict_class=dict)
         _schema_type: str = schema_type.lower()
@@ -436,7 +436,7 @@ class XMLToJSONParser:
             result = self._organize_bp_sample_objects(result)
         # Validate each JSON object separately if an array of objects is parsed
         obj_name = _schema_type[2:] if _schema_type in ["bpimage", "bpobservation", "bpstaining"] else _schema_type
-        results = result[obj_name] if isinstance(result[obj_name], List) else [result[obj_name]]
+        results = result[obj_name] if isinstance(result[obj_name], list) else [result[obj_name]]
         if _schema_type != "submission":
             for obj in results:
                 JSONValidator(obj, _schema_type).validate
@@ -460,7 +460,7 @@ class XMLToJSONParser:
         return schema
 
     @staticmethod
-    def _organize_bp_sample_objects(data: Dict[str, Any]) -> Dict[str, Any]:
+    def _organize_bp_sample_objects(data: dict[str, Any]) -> dict[str, Any]:
         """Handle BP Sample data after it was parsed from an XML so it can be validated and added to db.
 
         :param data: BP sample objects in JSON format
@@ -468,10 +468,10 @@ class XMLToJSONParser:
         """
 
         # Helper function for separating sample objects
-        def _separate_samples(item: Dict[str, Any] | List[Dict[str, Any]], title: str) -> List[Dict[str, Any]]:
-            if isinstance(item, List) and len(item) > 0:
+        def _separate_samples(item: dict[str, Any] | list[dict[str, Any]], title: str) -> list[dict[str, Any]]:
+            if isinstance(item, list) and len(item) > 0:
                 return [{title: i} for i in item]
-            return [{title: item}] if isinstance(item, Dict) else []
+            return [{title: item}] if isinstance(item, dict) else []
 
         # Separate biological beings, cases, specimen, blocks and slides from the data that was extracted from the XML
         bio_beings = data["biologicalBeing"] if "biologicalBeing" in data else []
@@ -486,14 +486,14 @@ class XMLToJSONParser:
         slides = _separate_samples(slides, "slide")
 
         # Return all samples as an array under bpsample schema name
-        samples: List[Dict[str, Any]] = bio_beings + cases + specimens + blocks + slides
+        samples: list[dict[str, Any]] = bio_beings + cases + specimens + blocks + slides
         return {"bpsample": samples}
 
 
 class CSVToJSONParser:
     """Methods to parse and convert data from CSV files to JSON format."""
 
-    def parse(self, schema_type: str, content: str) -> List[Dict[str, Any]]:
+    def parse(self, schema_type: str, content: str) -> list[dict[str, Any]]:
         """Parse a CSV file, convert it to JSON and validate against JSON schema.
 
         :param schema_type: Schema type of the file to be parsed
@@ -538,7 +538,7 @@ class CSVToJSONParser:
         _parsed = []
         for row in rows:
             LOG.debug("current row: %d", row)
-            _tmp: Dict[str, Any] = row
+            _tmp: dict[str, Any] = row
             # This is required to pass validation against current sample schema
             if schema_type == "sample" and "sampleName" not in row:
                 # Without TaxonID provided we assume the sample relates to
@@ -557,14 +557,14 @@ class CSVToJSONParser:
         return _parsed
 
 
-def jsonpatch_mongo(identifier: Dict[str, Any], json_patch: List[Dict[str, Any]]) -> List[Any]:
+def jsonpatch_mongo(identifier: dict[str, Any], json_patch: list[dict[str, Any]]) -> list[Any]:
     """Convert JSONpatch object to mongo query.
 
     :param identifier: object database ID
     :param json_patch: array with JSON patch actions
     :returns: dictionary of mongodb actions
     """
-    queries: List[Any] = []
+    queries: list[Any] = []
     for op in json_patch:
         if op["op"] == "add":
             if op["path"].endswith("/-"):
@@ -574,7 +574,7 @@ def jsonpatch_mongo(identifier: Dict[str, Any], json_patch: List[Dict[str, Any]]
                         {
                             "$addToSet": {
                                 op["path"][1:-2].replace("/", "."): {
-                                    "$each": op["value"] if isinstance(op["value"], List) else [op["value"]]
+                                    "$each": op["value"] if isinstance(op["value"], list) else [op["value"]]
                                 },
                             },
                         },

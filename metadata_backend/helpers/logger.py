@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import Any, Dict
+from typing import Any
 
 import ujson
 
@@ -13,7 +13,7 @@ LOG = logging.getLogger("server")
 LOG.setLevel(os.getenv("LOG_LEVEL", "INFO"))
 
 
-def get_attributes(obj: Dict[str, Any]) -> None:
+def get_attributes(obj: dict[str, Any]) -> None:
     """Print all attributes of given object.
 
     :param obj: Any kind of object
@@ -25,7 +25,7 @@ def get_attributes(obj: Dict[str, Any]) -> None:
             LOG.exception("Error: %r", error)
 
 
-def pprint_json(content: Dict[str, Any]) -> None:
+def pprint_json(content: dict[str, Any]) -> None:
     """Print given JSON object to LOG.
 
     :param content: JSON-formatted content to be printed

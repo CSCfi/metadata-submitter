@@ -1,6 +1,5 @@
 """Handle health check endpoint."""
 import time
-from typing import Dict
 
 import ujson
 from aiohttp import web
@@ -40,8 +39,8 @@ class HealthHandler:
         :returns: JSON response containing health statuses
         """
         db_client = await self.create_test_db_client()
-        services: Dict[str, Dict[str, str]] = {}
-        full_status: Dict[str, Dict[str, Dict[str, str]] | str] = {}
+        services: dict[str, dict[str, str]] = {}
+        full_status: dict[str, dict[str, dict[str, str]] | str] = {}
         _conn_db = await self.try_db_connection(db_client)
         # Determine database load status
         if _conn_db:
