@@ -1,7 +1,8 @@
 """Handle HTTP methods for server."""
 import json
+from collections.abc import AsyncIterator, Iterator
 from math import ceil
-from typing import Any, AsyncIterator, Iterator, Optional, Tuple
+from typing import Any, Optional
 
 import aiohttp_session
 import ujson
@@ -71,7 +72,7 @@ class RESTAPIHandler:
             raise web.HTTPBadRequest(reason=reason)
         return param
 
-    async def _handle_check_ownership(self, req: Request, collection: str, accession_id: str) -> Tuple[bool, str]:
+    async def _handle_check_ownership(self, req: Request, collection: str, accession_id: str) -> tuple[bool, str]:
         """Check if object belongs to project.
 
         For this we need to check the object is in exactly 1 submission and we need to check
@@ -233,7 +234,7 @@ class RESTAPIHandler:
         return link_headers
 
     @staticmethod
-    def iter_submission_objects(submission: dict[str, Any]) -> Iterator[Tuple[str, str]]:
+    def iter_submission_objects(submission: dict[str, Any]) -> Iterator[tuple[str, str]]:
         """Iterate over a submission's objects.
 
         :param submission: Submission data
@@ -248,7 +249,7 @@ class RESTAPIHandler:
 
     async def iter_submission_objects_data(
         self, submission: dict[str, Any], obj_op: ObjectOperator
-    ) -> AsyncIterator[Tuple[str, str, dict[str, Any]]]:
+    ) -> AsyncIterator[tuple[str, str, dict[str, Any]]]:
         """Iterate over a submission's objects and retrieve their data.
 
         :param submission: Submission data

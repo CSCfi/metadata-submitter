@@ -32,7 +32,7 @@ and inserted here in projects Dockerfile.
 """
 import os
 from pathlib import Path
-from typing import Any, Tuple
+from typing import Any
 
 import ujson
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -53,7 +53,7 @@ from ..helpers.workflow import Workflow
 # the client will attempt to authenticate the specified user to the admin database.
 
 
-def set_conf() -> Tuple[str, str]:
+def set_conf() -> tuple[str, str]:
     """Set config based on env vars."""
     mongo_user = os.getenv("MONGO_USERNAME", "admin")
     mongo_password = os.getenv("MONGO_PASSWORD", "admin")

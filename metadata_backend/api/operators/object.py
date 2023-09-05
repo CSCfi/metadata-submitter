@@ -1,7 +1,7 @@
 """Object operator class."""
 import re
 from datetime import datetime
-from typing import Any, Tuple
+from typing import Any
 from uuid import uuid4
 
 from aiohttp import web
@@ -87,7 +87,7 @@ class ObjectOperator(BaseObjectOperator):
 
     async def query_metadata_database(
         self, schema_type: str, que: MultiDictProxy[Any], page_num: int, page_size: int, filter_objects: list[Any]
-    ) -> Tuple[list[dict[str, Any]], int, int, int]:
+    ) -> tuple[list[dict[str, Any]], int, int, int]:
         """Query database based on url query parameters.
 
         Url queries are mapped to mongodb queries based on query_map in

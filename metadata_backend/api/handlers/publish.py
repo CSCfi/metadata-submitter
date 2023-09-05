@@ -1,6 +1,6 @@
 """Handle HTTP methods for server."""
 from datetime import date, datetime
-from typing import Any, Tuple
+from typing import Any
 
 import ujson
 from aiohttp import web
@@ -187,7 +187,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
 
     async def _prepare_datacite_publication(
         self, obj_op: ObjectOperator, submission: dict[str, Any]
-    ) -> Tuple[dict[str, Any], list[dict[str, Any]]]:
+    ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
         """Prepare dictionary with values for the Datacite DOI update.
 
         We need to prepare data for Study and Datasets, publish doi for each,

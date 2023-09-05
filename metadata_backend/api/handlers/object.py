@@ -1,7 +1,7 @@
 """Handle HTTP methods for server."""
 from datetime import datetime
 from math import ceil
-from typing import Any, Tuple
+from typing import Any
 
 import ujson
 from aiohttp import web
@@ -135,7 +135,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
             LOG.info(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        content: dict[str, Any] | str | list[Tuple[Any, str, str]]
+        content: dict[str, Any] | str | list[tuple[Any, str, str]]
         operator: ObjectOperator | XMLObjectOperator
         if req.content_type == "multipart/form-data":
             _only_xml = schema_type not in _allowed_csv
@@ -175,7 +175,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         # Add a new metadata object or multiple objects if multiple were extracted
         url = f"{req.scheme}://{req.host}{req.path}"
         data: list[dict[str, str]] | dict[str, str]
-        objects: list[Tuple[dict[str, Any], str]] = []
+        objects: list[tuple[dict[str, Any], str]] = []
         if isinstance(content, list):
             LOG.debug("Inserting multiple objects for collection: %r.", schema_type)
             if is_single_instance and len(content) > 1:

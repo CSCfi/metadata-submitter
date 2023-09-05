@@ -78,6 +78,3 @@ class RemsAPIHandler(RESTAPIIntegrationHandler):
             organizations[org_id]["licenses"].append({"id": lic["id"], **title})
 
         return web.json_response(data=list(organizations.values()))
-
-
-# : dict[str, dict[str, dict[str, Any] | Any] | Any]

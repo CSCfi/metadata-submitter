@@ -15,8 +15,9 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import time
+from collections.abc import Awaitable, Callable
 from functools import wraps
-from typing import Any, Awaitable, Callable, Optional, Tuple, TypeVar
+from typing import Any, Optional, TypeVar
 
 from aiohttp import ClientConnectorError
 from aiohttp.web import HTTPServerError
@@ -29,7 +30,7 @@ P = ParamSpec("P")
 
 
 def retry(
-    exceptions: Tuple[Any, Any] = (HTTPServerError, ClientConnectorError),
+    exceptions: tuple[Any, Any] = (HTTPServerError, ClientConnectorError),
     total_tries: int = 4,
     initial_wait: float = 0.5,
     backoff_factor: int = 2,

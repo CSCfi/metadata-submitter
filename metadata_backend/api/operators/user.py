@@ -1,5 +1,5 @@
 """User operator class."""
-from typing import Any, Tuple
+from typing import Any
 
 import aiohttp_session
 from aiohttp import web
@@ -20,7 +20,7 @@ class UserOperator(BaseOperator):
 
     async def check_user_has_doc(
         self, req: web.Request, collection: str, user_id: str, accession_id: str
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """Check a submission/template belongs to same project the user is in.
 
         :param req: HTTP request
