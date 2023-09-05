@@ -1,6 +1,6 @@
 """Base object operator class shared by object operators."""
 from abc import ABC, abstractmethod
-from typing import Any, Tuple
+from typing import Any
 
 from aiohttp import web
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -89,7 +89,7 @@ class BaseObjectOperator(ABC):
         )
         return accession_id
 
-    async def read_metadata_object(self, schema_type: str, accession_id: str) -> Tuple[dict[str, Any] | str, str]:
+    async def read_metadata_object(self, schema_type: str, accession_id: str) -> tuple[dict[str, Any] | str, str]:
         """Read metadata object from database.
 
         Data formatting to JSON or XML must be implemented by corresponding

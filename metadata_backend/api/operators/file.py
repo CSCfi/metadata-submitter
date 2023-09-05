@@ -1,7 +1,7 @@
 """File operator class."""
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Optional, Tuple
+from typing import Any, Optional
 
 import ujson
 from aiohttp import web
@@ -80,7 +80,7 @@ class FileOperator(BaseOperator):
             LOG.exception(reason)
             raise web.HTTPInternalServerError(reason=reason) from error
 
-    async def create_file_or_version(self, file: File) -> Tuple[str, int]:
+    async def create_file_or_version(self, file: File) -> tuple[str, int]:
         """Create new object file to database.
 
         If a file with the same path already exists, add a new file version instead.

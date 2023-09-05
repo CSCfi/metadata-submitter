@@ -1,7 +1,7 @@
 """Submission operator class."""
 import re
 from datetime import datetime
-from typing import Any, Optional, Tuple
+from typing import Any, Optional
 
 from aiohttp import web
 from pymongo.errors import ConnectionFailure, OperationFailure
@@ -95,7 +95,7 @@ class SubmissionOperator(BaseOperator):
         """
         return await self.get_submission_field_str(submission_id, "projectId")
 
-    async def check_object_in_submission(self, collection: str, accession_id: str) -> Tuple[str, bool]:
+    async def check_object_in_submission(self, collection: str, accession_id: str) -> tuple[str, bool]:
         """Check a object/draft is in a submission.
 
         :param collection: collection it belongs to, it would be used as path
@@ -187,7 +187,7 @@ class SubmissionOperator(BaseOperator):
 
     async def query_submissions(
         self, query: dict[str, Any], page_num: int, page_size: int, sort_param: Optional[dict[str, Any]] = None
-    ) -> Tuple[list[Any], int]:
+    ) -> tuple[list[Any], int]:
         """Query database based on url query parameters.
 
         :param query: Dict containing query information

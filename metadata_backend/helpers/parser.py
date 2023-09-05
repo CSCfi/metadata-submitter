@@ -426,8 +426,8 @@ class XMLToJSONParser:
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         # result is of type:
-        # Union[Any, list[Any], Tuple[None, list[XMLSchemaValidationError]],
-        # Tuple[Any, list[XMLSchemaValidationError]], Tuple[list[Any], list[XMLSchemaValidationError]]]
+        # Union[Any, list[Any], tuple[None, list[XMLSchemaValidationError]],
+        # tuple[Any, list[XMLSchemaValidationError]], tuple[list[Any], list[XMLSchemaValidationError]]]
         # however we expect any type as it is easier to work with
         result: Any = schema.to_dict(content, converter=MetadataXMLConverter, decimal_type=float, dict_class=dict)
         _schema_type: str = schema_type.lower()
