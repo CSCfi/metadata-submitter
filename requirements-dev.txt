@@ -126,7 +126,7 @@ frozenlist==1.4.0
     #   aiosignal
 gitdb==4.0.10
     # via gitpython
-gitpython==3.1.32
+gitpython==3.1.33
     # via bandit
 gunicorn==21.2.0
     # via -r requirements.txt
