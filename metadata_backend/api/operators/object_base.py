@@ -1,6 +1,6 @@
 """Base object operator class shared by object operators."""
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any
 
 from aiohttp import web
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -30,7 +30,9 @@ class BaseObjectOperator(ABC):
         self.db_service = DBService(db_name, db_client)
         self.content_type = content_type
 
-    async def create_metadata_object(self, schema_type: str, data: Union[Dict, str]) -> Union[Dict, List[dict]]:
+    async def create_metadata_object(
+        self, schema_type: str, data: dict[str, Any] | str
+    ) -> dict[str, Any] | list[dict[str, Any]]:
         """Create new metadata object to database.
 
         Data formatting and addition step for JSON or XML must be implemented
@@ -41,13 +43,15 @@ class BaseObjectOperator(ABC):
         :returns: Dict (or list of dicts) with accession id of the object inserted to database and its title
         """
         formatted_data = await self._format_data_to_create_and_add_to_db(schema_type, data)
-        data_list: List = formatted_data if isinstance(formatted_data, list) else [formatted_data]
+        data_list: list[dict[str, Any]] = formatted_data if isinstance(formatted_data, list) else [formatted_data]
         for obj in data_list:
             _id = obj["accessionId"]
             LOG.info("Inserting object in collection: %r to database succeeded with accession ID: %r", schema_type, _id)
         return formatted_data
 
-    async def replace_metadata_object(self, schema_type: str, accession_id: str, data: Union[Dict, str]) -> Dict:
+    async def replace_metadata_object(
+        self, schema_type: str, accession_id: str, data: dict[str, Any] | str
+    ) -> dict[str, Any]:
         """Replace metadata object from database.
 
         Data formatting and addition step for JSON or XML must be implemented
@@ -66,7 +70,7 @@ class BaseObjectOperator(ABC):
         )
         return data
 
-    async def update_metadata_object(self, schema_type: str, accession_id: str, data: Union[Dict, str]) -> str:
+    async def update_metadata_object(self, schema_type: str, accession_id: str, data: dict[str, Any] | str) -> str:
         """Update metadata object from database.
 
         Data formatting and addition step for JSON or XML must be implemented
@@ -85,7 +89,7 @@ class BaseObjectOperator(ABC):
         )
         return accession_id
 
-    async def read_metadata_object(self, schema_type: str, accession_id: str) -> Tuple[Union[Dict, str], str]:
+    async def read_metadata_object(self, schema_type: str, accession_id: str) -> tuple[dict[str, Any] | str, str]:
         """Read metadata object from database.
 
         Data formatting to JSON or XML must be implemented by corresponding
@@ -130,7 +134,7 @@ class BaseObjectOperator(ABC):
         LOG.error(reason)
         raise web.HTTPBadRequest(reason=reason)
 
-    async def _insert_formatted_object_to_db(self, schema_type: str, data: Dict) -> bool:
+    async def _insert_formatted_object_to_db(self, schema_type: str, data: dict[str, Any]) -> bool:
         """Insert formatted metadata object to database.
 
         :param schema_type: Schema type of the object to insert.
@@ -152,7 +156,7 @@ class BaseObjectOperator(ABC):
             raise web.HTTPBadRequest(reason=reason)
         return True
 
-    async def _replace_object_from_db(self, schema_type: str, accession_id: str, data: Dict) -> bool:
+    async def _replace_object_from_db(self, schema_type: str, accession_id: str, data: dict[str, Any]) -> bool:
         """Replace formatted metadata object in database.
 
         :param schema_type: Schema type of the object to replace.
@@ -178,7 +182,7 @@ class BaseObjectOperator(ABC):
             raise web.HTTPBadRequest(reason=reason)
         return True
 
-    async def _update_object_from_db(self, schema_type: str, accession_id: str, data: Dict) -> str:
+    async def _update_object_from_db(self, schema_type: str, accession_id: str, data: dict[str, Any]) -> str:
         """Update formatted metadata object in database.
 
         After the data has been update we need to do a sanity check
@@ -228,7 +232,7 @@ class BaseObjectOperator(ABC):
                 LOG.error(reason)
                 raise web.HTTPNotFound(reason=reason)
 
-            delete_success = await self.db_service.delete(schema_type, accession_id)
+            delete_success: bool = await self.db_service.delete(schema_type, accession_id)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while deleting object: {error}"
             LOG.exception(reason)
@@ -254,7 +258,7 @@ class BaseObjectOperator(ABC):
     @abstractmethod
     async def _format_data_to_create_and_add_to_db(
         self, schema_type: str, data: Any  # noqa: ANN401
-    ) -> Union[Dict, List[dict]]:
+    ) -> dict[str, Any] | list[dict[str, Any]]:
         """Format and add data to database.
 
         Must be implemented by subclass.
@@ -263,7 +267,7 @@ class BaseObjectOperator(ABC):
     @abstractmethod
     async def _format_data_to_replace_and_add_to_db(
         self, schema_type: str, accession_id: str, data: Any  # noqa: ANN401
-    ) -> Dict:
+    ) -> dict[str, Any]:
         """Format and replace data in database.
 
         Must be implemented by subclass.

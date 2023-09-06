@@ -1,7 +1,6 @@
 """Middleware methods for server."""
 import time
 from http import HTTPStatus
-from typing import List
 
 import aiohttp_session
 import ujson
@@ -148,7 +147,7 @@ async def create_session_with_token(req: web.Request) -> aiohttp_session.Session
 
     # Get bearer token from Authorization header
     header = req.headers.get("Authorization", "")
-    header_parts: List[str] = header.split(" ")
+    header_parts: list[str] = header.split(" ")
     if len(header_parts) == 2:
         if header_parts[0] != "Bearer":
             return session  # current empty session

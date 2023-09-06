@@ -1,12 +1,12 @@
 """Object operator class."""
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any
 from uuid import uuid4
 
 from aiohttp import web
 from dateutil.relativedelta import relativedelta
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor  # type: ignore
 from multidict import MultiDictProxy
 from pymongo.errors import ConnectionFailure, OperationFailure
 
@@ -31,7 +31,7 @@ class ObjectOperator(BaseObjectOperator):
         """
         super().__init__(mongo_database, "application/json", db_client)
 
-    async def query_templates_by_project(self, project_id: str) -> List[Dict[str, Union[Dict[str, str], str]]]:
+    async def query_templates_by_project(self, project_id: str) -> list[dict[str, dict[str, str] | str]]:
         """Get templates list from given project ID.
 
         :param project_id: project internal ID that owns templates
@@ -48,7 +48,9 @@ class ObjectOperator(BaseObjectOperator):
             raise web.HTTPBadRequest(reason=reason)
 
         if len(templates) == 1:
-            return templates[0]["templates"]
+            # Fixes no-any-return
+            temp: list[dict[str, dict[str, str] | str]] = templates[0]["templates"]
+            return temp
 
         return []
 
@@ -69,7 +71,8 @@ class ObjectOperator(BaseObjectOperator):
 
         if len(objects) == 1:
             try:
-                return objects[0]["projectId"]
+                projectId: str = objects[0]["projectId"]
+                return projectId
             except KeyError as error:
                 # This should not be possible and should never happen, if the object was created properly
                 reason = (
@@ -83,8 +86,8 @@ class ObjectOperator(BaseObjectOperator):
             raise web.HTTPBadRequest(reason=reason)
 
     async def query_metadata_database(
-        self, schema_type: str, que: MultiDictProxy, page_num: int, page_size: int, filter_objects: List
-    ) -> Tuple[List, int, int, int]:
+        self, schema_type: str, que: MultiDictProxy[Any], page_num: int, page_size: int, filter_objects: list[Any]
+    ) -> tuple[list[dict[str, Any]], int, int, int]:
         """Query database based on url query parameters.
 
         Url queries are mapped to mongodb queries based on query_map in
@@ -110,7 +113,7 @@ class ObjectOperator(BaseObjectOperator):
             }
         }
         # Generate mongodb query from query parameters
-        mongo_query: Dict[Any, Any] = {}
+        mongo_query: dict[Any, Any] = {}
         for query, value in que.items():
             if query in query_map:
                 regx = re.compile(f".*{value}.*", re.IGNORECASE)
@@ -172,7 +175,7 @@ class ObjectOperator(BaseObjectOperator):
         )
         return data, page_num, page_size, total_objects[0]["total"]
 
-    async def update_identifiers(self, schema_type: str, accession_id: str, data: Dict) -> bool:
+    async def update_identifiers(self, schema_type: str, accession_id: str, data: dict[str, Any]) -> bool:
         """Update study, dataset or bpdataset object with doi and/or metax info.
 
         :param schema_type: Schema type of the object to replace.
@@ -197,7 +200,7 @@ class ObjectOperator(BaseObjectOperator):
         LOG.info("Object in collection: %r with accession ID: %r metax info updated.", schema_type, accession_id)
         return True
 
-    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: Dict) -> Dict:
+    async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: dict[str, Any]) -> dict[str, Any]:
         """Format JSON metadata object and add it to db.
 
         Adds necessary additional information to object before adding to db.
@@ -220,7 +223,9 @@ class ObjectOperator(BaseObjectOperator):
         await self._insert_formatted_object_to_db(schema_type, data)
         return data
 
-    async def _format_data_to_replace_and_add_to_db(self, schema_type: str, accession_id: str, data: Dict) -> Dict:
+    async def _format_data_to_replace_and_add_to_db(
+        self, schema_type: str, accession_id: str, data: dict[str, Any]
+    ) -> dict[str, Any]:
         """Format JSON metadata object and replace it in db.
 
         Replace information in object before adding to db.doc
@@ -247,7 +252,9 @@ class ObjectOperator(BaseObjectOperator):
         await self._replace_object_from_db(schema_type, accession_id, data)
         return data
 
-    async def _format_data_to_update_and_add_to_db(self, schema_type: str, accession_id: str, data: Dict) -> str:
+    async def _format_data_to_update_and_add_to_db(
+        self, schema_type: str, accession_id: str, data: dict[str, Any]
+    ) -> str:
         """Format and update data in database.
 
         Will not allow to update ``metaxIdentifier`` and ``doi`` for ``study`` and ``dataset``
@@ -280,8 +287,8 @@ class ObjectOperator(BaseObjectOperator):
 
     @auto_reconnect
     async def _format_read_data(
-        self, schema_type: str, data_raw: Union[Dict, AsyncIOMotorCursor]
-    ) -> Union[Dict, List[Dict]]:
+        self, schema_type: str, data_raw: dict[str, Any] | AsyncIOMotorCursor
+    ) -> dict[str, Any] | list[dict[str, Any]]:
         """Get JSON content from given mongodb data.
 
         Data can be either one result or cursor containing multiple
@@ -299,7 +306,7 @@ class ObjectOperator(BaseObjectOperator):
 
         return [self._format_single_dict(schema_type, doc) for doc in data_raw]
 
-    def _format_single_dict(self, schema_type: str, doc: Dict) -> Dict:
+    def _format_single_dict(self, schema_type: str, doc: dict[str, Any]) -> dict[str, Any]:
         """Format single result dictionary.
 
         Delete mongodb internal id from returned result.
@@ -310,7 +317,7 @@ class ObjectOperator(BaseObjectOperator):
         :returns: formatted version of document
         """
 
-        def format_date(key: str, doc: Dict) -> Dict:
+        def format_date(key: str, doc: dict[str, Any]) -> dict[str, Any]:
             doc[key] = doc[key].isoformat()
             return doc
 

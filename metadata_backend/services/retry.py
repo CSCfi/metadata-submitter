@@ -15,8 +15,9 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import time
+from collections.abc import Awaitable, Callable
 from functools import wraps
-from typing import Awaitable, Callable, Optional, Tuple, TypeVar
+from typing import Any, Optional, TypeVar
 
 from aiohttp import ClientConnectorError
 from aiohttp.web import HTTPServerError
@@ -29,11 +30,11 @@ P = ParamSpec("P")
 
 
 def retry(
-    exceptions: Tuple = (HTTPServerError, ClientConnectorError),
+    exceptions: tuple[Any, Any] = (HTTPServerError, ClientConnectorError),
     total_tries: int = 4,
     initial_wait: float = 0.5,
     backoff_factor: int = 2,
-) -> Callable:
+) -> Callable:  # type: ignore
     """Call the decorated function and apply an exponential backoff.
 
     :param exceptions: Exception(s) that trigger a retry, can be a tuple

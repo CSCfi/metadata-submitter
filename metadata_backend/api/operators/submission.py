@@ -1,7 +1,7 @@
 """Submission operator class."""
 import re
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Optional
 
 from aiohttp import web
 from pymongo.errors import ConnectionFailure, OperationFailure
@@ -16,7 +16,7 @@ class SubmissionOperator(BaseOperator):
     Operations are implemented with JSON format.
     """
 
-    async def get_submission_field(self, submission_id: str, field: str) -> Union[str, list, dict]:
+    async def get_submission_field(self, submission_id: str, field: str) -> str | list[Any] | dict[str, Any]:
         """Get a field from the submission.
 
         :param submission_id: internal accession ID of submission
@@ -39,7 +39,8 @@ class SubmissionOperator(BaseOperator):
 
         if len(submissions) == 1:
             try:
-                return submissions[0][field]
+                result: str | list[Any] | dict[str, Any] = submissions[0][field]
+                return result
             except KeyError as error:
                 # This should not be possible and should never happen, if the submission was created properly
                 reason = f"Submission: '{submission_id}' does not have a value for '{field}', err: {error}"
@@ -68,7 +69,7 @@ class SubmissionOperator(BaseOperator):
         LOG.error(reason)
         raise web.HTTPInternalServerError(reason=reason)
 
-    async def get_submission_field_list(self, submission_id: str, field: str) -> list:
+    async def get_submission_field_list(self, submission_id: str, field: str) -> list[Any]:
         """Get an array field from the submission.
 
         :param submission_id: internal accession ID of submission
@@ -94,7 +95,7 @@ class SubmissionOperator(BaseOperator):
         """
         return await self.get_submission_field_str(submission_id, "projectId")
 
-    async def check_object_in_submission(self, collection: str, accession_id: str) -> Tuple[str, bool]:
+    async def check_object_in_submission(self, collection: str, accession_id: str) -> tuple[str, bool]:
         """Check a object/draft is in a submission.
 
         :param collection: collection it belongs to, it would be used as path
@@ -127,7 +128,7 @@ class SubmissionOperator(BaseOperator):
         LOG.info("Found doc with accession ID: %r in submission: %r.", accession_id, submission_id)
         return submission_id, submission_check[0]["published"]
 
-    async def get_collection_objects(self, submission_id: str, collection: str) -> List:
+    async def get_collection_objects(self, submission_id: str, collection: str) -> list[Any]:
         """List objects ids per collection.
 
         :param submission_id: id of the submission
@@ -152,7 +153,7 @@ class SubmissionOperator(BaseOperator):
 
         return []
 
-    async def create_submission(self, data: Dict) -> str:
+    async def create_submission(self, data: dict[str, Any]) -> str:
         """Create new object submission to database.
 
         :param data: Data to be saved to database
@@ -185,8 +186,8 @@ class SubmissionOperator(BaseOperator):
         return submission_id
 
     async def query_submissions(
-        self, query: Dict, page_num: int, page_size: int, sort_param: Optional[dict] = None
-    ) -> Tuple[List, int]:
+        self, query: dict[str, Any], page_num: int, page_size: int, sort_param: Optional[dict[str, Any]] = None
+    ) -> tuple[list[Any], int]:
         """Query database based on url query parameters.
 
         :param query: Dict containing query information
@@ -230,7 +231,7 @@ class SubmissionOperator(BaseOperator):
 
         return data, total_submissions[0]["total"]
 
-    async def read_submission(self, submission_id: str) -> Dict:
+    async def read_submission(self, submission_id: str) -> dict[str, Any]:
         """Read object submission from database.
 
         :param submission_id: Submission ID of the object to read
@@ -238,14 +239,14 @@ class SubmissionOperator(BaseOperator):
         :returns: Object submission formatted to JSON
         """
         try:
-            submission = await self.db_service.read("submission", submission_id)
+            submission: dict[str, Any] = await self.db_service.read("submission", submission_id)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting submission, err: {error}"
             LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
         return submission
 
-    async def update_submission(self, submission_id: str, patch: List, schema: str = "") -> str:
+    async def update_submission(self, submission_id: str, patch: list[dict[str, Any]], schema: str = "") -> str:
         """Update object submission from database.
 
         Utilizes JSON Patch operations specified at: http://jsonpatch.com/
@@ -296,7 +297,7 @@ class SubmissionOperator(BaseOperator):
 
         LOG.info("Removing doc with accession ID: %r from submission: %r succeeded.", accession_id, submission_id)
 
-    async def delete_submission(self, submission_id: str) -> Union[str, None]:
+    async def delete_submission(self, submission_id: str) -> str | None:
         """Delete object submission from database.
 
         :param submission_id: ID of the submission to delete

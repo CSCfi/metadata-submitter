@@ -1,5 +1,5 @@
 """Get and process REMS data for the frontend."""
-from typing import Dict, List, TypedDict, Union
+from typing import Any, TypedDict
 
 from aiohttp import web
 
@@ -11,8 +11,8 @@ class Organization(TypedDict):
 
     id: str
     name: str
-    workflows: List[Dict[str, str]]
-    licenses: List[Dict[str, str]]
+    workflows: list[dict[str, str]]
+    licenses: list[dict[str, str]]
 
 
 class RemsAPIHandler(RESTAPIIntegrationHandler):
@@ -22,7 +22,7 @@ class RemsAPIHandler(RESTAPIIntegrationHandler):
     """
 
     @staticmethod
-    def _get_localized(language: str, _dict: dict, fallback_language: str = "en") -> Union[str, dict]:
+    def _get_localized(language: str, _dict: dict[str, Any], fallback_language: str = "en") -> str | dict[str, Any]:
         """Get correct language string from dict.
 
         REMS provides certain properties as a dict with language, but no way to know which are available.
@@ -35,12 +35,15 @@ class RemsAPIHandler(RESTAPIIntegrationHandler):
                 return _dict
             return ""
         if language in _dict:
-            return _dict[language]
+            lang_dict: str | dict[str, Any] = _dict[language]
+            return lang_dict
         if fallback_language in _dict:
-            return _dict[fallback_language]
+            lang_dict = _dict[fallback_language]
+            return lang_dict
 
         # return first element
-        return next(iter(_dict.values()))
+        lang_dict = next(iter(_dict.values()))
+        return lang_dict
 
     async def get_workflows_licenses_from_rems(self, request: web.Request) -> web.Response:
         """Get workflows and Policies for frontend."""
@@ -48,7 +51,7 @@ class RemsAPIHandler(RESTAPIIntegrationHandler):
         workflows = await self.rems_handler.get_workflows()
         licenses = await self.rems_handler.get_licenses()
 
-        organizations: Dict[str, Organization] = {}
+        organizations: dict[str, Organization] = {}
 
         def add_organization(organization_id: str, organization_name: str) -> None:
             organizations[organization_id] = {

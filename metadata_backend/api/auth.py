@@ -1,14 +1,14 @@
 """Handle Access for request and OIDC workflow."""
 
 import time
-from typing import Dict, List, Union
+from typing import Any
 
 import aiohttp_session
 from aiohttp import web
 from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
 from aiohttp.web import Request, Response
-from oidcrp.exception import OidcServiceError
-from oidcrp.rp_handler import RPHandler
+from oidcrp.exception import OidcServiceError  # type: ignore[import, unused-ignore]
+from oidcrp.rp_handler import RPHandler  # type: ignore[import, unused-ignore]
 from yarl import URL
 
 from ..conf.conf import aai_config
@@ -19,15 +19,15 @@ from .operators.user import UserOperator
 
 # Type aliases
 # ProjectList is a list of projects and their origins
-ProjectList = List[Dict[str, str]]
+ProjectList = list[dict[str, str]]
 # UserData contains user profile from AAI userinfo, such as name, username and projects
-UserData = Dict[str, Union[ProjectList, str]]
+UserData = dict[str, ProjectList | str]
 
 
 class AccessHandler:
     """Handler for user access methods."""
 
-    def __init__(self, aai: Dict) -> None:
+    def __init__(self, aai: dict[str, Any]) -> None:
         """Define AAI variables and paths.
 
         :param aai: dictionary with AAI specific config
@@ -249,7 +249,7 @@ class AccessHandler:
         browser_session["user_info"] = user_id
         return user_id
 
-    async def _create_user_data(self, userinfo: Dict) -> UserData:
+    async def _create_user_data(self, userinfo: dict[str, Any]) -> UserData:
         """Parse user profile data from userinfo endpoint response.
 
         :param userinfo: dict from userinfo containing user profile
@@ -277,7 +277,7 @@ class AccessHandler:
 
         return user_data
 
-    async def _get_projects_from_userinfo(self, userinfo: Dict) -> ProjectList:
+    async def _get_projects_from_userinfo(self, userinfo: dict[str, Any]) -> ProjectList:
         """Parse projects and groups from userinfo endpoint response.
 
         :param userinfo: dict from userinfo containing user profile
@@ -322,7 +322,7 @@ class AAIServiceHandler(ServiceHandler):
         """Get AAI credentials from config."""
         super().__init__(base_url=URL(aai_config["oidc_url"].rstrip("/")))
 
-    async def _healtcheck(self) -> Dict:
+    async def _healtcheck(self) -> dict[str, str]:
         """Check AAI service hearthbeat.
 
         This will return a JSON with well-known OIDC endpoints.
