@@ -1,7 +1,8 @@
 """Configuration file for the Sphinx documentation builder."""
 
 import datetime
-from typing import Callable
+
+from sphinx.application import Sphinx
 
 # -- Project information -----------------------------------------------------
 
@@ -62,7 +63,7 @@ html_theme_options = {
 html_static_path = ["_static"]
 
 
-def setup(app: Callable) -> None:
+def setup(app: Sphinx) -> None:
     """Add custom stylesheet."""
     app.add_css_file("style.css")
 

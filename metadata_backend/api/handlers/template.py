@@ -1,5 +1,6 @@
 """Handle HTTP methods for server."""
-from typing import Union
+
+from typing import Any
 
 import aiohttp_session
 import ujson
@@ -130,7 +131,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
                 # Move projectId to template structure, so that it is saved in mongo
                 tmpl["template"]["projectId"] = tmpl["projectId"]
                 json_data = await operator.create_metadata_object(collection, tmpl["template"])
-                data = [{"accessionId": json_data["accessionId"], "schema": collection}]
+                data: list[dict[str, Any]] = [{"accessionId": json_data["accessionId"], "schema": collection}]
                 if "tags" in tmpl:
                     data[0]["tags"] = tmpl["tags"]
                 await project_op.assign_templates(tmpl["projectId"], data)
@@ -167,7 +168,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
             data = [{"accessionId": json_data["accessionId"], "schema": collection}]
             if "tags" in content:
                 data[0]["tags"] = content["tags"]
-            await project_op.assign_templates(content["projectId"], data)
+            await project_op.assign_templates(content["projectId"], data)  # type: ignore[arg-type]
 
             body = ujson.dumps({"accessionId": json_data["accessionId"]}, escape_forward_slashes=False)
 
@@ -198,7 +199,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
         collection = f"template-{schema_type}"
 
         db_client = req.app["db_client"]
-        operator: Union[ObjectOperator, XMLObjectOperator]
+        operator: ObjectOperator | XMLObjectOperator
 
         content = await self._get_data(req)
         operator = ObjectOperator(db_client)

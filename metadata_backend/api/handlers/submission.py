@@ -1,7 +1,7 @@
 """Handle HTTP methods for server."""
 from datetime import datetime
 from math import ceil
-from typing import Dict, List, Union
+from typing import Any
 
 import aiohttp_session
 import ujson
@@ -48,7 +48,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)
 
-        submission_query: Dict[str, Union[str, Dict[str, Union[str, bool, float]]]] = {"projectId": project_id}
+        submission_query: dict[str, str | dict[str, str | bool | float]] = {"projectId": project_id}
         # Check if only published or draft submissions are requested
         if "published" in req.query:
             pub_param = req.query.get("published", "").title()
@@ -327,8 +327,8 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
                     reason = f"Updating {submission_id} failed. Files require an accessionId."
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
-                _file_accessionId = file.pop("accessionId")
-                _file_update_op = {f"files.$.{k}": v for k, v in file.items()}
+                _file_accessionId = data[file].pop("accessionId")
+                _file_update_op = {f"files.$.{k}": v for k, v in data[file].items()}
                 await file_operator.update_file_submission(_file_accessionId, submission_id, _file_update_op)
         else:
             op = "add"
@@ -394,7 +394,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         file_operator = FileOperator(db_client)
 
-        data: List[Dict] = await req.json()
+        data: list[dict[str, Any]] = await req.json()
 
         if all("accessionId" in d and "version" in d for d in data):
             # set status to file as added

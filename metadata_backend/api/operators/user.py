@@ -1,5 +1,5 @@
 """User operator class."""
-from typing import Dict, List, Tuple, Union
+from typing import Any
 
 import aiohttp_session
 from aiohttp import web
@@ -20,7 +20,7 @@ class UserOperator(BaseOperator):
 
     async def check_user_has_doc(
         self, req: web.Request, collection: str, user_id: str, accession_id: str
-    ) -> Tuple[bool, str]:
+    ) -> tuple[bool, str]:
         """Check a submission/template belongs to same project the user is in.
 
         :param req: HTTP request
@@ -82,17 +82,17 @@ class UserOperator(BaseOperator):
             LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-    async def create_user(self, data: Dict[str, Union[list, str]]) -> str:
+    async def create_user(self, data: dict[str, list[Any] | str]) -> str:
         """Create new user object to database.
 
         :param data: User Data to identify user
         :raises: HTTPBadRequest if error occurs during the process of creating user
         :returns: User id for the user object inserted to database
         """
-        user_data: Dict[str, Union[list, str]] = {}
+        user_data: dict[str, list[Any] | str] = {}
 
         try:
-            existing_user_id = await self.db_service.exists_user_by_external_id(data["user_id"], data["real_name"])
+            existing_user_id: str = await self.db_service.exists_user_by_external_id(data["user_id"], data["real_name"])
             if existing_user_id:
                 LOG.info("User with ID: %r  exists, no need to create.", data["user_id"])
                 return existing_user_id
@@ -115,7 +115,7 @@ class UserOperator(BaseOperator):
             LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-    async def read_user(self, user_id: str) -> Dict:
+    async def read_user(self, user_id: str) -> dict[str, Any]:
         """Read user object from database.
 
         :param user_id: User ID of the object to read
@@ -124,14 +124,14 @@ class UserOperator(BaseOperator):
         """
         try:
             await self._check_user_exists(user_id)
-            user = await self.db_service.read("user", user_id)
+            user: dict[str, Any] = await self.db_service.read("user", user_id)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting user, err: {error}"
             LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
         return user
 
-    async def update_user(self, user_id: str, patch: List) -> str:
+    async def update_user(self, user_id: str, patch: list[dict[str, Any]]) -> str:
         """Update user object from database.
 
         :param user_id: ID of user to update

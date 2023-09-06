@@ -1,6 +1,6 @@
 """Handle HTTP methods for server."""
 from collections import Counter
-from typing import Dict, List
+from typing import Any
 
 import ujson
 from aiohttp import web
@@ -55,7 +55,7 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
         workflow = self.get_workflow(workflow_name)
 
         # Check what actions should be performed, collect them to dictionary
-        actions: Dict[str, List] = {}
+        actions: dict[str, list[Any]] = {}
         for action_set in submission_json["actions"]["action"]:
             for action, attr in action_set.items():
                 if not attr:
@@ -75,7 +75,7 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
                     actions[attr["schema"]] = action
 
         # Go through parsed files and do the actual action
-        results: List[Dict] = []
+        results: list[dict[str, Any]] = []
         for file in files:
             content_xml = file[0]
             schema_type = file[1]
@@ -88,7 +88,7 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
                 LOG.info(reason)
                 raise web.HTTPBadRequest(reason=reason)
             action = actions[schema_type]
-            if isinstance(action, List):
+            if isinstance(action, list):
                 for item in action:
                     result = await self._execute_action(req, schema_type, content_xml, item, filename)
                     results.append(result)
@@ -129,7 +129,9 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
             LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-    async def _execute_action(self, req: Request, schema: str, content: str, action: str, filename: str) -> Dict:
+    async def _execute_action(
+        self, req: Request, schema: str, content: str, action: str, filename: str
+    ) -> dict[str, Any]:
         """Complete the command in the action set of the submission file.
 
         Only "add/modify/validate" actions are supported.
@@ -150,13 +152,14 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
 
         if action == "validate":
             validator = await self._perform_validation(schema, content)
-            return ujson.loads(validator.resp_body)
+            completed_action: dict[str, Any] = ujson.loads(validator.resp_body)
+            return completed_action
 
         reason = f"Action {action} in XML is not supported."
         LOG.error(reason)
         raise web.HTTPBadRequest(reason=reason)
 
-    async def _execute_action_add(self, req: Request, schema: str, content: str, filename: str) -> Dict:
+    async def _execute_action_add(self, req: Request, schema: str, content: str, filename: str) -> dict[str, Any]:
         """Complete the add action.
 
         :param req: Multipart POST request
@@ -184,9 +187,10 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
                 reason = "Only one study is allowed per submission."
                 raise web.HTTPBadRequest(reason=reason)
 
-        json_data = await XMLObjectOperator(db_client).create_metadata_object(schema, content)
-        json_data = json_data[0]
-
+        json_list: list[dict[str, Any]] = await XMLObjectOperator(db_client).create_metadata_object(
+            schema, content
+        )  # type: ignore[assignment]
+        json_data = json_list[0]
         result = {
             "accessionId": json_data["accessionId"],
             "schema": schema,
@@ -199,7 +203,7 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
 
         return result
 
-    async def _execute_action_modify(self, req: Request, schema: str, content: str, filename: str) -> Dict:
+    async def _execute_action_modify(self, req: Request, schema: str, content: str, filename: str) -> dict[str, Any]:
         """Complete the modify action.
 
         :param req: Multipart POST request

@@ -3,7 +3,7 @@
 It provides a http client with optional basic auth, and requests that retry automatically and come with error handling
 """
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional
 
 from aiohttp import BasicAuth, ClientSession, ClientTimeout
 from aiohttp.web import HTTPError, HTTPGatewayTimeout, HTTPInternalServerError
@@ -52,7 +52,7 @@ class ServiceHandler(ABC):
         base_url: URL,
         auth: Optional[BasicAuth] = None,
         http_client_timeout: Optional[ClientTimeout] = None,
-        http_client_headers: Optional[dict] = None,
+        http_client_headers: Optional[dict[str, Any]] = None,
     ) -> None:
         """Create an instance with db_client and aiohttp client attached.
 
@@ -95,7 +95,7 @@ class ServiceHandler(ABC):
         return error
 
     @abstractmethod
-    async def _healtcheck(self) -> Dict:
+    async def _healtcheck(self) -> dict[str, Any]:
         """Override in subclass and return formatted status message."""
 
     @retry(total_tries=5)
@@ -104,10 +104,10 @@ class ServiceHandler(ABC):
         method: str = "GET",
         url: Optional[URL] = None,
         path: str = "",
-        params: Optional[Union[str, dict]] = None,
-        json_data: Optional[Union[Dict, List[Dict]]] = None,
+        params: Optional[str | dict[str, Any]] = None,
+        json_data: Optional[dict[str, Any] | list[dict[str, Any]]] = None,
         timeout: int = 10,
-    ) -> Union[dict, str]:
+    ) -> dict[str, Any] | str:
         """Request to service REST API.
 
         :param method: HTTP method

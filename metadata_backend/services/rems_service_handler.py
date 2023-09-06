@@ -12,7 +12,7 @@ resource    ->  	dataset
 
 """
 import time
-from typing import Dict, List
+from typing import Any
 
 from aiohttp import web
 from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
@@ -45,21 +45,27 @@ class RemsServiceHandler(ServiceHandler):
         url = rems_config["url"]
         return f"{url}/application?items={catalogue_id}"
 
-    async def get_workflows(self) -> List[Dict]:
+    async def get_workflows(self) -> list[dict[str, Any]]:
         """Get all active workflows.
 
         Workflow in REMS = DAC in metadata-submitter
         """
-        return await self._request(method="GET", path="/workflows", params={"disabled": "false", "archived": "false"})
+        result: list[dict[str, Any]] = await self._request(
+            method="GET", path="/workflows", params={"disabled": "false", "archived": "false"}
+        )
+        return result
 
-    async def get_licenses(self) -> List[Dict]:
+    async def get_licenses(self) -> list[dict[str, Any]]:
         """Get all active licenses.
 
         License in REMS = policy in metadata-submitter
         """
-        return await self._request(method="GET", path="/licenses", params={"disabled": "false", "archived": "false"})
+        result: list[dict[str, Any]] = await self._request(
+            method="GET", path="/licenses", params={"disabled": "false", "archived": "false"}
+        )
+        return result
 
-    async def create_resource(self, doi: str, organization_id: str, licenses: List[int]) -> int:
+    async def create_resource(self, doi: str, organization_id: str, licenses: list[int]) -> int:
         """Create a REMS resource for a dataset.
 
         :param doi: DOI id of the dataset
@@ -73,7 +79,7 @@ class RemsServiceHandler(ServiceHandler):
         return int(created["id"])
 
     async def create_catalogue_item(
-        self, resource_id: int, workflow_id: int, organization_id: str, localizations: Dict[str, Dict[str, str]]
+        self, resource_id: int, workflow_id: int, organization_id: str, localizations: dict[str, dict[str, str]]
     ) -> str:
         """Create a REMS resource for a dataset.
 
@@ -94,7 +100,8 @@ class RemsServiceHandler(ServiceHandler):
         }
         LOG.debug("Creating new REMS catalogue item: '%r'", catalogue)
         created = await self._request(method="POST", path="/catalogue-items/create", json_data=catalogue)
-        return created["id"]
+        result: str = created["id"]
+        return result
 
     async def item_ok(self, item_type: str, organization_id: str, item_id: int) -> bool:
         """Check that item exists.
@@ -129,7 +136,7 @@ class RemsServiceHandler(ServiceHandler):
         LOG.debug("%s %r is ok.", capitalized_item_type, item_id)
         return True
 
-    async def validate_workflow_licenses(self, organization_id: str, workflow_id: int, licenses: List[int]) -> bool:
+    async def validate_workflow_licenses(self, organization_id: str, workflow_id: int, licenses: list[int]) -> bool:
         """Check that workflow and policies exist.
 
         :param organization_id: REMS organization/id
@@ -161,7 +168,7 @@ class RemsServiceHandler(ServiceHandler):
         LOG.debug("REMS All ok.")
         return True
 
-    async def _healtcheck(self) -> Dict:
+    async def _healtcheck(self) -> dict[str, Any]:
         """Check REMS service health.
 
         This responds with status of healthy boolean, version and latest event information.

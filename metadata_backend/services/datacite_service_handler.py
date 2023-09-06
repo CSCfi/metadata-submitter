@@ -7,7 +7,7 @@ Api docs and reference: https://support.datacite.org/
 Test account access: https://doi.test.datacite.org/sign-in
 """
 import time
-from typing import Dict, Union
+from typing import Any
 from uuid import uuid4
 
 import ujson
@@ -79,7 +79,7 @@ class DataciteServiceHandler(ServiceHandler):
 
         return " | ".join(error_messages)
 
-    async def create_draft(self, prefix: Union[str, None] = None) -> Dict:
+    async def create_draft(self, prefix: str | None = None) -> dict[str, Any]:
         """Generate random suffix and POST request a draft DOI to DataCite DOI API.
 
         :param prefix: Custom prefix to add to the DOI e.g. study/dataset
@@ -102,7 +102,7 @@ class DataciteServiceHandler(ServiceHandler):
 
         return doi_data
 
-    async def publish(self, datacite_payload: Dict) -> None:
+    async def publish(self, datacite_payload: dict[str, Any]) -> None:
         """Set DOI and associated metadata.
 
         We will only support publish event type, and we expect the data to be
@@ -127,7 +127,7 @@ class DataciteServiceHandler(ServiceHandler):
         await self._request(method="DELETE", path=f"/dois/{doi}")
         LOG.info("Datacite DOI: %r deleted.", doi)
 
-    async def _healtcheck(self) -> Dict:
+    async def _healtcheck(self) -> dict[str, Any]:
         """Check DOI service hearthbeat.
 
         This can return only 200 or 500

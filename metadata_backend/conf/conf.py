@@ -32,7 +32,7 @@ and inserted here in projects Dockerfile.
 """
 import os
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Any
 
 import ujson
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -53,7 +53,7 @@ from ..helpers.workflow import Workflow
 # the client will attempt to authenticate the specified user to the admin database.
 
 
-def set_conf() -> Tuple[str, str]:
+def set_conf() -> tuple[str, str]:
     """Set config based on env vars."""
     mongo_user = os.getenv("MONGO_USERNAME", "admin")
     mongo_password = os.getenv("MONGO_PASSWORD", "admin")
@@ -113,7 +113,7 @@ with open(path_to_schema_file, "rb") as schema_file:
     schema_types = ujson.load(schema_file)
 
 path_to_workflows = Path(__file__).parent / "workflows"
-WORKFLOWS: Dict[str, Workflow] = {}
+WORKFLOWS: dict[str, Workflow] = {}
 
 for workflow_path in path_to_workflows.iterdir():
     with open(workflow_path, "rb") as workflow_file:
@@ -202,7 +202,7 @@ metax_config = {
 
 file_names = ["identifier_types.json", "languages.json", "fields_of_science.json"]
 METAX_REFERENCE_ROOT = Path(__file__).parent.parent / "conf" / "metax_references"
-METAX_REFERENCE_DATA: Dict[str, Dict] = {
+METAX_REFERENCE_DATA: dict[str, dict[Any, Any]] = {
     "identifier_types": {},
     "languages": {},
     "fields_of_science": {},

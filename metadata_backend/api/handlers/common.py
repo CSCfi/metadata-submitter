@@ -1,11 +1,11 @@
 """Functions shared between handlers."""
 import csv
 import string
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 from aiohttp import BodyPartReader, MultipartReader, hdrs, web
 from aiohttp.web import Request
-from defusedxml.ElementTree import ParseError
+from defusedxml.ElementTree import ParseError  # type: ignore[import, unused-ignore]
 from xmlschema import XMLResource
 
 from ...conf.conf import schema_types
@@ -15,7 +15,7 @@ from ...helpers.parser import CSVToJSONParser
 
 async def multipart_content(
     req: Request, extract_one: bool = False, expect_xml: bool = False
-) -> Tuple[List[Tuple[Any, str, str]], str]:
+) -> tuple[list[tuple[Any, str, str]], str]:
     """Get content(s) and schema type(s) of a multipart request (from either csv or xml format).
 
     Note: for multiple files support check: https://docs.aiohttp.org/en/stable/multipart.html#hacking-multipart
@@ -26,8 +26,8 @@ async def multipart_content(
     :raises: HTTPBadRequest for multiple different reasons
     :returns: content and schema type for each uploaded file and file type of the upload
     """
-    xml_files: List[Tuple[str, str, str]] = []
-    csv_files: List[Tuple[Dict, str, str]] = []
+    xml_files: list[tuple[str, str, str]] = []
+    csv_files: list[tuple[dict[str, Any], str, str]] = []
     try:
         reader = await req.multipart()
     except AssertionError as exc:
@@ -75,7 +75,7 @@ async def multipart_content(
     return _get_content_with_type(xml_files, csv_files)
 
 
-async def _extract_upload(part: BodyPartReader) -> Tuple[str, str]:
+async def _extract_upload(part: BodyPartReader) -> tuple[str, str]:
     """Extract a submitted file from upload.
 
     :param part: Multipart reader for single body part
@@ -137,8 +137,8 @@ def _check_xml(content: str) -> bool:
 
 
 def _get_content_with_type(
-    xml_files: List[Tuple[str, str, str]], csv_files: List[Tuple[Dict, str, str]]
-) -> Tuple[List[Tuple[Any, str, str]], str]:
+    xml_files: list[tuple[str, str, str]], csv_files: list[tuple[dict[str, Any], str, str]]
+) -> tuple[list[tuple[Any, str, str]], str]:
     """Return either list of XML or CSV files with the file type info.
 
     :param xml_files: List of xml contents with schema types
