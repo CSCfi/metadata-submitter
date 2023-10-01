@@ -371,12 +371,10 @@ types-pyyaml==6.0.12.11
     # via
     #   -r requirements.txt
     #   responses
-types-requests==2.31.0.2
+types-requests==2.31.0.7
     # via -r requirements-dev.in
 types-ujson==5.8.0.1
     # via -r requirements-dev.in
-types-urllib3==1.26.25.14
-    # via types-requests
 typing-extensions==4.7.1
     # via
     #   -r requirements.txt
@@ -389,6 +387,7 @@ urllib3==2.0.4
     #   -r requirements.txt
     #   requests
     #   responses
+    #   types-requests
 uvloop==0.17.0
     # via -r requirements.txt
 virtualenv==20.24.1
