@@ -186,8 +186,6 @@ metomi-isodatetime==1!3.0.0
     # via -r requirements.txt
 motor==3.2.0
     # via -r requirements.txt
-motor-stubs==1.7.1
-    # via -r requirements.txt
 multidict==6.0.4
     # via
     #   -r requirements.txt
@@ -382,7 +380,7 @@ typing-extensions==4.7.1
     #   readerwriterlock
 ujson==5.8.0
     # via -r requirements.txt
-urllib3==2.0.4
+urllib3==2.0.6
     # via
     #   -r requirements.txt
     #   requests
