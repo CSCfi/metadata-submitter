@@ -22,11 +22,11 @@ jobs:
           - 5000:5000
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         name: Get sources
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
         with:
           driver-opts: network=host
 
