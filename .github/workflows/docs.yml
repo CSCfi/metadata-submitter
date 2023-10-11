@@ -12,8 +12,8 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: rojopolis/spellcheck-github-actions@0.33.1
+      - uses: actions/checkout@v4
+      - uses: rojopolis/spellcheck-github-actions@0.34.0
         name: Spellcheck
         with:
           config_path: .pyspelling.yml
@@ -28,7 +28,7 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
