@@ -22,7 +22,7 @@ amqpstorm==2.10.6
     # via
     #   -r requirements-dev.in
     #   -r requirements.txt
-anyio==3.7.1
+anyio==4.0.0
     # via
     #   -r requirements.txt
     #   httpcore
