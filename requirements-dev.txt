@@ -46,7 +46,7 @@ bandit==1.7.5
     # via -r requirements-dev.in
 beautifulsoup4==4.12.2
     # via pyspelling
-black==23.9.1
+black==23.10.0
     # via -r requirements-dev.in
 bracex==2.4
     # via wcmatch
@@ -87,7 +87,7 @@ cryptography==41.0.4
     #   authlib
     #   cryptojwt
     #   pyopenssl
-cryptojwt~=1.6.1
+cryptojwt==1.6.1
     # via
     #   -r requirements.txt
     #   oidcmsg
@@ -101,7 +101,7 @@ dnspython==2.4.2
     # via
     #   -r requirements.txt
     #   pymongo
-docutils>=0.18.1
+docutils==0.18.1
     # via
     #   sphinx
     #   sphinx-rtd-theme
@@ -139,9 +139,7 @@ honcho==1.1.0
 html5lib==1.1
     # via pyspelling
 httpcore==0.18.0
-    # via
-    #   -r requirements.txt
-    #   dnspython
+    # via -r requirements.txt
 identify==2.5.30
     # via pre-commit
 idna==3.4
@@ -328,7 +326,6 @@ sniffio==1.3.0
     # via
     #   -r requirements.txt
     #   anyio
-    #   dnspython
     #   httpcore
 snowballstemmer==2.2.0
     # via sphinx
@@ -340,7 +337,12 @@ sphinx==6.2.1
     # via
     #   -r requirements-dev.in
     #   sphinx-rtd-theme
+    #   sphinxcontrib-applehelp
+    #   sphinxcontrib-devhelp
+    #   sphinxcontrib-htmlhelp
     #   sphinxcontrib-jquery
+    #   sphinxcontrib-qthelp
+    #   sphinxcontrib-serializinghtml
 sphinx-rtd-theme==1.3.0
     # via -r requirements-dev.in
 sphinxcontrib-applehelp==1.0.7
