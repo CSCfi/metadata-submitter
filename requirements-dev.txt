@@ -223,7 +223,7 @@ pamqp==2.3.0
     #   amqpstorm
 pathspec==0.12.1
     # via black
-pbr==5.11.1
+pbr==6.0.0
     # via stevedore
 pip-tools==7.3.0
     # via -r requirements-dev.in
