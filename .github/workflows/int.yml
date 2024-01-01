@@ -42,7 +42,7 @@ jobs:
 
       - name: Persist log files
         if: ${{ failure() }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: test_debugging_help
           path: tests
@@ -74,7 +74,7 @@ jobs:
 
       - name: Persist log files
         if: ${{ failure() }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: test_debugging_help
           path: tests
