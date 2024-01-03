@@ -155,7 +155,8 @@ async def create_session_with_token(req: web.Request) -> aiohttp_session.Session
         return session  # current empty session
 
     # we need to create a new instance every time, this is not something we can re-use
-    aai = AAIServiceHandler()
+    headers = {"Authorization": f"Bearer {header_parts[1]}"}
+    aai = AAIServiceHandler(headers=headers)
     aai.service_name = "aai_for_single_session_token_auth"
     # Get path to userinfo from OIDC config
     oidc_config = await aai._request(method="GET", path="/.well-known/openid-configuration")
@@ -163,9 +164,7 @@ async def create_session_with_token(req: web.Request) -> aiohttp_session.Session
         return session  # current empty session
 
     # Validate token by sending it to AAI userinfo and getting back user profile
-    headers = {"Authorization": f"Bearer {header_parts[1]}"}
     aai.base_url = oidc_config["userinfo_endpoint"]
-    aai.http_client_headers = headers
     userinfo = await aai._request(method="GET")
     if not userinfo:
         return session  # current empty session

@@ -1,7 +1,7 @@
 """Handle Access for request and OIDC workflow."""
 
 import time
-from typing import Any
+from typing import Any, Optional
 
 import aiohttp_session
 from aiohttp import web
@@ -318,9 +318,12 @@ class AccessHandler:
 class AAIServiceHandler(ServiceHandler):
     """AAI handler for API Calls."""
 
-    def __init__(self) -> None:
+    def __init__(self, headers: Optional[dict[str, Any]] = None) -> None:
         """Get AAI credentials from config."""
-        super().__init__(base_url=URL(aai_config["oidc_url"].rstrip("/")))
+        super().__init__(
+            base_url=URL(aai_config["oidc_url"].rstrip("/")),
+            http_client_headers=headers,
+        )
 
     async def _healtcheck(self) -> dict[str, str]:
         """Check AAI service hearthbeat.
