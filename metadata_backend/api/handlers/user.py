@@ -1,8 +1,9 @@
 """Handle HTTP methods for server."""
 
+from secrets import token_hex
+
 import aiohttp_session
 import ujson
-from secrets import token_hex
 from aiohttp import web
 from aiohttp.web import Request, Response
 
@@ -66,7 +67,8 @@ class UserAPIHandler(RESTAPIHandler):
         return web.HTTPNoContent()
 
     async def generate_new_key(self, req: Request) -> Response:
-        """Generates a new signing key to be used in HMAC tokens.
+        """Generate a new signing key to be used in HMAC tokens.
+
         User can have only one signing key, requesting the endpoint again will overwrite the old key.
 
         :param req: GET request

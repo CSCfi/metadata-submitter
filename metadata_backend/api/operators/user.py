@@ -200,7 +200,7 @@ class UserOperator(BaseOperator):
             await self._check_user_exists(user_id)
             query = {"userId": user_id}
             projection = {"_id": 0, "signingKey": 1}
-            signing_key: str = await self.db_service.read_by_key_value("user", query, projection)
+            signing_key: dict[str, str] = await self.db_service.read_by_key_value("user", query, projection)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting user, err: {error}"
             LOG.exception(reason)
