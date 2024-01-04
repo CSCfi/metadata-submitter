@@ -1,7 +1,7 @@
 """Middleware methods for server."""
 import time
-from http import HTTPStatus
 from hmac import new
+from http import HTTPStatus
 from secrets import compare_digest
 
 import aiohttp_session
@@ -213,7 +213,11 @@ async def create_session_with_user_token(req: web.Request, valid: str, user_id: 
     else:
         return session  # current empty session
 
-    # get the requested user's signing key, and test the token
+    # Check that the validity period has not passed
+    if int(valid) < time.time():
+        raise _unauthorized("Token expired.")
+
+    # Get the requested user's signing key, and test the token
     db_client = req.app["db_client"]
     operator = UserOperator(db_client)
     signing_key = await operator.get_signing_key(user_id)
