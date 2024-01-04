@@ -1,5 +1,5 @@
 """User operator class."""
-from typing import Any
+from typing import Any, Optional
 
 import aiohttp_session
 from aiohttp import web
@@ -188,3 +188,22 @@ class UserOperator(BaseOperator):
             reason = f"User with ID: '{user_id}' was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
+
+    async def get_signing_key(self, user_id: str) -> Optional[str]:
+        """Read user's signing key from database.
+
+        :param user_id: User ID of the object to read
+        :raises: HTTPNotFound if reading user was not successful
+        :returns: Signing key string
+        """
+        try:
+            await self._check_user_exists(user_id)
+            query = {"userId": user_id}
+            projection = {"_id": 0, "signingKey": 1}
+            signing_key: str = await self.db_service.read_by_key_value("user", query, projection)
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while getting user, err: {error}"
+            LOG.exception(reason)
+            raise web.HTTPNotFound(reason=reason)
+
+        return signing_key.get("signingKey", None)

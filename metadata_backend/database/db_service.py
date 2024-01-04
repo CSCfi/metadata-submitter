@@ -120,7 +120,7 @@ class DBService:
         """
         find_by_id = {"externalId": external_id, "name": name}
         user: dict[str, str] | None = await self.database["user"].find_one(
-            find_by_id, {"_id": False, "externalId": False}
+            find_by_id, {"_id": False, "externalId": False, "signingKey": False}
         )
         LOG.debug("DB check user exists for: %r returned: %r.", external_id, user)
         return user["userId"] if user else None
@@ -147,7 +147,7 @@ class DBService:
         :returns: First document matching the accession_id
         """
         id_key = self._get_id_key(collection)
-        projection = {"_id": False, "eppn": False} if collection == "user" else {"_id": False}
+        projection = {"_id": False, "eppn": False, "signingKey": False} if collection == "user" else {"_id": False}
         find_by_id = {id_key: accession_id}
         LOG.debug("DB doc in collection: %r read for accession ID: %r.", collection, accession_id)
         return await self.database[collection].find_one(find_by_id, projection)
