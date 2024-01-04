@@ -1757,6 +1757,53 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
+  /v1/users/{userId}/key:
+    get:
+      tags:
+        - Query
+      summary: Generate new signing key for personal token.
+      parameters:
+        - name: userId
+          in: path
+          description: ID of the user object.
+          schema:
+            type: string
+          required: true
+        - in: query
+          name: page
+          schema:
+            type: string
+          description: Page number
+        - in: query
+          name: per_page
+          schema:
+            type: string
+          description: Results per page
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
   /v1/files:
     get:
       tags:
