@@ -104,6 +104,13 @@ repos:
           -sn, # Don't display the score
         ]
 
+    - id: mypy
+      name: mypy
+      entry: mypy
+      language: system
+      types: [python]
+      files: ^metadata_backend
+
     - id: pyspelling-docs
       name: pyspelling-docs
       entry: ./scripts/dictionary/pyspelling.sh
