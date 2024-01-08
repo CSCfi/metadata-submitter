@@ -17,6 +17,7 @@ linting:
     - pip install -r requirements-dev.txt
   script:
     - pre-commit run --all-files -c .pre-commit-config.yaml --show-diff-on-failure --color never
+    - tox -e mypy
     - tox -e docs
 
 spellcheck:
@@ -32,7 +33,7 @@ spellcheck:
     - pyspelling
 
 unittest:
-  stage: verify
+  stage: test
   tags:
     - docker-exec
   rules:
@@ -45,36 +46,37 @@ unittest:
     - coverage report --precision=1
   coverage: '/TOTAL.*\s+(\d+\%)/'
 
-integration:
-  stage: verify
-  tags:
-    - docker-exec
-  rules:
-    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
-  services:
-    - name: registry.hub.docker.com/library/docker:24.0.6-dind
-      alias: docker
-  variables:
-    DOCKER_HOST: tcp://docker:2375/
-    DOCKER_DRIVER: overlay2
-    BASE_URL: http://localhost:5430
-    OIDC_URL: http://localhost:8000
-    OIDC_URL_TEST: http://mockauth:8000
-    FF_NETWORK_PER_BUILD: "true"
-  image: docker:24.0.6
-  before_script:
-    - apk --update --no-cache add python3
-    - python3 -m ensurepip
-    - pip3 install --no-cache --upgrade pip setuptools
-    - pip install aiohttp aiofiles motor pytest pytest-asyncio
-  script:
-    - docker compose -f docker-compose.yml --env-file .env.example up --build -d
-    - sleep 30
-    - docker network inspect metadata-submitter_default
-    - docker compose -f docker-compose.yml --env-file .env.example ps
-    - pytest tests/integration/
-  after_script:
-    - docker compose down -v
+# TODO: make docker compose work in gitlab runner
+# integration:
+#   stage: verify
+#   tags:
+#     - docker-exec
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+#   services:
+#     - name: registry.hub.docker.com/library/docker:24.0.6-dind
+#       alias: docker
+#   variables:
+#     DOCKER_HOST: tcp://docker:2375/
+#     DOCKER_DRIVER: overlay2
+#     BASE_URL: http://localhost:5430
+#     OIDC_URL: http://localhost:8000
+#     OIDC_URL_TEST: http://mockauth:8000
+#     FF_NETWORK_PER_BUILD: "true"
+#   image: docker:24.0.6
+#   before_script:
+#     - apk --update --no-cache add python3
+#     - python3 -m ensurepip
+#     - pip3 install --no-cache --upgrade pip setuptools
+#     - pip install aiohttp aiofiles motor pytest pytest-asyncio
+#   script:
+#     - docker compose -f docker-compose.yml --env-file .env.example up --build -d
+#     - sleep 30
+#     - docker network inspect metadata-submitter_default
+#     - docker compose -f docker-compose.yml --env-file .env.example ps
+#     - pytest tests/integration/
+#   after_script:
+#     - docker compose down -v
 
 build-ci-image:
   stage: build
