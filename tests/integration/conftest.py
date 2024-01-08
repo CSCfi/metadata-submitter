@@ -3,7 +3,6 @@
 Setting scope to `class` means that tests should be grouped in classes
 to share functionality of the `class` scoped fixtures.
 """
-import asyncio
 import logging
 from urllib.parse import urlencode
 
@@ -39,26 +38,14 @@ def pytest_addoption(parser):
     )
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """Override `event_loop` with a different scope. default is `function`.
-
-    https://github.com/pytest-dev/pytest-asyncio#fixtures
-    """
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
-    yield loop
-    loop.close()
-
-
-@pytest.fixture(scope="session", name="client")
+@pytest.fixture(name="client")
 async def fixture_client():
     """Reusable aiohttp client."""
     async with aiohttp.ClientSession() as client:
         yield client
 
 
-@pytest.fixture(scope="class", name="client_logged_in")
+@pytest.fixture(name="client_logged_in")
 async def fixture_client_logged_in():
     """Reusable aiohttp client with credentials."""
     async with aiohttp.ClientSession() as client:
@@ -73,7 +60,7 @@ async def fixture_client_logged_in():
         yield client
 
 
-@pytest.fixture(scope="class", name="project_id")
+@pytest.fixture(name="project_id")
 async def fixture_project_id(client_logged_in: aiohttp.ClientSession):
     """Get a project_id for the current session."""
     user_data = await get_user_data(client_logged_in)
@@ -93,7 +80,7 @@ async def make_submission(client_logged_in: aiohttp.ClientSession, project_id: s
     return submission_id
 
 
-@pytest.fixture(scope="class", name="submission_fega")
+@pytest.fixture(name="submission_fega")
 async def fixture_submission_fega(client_logged_in: aiohttp.ClientSession, project_id: str):
     """Create a FEGA submission to be reused across tests that are grouped under the same scope."""
     submission_id = await make_submission(client_logged_in, project_id, "FEGA")
@@ -106,7 +93,7 @@ async def fixture_submission_fega(client_logged_in: aiohttp.ClientSession, proje
         LOG.debug("Attempted to delete %r, which failed", submission_id)
 
 
-@pytest.fixture(scope="class", name="submission_bigpicture")
+@pytest.fixture(name="submission_bigpicture")
 async def fixture_submission_bigpicture(client_logged_in: aiohttp.ClientSession, project_id: str):
     """Create a BigPicture submission to be reused across tests that are grouped under the same scope."""
     submission_id = await make_submission(client_logged_in, project_id, "BigPicture")
@@ -119,7 +106,7 @@ async def fixture_submission_bigpicture(client_logged_in: aiohttp.ClientSession,
         LOG.debug("Attempted to delete %r, which failed", submission_id)
 
 
-@pytest.fixture(scope="session", name="mongo")
+@pytest.fixture(name="mongo")
 async def fixture_mongo(request):
     """Initialize the db, and create a client."""
     if TLS:
@@ -137,20 +124,20 @@ async def fixture_mongo(request):
         await mongo.drop_db()
 
 
-@pytest.fixture(scope="class", name="database")
+@pytest.fixture(name="database")
 def fixture_database(mongo):
     """Database client."""
     return mongo.db
 
 
-@pytest.fixture(scope="class", name="recreate_db", autouse=True)
+@pytest.fixture(name="recreate_db", autouse=True)
 async def fixture_recreate_db(request, mongo):
     """Recreate the schema after each scoped test."""
     if not request.config.getoption("--nocleanup"):
         await mongo.recreate_db()
 
 
-@pytest.fixture(scope="class", name="clear_cache", autouse=True)
+@pytest.fixture(name="clear_cache", autouse=True)
 async def fixture_clear_cache(client):
     """Clear mock metax cache before and after each scoped test."""
     await client.post(f"{metax_url}/purge")
