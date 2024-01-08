@@ -95,7 +95,7 @@ class UserAPIHandler(RESTAPIHandler):
                 "value": new_signing_key,
             }
         ]
-        _ = await operator.update_user(current_user, update_operation)
+        await operator.update_user(current_user, update_operation)
         LOG.info("GET user/key with ID: %r was successful.", current_user)
         response = {
             "userId": current_user,
