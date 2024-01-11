@@ -137,7 +137,7 @@ If it doesn't work right away, check your settings in `.env` and restart the ser
 
 Production version can be built and run with following docker commands:
 ```bash
-$ docker build --no-cache . -t metadata-submitter
+$ docker build --no-cache -f dockerfiles/Dockerfile -t cscfi/metadata-submitter .
 $ docker run -p 5430:5430 metadata-submitter
 ```
 
