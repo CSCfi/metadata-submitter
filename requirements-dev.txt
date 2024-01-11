@@ -87,7 +87,7 @@ cryptography==41.0.7
     #   authlib
     #   cryptojwt
     #   pyopenssl
-cryptojwt~=1.8.3
+cryptojwt==1.6.1
     # via
     #   -r requirements.txt
     #   oidcmsg
