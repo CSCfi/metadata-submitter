@@ -223,8 +223,8 @@ class RESTAPIHandler:
         :returns: JSON with query results
         """
         total_pages = ceil(total_objects / size)
-        prev_link = f'<{url}?page={page-1}&per_page={size}>; rel="prev", ' if page > 1 else ""
-        next_link = f'<{url}?page={page+1}&per_page={size}>; rel="next", ' if page < total_pages else ""
+        prev_link = f'<{url}?page={page - 1}&per_page={size}>; rel="prev", ' if page > 1 else ""
+        next_link = f'<{url}?page={page + 1}&per_page={size}>; rel="next", ' if page < total_pages else ""
         last_link = f'<{url}?page={total_pages}&per_page={size}>; rel="last"' if page < total_pages else ""
         comma = ", " if 1 < page < total_pages else ""
         first_link = f'<{url}?page=1&per_page={size}>; rel="first"{comma}' if page > 1 else ""

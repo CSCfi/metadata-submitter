@@ -23,11 +23,11 @@ classifiers = [
 
 [project.optional-dependencies]
 test = [
-    "coverage==7.3.2",
-    "pytest==7.4.2",
+    "coverage==7.4.0",
+    "pytest==7.4.4",
     "pytest-cov==4.1.0",
-    "pytest-xdist==3.3.1",
-    "tox==4.11.3",
+    "pytest-xdist==3.5.0",
+    "tox==4.11.4",
 ]
 docs = [
     "sphinx >= 1.4",
