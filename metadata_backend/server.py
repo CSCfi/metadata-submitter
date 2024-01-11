@@ -31,7 +31,7 @@ from .services.datacite_service_handler import DataciteServiceHandler
 from .services.metax_service_handler import MetaxServiceHandler
 from .services.rems_service_handler import RemsServiceHandler
 
-asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())  # type: ignore
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 
 async def init(

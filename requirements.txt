@@ -38,7 +38,7 @@ cryptography==41.0.7
     #   -r requirements.in
     #   cryptojwt
     #   pyopenssl
-cryptojwt==1.8.3
+cryptojwt==1.6.1
     # via oidcmsg
 defusedxml==0.7.1
     # via -r requirements.in
