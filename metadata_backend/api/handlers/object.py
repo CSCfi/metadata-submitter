@@ -39,7 +39,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
 
         filter_list: list[Any] = []  # DEPRECATED, users don't own submissions anymore
         data, page_num, page_size, total_objects = await ObjectOperator(db_client).query_metadata_database(
-            collection, req.query, page, per_page, filter_list
+            collection, req.query, page, per_page, filter_list  # type: ignore
         )
 
         result = ujson.dumps(

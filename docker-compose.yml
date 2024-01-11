@@ -60,7 +60,7 @@ services:
     ports:
       - "27017:27017"
   messagebroker:
-    image: "rabbitmq:3.11.2-management-alpine"
+    image: "rabbitmq:3.12.11-management-alpine"
     container_name: "metadata_submitter_rabbitmq_dev"
     restart: on-failure
     environment:
