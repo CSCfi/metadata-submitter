@@ -29,8 +29,8 @@ CMD ["metadata_submitter"]
 FROM appbase as local
 #=======================
 
-COPY requirements-dev.txt requirements.txt
+COPY requirements-dev.txt .
 
-RUN pip install --no-cache-dir
+RUN pip install --no-cache-dir -r requirements-dev.txt
 
 ENV PYTHONUNBUFFERED=1

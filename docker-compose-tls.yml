@@ -14,7 +14,7 @@ services:
       - ./config:/origcerts
   backend:
     build:
-      dockerfile: Dockerfile-dev
+      dockerfile: ./dockerfiles/Dockerfile-dev
       context: .
       target: develop
     image: cscfi/metadata-submitter-dev
@@ -103,7 +103,7 @@ services:
       - ./scripts/rabbitmq/rabbitmq-definitions.json:/etc/rabbitmq/rabbitmq-definitions.json
   mockauth:
     build:
-      dockerfile: Dockerfile-dev
+      dockerfile: ./dockerfiles/Dockerfile-dev
       context: .
       target: develop
     image: cscfi/metadata-submitter-dev
@@ -121,7 +121,7 @@ services:
     entrypoint: [ "python", "/mock_auth.py", "0.0.0.0", "8000" ]
   mockdoi:
     build:
-      dockerfile: Dockerfile-dev
+      dockerfile: ./dockerfiles/Dockerfile-dev
       context: .
       target: develop
     image: cscfi/metadata-submitter-dev
@@ -135,7 +135,7 @@ services:
     entrypoint: [ "python", "/mock_doi_api.py", "0.0.0.0", "8001" ]
   mockmetax:
     build:
-      dockerfile: Dockerfile-dev
+      dockerfile: ./dockerfiles/Dockerfile-dev
       context: .
       target: develop
     image: cscfi/metadata-submitter-dev
@@ -149,7 +149,7 @@ services:
     entrypoint: [ "python", "/mock_metax_api.py", "0.0.0.0", "8002" ]
   mockrems:
     build:
-      dockerfile: Dockerfile-dev
+      dockerfile: ./dockerfiles/Dockerfile-dev
       context: .
       target: develop
     image: cscfi/metadata-submitter-dev
