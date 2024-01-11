@@ -57,7 +57,7 @@ The production image can be built and run with following docker commands:
 
 .. code-block:: console
 
-    docker build --no-cache . -t cscfi/metadata-submitter
+    docker build --no-cache -f dockerfiles/Dockerfile -t cscfi/metadata-submitter .
     docker run -p 5430:5430 cscfi/metadata-submitter
 
 .. important:: Requires running MongoDB and consider setting the environment variables as pointed out in :ref:`backend`.
