@@ -16,7 +16,7 @@ RUN npx --quiet pinst --disable \
     && npm run build --production
 
 #=======================
-FROM python:3.12-alpine3.17 as BUILD-BACKEND
+FROM python:3.11-alpine3.17 as BUILD-BACKEND
 #=======================
 
 RUN apk add --update \
@@ -39,7 +39,7 @@ RUN pip install --upgrade pip pyyaml && \
     pip install /root/submitter
 
 #=======================
-FROM python:3.12-alpine3.17
+FROM python:3.11-alpine3.17
 #=======================
 
 RUN apk add --update \
