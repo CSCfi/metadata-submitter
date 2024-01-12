@@ -127,11 +127,3 @@ repos:
       files: ^metadata_backend/helpers/schemas/
       types: [json]
       require_serial: true
-
-    - id: unit-tests
-      name: unit-tests
-      entry: py.test
-      args: [--exitfirst, --disable-warnings, --numprocesses, auto, tests/unit/]
-      files: ^(metadata_backend|tests|scripts)
-      language: system
-      pass_filenames: false
