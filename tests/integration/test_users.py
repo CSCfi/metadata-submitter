@@ -1,10 +1,9 @@
 """Test operations with users."""
 import logging
-
-import aiohttp
-
 from hmac import new
 from time import time
+
+import aiohttp
 
 from tests.integration.conf import (
     other_test_user,
@@ -74,7 +73,7 @@ class TestUsers:
             user_data = await get_user_data(sess, headers=headers)
             assert user_data["userId"] == user
             assert user_data["projects"][0]["projectNumber"] == "1000"
-        
+
     async def test_multiple_user_submissions(self, client_logged_in):
         """Test different users can create a submission."""
         async with aiohttp.ClientSession() as sess:
