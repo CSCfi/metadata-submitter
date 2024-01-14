@@ -100,7 +100,7 @@ pyyaml==6.0.1
     #   responses
 readerwriterlock==1.0.9
     # via cryptojwt
-referencing==0.32.0
+referencing==0.32.1
     # via
     #   jsonschema
     #   jsonschema-specifications
@@ -111,7 +111,7 @@ requests==2.31.0
     #   responses
 responses==0.24.1
     # via oidcrp
-rpds-py==0.16.2
+rpds-py==0.17.1
     # via
     #   jsonschema
     #   referencing
