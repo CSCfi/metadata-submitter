@@ -26,7 +26,7 @@ anyio==4.2.0
     # via
     #   -r requirements.txt
     #   httpcore
-astroid==2.15.8
+astroid==3.0.2
     # via pylint
 async-timeout==4.0.3
     # via
@@ -251,7 +251,7 @@ pygments==2.17.2
     # via
     #   rich
     #   sphinx
-pylint==2.17.7
+pylint==3.0.3
     # via -r requirements-dev.in
 pymongo==4.6.1
     # via
