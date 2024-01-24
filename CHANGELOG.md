@@ -51,6 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bigpicture sample, image and dataset XML schemas were added and JSON schemas for those objects were produced #445 #481 #491
 - Bigpicture observation XML schema was added and JSON schema for it was produced #665
 - Bigpicture staining XML schema was added and JSON schema for it was produced #666
+- Add new endpoint `/users/{userId}/key` for generating a signing key
 
 ### Changed
 - schema loader now matches schema files by exact match with schema #481. This means that schema file naming in metadata_backend/helpers/schemas now have rules:
@@ -94,6 +95,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated BP sample XML and JSON schema, its parsing method and its related example file and tests #650
 - Updated BP image and dataset JSON schemas for better functionality #664
 - Updated XML to JSON converter to parse ISO-8601 duration strings into numbers in BP sample attributes #696
+- Updated middleware to accept user signed tokens
 
 ### Removed
 

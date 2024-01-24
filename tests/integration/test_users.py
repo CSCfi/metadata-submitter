@@ -1,5 +1,7 @@
 """Test operations with users."""
 import logging
+from hmac import new
+from time import time
 
 import aiohttp
 
@@ -40,7 +42,7 @@ LOG.setLevel(logging.DEBUG)
 class TestUsers:
     """Test user operations."""
 
-    async def test_token_auth(self, client_logged_in):
+    async def test_token_auth(self):
         """Test token auth."""
         async with aiohttp.ClientSession() as sess:
             headers = {"Authorization": "Bearer test"}
@@ -50,6 +52,27 @@ class TestUsers:
             assert user_data["projects"][0]["projectOrigin"] == "csc"
             assert user_data["projects"][5]["projectNumber"] == "test_namespace:test_root:group3"
             assert user_data["projects"][5]["projectOrigin"] == "lifescience"
+
+    async def test_personal_token(self, client_logged_in):
+        """Test that user can create and use a personal token."""
+        # generate signing key
+        key = ""
+        user = ""
+        async with client_logged_in.get(f"{users_url}/current/key") as resp:
+            res = await resp.json()
+            key = res["signingKey"]
+            user = res["userId"]
+            assert len(key) == 64
+            assert len(user) == 32
+        # sign token
+        msg = str(int(time() + 300)) + user
+        token = new(key=key.encode("utf-8"), msg=msg.encode("utf-8"), digestmod="sha256").hexdigest()
+        # use token
+        headers = {"Authorization": f"Bearer {token}"}
+        async with aiohttp.ClientSession() as sess:
+            user_data = await get_user_data(sess, headers=headers)
+            assert user_data["userId"] == user
+            assert user_data["projects"][0]["projectNumber"] == "1000"
 
     async def test_multiple_user_submissions(self, client_logged_in):
         """Test different users can create a submission."""
