@@ -851,6 +851,15 @@ class UserHandlerTestCase(HandlersTestCase):
             await self.client.delete(f"{API_PREFIX}/users/current")
             self.MockedUserOperator().delete_user.assert_called_once()
 
+    async def test_generate_signing_key_works(self):
+        """Test that a key is generated, stored and returned."""
+        with self.p_get_sess_restapi:
+            response = await self.client.get(f"{API_PREFIX}/users/current/key")
+            self.assertEqual(response.status, 200)
+            self.MockedUserOperator().update_user.assert_called_once()
+            json_resp = await response.json()
+            self.assertEqual(len(json_resp["signingKey"]), 64)  # 64 length signing key
+
 
 class SubmissionHandlerTestCase(HandlersTestCase):
     """Submission API endpoint class test cases."""

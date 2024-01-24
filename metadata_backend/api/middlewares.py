@@ -1,6 +1,8 @@
 """Middleware methods for server."""
 import time
+from hmac import new
 from http import HTTPStatus
+from secrets import compare_digest
 
 import aiohttp_session
 import ujson
@@ -10,6 +12,7 @@ from yarl import URL
 from ..conf.conf import aai_config
 from ..helpers.logger import LOG
 from .auth import AAIServiceHandler, AccessHandler, ProjectList, UserData
+from .operators.user import UserOperator
 
 HTTP_ERROR_MESSAGE = "HTTP %r request to %r raised an HTTP %d exception."
 HTTP_ERROR_MESSAGE_BUG = "HTTP %r request to %r raised an HTTP %d exception. This IS a bug."
@@ -67,7 +70,10 @@ async def check_session(req: web.Request, handler: aiohttp_session.Handler) -> w
 
         if session.empty:
             if "Authorization" in req.headers:
-                session = await create_session_with_token(req)
+                if (valid := req.query.get("valid")) is not None and (user_id := req.query.get("userId")) is not None:
+                    session = await create_session_with_user_token(req, valid, user_id)
+                else:
+                    session = await create_session_with_aai_token(req)
                 if session.empty:
                     raise _unauthorized("Invalid access token.")
             else:
@@ -137,7 +143,7 @@ def _json_problem(exception: web.HTTPError, url: URL, _type: str = "about:blank"
     return body
 
 
-async def create_session_with_token(req: web.Request) -> aiohttp_session.Session:
+async def create_session_with_aai_token(req: web.Request) -> aiohttp_session.Session:
     """Create an authenticated session for the duration of a single request by using an access token.
 
     :param req: request object containing database connection and request headers
@@ -155,7 +161,8 @@ async def create_session_with_token(req: web.Request) -> aiohttp_session.Session
         return session  # current empty session
 
     # we need to create a new instance every time, this is not something we can re-use
-    aai = AAIServiceHandler()
+    headers = {"Authorization": f"Bearer {header_parts[1]}"}
+    aai = AAIServiceHandler(headers=headers)
     aai.service_name = "aai_for_single_session_token_auth"
     # Get path to userinfo from OIDC config
     oidc_config = await aai._request(method="GET", path="/.well-known/openid-configuration")
@@ -163,9 +170,7 @@ async def create_session_with_token(req: web.Request) -> aiohttp_session.Session
         return session  # current empty session
 
     # Validate token by sending it to AAI userinfo and getting back user profile
-    headers = {"Authorization": f"Bearer {header_parts[1]}"}
     aai.base_url = oidc_config["userinfo_endpoint"]
-    aai.http_client_headers = headers
     userinfo = await aai._request(method="GET")
     if not userinfo:
         return session  # current empty session
@@ -185,4 +190,52 @@ async def create_session_with_token(req: web.Request) -> aiohttp_session.Session
     session_cookie["access_token"] = header_parts[1]
     session_cookie["user_info"] = await single_session._set_user(req, session_cookie, user_data)
 
+    LOG.debug("authenticated user with AAI token")
+    return session_cookie  # validated session
+
+
+async def create_session_with_user_token(req: web.Request, valid: str, user_id: str) -> aiohttp_session.Session:
+    """Create an authenticated session for the duration of a single request by using a signed user token.
+
+    :param req: request object containing database connection and request headers
+    :param valid: timestamp for the validity period of the user token
+    :param user_id: user_id whose signing key we should test
+    :returns: session cookie
+    """
+    session = await aiohttp_session.get_session(req)
+
+    # Get bearer token from Authorization header
+    header = req.headers.get("Authorization", "")
+    header_parts: list[str] = header.split(" ")
+    if len(header_parts) == 2:
+        if header_parts[0] != "Bearer":
+            return session  # current empty session
+    else:
+        return session  # current empty session
+
+    # Check that the validity period has not passed
+    if int(valid) < time.time():
+        raise _unauthorized("Token expired.")
+
+    # Get the requested user's signing key, and test the token
+    db_client = req.app["db_client"]
+    operator = UserOperator(db_client)
+    signing_key = await operator.get_signing_key(user_id)
+    if signing_key is None:
+        raise _unauthorized("User does not have a signing key.")
+    message = valid + user_id
+    expected_signature = new(
+        key=signing_key.encode("utf-8"), msg=message.encode("utf-8"), digestmod="sha256"
+    ).hexdigest()
+    if not compare_digest(header_parts[1], expected_signature):
+        raise _unauthorized("Invalid signature on personal token.")
+
+    # Create session with required keys
+    session_cookie = await aiohttp_session.new_session(req)
+    session_cookie["at"] = time.time()
+    session_cookie["oidc_state"] = "unused"
+    session_cookie["access_token"] = header_parts[1]
+    session_cookie["user_info"] = user_id
+
+    LOG.debug("authenticated user with personal token")
     return session_cookie  # validated session

@@ -1210,6 +1210,44 @@ class TestOperators(IsolatedAsyncioTestCase):
         with self.assertRaises(HTTPBadRequest):
             await operator.check_user_has_project(self.project_generated_id, self.user_generated_id)
 
+    async def test_get_signing_key_found(self):
+        """Test existing key can be read with user id."""
+        operator = UserOperator(self.client)
+        operator.db_service.exists.return_value = True
+        operator.db_service.read_by_key_value.return_value = {"signingKey": "testkey"}
+        read_signing_key = await operator.get_signing_key(self.user_id)
+        operator.db_service.exists.assert_called_once()
+        operator.db_service.read_by_key_value.assert_called_once_with(
+            "user",
+            {
+                "userId": self.user_id,
+            },
+            {
+                "_id": 0,
+                "signingKey": 1,
+            },
+        )
+        self.assertEqual(read_signing_key, "testkey")
+
+    async def test_get_signing_key_not_found(self):
+        """Test that we get None when user has no key."""
+        operator = UserOperator(self.client)
+        operator.db_service.exists.return_value = True
+        operator.db_service.read_by_key_value.return_value = {}
+        read_signing_key = await operator.get_signing_key(self.user_id)
+        operator.db_service.exists.assert_called_once()
+        operator.db_service.read_by_key_value.assert_called_once_with(
+            "user",
+            {
+                "userId": self.user_id,
+            },
+            {
+                "_id": 0,
+                "signingKey": 1,
+            },
+        )
+        self.assertIsNone(read_signing_key)
+
     async def test_create_project_works_and_returns_projectId(self):
         """Test create method for projects work."""
         operator = ProjectOperator(self.client)

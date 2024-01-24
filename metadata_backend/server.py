@@ -143,6 +143,7 @@ async def init(
         # users operations
         web.get("/users/{userId}", _user.get_user),
         web.delete("/users/{userId}", _user.delete_user),
+        web.get("/users/{userId}/key", _user.generate_new_key),
         # XML submission
         web.post("/submit/{workflow}", _xml_submission.submit),
         # validate
