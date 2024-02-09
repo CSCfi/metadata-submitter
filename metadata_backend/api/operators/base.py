@@ -1,4 +1,5 @@
 """Base operator class shared by operators."""
+
 from abc import ABC
 from uuid import uuid4
 

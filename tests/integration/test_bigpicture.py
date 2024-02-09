@@ -1,4 +1,5 @@
 """Tests with big picture schemas."""
+
 from tests.integration.conf import datacite_url
 from tests.integration.helpers import (
     create_request_json_data,

@@ -1,4 +1,5 @@
 """Test operations with users."""
+
 import logging
 from hmac import new
 from time import time

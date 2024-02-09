@@ -1,4 +1,5 @@
 """Handle HTTP methods for server."""
+
 from datetime import date, datetime
 from typing import Any
 
