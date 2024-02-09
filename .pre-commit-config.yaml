@@ -82,6 +82,17 @@ repos:
     - id: vulture
       args: [metadata_backend/, whitelist_dead_code.py]
 
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: 'v1.8.0'
+    hooks:
+    -   id: mypy
+        files: ^metadata_backend
+        additional_dependencies:
+          - types-python-dateutil
+          - types-ujson
+          - types-requests
+        args: [--ignore-missing-imports]
+
   - repo: local
     hooks:
     - id: sort
@@ -104,12 +115,13 @@ repos:
           -sn, # Don't display the score
         ]
 
-    - id: mypy
-      name: mypy
-      entry: mypy
-      language: system
-      types: [python]
-      files: ^metadata_backend
+    # - id: mypy
+    #   name: mypy
+    #   entry: mypy
+    #   language: system
+    #   types: [python]
+    #   files: ^metadata_backend
+    #   args: [--strict, --ignore-missing-imports]
 
     - id: pyspelling-docs
       name: pyspelling-docs

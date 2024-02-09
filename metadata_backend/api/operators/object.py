@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from aiohttp import web
 from dateutil.relativedelta import relativedelta
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor  # type: ignore
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
 from multidict import MultiDictProxy
 from pymongo.errors import ConnectionFailure, OperationFailure
 

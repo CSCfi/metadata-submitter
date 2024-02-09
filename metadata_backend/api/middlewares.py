@@ -19,7 +19,7 @@ HTTP_ERROR_MESSAGE = "HTTP %r request to %r raised an HTTP %d exception."
 HTTP_ERROR_MESSAGE_BUG = "HTTP %r request to %r raised an HTTP %d exception. This IS a bug."
 
 
-@web.middleware
+@web.middleware  # type: ignore
 async def http_error_handler(req: web.Request, handler: aiohttp_session.Handler) -> web.StreamResponse:
     """Middleware for handling exceptions received from the API methods.
 
@@ -56,7 +56,7 @@ async def http_error_handler(req: web.Request, handler: aiohttp_session.Handler)
         raise exception from exc
 
 
-@web.middleware
+@web.middleware  # type: ignore
 async def check_session(req: web.Request, handler: aiohttp_session.Handler) -> web.StreamResponse:
     """Raise on expired sessions or invalid sessions.
 
