@@ -1,4 +1,5 @@
 """Test API auth endpoints."""
+
 import time
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -78,9 +79,10 @@ class AccessHandlerFailTestCase(AioHTTPTestCase):
 
     async def test_callback_fails_with_wrong_oidc_state(self):
         """Test that callback endpoint raises 401 when state in the query is not the same as specified in session."""
-        with patch(
-            "idpyoidc.client.rp_handler.RPHandler.get_session_information", side_effect=KeyError
-        ), self.p_get_sess:
+        with (
+            patch("idpyoidc.client.rp_handler.RPHandler.get_session_information", side_effect=KeyError),
+            self.p_get_sess,
+        ):
             response = await self.client.get("/callback?state=wrong_value&code=code")
             self.assertEqual(response.status, 401)
             resp = await response.text()

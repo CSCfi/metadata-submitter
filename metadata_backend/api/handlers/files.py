@@ -1,4 +1,5 @@
 """Handle HTTP methods for server."""
+
 import aiohttp_session
 from aiohttp import web
 

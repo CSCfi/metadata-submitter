@@ -483,9 +483,13 @@ class ObjectHandlerTestCase(HandlersTestCase):
         """Test that submission is handled, XMLObjectOperator is called."""
         files = [("study", "SRP000539.xml")]
         data = self.create_submission_data(files)
-        with patch(
-            "metadata_backend.api.handlers.object.ObjectAPIHandler.create_draft_doi", return_value=self._draft_doi_data
-        ), self.p_get_sess_restapi:
+        with (
+            patch(
+                "metadata_backend.api.handlers.object.ObjectAPIHandler.create_draft_doi",
+                return_value=self._draft_doi_data,
+            ),
+            self.p_get_sess_restapi,
+        ):
             response = await self.client.post(
                 f"{API_PREFIX}/objects/study", params={"submission": "some id"}, data=data
             )
@@ -504,9 +508,13 @@ class ObjectHandlerTestCase(HandlersTestCase):
                 "studyAbstract": "abstract description for testing",
             },
         }
-        with patch(
-            "metadata_backend.api.handlers.object.ObjectAPIHandler.create_draft_doi", return_value=self._draft_doi_data
-        ), self.p_get_sess_restapi:
+        with (
+            patch(
+                "metadata_backend.api.handlers.object.ObjectAPIHandler.create_draft_doi",
+                return_value=self._draft_doi_data,
+            ),
+            self.p_get_sess_restapi,
+        ):
             response = await self.client.post(
                 f"{API_PREFIX}/objects/study", params={"submission": "some id"}, json=json_req
             )
@@ -658,9 +666,12 @@ class ObjectHandlerTestCase(HandlersTestCase):
             },
         }
         call = f"{API_PREFIX}/drafts/study/EGA123456"
-        with patch(
-            "metadata_backend.api.handlers.object.ObjectAPIHandler.get_user_external_id", return_value=self.user_id
-        ), self.p_get_sess_restapi:
+        with (
+            patch(
+                "metadata_backend.api.handlers.object.ObjectAPIHandler.get_user_external_id", return_value=self.user_id
+            ),
+            self.p_get_sess_restapi,
+        ):
             response = await self.client.put(call, json=json_req)
             self.assertEqual(response.status, 200)
             self.assertIn(self.test_ega_string, await response.text())
@@ -671,9 +682,12 @@ class ObjectHandlerTestCase(HandlersTestCase):
         files = [("study", "SRP000539.xml")]
         data = self.create_submission_data(files)
         call = f"{API_PREFIX}/drafts/study/EGA123456"
-        with patch(
-            "metadata_backend.api.handlers.object.ObjectAPIHandler.get_user_external_id", return_value=self.user_id
-        ), self.p_get_sess_restapi:
+        with (
+            patch(
+                "metadata_backend.api.handlers.object.ObjectAPIHandler.get_user_external_id", return_value=self.user_id
+            ),
+            self.p_get_sess_restapi,
+        ):
             response = await self.client.put(call, data=data)
             self.assertEqual(response.status, 200)
             self.assertIn(self.test_ega_string, await response.text())
@@ -760,9 +774,12 @@ class ObjectHandlerTestCase(HandlersTestCase):
     async def test_delete_is_called(self):
         """Test query method calls operator and returns status correctly."""
         url = f"{API_PREFIX}/objects/study/EGA123456"
-        with patch(
-            "metadata_backend.services.datacite_service_handler.DataciteServiceHandler.delete", return_value=None
-        ), self.p_get_sess_restapi:
+        with (
+            patch(
+                "metadata_backend.services.datacite_service_handler.DataciteServiceHandler.delete", return_value=None
+            ),
+            self.p_get_sess_restapi,
+        ):
             response = await self.client.delete(url)
             self.assertEqual(response.status, 204)
             self.MockedOperator().delete_metadata_object.assert_called_once()
@@ -899,10 +916,13 @@ class SubmissionHandlerTestCase(HandlersTestCase):
     async def test_submission_creation_works(self):
         """Test that submission is created and submission ID returned."""
         json_req = {"name": "test", "description": "test submission", "projectId": "1000", "workflow": "FEGA"}
-        with patch(
-            "metadata_backend.api.operators.project.ProjectOperator.check_project_exists",
-            return_value=True,
-        ), self.p_get_sess_restapi:
+        with (
+            patch(
+                "metadata_backend.api.operators.project.ProjectOperator.check_project_exists",
+                return_value=True,
+            ),
+            self.p_get_sess_restapi,
+        ):
             response = await self.client.post(f"{API_PREFIX}/submissions", json=json_req)
             json_resp = await response.json()
             self.MockedSubmissionOperator().create_submission.assert_called_once()
@@ -1094,17 +1114,19 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
     async def test_submission_is_published(self):
         """Test that submission would be published and DOI would be added."""
         self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
-        with patch(f"{self._publish_handler}.create_draft_doi", return_value=self.user_id), patch(
-            f"{self._publish_handler}.get_user_external_id", return_value=self.user_id
-        ), patch(
-            self._mock_prepare_doi,
-            return_value=(
-                {"id": "prefix/suffix-study", "data": {"attributes": {"url": "http://metax_id", "types": {}}}},
-                [{"id": "prefix/suffix-dataset", "data": {"attributes": {"url": "http://metax_id", "types": {}}}}],
+        with (
+            patch(f"{self._publish_handler}.create_draft_doi", return_value=self.user_id),
+            patch(f"{self._publish_handler}.get_user_external_id", return_value=self.user_id),
+            patch(
+                self._mock_prepare_doi,
+                return_value=(
+                    {"id": "prefix/suffix-study", "data": {"attributes": {"url": "http://metax_id", "types": {}}}},
+                    [{"id": "prefix/suffix-dataset", "data": {"attributes": {"url": "http://metax_id", "types": {}}}}],
+                ),
             ),
-        ), patch(
-            f"{self._publish_handler}.create_metax_dataset", return_value=None
-        ), self.p_get_sess_restapi:
+            patch(f"{self._publish_handler}.create_metax_dataset", return_value=None),
+            self.p_get_sess_restapi,
+        ):
             # we are not going to test the MQ connection here
             # thus we don't need to return anything just pass this
             with patch("metadata_backend.message_broker.mq_service.Connection", return_value=MagicMock()):

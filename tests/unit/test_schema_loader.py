@@ -1,4 +1,5 @@
 """Tests for helper classes."""
+
 import unittest
 
 import xmlschema

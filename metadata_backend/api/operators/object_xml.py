@@ -1,4 +1,5 @@
 """XML object operator class."""
+
 from typing import Any
 
 from aiohttp import web

@@ -3,6 +3,7 @@
 API docs https://metax.fairdata.fi/docs/
 Swagger https://metax.fairdata.fi/swagger/v2
 """
+
 import time
 from typing import Any
 

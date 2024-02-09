@@ -1,4 +1,5 @@
 """Test object manipulations."""
+
 import asyncio
 import logging
 

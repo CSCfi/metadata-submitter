@@ -1,4 +1,5 @@
 """Utilities for processing a workflow."""
+
 from typing import Any, Set
 
 from aiohttp import web

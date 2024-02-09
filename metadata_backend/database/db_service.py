@@ -1,4 +1,5 @@
 """Services that handle database connections. Implemented with MongoDB."""
+
 from collections.abc import Callable
 from functools import wraps
 from typing import Any, Optional
