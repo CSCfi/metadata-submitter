@@ -314,6 +314,7 @@ identifiertype
 identitypython
 ido
 idp
+idpyoidc
 ietf
 igbo
 igsn
@@ -687,9 +688,9 @@ subjectsschema
 submissionid
 submissionslice
 submissiontype
-submitter's
 submitterdemultiplexed
 submitterid
+submitter's
 submitters
 svg
 swati

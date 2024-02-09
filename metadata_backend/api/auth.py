@@ -7,8 +7,8 @@ import aiohttp_session
 from aiohttp import web
 from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
 from aiohttp.web import Request, Response
-from oidcrp.exception import OidcServiceError  # type: ignore[import, unused-ignore]
-from oidcrp.rp_handler import RPHandler  # type: ignore[import, unused-ignore]
+from idpyoidc.client.rp_handler import RPHandler  # type: ignore[import, unused-ignore]
+from idpyoidc.exception import OidcMsgError  # type: ignore[import, unused-ignore]
 from yarl import URL
 
 from ..conf.conf import aai_config
@@ -55,7 +55,7 @@ class AccessHandler:
                 "add_ons": {
                     # Re-activate this once we have implemented support on AAI side
                     # "dpop": {
-                    #     "function": "oidcrp.oauth2.add_on.dpop.add_support",
+                    #     "function": "idpyoidc.client.oauth2.add_on.dpop.add_support",
                     #     "kwargs": {
                     #         "signing_algorithms": [
                     #             "ES256",
@@ -64,7 +64,7 @@ class AccessHandler:
                     #     },
                     # },
                     "pkce": {
-                        "function": "oidcrp.oauth2.add_on.pkce.add_support",
+                        "function": "idpyoidc.client.oauth2.add_on.pkce.add_support",
                         "kwargs": {
                             "code_challenge_length": 64,
                             "code_challenge_method": "S256",
@@ -88,7 +88,7 @@ class AccessHandler:
             session = self.rph.begin("aai")
         except Exception as e:
             # This can be caused if config is improperly configured, and
-            # oidcrp is unable to fetch oidc configuration from the given URL
+            # idpyoidc is unable to fetch oidc configuration from the given URL
             LOG.exception("OIDC authorization request failed with: %r", e)
             raise web.HTTPInternalServerError(reason="OIDC authorization request failed.")
 
@@ -135,7 +135,7 @@ class AccessHandler:
         except KeyError as e:
             LOG.exception("Issuer: %s not found, failed with: %r.", session["iss"], e)
             raise web.HTTPBadRequest(reason="Token issuer not found.")
-        except OidcServiceError as e:
+        except OidcMsgError as e:
             # This exception is raised if RPHandler encounters an error due to:
             # 1. "code" is wrong, so token request failed
             # 2. token validation failed
