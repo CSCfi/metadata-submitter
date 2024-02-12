@@ -1,4 +1,5 @@
 """Test workflow schema."""
+
 import unittest
 from unittest.mock import patch
 

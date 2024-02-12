@@ -1,4 +1,5 @@
 """Base object operator class shared by object operators."""
+
 from abc import ABC, abstractmethod
 from typing import Any
 

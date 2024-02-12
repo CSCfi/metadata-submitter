@@ -1,4 +1,5 @@
 """Test the DOI registering tool."""
+
 import unittest
 from unittest.mock import patch
 

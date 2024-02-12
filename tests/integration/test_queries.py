@@ -1,4 +1,5 @@
 """Test queries submissions and objects."""
+
 import asyncio
 import logging
 

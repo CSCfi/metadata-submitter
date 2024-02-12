@@ -160,6 +160,3 @@ The REST API is protected and can be accessed in two ways:
 .. important:: A logged in user can only perform operations on the data it has associated.
                The information for the current user can be retrieved at ``/v1/users/current`` (the user ID is ``current``), and
                any additional operations on other users are rejected.
-
-
-.. include:: code.rst
