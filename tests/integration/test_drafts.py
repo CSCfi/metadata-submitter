@@ -1,4 +1,5 @@
 """Test operations with draft objects."""
+
 import asyncio
 import logging
 

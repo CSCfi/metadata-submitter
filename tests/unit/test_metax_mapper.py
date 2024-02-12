@@ -1,4 +1,5 @@
 """Test Metax metadata mapping methods."""
+
 import json
 import unittest
 from pathlib import Path

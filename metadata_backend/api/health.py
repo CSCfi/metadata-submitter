@@ -1,4 +1,5 @@
 """Handle health check endpoint."""
+
 import time
 
 import ujson

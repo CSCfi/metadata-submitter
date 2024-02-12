@@ -1,4 +1,5 @@
 """Tests for metax integration."""
+
 import json
 import logging
 

@@ -1,4 +1,5 @@
 """Get and process REMS data for the frontend."""
+
 from typing import Any, TypedDict
 
 from aiohttp import web

@@ -1,4 +1,5 @@
 """Test other endpoints."""
+
 import logging
 
 from tests.integration.conf import base_url, schemas_url, test_schemas, workflows_url

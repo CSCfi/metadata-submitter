@@ -1,9 +1,10 @@
 """Services that handle database connections. Implemented with MongoDB."""
+
 from collections.abc import Callable
 from functools import wraps
 from typing import Any, Optional
 
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor, AsyncIOMotorDatabase  # type: ignore
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor, AsyncIOMotorDatabase
 from pymongo import ReturnDocument
 from pymongo.errors import AutoReconnect, BulkWriteError, ConnectionFailure
 
@@ -79,7 +80,7 @@ class DBService:
         """
         result = await self.database[collection].insert_one(document)
         LOG.debug("DB document inserted in collection: %r.", collection)
-        return result.acknowledged
+        return result.acknowledged  # type: ignore
 
     @auto_reconnect
     async def exists(self, collection: str, accession_id: str) -> bool:
@@ -150,7 +151,7 @@ class DBService:
         projection = {"_id": False, "eppn": False, "signingKey": False} if collection == "user" else {"_id": False}
         find_by_id = {id_key: accession_id}
         LOG.debug("DB doc in collection: %r read for accession ID: %r.", collection, accession_id)
-        return await self.database[collection].find_one(find_by_id, projection)
+        return await self.database[collection].find_one(find_by_id, projection)  # type: ignore
 
     @auto_reconnect
     async def read_by_key_value(
@@ -190,7 +191,7 @@ class DBService:
                 accession_id,
                 patch_data,
             )
-            return result.acknowledged
+            return result.acknowledged  # type: ignore
         except BulkWriteError as bwe:
             LOG.exception(bwe.details)
             return False
@@ -244,7 +245,7 @@ class DBService:
             accession_id,
             data_to_be_updated,
         )
-        return result.acknowledged
+        return result.acknowledged  # type: ignore
 
     @auto_reconnect
     async def update_by_key_value(
@@ -266,7 +267,7 @@ class DBService:
             find_by_key_value,
             data_to_be_updated,
         )
-        return result.acknowledged
+        return result.acknowledged  # type: ignore
 
     @auto_reconnect
     async def remove(
@@ -310,7 +311,7 @@ class DBService:
             collection,
             data_to_be_removed,
         )
-        return result.acknowledged
+        return result.acknowledged  # type: ignore
 
     @auto_reconnect
     async def append(
@@ -370,7 +371,7 @@ class DBService:
             new_data,
             accession_id,
         )
-        return result.acknowledged
+        return result.acknowledged  # type: ignore
 
     @auto_reconnect
     async def delete(self, collection: str, accession_id: str) -> bool:
@@ -384,7 +385,7 @@ class DBService:
         find_by_id = {id_key: accession_id}
         result = await self.database[collection].delete_one(find_by_id)
         LOG.debug("DB doc in collection: %r deleted data for accession ID: %r.", collection, accession_id)
-        return result.acknowledged
+        return result.acknowledged  # type: ignore
 
     def query(
         self, collection: str, query: dict[str, Any], custom_projection: Optional[dict[str, Any]] = None, limit: int = 0

@@ -1,4 +1,5 @@
 """Functions shared between handlers."""
+
 import csv
 import string
 from typing import Any

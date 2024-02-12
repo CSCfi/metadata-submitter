@@ -1,4 +1,5 @@
 """Handle HTTP methods for server."""
+
 import json
 from collections.abc import AsyncIterator, Iterator
 from math import ceil
@@ -70,7 +71,7 @@ class RESTAPIHandler:
             reason = f"mandatory query parameter {name} is not set"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        return param
+        return param  # type: ignore
 
     async def _handle_check_ownership(self, req: Request, collection: str, accession_id: str) -> tuple[bool, str]:
         """Check if object belongs to project.

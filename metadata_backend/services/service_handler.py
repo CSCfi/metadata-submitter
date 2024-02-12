@@ -2,6 +2,7 @@
 
 It provides a http client with optional basic auth, and requests that retry automatically and come with error handling
 """
+
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
@@ -13,13 +14,13 @@ from ..helpers.logger import LOG
 from .retry import retry
 
 
-class ServiceServerError(HTTPError):
+class ServiceServerError(HTTPError):  # type: ignore
     """Service server errors should produce a 502 Bad Gateway response."""
 
     status_code = 502
 
 
-class ServiceClientError(HTTPError):
+class ServiceClientError(HTTPError):  # type: ignore
     """Service client errors should be raised unmodified."""
 
     def __init__(
@@ -169,7 +170,7 @@ class ServiceHandler(ABC):
                         LOG.error(message)
                         raise ServiceServerError(text=message, reason=message)
 
-            return content
+            return content  # type: ignore
 
         except TimeoutError as exc:
             LOG.exception("%s request to %s %r timed out.", method, self.service_name, url)

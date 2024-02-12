@@ -9,6 +9,7 @@ key from the API, and be used in place of the AAI token for easier authenticatio
 3. Generate a token with the instructions in this script
 4. Use the token as a Bearer token, with `valid=timestamp` and `userId=user_id` query parameters
 """
+
 import hmac
 import time
 

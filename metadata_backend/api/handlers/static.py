@@ -1,4 +1,5 @@
 """Handle HTTP methods for server."""
+
 import mimetypes
 from pathlib import Path
 

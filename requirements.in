@@ -7,9 +7,10 @@ gunicorn
 metomi-isodatetime
 jsonschema
 motor
-oidcrp
+idpyoidc
 python-dateutil
 requests
 ujson
 uvloop
 xmlschema
+typing-extensions

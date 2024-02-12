@@ -3,6 +3,7 @@
 Setting scope to `class` means that tests should be grouped in classes
 to share functionality of the `class` scoped fixtures.
 """
+
 import logging
 from urllib.parse import urlencode
 
