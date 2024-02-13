@@ -16,7 +16,7 @@ from .schema_loader import SchemaNotFoundException, XMLSchemaLoader
 from .validator import JSONValidator, XMLValidator
 
 
-class MetadataXMLConverter(XMLSchemaConverter):  # type: ignore
+class MetadataXMLConverter(XMLSchemaConverter):
     """XML-JSON converter modified for EGA metadata, based on Abdera-converter.
 
     See following specs for more information about EGA schemas and Abdera:
@@ -399,7 +399,7 @@ class MetadataXMLConverter(XMLSchemaConverter):  # type: ignore
                         tmp[key] = value
                 else:
                     tmp["value"] = children
-            return self.dict(tmp)  # type: ignore
+            return self.dict(tmp)
 
         return children
 

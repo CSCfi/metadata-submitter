@@ -70,7 +70,7 @@ class UserOperator(BaseOperator):
         try:
             user_query = {"projects": {"$elemMatch": {"projectId": project_id}}, "userId": user_id}
             user_cursor = self.db_service.query("user", user_query)
-            user_check = [user async for user in user_cursor]
+            user_check = [user async for user in user_cursor]  # type: ignore
             if user_check:
                 LOG.debug("User: %r has project: %r affiliation.", user_id, project_id)
                 return True
