@@ -14,13 +14,13 @@ from ..helpers.logger import LOG
 from .retry import retry
 
 
-class ServiceServerError(HTTPError):  # type: ignore
+class ServiceServerError(HTTPError):
     """Service server errors should produce a 502 Bad Gateway response."""
 
     status_code = 502
 
 
-class ServiceClientError(HTTPError):  # type: ignore
+class ServiceClientError(HTTPError):
     """Service client errors should be raised unmodified."""
 
     def __init__(
@@ -170,7 +170,7 @@ class ServiceHandler(ABC):
                         LOG.error(message)
                         raise ServiceServerError(text=message, reason=message)
 
-            return content  # type: ignore
+            return content
 
         except TimeoutError as exc:
             LOG.exception("%s request to %s %r timed out.", method, self.service_name, url)
