@@ -1,4 +1,5 @@
 """Handle HTTP methods for server."""
+
 from datetime import datetime
 from math import ceil
 from typing import Any
@@ -39,7 +40,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
 
         filter_list: list[Any] = []  # DEPRECATED, users don't own submissions anymore
         data, page_num, page_size, total_objects = await ObjectOperator(db_client).query_metadata_database(
-            collection, req.query, page, per_page, filter_list  # type: ignore
+            collection, req.query, page, per_page, filter_list
         )
 
         result = ujson.dumps(

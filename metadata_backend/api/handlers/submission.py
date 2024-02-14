@@ -1,4 +1,5 @@
 """Handle HTTP methods for server."""
+
 from datetime import datetime
 from math import ceil
 from typing import Any

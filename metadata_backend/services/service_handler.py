@@ -2,6 +2,7 @@
 
 It provides a http client with optional basic auth, and requests that retry automatically and come with error handling
 """
+
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 

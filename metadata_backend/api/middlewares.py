@@ -1,4 +1,5 @@
 """Middleware methods for server."""
+
 import time
 from hmac import new
 from http import HTTPStatus

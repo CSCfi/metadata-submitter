@@ -28,7 +28,7 @@ def generate_token() -> Tuple:
     return (public_jwk, private_jwk)
 
 
-# oidcrp is strict about iat, exp, ttl, so we can't hard code them
+# idpyoidc is strict about iat, exp, ttl, so we can't hard code them
 iat = int(time())
 ttl = 3600
 exp = iat + ttl
@@ -82,7 +82,7 @@ async def auth(req: web.Request) -> web.Response:
 async def token(req: web.Request) -> web.Response:
     """Auth endpoint."""
     global nonce, user_sub, user_family_name, user_given_name
-    # oidcrp is strict about iat, exp, ttl, so we can't hard code them
+    # idpyoidc is strict about iat, exp, ttl, so we can't hard code them
     iat = int(time())
     ttl = 3600
     exp = iat + ttl

@@ -1,4 +1,5 @@
 """Submission operator class."""
+
 import re
 from datetime import datetime
 from typing import Any, Optional
@@ -27,7 +28,7 @@ class SubmissionOperator(BaseOperator):
             submission_cursor = self.db_service.query(
                 "submission", {"submissionId": submission_id}, {"_id": False, field: 1}, limit=1
             )
-            submissions = [submission async for submission in submission_cursor]
+            submissions = [submission async for submission in submission_cursor]  # type: ignore
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting submission, err: {error}"
             LOG.exception(reason)
@@ -109,7 +110,7 @@ class SubmissionOperator(BaseOperator):
             submission_cursor = self.db_service.query(
                 "submission", {submission_path: {"$elemMatch": {"accessionId": accession_id, "schema": collection}}}
             )
-            submission_check = [submission async for submission in submission_cursor]
+            submission_check = [submission async for submission in submission_cursor]  # type: ignore
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while checking object in submission, err: {error}"
             LOG.exception(reason)
@@ -142,7 +143,7 @@ class SubmissionOperator(BaseOperator):
                 "submission",
                 {"$and": [{submission_path: {"$elemMatch": {"schema": collection}}}, {"submissionId": submission_id}]},
             )
-            submissions = [submission async for submission in submission_cursor]
+            submissions = [submission async for submission in submission_cursor]  # type: ignore
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting collection objects, err: {error}"
             LOG.exception(reason)

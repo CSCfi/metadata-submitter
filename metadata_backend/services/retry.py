@@ -1,4 +1,5 @@
 """Decorator for function retry call."""
+
 # Copyright 2021 Fabian Bosler https://gist.github.com/FBosler/be10229aba491a8c912e3a1543bbc74e
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated

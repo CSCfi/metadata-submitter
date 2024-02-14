@@ -1,4 +1,5 @@
 """Test operations with submissions."""
+
 import json
 import logging
 import xml.etree.ElementTree as ET

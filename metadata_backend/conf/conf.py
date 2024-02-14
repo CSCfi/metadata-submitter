@@ -30,6 +30,7 @@ Change these if database structure changes.
 Production version gets frontend SPA from this folder, after it has been built
 and inserted here in projects Dockerfile.
 """
+
 import os
 from pathlib import Path
 from typing import Any
@@ -98,7 +99,7 @@ connectTimeout = 15000
 API_PREFIX = "/v1"
 
 
-def create_db_client() -> AsyncIOMotorClient:
+def create_db_client() -> AsyncIOMotorClient:  # type: ignore
     """Initialize database client for AioHTTP App.
 
     :returns: Coroutine-based Motor client for Mongo operations
@@ -169,9 +170,11 @@ aai_config = {
     "client_id": os.getenv("AAI_CLIENT_ID", "public"),
     "client_secret": os.getenv("AAI_CLIENT_SECRET", "secret"),
     "domain": os.getenv("BASE_URL", "http://localhost:5430"),
-    "redirect": f'{os.getenv("REDIRECT_URL")}'
-    if bool(os.getenv("REDIRECT_URL"))
-    else os.getenv("BASE_URL", "http://localhost:5430"),
+    "redirect": (
+        f'{os.getenv("REDIRECT_URL")}'
+        if bool(os.getenv("REDIRECT_URL"))
+        else os.getenv("BASE_URL", "http://localhost:5430")
+    ),
     "scope": os.getenv("OIDC_SCOPE", "openid profile email"),
     "callback_url": f'{os.getenv("BASE_URL", "http://localhost:5430").rstrip("/")}/callback',
     "oidc_url": os.getenv("OIDC_URL", ""),

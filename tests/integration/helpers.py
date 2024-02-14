@@ -1,4 +1,5 @@
 """Helper functions for the integration tests."""
+
 import json
 import logging
 import re
