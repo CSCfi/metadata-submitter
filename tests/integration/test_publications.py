@@ -1,4 +1,5 @@
 """Smoke test publications."""
+
 import logging
 
 from tests.integration.conf import objects_url, submissions_url

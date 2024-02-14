@@ -1,4 +1,5 @@
 """Base operator class shared by operators."""
+
 from abc import ABC
 from uuid import uuid4
 
@@ -16,7 +17,7 @@ class BaseOperator(ABC):
     :param ABC: The abstract base class
     """
 
-    def __init__(self, db_client: AsyncIOMotorClient) -> None:
+    def __init__(self, db_client: AsyncIOMotorClient) -> None:  # type: ignore
         """Init db_service.
 
         :param db_client: Motor client used for database connections. Should be

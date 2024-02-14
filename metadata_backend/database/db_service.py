@@ -1,9 +1,10 @@
 """Services that handle database connections. Implemented with MongoDB."""
+
 from collections.abc import Callable
 from functools import wraps
 from typing import Any, Optional
 
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor, AsyncIOMotorDatabase  # type: ignore
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor, AsyncIOMotorDatabase
 from pymongo import ReturnDocument
 from pymongo.errors import AutoReconnect, BulkWriteError, ConnectionFailure
 
@@ -55,15 +56,15 @@ class DBService:
     automatically.
     """
 
-    def __init__(self, database_name: str, db_client: AsyncIOMotorClient) -> None:
+    def __init__(self, database_name: str, db_client: AsyncIOMotorClient) -> None:  # type: ignore
         """Create service for given database.
 
         Service will have read-write access to given database. Database will be
         created during first read-write operation if not already present.
         :param database_name: Name of database to be used
         """
-        self.db_client: AsyncIOMotorClient = db_client
-        self.database: AsyncIOMotorDatabase = db_client[database_name]
+        self.db_client: AsyncIOMotorClient = db_client  # type: ignore
+        self.database: AsyncIOMotorDatabase = db_client[database_name]  # type: ignore
 
     def _get_id_key(self, collection: str) -> str:
         """Get id key based on the collection."""
@@ -77,9 +78,9 @@ class DBService:
         :param document: Document to be inserted
         :returns: True if operation was successful
         """
-        result = await self.database[collection].insert_one(document)
+        result = await self.database[collection].insert_one(document)  # type: ignore
         LOG.debug("DB document inserted in collection: %r.", collection)
-        return result.acknowledged
+        return result.acknowledged  # type: ignore
 
     @auto_reconnect
     async def exists(self, collection: str, accession_id: str) -> bool:
@@ -92,7 +93,7 @@ class DBService:
         id_key = self._get_id_key(collection)
         projection = {"_id": False, "externalId": False} if collection == "user" else {"_id": False}
         find_by_id = {id_key: accession_id}
-        exists: Any | None = await self.database[collection].find_one(find_by_id, projection)
+        exists: Any | None = await self.database[collection].find_one(find_by_id, projection)  # type: ignore
         LOG.debug("DB check exists for accession ID: %r in collection: %r.", accession_id, collection)
         return bool(exists)
 
@@ -104,7 +105,7 @@ class DBService:
         :returns: Id if exists and None if it does not
         """
         find_by_id = {"externalId": external_id}
-        project: dict[str, str] | None = await self.database["project"].find_one(
+        project: dict[str, str] | None = await self.database["project"].find_one(  # type: ignore
             find_by_id, {"_id": False, "externalId": False}
         )
         LOG.debug("DB check project exists for: %r returned: '%r'.", external_id, project)
@@ -119,7 +120,7 @@ class DBService:
         :returns: User ID if exists and None if it does not
         """
         find_by_id = {"externalId": external_id, "name": name}
-        user: dict[str, str] | None = await self.database["user"].find_one(
+        user: dict[str, str] | None = await self.database["user"].find_one(  # type: ignore
             find_by_id, {"_id": False, "externalId": False, "signingKey": False}
         )
         LOG.debug("DB check user exists for: %r returned: %r.", external_id, user)
@@ -133,7 +134,7 @@ class DBService:
         :returns: True if exists and False if it does not
         """
         find_published = {"published": True, "submissionId": submission_id}
-        exists: Any | None = await self.database["submission"].find_one(find_published, {"_id": False})
+        exists: Any | None = await self.database["submission"].find_one(find_published, {"_id": False})  # type: ignore
         check = bool(exists)
         LOG.debug("DB check submission: %r if published, result: %s.", submission_id, check)
         return check
@@ -150,7 +151,7 @@ class DBService:
         projection = {"_id": False, "eppn": False, "signingKey": False} if collection == "user" else {"_id": False}
         find_by_id = {id_key: accession_id}
         LOG.debug("DB doc in collection: %r read for accession ID: %r.", collection, accession_id)
-        return await self.database[collection].find_one(find_by_id, projection)
+        return await self.database[collection].find_one(find_by_id, projection)  # type: ignore
 
     @auto_reconnect
     async def read_by_key_value(
@@ -166,7 +167,9 @@ class DBService:
         if projection is None:
             projection = {"_id": False}
 
-        document: dict[str, Any] | None = await self.database[collection].find_one(find_by_key_value, projection)
+        document: dict[str, Any] | None = await self.database[collection].find_one(  # type: ignore
+            find_by_key_value, projection
+        )
         LOG.debug("DB collection %r for document matching: %r returned: '%r'.", collection, find_by_key_value, document)
         return document
 
@@ -183,14 +186,14 @@ class DBService:
         find_by_id = {f"{collection}Id": accession_id}
         requests = jsonpatch_mongo(find_by_id, patch_data)
         try:
-            result = await self.database[collection].bulk_write(requests, ordered=False)
+            result = await self.database[collection].bulk_write(requests, ordered=False)  # type: ignore
             LOG.debug(
                 "DB doc in collection: %r patched for accession ID: %r with data: %r.",
                 collection,
                 accession_id,
                 patch_data,
             )
-            return result.acknowledged
+            return result.acknowledged  # type: ignore
         except BulkWriteError as bwe:
             LOG.exception(bwe.details)
             return False
@@ -211,7 +214,7 @@ class DBService:
         find_by_id = {f"{collection}Id": accession_id, "metadataObjects.schema": {"$ne": "study"}}
         requests = jsonpatch_mongo(find_by_id, patch_data)
         for req in requests:
-            result: dict[str, Any] | None = await self.database[collection].find_one_and_update(
+            result: dict[str, Any] | None = await self.database[collection].find_one_and_update(  # type: ignore
                 find_by_id, req._doc, projection={"_id": False}, return_document=ReturnDocument.AFTER
             )
             LOG.debug(
@@ -237,14 +240,14 @@ class DBService:
         id_key = self._get_id_key(collection)
         find_by_id = {id_key: accession_id}
         update_op = {"$set": data_to_be_updated}
-        result = await self.database[collection].update_one(find_by_id, update_op)
+        result = await self.database[collection].update_one(find_by_id, update_op)  # type: ignore
         LOG.debug(
             "DB doc in collection: %r updated for accession ID: %r with data: %r.",
             collection,
             accession_id,
             data_to_be_updated,
         )
-        return result.acknowledged
+        return result.acknowledged  # type: ignore
 
     @auto_reconnect
     async def update_by_key_value(
@@ -259,14 +262,14 @@ class DBService:
         :returns: True if operation was successful
         """
         update_op = {"$set": data_to_be_updated}
-        result = await self.database[collection].update_one(find_by_key_value, update_op)
+        result = await self.database[collection].update_one(find_by_key_value, update_op)  # type: ignore
         LOG.debug(
             "DB collection: %r updated for document matching: %r with data: %r.",
             collection,
             find_by_key_value,
             data_to_be_updated,
         )
-        return result.acknowledged
+        return result.acknowledged  # type: ignore
 
     @auto_reconnect
     async def remove(
@@ -283,7 +286,7 @@ class DBService:
         id_key = self._get_id_key(collection)
         find_by_id = {id_key: accession_id}
         remove_op = {"$pull": data_to_be_removed}
-        result: dict[str, Any] = await self.database[collection].find_one_and_update(
+        result: dict[str, Any] = await self.database[collection].find_one_and_update(  # type: ignore
             find_by_id, remove_op, projection={"_id": False}, return_document=ReturnDocument.AFTER
         )
         LOG.debug(
@@ -304,13 +307,13 @@ class DBService:
         :returns: True if operation was successful
         """
         remove_op = {"$pull": data_to_be_removed}
-        result = await self.database[collection].update_many({}, remove_op)
+        result = await self.database[collection].update_many({}, remove_op)  # type: ignore
         LOG.debug(
             "DB doc in collection: %r with data: %r removed.",
             collection,
             data_to_be_removed,
         )
-        return result.acknowledged
+        return result.acknowledged  # type: ignore
 
     @auto_reconnect
     async def append(
@@ -331,7 +334,7 @@ class DBService:
         # push allows us to specify the postion but it does not check the items are unique
         # addToSet cannot easily specify position
         append_op = {"$push": data_to_be_addded}
-        result: dict[str, Any] = await self.database[collection].find_one_and_update(
+        result: dict[str, Any] = await self.database[collection].find_one_and_update(  # type: ignore
             find_by_id, append_op, projection={"_id": False}, upsert=upsert, return_document=ReturnDocument.AFTER
         )
         LOG.debug(
@@ -358,19 +361,19 @@ class DBService:
         :returns: True if operation was successful
         """
         find_by_id = {"accessionId": accession_id}
-        old_data: dict[str, Any] | None = await self.database[collection].find_one(find_by_id)
+        old_data: dict[str, Any] | None = await self.database[collection].find_one(find_by_id)  # type: ignore
         if not (len(new_data) == 2 and new_data["content"].startswith("<")) and old_data is not None:
             new_data["dateCreated"] = old_data["dateCreated"]
             if "publishDate" in old_data:
                 new_data["publishDate"] = old_data["publishDate"]
-        result = await self.database[collection].replace_one(find_by_id, new_data)
+        result = await self.database[collection].replace_one(find_by_id, new_data)  # type: ignore
         LOG.debug(
             "DB doc in collection: %r replaced with data: %r for accession ID: %r.",
             collection,
             new_data,
             accession_id,
         )
-        return result.acknowledged
+        return result.acknowledged  # type: ignore
 
     @auto_reconnect
     async def delete(self, collection: str, accession_id: str) -> bool:
@@ -382,13 +385,13 @@ class DBService:
         """
         id_key = self._get_id_key(collection)
         find_by_id = {id_key: accession_id}
-        result = await self.database[collection].delete_one(find_by_id)
+        result = await self.database[collection].delete_one(find_by_id)  # type: ignore
         LOG.debug("DB doc in collection: %r deleted data for accession ID: %r.", collection, accession_id)
-        return result.acknowledged
+        return result.acknowledged  # type: ignore
 
     def query(
         self, collection: str, query: dict[str, Any], custom_projection: Optional[dict[str, Any]] = None, limit: int = 0
-    ) -> AsyncIOMotorCursor:
+    ) -> AsyncIOMotorCursor:  # type: ignore
         """Query database with given query.
 
         Find() does no I/O and does not require an await expression, hence
@@ -404,7 +407,7 @@ class DBService:
         projection = {"_id": False, "eppn": False} if collection == "user" else {"_id": False}
         if custom_projection:
             projection = custom_projection
-        return self.database[collection].find(query, projection, limit=limit)
+        return self.database[collection].find(query, projection, limit=limit)  # type: ignore
 
     @auto_reconnect
     async def do_aggregate(self, collection: str, query: list[Any]) -> list[Any]:
@@ -415,5 +418,5 @@ class DBService:
         :returns: aggregated query result list
         """
         LOG.debug("DB aggregate performed in collection: %r.", collection)
-        aggregate: Any = self.database[collection].aggregate(query)
+        aggregate: Any = self.database[collection].aggregate(query)  # type: ignore
         return [doc async for doc in aggregate]

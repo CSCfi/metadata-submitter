@@ -1,4 +1,5 @@
 """Test API auth endpoints."""
+
 import time
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -63,7 +64,7 @@ class AccessHandlerFailTestCase(AioHTTPTestCase):
 
     async def test_login_with_default_config_values(self):
         """Test that login raises 500 when OIDC is improperly configured."""
-        with patch("oidcrp.rp_handler.RPHandler.begin", side_effect=Exception):
+        with patch("idpyoidc.client.rp_handler.RPHandler.begin", side_effect=Exception):
             response = await self.client.get("/aai")
             self.assertEqual(response.status, 500)
             resp = await response.text()
@@ -78,7 +79,10 @@ class AccessHandlerFailTestCase(AioHTTPTestCase):
 
     async def test_callback_fails_with_wrong_oidc_state(self):
         """Test that callback endpoint raises 401 when state in the query is not the same as specified in session."""
-        with patch("oidcrp.rp_handler.RPHandler.get_session_information", side_effect=KeyError), self.p_get_sess:
+        with (
+            patch("idpyoidc.client.rp_handler.RPHandler.get_session_information", side_effect=KeyError),
+            self.p_get_sess,
+        ):
             response = await self.client.get("/callback?state=wrong_value&code=code")
             self.assertEqual(response.status, 401)
             resp = await response.text()
@@ -163,8 +167,8 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
         self.assertEqual(new_user_id, session_id["user_info"])
 
     async def test_login_fail(self):
-        """Test login fails due to bad OIDCRP config."""
-        # OIDCRP init fails, because AAI config endpoint request fails
+        """Test login fails due to bad idpyoidc config."""
+        # idpyoidc init fails, because AAI config endpoint request fails
         request = Mock_Request()
         with self.assertRaises(HTTPInternalServerError):
             await self.AccessHandler.login(request)
@@ -173,7 +177,7 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
         """Test login redirects user."""
         response = {"url": "some url"}
         request = Mock_Request()
-        with patch("oidcrp.rp_handler.RPHandler.begin", return_value=response):
+        with patch("idpyoidc.client.rp_handler.RPHandler.begin", return_value=response):
             response = await self.AccessHandler.login(request)
             assert isinstance(response, HTTPSeeOther)
 
@@ -196,8 +200,8 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
 
         request.app["db_client"] = db_client
 
-        with patch("oidcrp.rp_handler.RPHandler.get_session_information", return_value=session):
-            with patch("oidcrp.rp_handler.RPHandler.finalize", return_value=finalize):
+        with patch("idpyoidc.client.rp_handler.RPHandler.get_session_information", return_value=session):
+            with patch("idpyoidc.client.rp_handler.RPHandler.finalize", return_value=finalize):
                 with patch("metadata_backend.api.auth.AccessHandler._set_user", return_value=None):
                     with self.p_new_sess:
                         await self.AccessHandler.callback(request)
@@ -226,8 +230,8 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
 
         request.app["db_client"] = db_client
 
-        with patch("oidcrp.rp_handler.RPHandler.get_session_information", return_value=session):
-            with patch("oidcrp.rp_handler.RPHandler.finalize", return_value=finalize):
+        with patch("idpyoidc.client.rp_handler.RPHandler.get_session_information", return_value=session):
+            with patch("idpyoidc.client.rp_handler.RPHandler.finalize", return_value=finalize):
                 with patch("metadata_backend.api.auth.AccessHandler._set_user", return_value=None):
                     with self.p_new_sess:
                         await self.AccessHandler.callback(request)
@@ -248,8 +252,8 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
             },
         }
 
-        with patch("oidcrp.rp_handler.RPHandler.get_session_information", return_value=session):
-            with patch("oidcrp.rp_handler.RPHandler.finalize", return_value=finalize):
+        with patch("idpyoidc.client.rp_handler.RPHandler.get_session_information", return_value=session):
+            with patch("idpyoidc.client.rp_handler.RPHandler.finalize", return_value=finalize):
                 with self.assertRaises(HTTPUnauthorized):
                     await self.AccessHandler.callback(request)
 
@@ -264,8 +268,8 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
             "token": "token",
             "userinfo": {"given_name": "some", "family_name": "one", "sdSubmitProjects": "1000"},
         }
-        with patch("oidcrp.rp_handler.RPHandler.get_session_information", return_value=session):
-            with patch("oidcrp.rp_handler.RPHandler.finalize", return_value=finalize):
+        with patch("idpyoidc.client.rp_handler.RPHandler.get_session_information", return_value=session):
+            with patch("idpyoidc.client.rp_handler.RPHandler.finalize", return_value=finalize):
                 with self.assertRaises(HTTPUnauthorized):
                     await self.AccessHandler.callback(request)
 
@@ -276,7 +280,7 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
         request.query["code"] = "code"
 
         session = {"iss": "http://auth.domain.com:5430", "auth_request": {}}
-        with patch("oidcrp.rp_handler.RPHandler.get_session_information", return_value=session):
+        with patch("idpyoidc.client.rp_handler.RPHandler.get_session_information", return_value=session):
             with self.assertRaises(HTTPBadRequest):
                 await self.AccessHandler.callback(request)
 

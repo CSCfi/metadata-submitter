@@ -1,4 +1,5 @@
 """Handle health check endpoint."""
+
 import time
 
 import ujson
@@ -81,16 +82,16 @@ class HealthHandler:
             body=ujson.dumps(full_status, escape_forward_slashes=False), status=200, content_type="application/json"
         )
 
-    async def create_test_db_client(self) -> AsyncIOMotorClient:
+    async def create_test_db_client(self) -> AsyncIOMotorClient:  # type: ignore
         """Initialize a new database client to test Mongo connection.
 
         :returns: Coroutine-based Motor client for Mongo operations
         """
-        new_client = AsyncIOMotorClient(url, connectTimeoutMS=4000, serverSelectionTimeoutMS=4000)
+        new_client = AsyncIOMotorClient(url, connectTimeoutMS=4000, serverSelectionTimeoutMS=4000)  # type: ignore
         LOG.debug("Initialised a new DB client as a test")
         return new_client
 
-    async def try_db_connection(self, db_client: AsyncIOMotorClient) -> None | float:
+    async def try_db_connection(self, db_client: AsyncIOMotorClient) -> None | float:  # type: ignore
         """Check the connection to database.
 
         :param db_client: Motor client used for database connections
@@ -98,7 +99,7 @@ class HealthHandler:
         """
         try:
             start = time.time()
-            await db_client.server_info()
+            await db_client.server_info()  # type: ignore
             LOG.debug("Connection to db succeeded.")
             perf_time = time.time() - start
             return perf_time

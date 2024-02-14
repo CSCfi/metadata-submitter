@@ -1,4 +1,5 @@
 """Object operator class."""
+
 import re
 from datetime import datetime
 from typing import Any
@@ -6,8 +7,8 @@ from uuid import uuid4
 
 from aiohttp import web
 from dateutil.relativedelta import relativedelta
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor  # type: ignore
-from multidict import MultiDictProxy
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
+from multidict import MultiMapping
 from pymongo.errors import ConnectionFailure, OperationFailure
 
 from ...conf.conf import DATACITE_SCHEMAS, mongo_database, query_map
@@ -22,7 +23,7 @@ class ObjectOperator(BaseObjectOperator):
     Operations are implemented with JSON format.
     """
 
-    def __init__(self, db_client: AsyncIOMotorClient) -> None:
+    def __init__(self, db_client: AsyncIOMotorClient) -> None:  # type: ignore
         """Initialize database and content-type.
 
         :param db_client: Motor client used for database connections. Should be
@@ -41,7 +42,7 @@ class ObjectOperator(BaseObjectOperator):
             templates_cursor = self.db_service.query(
                 "project", {"projectId": project_id}, custom_projection={"_id": 0, "templates": 1}
             )
-            templates = [template async for template in templates_cursor]
+            templates = [template async for template in templates_cursor]  # type: ignore
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting templates from project {project_id}, err: {error}"
             LOG.exception(reason)
@@ -63,7 +64,7 @@ class ObjectOperator(BaseObjectOperator):
         """
         try:
             object_cursor = self.db_service.query(collection, {"accessionId": accession_id})
-            objects = [object async for object in object_cursor]
+            objects = [object async for object in object_cursor]  # type: ignore
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting object from {collection}, err: {error}"
             LOG.exception(reason)
@@ -86,7 +87,7 @@ class ObjectOperator(BaseObjectOperator):
             raise web.HTTPBadRequest(reason=reason)
 
     async def query_metadata_database(
-        self, schema_type: str, que: MultiDictProxy[Any], page_num: int, page_size: int, filter_objects: list[Any]
+        self, schema_type: str, que: MultiMapping[str], page_num: int, page_size: int, filter_objects: list[Any]
     ) -> tuple[list[dict[str, Any]], int, int, int]:
         """Query database based on url query parameters.
 
@@ -287,7 +288,7 @@ class ObjectOperator(BaseObjectOperator):
 
     @auto_reconnect
     async def _format_read_data(
-        self, schema_type: str, data_raw: dict[str, Any] | AsyncIOMotorCursor
+        self, schema_type: str, data_raw: dict[str, Any] | AsyncIOMotorCursor  # type: ignore
     ) -> dict[str, Any] | list[dict[str, Any]]:
         """Get JSON content from given mongodb data.
 

@@ -1,4 +1,5 @@
 """Handle HTTP methods for server."""
+
 import json
 from collections.abc import AsyncIterator, Iterator
 from math import ceil

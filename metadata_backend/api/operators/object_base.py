@@ -1,4 +1,5 @@
 """Base object operator class shared by object operators."""
+
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -18,7 +19,7 @@ class BaseObjectOperator(ABC):
     :param ABC: The abstract base class
     """
 
-    def __init__(self, db_name: str, content_type: str, db_client: AsyncIOMotorClient) -> None:
+    def __init__(self, db_name: str, content_type: str, db_client: AsyncIOMotorClient) -> None:  # type: ignore
         """Init needed variables, must be given by subclass.
 
         :param db_name: Name for database to save objects to.

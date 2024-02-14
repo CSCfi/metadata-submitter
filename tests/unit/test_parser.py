@@ -1,4 +1,5 @@
 """Test parser methods."""
+
 import unittest
 from pathlib import Path
 
