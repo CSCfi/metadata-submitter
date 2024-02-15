@@ -36,7 +36,7 @@ defusedxml==0.7.1
     # via -r requirements.in
 dnspython==2.5.0
     # via pymongo
-elementpath==4.2.0
+elementpath==4.2.1
     # via xmlschema
 filelock==3.13.1
     # via idpyoidc
@@ -93,9 +93,9 @@ requests==2.31.0
     #   -r requirements.in
     #   cryptojwt
     #   responses
-responses==0.24.1
+responses==0.25.0
     # via idpyoidc
-rpds-py==0.17.1
+rpds-py==0.18.0
     # via
     #   jsonschema
     #   referencing
