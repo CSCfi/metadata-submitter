@@ -38,7 +38,7 @@ bandit==1.7.7
     # via -r requirements-dev.in
 beautifulsoup4==4.12.3
     # via pyspelling
-black==24.1.1
+black==24.2.0
     # via -r requirements-dev.in
 bracex==2.4
     # via wcmatch
@@ -97,7 +97,7 @@ docutils==0.20.1
     # via
     #   sphinx
     #   sphinx-rtd-theme
-elementpath==4.2.0
+elementpath==4.2.1
     # via
     #   -r requirements.txt
     #   xmlschema
@@ -122,7 +122,7 @@ honcho==1.1.0
     # via -r requirements-dev.in
 html5lib==1.1
     # via pyspelling
-identify==2.5.33
+identify==2.5.34
     # via pre-commit
 idna==3.6
     # via
@@ -213,7 +213,7 @@ pluggy==1.4.0
     # via
     #   pytest
     #   tox
-pre-commit==3.6.0
+pre-commit==3.6.1
     # via -r requirements-dev.in
 pycodestyle==2.11.1
     # via flake8
@@ -277,13 +277,13 @@ requests==2.31.0
     #   cryptojwt
     #   responses
     #   sphinx
-responses==0.24.1
+responses==0.25.0
     # via
     #   -r requirements.txt
     #   idpyoidc
 rich==13.7.0
     # via bandit
-rpds-py==0.17.1
+rpds-py==0.18.0
     # via
     #   -r requirements.txt
     #   jsonschema
