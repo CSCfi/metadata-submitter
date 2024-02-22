@@ -96,6 +96,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated BP image and dataset JSON schemas for better functionality #664
 - Updated XML to JSON converter to parse ISO-8601 duration strings into numbers in BP sample attributes #696
 - Updated middleware to accept user signed tokens
+- make use of `idpyoidc` library instead of `oidc-rp`
 
 ### Removed
 
