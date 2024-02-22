@@ -175,7 +175,7 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
 
     async def test_login_pass(self):
         """Test login redirects user."""
-        response = {"url": "some url"}
+        response = "url"
         request = Mock_Request()
         with patch("idpyoidc.client.rp_handler.RPHandler.begin", return_value=response):
             response = await self.AccessHandler.login(request)
@@ -187,10 +187,11 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
         request.query["state"] = "state"
         request.query["code"] = "code"
 
-        session = {"iss": "http://auth.domain.com:5430", "auth_request": {}}
+        session = {"iss": "http://auth.domain.com:5430", "code": "code"}
         finalize = {
             "token": "token",
             "userinfo": {"sub": "user", "given_name": "name", "family_name": "name", "sdSubmitProjects": "1000 2000"},
+            "state": {},
         }
         db_client = MagicMock()
         db_database = MagicMock()
@@ -212,7 +213,7 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
         request.query["state"] = "state"
         request.query["code"] = "code"
 
-        session = {"iss": "http://auth.domain.com:5430", "auth_request": {}}
+        session = {"iss": "http://auth.domain.com:5430", "code": "code"}
         finalize = {
             "token": "token",
             "userinfo": {
@@ -221,6 +222,7 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
                 "family_name": "name",
                 "eduperson_entitlement": ["group1", "group2"],
             },
+            "state": {},
         }
         db_client = MagicMock()
         db_database = MagicMock()

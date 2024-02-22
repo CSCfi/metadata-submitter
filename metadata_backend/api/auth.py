@@ -47,6 +47,7 @@ class AccessHandler:
                 "issuer": self.iss,
                 "client_id": self.client_id,
                 "client_secret": self.client_secret,
+                "client_type": "oidc",
                 "redirect_uris": [self.callback_url],
                 "behaviour": {
                     "response_types": self.auth_method.split(" "),
@@ -85,7 +86,8 @@ class AccessHandler:
 
         # Generate authentication payload
         try:
-            session = self.rph.begin("aai")
+            # this returns str even though begin mentions a dict
+            rph_session_url = self.rph.begin("aai")
         except Exception as e:
             # This can be caused if config is improperly configured, and
             # idpyoidc is unable to fetch oidc configuration from the given URL
@@ -93,8 +95,8 @@ class AccessHandler:
             raise web.HTTPInternalServerError(reason="OIDC authorization request failed.")
 
         # Redirect user to AAI
-        response = web.HTTPSeeOther(session["url"])
-        response.headers["Location"] = session["url"]
+        response = web.HTTPSeeOther(rph_session_url)
+        response.headers["Location"] = rph_session_url
         return response
 
     async def callback(self, req: Request) -> Response:
@@ -120,20 +122,20 @@ class AccessHandler:
 
         # Verify oidc_state and retrieve auth session
         try:
-            session = self.rph.get_session_information(params["state"])
+            session_info = self.rph.get_session_information(params["state"])
         except KeyError as e:
             # This exception is raised if the RPHandler doesn't have the supplied "state"
             LOG.exception("Session not initialised, failed with: %r", e)
             raise web.HTTPUnauthorized(reason="Bad user session.")
 
         # Place authorization_code to session for finalize step
-        session["auth_request"]["code"] = params["code"]
+        session_info["code"] = params["code"]
 
         # finalize requests id_token and access_token with code, validates them and requests userinfo data
         try:
-            session = self.rph.finalize(session["iss"], session["auth_request"])
+            session = self.rph.finalize(self.iss, session_info)
         except KeyError as e:
-            LOG.exception("Issuer: %s not found, failed with: %r.", session["iss"], e)
+            LOG.exception("Issuer: %s not found, failed with: %r.", session_info["iss"], e)
             raise web.HTTPBadRequest(reason="Token issuer not found.")
         except OidcMsgError as e:
             # This exception is raised if RPHandler encounters an error due to:
@@ -153,7 +155,7 @@ class AccessHandler:
         # Create session
         browser_session = await aiohttp_session.new_session(req)
         browser_session["at"] = time.time()
-        browser_session["oidc_state"] = params["state"]
+        browser_session["oidc_state"] = session["state"]
         browser_session["access_token"] = session["token"]
         await self._set_user(req, browser_session, user_data)
 
