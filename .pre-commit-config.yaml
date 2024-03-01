@@ -29,7 +29,7 @@ repos:
       exclude: tests/test_files/study/SRP000539_invalid[0-9]?.xml
 
   - repo: https://github.com/psf/black
-    rev: 24.1.1
+    rev: 24.2.0
     hooks:
     - id: black
       args: [-l, "120"]
@@ -77,7 +77,7 @@ repos:
       - id: check-github-workflows
 
   - repo: https://github.com/jendrikseipp/vulture
-    rev: 'v2.10'
+    rev: 'v2.11'
     hooks:
     - id: vulture
       args: [metadata_backend/, whitelist_dead_code.py]
