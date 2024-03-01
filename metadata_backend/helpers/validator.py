@@ -116,13 +116,14 @@ def extend_with_default(validator_class: Draft202012Validator) -> Draft202012Val
             if "default" in subschema:
                 instance.setdefault(prop, subschema["default"])
 
-        for error in validate_properties(
+        for error in validate_properties(  # pylint: disable=use-yield-from
             validator,
             properties,
             instance,
             schema,
         ):
             # Difficult to unit test
+            # this is not an iterator so we cannot use yield from
             yield error  # pragma: no cover
 
     return validators.extend(
