@@ -22,7 +22,7 @@ amqpstorm==2.10.7
     # via
     #   -r requirements-dev.in
     #   -r requirements.txt
-astroid==3.0.3
+astroid==3.1.0
     # via pylint
 attrs==23.2.0
     # via
@@ -42,9 +42,9 @@ black==24.2.0
     # via -r requirements-dev.in
 bracex==2.4
     # via wcmatch
-build==1.0.3
+build==1.1.1
     # via pip-tools
-cachetools==5.3.2
+cachetools==5.3.3
     # via tox
 certifi==2024.2.2
     # via
@@ -69,7 +69,7 @@ click==8.1.7
     #   pip-tools
 colorama==0.4.6
     # via tox
-coverage[toml]==7.4.1
+coverage[toml]==7.4.3
     # via
     #   coverage
     #   pytest-cov
@@ -89,7 +89,7 @@ dill==0.3.8
     # via pylint
 distlib==0.3.8
     # via virtualenv
-dnspython==2.5.0
+dnspython==2.6.1
     # via
     #   -r requirements.txt
     #   pymongo
@@ -97,7 +97,7 @@ docutils==0.20.1
     # via
     #   sphinx
     #   sphinx-rtd-theme
-elementpath==4.2.1
+elementpath==4.3.0
     # via
     #   -r requirements.txt
     #   xmlschema
@@ -122,7 +122,7 @@ honcho==1.1.0
     # via -r requirements-dev.in
 html5lib==1.1
     # via pyspelling
-identify==2.5.34
+identify==2.5.35
     # via pre-commit
 idna==3.6
     # via
@@ -201,7 +201,7 @@ pathspec==0.12.1
     # via black
 pbr==6.0.0
     # via stevedore
-pip-tools==7.3.0
+pip-tools==7.4.0
     # via -r requirements-dev.in
 platformdirs==4.2.0
     # via
@@ -213,7 +213,7 @@ pluggy==1.4.0
     # via
     #   pytest
     #   tox
-pre-commit==3.6.1
+pre-commit==3.6.2
     # via -r requirements-dev.in
 pycodestyle==2.11.1
     # via flake8
@@ -227,9 +227,9 @@ pygments==2.17.2
     # via
     #   rich
     #   sphinx
-pylint==3.0.3
+pylint==3.1.0
     # via -r requirements-dev.in
-pymongo==4.6.1
+pymongo==4.6.2
     # via
     #   -r requirements.txt
     #   motor
@@ -243,7 +243,7 @@ pyproject-hooks==1.0.0
     # via build
 pyspelling==2.10
     # via -r requirements-dev.in
-pytest==8.0.0
+pytest==8.0.2
     # via
     #   -r requirements-dev.in
     #   pytest-asyncio
@@ -281,7 +281,7 @@ responses==0.25.0
     # via
     #   -r requirements.txt
     #   idpyoidc
-rich==13.7.0
+rich==13.7.1
     # via bandit
 rpds-py==0.18.0
     # via
@@ -320,25 +320,25 @@ sphinxcontrib-qthelp==1.0.7
     # via sphinx
 sphinxcontrib-serializinghtml==1.1.10
     # via sphinx
-stevedore==5.1.0
+stevedore==5.2.0
     # via bandit
-tomlkit==0.12.3
+tomlkit==0.12.4
     # via pylint
-tox==4.12.1
+tox==4.13.0
     # via -r requirements-dev.in
 types-python-dateutil==2.8.19.20240106
     # via -r requirements-dev.in
-types-requests==2.31.0.20240125
+types-requests==2.31.0.20240218
     # via -r requirements-dev.in
 types-ujson==5.9.0.0
     # via -r requirements-dev.in
-typing-extensions==4.9.0
+typing-extensions==4.10.0
     # via
     #   -r requirements.txt
     #   mypy
 ujson==5.9.0
     # via -r requirements.txt
-urllib3==2.2.0
+urllib3==2.2.1
     # via
     #   -r requirements.txt
     #   requests
@@ -346,19 +346,19 @@ urllib3==2.2.0
     #   types-requests
 uvloop==0.19.0
     # via -r requirements.txt
-virtualenv==20.25.0
+virtualenv==20.25.1
     # via
     #   pre-commit
     #   tox
 vulture==2.11
     # via -r requirements-dev.in
-wcmatch==8.5
+wcmatch==8.5.1
     # via pyspelling
 webencodings==0.5.1
     # via html5lib
 wheel==0.42.0
     # via pip-tools
-xmlschema==3.0.1
+xmlschema==3.0.2
     # via -r requirements.txt
 yarl==1.9.4
     # via
