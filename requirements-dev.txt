@@ -129,7 +129,7 @@ idna==3.6
     #   -r requirements.txt
     #   requests
     #   yarl
-idpyoidc==3.0.0
+idpyoidc==4.0.0
     # via -r requirements.txt
 imagesize==1.4.1
     # via sphinx
