@@ -8,4 +8,4 @@ ROOT=$(dirname "$SCRIPTS")
 SWAGGER_ROOT="${ROOT}"/metadata_backend/swagger
 
 mkdir -p "${SWAGGER_ROOT}"
-python3 "${SCRIPT_ROOT}"/yaml-to-html.py < "${ROOT}"/docs/specification.yml > "${SWAGGER_ROOT}"/index.html
+python3 "${SCRIPT_ROOT}"/yaml-to-html.py < "${ROOT}"/docs/openapi.yml > "${SWAGGER_ROOT}"/index.html
