@@ -5,7 +5,7 @@ import time
 import ujson
 from aiohttp import web
 from aiohttp.web import Request, Response
-from amqpstorm import management  # type: ignore[import, unused-ignore]
+from amqpstorm import management
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import ConnectionFailure
 
@@ -82,16 +82,16 @@ class HealthHandler:
             body=ujson.dumps(full_status, escape_forward_slashes=False), status=200, content_type="application/json"
         )
 
-    async def create_test_db_client(self) -> AsyncIOMotorClient:  # type: ignore
+    async def create_test_db_client(self) -> AsyncIOMotorClient:
         """Initialize a new database client to test Mongo connection.
 
         :returns: Coroutine-based Motor client for Mongo operations
         """
-        new_client = AsyncIOMotorClient(url, connectTimeoutMS=4000, serverSelectionTimeoutMS=4000)  # type: ignore
+        new_client = AsyncIOMotorClient(url, connectTimeoutMS=4000, serverSelectionTimeoutMS=4000)
         LOG.debug("Initialised a new DB client as a test")
         return new_client
 
-    async def try_db_connection(self, db_client: AsyncIOMotorClient) -> None | float:  # type: ignore
+    async def try_db_connection(self, db_client: AsyncIOMotorClient) -> None | float:
         """Check the connection to database.
 
         :param db_client: Motor client used for database connections
@@ -99,7 +99,7 @@ class HealthHandler:
         """
         try:
             start = time.time()
-            await db_client.server_info()  # type: ignore
+            await db_client.server_info()
             LOG.debug("Connection to db succeeded.")
             perf_time = time.time() - start
             return perf_time

@@ -6,7 +6,7 @@ from typing import Any
 
 from aiohttp import BodyPartReader, MultipartReader, hdrs, web
 from aiohttp.web import Request
-from defusedxml.ElementTree import ParseError  # type: ignore[import, unused-ignore]
+from defusedxml.ElementTree import ParseError
 from xmlschema import XMLResource
 
 from ...conf.conf import schema_types
