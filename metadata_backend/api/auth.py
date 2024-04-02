@@ -7,8 +7,8 @@ import aiohttp_session
 from aiohttp import web
 from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
 from aiohttp.web import Request, Response
-from idpyoidc.client.rp_handler import RPHandler  # type: ignore[import, unused-ignore]
-from idpyoidc.exception import OidcMsgError  # type: ignore[import, unused-ignore]
+from idpyoidc.client.rp_handler import RPHandler
+from idpyoidc.exception import OidcMsgError
 from yarl import URL
 
 from ..conf.conf import aai_config
