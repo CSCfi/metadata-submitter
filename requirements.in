@@ -1,6 +1,5 @@
 aiohttp
 aiohttp_session
-amqpstorm
 cryptography
 defusedxml
 gunicorn

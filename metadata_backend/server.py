@@ -10,8 +10,6 @@ import uvloop
 from aiohttp import web
 from cryptography.fernet import Fernet
 
-from metadata_backend.message_broker.mq_service import MQPublisher
-
 from .api.auth import AAIServiceHandler, AccessHandler
 from .api.handlers.files import FilesAPIHandler
 from .api.handlers.object import ObjectAPIHandler
@@ -65,7 +63,6 @@ async def init(
     datacite_handler = DataciteServiceHandler()
     rems_handler = RemsServiceHandler()
     aai_handler = AAIServiceHandler()
-    mq_publisher = MQPublisher()
 
     async def close_http_clients(_: web.Application) -> None:
         """Close http client session."""
@@ -92,7 +89,6 @@ async def init(
         metax_handler=metax_handler,
         datacite_handler=datacite_handler,
         rems_handler=rems_handler,
-        mq_publisher=mq_publisher,
     )
     _user = UserAPIHandler()
     _xml_submission = XMLSubmissionAPIHandler(

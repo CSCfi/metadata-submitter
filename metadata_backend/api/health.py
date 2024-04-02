@@ -5,13 +5,12 @@ import time
 import ujson
 from aiohttp import web
 from aiohttp.web import Request, Response
-from amqpstorm import management
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import ConnectionFailure
 
 from metadata_backend.api.auth import AAIServiceHandler
 
-from ..conf.conf import mq_config, url
+from ..conf.conf import url
 from ..helpers.logger import LOG
 from ..services.datacite_service_handler import DataciteServiceHandler
 from ..services.metax_service_handler import MetaxServiceHandler
@@ -48,13 +47,6 @@ class HealthHandler:
             services["database"] = {"status": "Ok"} if _conn_db < 1000 else {"status": "Degraded"}
         else:
             services["database"] = {"status": "Down"}
-
-        _conn_mq = await self.try_mq_connection()
-        # Determine database load status
-        if _conn_mq:
-            services["messageBroker"] = {"status": "Ok"} if _conn_mq < 1000 else {"status": "Degraded"}
-        else:
-            services["messageBroker"] = {"status": "Down"}
 
         # Determine the status of loaded services
 
@@ -105,43 +97,4 @@ class HealthHandler:
             return perf_time
         except ConnectionFailure:
             LOG.exception("Connection to db failed.")
-            return None
-
-    async def try_mq_connection(self) -> None | float:
-        """Check the connection to RabbitMQ.
-
-        :returns: Connection time or None if connection fails
-        """
-        _ssl = mq_config["ssl"]
-        _http = "http"
-        _ssl_client_cert = None
-        if _ssl:
-            _http = "https"
-            cacertfile = str(mq_config["cacertfile"])
-            certfile = str(mq_config["certfile"])
-            keyfile = str(mq_config["keyfile"])
-            _ssl_client_cert = (certfile, keyfile)
-
-        API = management.ManagementApi(
-            f"{_http}://{mq_config['hostname']}:{mq_config['managementPort']}",
-            mq_config["username"],
-            mq_config["password"],
-            verify=cacertfile if _ssl else False,
-            cert=_ssl_client_cert,
-        )
-        try:
-            start = time.time()
-            # the ``local`` vhost should always exist in the rabbitMQ
-            result = API.aliveness_test("local")
-            if result["status"] == "ok":
-                LOG.debug("Connection to rabbitmq succeeded.")
-                perf_time = time.time() - start
-                return perf_time
-            LOG.error("Connection to rabbitmq failed, server is down.")
-            return None
-        except management.ApiConnectionError as error:
-            LOG.error("Connection to rabbitmq failed, error: %s", error)
-            return None
-        except management.ApiError as error:
-            LOG.error("Connection to rabbitmq failed due to ApiError, error: %s", error)
             return None
