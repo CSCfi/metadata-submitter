@@ -1,17 +1,5 @@
 version: "3.4"
 services:
-  certfixer:
-    command:
-      - /bin/sh
-      - -c
-      - |
-        chown -R 100.101 /origcerts/mq/*
-        ls -la /origcerts/mq
-        ls -la /origcerts/
-    container_name: certfixer
-    image: alpine:latest
-    volumes:
-      - ./config:/origcerts
   backend:
     build:
       dockerfile: ./dockerfiles/Dockerfile-dev
@@ -28,7 +16,6 @@ services:
       - mockauth
       - mockdoi
       - mockmetax
-      - messagebroker
     restart: on-failure
     environment:
       - "MONGO_HOST=${MONGO_HOST}"
@@ -57,15 +44,6 @@ services:
       - "REMS_USER_ID=${REMS_USER_ID}"
       - "REMS_KEY=${REMS_KEY}"
       - "REMS_URL=${REMS_URL}"
-      - "BROKER_SSL=True"
-      - "BROKER_HOST=${BROKER_HOST}"
-      - "BROKER_PORT=${BROKER_PORT_SSL}"
-      - "BROKER_USERNAME=${BROKER_USERNAME}"
-      - "BROKER_PASSWORD=${BROKER_PASSWORD}"
-      - "BROKER_CA=${BROKER_CA}"
-      - "BROKER_MANAGEMENT_PORT=${BROKER_MANAGEMENT_PORT_SSL}"
-      - "BROKER_SSL_CLIENTKEY=${BROKER_SSL_CLIENTKEY}"
-      - "BROKER_SSL_CLIENTCERT=${BROKER_SSL_CLIENTCERT}"
   database:
     image: "mongo"
     container_name: "metadata_submitter_database_dev"
@@ -82,25 +60,6 @@ services:
       - 27017
     ports:
       - "27017:27017"
-  messagebroker:
-    image: "rabbitmq:3.13.1-management-alpine"
-    container_name: "metadata_submitter_rabbitmq_dev"
-    restart: on-failure
-    environment:
-      - "RABBITMQ_DEFAULT_USER=${BROKER_USERNAME}"
-      - "RABBITMQ_DEFAULT_PASS=${BROKER_PASSWORD}"
-      - RABBITMQ_CONFIG_FILE=/etc/rabbitmq/rabbitmq-tls.conf
-    expose:
-      - 5671
-      - 15671
-    ports:
-      - "15671:15671"
-      - "5671:5671"
-    volumes:
-      - mq:/var/lib/rabbitmq
-      - ./config/mq:/tls
-      - ./scripts/rabbitmq/rabbitmq-tls.conf:/etc/rabbitmq/rabbitmq-tls.conf
-      - ./scripts/rabbitmq/rabbitmq-definitions.json:/etc/rabbitmq/rabbitmq-definitions.json
   mockauth:
     build:
       dockerfile: ./dockerfiles/Dockerfile-dev
@@ -163,4 +122,3 @@ services:
     entrypoint: [ "python", "/mock_rems_api.py", "0.0.0.0", "8003" ]
 volumes:
   data:
-  mq:
