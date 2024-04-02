@@ -6,7 +6,7 @@ from typing import Any
 
 import ujson
 from aiohttp import web
-from defusedxml.ElementTree import ParseError, parse  # type: ignore[import, unused-ignore]
+from defusedxml.ElementTree import ParseError, parse
 from jsonschema import Draft202012Validator, validators
 from jsonschema.exceptions import ValidationError
 from jsonschema.protocols import Validator

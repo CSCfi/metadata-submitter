@@ -6,8 +6,8 @@ from io import StringIO
 from typing import Any, Optional, Type
 
 from aiohttp import web
-from metomi.isodatetime.exceptions import ISO8601SyntaxError  # type: ignore[import, unused-ignore]
-from metomi.isodatetime.parsers import DurationParser  # type: ignore[import, unused-ignore]
+from metomi.isodatetime.exceptions import ISO8601SyntaxError
+from metomi.isodatetime.parsers import DurationParser
 from pymongo import UpdateOne
 from xmlschema import ElementData, XMLSchema, XMLSchemaConverter, XMLSchemaException, XsdElement, XsdType, aliases
 

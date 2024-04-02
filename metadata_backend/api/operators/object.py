@@ -23,7 +23,7 @@ class ObjectOperator(BaseObjectOperator):
     Operations are implemented with JSON format.
     """
 
-    def __init__(self, db_client: AsyncIOMotorClient) -> None:  # type: ignore
+    def __init__(self, db_client: AsyncIOMotorClient) -> None:
         """Initialize database and content-type.
 
         :param db_client: Motor client used for database connections. Should be
@@ -42,7 +42,7 @@ class ObjectOperator(BaseObjectOperator):
             templates_cursor = self.db_service.query(
                 "project", {"projectId": project_id}, custom_projection={"_id": 0, "templates": 1}
             )
-            templates = [template async for template in templates_cursor]  # type: ignore
+            templates = [template async for template in templates_cursor]
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting templates from project {project_id}, err: {error}"
             LOG.exception(reason)
@@ -64,7 +64,7 @@ class ObjectOperator(BaseObjectOperator):
         """
         try:
             object_cursor = self.db_service.query(collection, {"accessionId": accession_id})
-            objects = [object async for object in object_cursor]  # type: ignore
+            objects = [object async for object in object_cursor]
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting object from {collection}, err: {error}"
             LOG.exception(reason)
@@ -288,7 +288,7 @@ class ObjectOperator(BaseObjectOperator):
 
     @auto_reconnect
     async def _format_read_data(
-        self, schema_type: str, data_raw: dict[str, Any] | AsyncIOMotorCursor  # type: ignore
+        self, schema_type: str, data_raw: dict[str, Any] | AsyncIOMotorCursor
     ) -> dict[str, Any] | list[dict[str, Any]]:
         """Get JSON content from given mongodb data.
 
@@ -305,7 +305,7 @@ class ObjectOperator(BaseObjectOperator):
         if isinstance(data_raw, dict):
             return self._format_single_dict(schema_type, data_raw)
 
-        return [self._format_single_dict(schema_type, doc) for doc in data_raw]
+        return [self._format_single_dict(schema_type, doc) for doc in data_raw]  # type: ignore
 
     def _format_single_dict(self, schema_type: str, doc: dict[str, Any]) -> dict[str, Any]:
         """Format single result dictionary.
