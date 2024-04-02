@@ -19,7 +19,7 @@ class BaseObjectOperator(ABC):
     :param ABC: The abstract base class
     """
 
-    def __init__(self, db_name: str, content_type: str, db_client: AsyncIOMotorClient) -> None:  # type: ignore
+    def __init__(self, db_name: str, content_type: str, db_client: AsyncIOMotorClient) -> None:
         """Init needed variables, must be given by subclass.
 
         :param db_name: Name for database to save objects to.

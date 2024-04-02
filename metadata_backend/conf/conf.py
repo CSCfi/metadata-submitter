@@ -99,7 +99,7 @@ connectTimeout = 15000
 API_PREFIX = "/v1"
 
 
-def create_db_client() -> AsyncIOMotorClient:  # type: ignore
+def create_db_client() -> AsyncIOMotorClient:
     """Initialize database client for AioHTTP App.
 
     :returns: Coroutine-based Motor client for Mongo operations

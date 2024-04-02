@@ -27,7 +27,7 @@ test = [
     "pytest==7.4.4",
     "pytest-cov==4.1.0",
     "pytest-xdist==3.5.0",
-    "tox==4.14.1",
+    "tox==4.14.2",
 ]
 docs = [
     "sphinx >= 1.4",
