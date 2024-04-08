@@ -466,7 +466,6 @@ nominallength
 nominalsdev
 northboundlatitude
 novaseq
-npm
 npx
 nuccore
 numericattribute
@@ -526,6 +525,7 @@ pipesection
 pkce
 pmc
 pmid
+pnpm
 pointlatitude
 pointlongitude
 policyattribute
@@ -716,6 +716,7 @@ transcriptome
 transcriptomeassembly
 transcriptomic
 transcriptomics
+tsc
 tsonga
 turkmen
 twi
@@ -744,6 +745,7 @@ valueuri
 vcf
 venda
 venv
+vitest
 volapük
 vscode
 wcs

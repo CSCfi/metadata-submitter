@@ -12,8 +12,8 @@ RUN git clone -b ${BRANCH} https://github.com/CSCfi/metadata-submitter-frontend.
 
 WORKDIR /metadata-submitter-frontend
 RUN npx --quiet pinst --disable \
-    && npm install --production \
-    && npm run build --production
+    && pnpm install --prod \
+    && pnpm run build --prod
 
 #=======================
 FROM python:3.11-alpine3.17 as BUILD-BACKEND

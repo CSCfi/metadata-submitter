@@ -31,13 +31,13 @@ By default, frontend tries to connect to docker container running the backend. F
 Integrating Frontend and Backend
 ********************************
 
-With backend running as container and frontend with ``npm``:
+With backend running as container and frontend with ``pnpm``:
 
 1. check out metadata submitter backend repository
 2. un-commented line 24 from ``docker-compose.yml``
 3. ``docker compose up -d --build`` backend repository root directory
 4. check out metadata submitter frontend repository
-5. ``npm start``  frontend repository root directory
+5. ``pnpm start``  frontend repository root directory
 
 
 With backend and frontend running in containers:
