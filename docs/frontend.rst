@@ -31,13 +31,13 @@ For installing ``metadata-submitter`` frontend do the following:
 .. code-block:: console
 
     $ git clone https://github.com/CSCfi/metadata-submitter-frontend
-    $ npm install
+    $ pnpm install
 
 To run the frontend from command line use:
 
 .. code-block:: console
 
-    $ npm start
+    $ pnpm start
 
 After installing and running, frontend can be found from ``http://localhost:3000``.
 
