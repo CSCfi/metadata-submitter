@@ -29,7 +29,7 @@ COPY README.md /root/submitter/README.md
 COPY pyproject.toml /root/submitter/pyproject.toml
 COPY metadata_backend /root/submitter/metadata_backend
 COPY scripts /root/submitter/scripts
-COPY docs/specification.yml /root/submitter/docs/specification.yml
+COPY docs/openapi.yml /root/submitter/docs/openapi.yml
 
 COPY --from=BUILD-FRONTEND /metadata-submitter-frontend/build \
     /root/submitter/metadata_backend/frontend

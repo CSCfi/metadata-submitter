@@ -2,7 +2,7 @@
 """
 Converts an openapi YAML spec file to HTML + Swagger UI.
 
-Usage: python swagger-yaml-to-html.py < specification.yml > index.html
+Usage: python swagger-yaml-to-html.py < openapi.yml > index.html
 
 Credits:
 - https://github.com/oseiskar
