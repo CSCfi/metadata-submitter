@@ -143,7 +143,7 @@ endpoint ``https://<provider_url>/.well-known/openid-configuration``.
 REST API
 --------
 
-View `metadata submitter API <https://editor.swagger.io/?url=https://raw.githubusercontent.com/CSCfi/metadata-submitter/master/docs/specification.yml>`_
+View `metadata submitter API <https://editor.swagger.io/?url=https://raw.githubusercontent.com/CSCfi/metadata-submitter/master/docs/openapi.yml>`_
 in swagger editor.
 
 The REST API is structured as follows:
