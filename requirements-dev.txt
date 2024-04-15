@@ -124,7 +124,7 @@ html5lib==1.1
     # via pyspelling
 identify==2.5.35
     # via pre-commit
-idna==3.6
+idna==3.7
     # via
     #   -r requirements.txt
     #   requests
