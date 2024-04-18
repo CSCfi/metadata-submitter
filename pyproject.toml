@@ -7,7 +7,7 @@ name = "metadata_backend"
 dynamic = ["version", "dependencies"]
 description = "metadata_backend"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = {text = "MIT License"}
 authors = [
     { name = "CSC Developers" },
@@ -17,7 +17,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: Information Technology",
     "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
 ]
 
@@ -28,6 +28,7 @@ test = [
     "pytest-cov==4.1.0",
     "pytest-xdist==3.5.0",
     "tox==4.14.2",
+    "setuptools==69.5.1",
 ]
 docs = [
     "sphinx >= 1.4",
@@ -36,13 +37,13 @@ docs = [
 
 [tool.black]
 line-length = 120
-target-version = ['py311']
+target-version = ['py312']
 
 [tool.isort]
 atomic = true
 profile = "black"
 line_length = 120
-py_version=311
+py_version=312
 
 [project.scripts]
 metadata_submitter = "metadata_backend.server:main"
