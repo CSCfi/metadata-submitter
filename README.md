@@ -14,7 +14,7 @@ Service also validates submitted metadata objects against EGA XSD metadata model
 ## Install and run
 
 ### Requirements:
-- Python 3.11+
+- Python 3.12+
 - MongoDB
 - Docker + docker-compose
 
