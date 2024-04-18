@@ -8,7 +8,7 @@ jobs:
       max-parallel: 4
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.11"]
+        python-version: ["3.12"]
 
     runs-on: ${{ matrix.os }}
 
@@ -28,7 +28,7 @@ jobs:
           pip install tox tox-gh-actions coverage
       - name: Run unit tests for python ${{ matrix.python-version }}
         run: |
-          tox -e py311
+          tox -e py312
           coverage lcov -o lcov.info
       - name: Send coverage to coveralls
         uses: coverallsapp/github-action@master
