@@ -46,7 +46,7 @@ unittest:
   before_script:
     - pip install -r requirements-dev.txt
   script:
-    - tox -e py311
+    - tox -e py312
     - coverage report --precision=1
   coverage: '/TOTAL.*\s+(\d+\%)/'
 

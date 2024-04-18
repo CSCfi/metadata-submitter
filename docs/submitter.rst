@@ -5,7 +5,7 @@ Metadata Submitter Backend
 
 .. note:: Requirements:
 
-  - Python 3.11+
+  - Python 3.12+
   - MongoDB
 
 
