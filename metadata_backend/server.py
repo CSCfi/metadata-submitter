@@ -138,8 +138,10 @@ async def init(
         web.patch("/submissions/{submissionId}", _submission.patch_submission),
         web.delete("/submissions/{submissionId}", _submission.delete_submission),
         web.delete("/submissions/{submissionId}/files/{fileId}", _submission.delete_submission_files),
-        # publish submissions
+        # publish submissions - endpoint for general case
         web.patch("/publish/{submissionId}", _publish_submission.publish_submission),
+        # announce submissions - endpoint for BP case
+        web.patch("/annnounce/{submissionId}", _publish_submission.publish_submission),
         # users operations
         web.get("/users/{userId}", _user.get_user),
         web.delete("/users/{userId}", _user.delete_user),

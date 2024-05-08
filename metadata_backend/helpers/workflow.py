@@ -73,11 +73,11 @@ class Workflow:
                         for item in schema["requires"]:
                             required_schemas.add(item)
 
-        if "publish" in self._workflow:
-            for publish in self._workflow["publish"]:
-                if "requiredSchemas" in publish:
-                    for item in publish["requiredSchemas"]:
-                        required_schemas.add(item)
+        if ("publish" or "announce") in self._workflow:
+            publishing = self._workflow["publish"] if "publish" in self._workflow else self._workflow["announce"]
+            if "requiredSchemas" in publishing:
+                for item in publishing["requiredSchemas"]:
+                    required_schemas.add(item)
 
         return required_schemas
 

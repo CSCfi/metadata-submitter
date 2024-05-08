@@ -1637,6 +1637,61 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/504GatewayTimeout"
+  /v1/announce/{submissionId}:
+    patch:
+      tags:
+        - Manage
+      summary: Update object submission into published state for Big Picture case.
+      parameters:
+        - name: submissionId
+          in: path
+          description: ID of the object submission.
+          schema:
+            type: string
+          required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmissionCreated"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
+        405:
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/405MethodNotAllowed"
+        502:
+          description: Bad Gateway
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/502BadGateway"
+        504:
+          description: Gateway Timeout
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/504GatewayTimeout"
   /v1/users/{userId}:
     get:
       tags:
