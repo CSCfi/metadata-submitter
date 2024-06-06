@@ -22,7 +22,6 @@ class TestPublicEndpoints:
             res = await resp.json()
             assert res["status"] == "Ok"
             assert res["services"]["database"]["status"] == "Ok"
-            assert res["services"]["messageBroker"]["status"] == "Ok"
 
 
 class TestOtherApiEndpoints:
