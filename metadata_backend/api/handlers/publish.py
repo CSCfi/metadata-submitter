@@ -526,23 +526,6 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         datacite_study = {}
         # check first if all the files are ready, if not return HTTPBadRequest
         await file_operator.check_submission_files_ready(submission_id)
-        if "messageBroker" in workflow.endpoints:
-            # we will only publish the files which are ready
-            files = await file_operator.read_submission_files(submission_id, ["ready"])
-            for file in files:
-                ingest_msg = {
-                    "type": "ingest",
-                    "user": external_user_id,
-                    "filepath": file["path"],
-                    "encrypted_checksums": file["encrypted_checksums"],
-                }
-                self.mq_publisher.send_message(
-                    workflow.get_endpoint_conf("messageBroker", "endpoint"),
-                    "ingest",
-                    workflow.get_endpoint_conf("messageBroker", "exchange"),
-                    ingest_msg,
-                    "message_ingestion-trigger",
-                )
         if "datacite" in workflow.endpoints:
             try:
                 datacite_study = await self._publish_datacite(submission, obj_op, operator)
