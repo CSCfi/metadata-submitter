@@ -664,3 +664,23 @@ async def post_project_file(sess, file_data):
         ans = await resp.json()
         assert resp.status == 201, f"HTTP Status code error, got {resp.status}: {ans}"
         return ans["fileIds"]
+
+
+async def find_project_file(sess, projectId, fileId):
+    """Check if file with the given id is in project files.
+
+    :param sess: HTTP session in which request call is made
+    :param projectId: id of project to find a file in
+    :param fileId: id of file to find
+    :return: boolean
+    """
+    params = {"projectId": projectId}
+
+    async with sess.get(files_url, params=params) as resp:
+        LOG.debug("Get project files")
+        ans = await resp.json()
+        assert resp.status == 200, f"HTTP Status code error {resp.status} {ans}"
+
+        LOG.debug(ans)
+        # ans is [] ??
+        return False

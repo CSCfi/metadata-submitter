@@ -2,7 +2,7 @@
 
 import logging
 
-from tests.integration.helpers import get_user_data, post_project_file
+from tests.integration.helpers import find_project_file, get_user_data, post_project_file
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
@@ -38,3 +38,7 @@ class TestFiles:
         file_ids = await post_project_file(client_logged_in, file_data)
         LOG.debug(f"Created files: {file_ids}")
         assert len(file_ids) == 1
+
+        # Confirm file exists within project
+        file_exists = await find_project_file(client_logged_in, projectId, file_ids[0])
+        assert file_exists is True
