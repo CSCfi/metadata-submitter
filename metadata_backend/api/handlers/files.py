@@ -71,6 +71,7 @@ class FilesAPIHandler(RESTAPIHandler):
         file_ids = []
         file_op = FileOperator(db_client)
 
+    try:
         for file in data["files"]:
             new_file = File(
                 file["name"],
@@ -80,6 +81,8 @@ class FilesAPIHandler(RESTAPIHandler):
                 file["encrypted_checksums"],
                 file["unencrypted_checksums"],
             )
+    except KeyError:
+        raise web.HTTPBadRequest(reason="Bad input")
             file_id = await file_op._create_file(new_file)
             file_ids.append(file_id)
 
