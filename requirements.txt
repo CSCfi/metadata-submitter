@@ -4,7 +4,7 @@
 #
 #    pip-compile requirements.in
 #
-aiohttp==3.9.4
+aiohttp==3.9.5
     # via
     #   -r requirements.in
     #   aiohttp-session
@@ -19,18 +19,18 @@ attrs==23.2.0
     #   aiohttp
     #   jsonschema
     #   referencing
-certifi==2024.2.2
+certifi==2024.6.2
     # via requests
 cffi==1.16.0
     # via cryptography
 charset-normalizer==3.3.2
     # via requests
-cryptography==42.0.5
+cryptography==42.0.8
     # via
     #   -r requirements.in
     #   cryptojwt
     #   pyopenssl
-cryptojwt==1.9.0
+cryptojwt==1.9.2
     # via idpyoidc
 defusedxml==0.7.1
     # via -r requirements.in
@@ -38,7 +38,7 @@ dnspython==2.6.1
     # via pymongo
 elementpath==4.4.0
     # via xmlschema
-filelock==3.13.4
+filelock==3.15.3
     # via idpyoidc
 frozenlist==1.4.1
     # via
@@ -50,11 +50,11 @@ idna==3.7
     # via
     #   requests
     #   yarl
-idpyoidc==4.0.0
+idpyoidc==4.1.0
     # via -r requirements.in
 jinja2==3.1.4
     # via idpyoidc
-jsonschema==4.21.1
+jsonschema==4.22.0
     # via -r requirements.in
 jsonschema-specifications==2023.12.1
     # via jsonschema
@@ -68,13 +68,13 @@ multidict==6.0.5
     # via
     #   aiohttp
     #   yarl
-packaging==24.0
+packaging==24.1
     # via gunicorn
 pamqp==2.3.0
     # via amqpstorm
 pycparser==2.22
     # via cffi
-pymongo==4.6.3
+pymongo==4.7.3
     # via motor
 pyopenssl==24.1.0
     # via idpyoidc
@@ -84,7 +84,7 @@ pyyaml==6.0.1
     # via
     #   idpyoidc
     #   responses
-referencing==0.34.0
+referencing==0.35.1
     # via
     #   jsonschema
     #   jsonschema-specifications
@@ -93,25 +93,25 @@ requests==2.31.0
     #   -r requirements.in
     #   cryptojwt
     #   responses
-responses==0.25.0
+responses==0.25.3
     # via idpyoidc
-rpds-py==0.18.0
+rpds-py==0.18.1
     # via
     #   jsonschema
     #   referencing
 six==1.16.0
     # via python-dateutil
-typing-extensions==4.11.0
+typing-extensions==4.12.2
     # via -r requirements.in
-ujson==5.9.0
+ujson==5.10.0
     # via -r requirements.in
-urllib3==2.2.1
+urllib3==2.2.2
     # via
     #   requests
     #   responses
 uvloop==0.19.0
     # via -r requirements.in
-xmlschema==3.2.1
+xmlschema==3.3.1
     # via -r requirements.in
 yarl==1.9.4
     # via aiohttp
