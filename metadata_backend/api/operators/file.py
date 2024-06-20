@@ -184,12 +184,13 @@ class FileOperator(BaseOperator):
         :returns: List of files
         """
         aggregate_query = [
-            {"$match": {"projectId": project_id}},
+            {"$match": {"project": project_id}},
             {"$sort": {"versions.version": -1}},
             {"$unwind": "$versions"},
             {
                 "$project": {
                     "_id": 0,
+                    "accessionId": 1,
                     "name": 1,
                     "path": 1,
                     "project": 1,
