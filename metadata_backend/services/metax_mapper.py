@@ -513,6 +513,8 @@ class MetaDataMapper:
         LOG.info("Mapping study for related datasets")
         LOG.debug(study)
 
+        name = ""
+
         for obj in self.datacite_data["metadataObjects"]:
             if obj["schema"] == "study":
                 name = obj["tags"]["displayTitle"]
