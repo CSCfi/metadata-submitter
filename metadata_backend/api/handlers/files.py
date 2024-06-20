@@ -85,6 +85,8 @@ class FilesAPIHandler(RESTAPIHandler):
                 file_ids.append(file_id)
 
         except KeyError as file_key_error:
-            raise web.HTTPBadRequest(reason="Bad input") from file_key_error
+            reason = "Request payload content did not include all necessary details."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason) from file_key_error
 
         return web.Response(body=ujson.dumps({"fileIds": file_ids}), status=201, content_type="application/json")
