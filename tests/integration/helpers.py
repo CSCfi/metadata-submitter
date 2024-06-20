@@ -681,6 +681,8 @@ async def find_project_file(sess, projectId, fileId):
         ans = await resp.json()
         assert resp.status == 200, f"HTTP Status code error {resp.status} {ans}"
 
-        LOG.debug(ans)
-        # ans is [] ??
+        for file in ans:
+            if file["accessionId"] == fileId:
+                return True
+
         return False
