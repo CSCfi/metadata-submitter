@@ -265,6 +265,31 @@ class TestOperators(IsolatedAsyncioTestCase):
         operator.db_service.create.assert_called_once()
         self.assertEqual(data["accessionId"], self.accession_id)
 
+    async def test_create_bp_metadata_object(self):
+        """Test that creating a BP metadata object works.
+
+        Accession id of created object should be in BP format.
+        """
+        operator = ObjectOperator(self.client)
+        bp_image_data = {
+            "studyRef": {"accessionID": uuid4().hex},
+            "imageOf": [{"accessionID": uuid4().hex}],
+            "imageType": "wsiImage",
+            "files": [
+                {
+                    "fileType": "dsm",
+                    "fileName": "testFileName",
+                    "checksumMethod": "SHA256",
+                    "checksum": "f2ca1bb6c7e907d06dafe4687e579fce76b37e4e93b7605022da52e6ccc26fd2",
+                }
+            ],
+        }
+        operator.db_service.create = AsyncMock(return_value=True)
+        data = await operator.create_metadata_object("bpimage", bp_image_data)
+        operator.db_service.create.assert_called_once()
+        bp_id_pattern = re.compile("^[0-9a-z]{1,}-Image(-[0-9a-z]{6}){2}$")
+        self.assertTrue(bp_id_pattern.match(data["accessionId"]))
+
     async def test_json_replace_passes_and_returns_accessionId(self):
         """Test replace method for JSON works."""
         data = {
