@@ -8,7 +8,7 @@ repos:
     rev: v4.6.0
     hooks:
     - id: no-commit-to-branch
-      args: [--branch, develop, --branch, master]
+      args: [--branch, main, --branch, master]
     - id: check-ast
     - id: check-docstring-first
     - id: check-case-conflict
