@@ -7,11 +7,13 @@ from urllib.parse import urlencode
 from uuid import uuid4
 
 import aiofiles
+import ujson
 from aiohttp import FormData
 
 from .conf import (
     base_url,
     drafts_url,
+    files_url,
     metax_api,
     mock_auth_url,
     objects_url,
@@ -645,3 +647,42 @@ async def check_submissions_object_patch(sess, submission_id, schema, accession_
         except StopIteration:
             pass
         return schema
+
+
+async def post_project_file(sess, file_data):
+    """Post one file within session, returns created file id.
+
+    :param sess: HTTP session in which request call is made
+    :param file_data: new file data containing userId, projectId, file info
+    :return: file id of created file
+    """
+
+    async with sess.post(
+        files_url,
+        data=ujson.dumps(file_data),
+    ) as resp:
+        ans = await resp.json()
+        assert resp.status == 201, f"HTTP Status code error, got {resp.status}: {ans}"
+        return ans["fileIds"]
+
+
+async def find_project_file(sess, projectId, fileId):
+    """Check if file with the given id is in project files.
+
+    :param sess: HTTP session in which request call is made
+    :param projectId: id of project to find a file in
+    :param fileId: id of file to find
+    :return: boolean
+    """
+    params = {"projectId": projectId}
+
+    async with sess.get(files_url, params=params) as resp:
+        LOG.debug("Get project files")
+        ans = await resp.json()
+        assert resp.status == 200, f"HTTP Status code error {resp.status} {ans}"
+
+        for file in ans:
+            if file["accessionId"] == fileId:
+                return True
+
+        return False

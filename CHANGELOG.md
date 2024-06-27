@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Added a POST endpoint for receiving file information #814
 - `lastModified` to folder to keep track when a folder or the objects in a folder change and be able to filter via the `lastModified`
 - connection checking and `retry`-mechanism for calls to Metax-service in case of server and connection errors
 - Endpoint for submitting DOI information. #389
