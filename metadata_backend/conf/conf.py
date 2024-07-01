@@ -203,12 +203,13 @@ metax_config = {
     "catalog_pid": "urn:nbn:fi:att:data-catalog-sd",
 }
 
-file_names = ["identifier_types.json", "languages.json", "fields_of_science.json"]
+file_names = ["identifier_types.json", "languages.json", "fields_of_science.json", "funding_references.json"]
 METAX_REFERENCE_ROOT = Path(__file__).parent.parent / "conf" / "metax_references"
 METAX_REFERENCE_DATA: dict[str, dict[Any, Any]] = {
     "identifier_types": {},
     "languages": {},
     "fields_of_science": {},
+    "funding_references": {},
 }
 # Load metax reference data from different reference files into a single dict used by metax mapper
 for ref_file in file_names:
