@@ -56,15 +56,15 @@ class DBService:
     automatically.
     """
 
-    def __init__(self, database_name: str, db_client: AsyncIOMotorClient) -> None:
+    def __init__(self, database_name: str, db_client: AsyncIOMotorClient) -> None:  # type: ignore
         """Create service for given database.
 
         Service will have read-write access to given database. Database will be
         created during first read-write operation if not already present.
         :param database_name: Name of database to be used
         """
-        self.db_client: AsyncIOMotorClient = db_client
-        self.database: AsyncIOMotorDatabase = db_client[database_name]
+        self.db_client: AsyncIOMotorClient = db_client  # type: ignore
+        self.database: AsyncIOMotorDatabase = db_client[database_name]  # type: ignore
 
     def _get_id_key(self, collection: str) -> str:
         """Get id key based on the collection."""
@@ -389,7 +389,7 @@ class DBService:
 
     def query(
         self, collection: str, query: dict[str, Any], custom_projection: Optional[dict[str, Any]] = None, limit: int = 0
-    ) -> AsyncIOMotorCursor:
+    ) -> AsyncIOMotorCursor:  # type: ignore
         """Query database with given query.
 
         Find() does no I/O and does not require an await expression, hence
