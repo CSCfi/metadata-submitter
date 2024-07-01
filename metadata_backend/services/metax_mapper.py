@@ -238,6 +238,7 @@ class MetaDataMapper:
         self.identifier_types = METAX_REFERENCE_DATA["identifier_types"]
         self.languages = METAX_REFERENCE_DATA["languages"]
         self.fields_of_science = METAX_REFERENCE_DATA["fields_of_science"]
+        self.funding_references = METAX_REFERENCE_DATA["funding_references"]
         self.person: dict[str, Any] = {
             "name": "",
             "@type": "Person",
@@ -270,6 +271,8 @@ class MetaDataMapper:
                 self.research_dataset["language"].append({"title": {"en": value}, "identifier": self.languages[value]})
             if key == "subjects":
                 self._map_field_of_science(value)
+            if key == "fundingReferences":
+                self._map_funding_references(value)
 
         for key, value in self.datacite_data["extraInfo"].items():
             if self.object_type == "study" and key == "datasetIdentifiers":
@@ -526,6 +529,39 @@ class MetaDataMapper:
                 "source_organization": self.affiliations,
             }
         ]
+
+    # Metax mapping for fundingReferences is optional
+    # It can be removed after we get the confirmation that it is not needed.
+
+    def _map_funding_references(self, funders: list[Any]) -> None:
+        """Map funding references.
+
+        :param funders: Funders data from datacite
+        """
+        LOG.info("Mapping funding references")
+        LOG.debug(funders)
+
+        funding: dict[str, Any] = {
+            "funder": {
+                "organization": {
+                    "identifier": "",
+                    "pref_label": {},
+                },
+            },
+        }
+
+        funding_references = self.research_dataset["funding"] = []
+
+        for funder in funders:
+            try:
+                fund = [i for i in self.funding_references if i == funder["funderName"]]
+                funding["funder"]["organization"]["identifier"] = self.funding_references[fund[0]]["uris"]
+                funding["funder"]["organization"]["pref_label"] = self.funding_references[fund[0]]["label"]
+
+            except IndexError as exc:
+                raise SubjectNotFoundException from exc
+
+            funding_references.append(funding)
 
 
 class SubjectNotFoundException(Exception):

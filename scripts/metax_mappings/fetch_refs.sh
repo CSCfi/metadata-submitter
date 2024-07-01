@@ -11,3 +11,4 @@ mkdir -p "${MAPPING_FILES_ROOT}"
 python3 "${SCRIPT_ROOT}"/create_metax_references.py get_identifier_types> "${MAPPING_FILES_ROOT}"/identifier_types.json
 python3 "${SCRIPT_ROOT}"/create_metax_references.py get_languages> "${MAPPING_FILES_ROOT}"/languages.json
 python3 "${SCRIPT_ROOT}"/create_metax_references.py get_fields_of_science> "${MAPPING_FILES_ROOT}"/fields_of_science.json
+python3 "${SCRIPT_ROOT}"/create_metax_references.py get_funding_references> "${MAPPING_FILES_ROOT}"/funding_references.json
