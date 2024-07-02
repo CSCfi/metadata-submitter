@@ -58,3 +58,18 @@ class TestBigPicture:
 
         # Attempt to delete a published submission
         await delete_published_submission(client_logged_in, submission_bigpicture)
+
+    async def test_get_bpsample_with_accession_id(self, client_logged_in, submission_bigpicture):
+        """Test bp samples can be retrieved with accession ids.
+
+        :param client_logged_in: HTTP client in which request call is made
+        :param submission_bigpicture: submission ID, created with the BP workflow
+        """
+
+        # Submit samples
+        bpsamples, _ = await post_object(client_logged_in, "bpsample", submission_bigpicture, "template_samples.xml")
+
+        # Retrieve samples with accession ids
+        for sample in bpsamples:
+            bpsample = await get_object(client_logged_in, "bpsample", sample["accessionId"])
+            assert bpsample["accessionId"] == sample["accessionId"]
