@@ -41,7 +41,28 @@ If you also need frontend for development, check out [frontend repository](https
 
 ## Tests
 
-Tests can be run with tox automation: just run `tox -p auto` on project root (remember to install it first with `pip install tox`).
+Majority of the automated tests (such as unit tests, code style checks etc.) can be run with `tox` automation. Integration tests are run separately with `pytest` as they require the full test environment to be running with a local database instance and all the related mock services.
+
+Below are minimal instructions for running the automated tests of this project. Run them in project root:
+
+```bash
+# Optional: set up virtual python env
+python3 -m venv venv --prompt submitter
+source venv/bin/activate
+
+# Install python dependencies
+pip install -U pip
+pip install -r requirements-dev.txt
+
+# Unit tests, linting, etc.
+tox -p auto
+
+# Integration tests
+docker compose --env-file .env.example up --build -d
+pytest tests/integration
+```
+
+Additionally, we use pre-commit hooks in the CI/CD pipeline for automated tests in every merge/pull request. The pre-commit hooks include extra tests such as spellchecks so installing pre-commit hooks locally (with `pre-commit install`) is also helpful.
 
 ## Developing
 

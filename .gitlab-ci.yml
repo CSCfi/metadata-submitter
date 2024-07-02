@@ -1,6 +1,12 @@
 stages:
   - verify
   - test
+  - release
+
+include:
+  - project: 'sds-dev/releases'
+    ref: main
+    file: 'releases.yml'
 
 variables:
   BUILD_IMAGE: $ARTIFACTORY_SERVER/sds/sdd-common-ci
@@ -49,6 +55,11 @@ unittest:
     - tox -e py312
     - coverage report --precision=1
   coverage: '/TOTAL.*\s+(\d+\%)/'
+
+release-job:
+  extends: .automated-release
+  release:
+    description: $(cat release_changes.md)
 
 # TODO: make docker compose work in gitlab runner
 # integration:
