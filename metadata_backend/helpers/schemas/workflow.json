@@ -140,6 +140,72 @@
                     }
                 }
             }
+        },
+        "announce": {
+            "type": "array",
+            "title": "Endpoints to publish to",
+            "items": {
+                "type": "object",
+                "title": "Steps for publishing this workflow",
+                "required": [
+                    "name",
+                    "endpoint"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "title": "Service name",
+                        "description": "Name of the service to publish to",
+                        "enum": [
+                            "datacite",
+                            "metax",
+                            "rems",
+                            "messageBroker"
+                        ]
+                    },
+                    "endpoint": {
+                        "type": "string",
+                        "title": "Publish endpoint",
+                        "description": "Endpoint for publishing the submission to"
+                    },
+                    "requires": {
+                        "type": "array",
+                        "title": "Required endpoints",
+                        "description": "Endpoints required before this endpoint can be called",
+                        "items": {
+                            "type": "string",
+                            "title": "endpoint name"
+                        }
+                    },
+                    "requiredSchemas": {
+                        "type": "array",
+                        "title": "Required schemas",
+                        "description": "Schemas required in the submission",
+                        "items": {
+                            "type": "string",
+                            "title": "Schema name"
+                        }
+                    },
+                    "exchange": {
+                        "type": "string",
+                        "title": "Exchange endpoint for rabbitMQ",
+                        "description": "Exchange for communication for rabbitmq queue."
+                    }
+                },
+                "if": {
+                    "properties": {
+                        "name": {
+                            "const": "messageBroker"
+                        }
+                    }
+                },
+                "then": {
+                    "required": [
+                        "exchange"
+                    ]
+                }
+            }
         }
     }
 }

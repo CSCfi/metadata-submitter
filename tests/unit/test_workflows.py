@@ -50,11 +50,11 @@ class TestWorkflowSchema(unittest.TestCase):
                         for item in schema["requires_or"]:
                             required_schemas.add(item)
 
-            if "publish" in workflow:
-                for publish in workflow["publish"]:
-                    if "requiredSchemas" in publish:
-                        for item in publish["requiredSchemas"]:
-                            required_schemas.add(item)
+            if ("publish" or "announce") in workflow:
+                publishing = workflow["publish"] if "publish" in workflow else workflow["announce"]
+                if "requiredSchemas" in publishing:
+                    for item in publishing["requiredSchemas"]:
+                        required_schemas.add(item)
 
             for required in required_schemas:
                 self.assertIn(required, schemas)

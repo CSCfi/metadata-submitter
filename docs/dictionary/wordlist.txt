@@ -30,6 +30,7 @@ analysisref
 analysistype
 annotationref
 annotinfo
+announce
 anonymized
 antibiogram
 anyof

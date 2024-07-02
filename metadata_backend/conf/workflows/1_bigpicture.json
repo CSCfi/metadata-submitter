@@ -86,7 +86,7 @@
             ]
         }
     ],
-    "publish": [
+    "announce": [
         {
             "name": "datacite",
             "endpoint": "datacite",
