@@ -19,7 +19,7 @@ class XMLObjectOperator(BaseObjectOperator):
     Operations are implemented with XML format.
     """
 
-    def __init__(self, db_client: AsyncIOMotorClient) -> None:
+    def __init__(self, db_client: AsyncIOMotorClient) -> None:  # type: ignore
         """Initialize database and content-type.
 
         :param db_client: Motor client used for database connections. Should be
