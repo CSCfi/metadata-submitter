@@ -23,7 +23,7 @@ class ObjectOperator(BaseObjectOperator):
     Operations are implemented with JSON format.
     """
 
-    def __init__(self, db_client: AsyncIOMotorClient) -> None:
+    def __init__(self, db_client: AsyncIOMotorClient) -> None:  # type: ignore
         """Initialize database and content-type.
 
         :param db_client: Motor client used for database connections. Should be
@@ -288,7 +288,7 @@ class ObjectOperator(BaseObjectOperator):
 
     @auto_reconnect
     async def _format_read_data(
-        self, schema_type: str, data_raw: dict[str, Any] | AsyncIOMotorCursor
+        self, schema_type: str, data_raw: dict[str, Any] | AsyncIOMotorCursor  # type: ignore
     ) -> dict[str, Any] | list[dict[str, Any]]:
         """Get JSON content from given mongodb data.
 
