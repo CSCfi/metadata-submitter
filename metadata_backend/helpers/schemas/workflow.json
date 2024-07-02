@@ -160,8 +160,7 @@
                         "enum": [
                             "datacite",
                             "metax",
-                            "rems",
-                            "messageBroker"
+                            "rems"
                         ]
                     },
                     "endpoint": {
@@ -186,24 +185,7 @@
                             "type": "string",
                             "title": "Schema name"
                         }
-                    },
-                    "exchange": {
-                        "type": "string",
-                        "title": "Exchange endpoint for rabbitMQ",
-                        "description": "Exchange for communication for rabbitmq queue."
                     }
-                },
-                "if": {
-                    "properties": {
-                        "name": {
-                            "const": "messageBroker"
-                        }
-                    }
-                },
-                "then": {
-                    "required": [
-                        "exchange"
-                    ]
                 }
             }
         }
