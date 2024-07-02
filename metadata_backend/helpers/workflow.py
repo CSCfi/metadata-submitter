@@ -61,7 +61,7 @@ class Workflow:
         Required schemas are marked with their `required` field.
         Schemas referenced in a `requires` field are also marked as required.
         Step being required or not does not affect the requirements, it's for use in the front-end only.
-        Schemas referenced in the `publish` field under `requiredSchemas` are also marked as being required.
+        Schemas referenced in the `publish` or `announce` field under `requiredSchemas` are also marked as required.
         """
         required_schemas = set()
 
@@ -96,9 +96,11 @@ class Workflow:
     @property
     def endpoints(self) -> Set[str]:
         """Get endpoint names that the submission should be published to."""
-        return {publish["name"] for publish in self._workflow["publish"]}
+        publishing = self._workflow["publish"] if "publish" in self._workflow else self._workflow["announce"]
+        return {publish["name"] for publish in publishing}
 
     def get_endpoint_conf(self, name: str, value: str) -> str:
         """Get endpoint config value for a particular publishing endpoint."""
-        conf: str = next(publish[value] for publish in self._workflow["publish"] if publish["name"] == name)
+        publishing = self._workflow["publish"] if "publish" in self._workflow else self._workflow["announce"]
+        conf: str = next(publish[value] for publish in publishing if publish["name"] == name)
         return conf
