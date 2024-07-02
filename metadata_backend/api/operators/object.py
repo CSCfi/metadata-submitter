@@ -214,8 +214,13 @@ class ObjectOperator(BaseObjectOperator):
         :param data: Metadata object
         :returns: Metadata object with some additional keys/values
         """
-        accession_id = self._generate_accession_id()
-        data["accessionId"] = accession_id
+        bp_schema_types = ["bpdataset", "bpimage", "bpobservation", "bpsample", "bpstaining"]
+
+        if schema_type in bp_schema_types:
+            data["accessionId"] = self._generate_bp_accession_id(schema_type)
+        else:
+            data["accessionId"] = self._generate_accession_id()
+
         data["dateCreated"] = datetime.utcnow()
         data["dateModified"] = datetime.utcnow()
         if schema_type == "study":
@@ -285,6 +290,24 @@ class ObjectOperator(BaseObjectOperator):
         sequence = uuid4().hex
         LOG.debug("Generated accession ID.")
         return sequence
+
+    def _generate_bp_accession_id(self, schema_type: str) -> str:
+        """Generate accession id for BigPicture metadata objects.
+
+        :returns: BP accession id as str
+        """
+        center = "bb"
+        sequence = uuid4().hex
+        schema_types = ["bpdataset", "bpimage", "bpobservation", "bpsample", "bpstaining"]
+
+        if schema_type not in schema_types:
+            reason = "Provided invalid BigPicture schema type."
+            LOG.error(reason)
+            raise ValueError(reason)
+
+        bp_id = f"{center}-{schema_type[2:].capitalize()}-{sequence[0:6]}-{sequence[6:12]}"
+        LOG.debug("Generated BigPicture accession ID.")
+        return bp_id
 
     @auto_reconnect
     async def _format_read_data(
