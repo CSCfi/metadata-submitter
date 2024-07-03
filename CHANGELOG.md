@@ -2,13 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ## [Unreleased]
 
 ### Added
+
 - Added a POST endpoint for receiving file information #814
+- Added additional 'announce' endpoint for BP workflow and to openapi document #813
+- Added new endpoint `/users/{userId}/key` for generating a signing key #777
+
+### Changed
+
+- Modified workflow for Generic use case #821
+- Updated middleware to accept user signed tokens #777
+- Switch to `idpyoidc` library instead of `oidc-rp`
+- Updated dependencies
+
+### Removed
+
+- RabbitMQ message broker functionality
+
+## [2024.01.0] - 2024-01-15
+
+### Added
+
 - `lastModified` to folder to keep track when a folder or the objects in a folder change and be able to filter via the `lastModified`
 - connection checking and `retry`-mechanism for calls to Metax-service in case of server and connection errors
 - Endpoint for submitting DOI information. #389
@@ -52,11 +71,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bigpicture sample, image and dataset XML schemas were added and JSON schemas for those objects were produced #445 #481 #491
 - Bigpicture observation XML schema was added and JSON schema for it was produced #665
 - Bigpicture staining XML schema was added and JSON schema for it was produced #666
-- Add new endpoint `/users/{userId}/key` for generating a signing key
 
 ### Changed
+
 - schema loader now matches schema files by exact match with schema #481. This means that schema file naming in metadata_backend/helpers/schemas now have rules:
-- Modified workflow for Generic use case #821
   - file name starts with schema provider separated with dot or underscore (e.g. EGA.policy.xsd, ena_policy.json) or
   - if schema is local then no schema provider needs to be added (e.g users.json)
   - schema name and mongo database collection name must be the same
@@ -97,8 +115,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated BP sample XML and JSON schema, its parsing method and its related example file and tests #650
 - Updated BP image and dataset JSON schemas for better functionality #664
 - Updated XML to JSON converter to parse ISO-8601 duration strings into numbers in BP sample attributes #696
-- Updated middleware to accept user signed tokens
-- make use of `idpyoidc` library instead of `oidc-rp`
 
 ### Removed
 
@@ -108,11 +124,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed `OIDC_ENABLED` testing variable which can cause misconfiguration incidents
 - Removed `METAX_ENABLED` as superseded by the introduction of workflows #591
 - Removed `REMS_ENABLED` as superseded by the introduction of workflows #591
-
 - remove unused code related to change from user to project ownership caused by faulty rebase or rollback of certain features #579
 - Remove dictionary de-duplication from `pre-commit`'s `sort` hook #626
 
 ### Fixed
+
 - Schemas endpoint returned `400` for `/v1/schemas/datacite` #554
 - XML delete when an object or submission is deleted #579
 - small pylint issues e.g. web.HTTPSuccessful was never being raised #579
@@ -124,7 +140,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - mypy complaining about default values `None` in service handler
 
 ## [0.13.1] - 2022-05-31
+
 ### Changed
+
 - migrated to variables used by motor 3 for ssl https://motor.readthedocs.io/en/stable/migrate-to-motor-3.html?highlight=ssl_certfile#renamed-uri-options #420
   - env vars `MONGO_SSL_CLIENT_KEY` and `MONGO_SSL_CLIENT_CERT` are replaced with `MONGO_SSL_CLIENT_CERT_KEY`
 - adds required field affiliation for creator and contributor in datacite schema #399
@@ -330,6 +348,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - standardise raises description and general improvements and fixes of logs and descriptions
 
 ### Changed
+
 - Verify `/publish` endpoint #163
 - Restrict endpoints to logged in users #151
 - Updated documentation #165
@@ -375,7 +394,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Python modules, project description and instructions to documentation sources #128
 - Added integration tests #129
 - Updated documentation #130
-
 
 ## [0.5.2] - 2020-08-14
 
@@ -443,7 +461,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Files are also validated during submission process.
 
 
-[unreleased]: https://github.com/CSCfi/metadata-submitter/compare/v0.13.0...HEAD
+[unreleased]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/-/compare/2024.1.0...HEAD
+[2024.01.1]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/-/compare/v0.13.1...2024.01.0
+[0.13.1]: https://github.com/CSCfi/metadata-submitter/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/CSCfi/metadata-submitter/compare/v0.10.0...v0.13.0
 [0.11.0]: https://github.com/CSCfi/metadata-submitter/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/CSCfi/metadata-submitter/compare/v0.9.0...v0.10.0
