@@ -407,7 +407,5 @@ class FileOperator(BaseOperator):
         :param submission_id: Submission ID to add files to
         :returns: True if operation to append was successful
         """
-        success: bool = await self.db_service.append(
-            "submission", submission_id, {"$addToSet": {"files": {"$each": files}}}
-        )
+        success: bool = await self.db_service.append("submission", submission_id, {"files": {"$each": files}})
         return success
