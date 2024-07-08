@@ -320,48 +320,47 @@ class FileOperator(BaseOperator):
         LOG.info("Flagging file with file_path: %r as Deleted succeeded.", file_path)
 
     async def remove_file_submission(
-        self, accession_id: str, id_type: Optional[str] = None, submission_id: Optional[str] = None
+        self, id_or_path: str, id_type: Optional[str] = None, submission_id: Optional[str] = None
     ) -> None:
-        """Flag file as deleted.
+        """Remove file from a submission or all submissions.
 
-        If we flag the file as deleted we should remove it from any submission it has been attached to
-
-        :param accession_id: Accession ID of the file to read
+        :param id_or_path: Accession ID or path of the file to remove from submission
         :param id_type: depending on the file id this can be either ``path`` or ``accessionId``.
         :param submission_id: Submission ID to remove file associated with it
         :raises: HTTPBadRequest if deleting was not successful
         :raises: HTTPInternalServerError if db operation failed because of connection
         or other db issue
         """
+        _file: dict[str, Any] = {}
         try:
             if id_type == "path":
-                _fileId = await self.db_service.read_by_key_value("file", {"path": accession_id}, {"accessionId": 1})
+                _file = await self.db_service.read_by_key_value("file", {"path": id_or_path}, {"accessionId": 1})
             elif id_type == "accessionId":
-                _fileId["accessionId"] = accession_id
+                _file["accessionId"] = id_or_path
             else:
                 reason = f"Cannot recognize '{id_type}' as a type of id for file deletion from submission."
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
             if submission_id:
                 delete_success = await self.db_service.remove(
-                    "submission", submission_id, {"files": {"accession_id": _fileId["accessionId"]}}
+                    "submission", submission_id, {"files": {"accessionId": _file["accessionId"]}}
                 )
-                LOG.info("Removing file: %r from submission: %r succeeded.", accession_id, submission_id)
+                LOG.info("Removing file: %r from submission: %r succeeded.", id_or_path, submission_id)
             else:
                 delete_success = await self.db_service.remove_many(
-                    "submission", {"files": {"accession_id": _fileId["accessionId"]}}
+                    "submission", {"files": {"accessionId": _file["accessionId"]}}
                 )
                 LOG.info(
                     "Removing file with path: %r from submissions, by accessionID: %r succeeded.",
-                    accession_id,
-                    _fileId["accessionId"],
+                    id_or_path,
+                    _file["accessionId"],
                 )
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while removing file from submission, err: {error}"
             LOG.exception(reason)
             raise web.HTTPInternalServerError(reason=reason) from error
         if not delete_success:
-            reason = f"Removing file identified via '{id_type}': '{accession_id}' from submission failed."
+            reason = f"Removing file identified via '{id_type}': '{id_or_path}' from submission failed."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -409,3 +408,16 @@ class FileOperator(BaseOperator):
         """
         success: bool = await self.db_service.append("submission", submission_id, {"files": {"$each": files}})
         return success
+
+    async def check_submission_has_file(self, submission_id: str, file_id: str) -> bool:
+        """Check if submission has a file with given accession id.
+
+        :param submission_id: submission ID to check files of
+        :param file_id: accession ID of file
+        :returns: True if file found
+        """
+        submission = await self.db_service.read("submission", submission_id)
+        for file in submission["files"]:
+            if file["accessionId"] == file_id:
+                return True
+        return False
