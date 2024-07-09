@@ -9,6 +9,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- List of Funding references from crossref API and enum values for Funder Names in Submission schema
 - Added a POST endpoint for receiving file information #814
 - Added additional 'announce' endpoint for BP workflow and to openapi document #813
 - Added new endpoint `/users/{userId}/key` for generating a signing key #777
