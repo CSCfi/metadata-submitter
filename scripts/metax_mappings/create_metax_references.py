@@ -99,5 +99,23 @@ def get_fields_of_science() -> None:
     print(json.dumps(fields, indent=4, sort_keys=True))
 
 
+def get_funding_references() -> None:
+    """Parse codes for mapping funding references."""
+
+    funders = {}
+
+    crossRef_url = "https://api.crossref.org/funders?filter=location:Finland"
+    crossRef_json = requests.get(crossRef_url).json()["message"]["items"]
+    for funding_ref in crossRef_json:
+        funders[funding_ref["name"]] = {
+            "id": funding_ref["id"],
+            "uri": funding_ref["uri"],
+            "label": {"fi": funding_ref["name"]},
+        }
+
+    # Print to console, so the script caller should output it to the correct file
+    print(json.dumps(funders, indent=4, sort_keys=True))
+
+
 if __name__ == "__main__":
     globals()[sys.argv[1]]()

@@ -951,7 +951,29 @@
                         "properties": {
                             "funderName": {
                                 "type": "string",
-                                "title": "Funder Name"
+                                "title": "Funder Name",
+                                "enum": [
+                                    "Alfred Kordelinin Säätiö",
+                                    "Arvo ja Inkeri Suomisen Säätiö",
+                                    "Blood Disease Research Foundation",
+                                    "Helsingin Yliopisto",
+                                    "Helsingin ja Uudenmaan Sairaanhoitopiiri",
+                                    "Ida Montinin Säätiö",
+                                    "Itä-Suomen Yliopisto",
+                                    "Joensuun Yliopiston Tukisäätiö",
+                                    "KAUTE-Säätiö",
+                                    "Medicinska Understödsföreningen Liv och Hälsa",
+                                    "Moikoisten Syöväntutkimussäätiö",
+                                    "Nokia",
+                                    "Paavo ja Eila Salosen Stipendirahaston",
+                                    "Palosuojelurahasto",
+                                    "Suomen Lääketieteen Säätiö",
+                                    "Victoriastiftelsen",
+                                    "Walter ja Andrée de Nottbeckin Säätiö",
+                                    "Wilhelm och Else Stockmanns Stiftelse",
+                                    "Yrjö Jahnssonin Säätiö",
+                                    "Yrkeshögskolan Novia"
+                                ]
                             },
                             "funderIdentifier": {
                                 "type": "string",

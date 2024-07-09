@@ -28,6 +28,7 @@ analysisdate
 analysislinks
 analysisref
 analysistype
+andrée
 annotationref
 annotinfo
 announce
@@ -204,6 +205,7 @@ ebi
 ebispot
 edirect
 ega
+eila
 eissn
 ena
 enasequence
@@ -295,6 +297,7 @@ guaraní
 gunicorn
 helicos
 heliscope
+helsingin
 hiri
 hiscansq
 hiseq
@@ -311,6 +314,7 @@ httperror
 https
 httpseeother
 httpsuccessful
+hälsa
 identifiertype
 identitypython
 ido
@@ -329,6 +333,7 @@ imageof
 imageref
 imagetype
 ini
+inkeri
 insdc
 integrations
 interlingua
@@ -340,6 +345,10 @@ ipython
 isni
 issn
 istc
+itä
+ja
+jahnssonin
+joensuun
 js
 json
 jsoncontent
@@ -351,11 +360,13 @@ kallisto
 kanuri
 kashmiri
 katanga
+kaute
 keyfile
 kinyarwanda
 kirundi
 koalaman
 komi
+kordelinin
 kubernetes
 kwanyama
 kyrgyz
@@ -379,6 +390,7 @@ lims
 lingala
 linux
 lissn
+liv
 localega
 localhost
 locusname
@@ -387,6 +399,7 @@ lsid
 lt
 luba
 luxembourgish
+lääketieteen
 maincontact
 makestyles
 manufactors
@@ -400,6 +413,7 @@ maxmismatch
 mbd
 mda
 medgen
+medicinska
 medip
 membername
 messagebroker
@@ -432,10 +446,12 @@ mkdir
 mnase
 mockauth
 modindex
+moikoisten
 mol
 moltype
 mongo
 mongodb
+montinin
 motu
 mpeg
 mqconsumer
@@ -466,7 +482,9 @@ noindex
 nominallength
 nominalsdev
 northboundlatitude
+nottbeckin
 novaseq
+novia
 npx
 nuccore
 numericattribute
@@ -507,8 +525,10 @@ oss
 ossetian
 otorhinolaryngology
 ownedby
+paavo
 pacbio
 paleo
+palosuojelurahasto
 panjabi
 param
 pashto
@@ -613,6 +633,8 @@ runlinks
 runref
 runtime
 runtype
+sairaanhoitopiiri
+salosen
 sami
 sampleattribute
 sampleattributes
@@ -675,6 +697,9 @@ staininginformation
 statementstatus
 statementtype
 stepindex
+stiftelse
+stipendirahaston
+stockmanns
 studyabstract
 studyattribute
 studyattributes
@@ -693,8 +718,12 @@ submitter's
 submitterdemultiplexed
 submitterid
 submitters
+suomen
+suomisen
 svg
 swati
+syöväntutkimussäätiö
+säätiö
 tabix
 tajik
 targetloci
@@ -719,6 +748,7 @@ transcriptomic
 transcriptomics
 tsc
 tsonga
+tukisäätiö
 turkmen
 twi
 txt
@@ -727,6 +757,7 @@ ui
 ujson
 umi
 uncomment
+understödsföreningen
 unencrypted
 unencryptedchecksum
 uniqueitems
@@ -738,6 +769,7 @@ usedispatch
 userid
 userinfo
 useselector
+uudenmaan
 uuid
 uuids
 uyghur
@@ -746,6 +778,7 @@ valueuri
 vcf
 venda
 venv
+victoriastiftelsen
 vitest
 volapük
 vscode
@@ -780,6 +813,10 @@ xrefid
 xreflink
 xsd
 yaml
+yliopisto
+yliopiston
 yml
+yrjö
+yrkeshögskolan
 za
 zhuang
