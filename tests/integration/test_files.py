@@ -5,6 +5,7 @@ import logging
 from tests.integration.helpers import (
     add_submission_files,
     find_project_file,
+    get_project_files,
     get_submission,
     get_user_data,
     post_project_files,
@@ -52,6 +53,64 @@ class TestFiles:
         # Confirm file exists within project
         file_exists = await find_project_file(client_logged_in, projectId, file_ids[0])
         assert file_exists is True
+
+    async def test_project_files(self, client_logged_in):
+        """Test that files are properly posted and retrieved for multiple projects.
+
+        :param client_logged_in: HTTP client in which request call is made
+        """
+        # Get user data: userId and projects
+        user_data = await get_user_data(client_logged_in)
+        project_id = user_data["projects"][0]["projectId"]
+
+        nameless_file = {
+            "path": "s3:/bucket/files/mock",
+            "bytes": 100,
+            "encrypted_checksums": [{"str": "string"}],
+            "unencrypted_checksums": [{"str": "string"}],
+        }
+
+        # Post files to one project and check that creation succeeded
+        file_data = {
+            "userId": user_data["userId"],
+            "projectId": project_id,
+            "files": [
+                {**nameless_file, "name": "file_1.c4gh"},
+                {**nameless_file, "name": "file_2.c4gh"},
+            ],
+        }
+        file_ids = await post_project_files(client_logged_in, file_data)
+        LOG.debug(f"Created files: {file_ids}")
+        assert len(file_ids) == len(file_data["files"])
+
+        # Post files to another project
+        project_id = user_data["projects"][1]["projectId"]
+
+        file_data = {
+            "userId": user_data["userId"],
+            "projectId": project_id,
+            "files": [
+                {**nameless_file, "name": "file_3.c4gh"},
+                {**nameless_file, "name": "file_4.c4gh"},
+            ],
+        }
+        file_ids = await post_project_files(client_logged_in, file_data)
+        LOG.debug(f"Created files: {file_ids}")
+        assert len(file_ids) == len(file_data["files"])
+
+        # Get files from all projects
+        files: list[dict[str, any]] = []
+
+        for project in user_data["projects"]:
+            project_files = await get_project_files(client_logged_in, project["projectId"])
+            for file in project_files:
+                files.append(file)
+        assert len(files) == 4
+
+        # Check that files have correct names and projects associated
+        for index, file in enumerate(files):
+            assert file["name"] == f"file_{index + 1}.c4gh"
+            assert file["project"] == user_data["projects"][int(index / 2)]["projectId"]
 
 
 class TestFileSubmissions:

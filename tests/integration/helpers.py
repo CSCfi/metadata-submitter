@@ -666,6 +666,19 @@ async def post_project_files(sess, file_data):
         return ans["fileIds"]
 
 
+async def get_project_files(sess, project_id):
+    """Get files within session.
+
+    :param sess: HTTP session in which request call is made
+    :return: list of files
+    """
+    params = {"projectId": project_id}
+    async with sess.get(files_url, params=params) as resp:
+        ans = await resp.json()
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}: {ans}"
+        return ans
+
+
 async def find_project_file(sess, projectId, fileId):
     """Check if file with the given id is in project files.
 
