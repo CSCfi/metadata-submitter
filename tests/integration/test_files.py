@@ -5,6 +5,7 @@ import logging
 from tests.integration.helpers import (
     add_submission_files,
     find_project_file,
+    generate_mock_file,
     get_project_files,
     get_submission,
     get_user_data,
@@ -35,15 +36,7 @@ class TestFiles:
         file_data = {
             "userId": user_data["userId"],
             "projectId": projectId,
-            "files": [
-                {
-                    "path": "s3:/bucket/files/mock",
-                    "name": "mock_file.c4gh",
-                    "bytes": 100,
-                    "encrypted_checksums": [{"str": "string"}],
-                    "unencrypted_checksums": [{"str": "string"}],
-                }
-            ],
+            "files": [generate_mock_file("mock_file")],
         }
 
         file_ids = await post_project_files(client_logged_in, file_data)
@@ -63,21 +56,11 @@ class TestFiles:
         user_data = await get_user_data(client_logged_in)
         project_id = user_data["projects"][0]["projectId"]
 
-        nameless_file = {
-            "path": "s3:/bucket/files/mock",
-            "bytes": 100,
-            "encrypted_checksums": [{"str": "string"}],
-            "unencrypted_checksums": [{"str": "string"}],
-        }
-
         # Post files to one project and check that creation succeeded
         file_data = {
             "userId": user_data["userId"],
             "projectId": project_id,
-            "files": [
-                {**nameless_file, "name": "file_1.c4gh"},
-                {**nameless_file, "name": "file_2.c4gh"},
-            ],
+            "files": [generate_mock_file("file_1"), generate_mock_file("file_2")],
         }
         file_ids = await post_project_files(client_logged_in, file_data)
         LOG.debug(f"Created files: {file_ids}")
@@ -89,10 +72,7 @@ class TestFiles:
         file_data = {
             "userId": user_data["userId"],
             "projectId": project_id,
-            "files": [
-                {**nameless_file, "name": "file_3.c4gh"},
-                {**nameless_file, "name": "file_4.c4gh"},
-            ],
+            "files": [generate_mock_file("file_3"), generate_mock_file("file_4")],
         }
         file_ids = await post_project_files(client_logged_in, file_data)
         LOG.debug(f"Created files: {file_ids}")
@@ -141,15 +121,7 @@ class TestFileSubmissions:
         file_data = {
             "userId": user_data["userId"],
             "projectId": project_id,
-            "files": [
-                {
-                    "path": "s3:/bucket/mock_files",
-                    "name": "test_update_submission_file.c4gh",
-                    "bytes": 100,
-                    "encrypted_checksums": [{"str": "string"}],
-                    "unencrypted_checksums": [{"str": "string"}],
-                }
-            ],
+            "files": [generate_mock_file("test_update_submission_file")],
         }
         file_ids = await post_project_files(client_logged_in, file_data)
         assert len(file_ids) == 1
@@ -199,22 +171,7 @@ class TestFileSubmissions:
         file_data = {
             "userId": user_data["userId"],
             "projectId": project_id,
-            "files": [
-                {
-                    "path": "s3:/bucket/mock",
-                    "name": "test_remove_file_from_submission.c4gh",
-                    "bytes": 100,
-                    "encrypted_checksums": [{"str": "string"}],
-                    "unencrypted_checksums": [{"str": "string"}],
-                },
-                {
-                    "path": "s3:/bucket/mock",
-                    "name": "test_remove_file_from_submission2.c4gh",
-                    "bytes": 100,
-                    "encrypted_checksums": [{"str": "string"}],
-                    "unencrypted_checksums": [{"str": "string"}],
-                },
-            ],
+            "files": [generate_mock_file("test_remove_file_1"), generate_mock_file("test_remove_file_2")],
         }
         file_ids = await post_project_files(client_logged_in, file_data)
         assert len(file_ids) == 2
