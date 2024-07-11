@@ -9,6 +9,7 @@ from aiohttp import web
 from pymongo.errors import ConnectionFailure, OperationFailure
 
 from ...helpers.logger import LOG
+from ...helpers.validator import JSONValidator
 from .base import BaseOperator
 
 
@@ -18,7 +19,7 @@ class File:
 
     name: str
     path: str
-    project: str
+    projectId: str
 
     # specific to each file version
     bytes: int
@@ -29,68 +30,22 @@ class File:
 class FileOperator(BaseOperator):
     """FileOperator class for handling database operations of files."""
 
-    @staticmethod
-    def _from_version_template(
-        file: File, version: int
-    ) -> dict[str, list[dict[str, str]] | dict[str, str] | int | bool]:
-        """Create a file version.
+    def _get_file_version_date(self) -> int:
+        """Get current time."""
+        return int(datetime.now().timestamp())
 
-        :param file: File to be used for the new file version
-        """
-        _now = int(datetime.now().timestamp())
-        return {
-            "date": _now,
-            "version": version,
-            "bytes": file.bytes,
-            "submissions": [],
-            "published": False,
-            "encrypted_checksums": file.encrypted_checksums,
-            "unencrypted_checksums": file.unencrypted_checksums,
-        }
+    async def _get_file_id_and_version(self, path: str, project_id: str) -> dict[str, str | int]:
+        """Get an accession id and file version for a file.
 
-    async def _create_file(self, file: File) -> str:
-        """Create new object file to database.
+        Checks if file already exists. Generates data if file not found in db.
 
-        If a file with the same path already exists, add a new file version instead.
-
-        :raises: HTTPBadRequest if file creation in the db was not successful
+        :param path: file path
+        :param project_id: project id of file
         :raises: HTTPInternalServerError if db operation failed because of connection
         or other db issue
-        :param file: file data as in the `file.json` schema
-        :returns: Tuple of File id and file version
+        :returns: dict with file accession id and file version
         """
-        try:
-            file_id = self._generate_accession_id()
-            file_data = {
-                "accessionId": file_id,
-                "name": file.name,
-                "path": file.path,
-                "project": file.project,
-                "flagDeleted": False,
-                "versions": [self._from_version_template(file, 1)],
-            }
-
-            insert_success = await self.db_service.create("file", file_data)
-            if not insert_success:
-                reason = "Inserting file to database failed for some reason."
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
-            return file_id
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while inserting file to DB: {error}"
-            LOG.exception(reason)
-            raise web.HTTPInternalServerError(reason=reason) from error
-
-    async def create_file_or_version(self, file: File) -> tuple[str, int]:
-        """Create new object file to database.
-
-        If a file with the same path already exists, add a new file version instead.
-
-        :param file: file data as in the `file.json` schema
-        :raises: HTTPInternalServerError if db operation failed because of connection
-        or other db issue
-        :returns: Tuple of file accession id and file version
-        """
+        # Check if file already exists
         _projection = {
             "_id": 0,
             "accessionId": 1,
@@ -99,32 +54,110 @@ class FileOperator(BaseOperator):
         }
         try:
             file_in_db = await self.db_service.read_by_key_value(
-                "file", {"path": file.path, "projectId": file.project}, _projection
+                "file", {"path": path, "projectId": project_id}, _projection
             )
             if file_in_db:
                 accession_id = file_in_db["accessionId"]
                 file_in_db = file_in_db["currentVersion"]
-
-                # pass latest versions number
-                _current_version = file_in_db["version"]
-                file_version = _current_version + 1
-                version_data = self._from_version_template(file, file_version)
-                await self.db_service.append(
-                    "file",
-                    accession_id,
-                    # update flagDeleted to false if a new version is added.
-                    {"$set": {"flagDeleted": False}, "$addToSet": {"versions": version_data}},
-                    upsert=True,
-                )
-                return accession_id, file_version
-
-            accession_id = await self._create_file(file)
-            LOG.info("Inserting file with ID: %r to database succeeded.", accession_id)
-            return accession_id, 1
+                version = file_in_db["version"] + 1
+            else:
+                accession_id = self._generate_accession_id()
+                version = 1
+            return {"accessionId": accession_id, "version": version}
         except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while inserting file: {error}"
+            reason = f"Error happened while reading file info: {error}"
             LOG.exception(reason)
             raise web.HTTPInternalServerError(reason=reason) from error
+
+    async def form_validated_file_object(self, file: File) -> dict[str, Any]:
+        """Formulate a file object from File fit for inserting to db.
+
+        Checks if file with the same path already exists.
+
+        :param file: File with all class properties
+        :returns: validated file object according to file.json schema
+        """
+        id_and_version = await self._get_file_id_and_version(file.path, file.projectId)
+        LOG.info(id_and_version)
+
+        file_object = {
+            "accessionId": id_and_version["accessionId"],
+            "name": file.name,
+            "path": file.path,
+            "projectId": file.projectId,
+            "versions": [
+                {
+                    "date": self._get_file_version_date(),
+                    "version": id_and_version["version"],
+                    "bytes": file.bytes,
+                    "submissions": [],
+                    "published": False,
+                    "encrypted_checksums": file.encrypted_checksums,
+                    "unencrypted_checksums": file.unencrypted_checksums,
+                }
+            ],
+            "flagDeleted": False,
+        }
+
+        JSONValidator(file_object, "file").validate
+        return file_object
+
+    async def _create_file(self, file: dict[str, Any]) -> tuple[str, int]:
+        """Add a new file object to database.
+
+        :param file: file data as in the `file.json` schema
+        :raises: HTTPBadRequest if file creation in the db was not successful
+        :raises: HTTPInternalServerError if db operation failed because of connection
+        or other db issue
+        :returns: tuple of file accession id and file version
+        """
+        try:
+            insert_success = await self.db_service.create("file", file)
+            if not insert_success:
+                reason = "Inserting file to database failed for some reason."
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+            return file["accessionId"], file["versions"][0]["version"]
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while inserting a new file to DB: {error}"
+            LOG.exception(reason)
+            raise web.HTTPInternalServerError(reason=reason) from error
+
+    async def create_file_or_version(self, file: dict[str, Any]) -> tuple[str, int]:
+        """Add a new file or file version to database.
+
+        :param file: file data as in the `file.json` schema
+        :raises: HTTPInternalServerError if db operation failed because of connection
+        or other db issue
+        :returns: tuple of file accession id and file version
+        """
+        created_file: tuple[str, int]
+        file_version = file["versions"][0]["version"]
+
+        if file_version == 1:
+            # Create a new file
+            created_file = await self._create_file(file)
+        elif file_version > 1:
+            # Create a new file version
+            try:
+                await self.db_service.append(
+                    "file",
+                    file["accessionId"],
+                    {"versions": file["versions"]},
+                    upsert=True,
+                )
+                created_file = file["accessionId"], file_version
+            except (ConnectionFailure, OperationFailure) as error:
+                reason = f"Error happened while inserting a new file version: {error}"
+                LOG.exception(reason)
+                raise web.HTTPInternalServerError(reason=reason) from error
+        else:
+            reason = "Cannot create file: invalid file version."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        LOG.info("Inserting file with ID %r and version %d to database succeeded.", created_file[0], created_file[1])
+        return created_file
 
     async def read_file(self, accession_id: str, version: Optional[int] = None) -> dict[str, Any]:
         """Read file object from database.
@@ -145,7 +178,7 @@ class FileOperator(BaseOperator):
                     "_id": 0,
                     "name": 1,
                     "path": 1,
-                    "project": 1,
+                    "projectId": 1,
                     "bytes": "$versions.bytes",
                     "encrypted_checksums": "$versions.encrypted_checksums",
                     "unencrypted_checksums": "$versions.unencrypted_checksums",
@@ -184,7 +217,7 @@ class FileOperator(BaseOperator):
         :returns: List of files
         """
         aggregate_query = [
-            {"$match": {"project": project_id}},
+            {"$match": {"projectId": project_id}},
             {"$sort": {"versions.version": -1}},
             {"$unwind": "$versions"},
             {
@@ -193,10 +226,11 @@ class FileOperator(BaseOperator):
                     "accessionId": 1,
                     "name": 1,
                     "path": 1,
-                    "project": 1,
-                    "bytes": "$version.bytes",
-                    "encrypted_checksums": "$version.encrypted_checksums",
-                    "unencrypted_checksums": "$version.unencrypted_checksums",
+                    "projectId": 1,
+                    "version": "$versions.version",
+                    "bytes": "$versions.bytes",
+                    "encrypted_checksums": "$versions.encrypted_checksums",
+                    "unencrypted_checksums": "$versions.unencrypted_checksums",
                 }
             },
         ]

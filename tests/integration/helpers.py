@@ -663,7 +663,7 @@ async def post_project_files(sess, file_data):
     ) as resp:
         ans = await resp.json()
         assert resp.status == 201, f"HTTP Status code error, got {resp.status}: {ans}"
-        return ans["fileIds"]
+        return ans
 
 
 async def get_project_files(sess, project_id):
@@ -690,7 +690,6 @@ async def find_project_file(sess, projectId, fileId):
     params = {"projectId": projectId}
 
     async with sess.get(files_url, params=params) as resp:
-        LOG.debug("Get project files")
         ans = await resp.json()
         assert resp.status == 200, f"HTTP Status code error {resp.status} {ans}"
 
@@ -768,6 +767,6 @@ def generate_mock_file(name: str):
         "name": f"{name}.c4gh",
         "path": f"s3:/bucket/mock_files/{name}.c4gh",
         "bytes": 100,
-        "encrypted_checksums": [{"str": "string"}],
-        "unencrypted_checksums": [{"str": "string"}],
+        "encrypted_checksums": [{"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b4812345"}],
+        "unencrypted_checksums": [{"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b4812345"}],
     }

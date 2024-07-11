@@ -109,10 +109,18 @@
                 "title": "Details about a file version",
                 "properties": {
                     "date": {
-                        "title": "File update Date",
+                        "title": "File update date",
                         "description": "Date when the file was updated.",
-                        "type": "string",
-                        "format": "date-time"
+                        "oneOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "integer",
+                                "format": "utc-millisec"
+                            }
+                        ]
                     },
                     "version": {
                         "type": "integer",
