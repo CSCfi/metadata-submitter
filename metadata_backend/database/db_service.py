@@ -315,13 +315,13 @@ class DBService:
 
     @auto_reconnect
     async def append(
-        self, collection: str, accession_id: str, data_to_be_addded: str | dict[str, Any], upsert: bool = False
+        self, collection: str, accession_id: str, data_to_be_added: str | dict[str, Any], upsert: bool = False
     ) -> dict[str, Any]:
         """Append data by to object with accessionId in collection.
 
         :param collection: Collection where document should be searched from
         :param accession_id: ID of the object/submission/user to be appended to
-        :param data_to_be_addded: str or JSON representing the data that should be
+        :param data_to_be_added: str or JSON representing the data that should be
         updated to removed.
         :param upsert: If the document does not exist add it
         :returns: JSON after remove if operation was successful
@@ -331,14 +331,14 @@ class DBService:
         # push vs addtoSet
         # push allows us to specify the postion but it does not check the items are unique
         # addToSet cannot easily specify position
-        append_op = {"$push": data_to_be_addded}
+        append_op = {"$push": data_to_be_added}
         result: dict[str, Any] = await self.database[collection].find_one_and_update(
             find_by_id, append_op, projection={"_id": False}, upsert=upsert, return_document=ReturnDocument.AFTER
         )
         LOG.debug(
             "DB doc in collection: %r with data: %r appeneded for accession ID: %r.",
             collection,
-            data_to_be_addded,
+            data_to_be_added,
             accession_id,
         )
         return result

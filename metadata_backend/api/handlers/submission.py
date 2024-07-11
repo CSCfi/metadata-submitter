@@ -291,7 +291,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         """Put or replace metadata to a submission.
 
         :param req: PUT request with metadata schema in the body
-        :returns: HTTP No Content response
+        :returns: updated submission object
         """
         submission_id = req.match_info["submissionId"]
         db_client = req.app["db_client"]
@@ -312,41 +312,59 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         elif req.path.endswith("rems"):
             schema = "rems"
             await self.check_rems_ok({"rems": data})
-        elif req.path.endswith("files"):
-            schema = "files"
         else:
             raise web.HTTPNotFound(reason=f"'{req.path}' does not exist")
 
-        if schema == "files":
-            file_operator = FileOperator(db_client)
-            # we expect to get a list of dict for files
-            # that matches the json schema when added to submission object
-            submission[schema] = data
-            JSONValidator(submission, "submission").validate
-            for file in data:
-                if "accessionId" not in file:
-                    reason = f"Updating {submission_id} failed. Files require an accessionId."
-                    LOG.error(reason)
-                    raise web.HTTPBadRequest(reason=reason)
-                _file_accessionId = data[file].pop("accessionId")
-                _file_update_op = {f"files.$.{k}": v for k, v in data[file].items()}
-                await file_operator.update_file_submission(_file_accessionId, submission_id, _file_update_op)
-        else:
-            op = "add"
-            if schema in submission:
-                op = "replace"
-            patch = [
-                {"op": op, "path": f"/{schema}", "value": data},
-            ]
+        op = "add"
+        if schema in submission:
+            op = "replace"
+        patch = [
+            {"op": op, "path": f"/{schema}", "value": data},
+        ]
 
-            submission[schema] = data
-            JSONValidator(submission, "submission").validate
+        submission[schema] = data
+        JSONValidator(submission, "submission").validate
 
-            upd_submission = await operator.update_submission(submission_id, patch)
-
+        upd_submission = await operator.update_submission(submission_id, patch)
         body = ujson.dumps({"submissionId": upd_submission}, escape_forward_slashes=False)
+
         LOG.info("PUT %r in submission with ID: %r was successful.", schema, submission_id)
         return web.Response(body=body, status=200, content_type="application/json")
+
+    async def put_submission_files(self, req: Request) -> Response:
+        """Put files to a submission.
+
+        :param req: PUT request with metadata schema in the body
+        :returns: HTTP No Content response
+        """
+        submission_id = req.match_info["submissionId"]
+        db_client = req.app["db_client"]
+        operator = SubmissionOperator(db_client)
+
+        # Check submission exists and is not already published
+        await operator.check_submission_exists(submission_id)
+        await operator.check_submission_published(submission_id, req.method)
+        await self._handle_check_ownership(req, "submission", submission_id)
+
+        submission = await operator.read_submission(submission_id)
+        data: list[dict[str, Any]] = await req.json()
+
+        file_operator = FileOperator(db_client)
+        # we expect to get a list of dict for files
+        # that matches the json schema when added to submission object
+        submission["files"] = data
+        JSONValidator(submission, "submission").validate
+        for file in data:
+            if "accessionId" not in file:
+                reason = f"Updating {submission_id} failed. Files require an accessionId."
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+            _file_accessionId = file.pop("accessionId")
+            _file_update_op = {f"files.$.{k}": v for k, v in file.items()}
+            await file_operator.update_file_submission(_file_accessionId, submission_id, _file_update_op)
+
+        LOG.info("PUT files in submission with ID: %r was successful.", submission_id)
+        return web.HTTPNoContent()
 
     async def get_submission_files(self, req: Request) -> Response:
         """Get files from a submission with the version present in submission.
@@ -409,11 +427,10 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         raise web.HTTPBadRequest(reason=reason)
 
     async def delete_submission_files(self, req: Request) -> Response:
-        """Remove files from a submission.
-
-        Body needs to contain a list of accessionId for files.
+        """Remove a file from a submission.
 
         :param req: DELETE request
+        :raises HTTP Not Found if file not associated with submission
         :returns: HTTP No Content response
         """
         submission_id = req.match_info["submissionId"]
@@ -428,6 +445,13 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         await self._handle_check_ownership(req, "submission", submission_id)
 
         file_operator = FileOperator(db_client)
+
+        file_in_submission = await file_operator.check_submission_has_file(submission_id, file_accession_id)
+
+        if not file_in_submission:
+            reason = f"File with accession id {file_accession_id} not found in submission {submission_id}"
+            LOG.error(reason)
+            raise web.HTTPNotFound(reason=reason)
 
         await file_operator.remove_file_submission(file_accession_id, "accessionId", submission_id)
         LOG.info(
