@@ -756,3 +756,18 @@ async def remove_submission_file(sess, submission_id, file_id):
 
     async with sess.delete(url) as resp:
         assert resp.status == 204, f"HTTP Status code error {resp.status}"
+
+
+def generate_mock_file(name: str):
+    """Generate mock file object for file POST testing.
+
+    :param name: name for file
+    :returns: file object
+    """
+    return {
+        "name": f"{name}.c4gh",
+        "path": f"s3:/bucket/mock_files/{name}.c4gh",
+        "bytes": 100,
+        "encrypted_checksums": [{"str": "string"}],
+        "unencrypted_checksums": [{"str": "string"}],
+    }
