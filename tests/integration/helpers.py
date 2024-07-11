@@ -649,12 +649,12 @@ async def check_submissions_object_patch(sess, submission_id, schema, accession_
         return schema
 
 
-async def post_project_file(sess, file_data):
-    """Post one file within session, returns created file id.
+async def post_project_files(sess, file_data):
+    """Post files within session, returns created file ids.
 
     :param sess: HTTP session in which request call is made
     :param file_data: new file data containing userId, projectId, file info
-    :return: file id of created file
+    :return: list of file ids of created files
     """
 
     async with sess.post(
@@ -664,6 +664,19 @@ async def post_project_file(sess, file_data):
         ans = await resp.json()
         assert resp.status == 201, f"HTTP Status code error, got {resp.status}: {ans}"
         return ans["fileIds"]
+
+
+async def get_project_files(sess, project_id):
+    """Get files within session.
+
+    :param sess: HTTP session in which request call is made
+    :return: list of files
+    """
+    params = {"projectId": project_id}
+    async with sess.get(files_url, params=params) as resp:
+        ans = await resp.json()
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}: {ans}"
+        return ans
 
 
 async def find_project_file(sess, projectId, fileId):
@@ -686,3 +699,60 @@ async def find_project_file(sess, projectId, fileId):
                 return True
 
         return False
+
+
+async def add_submission_files(sess, file_data, submission_id):
+    """Add files to an existing submission.
+
+    :param sess: HTTP session in which request call is made
+    :param file_data: details of files to add to a submission
+    :param submission_id: id of submission to add files to
+    """
+    url = f"{submissions_url}/{submission_id}/files"
+
+    async with sess.post(
+        url,
+        data=ujson.dumps(file_data),
+    ) as resp:
+        assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
+
+
+async def get_submission(sess, submission_id):
+    """Get submission with the given id.
+
+    :param sess: HTTP session in which request call is made
+    :param submission_id: id of submission to return
+    :returns: submission object
+    """
+    url = f"{submissions_url}/{submission_id}"
+
+    async with sess.get(url) as resp:
+        ans = await resp.json()
+        assert resp.status == 200, f"HTTP Status code error {resp.status}"
+        return ans
+
+
+async def update_submission_files(sess, submission_id, files_data):
+    """Update submission files.
+
+    :param sess: HTTP session in which request call is made
+    :param submission_id: id of submission to update files for
+    :param files_data: list of dict with accessionId
+    """
+    url = f"{submissions_url}/{submission_id}/files"
+
+    async with sess.put(url, data=ujson.dumps(files_data)) as resp:
+        assert resp.status == 204, f"HTTP Status code error {resp.status}"
+
+
+async def remove_submission_file(sess, submission_id, file_id):
+    """Remove file from an existing submission.
+
+    :param sess: HTTP session in which request call is made
+    :param submission_id: id of submission the file of which to remove
+    :param file_id: id of file to remove
+    """
+    url = f"{submissions_url}/{submission_id}/files/{file_id}"
+
+    async with sess.delete(url) as resp:
+        assert resp.status == 204, f"HTTP Status code error {resp.status}"
