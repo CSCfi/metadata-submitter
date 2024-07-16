@@ -148,6 +148,7 @@ class HandlersTestCase(AioHTTPTestCase):
         }
 
         RESTAPIHandler._handle_check_ownership = make_mocked_coro(True)
+        RESTAPIHandler._get_param = make_mocked_coro("project123")
 
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
@@ -1092,7 +1093,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
 
 
 class PublishSubmissionHandlerTestCase(HandlersTestCase):
-    """Submission API endpoint class test cases."""
+    """Publishing API endpoint class test cases."""
 
     async def setUpAsync(self):
         """Configure default values for testing and other modules.
@@ -1150,3 +1151,113 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             json_resp = await response.json()
             self.assertEqual(response.status, 200)
             self.assertEqual(json_resp["submissionId"], self.submission_id)
+
+
+class FilesHandlerTestCase(HandlersTestCase):
+    """Files API endpoint class test cases."""
+
+    async def setUpAsync(self):
+        """Configure default values for testing and other modules.
+
+        This patches used modules and sets default return values for their
+        methods.
+        """
+        await super().setUpAsync()
+
+        class_fileoperator = "metadata_backend.api.handlers.files.FileOperator"
+        self.patch_fileoperator = patch(class_fileoperator, **self.fileoperator_config, spec=True)
+        self.MockedFileOperator = self.patch_fileoperator.start()
+
+        class_useroperator = "metadata_backend.api.handlers.files.UserOperator"
+        self.patch_useroperator = patch(class_useroperator, **self.useroperator_config, spec=True)
+        self.MockedUserOperator = self.patch_useroperator.start()
+
+        self.mock_file_data = {
+            "userId": self.user_id,
+            "projectId": self.project_id,
+            "files": [
+                {
+                    "path": "s3:/bucket/files/mock",
+                    "name": "mock_file.c4gh",
+                    "bytes": 100,
+                    "encrypted_checksums": [{"str": "string"}],
+                    "unencrypted_checksums": [{"str": "string"}],
+                }
+            ],
+        }
+
+    async def tearDownAsync(self):
+        """Cleanup mocked stuff."""
+        await super().tearDownAsync()
+        self.patch_fileoperator.stop()
+        self.patch_useroperator.stop()
+
+    async def test_get_project_files(self):
+        """Test fetching files belonging to specific project."""
+        with (
+            patch(
+                "metadata_backend.api.operators.project.ProjectOperator.check_project_exists",
+                return_value=True,
+            ),
+            self.p_get_sess_restapi,
+        ):
+            # User is not part of project
+            self.MockedUserOperator().read_user.return_value = self.test_user
+            self.MockedUserOperator().check_user_has_project.return_value = False
+            response = await self.client.get(f"{API_PREFIX}/files")
+            self.assertEqual(response.status, 401)
+
+            # Successful fetching of project-wise file list
+            self.MockedUserOperator().check_user_has_project.return_value = True
+            self.MockedFileOperator().read_project_files.return_value = self.test_submission["files"]
+            response = await self.client.get(f"{API_PREFIX}/files")
+            self.assertEqual(response.status, 200)
+            json_resp = await response.json()
+            self.assertEqual(json_resp[0]["accessionId"], "file1")
+
+    async def test_post_project_files_works(self):
+        """Test file post request handler."""
+        with (
+            patch(
+                "metadata_backend.api.operators.project.ProjectOperator.check_project_exists",
+                return_value=True,
+            ),
+            self.p_get_sess_restapi,
+        ):
+            self.MockedUserOperator().check_user_has_project.return_value = True
+            self.MockedFileOperator().create_file_or_version.return_value = "accession_id1", 1
+            response = await self.client.post(f"{API_PREFIX}/files", json=self.mock_file_data)
+            self.assertEqual(response.status, 201)
+            json_resp = await response.json()
+            self.assertEqual(json_resp, [["accession_id1", 1]])
+
+    async def test_post_project_files_fails(self):
+        """Test file post request handler for error instances."""
+        with (
+            patch(
+                "metadata_backend.api.operators.project.ProjectOperator.check_project_exists",
+                return_value=True,
+            ),
+            self.p_get_sess_restapi,
+        ):
+            # Requesting user is not part of the project
+            self.MockedUserOperator().check_user_has_project.return_value = False
+            response = await self.client.post(f"{API_PREFIX}/files", json=self.mock_file_data)
+            self.assertEqual(response.status, 401)
+
+            # Faulty request data
+            self.MockedUserOperator().check_user_has_project.return_value = True
+            alt_data = self.mock_file_data
+            alt_data["files"] = "not a list"
+            response = await self.client.post(f"{API_PREFIX}/files", json=alt_data)
+            self.assertEqual(response.status, 400)
+            json_resp = await response.json()
+            self.assertEqual(json_resp["detail"], "Field 'files' must be a list")
+
+            # Lacking request data
+            alt_data = self.mock_file_data
+            alt_data["files"] = [{"name": "filename"}]
+            response = await self.client.post(f"{API_PREFIX}/files", json=alt_data)
+            self.assertEqual(response.status, 400)
+            json_resp = await response.json()
+            self.assertEqual(json_resp["detail"], "Request payload content did not include all necessary details.")
