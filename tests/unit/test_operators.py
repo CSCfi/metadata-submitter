@@ -109,14 +109,14 @@ class TestOperators(IsolatedAsyncioTestCase):
             name="test-file.png",
             path="Bucket-name/subfolder/test-file.png",
             bytes=3765457,
-            project=self.project_id,
+            projectId=self.project_id,
             encrypted_checksums=[
-                {"type": "sha256", "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d6"},
-                {"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b48"},
+                {"type": "sha256", "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d61234567"},
+                {"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b4812345"},
             ],
             unencrypted_checksums=[
-                {"type": "sha256", "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d6"},
-                {"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b48"},
+                {"type": "sha256", "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d61234567"},
+                {"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b4812345"},
             ],
         )
         self.user_id = "current"
@@ -1411,8 +1411,8 @@ class TestOperators(IsolatedAsyncioTestCase):
 
         operator.db_service.read_by_key_value = AsyncMock(return_value=None)
         operator.db_service.create = AsyncMock(return_value=True)
-
-        file_id, version = await operator.create_file_or_version(self.test_file)
+        file_object = await operator.form_validated_file_object(self.test_file)
+        file_id, version = await operator.create_file_or_version(file_object)
         self.assertEqual(file_id, self.file_id)
         self.assertEqual(version, 1)
 
@@ -1429,20 +1429,20 @@ class TestOperators(IsolatedAsyncioTestCase):
                 "bytes": 20,
                 "submissions": ["s1"],
                 "encrypted_checksums": [
-                    {"type": "sha256", "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d6"},
-                    {"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b48"},
+                    {"type": "sha256", "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d61234567"},
+                    {"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b4812345"},
                 ],
                 "unencrypted_checksums": [
-                    {"type": "sha256", "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d6"},
-                    {"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b48"},
+                    {"type": "sha256", "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d61234567"},
+                    {"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b4812345"},
                 ],
             },
         }
         operator.db_service.read_by_key_value = AsyncMock(return_value=file_in_db)
 
         operator.db_service.append = AsyncMock(return_value=None)
-
-        file_id, version = await operator.create_file_or_version(self.test_file)
+        file_object = await operator.form_validated_file_object(self.test_file)
+        file_id, version = await operator.create_file_or_version(file_object)
         self.assertEqual(file_id, self.file_id)
         self.assertEqual(version, 3)
 
