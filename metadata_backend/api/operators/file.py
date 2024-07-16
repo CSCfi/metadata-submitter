@@ -58,8 +58,7 @@ class FileOperator(BaseOperator):
             )
             if file_in_db:
                 accession_id = file_in_db["accessionId"]
-                file_in_db = file_in_db["currentVersion"]
-                version = file_in_db["version"] + 1
+                version = file_in_db["currentVersion"]["version"] + 1
             else:
                 accession_id = self._generate_accession_id()
                 version = 1
@@ -98,7 +97,6 @@ class FileOperator(BaseOperator):
             ],
             "flagDeleted": False,
         }
-
         JSONValidator(file_object, "file").validate
         return file_object
 
