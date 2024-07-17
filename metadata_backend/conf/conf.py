@@ -41,6 +41,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from ..helpers.logger import LOG
 from ..helpers.parser import str_to_bool
 from ..helpers.workflow import Workflow
+from .taxonomy_files.taxonomy_conf import TAXONOMY_NAME_FILE
 
 # 1) Set up database client and custom timeouts for spesific parameters.
 # Set custom timeouts and other parameters here so they can be imported to
@@ -229,3 +230,13 @@ rems_config = {
 
 DATACITE_SCHEMAS = {"study", "dataset", "bpdataset"}
 METAX_SCHEMAS = {"study", "dataset"}
+
+TAXONOMY_NAME_DATA: dict[str, dict[Any, Any]] = {}
+# Load taxonomy name data into a single dict
+if not TAXONOMY_NAME_FILE.is_file():
+    raise RuntimeError(
+        "Missing taxonomy file `names.json`. Generate with `bash scripts/taxonomy/generate_name_taxonomy.sh`"
+    )
+
+with open(TAXONOMY_NAME_FILE, "r", encoding="utf-8") as file:
+    TAXONOMY_NAME_DATA = ujson.load(file)
