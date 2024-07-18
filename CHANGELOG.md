@@ -9,6 +9,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- Validate files against file schema #823
 - List of Funding references from crossref API and enum values for Funder Names in Submission schema
 - Added a POST endpoint for receiving file information #814
 - Added additional 'announce' endpoint for BP workflow and to openapi document #813
@@ -24,6 +25,10 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 ### Removed
 
 - RabbitMQ message broker functionality
+
+### Fixed
+
+- Fixed bugs in file version creation
 
 ## [2024.01.0] - 2024-01-15
 
