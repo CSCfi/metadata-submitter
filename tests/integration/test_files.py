@@ -5,6 +5,7 @@ import logging
 from tests.integration.helpers import (
     add_submission_files,
     find_project_file,
+    generate_mock_file,
     get_project_files,
     get_submission,
     get_user_data,
@@ -35,23 +36,15 @@ class TestFiles:
         file_data = {
             "userId": user_data["userId"],
             "projectId": projectId,
-            "files": [
-                {
-                    "path": "s3:/bucket/files/mock",
-                    "name": "mock_file.c4gh",
-                    "bytes": 100,
-                    "encrypted_checksums": [{"str": "string"}],
-                    "unencrypted_checksums": [{"str": "string"}],
-                }
-            ],
+            "files": [generate_mock_file("mock_file")],
         }
 
-        file_ids = await post_project_files(client_logged_in, file_data)
-        LOG.debug(f"Created files: {file_ids}")
-        assert len(file_ids) == 1
+        created_files = await post_project_files(client_logged_in, file_data)
+        LOG.debug(f"Created files: {created_files}")
+        assert len(created_files) == 1
 
         # Confirm file exists within project
-        file_exists = await find_project_file(client_logged_in, projectId, file_ids[0])
+        file_exists = await find_project_file(client_logged_in, projectId, created_files[0][0])
         assert file_exists is True
 
     async def test_project_files(self, client_logged_in):
@@ -63,25 +56,15 @@ class TestFiles:
         user_data = await get_user_data(client_logged_in)
         project_id = user_data["projects"][0]["projectId"]
 
-        nameless_file = {
-            "path": "s3:/bucket/files/mock",
-            "bytes": 100,
-            "encrypted_checksums": [{"str": "string"}],
-            "unencrypted_checksums": [{"str": "string"}],
-        }
-
         # Post files to one project and check that creation succeeded
         file_data = {
             "userId": user_data["userId"],
             "projectId": project_id,
-            "files": [
-                {**nameless_file, "name": "file_1.c4gh"},
-                {**nameless_file, "name": "file_2.c4gh"},
-            ],
+            "files": [generate_mock_file("file_1"), generate_mock_file("file_2")],
         }
-        file_ids = await post_project_files(client_logged_in, file_data)
-        LOG.debug(f"Created files: {file_ids}")
-        assert len(file_ids) == len(file_data["files"])
+        created_files = await post_project_files(client_logged_in, file_data)
+        LOG.debug(f"Created files: {created_files}")
+        assert len(created_files) == len(file_data["files"])
 
         # Post files to another project
         project_id = user_data["projects"][1]["projectId"]
@@ -89,14 +72,11 @@ class TestFiles:
         file_data = {
             "userId": user_data["userId"],
             "projectId": project_id,
-            "files": [
-                {**nameless_file, "name": "file_3.c4gh"},
-                {**nameless_file, "name": "file_4.c4gh"},
-            ],
+            "files": [generate_mock_file("file_3"), generate_mock_file("file_4")],
         }
-        file_ids = await post_project_files(client_logged_in, file_data)
-        LOG.debug(f"Created files: {file_ids}")
-        assert len(file_ids) == len(file_data["files"])
+        created_files = await post_project_files(client_logged_in, file_data)
+        LOG.debug(f"Created files: {created_files}")
+        assert len(created_files) == len(file_data["files"])
 
         # Get files from all projects
         files: list[dict[str, any]] = []
@@ -110,7 +90,7 @@ class TestFiles:
         # Check that files have correct names and projects associated
         for index, file in enumerate(files):
             assert file["name"] == f"file_{index + 1}.c4gh"
-            assert file["project"] == user_data["projects"][int(index / 2)]["projectId"]
+            assert file["projectId"] == user_data["projects"][int(index / 2)]["projectId"]
 
 
 class TestFileSubmissions:
@@ -141,25 +121,18 @@ class TestFileSubmissions:
         file_data = {
             "userId": user_data["userId"],
             "projectId": project_id,
-            "files": [
-                {
-                    "path": "s3:/bucket/mock_files",
-                    "name": "test_update_submission_file.c4gh",
-                    "bytes": 100,
-                    "encrypted_checksums": [{"str": "string"}],
-                    "unencrypted_checksums": [{"str": "string"}],
-                }
-            ],
+            "files": [generate_mock_file("test_update_submission_file")],
         }
-        file_ids = await post_project_files(client_logged_in, file_data)
-        assert len(file_ids) == 1
+        created_files = await post_project_files(client_logged_in, file_data)
+        assert len(created_files) == 1
 
         # Confirm file exists within project
-        file_exists = await find_project_file(client_logged_in, project_id, file_ids[0])
+        file_id = created_files[0][0]
+        file_exists = await find_project_file(client_logged_in, project_id, file_id)
         assert file_exists is True
 
         # Add file to a submission and verify
-        file_info = [{"accessionId": file_ids[0], "version": 1}]
+        file_info = [{"accessionId": file_id, "version": created_files[0][1]}]
         await add_submission_files(client_logged_in, file_info, submission_id)
         submission_info = await get_submission(client_logged_in, submission_id)
         assert submission_info["files"][0]["accessionId"] == file_info[0]["accessionId"]
@@ -199,28 +172,16 @@ class TestFileSubmissions:
         file_data = {
             "userId": user_data["userId"],
             "projectId": project_id,
-            "files": [
-                {
-                    "path": "s3:/bucket/mock",
-                    "name": "test_remove_file_from_submission.c4gh",
-                    "bytes": 100,
-                    "encrypted_checksums": [{"str": "string"}],
-                    "unencrypted_checksums": [{"str": "string"}],
-                },
-                {
-                    "path": "s3:/bucket/mock",
-                    "name": "test_remove_file_from_submission2.c4gh",
-                    "bytes": 100,
-                    "encrypted_checksums": [{"str": "string"}],
-                    "unencrypted_checksums": [{"str": "string"}],
-                },
-            ],
+            "files": [generate_mock_file("test_remove_file_1"), generate_mock_file("test_remove_file_2")],
         }
-        file_ids = await post_project_files(client_logged_in, file_data)
-        assert len(file_ids) == 2
+        created_files = await post_project_files(client_logged_in, file_data)
+        assert len(created_files) == 2
 
         # Add files to submission
-        file_info = [{"accessionId": file_ids[0], "version": 1}, {"accessionId": file_ids[1], "version": 1}]
+        file_info = [
+            {"accessionId": created_files[0][0], "version": created_files[0][1]},
+            {"accessionId": created_files[1][0], "version": created_files[1][1]},
+        ]
         await add_submission_files(client_logged_in, file_info, submission_id)
 
         # Verify that files were added
@@ -228,9 +189,36 @@ class TestFileSubmissions:
         assert len(submission_info["files"]) == 2
 
         # Remove a file from submission
-        await remove_submission_file(client_logged_in, submission_id, file_ids[0])
+        await remove_submission_file(client_logged_in, submission_id, created_files[0][0])
 
         # Verify that file was removed
         submission_info = await get_submission(client_logged_in, submission_id)
         assert len(submission_info["files"]) == 1
-        assert submission_info["files"][0]["accessionId"] == file_ids[1]
+        assert submission_info["files"][0]["accessionId"] == created_files[1][0]
+
+    async def test_creating_file_version(self, client_logged_in):
+        """Test creating a file version.
+
+        :param client_logged_in: HTTP client in which request call is made
+        """
+        # Get user data: userId and projects
+        user_data = await get_user_data(client_logged_in)
+        projectId = user_data["projects"][0]["projectId"]
+
+        # Post file and check its version number
+        file_data = {
+            "userId": user_data["userId"],
+            "projectId": projectId,
+            "files": [generate_mock_file("mock_file")],
+        }
+        [(id, version)] = await post_project_files(client_logged_in, file_data)
+        assert version == 1
+
+        # Post same file and check that accession id is same, version is incremented
+        [(id2, version2)] = await post_project_files(client_logged_in, file_data)
+        assert version2 == 2
+        assert id == id2
+
+        # Get files
+        project_files = await get_project_files(client_logged_in, projectId)
+        assert len(project_files) == 2
