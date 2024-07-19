@@ -68,8 +68,9 @@ class FilesAPIHandler(RESTAPIHandler):
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        file_ids = []
+        # Form file objects and validate against schema before creation
         file_op = FileOperator(db_client)
+        validated_file_objects = []
 
         try:
             for file in data["files"]:
@@ -81,12 +82,18 @@ class FilesAPIHandler(RESTAPIHandler):
                     file["encrypted_checksums"],
                     file["unencrypted_checksums"],
                 )
-                file_id = await file_op._create_file(new_file)
-                file_ids.append(file_id)
-
+                file_object = await file_op.form_validated_file_object(new_file)
+                validated_file_objects.append(file_object)
         except KeyError as file_key_error:
             reason = "Request payload content did not include all necessary details."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason) from file_key_error
 
-        return web.Response(body=ujson.dumps({"fileIds": file_ids}), status=201, content_type="application/json")
+        # Create files
+        created_files = []
+
+        for file in validated_file_objects:
+            id_and_v = await file_op.create_file_or_version(file)
+            created_files.append(id_and_v)
+
+        return web.Response(body=ujson.dumps(created_files), status=201, content_type="application/json")
