@@ -18,7 +18,7 @@
             "examples": [
                 {
                     "type": "sha256",
-                    "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d6"
+                    "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d61234567"
                 }
             ],
             "required": [
@@ -39,7 +39,7 @@
                     "description": "The checksum value in (case-insensitive) hex format",
                     "pattern": "^[a-fA-F0-9]{64}$",
                     "examples": [
-                        "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d6"
+                        "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d61234567"
                     ]
                 }
             }
@@ -51,7 +51,7 @@
             "examples": [
                 {
                     "type": "md5",
-                    "value": "7Ac236b1a82dac89e7cf45d2b48"
+                    "value": "7Ac236b1a82dac89e7cf45d2b4812345"
                 }
             ],
             "required": [
@@ -72,7 +72,7 @@
                     "description": "The checksum value in (case-insensitive) hex format",
                     "pattern": "^[a-fA-F0-9]{32}$",
                     "examples": [
-                        "7Ac236b1a82dac89e7cf45d2b48"
+                        "7Ac236b1a82dac89e7cf45d2b4812345"
                     ]
                 }
             }
@@ -109,10 +109,18 @@
                 "title": "Details about a file version",
                 "properties": {
                     "date": {
-                        "title": "File update Date",
+                        "title": "File update date",
                         "description": "Date when the file was updated.",
-                        "type": "string",
-                        "format": "date-time"
+                        "oneOf": [
+                            {
+                                "type": "string",
+                                "format": "date-time"
+                            },
+                            {
+                                "type": "integer",
+                                "format": "utc-millisec"
+                            }
+                        ]
                     },
                     "version": {
                         "type": "integer",
@@ -145,11 +153,11 @@
                             [
                                 {
                                     "type": "sha256",
-                                    "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d6"
+                                    "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d61234567"
                                 },
                                 {
                                     "type": "md5",
-                                    "value": "7Ac236b1a82dac89e7cf45d2b48"
+                                    "value": "7Ac236b1a82dac89e7cf45d2b4812345"
                                 }
                             ]
                         ],
@@ -173,11 +181,11 @@
                             [
                                 {
                                     "type": "sha256",
-                                    "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d6"
+                                    "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d61234567"
                                 },
                                 {
                                     "type": "md5",
-                                    "value": "7Ac236b1a82dac89e7cf45d2b48"
+                                    "value": "7Ac236b1a82dac89e7cf45d2b4812345"
                                 }
                             ]
                         ],
