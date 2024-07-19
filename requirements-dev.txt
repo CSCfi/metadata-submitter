@@ -18,10 +18,6 @@ aiosignal==1.3.1
     #   aiohttp
 alabaster==0.7.16
     # via sphinx
-amqpstorm==2.10.7
-    # via
-    #   -r requirements-dev.in
-    #   -r requirements.txt
 astroid==3.2.3
     # via pylint
 attrs==23.2.0
@@ -191,10 +187,6 @@ packaging==24.1
     #   pytest
     #   sphinx
     #   tox
-pamqp==2.3.0
-    # via
-    #   -r requirements.txt
-    #   amqpstorm
 pathspec==0.12.1
     # via black
 pbr==6.0.0
