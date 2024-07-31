@@ -110,7 +110,11 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
         files, _ = await multipart_content(req, extract_one=True, expect_xml=True)
         xml_content, schema_type, _ = files[0]
         validator = await self._perform_validation(schema_type, xml_content)
-        return web.Response(body=validator.resp_body, content_type="application/json")
+        return web.Response(
+            status=ujson.loads(validator.resp_body)["status"],
+            body=validator.resp_body,
+            content_type="application/json",
+        )
 
     async def _perform_validation(self, schema_type: str, xml_content: str) -> XMLValidator:
         """Validate an xml.

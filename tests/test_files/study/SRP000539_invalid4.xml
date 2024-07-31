@@ -1,7 +1,7 @@
 <STUDY_SET>
     <STUDY center_name="GEO" alias="GSE10966" accession="SRP000539">
         <IDENTIFIERS>
-            <PRIMARY_ID>SRP000539&</PRIMARY_ID>
+            <PRIMARY_ID>SRP000539</PRIMARY_ID>
             <EXTERNAL_ID namespace="BioProject" label="primary">PRJNA108793</EXTERNAL_ID>
             <EXTERNAL_ID namespace="GEO">GSE10966</EXTERNAL_ID>
         </IDENTIFIERS>
@@ -31,4 +31,6 @@
             </STUDY_ATTRIBUTE>
         </STUDY_ATTRIBUTES>
     </STUDY>
+    <BAD_ELEMENT></BAD_ELEMENT>
+    <ANOTHER_BAD_ELEMENT></ANOTHER_BAD_ELEMENT>
 </STUDY_SET>

@@ -43,34 +43,34 @@ class XMLValidator:
                 response = self._format_xml_validation_error_reason(errors)
             else:
                 LOG.info("Submitted file is totally valid.")
-                response = {"isValid": True}
+                response = {"status": 200}
             return ujson.dumps(response)
 
         except ParseError as error:
-            reason = self._parse_error_reason(error)
-            # Manually find instance element
+            reason, position = self._parse_error_response(error)
+            # Manually find pointer element
             lines = StringIO(self.xml_content).readlines()
-            line = lines[error.position[0] - 1]  # line of instance
-            instance = re.sub(r"^.*?<", "<", line)  # strip whitespaces
-
+            line = lines[error.position[0] - 1]  # line of pointer
+            pointer = line.lstrip().rstrip("\n")  # strip whitespaces and new line
             LOG.exception("Submitted file does not not contain valid XML syntax.")
-            return ujson.dumps({"isValid": False, "detail": {"reason": reason, "instance": instance}})
+            xml_error_response = self._format_xml_error_response()
+            xml_error_response["errors"].append({"reason": reason, "position": position, "pointer": pointer})
+            return ujson.dumps(xml_error_response)
 
-    def _parse_error_reason(self, error: ParseError) -> str:
-        """Generate better error reason for ParseError."""
+    def _parse_error_response(self, error: ParseError) -> tuple[str, str]:
+        """Generate better error detail and position for ParseError."""
         reason = str(error).split(":", maxsplit=1)[0]
         position = (str(error).split(":")[1])[1:]
-        return f"Faulty XML file was given, {reason} at {position}"
+        return reason, position
 
     def _format_xml_validation_error_reason(self, errors: list[Any]) -> dict[str, Any]:
         """Generate the response json object for validation error(s)."""
-        response: dict[str, Any] = {"isValid": False, "detail": {"reason": "", "instance": ""}}
+        xml_error_response = self._format_xml_error_response()
         found_lines = []
         for error in errors:
             reason = str(error.reason)
-            instance = str(error.path)
-
-            # Add line number to error reason
+            path = str(error.path)
+            # Find line number of error
             lines = self.xml_content.split("\n")
             elem_name = (
                 error.obj[error.index].tag if isinstance(error, XMLSchemaChildrenValidationError) else error.elem.tag
@@ -81,22 +81,26 @@ class XMLValidator:
                     found_lines.append(i)
                     break
             if re.match(r"^.*at position [0-9]+", reason):
-                # line number replaces element position which is more valuable information
-                reason = re.sub(r"position [0-9]+", f"line {line_num}", reason)
-            else:
-                # line number still added as extra info to error reason
-                reason = reason + f" (line {line_num})"
-            response["detail"]["reason"] = response["detail"]["reason"] + reason + "\n"
-            response["detail"]["instance"] = response["detail"]["instance"] + instance + "\n"
+                # remove element position which doesn't provide useful information
+                reason = re.sub(r" at position [0-9]+", "", reason)
+            pointer = path if elem_name in path else f"{path}/{elem_name}"
+            xml_error_response["errors"].append({"reason": reason, "position": f"line {line_num}", "pointer": pointer})
+        return xml_error_response
 
-        response["detail"] = response["detail"][0] if len(response["detail"]) == 1 else response["detail"]
-        return response
+    def _format_xml_error_response(self) -> dict[str, Any]:
+        """Format error response according to JSON Problem specification:https://www.rfc-editor.org/rfc/rfc9457.html."""
+        return {
+            "title": "Bad Request",
+            "status": 400,
+            "detail": "Faulty XML file was given.",
+            "errors": [],
+        }
 
     @property
     def is_valid(self) -> bool:
         """Quick method for checking validation result."""
         resp = ujson.loads(self.resp_body)
-        return bool(resp["isValid"])
+        return bool(resp["status"] == 200)
 
 
 def extend_with_default(validator_class: Draft202012Validator) -> Draft202012Validator:
