@@ -385,7 +385,7 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
             data = self.create_submission_data(files)
             response = await self.client.post(f"{API_PREFIX}/validate", data=data)
             self.assertEqual(response.status, 200)
-            self.assertEqual({"isValid": True}, await response.json())
+            self.assertEqual({"status": 200}, await response.json())
 
     async def test_validation_fails_bad_schema(self):
         """Test validation fails for bad schema and valid xml."""
@@ -402,10 +402,11 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
             data = self.create_submission_data(files)
             response = await self.client.post(f"{API_PREFIX}/validate", data=data)
             resp_dict = await response.json()
-            self.assertEqual(response.status, 200)
-            self.assertEqual(
-                "Faulty XML file was given, mismatched tag at line 7, column 10", resp_dict["detail"]["reason"]
-            )
+            self.assertEqual(response.status, 400)
+            self.assertEqual("Faulty XML file was given.", resp_dict["detail"])
+            self.assertEqual("mismatched tag", resp_dict["errors"][0]["reason"])
+            self.assertEqual("line 7, column 10", resp_dict["errors"][0]["position"])
+            self.assertEqual("</IDENTIFIERS>", resp_dict["errors"][0]["pointer"])
 
     async def test_validation_fails_for_invalid_xml(self):
         """Test validation endpoint for invalid xml."""
@@ -414,24 +415,42 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
             data = self.create_submission_data(files)
             response = await self.client.post(f"{API_PREFIX}/validate", data=data)
             resp_dict = await response.json()
-            self.assertEqual(response.status, 200)
-            self.assertIn("attribute existing_study_type='Something wrong'", resp_dict["detail"]["reason"])
-            self.assertIn("(line 11)", resp_dict["detail"]["reason"])
-            self.assertEqual("/STUDY_SET/STUDY/DESCRIPTOR/STUDY_TYPE\n", resp_dict["detail"]["instance"])
+            self.assertEqual(response.status, 400)
+            self.assertEqual("Faulty XML file was given.", resp_dict["detail"])
+            self.assertIn("attribute existing_study_type='Something wrong'", resp_dict["errors"][0]["reason"])
+            self.assertIn("line 11", resp_dict["errors"][0]["position"])
+            self.assertEqual("/STUDY_SET/STUDY/DESCRIPTOR/STUDY_TYPE", resp_dict["errors"][0]["pointer"])
 
-    async def test_validation_fails_for_another_invalid_xml(self):
-        """Test validation endpoint for another invalid xml."""
+    async def test_validation_fails_for_invalid_xml_structure(self):
+        """Test validation endpoint for invalid xml structure."""
         with self.p_get_sess_restapi:
-            files = [("study", "SRP000539_invalid6.xml")]
+            files = [("study", "SRP000539_invalid3.xml")]
             data = self.create_submission_data(files)
             response = await self.client.post(f"{API_PREFIX}/validate", data=data)
             resp_dict = await response.json()
-            self.assertEqual(response.status, 200)
-            self.assertIn("Unexpected child with tag 'BAD_ELEMENT' at line 34.\n", resp_dict["detail"]["reason"])
+            self.assertEqual(response.status, 400)
+            self.assertEqual("Faulty XML file was given.", resp_dict["detail"])
             self.assertIn(
-                "Unexpected child with tag 'ANOTHER_BAD_ELEMENT' at line 35.\n", resp_dict["detail"]["reason"]
+                "Unexpected child with tag 'STUDY_LINKS'. Tag 'DESCRIPTOR' expected", resp_dict["errors"][0]["reason"]
             )
-            self.assertEqual("/STUDY_SET\n/STUDY_SET\n", resp_dict["detail"]["instance"])
+            self.assertIn("line 8", resp_dict["errors"][0]["position"])
+            self.assertEqual("/STUDY_SET/STUDY/STUDY_LINKS", resp_dict["errors"][0]["pointer"])
+
+    async def test_validation_fails_for_another_invalid_xml(self):
+        """Test validation endpoint for invalid xml tags."""
+        with self.p_get_sess_restapi:
+            files = [("study", "SRP000539_invalid4.xml")]
+            data = self.create_submission_data(files)
+            response = await self.client.post(f"{API_PREFIX}/validate", data=data)
+            resp_dict = await response.json()
+            self.assertEqual(response.status, 400)
+            self.assertEqual("Faulty XML file was given.", resp_dict["detail"])
+            self.assertIn("Unexpected child with tag 'BAD_ELEMENT'", resp_dict["errors"][0]["reason"])
+            self.assertIn("line 34", resp_dict["errors"][0]["position"])
+            self.assertEqual("/STUDY_SET/BAD_ELEMENT", resp_dict["errors"][0]["pointer"])
+            self.assertIn("Unexpected child with tag 'ANOTHER_BAD_ELEMENT'", resp_dict["errors"][1]["reason"])
+            self.assertIn("line 35", resp_dict["errors"][1]["position"])
+            self.assertEqual("/STUDY_SET/ANOTHER_BAD_ELEMENT", resp_dict["errors"][1]["pointer"])
 
     async def test_validation_fails_with_too_many_files(self):
         """Test validation endpoint for too many files."""
