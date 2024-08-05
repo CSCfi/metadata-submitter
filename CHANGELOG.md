@@ -9,6 +9,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- new format for error responses of /validate endpoint
 - Validate files against file schema #823
 - List of Funding references from crossref API and enum values for Funder Names in Submission schema
 - Added a POST endpoint for receiving file information #814
