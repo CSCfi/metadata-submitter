@@ -7,6 +7,7 @@ from datetime import datetime
 
 from tests.integration.conf import datacite_url, drafts_url, objects_url, publish_url, submit_url, testfiles_root
 from tests.integration.helpers import (
+    add_submission_linked_folder,
     create_multi_file_request_data,
     create_request_data,
     create_request_json_data,
@@ -16,6 +17,7 @@ from tests.integration.helpers import (
     delete_submission,
     get_draft,
     get_object,
+    get_submission,
     post_draft,
     post_object,
     post_object_json,
@@ -538,6 +540,33 @@ class TestSubmissionOperations:
         async with client_logged_in.get(f"{submissions_url}/{submission_fega}") as resp:
             LOG.debug(f"Checking that submission {submission_fega} was deleted")
             assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
+
+    async def test_linking_folder_to_submission_works(self, client_logged_in, project_id):
+        """Test that a folder path can be linked to a submission.
+
+        :param client_logged_in: HTTP client in which request call is made
+        :param project_id: id of the project the submission belongs to
+        """
+        # Create new submission and check its creation succeeded
+        submission_data = {
+            "name": "Test submission",
+            "description": "Mock a submission for linked folder test",
+            "projectId": project_id,
+            "workflow": "SDSX",
+        }
+
+        submission_id = await post_submission(client_logged_in, submission_data)
+        async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
+            LOG.debug(f"Checking that submission {submission_id} was created")
+            assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+
+        # Test linking a folder, removing it, linking another
+        test_paths = ["test/path", "", "test/another/path"]
+
+        for path in test_paths:
+            await add_submission_linked_folder(client_logged_in, submission_id, path)
+            submission = await get_submission(client_logged_in, submission_id)
+            assert submission["linkedFolder"] == path
 
 
 class TestSubmissionPagination:
