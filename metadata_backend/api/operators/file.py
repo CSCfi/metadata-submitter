@@ -449,7 +449,8 @@ class FileOperator(BaseOperator):
         :returns: True if file found
         """
         submission = await self.db_service.read("submission", submission_id)
-        for file in submission["files"]:
-            if file["accessionId"] == file_id:
-                return True
+        if submission:
+            for file in submission["files"]:
+                if file["accessionId"] == file_id:
+                    return True
         return False
