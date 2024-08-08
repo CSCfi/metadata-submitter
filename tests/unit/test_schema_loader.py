@@ -53,7 +53,3 @@ class TestAllDefinedSchemasExist(unittest.TestCase):
                 continue
             schema = schema_loader.get_schema(schema_name)
             self.assertIs(type(schema), dict)
-
-
-if __name__ == "__main__":
-    unittest.main()

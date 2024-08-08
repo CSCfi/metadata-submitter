@@ -3,7 +3,6 @@
 import datetime
 import re
 import time
-import unittest
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, MagicMock, call, patch
 from uuid import uuid4
@@ -105,20 +104,35 @@ class TestOperators(IsolatedAsyncioTestCase):
             "published": False,
             "metadataObjects": [{"accessionId": "EGA1234567", "schema": "study"}],
         }
-        self.test_file = File(
-            name="test-file.png",
-            path="Bucket-name/subfolder/test-file.png",
-            bytes=3765457,
+        self.test_file = {
+            "name": "test-file.png",
+            "accessionId": self.file_id,
+            "path": "Bucket-name/subfolder/test-file.png",
+            "projectId": self.project_id,
+            "versions": [
+                {
+                    "version": 1,
+                    "bytes": 3765457,
+                    "encrypted_checksums": [
+                        {"type": "sha256", "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d61234567"},
+                        {"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b4812345"},
+                    ],
+                    "unencrypted_checksums": [
+                        {"type": "sha256", "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d61234567"},
+                        {"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b4812345"},
+                    ],
+                }
+            ],
+        }
+        self.test_file_input = File(
+            name=self.test_file["name"],
+            path=self.test_file["path"],
             projectId=self.project_id,
-            encrypted_checksums=[
-                {"type": "sha256", "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d61234567"},
-                {"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b4812345"},
-            ],
-            unencrypted_checksums=[
-                {"type": "sha256", "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d61234567"},
-                {"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b4812345"},
-            ],
+            bytes=self.test_file["versions"][0]["bytes"],
+            encrypted_checksums=self.test_file["versions"][0]["encrypted_checksums"],
+            unencrypted_checksums=self.test_file["versions"][0]["unencrypted_checksums"],
         )
+        self.file_operator = FileOperator(self.client)
         self.user_id = "current"
         self.user_generated_id = "5fb82fa1dcf9431fa5fcfb72e2d2ee14"
         self.test_user = {
@@ -1406,26 +1420,44 @@ class TestOperators(IsolatedAsyncioTestCase):
             self.assertEqual(pid, self.project_generated_id)
 
     async def test_create_file_pass(self):
-        """Test create file passes."""
-        operator = FileOperator(self.client)
+        """Test creating a new file passes."""
+        self.file_operator.db_service.read_by_key_value = AsyncMock(return_value=None)
+        self.file_operator.db_service.create = AsyncMock(return_value=True)
 
-        operator.db_service.read_by_key_value = AsyncMock(return_value=None)
-        operator.db_service.create = AsyncMock(return_value=True)
-        file_object = await operator.form_validated_file_object(self.test_file)
-        file_id, version = await operator.create_file_or_version(file_object)
+        file_id, version = await self.file_operator.create_file_or_version(self.test_file)
         self.assertEqual(file_id, self.file_id)
         self.assertEqual(version, 1)
 
     async def test_create_file_version_pass(self):
-        """Test create file version passes."""
-        operator = FileOperator(self.client)
+        """Test creating new file version passes."""
+        self.file_operator.db_service.append = AsyncMock(return_value=None)
+        new_test_file = self.test_file
+        new_test_file["versions"][0]["version"] = 2
+        file_id, version = await self.file_operator.create_file_or_version(new_test_file)
+        self.assertEqual(file_id, self.file_id)
+        self.assertEqual(version, 2)
 
+    async def test_create_file_version_fails(self):
+        """Test creating new file version fails."""
+        new_test_file = self.test_file
+        new_test_file["versions"][0]["version"] = 0
+        with self.assertRaises(HTTPBadRequest):
+            await self.file_operator.create_file_or_version(new_test_file)
+
+    async def test_form_validated_file_object(self):
+        """Test forming a file object for inserting to db."""
+        self.file_operator.db_service.read_by_key_value = AsyncMock(return_value=None)
+        resp = await self.file_operator.form_validated_file_object(self.test_file_input)
+        self.assertEqual(resp["path"], self.test_file["path"])
+        self.assertEqual(resp["versions"][0]["version"], 1)
+        self.assertFalse(resp["versions"][0]["published"])
+        self.assertFalse(resp["flagDeleted"])
+
+        # Test the same method with pre-existing file object in db
         file_in_db = {
             "accessionId": self.file_id,
             "currentVersion": {
                 "version": 2,
-                "date": "iso-date",
-                "published": True,
                 "bytes": 20,
                 "submissions": ["s1"],
                 "encrypted_checksums": [
@@ -1438,14 +1470,131 @@ class TestOperators(IsolatedAsyncioTestCase):
                 ],
             },
         }
-        operator.db_service.read_by_key_value = AsyncMock(return_value=file_in_db)
+        self.file_operator.db_service.read_by_key_value = AsyncMock(return_value=file_in_db)
+        resp = await self.file_operator.form_validated_file_object(self.test_file_input)
+        self.assertEqual(resp["path"], self.test_file["path"])
+        self.assertEqual(resp["accessionId"], self.file_id)
+        self.assertEqual(resp["versions"][0]["version"], 3)
 
-        operator.db_service.append = AsyncMock(return_value=None)
-        file_object = await operator.form_validated_file_object(self.test_file)
-        file_id, version = await operator.create_file_or_version(file_object)
-        self.assertEqual(file_id, self.file_id)
-        self.assertEqual(version, 3)
+    async def test_read_file(self):
+        """Test reading file object from database passes."""
+        file_list = [{"accessionId": "acc123456", "path": "s3:/bucket/files/mock", "name": "mock.file"}]
+        self.file_operator.db_service.do_aggregate = AsyncMock(return_value=file_list)
+        output = await self.file_operator.read_file(file_list[0]["accessionId"])
+        self.assertEqual(file_list[0]["accessionId"], output["accessionId"])
 
+        # With different file version as input
+        output = await self.file_operator.read_file(file_list[0]["accessionId"], version=2)
+        self.assertEqual(file_list[0]["accessionId"], output["accessionId"])
 
-if __name__ == "__main__":
-    unittest.main()
+    async def test_read_project_files(self):
+        """Test reading files from a project passes."""
+        file_list = [
+            {
+                "accessionId": "acc123456",
+            },
+            {
+                "accessionId": "acc456789",
+            },
+        ]
+        self.file_operator.db_service.do_aggregate = AsyncMock(return_value=file_list)
+        files = await self.file_operator.read_project_files("project_id1")
+        self.assertEqual(file_list, files)
+
+    async def test_check_submission_files_ready(self):
+        """Test files are marked as ready in a submission."""
+        # DB query doesn't find problematic files
+        self.file_operator.db_service.do_aggregate = AsyncMock(return_value=[])
+        await self.file_operator.check_submission_files_ready("submission_id1")
+
+        # DB query returns problematic files and raises error
+        self.file_operator.db_service.do_aggregate = AsyncMock(return_value=[{"accessionId": "123"}])
+        with self.assertRaises(HTTPBadRequest):
+            await self.file_operator.check_submission_files_ready("submission_id1")
+
+    async def test_read_submission_files(self):
+        """Test getting files in a submission passes."""
+        self.file_operator.db_service.do_aggregate = AsyncMock(return_value={})
+        with self.assertRaises(HTTPInternalServerError):
+            await self.file_operator.read_submission_files("submission_id1")
+
+        self.file_operator.db_service.do_aggregate = AsyncMock(return_value=[])
+        file_list = await self.file_operator.read_submission_files("submission_id1")
+        self.assertEqual(file_list, [])
+
+        example_list = [
+            {
+                "accessionId": "123",
+                "version": 1,
+            },
+        ]
+        self.file_operator.db_service.do_aggregate = AsyncMock(return_value=example_list)
+        file_list = await self.file_operator.read_submission_files("submission_id1", ["added"])
+        self.assertEqual(file_list, example_list)
+
+    async def test_flag_file_deleted(self):
+        """Test file is flagged as deleted."""
+        self.file_operator.db_service.update_by_key_value = AsyncMock(return_value=False)
+        self.file_operator.remove_file_submission = AsyncMock(return_value=None)
+        with self.assertRaises(HTTPBadRequest):
+            await self.file_operator.flag_file_deleted("s3:file/path")
+
+        self.file_operator.db_service.update_by_key_value = AsyncMock(return_value=True)
+        await self.file_operator.flag_file_deleted("s3:file/path", False)
+
+    async def test_remove_file_submission(self):
+        """Test removing file from a submission passes."""
+        with self.assertRaises(HTTPBadRequest):
+            # Missing id_type variable
+            await self.file_operator.remove_file_submission("s3:file/path")
+
+        # Removing from all submission succeeds
+        self.file_operator.db_service.read_by_key_value = AsyncMock(return_value={"accessionId": "123"})
+        self.file_operator.db_service.remove_many = AsyncMock(return_value=True)
+        await self.file_operator.remove_file_submission("s3:file/path", "path")
+        self.file_operator.db_service.remove_many.assert_called_once()
+
+        # Removing from single submission but raises an error
+        with self.assertRaises(HTTPBadRequest):
+            self.file_operator.db_service.remove = AsyncMock(return_value=False)
+            await self.file_operator.remove_file_submission("123", "accessionId", "submission_id1")
+            self.file_operator.db_service.remove.assert_called_once()
+
+    async def test_update_file_submission(self):
+        """Test updating file submissions passes."""
+        self.file_operator.db_service.update_by_key_value = AsyncMock(return_value=True)
+        await self.file_operator.update_file_submission("accession123", "submission1", {"$set": "something"})
+
+        self.file_operator.db_service.update_by_key_value = AsyncMock(return_value=False)
+        with self.assertRaises(HTTPBadRequest):
+            await self.file_operator.update_file_submission("accession123", "submission1", {"$set": "something"})
+
+    async def test_add_files_submission(self):
+        """Test adding files to submission passes."""
+        self.file_operator.db_service.append = AsyncMock(return_value=True)
+        resp = await self.file_operator.add_files_submission([{}], "submission1")
+        self.assertTrue(resp)
+
+        self.file_operator.db_service.append = AsyncMock(return_value=False)
+        resp = await self.file_operator.add_files_submission([{}], "submission1")
+        self.assertFalse(resp)
+
+    async def test_check_submission_has_file(self):
+        """Test checking submission has a file."""
+        self.file_operator.db_service.read = AsyncMock(return_value=None)
+        resp = await self.file_operator.check_submission_has_file("submission1", "123")
+        self.assertFalse(resp)
+
+        submission = {
+            "files": [
+                {
+                    "accessionId": "123",
+                },
+                {
+                    "accessionId": "456",
+                },
+            ]
+        }
+        self.file_operator.db_service.read = AsyncMock(return_value=submission)
+        resp = await self.file_operator.check_submission_has_file("submission1", "123")
+        self.assertTrue(resp)

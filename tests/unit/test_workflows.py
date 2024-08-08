@@ -115,7 +115,3 @@ class TestWorkflow(HandlersTestCase):
                 async with self.client.get(f"{API_PREFIX}/workflows/notfound") as response:
                     self.assertEqual(response.status, 404)
                     self.assertEqual(response.content_type, "application/json")
-
-
-if __name__ == "__main__":
-    unittest.main()
