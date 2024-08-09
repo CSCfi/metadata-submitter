@@ -1582,6 +1582,50 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
+  /v1/submissions/{submissionId}/folder:
+    put:
+      tags:
+        - Manage
+      summary: Update linked folder name associated with a submission.
+      parameters:
+        - name: submissionId
+          in: path
+          description: ID of the object submission.
+          schema:
+            type: string
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              description: JSON object containing a new linkedFolder.
+              properties:
+                linkedFolder:
+                  type: string
+                  description: Name of the linked folder.
+                  example: "folderName"
+      responses:
+        204:
+          description: No Content
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
   /v1/publish/{submissionId}:
     patch:
       tags:

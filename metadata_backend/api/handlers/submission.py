@@ -368,7 +368,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         return web.HTTPNoContent()
 
     async def put_submission_linked_folder(self, req: Request) -> Response:
-        """Put a linked folder to a submission.
+        """Put a linked folder name to a submission.
 
         :param req: PUT request with metadata schema in the body
         :raises: HTTP Bad Request if submission already has a linked folder
@@ -385,8 +385,8 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         await self._handle_check_ownership(req, "submission", submission_id)
         await operator.check_submission_published(submission_id, req.method)
 
-        # Container name limitations in SD Connect + /
-        pattern = re.compile(r"^[0-9a-zA-Z\/\.\-_]{3,}$")
+        # Container name limitations in SD Connect
+        pattern = re.compile(r"^[0-9a-zA-Z\.\-_]{3,}$")
 
         try:
             if data["linkedFolder"] == "":

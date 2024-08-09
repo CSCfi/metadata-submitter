@@ -82,6 +82,7 @@ class HandlersTestCase(AioHTTPTestCase):
                 {"accessionId": "EGA123456", "schema": "sample"},
             ],
             "drafts": [],
+            "linkedFolder": "",
             "doiInfo": {"creators": [{"name": "Creator, Test"}]},
             "files": [{"accessionId": "file1", "version": 1, "status": "added"}],
         }
@@ -1090,6 +1091,23 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             self.assertEqual(response.status, 200)
             json_resp = await response.json()
             self.assertIn("doiInfo", json_resp)
+
+    async def test_put_linked_folder_passes(self):
+        """Test put method for updating linked folder to submission works."""
+        self.MockedSubmissionOperator().check_submission_linked_folder.return_value = False
+        data = {"linkedFolder": "folderName"}
+        with self.p_get_sess_restapi:
+            response = await self.client.put(f"{API_PREFIX}/submissions/FOL12345678/folder", json=data)
+            self.assertEqual(response.status, 204)
+
+    async def test_put_linked_folder_fails(self):
+        """Test put method for adding linked folder fails if it already exists."""
+        self.MockedSubmissionOperator().check_submission_linked_folder.return_value = True
+        data = {"linkedFolder": "folderName"}
+        with self.p_get_sess_restapi:
+            response = await self.client.put(f"{API_PREFIX}/submissions/FOL12345678/folder", json=data)
+            self.assertEqual(response.status, 400)
+            self.assertIn("It already has a linked folder", await response.text())
 
 
 class PublishSubmissionHandlerTestCase(HandlersTestCase):

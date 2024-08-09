@@ -352,6 +352,4 @@ class SubmissionOperator(BaseOperator):
         :returns: True if a folder is linked
         """
         submission: dict[str, Any] = await self.read_submission(submission_id)
-        if submission["linkedFolder"] == "":
-            return False
-        return True
+        return bool(submission["linkedFolder"])
