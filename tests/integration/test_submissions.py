@@ -542,7 +542,7 @@ class TestSubmissionOperations:
             assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
 
     async def test_linking_folder_to_submission_works(self, client_logged_in, project_id):
-        """Test that a folder path can be linked to a submission.
+        """Test that a folder name can be linked to a submission.
 
         :param client_logged_in: HTTP client in which request call is made
         :param project_id: id of the project the submission belongs to
@@ -561,12 +561,12 @@ class TestSubmissionOperations:
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
         # Test linking a folder, removing it, linking another
-        test_paths = ["test/path", "", "test/another/path"]
+        test_names = ["foldername", "", "foldername2"]
 
-        for path in test_paths:
-            await add_submission_linked_folder(client_logged_in, submission_id, path)
+        for name in test_names:
+            await add_submission_linked_folder(client_logged_in, submission_id, name)
             submission = await get_submission(client_logged_in, submission_id)
-            assert submission["linkedFolder"] == path
+            assert submission["linkedFolder"] == name
 
 
 class TestSubmissionPagination:

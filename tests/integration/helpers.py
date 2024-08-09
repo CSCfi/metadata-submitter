@@ -731,14 +731,14 @@ async def get_submission(sess, submission_id):
         return ans
 
 
-async def add_submission_linked_folder(sess, submission_id, path):
-    """Add a linked folder path to a submission.
+async def add_submission_linked_folder(sess, submission_id, name):
+    """Add a linked folder name to a submission.
 
     :param sess: HTTP session in which request call is made
     :param submission_id: id of submission to add path to
-    :param path: linked folder path string
+    :param name: linked folder name string
     """
-    data = {"linkedFolder": path}
+    data = {"linkedFolder": name}
     url = f"{submissions_url}/{submission_id}/folder"
 
     async with sess.put(

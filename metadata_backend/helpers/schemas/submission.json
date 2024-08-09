@@ -1221,7 +1221,7 @@
         },
         "linkedFolder": {
             "type": "string",
-            "title": "Path of a folder linked to a submission"
+            "title": "Name of a folder linked to a submission"
         },
         "files": {
             "type": "array",
