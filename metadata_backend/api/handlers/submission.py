@@ -1,5 +1,6 @@
 """Handle HTTP methods for server."""
 
+import re
 from datetime import datetime
 from math import ceil
 from typing import Any
@@ -364,6 +365,51 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
             await file_operator.update_file_submission(_file_accessionId, submission_id, _file_update_op)
 
         LOG.info("PUT files in submission with ID: %r was successful.", submission_id)
+        return web.HTTPNoContent()
+
+    async def put_submission_linked_folder(self, req: Request) -> Response:
+        """Put a linked folder name to a submission.
+
+        :param req: PUT request with metadata schema in the body
+        :raises: HTTP Bad Request if submission already has a linked folder
+        or request has missing / invalid linkedFolder
+        :returns: HTTP No Content response
+        """
+        submission_id = req.match_info["submissionId"]
+        db_client = req.app["db_client"]
+        operator = SubmissionOperator(db_client)
+        data: dict[str, str] = await req.json()
+
+        # Check submission exists, is not published
+        await operator.check_submission_exists(submission_id)
+        await self._handle_check_ownership(req, "submission", submission_id)
+        await operator.check_submission_published(submission_id, req.method)
+
+        # Container name limitations in SD Connect
+        pattern = re.compile(r"^[0-9a-zA-Z\.\-_]{3,}$")
+
+        try:
+            if data["linkedFolder"] == "":
+                pass
+            elif pattern.match(data["linkedFolder"]):
+                # Check if already linked
+                folder_exists = await operator.check_submission_linked_folder(submission_id)
+                if folder_exists:
+                    reason = f"Updating submission {submission_id} failed. It already has a linked folder."
+                    LOG.error(reason)
+                    raise web.HTTPBadRequest(reason=reason)
+            else:
+                reason = "Provided an invalid linkedFolder."
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+        except (KeyError, TypeError) as exc:
+            reason = "A linkedFolder string is required."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason) from exc
+
+        update_op = [{"op": "replace", "path": "/linkedFolder", "value": data["linkedFolder"]}]
+        await operator.update_submission(submission_id, update_op)
+        LOG.info("PUT a linked folder in submission with ID: %r was successful.", submission_id)
         return web.HTTPNoContent()
 
     async def get_submission_files(self, req: Request) -> Response:

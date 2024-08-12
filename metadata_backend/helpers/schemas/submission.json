@@ -1219,6 +1219,10 @@
                 }
             }
         },
+        "linkedFolder": {
+            "type": "string",
+            "title": "Name of a folder linked to a submission"
+        },
         "files": {
             "type": "array",
             "title": "The list of files attached to a submission and their status",

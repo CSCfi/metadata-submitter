@@ -731,6 +731,23 @@ async def get_submission(sess, submission_id):
         return ans
 
 
+async def add_submission_linked_folder(sess, submission_id, name):
+    """Add a linked folder name to a submission.
+
+    :param sess: HTTP session in which request call is made
+    :param submission_id: id of submission to add path to
+    :param name: linked folder name string
+    """
+    data = {"linkedFolder": name}
+    url = f"{submissions_url}/{submission_id}/folder"
+
+    async with sess.put(
+        url,
+        data=ujson.dumps(data),
+    ) as resp:
+        assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
+
+
 async def update_submission_files(sess, submission_id, files_data):
     """Update submission files.
 
