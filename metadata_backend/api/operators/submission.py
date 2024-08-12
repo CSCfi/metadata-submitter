@@ -171,6 +171,7 @@ class SubmissionOperator(BaseOperator):
         data["lastModified"] = _now
         data["metadataObjects"] = data["metadataObjects"] if "metadataObjects" in data else []
         data["drafts"] = data["drafts"] if "drafts" in data else []
+        data["linkedFolder"] = ""
         try:
             insert_success = await self.db_service.create("submission", data)
         except (ConnectionFailure, OperationFailure) as error:
@@ -343,3 +344,12 @@ class SubmissionOperator(BaseOperator):
             reason = f"Submission with ID: '{submission_id}' is already published and cannot be modified or deleted."
             LOG.error(reason)
             raise web.HTTPMethodNotAllowed(method=method, allowed_methods=["GET", "HEAD"], reason=reason)
+
+    async def check_submission_linked_folder(self, submission_id: str) -> bool:
+        """Check if submission has a linked folder in the database.
+
+        :param submission_id: ID of the submission to check
+        :returns: True if a folder is linked
+        """
+        submission: dict[str, Any] = await self.read_submission(submission_id)
+        return bool(submission["linkedFolder"])

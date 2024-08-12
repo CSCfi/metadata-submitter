@@ -131,6 +131,7 @@ async def init(
         web.put("/submissions/{submissionId}/doi", _submission.put_submission_path),
         web.put("/submissions/{submissionId}/rems", _submission.put_submission_path),
         web.put("/submissions/{submissionId}/files", _submission.put_submission_files),
+        web.put("/submissions/{submissionId}/folder", _submission.put_submission_linked_folder),
         web.patch("/submissions/{submissionId}", _submission.patch_submission),
         web.delete("/submissions/{submissionId}", _submission.delete_submission),
         web.delete("/submissions/{submissionId}/files/{fileId}", _submission.delete_submission_files),
