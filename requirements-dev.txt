@@ -110,7 +110,7 @@ frozenlist==1.4.1
     #   -r requirements.txt
     #   aiohttp
     #   aiosignal
-gunicorn==22.0.0
+gunicorn==23.0.0
     # via -r requirements.txt
 honcho==1.1.0
     # via -r requirements-dev.in
