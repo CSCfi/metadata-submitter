@@ -20,7 +20,7 @@ alabaster==0.7.16
     # via sphinx
 astroid==3.2.3
     # via pylint
-attrs==23.2.0
+attrs==24.2.0
     # via
     #   -r requirements.txt
     #   aiohttp
