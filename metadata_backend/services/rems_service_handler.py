@@ -15,7 +15,7 @@ resource    ->  	dataset
 import time
 from typing import Any
 
-from aiohttp import web
+from aiohttp import ClientTimeout, web
 from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
 from yarl import URL
 
@@ -181,7 +181,7 @@ class RemsServiceHandler(ServiceHandler):
             async with self._client.request(
                 method="GET",
                 url=f"{self.base_url}/health",
-                timeout=10,
+                timeout=ClientTimeout(total=10),
             ) as response:
                 LOG.debug("REMS REST API status is: %s.", response.status)
                 content = await response.json()

@@ -6,7 +6,7 @@
 #
 aiofiles==24.1.0
     # via -r requirements-dev.in
-aiohttp==3.9.5
+aiohttp==3.10.2
     # via
     #   -r requirements.txt
     #   aiohttp-session
