@@ -350,9 +350,11 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
         with self.p_get_sess_restapi:
             files = [("submission", "ERA521986_valid.xml")]
             data = self.create_submission_data(files)
+            self.MockedParser().parse.return_value = [{"actions": {"action": []}}, data]
             response = await self.client.post(f"{API_PREFIX}/submit/FEGA", data=data)
             self.assertEqual(response.status, 200)
             self.assertEqual(response.content_type, "application/json")
+            self.MockedParser().parse.assert_called_once()
 
     async def test_submit_endpoint_fails_without_submission_xml(self):
         """Test that basic POST submission fails with no submission.xml.
