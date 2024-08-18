@@ -371,12 +371,16 @@ class TestOperators(IsolatedAsyncioTestCase):
         operator.db_service.db_client = self.client
         operator.db_service.create.return_value = True
         operator.db_service.create = AsyncMock(return_value=True)
+        xml_data = "<MOCK_ELEM></MOCK_ELEM>"
         with patch(
             ("metadata_backend.api.operators.object.ObjectOperator._format_data_to_create_and_add_to_db"),
             return_value={"accessionId": self.accession_id},
         ):
-            with patch("metadata_backend.api.operators.object_xml.XMLToJSONParser"):
-                data = await operator.create_metadata_object("study", "<MOCK_ELEM></MOCK_ELEM>")
+            with patch(
+                ("metadata_backend.api.operators.object_xml.XMLToJSONParser.parse"),
+                return_value=({"mockElem": None}, [xml_data]),
+            ):
+                data = await operator.create_metadata_object("study", xml_data)
         operator.db_service.create.assert_called_once()
         self.assertEqual(data[0]["accessionId"], self.accession_id)
 
@@ -494,7 +498,10 @@ class TestOperators(IsolatedAsyncioTestCase):
                 ("metadata_backend.api.operators.object_xml.XMLObjectOperator._insert_formatted_object_to_db"),
                 return_value=True,
             ) as m_insert:
-                with patch("metadata_backend.api.operators.object_xml.XMLToJSONParser"):
+                with patch(
+                    ("metadata_backend.api.operators.object_xml.XMLToJSONParser.parse"),
+                    return_value=({"mockElem": None}, [xml_data]),
+                ):
                     acc = await operator._format_data_to_create_and_add_to_db("study", xml_data)
                     m_insert.assert_called_once_with(
                         "xml-study", {"accessionId": self.accession_id, "content": xml_data}
@@ -514,7 +521,10 @@ class TestOperators(IsolatedAsyncioTestCase):
                 "metadata_backend.api.operators.object_xml.XMLObjectOperator._replace_object_from_db",
                 return_value=self.accession_id,
             ) as m_insert:
-                with patch("metadata_backend.api.operators.object_xml.XMLToJSONParser"):
+                with patch(
+                    "metadata_backend.api.operators.object_xml.XMLToJSONParser.parse",
+                    return_value=({"mockElem": None}, [xml_data]),
+                ):
                     acc = await operator._format_data_to_replace_and_add_to_db("study", self.accession_id, xml_data)
                     m_insert.assert_called_once_with(
                         "xml-study",
