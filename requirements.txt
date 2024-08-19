@@ -19,7 +19,7 @@ attrs==24.2.0
     #   referencing
 certifi==2024.7.4
     # via requests
-cffi==1.16.0
+cffi==1.17.0
     # via cryptography
 charset-normalizer==3.3.2
     # via requests
@@ -72,11 +72,11 @@ pycparser==2.22
     # via cffi
 pymongo==4.8.0
     # via motor
-pyopenssl==24.1.0
+pyopenssl==24.2.1
     # via idpyoidc
 python-dateutil==2.9.0.post0
     # via -r requirements.in
-pyyaml==6.0.1
+pyyaml==6.0.2
     # via
     #   idpyoidc
     #   responses
@@ -84,14 +84,14 @@ referencing==0.35.1
     # via
     #   jsonschema
     #   jsonschema-specifications
-requests==2.32.2
+requests==2.32.3
     # via
     #   -r requirements.in
     #   cryptojwt
     #   responses
 responses==0.25.3
     # via idpyoidc
-rpds-py==0.19.0
+rpds-py==0.20.0
     # via
     #   jsonschema
     #   referencing
@@ -105,9 +105,9 @@ urllib3==2.2.2
     # via
     #   requests
     #   responses
-uvloop==0.19.0
+uvloop==0.20.0
     # via -r requirements.in
-xmlschema==3.3.1
+xmlschema==3.3.2
     # via -r requirements.in
 yarl==1.9.4
     # via aiohttp
