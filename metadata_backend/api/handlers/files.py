@@ -1,5 +1,7 @@
 """Handle HTTP methods for server."""
 
+from urllib.parse import unquote
+
 import aiohttp_session
 import ujson
 from aiohttp import web
@@ -97,3 +99,28 @@ class FilesAPIHandler(RESTAPIHandler):
             created_files.append(id_and_v)
 
         return web.Response(body=ujson.dumps(created_files), status=201, content_type="application/json")
+
+    async def delete_project_files(self, request: web.Request) -> web.Response:
+        """Remove a file from a project.
+
+        :param request: DELETE request
+        :raises HTTP Not Found if file not associated with submission
+        :returns: HTTP No Content response
+        """
+        project_id = request.match_info["projectId"]
+        file_path = unquote(request.match_info["filePath"])
+        db_client = request.app["db_client"]
+
+        # Check that project exists
+        project_op = ProjectOperator(db_client)
+        await project_op.check_project_exists(project_id)
+
+        # Check file exists in database
+        file_operator = FileOperator(db_client)
+        file = await file_operator.check_file_exists(project_id, file_path)
+
+        if file is not None:
+            await file_operator.flag_file_deleted(file)
+
+        LOG.info("DELETE file with file path: %s in project: %s was successful.", file_path, project_id)
+        return web.HTTPNoContent()

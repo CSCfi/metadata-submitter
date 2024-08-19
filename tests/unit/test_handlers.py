@@ -3,6 +3,7 @@
 import time
 from pathlib import Path
 from unittest.mock import AsyncMock, call, patch
+from urllib.parse import quote_plus
 
 import aiohttp_session
 import ujson
@@ -1279,3 +1280,43 @@ class FilesHandlerTestCase(HandlersTestCase):
             self.assertEqual(response.status, 400)
             json_resp = await response.json()
             self.assertEqual(json_resp["detail"], "Request payload content did not include all necessary details.")
+
+    async def test_delete_project_files_works(self):
+        """Test deleting file request handler."""
+        mock_file_value = {
+            "accessionId": self.projected_file_example["accessionId"],
+            "path": self.mock_file_data["files"][0]["path"],
+            "projectId": self.mock_file_data["projectId"],
+        }
+        with (
+            patch(
+                "metadata_backend.api.operators.project.ProjectOperator.check_project_exists",
+                return_value=True,
+            ),
+            self.p_get_sess_restapi,
+        ):
+            url = f"{API_PREFIX}/files/{mock_file_value['projectId']}/{quote_plus(mock_file_value['path'])}"
+            self.MockedFileOperator().check_file_exists.return_value = mock_file_value
+            response = await self.client.delete(url)
+            self.MockedFileOperator().flag_file_deleted.assert_called_once()
+            self.assertEqual(response.status, 204)
+
+    async def test_delete_project_files_fails(self):
+        """Test deleting file request handler with error."""
+        mock_file_value = {
+            "accessionId": self.projected_file_example["accessionId"],
+            "path": self.mock_file_data["files"][0]["path"],
+            "projectId": self.mock_file_data["projectId"],
+        }
+        with (
+            patch(
+                "metadata_backend.api.operators.project.ProjectOperator.check_project_exists",
+                return_value=True,
+            ),
+            self.p_get_sess_restapi,
+        ):
+            url = f"{API_PREFIX}/files/{mock_file_value['projectId']}/{quote_plus(mock_file_value['path'])}"
+            # File does not exist in database
+            self.MockedFileOperator().check_file_exists.return_value = None
+            await self.client.delete(url)
+            self.MockedFileOperator().flag_file_deleted.assert_not_called()

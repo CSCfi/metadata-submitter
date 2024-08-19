@@ -4,6 +4,7 @@ import logging
 
 from tests.integration.helpers import (
     add_submission_files,
+    delete_project_files,
     find_project_file,
     generate_mock_file,
     get_project_files,
@@ -91,6 +92,59 @@ class TestFiles:
         for index, file in enumerate(files):
             assert file["name"] == f"file_{index + 1}.c4gh"
             assert file["projectId"] == user_data["projects"][int(index / 2)]["projectId"]
+
+    async def test_delete_project_files(self, client_logged_in):
+        """Test that specific file is flagged as deleted and removed from current submissions (not published).
+
+        :param client_logged_in: HTTP client in which request call is made
+        """
+        # Get user data: user id and projects
+        user_data = await get_user_data(client_logged_in)
+        project_id = user_data["projects"][0]["projectId"]
+
+        # Create a new submission and check its creation succeeded
+        submission_data = {
+            "name": "Test submission",
+            "description": "Test submission with file to be deleted",
+            "projectId": project_id,
+            "workflow": "SDSX",
+        }
+        submission_id = await post_submission(client_logged_in, submission_data)
+
+        # Post a file
+        mock_file = generate_mock_file("test_delete_project_file")
+        file_data = {
+            "userId": user_data["userId"],
+            "projectId": project_id,
+            "files": [mock_file],
+        }
+        created_files = await post_project_files(client_logged_in, file_data)
+        assert len(created_files) == 1
+
+        # Confirm file exists within project
+        file_id = created_files[0][0]
+        file_exists = await find_project_file(client_logged_in, project_id, file_id)
+        assert file_exists is True
+
+        # Add file to a submission
+        file_info = [{"accessionId": file_id, "version": created_files[0][1]}]
+        await add_submission_files(client_logged_in, file_info, submission_id)
+        submission_info = await get_submission(client_logged_in, submission_id)
+        assert len(submission_info["files"]) == 1
+
+        # Flag file as deleted in DB and remove file from current submission
+        await delete_project_files(client_logged_in, project_id, mock_file["path"])
+
+        # Verify that file was removed from current submission
+        submission_info = await get_submission(client_logged_in, submission_id)
+        assert len(submission_info["files"]) == 0
+
+        # Verify that file is flagged as deleted and not shown anymore in the list of project files
+        project_files = await get_project_files(client_logged_in, project_id)
+        assert len(project_files) == 0
+
+        file_exists = await find_project_file(client_logged_in, project_id, file_id)
+        assert file_exists is False
 
 
 class TestFileSubmissions:
