@@ -499,7 +499,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
 
-        await file_operator.remove_file_submission(file_accession_id, "accessionId", submission_id)
+        await file_operator.remove_file_submission(file_accession_id, submission_id=submission_id)
         LOG.info(
             "Removing file: %r from submission with ID: %r was successful.",
             file_accession_id,
