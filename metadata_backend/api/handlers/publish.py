@@ -9,7 +9,7 @@ from aiohttp.web import Request, Response
 
 from metadata_backend.api.operators.file import FileOperator
 
-from ...conf.conf import DATACITE_SCHEMAS, METAX_SCHEMAS, doi_config
+from ...conf.conf import DATACITE_SCHEMAS, METAX_SCHEMAS, WORKFLOWS, discovery_config, doi_config
 from ...helpers.logger import LOG
 from ..operators.object import ObjectOperator
 from ..operators.object_xml import XMLObjectOperator
@@ -21,12 +21,21 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
     """API Handler for publishing submissions."""
 
     @staticmethod
-    def _make_discovery_url(obj_data: dict[str, Any]) -> str:
-        """Make an url that points to a discovery service."""
-        if "metaxIdentifier" in obj_data:
-            url = f"{doi_config['discovery_url']}{obj_data['metaxIdentifier']}"
+    def _make_discovery_url(obj_data: dict[str, Any], workflow_name: str) -> str:
+        """Make an url that points to a discovery service.
+
+        :param obj_data: data of object to make URL for
+        :param workflow_name: submission workflow used to determine discovery service
+        :returns: URL pointing to a  discovery service
+        """
+        url = ""
+        discovery_service = WORKFLOWS[workflow_name].get_workflow_discovery_service()
+
+        if discovery_service == "metax":
+            url = f"{discovery_config['metax_discovery_url']}{obj_data['metaxIdentifier']}"
         else:
-            url = f"{doi_config['discovery_url']}{obj_data['doi']}"
+            url = f"{discovery_config['beacon_discovery_url']}{obj_data['doi']}"
+
         return url
 
     @staticmethod
@@ -37,6 +46,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         :param study_data: Study Object read from the database
         :param general_info: General information that is captured in front-end and set in ``doiInfo`` key
+        :param discovery_url: URL pointing to a  discovery service
         :returns: Study Object ready to publish to Datacite
         """
         study = {
@@ -103,13 +113,18 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         return study
 
     def _prepare_datacite_dataset(
-        self, study_doi: str, dataset_data: dict[str, Any], general_info: dict[str, Any]
+        self,
+        study_doi: str,
+        dataset_data: dict[str, Any],
+        general_info: dict[str, Any],
+        discovery_url: str,
     ) -> dict[str, Any]:
         """Prepare Dataset object for publishing.
 
         :param study_doi: Study DOI to link dataset to study at Datacite
         :param dataset_data: Dataset Object read from the database
         :param general_info: General information that is captured in front-end and set in `doiInfo` key
+        :param discovery_url: URL pointing to a  discovery service
         :returns: Dataset Object ready to publish to Datacite
         """
         dataset = {
@@ -131,7 +146,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                         "schemaOrg": "Dataset",
                         "resourceTypeGeneral": "Dataset",
                     },
-                    "url": self._make_discovery_url(dataset_data),
+                    "url": discovery_url,
                     "identifiers": [
                         {
                             "identifierType": "DOI",
@@ -238,13 +253,10 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                     object_data["doi"] = await self.create_draft_doi(schema)
 
                 doi = object_data["doi"]
+                discovery_url = self._make_discovery_url(object_data, submission["workflow"])
 
                 if schema == "study":
                     _study_doi = doi
-                    if "metaxIdentifier" in object_data:
-                        discovery_url = f"{doi_config['discovery_url']}{object_data['metaxIdentifier']}"
-                    else:
-                        discovery_url = f"{doi_config['discovery_url']}{object_data['doi']}"
                     datacite_study = self._prepare_datacite_study(object_data, _info, discovery_url)
 
                     # there are cases where datasets are added first
@@ -272,7 +284,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                         )
 
                 else:
-                    dataset = self._prepare_datacite_dataset(_study_doi, object_data, _info)
+                    dataset = self._prepare_datacite_dataset(_study_doi, object_data, _info, discovery_url)
                     datacite_datasets.append(dataset)
 
                     # A Study describes a Dataset
@@ -408,7 +420,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                     "localizations": {
                         "en": {
                             "title": object_data["title"],
-                            "infourl": self._make_discovery_url(object_data),
+                            "infourl": self._make_discovery_url(object_data, submission["workflow"]),
                         }
                     },
                     "metaxIdentifier": object_data.get("metaxIdentifier", ""),

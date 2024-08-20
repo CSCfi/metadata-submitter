@@ -187,6 +187,14 @@
                     }
                 }
             }
+        },
+        "discovery_service": {
+            "type": "string",
+            "title": "Name of discovery service to use for the workflow",
+            "enum": [
+                "beacon",
+                "metax"
+            ]
         }
     }
 }

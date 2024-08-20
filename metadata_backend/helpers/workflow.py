@@ -104,3 +104,8 @@ class Workflow:
         publishing = self._workflow["publish"] if "publish" in self._workflow else self._workflow["announce"]
         conf: str = next(publish[value] for publish in publishing if publish["name"] == name)
         return conf
+
+    def get_workflow_discovery_service(self) -> str:
+        """Get the discovery service defined in a particular workflow."""
+        service: str = self._workflow["discovery_service"]
+        return service

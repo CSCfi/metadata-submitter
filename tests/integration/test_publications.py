@@ -2,7 +2,7 @@
 
 import logging
 
-from tests.integration.conf import objects_url, submissions_url
+from tests.integration.conf import metax_discovery_url, objects_url, submissions_url
 from tests.integration.helpers import (
     create_request_json_data,
     post_object_json,
@@ -37,6 +37,8 @@ class TestMinimalJsonPublication:
             res = await resp.json()
             assert res["submissionId"] == submission_fega, "expected submission id does not match"
             assert res["published"] is True, "submission is published, expected False"
+            # Check that discovery service for publication is correct
+            assert res["extraInfo"]["studyIdentifier"]["url"].startswith(metax_discovery_url)
 
 
 class TestMinimalJsonPublicationRems:
