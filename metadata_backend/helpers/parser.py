@@ -444,7 +444,7 @@ class XMLToJSONParser:
         if isinstance(result[obj_name], list):
             results = result[obj_name]
             # Parse original xml content into similar list as the json objects
-            xml_elements = self._separate_objects_of_xml_content(content)
+            xml_elements = self._separate_objects_of_xml_content(_schema_type, content)
             # JSON object list and XML list should be the same length
             if len(results) != len(xml_elements):
                 reason = "Amount of JSON objects from XML objects failed to match after parsing"
@@ -507,10 +507,10 @@ class XMLToJSONParser:
         samples: list[dict[str, Any]] = bio_beings + cases + specimens + blocks + slides
         return {"bpsample": samples}
 
-    @staticmethod
-    def _separate_objects_of_xml_content(xml_content: str) -> list[str]:
+    def _separate_objects_of_xml_content(self, schema_type: str, xml_content: str) -> list[str]:
         """Divide xml content containing multiple metadata objects into a list.
 
+        :param schema_type: name of metadata schema
         :param xml_content: XML content to be parsed
         :returns: List of XML strings
         """
@@ -530,35 +530,63 @@ class XMLToJSONParser:
             # Prettify xml content so it looks normal again if printed to file or terminal
             reparsed = parsed.toprettyxml(indent="    ")[23:]
             pretty_xml = os.linesep.join([s for s in reparsed.splitlines() if s.strip()])
+
+            # Double check that new xml content is still valid
+            schema = self._load_schema(schema_type)
+            LOG.info("%r XML schema loaded.", schema_type)
+            validator = XMLValidator(schema, pretty_xml)
+            if not validator.is_valid:
+                reason = "XML content has become invalid during processing of the request"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+
             new_items.append(pretty_xml)
 
         return new_items
 
-    # Give new items an unique accession ID
-    # bp_elems = [
-    #     "DATASET",
-    #     "IMAGE",
-    #     "OBSERVATION",
-    #     "STAINING",
-    #     "BIOLOGICAL_BEING",
-    #     "CASE",
-    #     "SPECIMEN",
-    #     "BLOCK",
-    #     "SLIDE",
-    # ]
-    # items_with_ids = []
-    # for item in new_items:
-    #     root = ET.fromstring(item)
-    #     for elem_name in bp_elems:
-    #         xml_elements = root.findall(elem_name)
-    #         for elem in xml_elements:
-    #             id = "something"
-    #             elem.set("accession", id)
-    #     new_id = ET.tostring(root, encoding="unicode")
-    #     items_with_ids.append(new_id)
-    #     print(new_id)
+    def assign_accession_to_xml_content(self, schema_type: str, xml: str, accessionId: str) -> Any:  # noqa: ANN401
+        """Add internal accession ID to BP related XML metadata objects.
 
-    # print(items_with_ids)
+        We can assume that the method receives a valid XML metadata object for a BP schema.
+
+        :param schema_type: name of metadata schema
+        :param xml: XML content to be altered
+        :param accessionId: New accession ID
+        :returns: Altered XML content
+        """
+        # The accession id is assigned to first available element that matches
+        # the naming in list of possible metadata object types below
+        bp_elems = [
+            "DATASET",
+            "IMAGE",
+            "OBSERVATION",
+            "STAINING",
+            "BIOLOGICAL_BEING",
+            "CASE",
+            "SPECIMEN",
+            "BLOCK",
+            "SLIDE",
+        ]
+        root = ET.fromstring(xml)
+        for elem_name in bp_elems:
+            elem = root.find(elem_name)
+            if elem:
+                LOG.debug("New accession attribute set at %s", elem)
+                elem.set("accession", accessionId)
+                break
+
+        modified_xml = ET.tostring(root, encoding="unicode")
+
+        # Double check that altered xml content is still valid
+        schema = self._load_schema(schema_type)
+        LOG.info("%r XML schema loaded.", schema_type)
+        validator = XMLValidator(schema, modified_xml)
+        if not validator.is_valid:
+            reason = "XML content has become invalid during processing of the request"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
+        return modified_xml
 
 
 class CSVToJSONParser:
