@@ -6,7 +6,7 @@
 #
 aiofiles==24.1.0
     # via -r requirements-dev.in
-aiohttp==3.10.2
+aiohttp==3.10.5
     # via
     #   -r requirements.txt
     #   aiohttp-session
@@ -169,7 +169,7 @@ multidict==6.0.5
     #   -r requirements.txt
     #   aiohttp
     #   yarl
-mypy==1.10.1
+mypy==1.11.1
     # via -r requirements-dev.in
 mypy-extensions==1.0.0
     # via
