@@ -113,6 +113,9 @@ $ pre-commit install
 
 # generate references for metax integration
 $ scripts/metax_mappings/fetch_refs.sh
+
+# generate taxonomy names file for taxonomy search endpoint
+$ scripts/taxonomy/generate_name_taxonomy.sh
 ```
 
 Copy `.env` file and set up the environment variables.
