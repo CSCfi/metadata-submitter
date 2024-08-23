@@ -140,7 +140,7 @@ class ServiceHandler(ABC):
                 url=url,
                 params=params,
                 json=json_data,
-                timeout=timeout,
+                timeout=ClientTimeout(total=timeout),
             ) as response:
                 if not response.ok:
                     content = await response.text()
