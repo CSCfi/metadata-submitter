@@ -211,6 +211,13 @@ class DatabaseTestCase(IsolatedAsyncioTestCase):
         )
         self.assertEqual(success, {})
 
+    async def test_remove_many_data(self):
+        """Test that remove_many method works and returns True."""
+        self.collection.update_many.return_value = UpdateResult({}, True)
+        result = await self.test_service.remove_many("testcollection", self.data_stub)
+        self.collection.update_many.assert_called_once_with({}, {"$pull": self.data_stub})
+        self.assertEqual(result, True)
+
     async def test_patch_data(self):
         """Test that patch method works and returns data."""
         json_patch = [
