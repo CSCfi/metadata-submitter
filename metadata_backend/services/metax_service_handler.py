@@ -7,7 +7,7 @@ Swagger https://metax.fairdata.fi/swagger/v2
 import time
 from typing import Any
 
-from aiohttp import BasicAuth, web
+from aiohttp import BasicAuth, ClientTimeout, web
 from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
 from yarl import URL
 
@@ -316,7 +316,7 @@ class MetaxServiceHandler(ServiceHandler):
             async with self._client.request(
                 method="GET",
                 url=f"{URL(metax_config['url'])}/watchman/ping/",
-                timeout=10,
+                timeout=ClientTimeout(total=10),
             ) as response:
                 LOG.debug("Metax REST API status is: %s.", response.status)
                 content = await response.text()

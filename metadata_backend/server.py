@@ -51,13 +51,13 @@ async def init(
     middlewares = [http_error_handler, check_session]
     if inject_middleware:
         middlewares = middlewares + inject_middleware
-    api = web.Application(middlewares=middlewares)
+    api = web.Application(middlewares=middlewares)  # type: ignore
 
     sec_key = base64.urlsafe_b64decode(Fernet.generate_key())
     session_middleware = aiohttp_session.session_middleware(
         aiohttp_session.cookie_storage.EncryptedCookieStorage(sec_key)
     )
-    server = web.Application(middlewares=[session_middleware])
+    server = web.Application(middlewares=[session_middleware])  # type: ignore
 
     metax_handler = MetaxServiceHandler()
     datacite_handler = DataciteServiceHandler()

@@ -140,7 +140,7 @@ class DataciteServiceHandler(ServiceHandler):
             async with self._client.request(
                 method="GET",
                 url=f"{self.base_url}/heartbeat",
-                timeout=10,
+                timeout=ClientTimeout(total=10),
             ) as response:
                 content = await response.text()
                 LOG.info("Datacite REST API response content is: %s.", content)

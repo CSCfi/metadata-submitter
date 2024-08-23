@@ -4,7 +4,7 @@ import time
 from typing import Any, Optional
 
 import aiohttp_session
-from aiohttp import web
+from aiohttp import ClientTimeout, web
 from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
 from aiohttp.web import Request, Response
 from idpyoidc.client.rp_handler import RPHandler
@@ -340,7 +340,7 @@ class AAIServiceHandler(ServiceHandler):
             async with self._client.request(
                 method="GET",
                 url=f"{self.base_url}/.well-known/openid-configuration",
-                timeout=10,
+                timeout=ClientTimeout(total=10),
             ) as response:
                 content = await response.json()
                 LOG.debug("AAI REST API response content is: %r.", content)
