@@ -93,7 +93,7 @@ class TestFiles:
             assert file["name"] == f"file_{index + 1}.c4gh"
             assert file["projectId"] == user_data["projects"][int(index / 2)]["projectId"]
 
-    async def test_delete_project_files(self, client_logged_in):
+    async def test_delete_project_files(self, client_logged_in, database):
         """Test that specific file is flagged as deleted and removed from current submissions (not published).
 
         :param client_logged_in: HTTP client in which request call is made
@@ -132,6 +132,10 @@ class TestFiles:
         submission_info = await get_submission(client_logged_in, submission_id)
         assert len(submission_info["files"]) == 1
 
+        # Query created file in database
+        db_file = await database["file"].find_one({"accessionId": file_id, "projectId": project_id})
+        assert db_file["flagDeleted"] is False
+
         # Flag file as deleted in DB and remove file from current submission
         await delete_project_files(client_logged_in, project_id, mock_file["path"])
 
@@ -145,6 +149,10 @@ class TestFiles:
 
         file_exists = await find_project_file(client_logged_in, project_id, file_id)
         assert file_exists is False
+
+        # Query flagged as deleted file in database
+        db_file_deleted = await database["file"].find_one({"accessionId": file_id, "projectId": project_id})
+        assert db_file_deleted["flagDeleted"] is True
 
 
 class TestFileSubmissions:
