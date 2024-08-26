@@ -2,6 +2,7 @@
 
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from aiohttp import web
 from pymongo import UpdateOne
@@ -224,21 +225,36 @@ class ParserTestCase(unittest.TestCase):
         with self.assertRaises(web.HTTPBadRequest):
             self.xml_parser.parse("bpsample", test_minimal_xml.format(10))
 
-    # def test_separate_xml_content_method_works(self):
-    #     """Test that multipart xml content can be parsed into list of xml strings."""
-    #     xml_str = """
-    #     <SAMPLE_SET>
-    #         <BIOLOGICAL_BEING></BIOLOGICAL_BEING>
-    #         <SPECIMEN></SPECIMEN>
-    #         <BLOCK></BLOCK>
-    #         <SLIDE></SLIDE>
-    #     </SAMPLE_SET>
-    #     """
-    #     xml_list = self.xml_parser._separate_objects_of_xml_content("bpsample", xml_str)
-    #     self.assertEqual(xml_list[0], "<SAMPLE_SET>\n    <BIOLOGICAL_BEING/>\n</SAMPLE_SET>")
-    #     self.assertEqual(xml_list[1], "<SAMPLE_SET>\n    <SPECIMEN/>\n</SAMPLE_SET>")
-    #     self.assertEqual(xml_list[2], "<SAMPLE_SET>\n    <BLOCK/>\n</SAMPLE_SET>")
-    #     self.assertEqual(xml_list[3], "<SAMPLE_SET>\n    <SLIDE/>\n</SAMPLE_SET>")
+    def test_separate_xml_content_method_works(self):
+        """Test that multipart xml content can be parsed into list of xml strings."""
+        xml_str = """
+        <SAMPLE_SET>
+            <BIOLOGICAL_BEING></BIOLOGICAL_BEING>
+            <SPECIMEN></SPECIMEN>
+            <BLOCK></BLOCK>
+            <SLIDE></SLIDE>
+        </SAMPLE_SET>
+        """
+        with patch(
+            "metadata_backend.helpers.parser.XMLValidator.is_valid",
+            return_value=True,
+        ):
+            xml_list = self.xml_parser._separate_objects_of_xml_content("bpsample", xml_str)
+            self.assertEqual(xml_list[0], "<SAMPLE_SET>\n    <BIOLOGICAL_BEING/>\n</SAMPLE_SET>")
+            self.assertEqual(xml_list[1], "<SAMPLE_SET>\n    <SPECIMEN/>\n</SAMPLE_SET>")
+            self.assertEqual(xml_list[2], "<SAMPLE_SET>\n    <BLOCK/>\n</SAMPLE_SET>")
+            self.assertEqual(xml_list[3], "<SAMPLE_SET>\n    <SLIDE/>\n</SAMPLE_SET>")
+
+    def test_assign_accession_to_xml_content(self):
+        """Test that accession ID can be added into BP related metadata XML."""
+        bp_image_xml = self.load_file_to_text("bpimage", "images_single.xml")
+        mod_xml = self.xml_parser.assign_accession_to_xml_content("bpimage", bp_image_xml, "test123456")
+        self.assertIn('accession="test123456"', mod_xml)
+
+        # Test that a non BP related xml content doesn't get the accession ID added in
+        study_xml = self.load_file_to_text("study", "SRP000539.xml")
+        mod_xml = self.xml_parser.assign_accession_to_xml_content("study", study_xml, "test123456")
+        self.assertNotIn('accession="test123456"', mod_xml)
 
     def test_error_raised_when_schema_not_found(self):
         """Test 400 is returned when schema type is invalid."""

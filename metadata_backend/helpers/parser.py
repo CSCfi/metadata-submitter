@@ -544,7 +544,7 @@ class XMLToJSONParser:
 
         return new_items
 
-    def assign_accession_to_xml_content(self, schema_type: str, xml: str, accessionId: str) -> Any:  # noqa: ANN401
+    def assign_accession_to_xml_content(self, schema_type: str, xml: str, accessionId: str) -> str:
         """Add internal accession ID to BP related XML metadata objects.
 
         We can assume that the method receives a valid XML metadata object for a BP schema.
@@ -575,7 +575,7 @@ class XMLToJSONParser:
                 elem.set("accession", accessionId)
                 break
 
-        modified_xml = ET.tostring(root, encoding="unicode")
+        modified_xml: str = ET.tostring(root, encoding="unicode")
 
         # Double check that altered xml content is still valid
         schema = self._load_schema(schema_type)
