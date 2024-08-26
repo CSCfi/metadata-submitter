@@ -3,7 +3,7 @@
 import json
 import logging
 import re
-from urllib.parse import quote_plus, urlencode
+from urllib.parse import urlencode
 from uuid import uuid4
 
 import aiofiles
@@ -789,13 +789,13 @@ def generate_mock_file(name: str):
     }
 
 
-async def delete_project_files(sess, project_id, file_path):
+async def delete_project_files(sess, project_id, file_paths):
     """Remove file from an existing submission.
 
     :param sess: HTTP session in which request call is made
     :param project_id: project ID where the file belongs to
     :param file_path: path of the file to be flagged as deleted
     """
-    url = f"{files_url}/{project_id}/{quote_plus(file_path)}"
-    async with sess.delete(url) as resp:
+    url = f"{files_url}/{project_id}"
+    async with sess.delete(url, data=ujson.dumps(file_paths)) as resp:
         assert resp.status == 204, f"HTTP Status code error {resp.status}"
