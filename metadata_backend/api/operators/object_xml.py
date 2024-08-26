@@ -50,14 +50,12 @@ class XMLObjectOperator(BaseObjectOperator):
         for i, obj in enumerate(data_objects):
             data_with_id = await ObjectOperator(db_client)._format_data_to_create_and_add_to_db(schema_type, obj)
             added_data.append(data_with_id)
-            xml_obj = parsed_xml_content[i]
+            xml_obj: str = parsed_xml_content[i]
             # Alter the xml content for BigPicture XML items
             if schema[:2] == "bp":
                 xml_obj = parser.assign_accession_to_xml_content(
                     schema, parsed_xml_content[i], data_with_id["accessionId"]
                 )
-            else:
-                xml_obj = parsed_xml_content[i]
             LOG.debug("XMLObjectOperator formatted data for collection: 'xml-%s' to add to DB.", schema_type)
             await self._insert_formatted_object_to_db(
                 f"xml-{schema_type}", {"accessionId": data_with_id["accessionId"], "content": xml_obj}

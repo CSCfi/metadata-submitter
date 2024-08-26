@@ -118,6 +118,21 @@ async def get_object(sess, schema, accession_id):
         return data
 
 
+async def get_xml_object(sess, schema, accession_id):
+    """Get the XML content of one metadata object.
+
+    :param sess: HTTP session in which request call is made
+    :param schema: name of the schema (submission) used for testing
+    :param accession_id: object to fetch
+    :return: data of an object
+    """
+    async with sess.get(f"{objects_url}/{schema}/{accession_id}?format=xml") as resp:
+        LOG.debug(f"Getting xml object from {schema} with {accession_id}")
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+        data = await resp.text()
+        return data
+
+
 async def post_object(sess, schema, submission_id, filename):
     """Post one metadata object within session, returns accessionId.
 
