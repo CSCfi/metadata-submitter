@@ -3,7 +3,6 @@
 import time
 from pathlib import Path
 from unittest.mock import AsyncMock, call, patch
-from urllib.parse import quote_plus
 
 import aiohttp_session
 import ujson
@@ -1205,6 +1204,13 @@ class FilesHandlerTestCase(HandlersTestCase):
             ],
         }
 
+        self.mock_file_paths = ["s3:/bucket/files/mock", "s3:/bucket/files/mock2", "s3:/bucket/files/mock3"]
+        self.mock_single_file = {
+            "accessionId": self.projected_file_example["accessionId"],
+            "path": self.mock_file_data["files"][0]["path"],
+            "projectId": self.mock_file_data["projectId"],
+        }
+
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
         await super().tearDownAsync()
@@ -1283,11 +1289,6 @@ class FilesHandlerTestCase(HandlersTestCase):
 
     async def test_delete_project_files_works(self):
         """Test deleting file request handler."""
-        mock_file_value = {
-            "accessionId": self.projected_file_example["accessionId"],
-            "path": self.mock_file_data["files"][0]["path"],
-            "projectId": self.mock_file_data["projectId"],
-        }
         with (
             patch(
                 "metadata_backend.api.operators.project.ProjectOperator.check_project_exists",
@@ -1295,19 +1296,14 @@ class FilesHandlerTestCase(HandlersTestCase):
             ),
             self.p_get_sess_restapi,
         ):
-            url = f"{API_PREFIX}/files/{mock_file_value['projectId']}/{quote_plus(mock_file_value['path'])}"
-            self.MockedFileOperator().check_file_exists.return_value = mock_file_value
-            response = await self.client.delete(url)
-            self.MockedFileOperator().flag_file_deleted.assert_called_once()
+            url = f"{API_PREFIX}/files/{self.mock_single_file['projectId']}"
+            self.MockedFileOperator().check_file_exists.return_value = self.mock_single_file
+            response = await self.client.delete(url, json=self.mock_file_paths)
+            self.assertEqual(self.MockedFileOperator().flag_file_deleted.call_count, 3)
             self.assertEqual(response.status, 204)
 
-    async def test_delete_project_files_fails(self):
-        """Test deleting file request handler with error."""
-        mock_file_value = {
-            "accessionId": self.projected_file_example["accessionId"],
-            "path": self.mock_file_data["files"][0]["path"],
-            "projectId": self.mock_file_data["projectId"],
-        }
+    async def test_delete_project_files_not_in_database(self):
+        """Test deleting file request handler with error if file does not exist in database."""
         with (
             patch(
                 "metadata_backend.api.operators.project.ProjectOperator.check_project_exists",
@@ -1315,8 +1311,23 @@ class FilesHandlerTestCase(HandlersTestCase):
             ),
             self.p_get_sess_restapi,
         ):
-            url = f"{API_PREFIX}/files/{mock_file_value['projectId']}/{quote_plus(mock_file_value['path'])}"
+            url = f"{API_PREFIX}/files/{self.mock_single_file['projectId']}"
             # File does not exist in database
             self.MockedFileOperator().check_file_exists.return_value = None
-            await self.client.delete(url)
+            await self.client.delete(url, json=self.mock_file_paths)
+            self.MockedFileOperator().flag_file_deleted.assert_not_called()
+
+    async def test_delete_project_files_not_valid(self):
+        """Test deleting file request handler with error if files in request are not valid."""
+        with (
+            patch(
+                "metadata_backend.api.operators.project.ProjectOperator.check_project_exists",
+                return_value=True,
+            ),
+            self.p_get_sess_restapi,
+        ):
+            url = f"{API_PREFIX}/files/{self.mock_single_file['projectId']}"
+            # Invalid file as request payload
+            await self.client.delete(url, json=self.mock_single_file)
+            self.MockedFileOperator().check_file_exists.assert_not_called()
             self.MockedFileOperator().flag_file_deleted.assert_not_called()
