@@ -177,6 +177,7 @@ class FileOperator(BaseOperator):
                     "name": 1,
                     "path": 1,
                     "projectId": 1,
+                    "flagDeleted": 1,
                     "bytes": "$versions.bytes",
                     "encrypted_checksums": "$versions.encrypted_checksums",
                     "unencrypted_checksums": "$versions.unencrypted_checksums",

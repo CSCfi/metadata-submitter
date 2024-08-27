@@ -11,6 +11,8 @@ from aiohttp import BasicAuth, ClientTimeout, web
 from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
 from yarl import URL
 
+from metadata_backend.api.operators.file import FileOperator
+
 from ..conf.conf import metax_config
 from ..helpers.logger import LOG
 from .metax_mapper import MetaDataMapper, SubjectNotFoundException
@@ -213,12 +215,16 @@ class MetaxServiceHandler(ServiceHandler):
     #     await self._delete_draft(metax_id)
 
     async def update_dataset_with_doi_info(
-        self, datacite_info: dict[str, Any], metax_ids: list[dict[str, Any]]
+        self,
+        datacite_info: dict[str, Any],
+        metax_ids: list[dict[str, Any]],
+        file_operator: FileOperator,
     ) -> None:
         """Update dataset for publishing.
 
         :param datacite_info: Dict containing info to complete metax dataset metadata
         :param metax_ids: List of Metax id of dataset to be updated
+        :param file_operator: FileOperator for reading files from database
         :raises: HTTPBadRequest if mapping datacite info to metax fails
         """
         LOG.info(
@@ -230,9 +236,9 @@ class MetaxServiceHandler(ServiceHandler):
             metax_data: dict[str, Any] = await self._get(metax_id["metaxIdentifier"])
 
             # Map fields from doi info to Metax schema
-            mapper = MetaDataMapper(metax_id["schema"], metax_data["research_dataset"], datacite_info)
+            mapper = MetaDataMapper(metax_id["schema"], metax_data["research_dataset"], datacite_info, file_operator)
             try:
-                mapped_metax_data = mapper.map_metadata()
+                mapped_metax_data = await mapper.map_metadata()
             except SubjectNotFoundException as error:
                 # in case the datacite subject cannot be mapped to metax field of science
                 reason = f"{error}"

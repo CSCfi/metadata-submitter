@@ -4,6 +4,8 @@ from copy import deepcopy
 from datetime import datetime
 from typing import Any
 
+from metadata_backend.api.operators.file import FileOperator
+
 from ..conf.conf import METAX_REFERENCE_DATA
 from ..helpers.logger import LOG
 
@@ -216,7 +218,6 @@ class MetaDataMapper:
                 "type": "array",
                 "items": {"type": "object", "$ref": "#/definitions/ResearchAgent"},
             },
-            # TODO: this need to be extracted from linked files metadata on integration with SD Connect
             "total_remote_resources_byte_size": {
                 "type": "integer",
             },
@@ -224,16 +225,20 @@ class MetaDataMapper:
     }
     """
 
-    def __init__(self, object_type: str, metax_data: dict[str, Any], data: dict[str, Any]) -> None:
+    def __init__(
+        self, object_type: str, metax_data: dict[str, Any], data: dict[str, Any], file_op: FileOperator
+    ) -> None:
         """Set variables.
 
         :param object_type: Schema name (dataset or study)
         :param metax_data: Metax research_dataset metadata
         :param data: Dict containing datacite data
+        :param file_op: FileOperator for reading files from database
         """
         self.object_type = object_type
         self.research_dataset = metax_data
         self.datacite_data = data
+        self.file_operator = file_op
         self.affiliations: list[Any] = []
         self.identifier_types = METAX_REFERENCE_DATA["identifier_types"]
         self.languages = METAX_REFERENCE_DATA["languages"]
@@ -246,7 +251,7 @@ class MetaDataMapper:
             "identifier": "",
         }
 
-    def map_metadata(self) -> dict[str, Any]:
+    async def map_metadata(self) -> dict[str, Any]:
         """Public class for actual mapping of metadata fields.
 
         :returns: Research dataset
@@ -279,6 +284,9 @@ class MetaDataMapper:
                 self._map_relations(value)
             if self.object_type == "dataset" and key == "studyIdentifier":
                 self._map_is_output_of(value)
+
+        await self._map_file_bytes()
+
         return self.research_dataset
 
     def _map_creators(self, creators: list[Any]) -> None:
@@ -562,6 +570,21 @@ class MetaDataMapper:
                 raise SubjectNotFoundException from exc
 
             funding_references.append(funding)
+
+    async def _map_file_bytes(self) -> None:
+        """Map file bytes.
+
+        Function calculates the total size of files
+        """
+        LOG.info("Mapping file bytes")
+
+        self.research_dataset["total_remote_resources_byte_size"] = 0
+        for file in self.datacite_data.get("files", []):
+            LOG.debug(file)
+
+            file_data = await self.file_operator.read_file(file["accessionId"], file["version"])
+            if not file_data["flagDeleted"]:
+                self.research_dataset["total_remote_resources_byte_size"] += file_data["bytes"]
 
 
 class SubjectNotFoundException(Exception):

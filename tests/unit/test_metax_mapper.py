@@ -1,30 +1,33 @@
 """Test Metax metadata mapping methods."""
 
 import json
-import unittest
 from pathlib import Path
+from unittest import IsolatedAsyncioTestCase
+from unittest.mock import AsyncMock, MagicMock
 
+from metadata_backend.api.operators.file import FileOperator
 from metadata_backend.services.metax_mapper import MetaDataMapper, SubjectNotFoundException
 
 
-class MetaDataMapperTestCase(unittest.TestCase):
+class MetaDataMapperTestCase(IsolatedAsyncioTestCase):
     """MetaDataMapper Test Cases."""
 
     TESTFILES_ROOT = Path(__file__).parent.parent / "test_files"
 
     def setUp(self):
         """Configure variables for tests."""
-        self.mapper = MetaDataMapper("dataset", {}, {})
+        self.client = MagicMock()
+        self.mapper = MetaDataMapper("dataset", {}, {}, FileOperator(self.client))
         doi_file = self.TESTFILES_ROOT / "doi" / "test_doi.json"
         self.test_doi = json.loads(doi_file.read_text())
         metax_file = self.TESTFILES_ROOT / "metax" / "research_dataset.json"
         self.test_metax = json.loads(metax_file.read_text())
 
-    def test_map_metadata(self):
+    async def test_map_metadata(self):
         """Test that Metax metadata receives new data from DOI of a submission."""
-        submission = {"doiInfo": self.test_doi, "extraInfo": {}}
-        new_mapper = MetaDataMapper("dataset", {}, submission)
-        research_dataset = new_mapper.map_metadata()
+        submission = {"doiInfo": self.test_doi, "extraInfo": {}, "files": []}
+        new_mapper = MetaDataMapper("dataset", {}, submission, FileOperator(self.client))
+        research_dataset = await new_mapper.map_metadata()
         new_keys = [
             "creator",
             "keyword",
@@ -34,6 +37,7 @@ class MetaDataMapperTestCase(unittest.TestCase):
             "other_identifier",
             "language",
             "field_of_science",
+            "total_remote_resources_byte_size",
         ]
         for key in new_keys:
             self.assertIn(key, research_dataset)
@@ -66,3 +70,30 @@ class MetaDataMapperTestCase(unittest.TestCase):
         ]
         with self.assertRaises(SubjectNotFoundException):
             self.mapper._map_field_of_science(bad_subjects)
+
+    async def test_map_file_bytes(self):
+        """Test that the total size of files is calculated correctly."""
+        submission = {
+            "doiInfo": {},
+            "extraInfo": {},
+            "files": [
+                {"accessionId": "672", "version": 1},
+                {"accessionId": "781", "version": 2},
+                {"accessionId": "268", "version": 1},
+            ],
+        }
+        file_operator = FileOperator(self.client)
+        file_operator.db_service.do_aggregate = AsyncMock(side_effect=_read_file_side_effect)
+        new_mapper = MetaDataMapper("dataset", {}, submission, file_operator)
+        await new_mapper._map_file_bytes()
+        self.assertEqual(4440, new_mapper.research_dataset["total_remote_resources_byte_size"])
+
+
+def _read_file_side_effect(*args):
+    match args[1][0]["$match"]["accessionId"]:
+        case "672":
+            return [{"bytes": 3476, "flagDeleted": False}]
+        case "781":
+            return [{"bytes": 964, "flagDeleted": False}]
+        case "268":
+            return [{"bytes": 1623, "flagDeleted": True}]
