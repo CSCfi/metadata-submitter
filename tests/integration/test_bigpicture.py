@@ -4,12 +4,12 @@ import defusedxml.ElementTree as ET
 
 from tests.integration.conf import datacite_url
 from tests.integration.helpers import (
+    announce_submission,
     create_request_json_data,
     delete_published_submission,
     get_object,
     get_xml_object,
     post_object,
-    publish_submission,
     put_submission_doi,
     put_submission_rems,
 )
@@ -35,7 +35,7 @@ class TestBigPicture:
         rems_data = await create_request_json_data("dac", "dac_rems.json")
         await put_submission_rems(client_logged_in, submission_bigpicture, rems_data)
 
-        await publish_submission(client_logged_in, submission_bigpicture)
+        await announce_submission(client_logged_in, submission_bigpicture)
 
         # DOI is generated in the publishing phase
         bpdataset = await get_object(client_logged_in, "bpdataset", bpdataset[0])
