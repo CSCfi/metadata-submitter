@@ -1,10 +1,13 @@
 """Tests with big picture schemas."""
 
+import defusedxml.ElementTree as ET
+
 from tests.integration.conf import datacite_url
 from tests.integration.helpers import (
     create_request_json_data,
     delete_published_submission,
     get_object,
+    get_xml_object,
     post_object,
     post_object_json,
     publish_submission,
@@ -72,4 +75,15 @@ class TestBigPicture:
         # Retrieve samples with accession ids
         for sample in bpsamples:
             bpsample = await get_object(client_logged_in, "bpsample", sample["accessionId"])
-            assert bpsample["accessionId"] == sample["accessionId"]
+            assert bpsample["accessionId"] == sample["accessionId"], "Wrong metadata object was returned"
+
+            # Check the XML content was altered and stored correctly as well
+            bpsample_xml = await get_xml_object(client_logged_in, "bpsample", sample["accessionId"])
+            root = ET.fromstring(bpsample_xml)
+            assert root.tag == "SAMPLE_SET"
+            child_elements = list(root)
+            assert len(child_elements) == 1, "Wrong number of child elements found"
+            tags = ["BIOLOGICAL_BEING", "CASE", "SPECIMEN", "SLIDE", "BLOCK"]
+            assert child_elements[0].tag in tags, "Wrong child element was found"
+            child_attributes = child_elements[0].attrib
+            assert child_attributes["accession"] == sample["accessionId"], "Wrong accession ID was stored in XML"

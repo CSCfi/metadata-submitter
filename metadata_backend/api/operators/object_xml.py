@@ -39,19 +39,26 @@ class XMLObjectOperator(BaseObjectOperator):
         :returns: List of metadata objects extracted from the XML content
         """
         db_client = self.db_service.db_client
+        parser = XMLToJSONParser()
         # remove `draft-` from schema type
         schema = schema_type[6:] if schema_type.startswith("draft") else schema_type
-        parsed_data = XMLToJSONParser().parse(schema, data)
+        parsed_json_data, parsed_xml_content = parser.parse(schema, data)
 
         # Parser may return a list of objects and each object should be added separately
-        data_objects = parsed_data if isinstance(parsed_data, list) else [parsed_data]
+        data_objects = parsed_json_data if isinstance(parsed_json_data, list) else [parsed_json_data]
         added_data: list[dict[str, Any]] = []
-        for obj in data_objects:
+        for i, obj in enumerate(data_objects):
             data_with_id = await ObjectOperator(db_client)._format_data_to_create_and_add_to_db(schema_type, obj)
             added_data.append(data_with_id)
+            xml_obj: str = parsed_xml_content[i]
+            # Alter the xml content for BigPicture XML items
+            if schema[:2] == "bp":
+                xml_obj = parser.assign_accession_to_xml_content(
+                    schema, parsed_xml_content[i], data_with_id["accessionId"]
+                )
             LOG.debug("XMLObjectOperator formatted data for collection: 'xml-%s' to add to DB.", schema_type)
             await self._insert_formatted_object_to_db(
-                f"xml-{schema_type}", {"accessionId": data_with_id["accessionId"], "content": data}
+                f"xml-{schema_type}", {"accessionId": data_with_id["accessionId"], "content": xml_obj}
             )
 
         return added_data
@@ -72,13 +79,13 @@ class XMLObjectOperator(BaseObjectOperator):
         db_client = self.db_service.db_client
         # remove `draft-` from schema type
         schema = schema_type[6:] if schema_type.startswith("draft") else schema_type
-        data_as_json = XMLToJSONParser().parse(schema, data)
+        data_as_json, parsed_xml = XMLToJSONParser().parse(schema, data)
         data_with_id = await ObjectOperator(db_client)._format_data_to_replace_and_add_to_db(
             schema_type, accession_id, data_as_json
         )
         LOG.debug("XMLObjectOperator formatted data for collection: 'xml-%s' to add to DB.", schema_type)
         await self._replace_object_from_db(
-            f"xml-{schema_type}", accession_id, {"accessionId": accession_id, "content": data}
+            f"xml-{schema_type}", accession_id, {"accessionId": accession_id, "content": parsed_xml[0]}
         )
         return data_with_id
 
