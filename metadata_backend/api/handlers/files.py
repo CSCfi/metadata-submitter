@@ -97,3 +97,41 @@ class FilesAPIHandler(RESTAPIHandler):
             created_files.append(id_and_v)
 
         return web.Response(body=ujson.dumps(created_files), status=201, content_type="application/json")
+
+    async def delete_project_files(self, request: web.Request) -> web.Response:
+        """Remove a file from a project.
+
+        :param request: DELETE request
+        :raises HTTP Not Found if file not associated with submission
+        :returns: HTTP No Content response
+        """
+        project_id = request.match_info["projectId"]
+        db_client = request.app["db_client"]
+
+        # Check that project exists
+        project_op = ProjectOperator(db_client)
+        await project_op.check_project_exists(project_id)
+
+        data = await self._get_data(request)
+
+        if not isinstance(data, list):
+            reason = "Deleting files must be passed as a list of file paths."
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+        # Check file exists in database
+        file_operator = FileOperator(db_client)
+        for file_path in data:
+            if not isinstance(file_path, str):
+                reason = "File path must be a string"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+            file = await file_operator.check_file_exists(project_id, file_path)
+            if file is not None:
+                await file_operator.flag_file_deleted(file)
+
+        LOG.info(
+            "DELETE files in project %s with file paths: %s was successful.",
+            project_id,
+            "\n".join(file_path for file_path in data),
+        )
+        return web.HTTPNoContent()

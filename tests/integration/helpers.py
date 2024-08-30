@@ -802,3 +802,15 @@ def generate_mock_file(name: str):
         "encrypted_checksums": [{"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b4812345"}],
         "unencrypted_checksums": [{"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b4812345"}],
     }
+
+
+async def delete_project_files(sess, project_id, file_paths):
+    """Remove file from an existing submission.
+
+    :param sess: HTTP session in which request call is made
+    :param project_id: project ID where the file belongs to
+    :param file_path: path of the file to be flagged as deleted
+    """
+    url = f"{files_url}/{project_id}"
+    async with sess.delete(url, data=ujson.dumps(file_paths)) as resp:
+        assert resp.status == 204, f"HTTP Status code error {resp.status}"

@@ -45,20 +45,11 @@ class FileOperator(BaseOperator):
         or other db issue
         :returns: dict with file accession id and file version
         """
-        # Check if file already exists
-        _projection = {
-            "_id": 0,
-            "accessionId": 1,
-            # get only the last version of a file
-            "currentVersion": {"$first": {"$sortArray": {"input": "$versions", "sortBy": {"version": -1}}}},
-        }
         try:
-            file_in_db = await self.db_service.read_by_key_value(
-                "file", {"path": path, "projectId": project_id}, _projection
-            )
-            if file_in_db:
-                accession_id = file_in_db["accessionId"]
-                version = file_in_db["currentVersion"]["version"] + 1
+            file = await self.check_file_exists(project_id, path)
+            if file:
+                accession_id = file["accessionId"]
+                version = file["currentVersion"]["version"] + 1
             else:
                 accession_id = self._generate_accession_id()
                 version = 1
@@ -207,7 +198,7 @@ class FileOperator(BaseOperator):
     async def read_project_files(self, project_id: str) -> list[dict[str, Any]]:
         """Read files from DB based on a specific filter type and corresponding identifier.
 
-        The files are read by the latest version, and filtered either by projectId.
+        The files are read by the latest version, filtered by projectId and flagDeleted.
 
         :param project_id: Project ID to get files for
         :raises: HTTPInternalServerError if db operation failed because of connection
@@ -215,7 +206,7 @@ class FileOperator(BaseOperator):
         :returns: List of files
         """
         aggregate_query = [
-            {"$match": {"projectId": project_id}},
+            {"$match": {"projectId": project_id, "flagDeleted": False}},
             {"$sort": {"versions.version": -1}},
             {"$unwind": "$versions"},
             {
@@ -324,12 +315,12 @@ class FileOperator(BaseOperator):
             LOG.exception(reason)
             raise web.HTTPInternalServerError(reason=reason) from error
 
-    async def flag_file_deleted(self, file_path: str, deleted: bool = True) -> None:
+    async def flag_file_deleted(self, file: dict[str, Any], deleted: bool = True) -> None:
         """Flag file as deleted.
 
         File should not be deleted from DB, only flagged as not available anymore
 
-        :param file_path: Path of the file to flag as deleted
+        :param file: file dict
         :param deleted: Whether file is marked as deleted, set to `False` to mark a file as available again
         :raises: HTTPBadRequest if deleting was not successful
         :raises: HTTPInternalServerError if db operation failed because of connection
@@ -337,62 +328,60 @@ class FileOperator(BaseOperator):
         """
         try:
             delete_success = await self.db_service.update_by_key_value(
-                "file", {"path": file_path}, {"flagDeleted": deleted}
+                "file", {"path": file["path"], "projectId": file["projectId"]}, {"flagDeleted": deleted}
             )
-            await self.remove_file_submission(file_path, id_type="path")
+            await self.remove_file_submission(file["accessionId"], file["path"])
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while flagging file as deleted, err: {error}"
             LOG.exception(reason)
             raise web.HTTPInternalServerError(reason=reason) from error
         if not delete_success:
-            reason = f"Flagging file with '{file_path}' as deleted failed."
+            reason = f"Flagging file with path: {file['path']} as deleted failed."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        LOG.info("Flagging file with file_path: %r as Deleted succeeded.", file_path)
+        LOG.info("Flagging file with file_path: %r as Deleted succeeded.", file["path"])
 
     async def remove_file_submission(
-        self, id_or_path: str, id_type: Optional[str] = None, submission_id: Optional[str] = None
+        self,
+        accession_id: str,
+        file_path: Optional[str] = None,
+        submission_id: Optional[str] = None,
     ) -> None:
-        """Remove file from a submission or all submissions.
+        """Remove file from a submission or all submissions. Submission(s) should not be published yet.
 
-        :param id_or_path: Accession ID or path of the file to remove from submission
-        :param id_type: depending on the file id this can be either ``path`` or ``accessionId``.
+        :param accession_id: Accession ID of the file to remove from submission
+        :param file_path: path of the file to be removed
         :param submission_id: Submission ID to remove file associated with it
         :raises: HTTPBadRequest if deleting was not successful
         :raises: HTTPInternalServerError if db operation failed because of connection
         or other db issue
         """
-        _file: dict[str, Any] = {}
         try:
-            if id_type == "path":
-                _file = await self.db_service.read_by_key_value("file", {"path": id_or_path}, {"accessionId": 1})
-            elif id_type == "accessionId":
-                _file["accessionId"] = id_or_path
-            else:
-                reason = f"Cannot recognize '{id_type}' as a type of id for file deletion from submission."
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
             if submission_id:
                 delete_success = await self.db_service.remove(
-                    "submission", submission_id, {"files": {"accessionId": _file["accessionId"]}}
+                    "submission", submission_id, {"files": {"accessionId": accession_id}}
                 )
-                LOG.info("Removing file: %r from submission: %r succeeded.", id_or_path, submission_id)
-            else:
+                LOG.info("Removing file: %r from submission: %r succeeded.", accession_id, submission_id)
+            elif file_path:
                 delete_success = await self.db_service.remove_many(
-                    "submission", {"files": {"accessionId": _file["accessionId"]}}
+                    "submission", {"files": {"accessionId": accession_id}}, {"published": False}
                 )
                 LOG.info(
                     "Removing file with path: %r from submissions, by accessionID: %r succeeded.",
-                    id_or_path,
-                    _file["accessionId"],
+                    file_path,
+                    accession_id,
                 )
+            else:
+                reason = f"Cannot recognize path or submission ID of file with accession ID: {accession_id}"
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while removing file from submission, err: {error}"
             LOG.exception(reason)
             raise web.HTTPInternalServerError(reason=reason) from error
         if not delete_success:
-            reason = f"Removing file identified via '{id_type}': '{id_or_path}' from submission failed."
+            reason = f"Removing file by accession ID: {accession_id} from submission failed."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -454,3 +443,31 @@ class FileOperator(BaseOperator):
                 if file["accessionId"] == file_id:
                     return True
         return False
+
+    async def check_file_exists(self, project_id: str, file_path: str) -> None | dict[str, Any]:
+        """Check if file already exists in the database.
+
+        :param project_id: project ID of the file
+        :param file_path: path of the file
+        :raises: HTTPInternalServerError if db operation failed because of connection
+        or other db issue
+        :returns: file document if file_path is found
+        """
+        _projection = {
+            "_id": 0,
+            "accessionId": 1,
+            "path": 1,
+            "projectId": 1,
+            # get only the last version of a file
+            "currentVersion": {"$first": {"$sortArray": {"input": "$versions", "sortBy": {"version": -1}}}},
+        }
+
+        try:
+            file_in_db: None | dict[str, Any] = await self.db_service.read_by_key_value(
+                "file", {"path": file_path, "projectId": project_id}, _projection
+            )
+            return file_in_db
+        except (ConnectionFailure, OperationFailure) as error:
+            reason = f"Error happened while reading file info: {error}"
+            LOG.exception(reason)
+            raise web.HTTPInternalServerError(reason=reason) from error
