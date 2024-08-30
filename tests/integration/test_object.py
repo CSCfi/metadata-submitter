@@ -3,6 +3,8 @@
 import asyncio
 import logging
 
+import defusedxml.ElementTree as ET
+
 from tests.integration.conf import objects_url, submissions_url, test_bigpicture_xml_files, test_fega_xml_files
 from tests.integration.helpers import (
     check_submissions_object_patch,
@@ -99,6 +101,14 @@ class TestObjects:
                 async with client_logged_in.get(f"{objects_url}/{schema}/{item['accessionId']}?format=xml") as resp:
                     LOG.debug(f"Checking that {item['accessionId']} XML is in {schema}")
                     assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+                    # Also check the stored XML contents were modified to match the json object
+                    # and only include a single child item
+                    reformatted_xml = await resp.text()
+                    root = ET.fromstring(reformatted_xml)
+                    child_elements = list(root)
+                    assert len(child_elements) == 1, "Wrong number of child elements found"
+                    tags = ["POLICY", "IMAGE", "BIOLOGICAL_BEING", "CASE", "SPECIMEN", "SLIDE", "BLOCK", "STAINING"]
+                    assert child_elements[0].tag in tags, "Wrong child element was found"
 
         _schema = "policy"
         _filename = "policy2.xml"

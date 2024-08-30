@@ -46,7 +46,7 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         submission_xml = files[0][0]
-        submission_json = XMLToJSONParser().parse("submission", submission_xml)
+        submission_json, _ = XMLToJSONParser().parse("submission", submission_xml)
 
         workflow_name = req.match_info.get("workflow") or submission_json.get("workflow")
         if not workflow_name:
@@ -221,7 +221,7 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
         db_client = req.app["db_client"]
         submission_op = SubmissionOperator(db_client)
         operator = ObjectOperator(db_client)
-        data_as_json = XMLToJSONParser().parse(schema, content)
+        data_as_json, _ = XMLToJSONParser().parse(schema, content)
         if "accessionId" in data_as_json:
             accession_id = data_as_json["accessionId"]
         else:
