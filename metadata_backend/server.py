@@ -150,6 +150,7 @@ async def init(
         # File operations
         web.get("/files", _file.get_project_files),
         web.post("/files", _file.post_project_files),
+        web.delete("/files/{projectId}", _file.delete_project_files),
     ]
     _rems = RemsAPIHandler(metax_handler=metax_handler, datacite_handler=datacite_handler, rems_handler=rems_handler)
     api_routes.append(web.get("/rems", _rems.get_workflows_licenses_from_rems))

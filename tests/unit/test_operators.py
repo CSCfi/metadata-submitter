@@ -1546,28 +1546,39 @@ class TestOperators(IsolatedAsyncioTestCase):
         """Test file is flagged as deleted."""
         self.file_operator.db_service.update_by_key_value = AsyncMock(return_value=False)
         self.file_operator.remove_file_submission = AsyncMock(return_value=None)
+
+        test_file = {
+            "accessionId": "123",
+            "path": "s3:/file/path",
+            "projectId": "projectA",
+        }
         with self.assertRaises(HTTPBadRequest):
-            await self.file_operator.flag_file_deleted("s3:file/path")
+            await self.file_operator.flag_file_deleted(test_file)
 
         self.file_operator.db_service.update_by_key_value = AsyncMock(return_value=True)
-        await self.file_operator.flag_file_deleted("s3:file/path", False)
+        await self.file_operator.flag_file_deleted(test_file, False)
 
     async def test_remove_file_submission(self):
         """Test removing file from a submission passes."""
+        test_file = {
+            "accessionId": "123",
+            "path": "s3:/file/path",
+            "projectId": "projectA",
+        }
         with self.assertRaises(HTTPBadRequest):
-            # Missing id_type variable
-            await self.file_operator.remove_file_submission("s3:file/path")
+            # Missing file_path or submission_id variable
+            await self.file_operator.remove_file_submission(test_file["accessionId"])
 
         # Removing from all submission succeeds
-        self.file_operator.db_service.read_by_key_value = AsyncMock(return_value={"accessionId": "123"})
+        self.file_operator.db_service.read_by_key_value = AsyncMock(return_value=test_file)
         self.file_operator.db_service.remove_many = AsyncMock(return_value=True)
-        await self.file_operator.remove_file_submission("s3:file/path", "path")
+        await self.file_operator.remove_file_submission(test_file["accessionId"], test_file["path"])
         self.file_operator.db_service.remove_many.assert_called_once()
 
         # Removing from single submission but raises an error
         with self.assertRaises(HTTPBadRequest):
             self.file_operator.db_service.remove = AsyncMock(return_value=False)
-            await self.file_operator.remove_file_submission("123", "accessionId", "submission_id1")
+            await self.file_operator.remove_file_submission("123", submission_id="submission_id1")
             self.file_operator.db_service.remove.assert_called_once()
 
     async def test_update_file_submission(self):

@@ -296,16 +296,20 @@ class DBService:
         return result
 
     @auto_reconnect
-    async def remove_many(self, collection: str, data_to_be_removed: str | dict[str, Any]) -> bool:
+    async def remove_many(
+        self, collection: str, data_to_be_removed: str | dict[str, Any], filter_query: Optional[dict[str, Any]] = None
+    ) -> bool:
         """Remove element of object by its accessionId.
 
         :param collection: Collection where document should be searched from
         :param data_to_be_removed: str or JSON representing the data that should be
         updated to removed.
+        :param filter_query: filter query (optional)
         :returns: True if operation was successful
         """
         remove_op = {"$pull": data_to_be_removed}
-        result = await self.database[collection].update_many({}, remove_op)
+        filter_query_dict = {} if filter_query is None else filter_query
+        result = await self.database[collection].update_many(filter_query_dict, remove_op)
         LOG.debug(
             "DB doc in collection: %r with data: %r removed.",
             collection,
