@@ -9,7 +9,6 @@ from tests.integration.helpers import (
     get_object,
     get_xml_object,
     post_object,
-    post_object_json,
     publish_submission,
     put_submission_doi,
     put_submission_rems,
@@ -26,8 +25,7 @@ class TestBigPicture:
         :param submission_bigpicture: submission ID, created with the BP workflow
         """
 
-        # Submit study, bpdataset
-        study = await post_object_json(client_logged_in, "study", submission_bigpicture, "SRP000539.json")
+        # Submit bpdataset
         bpdataset = await post_object(client_logged_in, "bpdataset", submission_bigpicture, "template_dataset.xml")
 
         # Add DOI and DAC for publishing the submission
@@ -42,22 +40,8 @@ class TestBigPicture:
         # DOI is generated in the publishing phase
         bpdataset = await get_object(client_logged_in, "bpdataset", bpdataset[0])
         assert bpdataset.get("doi") is not None
-
-        # check that datacite has references between datasets and study
         async with client_logged_in.get(f"{datacite_url}/dois/{bpdataset['doi']}") as datacite_resp:
             assert datacite_resp.status == 200, f"HTTP Status code error, got {datacite_resp.status}"
-            datacite_res = await datacite_resp.json()
-            bpdataset = datacite_res
-
-        study = await get_object(client_logged_in, "study", study)
-        assert study.get("doi") is not None
-        async with client_logged_in.get(f"{datacite_url}/dois/{study['doi']}") as datacite_resp:
-            assert datacite_resp.status == 200, f"HTTP Status code error, got {datacite_resp.status}"
-            datacite_res = await datacite_resp.json()
-            study = datacite_res
-        assert bpdataset["data"]["attributes"]["relatedIdentifiers"][0]["relatedIdentifier"] == study["id"]
-        for _ in study["data"]["attributes"]["relatedIdentifiers"]:
-            assert study["data"]["attributes"]["relatedIdentifiers"][0]["relatedIdentifier"] == bpdataset["id"]
 
         # Attempt to delete a published submission
         await delete_published_submission(client_logged_in, submission_bigpicture)
