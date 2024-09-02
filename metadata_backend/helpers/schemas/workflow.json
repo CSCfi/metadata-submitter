@@ -159,7 +159,6 @@
                         "description": "Name of the service to publish to",
                         "enum": [
                             "datacite",
-                            "metax",
                             "rems"
                         ]
                     },

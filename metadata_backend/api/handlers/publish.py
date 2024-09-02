@@ -483,7 +483,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
             # TO_DO: Can only be enabled after we have unified the DAC from EGA and REMS
             # if "dac" in workflow.required_schemas and "rems" not in submission:
             #     raise web.HTTPBadRequest(reason=f"Submission '{accession_id}' must have rems.")
-        if not has_study:
+        if workflow.name != "BigPicture" and not has_study:
             raise web.HTTPBadRequest(reason=f"Submission '{submission_id}' must have a study.")
 
         for _, schema in self.iter_submission_objects(submission):

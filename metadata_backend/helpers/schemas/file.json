@@ -148,7 +148,6 @@
                     "encrypted_checksums": {
                         "type": "array",
                         "title": "The checksums of the encrypted file",
-                        "description": "An explanation about the purpose of this instance.",
                         "examples": [
                             [
                                 {
@@ -176,7 +175,6 @@
                     "unencrypted_checksums": {
                         "type": "array",
                         "title": "The checksums of the un-encrypted file",
-                        "description": "An explanation about the purpose of this instance.",
                         "examples": [
                             [
                                 {
