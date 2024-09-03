@@ -45,7 +45,7 @@ class TestFiles:
         assert len(created_files) == 1
 
         # Confirm file exists within project
-        file_exists = await find_project_file(client_logged_in, projectId, created_files[0][0])
+        file_exists = await find_project_file(client_logged_in, projectId, created_files[0]["accessionId"])
         assert file_exists is True
 
     async def test_project_files(self, client_logged_in):
@@ -124,9 +124,9 @@ class TestFiles:
         assert len(created_files) == 3
 
         # Confirm files exist inside project
-        file_id_1 = created_files[0][0]
-        file_id_2 = created_files[1][0]
-        file_id_3 = created_files[2][0]
+        file_id_1 = created_files[0]["accessionId"]
+        file_id_2 = created_files[1]["accessionId"]
+        file_id_3 = created_files[2]["accessionId"]
         file_1_exists = await find_project_file(client_logged_in, project_id, file_id_1)
         file_2_exists = await find_project_file(client_logged_in, project_id, file_id_2)
         file_3_exists = await find_project_file(client_logged_in, project_id, file_id_3)
@@ -136,9 +136,9 @@ class TestFiles:
 
         # Add files to a submission
         file_info = [
-            {"accessionId": file_id_1, "version": created_files[0][1]},
-            {"accessionId": file_id_2, "version": created_files[1][1]},
-            {"accessionId": file_id_3, "version": created_files[2][1]},
+            {"accessionId": file_id_1, "version": created_files[0]["version"]},
+            {"accessionId": file_id_2, "version": created_files[1]["version"]},
+            {"accessionId": file_id_3, "version": created_files[2]["version"]},
         ]
         await add_submission_files(client_logged_in, file_info, submission_id)
         submission_info = await get_submission(client_logged_in, submission_id)
@@ -215,12 +215,12 @@ class TestFileSubmissions:
         assert len(created_files) == 1
 
         # Confirm file exists within project
-        file_id = created_files[0][0]
+        file_id = created_files[0]["accessionId"]
         file_exists = await find_project_file(client_logged_in, project_id, file_id)
         assert file_exists is True
 
         # Add file to a submission and verify
-        file_info = [{"accessionId": file_id, "version": created_files[0][1]}]
+        file_info = [{"accessionId": file_id, "version": created_files[0]["version"]}]
         await add_submission_files(client_logged_in, file_info, submission_id)
         submission_info = await get_submission(client_logged_in, submission_id)
         assert submission_info["files"][0]["accessionId"] == file_info[0]["accessionId"]
@@ -267,8 +267,8 @@ class TestFileSubmissions:
 
         # Add files to submission
         file_info = [
-            {"accessionId": created_files[0][0], "version": created_files[0][1]},
-            {"accessionId": created_files[1][0], "version": created_files[1][1]},
+            {"accessionId": created_files[0]["accessionId"], "version": created_files[0]["version"]},
+            {"accessionId": created_files[1]["accessionId"], "version": created_files[1]["version"]},
         ]
         await add_submission_files(client_logged_in, file_info, submission_id)
 
@@ -277,12 +277,12 @@ class TestFileSubmissions:
         assert len(submission_info["files"]) == 2
 
         # Remove a file from submission
-        await remove_submission_file(client_logged_in, submission_id, created_files[0][0])
+        await remove_submission_file(client_logged_in, submission_id, created_files[0]["accessionId"])
 
         # Verify that file was removed
         submission_info = await get_submission(client_logged_in, submission_id)
         assert len(submission_info["files"]) == 1
-        assert submission_info["files"][0]["accessionId"] == created_files[1][0]
+        assert submission_info["files"][0]["accessionId"] == created_files[1]["accessionId"]
 
     async def test_creating_file_version(self, client_logged_in):
         """Test creating a file version.
@@ -299,14 +299,18 @@ class TestFileSubmissions:
             "projectId": projectId,
             "files": [generate_mock_file("mock_file")],
         }
-        [(id, version)] = await post_project_files(client_logged_in, file_data)
-        assert version == 1
+        posted_files = await post_project_files(client_logged_in, file_data)
+        assert posted_files[0]["version"] == 1
 
         # Post same file and check that accession id is same, version is incremented
-        [(id2, version2)] = await post_project_files(client_logged_in, file_data)
-        assert version2 == 2
-        assert id == id2
+        posted_files2 = await post_project_files(client_logged_in, file_data)
+        assert posted_files2[0]["version"] == 2
+        assert posted_files2[0]["accessionId"] == posted_files[0]["accessionId"]
 
-        # Get files
+        # Create version 3
+        posted_files3 = await post_project_files(client_logged_in, file_data)
+        assert posted_files3[0]["version"] == 3
+
+        # Get files. Reads each version as separate file
         project_files = await get_project_files(client_logged_in, projectId)
-        assert len(project_files) == 2
+        assert len(project_files) == 3
