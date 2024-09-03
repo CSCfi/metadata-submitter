@@ -17,7 +17,7 @@ attrs==24.2.0
     #   aiohttp
     #   jsonschema
     #   referencing
-certifi==2024.7.4
+certifi==2024.8.30
     # via requests
 cffi==1.17.0
     # via cryptography
@@ -44,7 +44,7 @@ frozenlist==1.4.1
     #   aiosignal
 gunicorn==23.0.0
     # via -r requirements.in
-idna==3.7
+idna==3.8
     # via
     #   requests
     #   yarl
@@ -109,5 +109,5 @@ uvloop==0.20.0
     # via -r requirements.in
 xmlschema==3.3.2
     # via -r requirements.in
-yarl==1.9.4
+yarl==1.9.6
     # via aiohttp
