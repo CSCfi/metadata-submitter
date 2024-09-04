@@ -1941,6 +1941,50 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
+  /v1/taxonomy:
+    get:
+      tags:
+        - Taxonomy
+      summary: Get results of taxonomy search by id or name
+      parameters:
+        - name: search
+          in: query
+          description: Search query that is a partial or full id, scientific or common name
+          schema:
+            type: string
+          required: true
+        - name: results
+          in: query
+          description: Amount of search results to retrieve (by default 10)
+          schema:
+            type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TaxonomyResult"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
 
 components:
   schemas:
@@ -3324,3 +3368,19 @@ components:
           type: string
           title: Error for file if status is failed
           description: required only if status is failed
+    TaxonomyResult:
+      type: object
+      description: Taxonomy search result
+      properties:
+        tax_id:
+          type: string
+          title: Taxonomy id
+          example: 3320
+        scientific_name:
+          type: string
+          title: Scientific name
+          example: Abies magnifica
+        common_name:
+          type: string
+          title: Common name or genbank common name (if available)
+          example: red fir
