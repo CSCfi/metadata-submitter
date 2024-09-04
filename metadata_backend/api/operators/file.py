@@ -260,7 +260,7 @@ class FileOperator(BaseOperator):
             problematic_files = await self.db_service.do_aggregate("submission", aggregate_query)
             if len(problematic_files) > 0:
                 reason = (
-                    f"There are a problematic files: {','.join([i['accessionId'] for i in problematic_files])} "
+                    f"There are problematic files: {','.join([i['accessionId'] for i in problematic_files])} "
                     f"in the submission with id: {submission_id}"
                 )
                 LOG.error(reason)
