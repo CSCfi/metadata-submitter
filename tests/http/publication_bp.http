@@ -1,0 +1,167 @@
+# https://github.com/Huachao/vscode-restclient
+# https://jsonpath.com/
+
+
+@api_url = http://localhost:5430
+@auth_url = http://localhost:8000
+@doi_url = http://localhost:8001
+
+@auth_email = mock_user@test.what
+
+@user_id = {{user_data_req.response.body.userId}}
+@project_id = {{user_data_req.response.body.projects[0].projectId}}
+@submission_id = {{submission_id_req.response.body.submissionId}}
+@dataset_id = {{dataset_id_req.response.body.accessionId}}
+@image_id = {{image_id_req.response.body.$[0].accessionId}}
+@file_id = {{file_id_req.response.body.$[0].[0]}}
+
+### Mock authentication
+GET {{auth_url}}/setmock
+    ?sub={{auth_email}}
+    &given=Mock
+    &family=Family
+
+###
+GET {{api_url}}/aai
+
+###
+GET {{api_url}}/logout
+
+
+### Get user data
+# @name user_data_req
+GET {{api_url}}/v1/users/current
+
+
+
+### Create submission
+# @name submission_id_req
+POST {{api_url}}/v1/submissions
+
+{
+    "name": "submission test 1",
+    "description": "submission test 1",
+    "projectId": "{{project_id}}",
+    "workflow": "BigPicture"
+}
+
+### List submissions
+GET {{api_url}}/v1/submissions
+    ?projectId={{project_id}}
+
+### Get submission
+GET {{api_url}}/v1/submissions/{{submission_id}}
+
+### Update DOI in submission
+PUT {{api_url}}/v1/submissions/{{submission_id}}/doi
+
+< ../test_files/doi/test_doi.json
+
+### Update DAC in submission
+PUT {{api_url}}/v1/submissions/{{submission_id}}/rems
+
+< ../test_files/dac/dac_rems.json
+
+
+### Add dataset to a submission
+# @name dataset_id_req
+POST {{api_url}}/v1/objects/bpdataset
+     ?submission={{submission_id}}
+Content-Type: multipart/form-data; boundary=SomeWebKitFormBoundary
+
+--SomeWebKitFormBoundary
+Content-Disposition: form-data; name="bpdataset"; filename="template_dataset.xml"
+Content-Type: text/xml
+
+< ../test_files/bpdataset/template_dataset.xml
+--SomeWebKitFormBoundary--
+
+### Get dataset
+GET {{api_url}}/v1/objects/bpdataset/{{dataset_id}}
+
+### Get dataset XML
+GET {{api_url}}/v1/objects/bpdataset/{{dataset_id}}
+    ?format=xml
+
+
+### Add images to a submission
+# @name image_id_req
+POST {{api_url}}/v1/objects/bpimage
+     ?submission={{submission_id}}
+Content-Type: multipart/form-data; boundary=SomeWebKitFormBoundary
+
+--SomeWebKitFormBoundary
+Content-Disposition: form-data; name="bpimage"; filename="images_multi.xml"
+Content-Type: text/xml
+
+< ../test_files/bpimage/images_multi.xml
+--SomeWebKitFormBoundary--
+
+### Get image
+GET {{api_url}}/v1/objects/bpimage/{{image_id}}
+
+### Get image XML
+GET {{api_url}}/v1/objects/bpimage/{{image_id}}
+    ?format=xml
+
+
+### Post files
+# @name file_id_req
+POST {{api_url}}/v1/files
+
+{
+    "userId": "{{user_id}}",
+    "projectId": "{{project_id}}",
+    "files": [
+        {
+            "name": "image",
+            "path": "s3:/bucket/image",
+            "bytes": 100,
+            "encrypted_checksums": [
+                {
+                    "type": "sha256",
+                    "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d61234567"
+                }
+            ],
+            "unencrypted_checksums": [
+                {
+                    "type": "sha256",
+                    "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d61234567"
+                }
+            ]
+        }
+    ]
+}
+
+### Get files
+GET {{api_url}}/v1/files
+    ?projectId={{project_id}}
+
+### Add file to submission
+# Returns regular 204 with random accessionId value
+# i.e. should check that accession id exists and add new item
+# can add random objectId so it should also check that object exists first
+# TODO: refactored to PATCH
+PUT {{api_url}}/v1/submissions/{{submission_id}}/files
+
+[
+    {
+        "accessionId": "{{file_id}}",
+        "version": 1,
+        "status": "ready",
+        "objectId": {
+            "accessionId": "{{image_id}}",
+            "schema": "bpimage"
+        }
+    }
+]
+
+### Get submission
+GET {{api_url}}/v1/submissions/{{submission_id}}
+
+### Delete files
+DELETE {{api_url}}/v1/submissions/{{submission_id}}/files/{{file_id}}
+
+
+### Announce submission
+PATCH {{api_url}}/v1/announce/{{submission_id}}
