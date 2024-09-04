@@ -1941,6 +1941,52 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
+    post:
+      tags:
+        - File
+      summary: Post files for a project
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostFiles"
+      responses:
+        201:
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FilesPosted"
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
+        404:
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/404NotFound"
+        405:
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/405MethodNotAllowed"
   /v1/files/{projectId}:
     delete:
       tags:
@@ -3431,3 +3477,53 @@ components:
           type: string
           title: Common name or genbank common name (if available)
           example: red fir
+    PostFiles:
+      type: object
+      description: Shows POST v1/files request payload
+      properties:
+        userId:
+          type: string
+          title: User Id
+          example: 6150d339ab2440898540b3f8d9fdbe72
+        projectId:
+          type: string
+          title: Project Id
+          example: f76bb94d726940bbb723c010ca5775c5
+        files:
+          type: array
+          items:
+            $ref: "#/components/schemas/PostFile"
+    PostFile:
+      type: object
+      description: Describes file information needed for file post request
+      properties:
+        name:
+          type: string
+          title: File name
+          example: filename.c4gh
+        path:
+          type: string
+          title: File path, including file name
+          example: s3:/bucket/files/filename.c4gh
+        bytes:
+          type: integer
+          title: File size in bytes
+          example: 100
+        encrypted_checksums:
+          $ref: "#/components/schemas/Checksum"
+        unencrypted_checksums:
+          $ref: "#/components/schemas/Checksum"
+    FilesPosted:
+      type: array
+      description: Information of posted files return
+      items:
+        type: object
+        properties:
+          accessionId:
+            type: string
+            title: Accession id for file
+            example: 5c4a1969e24a4bc5962eac8c2c5348ed
+          version:
+            type: integer
+            title: Version of the file
+            example: 1
