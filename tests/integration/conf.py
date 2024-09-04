@@ -97,6 +97,7 @@ metax_url = f"{os.getenv('METAX_URL', 'http://localhost:8002')}"
 metax_api = f"{metax_url}/rest/v2/datasets"
 datacite_url = f"{os.getenv('DOI_API', 'http://localhost:8001')}"
 files_url = f"{base_url}{API_PREFIX}/files"
+taxonomy_url = f"{base_url}{API_PREFIX}/taxonomy"
 auth = aiohttp.BasicAuth(os.getenv("METAX_USER", "sd"), os.getenv("METAX_PASS", "test"))
 # to form direct contact to db with eg create_submission()
 DATABASE = os.getenv("MONGO_DATABASE", "default")

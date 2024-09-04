@@ -19,6 +19,7 @@ from .conf import (
     objects_url,
     publish_url,
     submissions_url,
+    taxonomy_url,
     templates_url,
     testfiles_root,
     users_url,
@@ -814,3 +815,20 @@ async def delete_project_files(sess, project_id, file_paths):
     url = f"{files_url}/{project_id}"
     async with sess.delete(url, data=ujson.dumps(file_paths)) as resp:
         assert resp.status == 204, f"HTTP Status code error {resp.status}"
+
+
+async def search_taxonomy(sess, query: str, max_results: int = 10):
+    """Send a taxonomy name search query.
+
+    :param query: string to query taxonomy for
+    :param max_results: how many search results to display (Optional)
+    """
+    params = {"search": query}
+    if max_results != 10:
+        params["results"] = max_results
+
+    url = f"{taxonomy_url}?{urlencode(params)}"
+
+    async with sess.get(url) as resp:
+        LOG.debug(resp)
+        return await resp.json() if resp.status == 200 else resp

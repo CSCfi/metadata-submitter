@@ -28,6 +28,7 @@ from .helpers.logger import LOG
 from .services.datacite_service_handler import DataciteServiceHandler
 from .services.metax_service_handler import MetaxServiceHandler
 from .services.rems_service_handler import RemsServiceHandler
+from .services.taxonomy_search_handler import TaxonomySearchHandler
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -63,6 +64,7 @@ async def init(
     datacite_handler = DataciteServiceHandler()
     rems_handler = RemsServiceHandler()
     aai_handler = AAIServiceHandler()
+    taxonomy_handler = TaxonomySearchHandler()
 
     async def close_http_clients(_: web.Application) -> None:
         """Close http client session."""
@@ -154,6 +156,7 @@ async def init(
     ]
     _rems = RemsAPIHandler(metax_handler=metax_handler, datacite_handler=datacite_handler, rems_handler=rems_handler)
     api_routes.append(web.get("/rems", _rems.get_workflows_licenses_from_rems))
+    api_routes.append(web.get("/taxonomy", taxonomy_handler.get_query_results))
 
     api.add_routes(api_routes)
     server.add_subapp(API_PREFIX, api)

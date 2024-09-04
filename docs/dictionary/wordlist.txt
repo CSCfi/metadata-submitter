@@ -189,6 +189,7 @@ destructure
 dev
 devcontainer
 divehi
+dmp
 dnase
 dockerfile
 dockerfiles
@@ -729,6 +730,7 @@ säätiö
 tabix
 tajik
 targetloci
+taxdump
 taxonid
 taxonomicreferenceset
 taxonomysystem
