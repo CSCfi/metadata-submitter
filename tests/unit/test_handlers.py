@@ -571,7 +571,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
             response = await self.client.post(
                 f"{API_PREFIX}/objects/study", params={"submission": "some id"}, json=json_req
             )
-            reason = "Provided input does not seem correct for field: 'descriptor'"
+            reason = "Provided input does not seem correct for field: 'studyType'"
             self.assertEqual(response.status, 400)
             self.assertIn(reason, await response.text())
 
@@ -1279,7 +1279,7 @@ class FilesHandlerTestCase(HandlersTestCase):
             response = await self.client.post(f"{API_PREFIX}/files", json=alt_data)
             self.assertEqual(response.status, 400)
             json_resp = await response.json()
-            self.assertEqual(json_resp["detail"], "Field 'files' must be a list")
+            self.assertEqual(json_resp["detail"], "Field `files` must be a list.")
 
             # Lacking request data
             alt_data = self.mock_file_data
@@ -1287,7 +1287,10 @@ class FilesHandlerTestCase(HandlersTestCase):
             response = await self.client.post(f"{API_PREFIX}/files", json=alt_data)
             self.assertEqual(response.status, 400)
             json_resp = await response.json()
-            self.assertEqual(json_resp["detail"], "Request payload content did not include all necessary details.")
+            self.assertEqual(
+                json_resp["detail"],
+                "Fields `path`, `name`, `bytes`, `encrypted_checksums`, `unencrypted_checksums` are required.",
+            )
 
     async def test_delete_project_files_works(self):
         """Test deleting file request handler."""
