@@ -127,13 +127,15 @@ class FileOperator(BaseOperator):
             # Create a new file
             created_file = await self._create_file(file)
         elif file_version > 1:
-            # Create a new file version
+            # Create a new file version. Reset flagDeleted.
             try:
-                await self.db_service.append(
+                await self.db_service.patch(
                     "file",
                     file["accessionId"],
-                    {"versions": file["versions"][0]},
-                    upsert=True,
+                    [
+                        {"op": "add", "path": "/versions/-", "value": file["versions"][0]},
+                        {"op": "replace", "path": "/flagDeleted", "value": False},
+                    ],
                 )
                 created_file = {"accessionId": file["accessionId"], "version": file_version}
             except (ConnectionFailure, OperationFailure) as error:

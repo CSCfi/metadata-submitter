@@ -1440,7 +1440,7 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     async def test_create_file_version_pass(self):
         """Test creating new file version passes."""
-        self.file_operator.db_service.append = AsyncMock(return_value=None)
+        self.file_operator.db_service.patch = AsyncMock(return_value=True)
         new_test_file = self.test_file
         new_test_file["versions"][0]["version"] = 2
         file_info = await self.file_operator.create_file_or_version(new_test_file)
