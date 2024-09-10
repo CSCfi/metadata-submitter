@@ -346,13 +346,19 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         return datacite_study
 
     async def _pre_publish_metax(
-        self, submission: dict[str, Any], obj_op: ObjectOperator, operator: SubmissionOperator, external_user_id: str
+        self,
+        submission: dict[str, Any],
+        obj_op: ObjectOperator,
+        operator: SubmissionOperator,
+        file_op: FileOperator,
+        external_user_id: str,
     ) -> list[dict[str, Any]]:
         """Prepare dictionary with values to be published to Metax.
 
         :param submission: Submission data
         :param obj_op: ObjectOperator for reading objects from database.
-        :param operator: ObjectOperator for updating the submission in the database.
+        :param operator: SubmissionOperator for updating the submission in the database.
+        :param file_op: FileOperator for reading files from database.
         :param external_user_id: user_id
         :returns: Whether publishing to Metax succeeded
         """
@@ -379,7 +385,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                     )
 
         await self.metax_handler.update_dataset_with_doi_info(
-            await operator.read_submission(submission["submissionId"]), metax_datasets
+            await operator.read_submission(submission["submissionId"]), metax_datasets, file_op
         )
         return metax_datasets
 
@@ -453,7 +459,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         operator = SubmissionOperator(db_client)
         obj_op = ObjectOperator(db_client)
         xml_ops = XMLObjectOperator(db_client)
-        file_operator = FileOperator(db_client)
+        file_op = FileOperator(db_client)
 
         # Check submission exists and is not already published
         await operator.check_submission_exists(submission_id)
@@ -525,7 +531,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         publish_status = {}
         datacite_study = {}
         # check first if all the files are ready, if not return HTTPBadRequest
-        await file_operator.check_submission_files_ready(submission_id)
+        await file_op.check_submission_files_ready(submission_id)
         if "datacite" in workflow.endpoints:
             try:
                 datacite_study = await self._publish_datacite(submission, obj_op, operator)
@@ -537,7 +543,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         metax_datasets = []
         if "metax" in workflow.endpoints:
             try:
-                metax_datasets = await self._pre_publish_metax(submission, obj_op, operator, external_user_id)
+                metax_datasets = await self._pre_publish_metax(submission, obj_op, operator, file_op, external_user_id)
                 publish_status["metax"] = "published"
             except Exception as error:
                 LOG.exception(error)
