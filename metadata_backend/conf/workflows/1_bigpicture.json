@@ -97,5 +97,6 @@
                 "policy"
             ]
         }
-    ]
+    ],
+    "discovery_service": "beacon"
 }

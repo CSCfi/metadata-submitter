@@ -11,6 +11,7 @@ import ujson
 from aiohttp import FormData
 
 from .conf import (
+    announce_url,
     base_url,
     drafts_url,
     files_url,
@@ -508,6 +509,20 @@ async def publish_submission(sess, submission_id):
     """
     async with sess.patch(f"{publish_url}/{submission_id}") as resp:
         LOG.debug(f"Publishing submission {submission_id}")
+        ans = await resp.json()
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}: {ans}"
+        assert ans["submissionId"] == submission_id, "submission ID error"
+        return ans["submissionId"]
+
+
+async def announce_submission(sess, submission_id):
+    """Announce one object submission within session, return submissionId. Uses BP publication endpoint.
+
+    :param sess: HTTP session in which request call is made
+    :param submission_id: id of the submission
+    """
+    async with sess.patch(f"{announce_url}/{submission_id}") as resp:
+        LOG.debug(f"Announcing submission {submission_id}")
         ans = await resp.json()
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}: {ans}"
         assert ans["submissionId"] == submission_id, "submission ID error"

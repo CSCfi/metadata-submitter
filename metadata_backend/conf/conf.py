@@ -192,7 +192,6 @@ doi_config = {
     "key": os.getenv("DOI_KEY", ""),
     "url": os.getenv("DATACITE_URL", "https://doi.org"),
     "publisher": "CSC - IT Center for Science",
-    "discovery_url": os.getenv("DISCOVERY_URL", "https://etsin.fairdata.fi/dataset/"),
 }
 
 metax_config = {
@@ -226,6 +225,11 @@ rems_config = {
     "id": os.getenv("REMS_USER_ID", "sd"),
     "key": os.getenv("REMS_KEY", "test"),
     "url": os.getenv("REMS_URL", "http://mockrems:8003"),
+}
+
+discovery_config = {
+    "metax_discovery_url": os.getenv("METAX_DISCOVERY_URL", "https://etsin.fairdata.fi/dataset/"),
+    "beacon_discovery_url": os.getenv("BEACON_DISCOVERY_URL", "https://bp-demo.rahtiapp.fi/"),  # placeholder url
 }
 
 DATACITE_SCHEMAS = {"study", "dataset", "bpdataset"}
