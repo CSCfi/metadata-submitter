@@ -51,33 +51,44 @@ class FilesAPIHandler(RESTAPIHandler):
         db_client = request.app["db_client"]
         data = await self._get_data(request)
 
+        try:
+            userId = data["userId"]
+            projectId = data["projectId"]
+            if isinstance(data["files"], list):
+                files = data["files"]
+            else:
+                raise TypeError
+        except (KeyError, TypeError) as exc:
+            reason = (
+                "Fields `userId`, `projectId`, `files` are required."
+                if isinstance(exc, KeyError)
+                else "Field `files` must be a list."
+            )
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
         # Check that project exists
         project_op = ProjectOperator(db_client)
-        await project_op.check_project_exists(data["projectId"])
+        await project_op.check_project_exists(projectId)
 
         # Check that user is affiliated with project
         user_op = UserOperator(db_client)
-        user_has_project = await user_op.check_user_has_project(data["projectId"], data["userId"])
+        user_has_project = await user_op.check_user_has_project(projectId, userId)
         if not user_has_project:
-            reason = f"user {data['userId']} is not affiliated with project {data['projectId']}"
+            reason = f"user {userId} is not affiliated with project {projectId}"
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)
-
-        if not isinstance(data["files"], list):
-            reason = "Field 'files' must be a list"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
 
         # Form file objects and validate against schema before creation
         file_op = FileOperator(db_client)
         validated_file_objects = []
 
         try:
-            for file in data["files"]:
+            for file in files:
                 new_file = File(
                     file["name"],
                     file["path"],
-                    data["projectId"],
+                    projectId,
                     file["bytes"],
                     file["encrypted_checksums"],
                     file["unencrypted_checksums"],
@@ -85,7 +96,7 @@ class FilesAPIHandler(RESTAPIHandler):
                 file_object = await file_op.form_validated_file_object(new_file)
                 validated_file_objects.append(file_object)
         except KeyError as file_key_error:
-            reason = "Request payload content did not include all necessary details."
+            reason = "Fields `path`, `name`, `bytes`, `encrypted_checksums`, `unencrypted_checksums` are required."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason) from file_key_error
 

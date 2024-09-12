@@ -181,8 +181,8 @@ class DBService:
         updated to object it will update fields.
         :returns: True if operation was successful
         """
-        find_by_id = {f"{collection}Id": accession_id}
-        requests = jsonpatch_mongo(find_by_id, patch_data)
+        id_key = "accessionId" if collection == "file" else f"{collection}Id"
+        requests = jsonpatch_mongo({id_key: accession_id}, patch_data)
         try:
             result = await self.database[collection].bulk_write(requests, ordered=False)
             LOG.debug(

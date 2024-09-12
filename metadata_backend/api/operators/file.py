@@ -91,14 +91,14 @@ class FileOperator(BaseOperator):
         JSONValidator(file_object, "file").validate
         return file_object
 
-    async def _create_file(self, file: dict[str, Any]) -> tuple[str, int]:
+    async def _create_file(self, file: dict[str, Any]) -> dict[str, str | int]:
         """Add a new file object to database.
 
         :param file: file data as in the `file.json` schema
         :raises: HTTPBadRequest if file creation in the db was not successful
         :raises: HTTPInternalServerError if db operation failed because of connection
         or other db issue
-        :returns: tuple of file accession id and file version
+        :returns: dict with file accession id and file version
         """
         try:
             insert_success = await self.db_service.create("file", file)
@@ -106,36 +106,38 @@ class FileOperator(BaseOperator):
                 reason = "Inserting file to database failed for some reason."
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
-            return file["accessionId"], file["versions"][0]["version"]
+            return {"accessionId": file["accessionId"], "version": file["versions"][0]["version"]}
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while inserting a new file to DB: {error}"
             LOG.exception(reason)
             raise web.HTTPInternalServerError(reason=reason) from error
 
-    async def create_file_or_version(self, file: dict[str, Any]) -> tuple[str, int]:
+    async def create_file_or_version(self, file: dict[str, Any]) -> dict[str, str | int]:
         """Add a new file or file version to database.
 
         :param file: file data as in the `file.json` schema
         :raises: HTTPInternalServerError if db operation failed because of connection
         or other db issue
-        :returns: tuple of file accession id and file version
+        :returns: dict with file accession id and file version
         """
-        created_file: tuple[str, int]
+        created_file: dict[str, str | int]
         file_version = file["versions"][0]["version"]
 
         if file_version == 1:
             # Create a new file
             created_file = await self._create_file(file)
         elif file_version > 1:
-            # Create a new file version
+            # Create a new file version. Reset flagDeleted.
             try:
-                await self.db_service.append(
+                await self.db_service.patch(
                     "file",
                     file["accessionId"],
-                    {"versions": file["versions"]},
-                    upsert=True,
+                    [
+                        {"op": "add", "path": "/versions/-", "value": file["versions"][0]},
+                        {"op": "replace", "path": "/flagDeleted", "value": False},
+                    ],
                 )
-                created_file = file["accessionId"], file_version
+                created_file = {"accessionId": file["accessionId"], "version": file_version}
             except (ConnectionFailure, OperationFailure) as error:
                 reason = f"Error happened while inserting a new file version: {error}"
                 LOG.exception(reason)
@@ -145,7 +147,11 @@ class FileOperator(BaseOperator):
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        LOG.info("Inserting file with ID %r and version %d to database succeeded.", created_file[0], created_file[1])
+        LOG.info(
+            "Inserting file with ID %r and version %d to database succeeded.",
+            created_file["accessionId"],
+            created_file["version"],
+        )
         return created_file
 
     async def read_file(self, accession_id: str, version: Optional[int] = None) -> dict[str, Any]:

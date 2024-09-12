@@ -159,7 +159,8 @@ class JSONValidator:
             raise web.HTTPBadRequest(reason=reason)
         except ValidationError as e:
             if len(e.path) > 0:
-                reason = f"Provided input does not seem correct for field: '{e.path[0]}'"
+                field = e.path[-1] if not isinstance(e.path[-1], int) else e.path[-2]
+                reason = f"Provided input does not seem correct for field: '{field}'"
                 LOG.debug("Provided JSON input: '%r'", e.instance)
                 LOG.exception(reason)
                 raise web.HTTPBadRequest(reason=reason)
