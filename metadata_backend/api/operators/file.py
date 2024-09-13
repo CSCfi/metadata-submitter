@@ -205,7 +205,7 @@ class FileOperator(BaseOperator):
     async def read_project_files(self, project_id: str) -> list[dict[str, Any]]:
         """Read files from DB based on a specific filter type and corresponding identifier.
 
-        The files are read by the latest version, filtered by projectId and flagDeleted.
+        Returns the latest file version, filtered by projectId and flagDeleted.
 
         :param project_id: Project ID to get files for
         :raises: HTTPInternalServerError if db operation failed because of connection
@@ -214,8 +214,6 @@ class FileOperator(BaseOperator):
         """
         aggregate_query = [
             {"$match": {"projectId": project_id, "flagDeleted": False}},
-            {"$sort": {"versions.version": -1}},
-            {"$unwind": "$versions"},
             {
                 "$project": {
                     "_id": 0,
@@ -223,10 +221,10 @@ class FileOperator(BaseOperator):
                     "name": 1,
                     "path": 1,
                     "projectId": 1,
-                    "version": "$versions.version",
-                    "bytes": "$versions.bytes",
-                    "encrypted_checksums": "$versions.encrypted_checksums",
-                    "unencrypted_checksums": "$versions.unencrypted_checksums",
+                    "version": {"$last": "$versions.version"},
+                    "bytes": {"$last": "$versions.bytes"},
+                    "encrypted_checksums": {"$last": "$versions.encrypted_checksums"},
+                    "unencrypted_checksums": {"$last": "$versions.unencrypted_checksums"},
                 }
             },
         ]
