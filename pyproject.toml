@@ -28,7 +28,7 @@ test = [
     "pytest-cov==5.0.0",
     "pytest-xdist==3.6.1",
     "tox==4.18.0",
-    "setuptools==71.1.0",
+    "setuptools==72.2.0",
 ]
 docs = [
     "sphinx >= 1.4",
