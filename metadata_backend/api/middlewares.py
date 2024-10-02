@@ -20,7 +20,7 @@ HTTP_ERROR_MESSAGE_BUG = "HTTP %r request to %r raised an HTTP %d exception. Thi
 
 
 @web.middleware
-async def http_error_handler(req: web.Request, handler: aiohttp_session.Handler) -> web.StreamResponse:
+async def http_error_handler(req: web.Request, handler: aiohttp_session.Handler) -> web.StreamResponse:  # type: ignore
     """Middleware for handling exceptions received from the API methods.
 
     :param req: A request instance
@@ -31,7 +31,7 @@ async def http_error_handler(req: web.Request, handler: aiohttp_session.Handler)
     c_type = "application/problem+json"
     try:
         response = await handler(req)
-        return response
+        return response  # type: ignore
     except web.HTTPRedirection:
         # Catches 300s
         raise
@@ -57,7 +57,7 @@ async def http_error_handler(req: web.Request, handler: aiohttp_session.Handler)
 
 
 @web.middleware
-async def check_session(req: web.Request, handler: aiohttp_session.Handler) -> web.StreamResponse:
+async def check_session(req: web.Request, handler: aiohttp_session.Handler) -> web.StreamResponse:  # type: ignore
     """Raise on expired sessions or invalid sessions.
 
     :param req: A request instance
@@ -102,7 +102,7 @@ async def check_session(req: web.Request, handler: aiohttp_session.Handler) -> w
         LOG.exception("No valid session. A session was invalidated due to another reason")
         raise _unauthorized(reason) from error
 
-    return await handler(req)
+    return await handler(req)  # type: ignore
 
 
 def _unauthorized(reason: str) -> web.HTTPUnauthorized:

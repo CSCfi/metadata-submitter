@@ -360,29 +360,25 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
     async def _pre_publish_metax(
         self,
         submission: dict[str, Any],
-        obj_op: ObjectOperator,
-        operator: SubmissionOperator,
-        file_op: FileOperator,
+        operators: dict[str, Any],
         external_user_id: str,
     ) -> list[dict[str, Any]]:
         """Prepare dictionary with values to be published to Metax.
 
         :param submission: Submission data
-        :param obj_op: ObjectOperator for reading objects from database.
-        :param operator: SubmissionOperator for updating the submission in the database.
-        :param file_op: FileOperator for reading files from database.
+        :param operators: instances of ObjectOperator, SubmissionOperator and FileOperator
         :param external_user_id: user_id
         :returns: Whether publishing to Metax succeeded
         """
         metax_datasets: list[dict[str, Any]] = []
-        async for _, schema, object_data in self.iter_submission_objects_data(submission, obj_op):
+        async for _, schema, object_data in self.iter_submission_objects_data(submission, operators["object"]):
             if schema in DATACITE_SCHEMAS:
                 doi = object_data["doi"]
                 # in case object is not added to metax due to server error
                 if schema in METAX_SCHEMAS:
                     if not object_data["metaxIdentifier"]:
                         object_data["metaxIdentifier"] = await self.create_metax_dataset(
-                            obj_op,
+                            operators["object"],
                             schema,
                             object_data,
                             external_user_id,
@@ -397,7 +393,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                     )
 
         await self.metax_handler.update_dataset_with_doi_info(
-            await operator.read_submission(submission["submissionId"]), metax_datasets, file_op
+            await operators["submission"].read_submission(submission["submissionId"]), metax_datasets, operators["file"]
         )
         return metax_datasets
 
@@ -555,7 +551,8 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         metax_datasets = []
         if "metax" in workflow.endpoints:
             try:
-                metax_datasets = await self._pre_publish_metax(submission, obj_op, operator, file_op, external_user_id)
+                operators = {"object": obj_op, "submission": operator, "file": file_op}
+                metax_datasets = await self._pre_publish_metax(submission, operators, external_user_id)
                 publish_status["metax"] = "published"
             except Exception as error:
                 LOG.exception(error)
