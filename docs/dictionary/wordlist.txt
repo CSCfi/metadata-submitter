@@ -1,4 +1,5 @@
 aai
+abcdef
 abkhaz
 accessionid
 additionalitems
@@ -84,8 +85,14 @@ biosystems
 bislama
 bisulfite
 blastdbinfo
+blockquote
 bokmål
 boolean
+bpdataset
+bpimage
+bpobservation
+bpsample
+bpstaining
 breakpoint
 bugfix
 bugfixes
@@ -188,6 +195,7 @@ designdescription
 destructure
 dev
 devcontainer
+discoverable
 divehi
 dmp
 dnase
@@ -205,6 +213,7 @@ eastboundlongitude
 ebi
 ebispot
 edirect
+edited
 ega
 eila
 eissn
@@ -252,6 +261,7 @@ flagdeleted
 flatfile
 flx
 flybase
+followingly
 followsreadindex
 formdata
 fos
@@ -350,6 +360,7 @@ itä
 ja
 jahnssonin
 joensuun
+jq
 js
 json
 jsoncontent
@@ -543,6 +554,7 @@ pcsubstance
 pdb
 pdbcls
 pdf
+perun
 pgm
 phenome
 pipesection
@@ -665,6 +677,7 @@ sdsx
 se
 secondaryid
 sectionname
+sed
 selex
 seqannot
 sequenceable
