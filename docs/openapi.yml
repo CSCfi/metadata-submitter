@@ -559,7 +559,7 @@ paths:
     put:
       tags:
         - Manage
-      summary: Update the whole object object, on success return the updated object
+      summary: Update the whole object, on success return the updated object
       requestBody:
         content:
           multipart/form-data:
@@ -818,7 +818,7 @@ paths:
     put:
       tags:
         - Manage
-      summary: Update the whole object object, on success return the updated object
+      summary: Update the whole object, on success return the updated object
       requestBody:
         content:
           multipart/form-data:

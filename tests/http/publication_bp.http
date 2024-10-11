@@ -163,5 +163,9 @@ GET {{api_url}}/v1/submissions/{{submission_id}}
 DELETE {{api_url}}/v1/submissions/{{submission_id}}/files/{{file_id}}
 
 
+### Begin ingestion
+POST {{api_url}}/v1/submissions/{{submission_id}}/ingest
+
+
 ### Announce submission
 PATCH {{api_url}}/v1/announce/{{submission_id}}
