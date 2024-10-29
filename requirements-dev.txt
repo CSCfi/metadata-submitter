@@ -112,7 +112,7 @@ frozenlist==1.4.1
     #   aiosignal
 gunicorn==23.0.0
     # via -r requirements.txt
-honcho==1.1.0
+honcho==2.0.0
     # via -r requirements-dev.in
 html5lib==1.1
     # via pyspelling
