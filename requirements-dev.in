@@ -10,7 +10,9 @@ isort
 mypy
 pip-tools  # pip depedencies management
 pre-commit
+pydantic
 pylint
+pynacl
 pyspelling
 pytest
 pytest-asyncio
