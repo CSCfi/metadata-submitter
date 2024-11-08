@@ -150,7 +150,7 @@ markdown==3.7
     # via pyspelling
 markdown-it-py==3.0.0
     # via rich
-markupsafe==2.1.5
+markupsafe==3.0.2
     # via
     #   -r requirements.txt
     #   jinja2
