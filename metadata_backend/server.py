@@ -58,7 +58,7 @@ async def init(
     session_middleware = aiohttp_session.session_middleware(
         aiohttp_session.cookie_storage.EncryptedCookieStorage(sec_key)
     )
-    server = web.Application(middlewares=[session_middleware])  # type: ignore
+    server = web.Application(middlewares=[session_middleware])
 
     metax_handler = MetaxServiceHandler()
     datacite_handler = DataciteServiceHandler()

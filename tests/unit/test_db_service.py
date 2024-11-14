@@ -230,10 +230,6 @@ class DatabaseTestCase(IsolatedAsyncioTestCase):
                 UpdateOne(
                     {"testcollectionId": "EGA123456"},
                     {"$addToSet": {"metadataObjects": {"$each": [{"accessionId": "EGA123456", "schema": "study"}]}}},
-                    False,
-                    None,
-                    None,
-                    None,
                 )
             ],
             ordered=False,

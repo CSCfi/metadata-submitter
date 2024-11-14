@@ -308,13 +308,9 @@ class ParserTestCase(unittest.TestCase):
                         }
                     }
                 },
-                False,
-                None,
-                None,
-                None,
             ),
-            UpdateOne({"accessionId": "id"}, {"$set": {"drafts": []}}, False, None, None, None),
-            UpdateOne({"accessionId": "id"}, {"$set": {"published": True}}, False, None, None, None),
+            UpdateOne({"accessionId": "id"}, {"$set": {"drafts": []}}),
+            UpdateOne({"accessionId": "id"}, {"$set": {"published": True}}),
         ]
 
         result = jsonpatch_mongo({"accessionId": "id"}, json_patch)

@@ -102,6 +102,7 @@ class ServiceHandler(ABC):
     @retry(total_tries=5)
     async def _request(
         self,
+        *,
         method: str = "GET",
         url: Optional[URL] = None,
         path: str = "",
