@@ -7,6 +7,8 @@ metomi-isodatetime
 jsonschema
 motor
 idpyoidc
+pydantic
+pynacl
 python-dateutil
 requests
 ujson
