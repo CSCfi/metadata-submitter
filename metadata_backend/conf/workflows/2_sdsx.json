@@ -9,7 +9,7 @@
                 {
                     "name": "dac",
                     "required": true,
-                    "allowMultipleObjects": true
+                    "allowMultipleObjects": false
                 },
                 {
                     "name": "policy",
@@ -36,7 +36,7 @@
                 {
                     "name": "dataset",
                     "required": true,
-                    "allowMultipleObjects": true
+                    "allowMultipleObjects": false
                 }
             ]
         },

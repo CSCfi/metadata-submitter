@@ -161,15 +161,13 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
 
         # ensure only one object with the same schema exists in the submission
         if is_single_instance:
-            schemas_in_submission = set()
             submission = {
                 "metadataObjects": await submission_op.get_submission_field_list(submission_id, "metadataObjects")
             }
             for _, schema in self.iter_submission_objects(submission):
-                if schema == schema_type and schema in schemas_in_submission:
+                if schema == schema_type:
                     reason = f"Submission of type {workflow.name} already has a '{schema}', and it can have only one."
                     raise web.HTTPBadRequest(reason=reason)
-                schemas_in_submission.add(schema)
 
         collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
 

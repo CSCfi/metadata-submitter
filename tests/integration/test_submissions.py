@@ -568,6 +568,51 @@ class TestSubmissionOperations:
             submission = await get_submission(client_logged_in, submission_id)
             assert submission["linkedFolder"] == name
 
+    async def test_adding_rems_info_to_submission_works(self, client_logged_in, project_id):
+        """Test that correct REMS info can be added to submission and invalid REMS info will raise error.
+
+        :param client_logged_in: HTTP client in which request call is made
+        :param project_id: id of the project the submission belongs to
+        """
+        # Create new submission and check its creation succeeded
+        submission_data = {
+            "name": "REMS Submission",
+            "description": "Mock Base submission for adding REMS info",
+            "projectId": project_id,
+            "workflow": "SDSX",
+        }
+        submission_sdsx = await post_submission(client_logged_in, submission_data)
+        async with client_logged_in.get(f"{submissions_url}/{submission_sdsx}") as resp:
+            LOG.debug(f"Checking that submission {submission_sdsx} was created")
+            assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+
+        # Get correctly formatted REMS info and patch it into the new submission successfully
+        rems_data_raw = await create_request_json_data("dac", "dac_rems.json")
+        rems_data = json.loads(rems_data_raw)
+        await put_submission_rems(client_logged_in, submission_sdsx, rems_data_raw)
+
+        async with client_logged_in.get(f"{submissions_url}/{submission_sdsx}") as resp:
+            LOG.debug(f"Checking that submission {submission_sdsx} was patched")
+            res = await resp.json()
+            assert res["submissionId"] == submission_sdsx, "expected submission id does not match"
+            assert res["name"] == submission_data["name"], "expected submission name does not match"
+            assert res["description"] == submission_data["description"], "submission description content mismatch"
+            assert res["published"] is False, "submission is published, expected False"
+            assert res["rems"] == rems_data, "rems info does not match"
+
+        # Test that an incorrect REMS object fails to patch into the submission
+        # error case: REMS's licenses do not include DAC's linked license
+        put_bad_rems = {"workflowId": 1, "organizationId": "CSC", "licenses": [2, 3]}
+        async with client_logged_in.put(
+            f"{submissions_url}/{submission_sdsx}/rems", data=json.dumps(put_bad_rems)
+        ) as resp:
+            LOG.debug(f"Tried updating submission {submission_sdsx}")
+            assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
+            res = await resp.json()
+            assert (
+                res["detail"] == "Rems error: Linked license '1' doesn't exist in licenses '[2, 3]'"
+            ), "expected error mismatch"
+
 
 class TestSubmissionPagination:
     """Testing getting submissions, draft submissions and draft templates with pagination."""

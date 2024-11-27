@@ -73,7 +73,6 @@ class TestMinimalJsonPublicationRems:
             res = await resp.json()
             assert res["accessionId"] == ds_id, "expected dataset id does not match"
             assert "rems" in res, "expected rems field not found in dataset"
-            assert res["rems"]["workflowId"] == 1, "expected workflowId does not match"
-            assert res["rems"]["organizationId"] == "CSC", "expected organizationId does not match"
+            assert "url" in res["rems"], "expected url not found in rems field"
             assert "resourceId" in res["rems"], "expected resourceId not found in rems field"
             assert "catalogueId" in res["rems"], "expected catalogueId not found in rems field"

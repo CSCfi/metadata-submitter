@@ -40,8 +40,8 @@ async def test_metax_id_created(client_logged_in, submission_fega):
 
     doi_data_raw = await create_request_json_data("doi", "test_doi.json")
     await put_submission_doi(client_logged_in, submission_fega, doi_data_raw)
-    # rems_data = await create_request_json_data("dac", "dac_rems.json")
-    # await put_submission_rems(client_logged_in, submission_fega, rems_data)
+    rems_data = await create_request_json_data("dac", "dac_rems.json")
+    await put_submission_rems(client_logged_in, submission_fega, rems_data)
     await post_object_json(client_logged_in, "run", submission_fega, "ERR000076.json")
     await publish_submission(client_logged_in, submission_fega)
 

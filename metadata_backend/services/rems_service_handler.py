@@ -13,7 +13,7 @@ resource    ->  	dataset
 """
 
 import time
-from typing import Any
+from typing import Any, Optional
 
 from aiohttp import ClientTimeout, web
 from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
@@ -104,12 +104,15 @@ class RemsServiceHandler(ServiceHandler):
         result: str = created["id"]
         return result
 
-    async def item_ok(self, item_type: str, organization_id: str, item_id: int) -> bool:
+    async def item_ok(
+        self, item_type: str, organization_id: str, item_id: int, licenses: Optional[list[int]] = None
+    ) -> bool:
         """Check that item exists.
 
         :param item_type: 'workflow' or 'license'
         :param organization_id: REMS organization/id
         :param item_id: REMS item id
+        :param licenses: list of licence IDs
         :raises HTTPError
         :returns: True or raises
         """
@@ -127,6 +130,17 @@ class RemsServiceHandler(ServiceHandler):
                     reason=f"{capitalized_item_type} '{item_id}' doesn't belong to organization '{organization_id}'",
                     status=400,
                 )
+            if item_type == "workflow":
+                linked_licenses = item["licenses"]  # licenses that are pre-linked to workflow in REMS
+                for lic in linked_licenses:
+                    if lic["license/id"] not in licenses:
+                        raise self.make_exception(
+                            reason=f"Linked license '{lic['license/id']}' doesn't exist in licenses '{licenses}'",
+                            status=400,
+                        )
+
+                LOG.debug("Licenses are linked to workflow correctly.")
+
         except KeyError as exc:
             raise self.make_exception(
                 reason=f"{capitalized_item_type} '{item_id}' has unexpected structure.", status=400
@@ -138,7 +152,7 @@ class RemsServiceHandler(ServiceHandler):
         return True
 
     async def validate_workflow_licenses(self, organization_id: str, workflow_id: int, licenses: list[int]) -> bool:
-        """Check that workflow and policies exist.
+        """Check that workflow and licenses exist.
 
         :param organization_id: REMS organization/id
         :param workflow_id: REMS workflow id
@@ -159,13 +173,13 @@ class RemsServiceHandler(ServiceHandler):
         if not isinstance(licenses, list):
             raise self.make_exception(reason=f"Licenses '{licenses}' must be a list of integers.", status=400)
 
-        await self.item_ok("workflow", organization_id, workflow_id)
+        await self.item_ok("workflow", organization_id, workflow_id, licenses)
 
         for license_id in licenses:
             if not isinstance(license_id, int):
                 raise self.make_exception(reason=f"Workflow ID '{license_id}' must be an integer.", status=400)
-
             await self.item_ok("license", organization_id, license_id)
+
         LOG.debug("REMS All ok.")
         return True
 

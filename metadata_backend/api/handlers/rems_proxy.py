@@ -48,7 +48,7 @@ class RemsAPIHandler(RESTAPIIntegrationHandler):
 
     async def get_workflows_licenses_from_rems(self, request: web.Request) -> web.Response:
         """Get workflows and Policies for frontend."""
-        language = request.query.get("language", "en").split("_")[0]
+        language = request.query.get("language", "en")
         workflows = await self.rems_handler.get_workflows()
         licenses = await self.rems_handler.get_licenses()
 
@@ -68,7 +68,9 @@ class RemsAPIHandler(RESTAPIIntegrationHandler):
             org_id = workflow["organization"]["organization/id"]
             if org_id not in organizations:
                 add_organization(str(org_id), str(org_name))
-            organizations[org_id]["workflows"].append({"id": workflow["id"], "title": title})
+            organizations[org_id]["workflows"].append(
+                {"id": workflow["id"], "title": title, "licenses": workflow["licenses"]}
+            )
 
         for lic in licenses:
             title = self._get_localized(language, lic["localizations"])

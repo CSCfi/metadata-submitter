@@ -311,6 +311,6 @@ class TestFileSubmissions:
         posted_files3 = await post_project_files(client_logged_in, file_data)
         assert posted_files3[0]["version"] == 3
 
-        # Get files. Reads each version as separate file
+        # Get file. Only file's latest version is returned
         project_files = await get_project_files(client_logged_in, projectId)
-        assert len(project_files) == 3
+        assert len(project_files) == 1

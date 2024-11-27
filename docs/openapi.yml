@@ -2429,6 +2429,20 @@ components:
                     type: string
                     description: Type of submission
                     enum: ["XML", "CSV", "Form"]
+              rems:
+                type: object
+                description: Preserved REMS information for each dataset
+                additionalProperties: true
+                properties:
+                  url:
+                    type: string
+                    description: URL for application to apply access for dataset in REMS
+                  resourceId:
+                    type: string
+                    description: REMS id of the resource created. Created automatically during the publication process
+                  catalogueItemId:
+                    type: string
+                    description: REMS id of the catalogue created. Created automatically during the publication process
         drafts:
           type: array
           items:
@@ -3331,12 +3345,12 @@ components:
           description: ID of an organization in REMS
         workflowId:
           type: integer
-          description: ID of a Workflow, obtained from REMS
+          description: ID of a Workflow, obtained from REMS, and must belong to organizationId
         licenses:
           type: array
           items:
             type: integer
-            description: ID of a license, obtained from REMS, and must belong to organizationId
+            description: IDs of Licenses, obtained from REMS, and must belong to organizationId
     REMS:
       type: array
       description: Array of organizations with workflows and licenses from REMS database
