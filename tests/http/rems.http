@@ -14,8 +14,8 @@
 @auth_email = mock_user@test.what
 
 @resid = {{resid_req.response.body.id}}
-@wfid = {{dac_req.response.body.$[0].id}}
-@orgid = {{dac_req.response.body.$[0].organization.organization/id}}
+@wfid = {{dac_req.response.body.id}}
+@orgid = {{dac_req.response.body.organization.organization/id}}
 @application_id = {{catalogue_req.response.body.id}}
 
 ### Mock authentication
@@ -32,7 +32,6 @@ GET {{backend_url}}/v1/rems
     ?language=fi
 
 ### Get workflows
-# @name dac_req
 GET {{rems_url}}/workflows
     ?disabled=false
     &archived=false
