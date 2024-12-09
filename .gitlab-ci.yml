@@ -17,8 +17,6 @@ linting:
     - docker-exec
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-    - when: manual
   image: $BUILD_IMAGE
   before_script:
     - pip install -r requirements-dev.txt
@@ -32,8 +30,6 @@ spellcheck:
     - docker-exec
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-    - when: manual
   image: $BUILD_IMAGE
   before_script:
     - pip install pyspelling
@@ -46,8 +42,6 @@ unittest:
     - docker-exec
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-    - when: manual
   image: $BUILD_IMAGE
   before_script:
     - pip install -r requirements-dev.txt
