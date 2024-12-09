@@ -72,7 +72,7 @@ colorama==0.4.6
     # via tox
 coverage[toml]==7.6.5
     # via pytest-cov
-cryptography==42.0.8
+cryptography==43.0.3
     # via
     #   -r requirements.txt
     #   authlib
