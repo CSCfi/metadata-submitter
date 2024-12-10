@@ -23,8 +23,8 @@ classifiers = [
 
 [project.optional-dependencies]
 test = [
-    "coverage==7.6.5",
-    "pytest==8.3.3",
+    "coverage==7.6.8",
+    "pytest==8.3.4",
     "pytest-cov==5.0.0",
     "pytest-xdist==3.6.1",
     "tox==4.23.2",
@@ -32,7 +32,7 @@ test = [
 ]
 docs = [
     "sphinx >= 1.4",
-    "sphinx_rtd_theme==3.0.1",
+    "sphinx_rtd_theme==3.0.2",
 ]
 
 [tool.black]
