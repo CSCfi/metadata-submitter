@@ -72,8 +72,7 @@ class TestMinimalJsonPublicationRems:
             LOG.debug(f"Checking that dataset {ds_id} in submission {submission_fega} has rems data")
             res = await resp.json()
             assert res["accessionId"] == ds_id, "expected dataset id does not match"
-            assert "rems" in res, "expected rems field not found in dataset"
-            assert res["rems"]["workflowId"] == 1, "expected workflowId does not match"
-            assert res["rems"]["organizationId"] == "CSC", "expected organizationId does not match"
-            assert "resourceId" in res["rems"], "expected resourceId not found in rems field"
-            assert "catalogueId" in res["rems"], "expected catalogueId not found in rems field"
+            assert "internal_rems" in res, "expected internal_rems field not found in dataset"
+            assert "url" in res["internal_rems"], "expected url not found in internal_rems field"
+            assert "resourceId" in res["internal_rems"], "expected resourceId not found in internal_rems field"
+            assert "catalogueId" in res["internal_rems"], "expected catalogueId not found in internal_rems field"

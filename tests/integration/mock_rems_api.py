@@ -54,7 +54,31 @@ workflows = {
             "handlers": ["user_id_1", "user_id_2"],
             "forms": [1],
         },
-        "licenses": [],
+        "licenses": [
+            {
+                "license/id": 1,
+                "licensetype": "link",
+                "organization": {
+                    "organization/id": "CSC",
+                    "organization/short-name": organizations["CSC"]["short-name"],
+                    "organization/name": organizations["CSC"]["name"],
+                },
+                "localizations": {
+                    "fi": {
+                        "title": "Nimeä 4.0 Kansainvälinen (CC BY 4.0)",
+                        "textcontent": "https://creativecommons.org/licenses/by/4.0/deed.fi",
+                        "attachment-id": None,
+                    },
+                    "en": {
+                        "title": "Creative Commons Attribution 4.0 International (CC BY 4.0)",
+                        "textcontent": "https://creativecommons.org/licenses/by/4.0/",
+                        "attachment-id": None,
+                    },
+                },
+                "enabled": True,
+                "archived": False,
+            }
+        ],
         "enabled": True,
         "archived": False,
     },
@@ -231,16 +255,20 @@ async def get_license(request: web.Request) -> web.Response:
         raise web.HTTPNotFound(reason=f"License with id '{license_id}' was not found.")
 
 
+# TO_DO: Check with REMS if an application includes multiple catalogues would work
 async def get_application(request: web.Request) -> web.Response:
     """REMS application."""
+    application_catalogues = []
     try:
-        items = int(request.query["items"])
-        item = catalogue[items]
+        items = request.query["items"].split(",")
+        for i in items:
+            item = catalogue[int(i)]
+            application_catalogues.append(item)
     except (KeyError, TypeError) as e:
         LOG.exception(e)
         LOG.debug(request)
         return web.HTTPNotFound(reason="Catalogue item was not found")
-    return web.json_response(data=item)
+    return web.json_response(data=application_catalogues)
 
 
 async def post_resource(request: web.Request) -> web.Response:
@@ -321,7 +349,7 @@ async def init() -> web.Application:
     app.router.add_get("/api/licenses/{license_id}", get_license)
     app.router.add_post("/api/resources/create", post_resource)
     app.router.add_post("/api/catalogue-items/create", post_catalogue_item)
-    app.router.add_get("/application", get_application)
+    app.router.add_get("/api/application", get_application)
     return app
 
 

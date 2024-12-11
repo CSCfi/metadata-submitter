@@ -83,7 +83,24 @@ class HandlersTestCase(AioHTTPTestCase):
             ],
             "drafts": [],
             "linkedFolder": "",
-            "doiInfo": {"creators": [{"name": "Creator, Test"}]},
+            "doiInfo": {
+                "creators": [
+                    {
+                        "givenName": "Test",
+                        "familyName": "Creator",
+                        "affiliation": [
+                            {
+                                "name": "affiliation place",
+                                "schemeUri": "https://ror.org",
+                                "affiliationIdentifier": "https://ror.org/test1",
+                                "affiliationIdentifierScheme": "ROR",
+                            }
+                        ],
+                    }
+                ],
+                "subjects": [{"subject": "999 - Other"}],
+                "keywords": "test,keyword",
+            },
             "files": [{"accessionId": "file1", "version": 1, "status": "added"}],
         }
         self.user_id = "USR12345678"
@@ -1111,6 +1128,45 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             self.assertEqual(response.status, 400)
             self.assertIn("It already has a linked folder", await response.text())
 
+    async def test_put_submission_rems_works(self):
+        """Test put method for rems data to submission works."""
+        self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
+        data = ujson.load(open(self.TESTFILES_ROOT / "dac" / "dac_rems.json"))
+        with (
+            patch(
+                "metadata_backend.services.rems_service_handler.RemsServiceHandler.validate_workflow_licenses",
+                return_value=True,
+            ),
+            self.p_get_sess_restapi,
+        ):
+            response = await self.client.put(f"{API_PREFIX}/submissions/{self.submission_id}/rems", json=data)
+            self.assertEqual(response.status, 200)
+            json_resp = await response.json()
+            self.assertEqual(json_resp["submissionId"], self.submission_id)
+
+            response = await self.client.get(f"{API_PREFIX}/submissions/{self.submission_id}")
+            self.assertEqual(response.status, 200)
+            json_resp = await response.json()
+            self.assertIn("rems", json_resp)
+
+    async def test_put_submission_rems_fails_with_missing_fields(self):
+        """Test put method for rems data to submission fails if required fields are missing."""
+        self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
+        data = {"workflowId": 1}
+        with self.p_get_sess_restapi:
+            response = await self.client.put(f"{API_PREFIX}/submissions/{self.submission_id}/rems", json=data)
+            self.assertEqual(response.status, 400)
+            self.assertIn("REMS DAC is missing one or more of the required fields", await response.text())
+
+    async def test_put_submission_rems_fails_with_wrong_value_type(self):
+        """Test put method for rems data to submission fails if values have incorrect types."""
+        self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
+        data = {"workflowId": 1, "organizationId": 1, "licenses": [1]}
+        with self.p_get_sess_restapi:
+            response = await self.client.put(f"{API_PREFIX}/submissions/{self.submission_id}/rems", json=data)
+            self.assertEqual(response.status, 400)
+            self.assertIn("Organization ID '1' must be a string.", await response.text())
+
 
 class PublishSubmissionHandlerTestCase(HandlersTestCase):
     """Publishing API endpoint class test cases."""
@@ -1153,6 +1209,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
 
     async def test_submission_is_published(self):
         """Test that submission would be published and DOI would be added."""
+        self.test_submission = {**self.test_submission, **{"rems": {}}}
         self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
         with (
             patch(f"{self._publish_handler}.create_draft_doi", return_value=self.user_id),

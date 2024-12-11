@@ -419,8 +419,9 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                             "infourl": self._make_discovery_url(object_data, submission["workflow"]),
                         }
                     },
-                    "metaxIdentifier": object_data.get("metaxIdentifier", ""),
                 }
+                if schema == "dataset":
+                    rems_ds.update({"metaxIdentifier": object_data.get("metaxIdentifier", "")})
                 rems_datasets.append(rems_ds)
 
         org_id = submission["rems"]["organizationId"]
@@ -440,16 +441,16 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
             # Add rems URL to metax dataset description
             rems_url = self.rems_handler.application_url(catalogue_id)
             if "metaxIdentifier" in ds:
-                new_description = ds["description"] + f"\n\nREMS DAC: {rems_url}"
+                new_description = ds["description"] + f"\n\nSD Apply's Application link: {rems_url}"
                 await self.metax_handler.update_draft_dataset_description(ds["metaxIdentifier"], new_description)
+
+            # Update metadata object with preserved rems info that might need later
             await obj_op.update_metadata_object(
                 ds["schema"],
                 ds["accession_id"],
                 {
-                    "rems": {
+                    "internal_rems": {
                         "url": rems_url,
-                        "workflowId": workflow_id,
-                        "organizationId": org_id,
                         "resourceId": resource_id,
                         "catalogueId": catalogue_id,
                     },
@@ -482,6 +483,9 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         if "datacite" in workflow.required_schemas and "doiInfo" not in submission:
             raise web.HTTPBadRequest(reason=f"Submission '{submission_id}' must have the required DOI metadata.")
 
+        if "dac" in workflow.required_schemas and "rems" not in submission:
+            raise web.HTTPBadRequest(reason=f"Submission '{submission_id}' must have rems information.")
+
         schemas_in_submission = set()
         has_study = False
         for _, schema in self.iter_submission_objects(submission):
@@ -494,9 +498,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                 reason = f"Submission of type {workflow.name} has more than one '{schema}', and it can have only one"
                 raise web.HTTPBadRequest(reason=reason)
             schemas_in_submission.add(schema)
-            # TO_DO: Can only be enabled after we have unified the DAC from EGA and REMS
-            # if "dac" in workflow.required_schemas and "rems" not in submission:
-            #     raise web.HTTPBadRequest(reason=f"Submission '{accession_id}' must have rems.")
+
         if workflow.name != "BigPicture" and not has_study:
             raise web.HTTPBadRequest(reason=f"Submission '{submission_id}' must have a study.")
 
@@ -513,7 +515,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                     )
                     raise web.HTTPBadRequest(reason=reason)
 
-        # TO_DO: Can only be enabled after we have unified the DAC from EGA and REMS
+        # TO_DO: Need to include all required objects before publishing submission in unit and integration tests
         # missing_schemas = set()
         # for required_schema in workflow.required_schemas:
         #     if required_schema not in schemas_in_submission:
@@ -523,6 +525,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         #     raise web.HTTPBadRequest(
         #         reason=f"{workflow.name} submission '{submission_id}' is missing '{required}' schema(s)."
         #     )
+
         # Create draft DOI and Metax records if not existing
         external_user_id = await self.get_user_external_id(req)
         async for accession_id, schema, object_data in self.iter_submission_objects_data(submission, obj_op):

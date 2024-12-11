@@ -1140,6 +1140,20 @@
                                 ]
                             }
                         }
+                    },
+                    "internal_rems": {
+                        "url": {
+                            "type": "string",
+                            "title": "URL for application to apply access for dataset in REMS"
+                        },
+                        "resourceId": {
+                            "type": "string",
+                            "title": "REMS id of the resource created. Created automatically during the publication process"
+                        },
+                        "catalogueItemId": {
+                            "type": "string",
+                            "title": "REMS id of the catalogue created. Created automatically during the publication process"
+                        }
                     }
                 }
             },
@@ -1208,14 +1222,6 @@
                         "type": "integer",
                         "title": "REMS id of a policy/license"
                     }
-                },
-                "resourceId": {
-                    "type": "string",
-                    "title": "REMS id of the resource created. Created automatically during the publication process"
-                },
-                "catalogueItemId": {
-                    "type": "string",
-                    "title": "REMS id of the catalogue created. Created automatically during the publication process"
                 }
             }
         },
