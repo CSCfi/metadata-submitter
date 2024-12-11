@@ -29,6 +29,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- CI/CD problems caused by moving to using git LFS
 - Fixed bugs in file version creation
 
 ## [2024.01.0] - 2024-01-15
