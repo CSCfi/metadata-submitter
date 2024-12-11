@@ -18,6 +18,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- REMS object is refined and validated when it is added to a submission
 - Modified workflow for Generic use case #821
 - Updated middleware to accept user signed tokens #777
 - Switch to `idpyoidc` library instead of `oidc-rp`
