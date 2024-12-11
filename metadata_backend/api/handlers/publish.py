@@ -443,11 +443,13 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
             if "metaxIdentifier" in ds:
                 new_description = ds["description"] + f"\n\nSD Apply's Application link: {rems_url}"
                 await self.metax_handler.update_draft_dataset_description(ds["metaxIdentifier"], new_description)
+
+            # Update metadata object with preserved rems info that might need later
             await obj_op.update_metadata_object(
                 ds["schema"],
                 ds["accession_id"],
                 {
-                    "rems": {
+                    "internal_rems": {
                         "url": rems_url,
                         "resourceId": resource_id,
                         "catalogueId": catalogue_id,

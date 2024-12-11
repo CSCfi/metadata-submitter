@@ -1141,7 +1141,7 @@
                             }
                         }
                     },
-                    "rems": {
+                    "internal_rems": {
                         "url": {
                             "type": "string",
                             "title": "URL for application to apply access for dataset in REMS"
