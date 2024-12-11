@@ -9,16 +9,31 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
-- new format for error responses of /validate endpoint
+- Mocked Admin API service #843
+- Instructions on how to use the SD Submit API for BigPicture programmatic dataset submissions #815
+- Defined a discovery service for each workflow 512
+- Total size of files is included in Metax metadata #507
+- Tests for taxonomy search #826
+- Created an endpoint for getting taxonomy names and id based on NCBI database dump files #281
+- Endpoint for flagging file as deleted #824
+- BP metadata gets accession attribute added to the XML content as well before it's stored #818
+- Endpoint to add and remove a linked folder path to a submission #825
+- new format for error responses of /validate endpoint #641
 - Validate files against file schema #823
-- List of Funding references from crossref API and enum values for Funder Names in Submission schema
+- List of Funding references from crossref API and enum values for Funder Names in Submission schema #817
 - Added a POST endpoint for receiving file information #814
 - Added additional 'announce' endpoint for BP workflow and to openapi document #813
 - Added new endpoint `/users/{userId}/key` for generating a signing key #777
 
 ### Changed
 
-- REMS object is refined and validated when it is added to a submission
+- REMS object is refined and validated when it is added to a submission #532 #649
+- GET files request returns only latest file versions #840
+- Removed large taxonomy related `names.json` file from the repository commit history and brought  back as git LFS pointer file
+- Modify SDSX workflow to be the same as FEGA workflow
+- Refactored POST files endpoint to address several issues #828
+- BigPicture workflow no longer requires a study
+- XML objects are parsed from multipart XML structure into single objects before storing so the content matches with its JSON counterpart #818
 - Modified workflow for Generic use case #821
 - Updated middleware to accept user signed tokens #777
 - Switch to `idpyoidc` library instead of `oidc-rp`
@@ -26,12 +41,15 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Removed
 
+- Some schemas that are unnecessary for Generic use case workflow #841
 - RabbitMQ message broker functionality
 
 ### Fixed
 
-- CI/CD problems caused by moving to using git LFS
-- Fixed bugs in file version creation
+- Automated changelog generation with CI jobs and github actions recognizes git LFS files
+- Add missing schema check that disallowed multiple metadata objects
+- Fixed newly posted versions of deleted files still showing up as deleted #828
+- Fixed bugs in file version creation #823
 
 ## [2024.01.0] - 2024-01-15
 
