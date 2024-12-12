@@ -387,6 +387,7 @@ lastmodified
 latestversion
 leaveaspool
 lexically
+lfs
 libraryconstructionprotocol
 librarydescriptor
 librarylayout
