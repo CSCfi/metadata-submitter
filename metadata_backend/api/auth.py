@@ -327,7 +327,7 @@ class AAIServiceHandler(ServiceHandler):
             http_client_headers=headers,
         )
 
-    async def _healtcheck(self) -> dict[str, str]:
+    async def _healthcheck(self) -> dict[str, str]:
         """Check AAI service hearthbeat.
 
         This will return a JSON with well-known OIDC endpoints.

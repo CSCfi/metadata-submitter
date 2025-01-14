@@ -506,3 +506,49 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
             submission_id,
         )
         return web.HTTPNoContent()
+
+    async def post_data_ingestion(self, req: Request) -> web.HTTPNoContent:
+        """Start the data ingestion.
+
+        :param req: HTTP request
+        """
+        submission_id = req.match_info["submissionId"]
+        data = await self._get_data(req)
+
+        db_client = req.app["db_client"]
+        submission_operator = SubmissionOperator(db_client)
+        file_operator = FileOperator(db_client)
+
+        # Check submission exists and is not already published
+        await submission_operator.check_submission_exists(submission_id)
+        await self._handle_check_ownership(req, "submission", submission_id)
+        await submission_operator.check_submission_published(submission_id, req.method)
+
+        try:
+            username, files = data["username"], data["files"]
+            if not isinstance(username, str) or not isinstance(files, list) or not username or not files:
+                reason = "Invalid input: 'username' must be a string and 'files' must be a non-empty list."
+                raise ValueError(reason)
+        except (KeyError, ValueError) as e:
+            reason = "'username' and 'files' are mandatory parameters."
+            LOG.exception("%s: %s", reason, str(e))
+            raise web.HTTPBadRequest(reason=reason) from e
+
+        for file in files:
+            if "path" not in file or "accessionId" not in file:
+                reason = "'path' and 'accessionId' are required for file ingestion."
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+            # Trigger file ingestion
+            ingestedFile = await self.start_file_ingestion(
+                req,
+                {
+                    "user": username,  # User's username in inbox
+                    "submissionId": submission_id,
+                    "filepath": file["path"],
+                    "accessionId": file["accessionId"],
+                },
+                file_operator,
+            )
+            LOG.debug("Ingested file: %r", ingestedFile["filepath"])
+        return web.HTTPNoContent()

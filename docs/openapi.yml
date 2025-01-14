@@ -1626,6 +1626,62 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
+  /v1/submissions/{submissionId}/ingest:
+    post:
+      tags:
+        - Manage
+      summary: Start the data ingestion process when the submission is ready.
+      parameters:
+        - name: submissionId
+          in: path
+          description: ID of the submission.
+          schema:
+            type: string
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - files
+              properties:
+                username:
+                  type: string
+                  description: Whitelisted username from inbox
+                  example: "test_user"
+                files:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/FilesForIngestion"
+      responses:
+        204:
+          description: No Content
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
+        405:
+          description: Method Not Allowed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/405MethodNotAllowed"
   /v1/publish/{submissionId}:
     patch:
       tags:
@@ -3541,3 +3597,15 @@ components:
             type: integer
             title: Version of the file
             example: 1
+    FilesForIngestion:
+      type: object
+      description: File's information for ingestion
+      properties:
+        path:
+          type: string
+          title: File path
+          example: s3:/bucket/files/filename.c4gh
+        accessionId:
+          type: string
+          title: Accession id for file
+          example: 5c4a1969e24a4bc5962eac8c2c5348ed

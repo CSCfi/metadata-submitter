@@ -99,6 +99,7 @@ metax_api = f"{metax_url}/rest/v2/datasets"
 datacite_url = f"{os.getenv('DOI_API', 'http://localhost:8001')}"
 files_url = f"{base_url}{API_PREFIX}/files"
 taxonomy_url = f"{base_url}{API_PREFIX}/taxonomy"
+admin_url = f"{os.getenv('ADMIN_URL', 'http://localhost:8004')}"
 auth = aiohttp.BasicAuth(os.getenv("METAX_USER", "sd"), os.getenv("METAX_PASS", "test"))
 beacon_discovery_url = os.getenv("BEACON_DISCOVERY_URL", "https://bp-demo.rahtiapp.fi/")
 metax_discovery_url = os.getenv("METAX_DISCOVERY_URL", "https://etsin.fairdata.fi/dataset/")
@@ -116,3 +117,7 @@ test_user = "user_given@test.what"
 other_test_user_given = "Mock"
 other_test_user_family = "Family"
 other_test_user = "mock_user@test.what"
+
+admin_test_user_given = "Admin Mock"
+admin_test_user_family = "Admin Family"
+admin_test_user = "test@test.example"

@@ -15,9 +15,11 @@ from ...conf.conf import WORKFLOWS, schema_types
 from ...helpers.logger import LOG
 from ...helpers.schema_loader import JSONSchemaLoader, SchemaNotFoundException
 from ...helpers.workflow import Workflow
+from ...services.admin_service_handler import AdminServiceHandler
 from ...services.datacite_service_handler import DataciteServiceHandler
 from ...services.metax_service_handler import MetaxServiceHandler
 from ...services.rems_service_handler import RemsServiceHandler
+from ..operators.file import FileOperator
 from ..operators.object import ObjectOperator
 from ..operators.submission import SubmissionOperator
 from ..operators.user import UserOperator
@@ -274,11 +276,13 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
         metax_handler: MetaxServiceHandler,
         datacite_handler: DataciteServiceHandler,
         rems_handler: RemsServiceHandler,
+        admin_handler: AdminServiceHandler,
     ) -> None:
-        """Endpoints should have access to metax and datacite services."""
+        """Endpoints should have access to metax, datacite, rems, and admin services."""
         self.metax_handler = metax_handler
         self.datacite_handler = datacite_handler
         self.rems_handler = rems_handler
+        self.admin_handler = admin_handler
 
     @staticmethod
     async def get_user_external_id(request: web.Request) -> str:
@@ -353,3 +357,18 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
             )
 
         return True
+
+    async def start_file_ingestion(self, req: Request, data: dict[str, str], file_op: FileOperator) -> dict[str, Any]:
+        """Start the file ingestion. File status in submission becomes 'verified'.
+
+        :param req: HTTP request
+        :param data: Includes 'user', 'submissionId', 'filepath', 'accessionId'
+        :param file_op: File Operator
+        :returns: Dict with path of ingested file
+        """
+        await self.admin_handler.ingest_file(req, data)
+        await file_op.update_file_submission(data["accessionId"], data["submissionId"], {"files.$.status": "verified"})
+        LOG.debug(
+            "File in submission %s with path %r is updated to status 'verified'", data["submissionId"], data["filepath"]
+        )
+        return {"filepath": data["filepath"]}

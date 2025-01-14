@@ -25,6 +25,7 @@ from .api.health import HealthHandler
 from .api.middlewares import check_session, http_error_handler
 from .conf.conf import API_PREFIX, aai_config, create_db_client, frontend_static_files, swagger_static_path
 from .helpers.logger import LOG
+from .services.admin_service_handler import AdminServiceHandler
 from .services.datacite_service_handler import DataciteServiceHandler
 from .services.metax_service_handler import MetaxServiceHandler
 from .services.rems_service_handler import RemsServiceHandler
@@ -65,12 +66,14 @@ async def init(
     rems_handler = RemsServiceHandler()
     aai_handler = AAIServiceHandler()
     taxonomy_handler = TaxonomySearchHandler()
+    admin_handler = AdminServiceHandler()
 
     async def close_http_clients(_: web.Application) -> None:
         """Close http client session."""
         await metax_handler.http_client_close()
         await datacite_handler.http_client_close()
         await rems_handler.http_client_close()
+        await admin_handler.http_client_close()
 
     async def on_prepare(_: web.Request, response: web.StreamResponse) -> None:
         """Modify Server headers."""
@@ -82,19 +85,29 @@ async def init(
 
     _common_api_handler = RESTAPIHandler()
     _object = ObjectAPIHandler(
-        metax_handler=metax_handler, datacite_handler=datacite_handler, rems_handler=rems_handler
+        metax_handler=metax_handler,
+        datacite_handler=datacite_handler,
+        rems_handler=rems_handler,
+        admin_handler=admin_handler,
     )
     _submission = SubmissionAPIHandler(
-        metax_handler=metax_handler, datacite_handler=datacite_handler, rems_handler=rems_handler
+        metax_handler=metax_handler,
+        datacite_handler=datacite_handler,
+        rems_handler=rems_handler,
+        admin_handler=admin_handler,
     )
     _publish_submission = PublishSubmissionAPIHandler(
         metax_handler=metax_handler,
         datacite_handler=datacite_handler,
         rems_handler=rems_handler,
+        admin_handler=admin_handler,
     )
     _user = UserAPIHandler()
     _xml_submission = XMLSubmissionAPIHandler(
-        metax_handler=metax_handler, datacite_handler=datacite_handler, rems_handler=rems_handler
+        metax_handler=metax_handler,
+        datacite_handler=datacite_handler,
+        rems_handler=rems_handler,
+        admin_handler=admin_handler,
     )
     _template = TemplatesAPIHandler()
     _file = FilesAPIHandler()
@@ -137,6 +150,7 @@ async def init(
         web.patch("/submissions/{submissionId}", _submission.patch_submission),
         web.delete("/submissions/{submissionId}", _submission.delete_submission),
         web.delete("/submissions/{submissionId}/files/{fileId}", _submission.delete_submission_files),
+        web.post("/submissions/{submissionId}/ingest", _submission.post_data_ingestion),
         # publish submissions - endpoint for general case
         web.patch("/publish/{submissionId}", _publish_submission.publish_submission),
         # announce submissions - endpoint for BP case
@@ -154,7 +168,12 @@ async def init(
         web.post("/files", _file.post_project_files),
         web.delete("/files/{projectId}", _file.delete_project_files),
     ]
-    _rems = RemsAPIHandler(metax_handler=metax_handler, datacite_handler=datacite_handler, rems_handler=rems_handler)
+    _rems = RemsAPIHandler(
+        metax_handler=metax_handler,
+        datacite_handler=datacite_handler,
+        rems_handler=rems_handler,
+        admin_handler=admin_handler,
+    )
     api_routes.append(web.get("/rems", _rems.get_workflows_licenses_from_rems))
     api_routes.append(web.get("/taxonomy", taxonomy_handler.get_query_results))
 
@@ -175,6 +194,7 @@ async def init(
         datacite_handler=datacite_handler,
         rems_handler=rems_handler,
         aai_handler=aai_handler,
+        admin_handler=admin_handler,
     )
     health_routes = [
         web.get("/health", _health.get_health_status),

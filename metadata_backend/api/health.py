@@ -12,6 +12,7 @@ from metadata_backend.api.auth import AAIServiceHandler
 
 from ..conf.conf import url
 from ..helpers.logger import LOG
+from ..services.admin_service_handler import AdminServiceHandler
 from ..services.datacite_service_handler import DataciteServiceHandler
 from ..services.metax_service_handler import MetaxServiceHandler
 from ..services.rems_service_handler import RemsServiceHandler
@@ -26,12 +27,14 @@ class HealthHandler:
         datacite_handler: DataciteServiceHandler,
         rems_handler: RemsServiceHandler,
         aai_handler: AAIServiceHandler,
+        admin_handler: AdminServiceHandler,
     ) -> None:
-        """Endpoints should have access to metax and datacite services."""
+        """Endpoints should have access to metax, datacite, rems, aai, and admin services."""
         self.metax_handler = metax_handler
         self.datacite_handler = datacite_handler
         self.rems_handler = rems_handler
         self.aai_handler = aai_handler
+        self.admin_handler = admin_handler
 
     async def get_health_status(self, _: Request) -> Response:
         """Check health status of the application and return a JSON object portraying the status.
@@ -50,10 +53,11 @@ class HealthHandler:
 
         # Determine the status of loaded services
 
-        services["datacite"] = await self.datacite_handler._healtcheck()
-        services["rems"] = await self.rems_handler._healtcheck()
-        services["metax"] = await self.metax_handler._healtcheck()
-        services["aai"] = await self.aai_handler._healtcheck()
+        services["datacite"] = await self.datacite_handler._healthcheck()
+        services["rems"] = await self.rems_handler._healthcheck()
+        services["metax"] = await self.metax_handler._healthcheck()
+        services["aai"] = await self.aai_handler._healthcheck()
+        services["admin"] = await self.admin_handler._healthcheck()
 
         full_status["status"] = "Ok"
 

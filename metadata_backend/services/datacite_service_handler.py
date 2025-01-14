@@ -128,7 +128,7 @@ class DataciteServiceHandler(ServiceHandler):
         await self._request(method="DELETE", path=f"/dois/{doi}")
         LOG.info("Datacite DOI: %r deleted.", doi)
 
-    async def _healtcheck(self) -> dict[str, Any]:
+    async def _healthcheck(self) -> dict[str, Any]:
         """Check DOI service hearthbeat.
 
         This can return only 200 or 500

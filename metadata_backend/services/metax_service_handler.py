@@ -310,7 +310,7 @@ class MetaxServiceHandler(ServiceHandler):
         LOG.debug("Created Metax dataset from Dataset with data: %r", research_dataset)
         return research_dataset
 
-    async def _healtcheck(self) -> dict[str, str]:
+    async def _healthcheck(self) -> dict[str, str]:
         """Check Metax service health.
 
         This responds with pong, when pinged.
