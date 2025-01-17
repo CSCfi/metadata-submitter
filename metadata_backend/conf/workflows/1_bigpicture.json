@@ -92,6 +92,7 @@
         {
             "name": "datacite",
             "endpoint": "datacite",
+            "service": "datacite",
             "requiredSchemas": [
                 "datacite"
             ]

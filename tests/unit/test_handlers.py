@@ -517,6 +517,8 @@ class ObjectHandlerTestCase(HandlersTestCase):
         self.patch_submissionoperator = patch(class_submissionoperator, **self.submissionoperator_config, spec=True)
         self.MockedSubmissionOperator = self.patch_submissionoperator.start()
 
+        self._publish_handler = "metadata_backend.api.handlers.publish.PublishSubmissionAPIHandler"
+
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
         await super().tearDownAsync()
@@ -531,7 +533,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         data = self.create_submission_data(files)
         with (
             patch(
-                "metadata_backend.api.handlers.object.ObjectAPIHandler.create_draft_doi",
+                f"{self._publish_handler}.create_draft_doi",
                 return_value=self._draft_doi_data,
             ),
             self.p_get_sess_restapi,
@@ -556,7 +558,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         }
         with (
             patch(
-                "metadata_backend.api.handlers.object.ObjectAPIHandler.create_draft_doi",
+                f"{self._publish_handler}.create_draft_doi",
                 return_value=self._draft_doi_data,
             ),
             self.p_get_sess_restapi,

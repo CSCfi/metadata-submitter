@@ -120,6 +120,11 @@
                         "title": "Publish endpoint",
                         "description": "Endpoint for publishing the submission to"
                     },
+                    "service": {
+                        "type": "string",
+                        "title": "Publishing service",
+                        "description": "Service used for publishing the submission"
+                    },
                     "requires": {
                         "type": "array",
                         "title": "Required endpoints",
@@ -166,6 +171,11 @@
                         "type": "string",
                         "title": "Publish endpoint",
                         "description": "Endpoint for publishing the submission to"
+                    },
+                    "service": {
+                        "type": "string",
+                        "title": "Publishing service",
+                        "description": "Service used for publishing the submission"
                     },
                     "requires": {
                         "type": "array",

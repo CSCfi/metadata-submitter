@@ -28,6 +28,7 @@ from .helpers.logger import LOG
 from .services.admin_service_handler import AdminServiceHandler
 from .services.datacite_service_handler import DataciteServiceHandler
 from .services.metax_service_handler import MetaxServiceHandler
+from .services.pid_ms_handler import PIDServiceHandler
 from .services.rems_service_handler import RemsServiceHandler
 from .services.taxonomy_search_handler import TaxonomySearchHandler
 
@@ -63,6 +64,7 @@ async def init(
 
     metax_handler = MetaxServiceHandler()
     datacite_handler = DataciteServiceHandler()
+    pid_handler = PIDServiceHandler()
     rems_handler = RemsServiceHandler()
     aai_handler = AAIServiceHandler()
     taxonomy_handler = TaxonomySearchHandler()
@@ -89,18 +91,21 @@ async def init(
         datacite_handler=datacite_handler,
         rems_handler=rems_handler,
         admin_handler=admin_handler,
+        pid_handler=pid_handler,
     )
     _submission = SubmissionAPIHandler(
         metax_handler=metax_handler,
         datacite_handler=datacite_handler,
         rems_handler=rems_handler,
         admin_handler=admin_handler,
+        pid_handler=pid_handler,
     )
     _publish_submission = PublishSubmissionAPIHandler(
         metax_handler=metax_handler,
         datacite_handler=datacite_handler,
         rems_handler=rems_handler,
         admin_handler=admin_handler,
+        pid_handler=pid_handler,
     )
     _user = UserAPIHandler()
     _xml_submission = XMLSubmissionAPIHandler(
@@ -108,6 +113,7 @@ async def init(
         datacite_handler=datacite_handler,
         rems_handler=rems_handler,
         admin_handler=admin_handler,
+        pid_handler=pid_handler,
     )
     _template = TemplatesAPIHandler()
     _file = FilesAPIHandler()
@@ -173,6 +179,7 @@ async def init(
         datacite_handler=datacite_handler,
         rems_handler=rems_handler,
         admin_handler=admin_handler,
+        pid_handler=pid_handler,
     )
     api_routes.append(web.get("/rems", _rems.get_workflows_licenses_from_rems))
     api_routes.append(web.get("/taxonomy", taxonomy_handler.get_query_results))
@@ -192,6 +199,7 @@ async def init(
     _health = HealthHandler(
         metax_handler=metax_handler,
         datacite_handler=datacite_handler,
+        pid_handler=pid_handler,
         rems_handler=rems_handler,
         aai_handler=aai_handler,
         admin_handler=admin_handler,

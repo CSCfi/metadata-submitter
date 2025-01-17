@@ -18,6 +18,7 @@ from ...helpers.workflow import Workflow
 from ...services.admin_service_handler import AdminServiceHandler
 from ...services.datacite_service_handler import DataciteServiceHandler
 from ...services.metax_service_handler import MetaxServiceHandler
+from ...services.pid_ms_handler import PIDServiceHandler
 from ...services.rems_service_handler import RemsServiceHandler
 from ..operators.file import FileOperator
 from ..operators.object import ObjectOperator
@@ -275,12 +276,14 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
         self,
         metax_handler: MetaxServiceHandler,
         datacite_handler: DataciteServiceHandler,
+        pid_handler: PIDServiceHandler,
         rems_handler: RemsServiceHandler,
         admin_handler: AdminServiceHandler,
     ) -> None:
         """Endpoints should have access to metax, datacite, rems, and admin services."""
         self.metax_handler = metax_handler
         self.datacite_handler = datacite_handler
+        self.pid_handler = pid_handler
         self.rems_handler = rems_handler
         self.admin_handler = admin_handler
 
@@ -322,22 +325,6 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
         await obj_op.update_identifiers(collection, obj["accessionId"], new_info)
 
         return metax_id
-
-    async def create_draft_doi(self, collection: str) -> str:
-        """Create draft DOI for study and dataset.
-
-        The Draft DOI will be created only on POST and the data added to the
-        submission. Any update of this should not be possible.
-
-        :param collection: either study or dataset
-        :returns: Dict with DOI of the study or dataset as well as the types.
-        """
-        _doi_data = await self.datacite_handler.create_draft(prefix=collection)
-
-        LOG.debug("DOI created with identifier: %r", _doi_data["fullDOI"])
-        doi: str = _doi_data["fullDOI"]
-
-        return doi
 
     async def check_rems_ok(self, submission: dict[str, Any]) -> bool:
         """Check that REMS DAC in object is ok."""
