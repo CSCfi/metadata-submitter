@@ -1,5 +1,5 @@
 #=======================
-FROM node:20-alpine as BUILD-FRONTEND
+FROM node:20-alpine AS BUILD-FRONTEND
 #=======================
 
 RUN apk add --update \
@@ -16,7 +16,7 @@ RUN npx --quiet pinst --disable \
     && pnpm run build --prod
 
 #=======================
-FROM python:3.12-alpine3.17 as BUILD-BACKEND
+FROM python:3.12-alpine3.17 AS BUILD-BACKEND
 #=======================
 
 RUN apk add --update \
