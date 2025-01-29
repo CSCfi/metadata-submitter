@@ -1,5 +1,5 @@
 #=======================
-FROM python:3.13-slim-bullseye as appbase
+FROM python:3.13-slim-bullseye AS appbase
 #=======================
 
 RUN apt-get update \
@@ -20,13 +20,13 @@ RUN pip install .
 EXPOSE 5430
 
 #=======================
-FROM appbase as develop
+FROM appbase AS develop
 #=======================
 
 CMD ["metadata_submitter"]
 
 #=======================
-FROM appbase as local
+FROM appbase AS local
 #=======================
 
 COPY requirements-dev.txt .
