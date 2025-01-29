@@ -46,6 +46,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- Fixed taxonomy script file permissions and ´docker casing warnings
 - Automated changelog generation with CI jobs and github actions recognizes git LFS files
 - Add missing schema check that disallowed multiple metadata objects
 - Fixed newly posted versions of deleted files still showing up as deleted #828
