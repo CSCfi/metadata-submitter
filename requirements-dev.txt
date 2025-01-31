@@ -24,7 +24,7 @@ annotated-types==0.7.0
     # via pydantic
 astroid==3.3.5
     # via pylint
-attrs==24.2.0
+attrs==25.1.0
     # via
     #   -r requirements.txt
     #   aiohttp
