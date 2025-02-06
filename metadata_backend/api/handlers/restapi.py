@@ -367,6 +367,8 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
         :returns: Dict with path of ingested file
         """
         await self.admin_handler.ingest_file(req, data)
+        # TO_DO: Poll Admin API to check the file status if it's verified
+        # Update file status in submission if file status 'verified' is received from Admin API
         await file_op.update_file_submission(data["accessionId"], data["submissionId"], {"files.$.status": "verified"})
         LOG.debug(
             "File in submission %s with path %r is updated to status 'verified'", data["submissionId"], data["filepath"]

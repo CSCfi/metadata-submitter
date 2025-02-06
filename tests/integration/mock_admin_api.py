@@ -333,6 +333,11 @@ async def post_key(req: web.Request) -> web.Response:
     return web.Response(status=200)
 
 
+async def ready(req: web.Request) -> web.Response:
+    """Admin API readiness endpoint."""
+    return web.Response(status=200, text="")
+
+
 async def init() -> web.Application:
     """Start server."""
     app = web.Application()
@@ -342,6 +347,7 @@ async def init() -> web.Application:
     app.router.add_post("/dataset/release/{dataset}", release_dataset)
     app.router.add_get("/users/{username}/files", get_user_files)
     app.router.add_post("/c4gh-keys/add", post_key)
+    app.router.add_get("/ready", ready)
 
     global decryption_key
     connection_count = 10

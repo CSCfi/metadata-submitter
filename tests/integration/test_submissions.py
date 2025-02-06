@@ -935,10 +935,11 @@ class TestSubmissionDataIngestion:
     """Testing data ingestion when the metadata submission with files is ready."""
 
     async def test_file_ingestion_works(self, admin_logged_in, database, admin_project_id):
-        """Test that a folder name can be linked to a submission.
+        """Test that files are ingested successfully and its status becomes 'verified'.
 
-        :param client_logged_in: HTTP client in which request call is made
-        :param project_id: id of the project the submission belongs to
+        :param admin_logged_in: HTTP client as admin role in which request call is made
+        :param database: database client to perform db operations
+        :param admin_project_id: id of the admin user's project the submission belongs to
         """
         # Create new submission and check its creation succeeded
         submission_data = {
