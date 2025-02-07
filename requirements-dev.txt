@@ -24,7 +24,7 @@ annotated-types==0.7.0
     # via pydantic
 astroid==3.3.8
     # via pylint
-attrs==24.3.0
+attrs==25.1.0
     # via
     #   -r requirements.txt
     #   aiohttp
@@ -38,7 +38,7 @@ bandit==1.8.2
     # via -r requirements-dev.in
 beautifulsoup4==4.12.3
     # via pyspelling
-black==24.10.0
+black==25.1.0
     # via -r requirements-dev.in
 bracex==2.5.post1
     # via wcmatch
