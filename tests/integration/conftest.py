@@ -15,6 +15,9 @@ from tests.integration.conf import (
     DATABASE,
     HOST,
     TLS,
+    admin_test_user,
+    admin_test_user_family,
+    admin_test_user_given,
     base_url,
     metax_url,
     mock_auth_url,
@@ -48,7 +51,7 @@ async def fixture_client():
 
 @pytest.fixture(name="client_logged_in")
 async def fixture_client_logged_in():
-    """Reusable aiohttp client with credentials."""
+    """Reusable aiohttp client with normal user credentials."""
     async with aiohttp.ClientSession() as client:
         params = {
             "sub": other_test_user,
@@ -61,10 +64,32 @@ async def fixture_client_logged_in():
         yield client
 
 
+@pytest.fixture(name="admin_logged_in")
+async def fixture_admin_logged_in():
+    """Reusable aiohttp client with admin user credentials."""
+    async with aiohttp.ClientSession() as client:
+        params = {
+            "sub": admin_test_user,
+            "family": admin_test_user_family,
+            "given": admin_test_user_given,
+        }
+
+        await client.get(f"{mock_auth_url}/setmock?{urlencode(params)}")
+        await client.get(f"{base_url}/aai")
+        yield client
+
+
 @pytest.fixture(name="project_id")
 async def fixture_project_id(client_logged_in: aiohttp.ClientSession):
-    """Get a project_id for the current session."""
+    """Get a project_id for the normal user session."""
     user_data = await get_user_data(client_logged_in)
+    return user_data["projects"][0]["projectId"]
+
+
+@pytest.fixture(name="admin_project_id")
+async def fixture_admin_project_id(admin_logged_in: aiohttp.ClientSession):
+    """Get a project_id for the admin user session."""
+    user_data = await get_user_data(admin_logged_in)
     return user_data["projects"][0]["projectId"]
 
 

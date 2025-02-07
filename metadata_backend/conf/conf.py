@@ -227,6 +227,10 @@ rems_config = {
     "url": os.getenv("REMS_URL", "http://mockrems:8003"),
 }
 
+admin_config = {
+    "url": os.getenv("ADMIN_URL", "http://mockadmin:8004"),
+}
+
 discovery_config = {
     "metax_discovery_url": os.getenv("METAX_DISCOVERY_URL", "https://etsin.fairdata.fi/dataset/"),
     "beacon_discovery_url": os.getenv("BEACON_DISCOVERY_URL", "https://bp-demo.rahtiapp.fi/"),  # placeholder url

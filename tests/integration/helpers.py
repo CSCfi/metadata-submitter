@@ -847,3 +847,32 @@ async def search_taxonomy(sess, query: str, max_results: int = 10):
     async with sess.get(url) as resp:
         LOG.debug(resp)
         return await resp.json() if resp.status == 200 else resp
+
+
+async def get_mock_admin_token(sess):
+    """Get token from mock admin user.
+
+    :param sess: HTTP session in which request call is made
+    :returns: token
+    """
+    async with sess.post(f"{mock_auth_url}/token") as resp:
+        assert resp.status == 200
+        ans = await resp.json()
+        id_token = ans.get("id_token")
+        return id_token
+
+
+async def post_data_ingestion(sess, submission_id, ingestion_data, id_token):
+    """Start the data ingestion with files inside submission.
+
+    :param sess: HTTP session in which request call is made
+    :param submission_id: id of the submission
+    :param files: List of files including accessionId and path
+    :param id_token: Token for authorizing admin user
+    """
+    url = f"{submissions_url}/{submission_id}/ingest"
+
+    async with sess.post(
+        url, data=ujson.dumps(ingestion_data), headers={"Authorization": f"Bearer {id_token}"}
+    ) as resp:
+        assert resp.status == 204, f"HTTP Status code error, got {resp.status}"

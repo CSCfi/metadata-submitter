@@ -7,6 +7,7 @@ from datetime import datetime
 
 from tests.integration.conf import datacite_url, drafts_url, objects_url, publish_url, submit_url, testfiles_root
 from tests.integration.helpers import (
+    add_submission_files,
     add_submission_linked_folder,
     create_multi_file_request_data,
     create_request_data,
@@ -15,12 +16,17 @@ from tests.integration.helpers import (
     delete_object,
     delete_published_submission,
     delete_submission,
+    generate_mock_file,
     get_draft,
+    get_mock_admin_token,
     get_object,
     get_submission,
+    get_user_data,
+    post_data_ingestion,
     post_draft,
     post_object,
     post_object_json,
+    post_project_files,
     post_submission,
     publish_submission,
     put_submission_doi,
@@ -923,3 +929,73 @@ class TestSubmissionPagination:
 
         for submission in submissions:
             await delete_submission(client_logged_in, submission)
+
+
+class TestSubmissionDataIngestion:
+    """Testing data ingestion when the metadata submission with files is ready."""
+
+    async def test_file_ingestion_works(self, admin_logged_in, database, admin_project_id):
+        """Test that files are ingested successfully and its status becomes 'verified'.
+
+        :param admin_logged_in: HTTP client as admin role in which request call is made
+        :param database: database client to perform db operations
+        :param admin_project_id: id of the admin user's project the submission belongs to
+        """
+        # Create new submission and check its creation succeeded
+        submission_data = {
+            "name": "Test submission",
+            "description": "Mock a submission for testing file ingestion",
+            "projectId": admin_project_id,
+            "workflow": "SDSX",
+        }
+
+        submission_id = await post_submission(admin_logged_in, submission_data)
+        async with admin_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
+            LOG.debug(f"Checking that submission {submission_id} was created")
+            assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+
+        dataset_id, _ = await post_object(admin_logged_in, "dataset", submission_id, "dataset.xml")
+
+        user_data = await get_user_data(admin_logged_in)
+        # Create files and add files to submission
+        mock_file_1 = generate_mock_file("file1")
+        mock_file_2 = generate_mock_file("file2")
+
+        file_data = {
+            "userId": user_data["userId"],
+            "projectId": admin_project_id,
+            "files": [mock_file_1, mock_file_2],
+        }
+
+        created_files = await post_project_files(admin_logged_in, file_data)
+        submission_files = []
+        for file in created_files:
+            submission_files.append(
+                {
+                    "accessionId": file["accessionId"],
+                    "version": file["version"],
+                    "objectId": {"accessionId": dataset_id, "schema": "dataset"},
+                }
+            )
+        await add_submission_files(admin_logged_in, submission_files, submission_id)
+
+        db_submission = await database["submission"].find_one({"submissionId": submission_id})
+        files_for_ingestion = []
+        for db_submission_file in db_submission["files"]:
+            # Assert the file status in submission is "added"
+            assert db_submission_file["status"] == "added"
+            db_file = await database["file"].find_one(
+                {"accessionId": db_submission_file["accessionId"], "projectId": admin_project_id}
+            )
+            # Start file ingestion
+            files_for_ingestion.append({"accessionId": db_file["accessionId"], "path": db_file["path"]})
+
+        ingestion_data = {"username": "test_user", "files": files_for_ingestion}
+
+        id_token = await get_mock_admin_token(admin_logged_in)
+        await post_data_ingestion(admin_logged_in, submission_id, ingestion_data, id_token)
+
+        # Assert the file status in submission is changed to "verified"
+        db_submission = await database["submission"].find_one({"submissionId": submission_id})
+        for db_submission_file in db_submission["files"]:
+            assert db_submission_file["status"] == "verified"

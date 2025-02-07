@@ -96,7 +96,7 @@ class ServiceHandler(ABC):
         return error
 
     @abstractmethod
-    async def _healtcheck(self) -> dict[str, Any]:
+    async def _healthcheck(self) -> dict[str, Any]:
         """Override in subclass and return formatted status message."""
 
     @retry(total_tries=5)
@@ -109,6 +109,7 @@ class ServiceHandler(ABC):
         params: Optional[str | dict[str, Any]] = None,
         json_data: Optional[dict[str, Any] | list[dict[str, Any]]] = None,
         timeout: int = 10,
+        headers: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any] | str:
         """Request to service REST API.
 
@@ -142,6 +143,7 @@ class ServiceHandler(ABC):
                 params=params,
                 json=json_data,
                 timeout=ClientTimeout(total=timeout),
+                headers=headers,
             ) as response:
                 if not response.ok:
                     content = await response.text()
@@ -160,6 +162,8 @@ class ServiceHandler(ABC):
 
                 if response.content_type.endswith("json"):
                     content = await response.json()
+                elif self.service_name == "Admin":
+                    content = await response.text()
                 else:
                     content = await response.text()
                     # We should get a JSON response in most requests.

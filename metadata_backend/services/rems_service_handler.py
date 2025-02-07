@@ -183,7 +183,7 @@ class RemsServiceHandler(ServiceHandler):
         LOG.debug("REMS All ok.")
         return True
 
-    async def _healtcheck(self) -> dict[str, Any]:
+    async def _healthcheck(self) -> dict[str, Any]:
         """Check REMS service health.
 
         This responds with status of healthy boolean, version and latest event information.

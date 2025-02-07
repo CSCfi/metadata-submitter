@@ -24,6 +24,7 @@ class HealthTestCase(AioHTTPTestCase):
                 "metax": {"status": "Down"},
                 "rems": {"status": "Down"},
                 "aai": {"status": "Error"},
+                "admin": {"status": "Down"},
             },
             "status": "Partially down",
         }
