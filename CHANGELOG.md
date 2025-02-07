@@ -9,6 +9,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- Add /ingest endpoint for starting data ingestion
 - Mocked Admin API service #843
 - Instructions on how to use the SD Submit API for BigPicture programmatic dataset submissions #815
 - Defined a discovery service for each workflow 512
