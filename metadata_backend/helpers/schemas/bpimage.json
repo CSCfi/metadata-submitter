@@ -1,0 +1,393 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "Bigpicture Image",
+    "$defs": {
+        "attributes": {
+            "title": "Attributes",
+            "description": "Collection of attributes.",
+            "oneOf": [
+                {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "anyOf": [
+                            {
+                                "properties": {
+                                    "tag": {
+                                        "type": "string",
+                                        "title": "Attribute tag"
+                                    },
+                                    "value": {
+                                        "type": [
+                                            "string",
+                                            "number",
+                                            "null"
+                                        ],
+                                        "title": "Attribute value"
+                                    }
+                                },
+                                "required": [
+                                    "tag",
+                                    "value"
+                                ]
+                            },
+                            {
+                                "properties": {
+                                    "tag": {
+                                        "type": "string",
+                                        "title": "Attribute tag"
+                                    },
+                                    "value": {
+                                        "type": "number",
+                                        "title": "Attribute value"
+                                    },
+                                    "units": {
+                                        "type": "string",
+                                        "description": "Scientific units of the value."
+                                    }
+                                },
+                                "required": [
+                                    "tag",
+                                    "value",
+                                    "units"
+                                ]
+                            },
+                            {
+                                "properties": {
+                                    "tag": {
+                                        "type": "string",
+                                        "title": "Attribute tag"
+                                    },
+                                    "value": {
+                                        "type": "object",
+                                        "title": "Attribute value",
+                                        "properties": {
+                                            "code": {
+                                                "type": "string",
+                                                "title": "The code value."
+                                            },
+                                            "scheme": {
+                                                "type": "string",
+                                                "title": "The scheme designator of the code."
+                                            },
+                                            "meaning": {
+                                                "type": "string",
+                                                "title": "Cleartext meaning of the code."
+                                            },
+                                            "schemeVersion": {
+                                                "type": [
+                                                    "string",
+                                                    "null"
+                                                ],
+                                                "title": "Optional scheme version of the scheme designator."
+                                            }
+                                        },
+                                        "required": [
+                                            "code",
+                                            "scheme",
+                                            "meaning",
+                                            "schemeVersion"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "tag",
+                                    "value"
+                                ]
+                            },
+                            {
+                                "properties": {
+                                    "tag": {
+                                        "type": "string",
+                                        "title": "Attribute tag"
+                                    },
+                                    "value": {
+                                        "type": "object",
+                                        "title": "Attribute value",
+                                        "description": "These will only occur when parsing a setAttribute.",
+                                        "properties": {
+                                            "stringAttribute": {
+                                                "anyOf": [
+                                                    {
+                                                        "refs": "#/$defs/attributes"
+                                                    },
+                                                    {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "tag": {
+                                                                "type": "string"
+                                                            },
+                                                            "value": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "tag",
+                                                            "value"
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            "numericAttribute": {
+                                                "anyOf": [
+                                                    {
+                                                        "refs": "#/$defs/attributes"
+                                                    },
+                                                    {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "tag": {
+                                                                "type": "string"
+                                                            },
+                                                            "value": {
+                                                                "type": "number"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "tag",
+                                                            "value"
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            "measurementAttribute": {
+                                                "anyOf": [
+                                                    {
+                                                        "refs": "#/$defs/attributes"
+                                                    },
+                                                    {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "tag": {
+                                                                "type": "string"
+                                                            },
+                                                            "value": {
+                                                                "type": "string"
+                                                            },
+                                                            "units": {
+                                                                "type": "string"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "tag",
+                                                            "value",
+                                                            "units"
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            "codeAttribute": {
+                                                "anyOf": [
+                                                    {
+                                                        "refs": "#/$defs/attributes"
+                                                    },
+                                                    {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "tag": {
+                                                                "type": "string",
+                                                                "title": "Attribute tag"
+                                                            },
+                                                            "value": {
+                                                                "type": "object",
+                                                                "title": "Attribute value",
+                                                                "properties": {
+                                                                    "code": {
+                                                                        "type": "string",
+                                                                        "title": "The code value."
+                                                                    },
+                                                                    "scheme": {
+                                                                        "type": "string",
+                                                                        "title": "The scheme designator of the code."
+                                                                    },
+                                                                    "meaning": {
+                                                                        "type": "string",
+                                                                        "title": "Cleartext meaning of the code."
+                                                                    },
+                                                                    "schemeVersion": {
+                                                                        "type": [
+                                                                            "string",
+                                                                            "null"
+                                                                        ],
+                                                                        "title": "Optional scheme version of the scheme designator."
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "code",
+                                                                    "scheme",
+                                                                    "meaning",
+                                                                    "schemeVersion"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "tag",
+                                                            "value"
+                                                        ]
+                                                    }
+                                                ]
+                                            },
+                                            "setAttribute": {
+                                                "type": [
+                                                    "array",
+                                                    "object"
+                                                ],
+                                                "description": "Contents of setAttribute are difficult to specify more specifically than this."
+                                            }
+                                        },
+                                        "anyOf": [
+                                            {
+                                                "required": [
+                                                    "stringAttribute"
+                                                ]
+                                            },
+                                            {
+                                                "required": [
+                                                    "numericAttribute"
+                                                ]
+                                            },
+                                            {
+                                                "required": [
+                                                    "measurementAttribute"
+                                                ]
+                                            },
+                                            {
+                                                "required": [
+                                                    "codeAttribute"
+                                                ]
+                                            },
+                                            {
+                                                "required": [
+                                                    "setAttribute"
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "tag",
+                                    "value"
+                                ]
+                            }
+                        ]
+                    }
+                },
+                {
+                    "type": "null",
+                    "description": "If attributes element was allowed to be nillable and thus left empty."
+                }
+            ]
+        },
+        "reference": {
+            "additionalProperties": true,
+            "type": "object",
+            "required": [
+                "alias"
+            ],
+            "properties": {
+                "alias": {
+                    "type": "string",
+                    "description": "Identifies an object by alias designated by the submitter.",
+                    "title": "Alias"
+                },
+                "accession": {
+                    "type": "string",
+                    "description": "Identifies a record by its accession. The scope of resolution is the entire Archive. Should not be present when submitting.",
+                    "title": "Accession"
+                }
+            }
+        },
+        "imageFile": {
+            "title": "Image File Type",
+            "type": "object",
+            "required": [
+                "filetype",
+                "filename",
+                "checksumMethod",
+                "checksum"
+            ],
+            "properties": {
+                "filetype": {
+                    "title": "File Type",
+                    "description": "The type of the file.",
+                    "type": "string",
+                    "enum": [
+                        "dcm"
+                    ]
+                },
+                "filename": {
+                    "title": "File Name",
+                    "description": "The file name.",
+                    "type": "string"
+                },
+                "checksumMethod": {
+                    "title": "Checksum Method",
+                    "description": "Checksum generated by the SHA256 method.",
+                    "type": "string",
+                    "enum": [
+                        "SHA256"
+                    ]
+                },
+                "checksum": {
+                    "title": "Checksum",
+                    "description": "The file checksum. (string consisting of exactly 64 characters)",
+                    "type": "string"
+                },
+                "unencryptedChecksum": {
+                    "title": "Checksum",
+                    "description": "The checksum of the unencrypted file (used in conjunction with the checksum of an encrypted file).",
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "type": "object",
+    "additionalProperties": true,
+    "required": [
+        "alias",
+        "imageOf",
+        "imageType",
+        "files",
+        "attributes"
+    ],
+    "properties": {
+        "alias": {
+            "title": "Object alias",
+            "description": "Submitter designated name for the object. The name must be unique within the Study and Dataset the entity belongs to.",
+            "type": "string"
+        },
+        "accession": {
+            "title": "Accession",
+            "description": "The object accession assigned by the archive. Should not be present when submitting.",
+            "type": "string"
+        },
+        "imageOf": {
+            "title": "Image Of",
+            "description": "One of more samples imaged by the image.",
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/reference"
+            }
+        },
+        "imageType": {
+            "title": "Image Type",
+            "description": "The type of the image.",
+            "type": "string",
+            "enum": [
+                "wsiImage",
+                "grossImage"
+            ]
+        },
+        "files": {
+            "title": "Files",
+            "description": "Data files associated with the image.",
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/imageFile"
+            }
+        },
+        "attributes": {
+            "$ref": "#/$defs/attributes"
+        }
+    }
+}

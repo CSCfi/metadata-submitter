@@ -98,48 +98,93 @@
         },
         "provider": "Datacite"
     },
-    "bpimage": {
+    "bpdataset": {
         "priority": 12,
         "description": {
-            "title": "BP Image",
-            "detail": "A BigPicture image object captures image objects.",
-            "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.1.1/src/BP.image.xsd"
+            "title": "Bigpicture Dataset",
+            "detail": "A Bigpicture dataset.",
+            "url": "https://github.com/imi-bigpicture/bigpicture-metaflex/blob/v2.0.0/src/BP.dataset.xsd"
         },
         "provider": "BP"
     },
-    "bpdataset": {
+    "bpimage": {
         "priority": 13,
         "description": {
-            "title": "BP Dataset",
-            "detail": "A BP dataset.",
-            "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.1.1/src/BP.dataset.xsd"
+            "title": "Bigpicture Image",
+            "detail": "A Bigpicture image object captures image objects.",
+            "url": "https://github.com/imi-bigpicture/bigpicture-metaflex/blob/v2.0.0/src/BP.image.xsd"
         },
         "provider": "BP"
     },
     "bpsample": {
         "priority": 14,
         "description": {
-            "title": "BP Sample",
-            "detail": "A BigPicture sample object.",
-            "url": "https://github.com/imi-bigpicture/metadata-schema/blob/main/src/BP.sample.xsd"
-        },
-        "provider": "BP"
-    },
-    "bpobservation": {
-        "priority": 15,
-        "description": {
-            "title": "BP Observation",
-            "detail": "A BigPicture observation object.",
-            "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.2.0/src/BP.observation.xsd"
+            "title": "Bigpicture Sample",
+            "detail": "A Bigpicture sample object.",
+            "url": "https://github.com/imi-bigpicture/bigpicture-metaflex/blob/v2.0.0/src/BP.sample.xsd"
         },
         "provider": "BP"
     },
     "bpstaining": {
+        "priority": 15,
+        "description": {
+            "title": "Bigpicture Staining",
+            "detail": "Describes stains used for a slide. Can be referencesd. Stains are either defined by procedure information or a list of stains.",
+            "url": "https://github.com/imi-bigpicture/bigpicture-metaflex/blob/v2.0.0/src/BP.staining.xsd"
+        },
+        "provider": "BP"
+    },
+    "bpobservation": {
         "priority": 16,
         "description": {
-            "title": "BP Staining",
-            "detail": "A BigPicture staining object.",
-            "url": "https://github.com/imi-bigpicture/metadata-schema/blob/v0.2.0/src/BP.staining.xsd"
+            "title": "Bigpicture Observation",
+            "detail": "An observation object captures observation objects.",
+            "url": "https://github.com/imi-bigpicture/bigpicture-metaflex/blob/v2.0.0/src/BP.observation.xsd"
+        },
+        "provider": "BP"
+    },
+    "bpobserver": {
+        "priority": 17,
+        "description": {
+            "title": "Bigpicture Observer",
+            "detail": "A BP observer object describes the observer that has performed an observation.",
+            "url": "https://github.com/imi-bigpicture/bigpicture-metaflex/blob/v2.0.0/src/BP.observer.xsd"
+        },
+        "provider": "BP"
+    },
+    "bprems": {
+        "priority": 18,
+        "description": {
+            "title": "Bigpicture REMS",
+            "detail": "A container of rems objects.",
+            "url": "https://github.com/imi-bigpicture/bigpicture-metaflex/blob/v2.0.0/src/BP.rems.xsd"
+        },
+        "provider": "BP"
+    },
+    "bporganisation": {
+        "priority": 19,
+        "description": {
+            "title": "Bigpicture Organisation",
+            "detail": "An organisation object contains information about the submitter of a dataset.",
+            "url": "https://github.com/imi-bigpicture/bigpicture-metaflex/blob/v2.0.0/src/BP.organisation.xsd"
+        },
+        "provider": "BP"
+    },
+    "bppolicy": {
+        "priority": 20,
+        "description": {
+            "title": "Bigpicture Policy",
+            "detail": "A policy object contains information about the terms of use for a dataset.",
+            "url": "https://github.com/imi-bigpicture/bigpicture-metaflex/blob/v2.0.0/src/BP.policy.xsd"
+        },
+        "provider": "BP"
+    },
+    "bplandingpage": {
+        "priority": 21,
+        "description": {
+            "title": "Bigpicture Landing page",
+            "detail": "A landing page object contains the public information visible on a landing page for a dataset.",
+            "url": "https://github.com/imi-bigpicture/bigpicture-metaflex/blob/v2.0.0/src/BP.landing_page.xsd"
         },
         "provider": "BP"
     }

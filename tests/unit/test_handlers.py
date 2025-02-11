@@ -303,11 +303,17 @@ class APIHandlerTestCase(HandlersTestCase):
                 "Policy",
                 "Dataset",
                 "Project",
-                "BP Image",
-                "BP Dataset",
-                "BP Sample",
-                "BP Observation",
-                "BP Staining",
+                "Datacite DOI schema",
+                "Bigpicture Dataset",
+                "Bigpicture Image",
+                "Bigpicture Sample",
+                "Bigpicture Staining",
+                "Bigpicture Observation",
+                "Bigpicture Observer",
+                "Bigpicture REMS",
+                "Bigpicture Organisation",
+                "Bigpicture Policy",
+                "Bigpicture Landing page",
             ]
 
             for title in schema_titles:
