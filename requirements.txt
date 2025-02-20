@@ -29,7 +29,7 @@ cffi==1.17.1
     #   pynacl
 charset-normalizer==3.4.1
     # via requests
-cryptography==44.0.0
+cryptography==44.0.1
     # via
     #   -r requirements.in
     #   cryptojwt
@@ -74,6 +74,10 @@ multidict==6.1.0
     #   yarl
 packaging==24.2
     # via gunicorn
+propcache==0.2.1
+    # via
+    #   aiohttp
+    #   yarl
 pycparser==2.22
     # via cffi
 pydantic==2.10.5
