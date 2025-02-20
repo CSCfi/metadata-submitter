@@ -425,7 +425,7 @@ class XMLToJSONParser:
         # Validate each JSON object separately if an array of objects is parsed
         obj_name = (
             _schema_type[2:]
-            if _schema_type in ["bpdataset", "bpimage", "bpobservation", "bpstaining"]
+            if _schema_type in ["bpdataset", "bpimage", "bpobservation", "bpstaining", "bprems"]
             else _schema_type
         )
         xml_elements: list[str] = [content]

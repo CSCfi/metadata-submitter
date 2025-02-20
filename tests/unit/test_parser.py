@@ -212,6 +212,17 @@ class ParserTestCase(unittest.TestCase):
         self.assertEqual("StainingList_osidjgsdjgio", staining_json[0]["alias"])
         self.assertEqual("104210008", staining_json[2]["procedureInformation"][1]["value"]["code"])
 
+    def test_bp_rems_is_parsed(self):
+        """Test that BP REMS is parsed correctly.
+
+        Tests for some values that converted JSON should have.
+        """
+        rems_xml = self.load_file_to_text("bprems", "rems.xml")
+        rems_json, output_xml = self.xml_parser.parse("bprems", rems_xml)
+        self.assertEqual("REMS_12345", rems_json["alias"])
+        self.assertEqual("Dataset_12345", rems_json["datasetRef"]["alias"])
+        self.assertEqual(rems_xml, output_xml[0])
+
     def test_separate_xml_content_method_works(self):
         """Test that multipart xml content can be parsed into list of xml strings."""
         xml_str = """
