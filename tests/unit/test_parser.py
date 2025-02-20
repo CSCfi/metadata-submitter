@@ -135,12 +135,11 @@ class ParserTestCase(unittest.TestCase):
         Tests for some values that converted JSON should have.
         """
         image_xml = self.load_file_to_text("bpimage", "images_single.xml")
-        image_json, output_xml = self.xml_parser.parse("bpimage", image_xml)
-        self.assertEqual("Image_tSQsAkvutz", image_json["alias"])
-        self.assertEqual(6, len(image_json["attributes"]["attribute"]))
-        self.assertEqual(4, len(image_json["attributes"]["attributeSet"]))
-        self.assertEqual("asdf", image_json["files"][0]["filename"])
-        self.assertEqual(image_xml, output_xml[0])
+        image_json, _ = self.xml_parser.parse("bpimage", image_xml)
+        self.assertEqual("Image_eryertwe", image_json["alias"])
+        self.assertEqual(11, len(image_json["attributes"]))
+        self.assertEqual(0.0005, image_json["attributes"][6]["value"])
+        self.assertEqual("project/folder/file.dcm", image_json["files"][0]["filename"])
 
     def test_multi_image_is_parsed(self):
         """Test that multiple BP images are parsed correctly.
@@ -151,19 +150,21 @@ class ParserTestCase(unittest.TestCase):
         image_json, output_xml = self.xml_parser.parse("bpimage", image_xml)
         self.assertEqual(2, len(image_json))
         self.assertEqual(2, len(output_xml))
-        self.assertEqual("Image_tSQsAkvutz", image_json[0]["alias"])
-        self.assertEqual("Image_ReLyCtLAWo", image_json[1]["alias"])
-        self.assertEqual("asdf", image_json[1]["files"][0]["filename"])
+        self.assertEqual("Image_qwerqwer", image_json[0]["alias"])
+        self.assertEqual("Image_rewtqwrer", image_json[1]["alias"])
+        self.assertEqual("project/folder/another_file.dcm", image_json[1]["files"][0]["filename"])
 
     def test_bp_dataset_is_parsed(self):
         """Test that BP dataset is parsed correctly.
 
         Tests for some values that converted JSON should have.
         """
-        bp_dataset_xml = self.load_file_to_text("bpdataset", "template_dataset.xml")
+        bp_dataset_xml = self.load_file_to_text("bpdataset", "dataset.xml")
         bp_dataset_json, output_xml = self.xml_parser.parse("bpdataset", bp_dataset_xml)
-        self.assertEqual("Dataset_QoRIPbAPlP", bp_dataset_json["alias"])
-        self.assertEqual("1", bp_dataset_json["attributes"][0]["value"])
+        self.assertEqual("Dataset_fasdasdf", bp_dataset_json["alias"])
+        self.assertEqual("ethical approval", bp_dataset_json["attributes"][0]["value"])
+        self.assertEqual(2, len(bp_dataset_json["imageRef"]))
+        self.assertEqual(1, len(bp_dataset_json["observationRef"]))
         self.assertEqual(list, type(bp_dataset_json["datasetType"]))
         self.assertEqual(bp_dataset_xml, output_xml[0])
 
@@ -172,20 +173,20 @@ class ParserTestCase(unittest.TestCase):
 
         Tests for some values that converted JSON should have.
         """
-        bp_sample_xml = self.load_file_to_text("bpsample", "template_samples.xml")
+        bp_sample_xml = self.load_file_to_text("bpsample", "samples.xml")
         bp_sample_json, output_xml = self.xml_parser.parse("bpsample", bp_sample_xml)
         self.assertEqual(12, len(bp_sample_json))
         self.assertEqual(12, len(output_xml))
-        bb_alias = "BiologicalBeing_qLNZYjYjyZ"
+        bb_alias = "BiologicalBeing_bhennsdb"
         self.assertEqual(bb_alias, bp_sample_json[0]["biologicalBeing"]["alias"])
-        self.assertEqual(bb_alias, bp_sample_json[2]["case"]["biologicalBeing"]["refname"])
-        self.assertEqual(bb_alias, bp_sample_json[4]["specimen"]["extractedFrom"]["refname"])
-        self.assertEqual(7394, bp_sample_json[5]["specimen"]["attributes"][1]["value"])
-        self.assertEqual("days", bp_sample_json[5]["specimen"]["attributes"][1]["units"])
-        self.assertEqual("P20Y3M4D", bp_sample_json[5]["specimen"]["attributes"][1]["originalValue"])
-        self.assertEqual("lung structure", bp_sample_json[4]["specimen"]["attributes"][3]["meaning"])
-        self.assertEqual("sample_preparation", bp_sample_json[6]["block"]["attributes"][0]["tag"])
-        self.assertEqual("something", bp_sample_json[9]["slide"]["stainingInformation"]["refname"])
+        self.assertEqual(bb_alias, bp_sample_json[2]["case"]["biologicalBeingRef"]["alias"])
+        self.assertEqual(bb_alias, bp_sample_json[4]["specimen"]["extractedFromRef"]["alias"])
+        self.assertEqual(
+            "P20Y3M4D", bp_sample_json[5]["specimen"]["attributes"][3]["value"]["stringAttribute"][0]["value"]
+        )
+        self.assertEqual("lung structure", bp_sample_json[4]["specimen"]["attributes"][2]["value"]["meaning"])
+        self.assertEqual("block_preparation", bp_sample_json[6]["block"]["attributes"][0]["tag"])
+        self.assertEqual("something", bp_sample_json[9]["slide"]["stainingInformationRef"]["alias"])
 
     def test_bp_observation_is_parsed(self):
         """Test that BP observation is parsed correctly.
@@ -194,9 +195,9 @@ class ParserTestCase(unittest.TestCase):
         """
         observation_xml = self.load_file_to_text("bpobservation", "observations.xml")
         observation_json, output_xml = self.xml_parser.parse("bpobservation", observation_xml)
-        self.assertEqual("Observation_gHJhZLyAMP", observation_json["alias"])
-        self.assertEqual("Case_GMGVsazraj", observation_json["observedOn"]["case"]["refname"])
-        self.assertEqual("Diagnose", observation_json["statement"]["codedAttributesSet"][0]["tag"])
+        self.assertEqual("Observation_zxczxvxzc", observation_json["alias"])
+        self.assertEqual("Observer_vbnvbnvbm", observation_json["observerRef"][0]["alias"])
+        self.assertEqual("diagnosis", observation_json["statement"]["codeAttributes"][0]["tag"])
         self.assertEqual(observation_xml, output_xml[0])
 
     def test_bp_staining_is_parsed(self):
@@ -206,24 +207,10 @@ class ParserTestCase(unittest.TestCase):
         """
         staining_xml = self.load_file_to_text("bpstaining", "stainings.xml")
         staining_json, output_xml = self.xml_parser.parse("bpstaining", staining_xml)
-        self.assertEqual(2, len(staining_json))
-        self.assertEqual(2, len(output_xml))
-        self.assertEqual("StainingList_IjPhKpeLmO", staining_json[0]["alias"])
-        self.assertEqual("104210008", staining_json[1]["procedureInformation"]["codedAttribute"]["code"])
-
-    def test_iso_duration_parser(self):
-        """Test that ISO error is raised if bad value is given."""
-        test_minimal_xml = """
-        <SAMPLE_SET><BIOLOGICAL_BEING><ATTRIBUTES><ATTRIBUTE>
-        <TAG>age_at_extraction</TAG><VALUE>{}</VALUE>
-        </ATTRIBUTE></ATTRIBUTES></BIOLOGICAL_BEING></SAMPLE_SET>
-        """
-        with self.assertRaises(web.HTTPBadRequest):
-            self.xml_parser.parse("bpsample", test_minimal_xml.format(""))
-        with self.assertRaises(web.HTTPBadRequest):
-            self.xml_parser.parse("bpsample", test_minimal_xml.format("ABCD"))
-        with self.assertRaises(web.HTTPBadRequest):
-            self.xml_parser.parse("bpsample", test_minimal_xml.format(10))
+        self.assertEqual(3, len(staining_json))
+        self.assertEqual(3, len(output_xml))
+        self.assertEqual("StainingList_osidjgsdjgio", staining_json[0]["alias"])
+        self.assertEqual("104210008", staining_json[2]["procedureInformation"][1]["value"]["code"])
 
     def test_separate_xml_content_method_works(self):
         """Test that multipart xml content can be parsed into list of xml strings."""

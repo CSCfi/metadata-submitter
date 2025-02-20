@@ -70,10 +70,10 @@ POST {{api_url}}/v1/objects/bpdataset
 Content-Type: multipart/form-data; boundary=SomeWebKitFormBoundary
 
 --SomeWebKitFormBoundary
-Content-Disposition: form-data; name="bpdataset"; filename="template_dataset.xml"
+Content-Disposition: form-data; name="bpdataset"; filename="dataset.xml"
 Content-Type: text/xml
 
-< ../test_files/bpdataset/template_dataset.xml
+< ../test_files/bpdataset/dataset.xml
 --SomeWebKitFormBoundary--
 
 ### Get dataset

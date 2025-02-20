@@ -121,7 +121,7 @@ class TestObjects:
         await test_query(data, _schema)
 
         _schema = "bpsample"
-        _filename = "template_samples.xml"
+        _filename = "samples.xml"
         data = await post_multi_object(client_logged_in, _schema, submission_bigpicture, _filename)
         await test_query(data, _schema)
 
@@ -130,7 +130,7 @@ class TestObjects:
         data = await post_multi_object(client_logged_in, _schema, submission_bigpicture, _filename)
         await test_query(data, _schema)
 
-        assert len(items) == 18, "Wrong amount of items were added during previous requests."
+        assert len(items) == 19, "Wrong amount of items were added during previous requests."
         for item in items:
             _id, _schema = item["accessionId"], item["schema"]
             await delete_object(client_logged_in, _schema, _id)

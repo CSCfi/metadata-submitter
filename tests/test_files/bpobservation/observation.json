@@ -1,0 +1,41 @@
+{
+    "alias": "Observation_zxczxvxzc",
+    "annotationRef": [
+        {
+            "alias": "Annotation_vzxzxcvzxv"
+        }
+    ],
+    "observerRef": [
+        {
+            "alias": "Observer_vbnvbnvbm"
+        }
+    ],
+    "statement": {
+        "statementType": "Diagnosis",
+        "statementStatus": "Summary",
+        "codeAttributes": [
+            {
+                "tag": "diagnosis",
+                "value": {
+                    "code": "93655004",
+                    "scheme": "SNOMED-CT",
+                    "meaning": "Malignant melanoma of skin (disorder)",
+                    "schemeVersion": "1.0"
+                }
+            }
+        ],
+        "customAttributes": [
+            {
+                "tag": "asd",
+                "value": "fgh"
+            },
+            {
+                "tag": "123",
+                "value": "456"
+            }
+        ],
+        "freetext": null,
+        "attributes": null
+    },
+    "attributes": null
+}

@@ -1,0 +1,78 @@
+[
+    {
+        "alias": "StainingList_osidjgsdjgio",
+        "stain": [
+            [
+                {
+                    "tag": "staining_method",
+                    "value": "chemical"
+                },
+                {
+                    "tag": "staining_compound",
+                    "value": {
+                        "code": "12710003",
+                        "scheme": "SNOMED-CT",
+                        "meaning": "hematoxylin stain",
+                        "schemeVersion": "1.0"
+                    }
+                }
+            ],
+            [
+                {
+                    "tag": "staining_method",
+                    "value": "chemical"
+                },
+                {
+                    "tag": "staining_compound",
+                    "value": {
+                        "code": "36879007",
+                        "scheme": "SNOMED-CT",
+                        "meaning": "water soluble eosin stain",
+                        "schemeVersion": "1.0"
+                    }
+                }
+            ]
+        ],
+        "attributes": null
+    },
+    {
+        "alias": "StainingList_igjeronerhg",
+        "stain": [
+            [
+                {
+                    "tag": "staining_method",
+                    "value": "chemical"
+                },
+                {
+                    "tag": "staining_compound",
+                    "value": {
+                        "code": "12710003",
+                        "scheme": "SNOMED-CT",
+                        "meaning": "hematoxylin stain",
+                        "schemeVersion": "1.0"
+                    }
+                }
+            ]
+        ],
+        "attributes": null
+    },
+    {
+        "alias": "StainingProcedure_poerjgngenpi",
+        "procedureInformation": [
+            {
+                "tag": "staining_method",
+                "value": "chemical"
+            },
+            {
+                "tag": "staining_procedure",
+                "value": {
+                    "code": "104210008",
+                    "scheme": "SNOMED-CT",
+                    "meaning": "Hematoxylin and eosin stain method",
+                    "schemeVersion": "1.0"
+                }
+            }
+        ],
+        "attributes": null
+    }
+]

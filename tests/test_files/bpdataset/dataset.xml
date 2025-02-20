@@ -1,0 +1,26 @@
+<DATASET_SET>
+    <DATASET alias="Dataset_fasdasdf">
+        <TITLE>title</TITLE>
+        <SHORT_NAME>short name</SHORT_NAME>
+        <DESCRIPTION>text</DESCRIPTION>
+        <VERSION>1</VERSION>
+        <METADATA_STANDARD>2.0.0</METADATA_STANDARD>
+        <DATASET_OWNER_CONTACT_EMAIL>dataset_owner@test.email</DATASET_OWNER_CONTACT_EMAIL>
+        <DATASET_TYPE>Whole slide imaging</DATASET_TYPE>
+        <IMAGE_REF alias="Image_asdfasdf"/>
+        <IMAGE_REF alias="Image_fdasfdsa"/>
+        <ANNOTATION_REF alias="Annotation_asdasfdafs"/>
+        <OBSERVATION_REF alias="Observation_asdasfsdfd"/>
+        <COMPLEMENTS_DATASET_REF alias="Dataset_fdaasdfsa"/>
+        <ATTRIBUTES>
+            <STRING_ATTRIBUTE>
+                <TAG>ethical_approval</TAG>
+                <VALUE>ethical approval</VALUE>
+            </STRING_ATTRIBUTE>
+            <STRING_ATTRIBUTE>
+                <TAG>contains_personal_data</TAG>
+                <VALUE>False</VALUE>
+            </STRING_ATTRIBUTE>
+        </ATTRIBUTES>
+    </DATASET>
+</DATASET_SET>
