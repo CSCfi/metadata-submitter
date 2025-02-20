@@ -10,8 +10,6 @@ from xml.etree.ElementTree import Element  # nosec B405
 import defusedxml.ElementTree as ET
 from aiohttp import web
 from defusedxml import minidom
-from metomi.isodatetime.exceptions import ISO8601SyntaxError
-from metomi.isodatetime.parsers import DurationParser
 from pymongo import UpdateOne
 from xmlschema import ElementData, XMLSchema, XMLSchemaConverter, XMLSchemaException, XsdElement, XsdType, aliases
 
@@ -87,53 +85,69 @@ class MetadataXMLConverter(XMLSchemaConverter):
             "submissionAttributes",
             "contacts",
             "dataUses",
-            "attributeSet",
-            "stain",
+            "setAttribute",
         ]
 
-        refs = {"analysisRef", "sampleRef", "runRef", "experimentRef"}
+        refs = {
+            "analysisRef",
+            "sampleRef",
+            "runRef",
+            "experimentRef",
+            "observationRef",
+            "observerRef",
+            "annotationRef",
+            "complementsDatasetRef",
+            "imageOf",
+            "pipeSection",
+            "stain",
+        }
 
         children: dict[str, Any] = self.dict()
 
         for key, value, _ in self.map_content(data.content):
             key = self._to_camel(key.lower())
 
+            if isinstance(value, dict) and len(value) == 1 and "xsi:nil" in value:
+                children[key] = None
+                continue
+
             if key in set(attrs) and len(value) == 1:
                 attrs = list(value.values())
                 children[key] = attrs[0] if isinstance(attrs[0], list) else attrs
                 continue
 
-            if key == "attributes" and "attributeSet" not in value:
+            # This ensures attributes key in BP xml files is always an
+            if key == "attributes" or "codeAttributes" in key or "customAttributes" in key:
                 attributes = list(value.values())
                 attr_list = []
-                # Bring 'attribute' list under 'attributes'
-                # and parse ISO-8601 durations to number of days
-                for attribs in attributes:
-                    if isinstance(attribs, list):
-                        for a in attribs:
-                            if a["tag"] == "age_at_extraction":
-                                a["originalValue"] = a["value"]
-                                a["value"] = self._convert_iso_duration(a["value"])
-                                a["units"] = "days"
-                            attr_list.append(a)
-                    else:
-                        if attribs["tag"] == "age_at_extraction":
-                            attribs["originalValue"] = attribs["value"]
-                            attribs["value"] = self._convert_iso_duration(attribs["value"])
-                            attribs["units"] = "days"
-                        attr_list.append(attribs)
-                children[key] = attr_list
-                continue
-
-            if "codedAttributesSet" in key or "customAttributesSet" in key:
-                attribs = list(value.values())
-                attr_list = []
-                for i in attribs:
+                for i in attributes:
                     if isinstance(i, list):
                         attr_list += i
                     else:
                         attr_list.append(i)
                 children[key] = attr_list
+                continue
+
+            if key == "procedureInformation":
+                attributes = list(value.keys())
+                attr_list = []
+                for i in attributes:
+                    if isinstance(value[i], list):
+                        attr_list += value[i]
+                    else:
+                        attr_list.append(value[i])
+                children[key] = attr_list
+                continue
+
+            if key == "stain":
+                attributes = list(value.keys())
+                attr_list = []
+                for i in attributes:
+                    if isinstance(value[i], list):
+                        attr_list += value[i]
+                    else:
+                        attr_list.append(value[i])
+                children[key] = children[key] + [attr_list] if key in children else [attr_list]
                 continue
 
             if "studyType" in key:
@@ -203,12 +217,6 @@ class MetadataXMLConverter(XMLSchemaConverter):
                     children["files"] = value["file"]
                 continue
 
-            if "imageOf" in key:
-                if "imageOf" not in children:
-                    children[key] = []
-                children[key].append(value)
-                continue
-
             if "dataBlock" in key:
                 children["files"] = value["files"]
                 continue
@@ -216,12 +224,6 @@ class MetadataXMLConverter(XMLSchemaConverter):
             if "processing" in key:
                 if not bool(value):
                     continue
-
-            if "pipeSection" in key:
-                if "pipeSection" not in children:
-                    children[key] = []
-                children[key].append(value)
-                continue
 
             if "prevStepIndex" in key:
                 if not bool(value):
@@ -241,6 +243,8 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 children["policy"] = {key: value}
                 continue
 
+            # Bypass the logic that turns single item list into an object
+            # i.e. the value of this key will always be an array
             if key in refs:
                 ref = key
                 if ref not in children:
@@ -301,26 +305,6 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 children[key] = self.list([children[key], value])
 
         return children
-
-    def _convert_iso_duration(self, duration: str) -> int:
-        """Convert ISO-8601 formatted duration string to a number of days.
-
-        Expectation is that 'age_at_extraction' tag is always submitted
-        as a string according to the ISO-8601 duration format. The duration
-        is expected to only have date information and not time.
-
-        :param: Duration string
-        :returns: Number of days
-        :raises: HTTPBadRequest if parsing fails
-        """
-        try:
-            iso_duration = DurationParser().parse(duration)
-            total_days = iso_duration.get_days_and_seconds()[0]
-            return int(total_days)
-        except ISO8601SyntaxError as exc:
-            reason = "Unable to parse duration string of age_at_extraction."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason) from exc
 
     @property
     def lossy(self) -> bool:
@@ -437,28 +421,40 @@ class XMLToJSONParser:
         _schema_type: str = schema_type.lower()
         # BP sample files require special treatment
         if _schema_type == "bpsample":
-            result = self._organize_bp_sample_objects(result)
+            result = self._organize_bp_sample_objects(result, content)
         # Validate each JSON object separately if an array of objects is parsed
-        obj_name = _schema_type[2:] if _schema_type in ["bpimage", "bpobservation", "bpstaining"] else _schema_type
-        xml_elements: list[str]
-        if isinstance(result[obj_name], list):
-            results = result[obj_name]
-            # Parse original xml content into similar list as the json objects
-            xml_elements = self._separate_objects_of_xml_content(_schema_type, content)
-            # JSON object list and XML list should be the same length
-            if len(results) != len(xml_elements):
-                reason = "Amount of JSON objects from XML objects failed to match after parsing"
-                LOG.exception(reason)
-                raise web.HTTPInternalServerError(reason=reason)
-        else:
-            results = [result[obj_name]]
-            xml_elements = [content]
+        obj_name = (
+            _schema_type[2:]
+            if _schema_type in ["bpdataset", "bpimage", "bpobservation", "bpstaining"]
+            else _schema_type
+        )
+        xml_elements: list[str] = [content]
+        try:
+            if isinstance(result[obj_name], list):
+                results = result[obj_name]
+                # Parse original xml content into similar list as the json objects
+                xml_elements = self._separate_objects_of_xml_content(_schema_type, content)
+                # JSON object list and XML list should be the same length
+                if len(results) != len(xml_elements):
+                    reason = "Amount of JSON objects from XML objects failed to match after parsing"
+                    LOG.exception(reason)
+                    raise web.HTTPInternalServerError(reason=reason)
+                if _schema_type != "submission":
+                    for obj in results:
+                        JSONValidator(obj, _schema_type).validate
+            else:
+                # Metadata set only contained one child element
+                if _schema_type != "submission":
+                    JSONValidator(result[obj_name], _schema_type).validate
 
-        if _schema_type != "submission":
-            for obj in results:
-                JSONValidator(obj, _schema_type).validate
+            return result[obj_name], xml_elements
 
-        return result[obj_name], xml_elements
+        except KeyError:
+            # If the object name is not found in the result, we assume the metadata content was a singular element
+            # This structure is exclusive to the BP metadata since version 2.0.0
+            if _schema_type != "submission":
+                JSONValidator(result, _schema_type).validate
+            return result, xml_elements
 
     @staticmethod
     def _load_schema(schema_type: str) -> XMLSchema:
@@ -478,10 +474,11 @@ class XMLToJSONParser:
         return schema
 
     @staticmethod
-    def _organize_bp_sample_objects(data: dict[str, Any]) -> dict[str, Any]:
+    def _organize_bp_sample_objects(data: dict[str, Any], xml_data: str) -> dict[str, Any]:
         """Handle BP Sample data after it was parsed from an XML so it can be validated and added to db.
 
         :param data: BP sample objects in JSON format
+        :param xml_data: Original XML content
         :returns: Organized BP sample objects
         """
 
@@ -505,6 +502,23 @@ class XMLToJSONParser:
 
         # Return all samples as an array under bpsample schema name
         samples: list[dict[str, Any]] = bio_beings + cases + specimens + blocks + slides
+        if not samples:
+            # In the off chance that the sample was not submitted inside a sample set
+            # we need to do this for subsuquent steps
+            root = ET.fromstring(xml_data)
+            match root.tag:
+                case "BIOLOGICAL_BEING":
+                    samples.append({"biologicalBeing": data})
+                case "CASE":
+                    samples.append({"case": data})
+                case "SPECIMEN":
+                    samples.append({"specimen": data})
+                case "BLOCK":
+                    samples.append({"block": data})
+                case "SLIDE":
+                    samples.append({"slide": data})
+        if len(samples) == 1:
+            return {"bpsample": samples[0]}
         return {"bpsample": samples}
 
     def _separate_objects_of_xml_content(self, schema_type: str, xml_content: str) -> list[str]:
@@ -522,7 +536,7 @@ class XMLToJSONParser:
 
         for child in child_elements:
             # Create a new root element based on original root
-            new_root = Element(root.tag)
+            new_root = Element(root.tag, root.attrib)
             new_root.append(child)
 
             rough_string = ET.tostring(new_root, "unicode")
@@ -545,9 +559,9 @@ class XMLToJSONParser:
         return new_items
 
     def assign_accession_to_xml_content(self, schema_type: str, xml: str, accessionId: str) -> str:
-        """Add internal accession ID to BP related XML metadata objects.
+        """Add internal accession ID to BP related XML metadata object.
 
-        We can assume that the method receives a valid XML metadata object for a BP schema.
+        We can assume that the method receives a valid XML metadata object according to the BP metadata schemas.
 
         :param schema_type: name of metadata schema
         :param xml: XML content to be altered
@@ -569,6 +583,9 @@ class XMLToJSONParser:
         ]
         root = ET.fromstring(xml)
         for elem_name in bp_elems:
+            if root.tag == elem_name:
+                root.set("accession", accessionId)
+                break
             elem = root.find(elem_name)
             if elem:
                 LOG.debug("New accession attribute set at %s", elem)
@@ -636,7 +653,7 @@ class CSVToJSONParser:
 
         _parsed = []
         for row in rows:
-            LOG.debug("current row: %d", row)
+            LOG.debug("current row: %s", row)
             _tmp: dict[str, Any] = row
             # This is required to pass validation against current sample schema
             if schema_type == "sample" and "sampleName" not in row:
