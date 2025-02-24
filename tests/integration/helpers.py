@@ -195,7 +195,7 @@ async def post_object_expect_status(sess, schema, submission_id, filename, statu
     ) as resp:
         LOG.debug("Adding new object to %s, via XML/CSV file %s and expecting status: %d", schema, filename, status)
         assert resp.status == status, f"HTTP Status code error, got {resp.status}"
-        if status < 400:
+        if status < 400 and schema != "bprems":
             ans = await resp.json()
             return ans if isinstance(ans, list) else ans["accessionId"], schema
 

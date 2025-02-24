@@ -12,7 +12,7 @@ class Organization(TypedDict):
 
     id: str
     name: str
-    workflows: list[dict[str, str]]
+    workflows: list[dict[str, Any]]
     licenses: list[dict[str, str]]
 
 
@@ -68,8 +68,14 @@ class RemsAPIHandler(RESTAPIIntegrationHandler):
             org_id = workflow["organization"]["organization/id"]
             if org_id not in organizations:
                 add_organization(str(org_id), str(org_name))
+            linkedLicenses: list[dict[str, Any]] = []
+            # Format workflow's linkedLicenses to be added to the response
+            for lic in workflow["licenses"]:
+                lic_title = self._get_localized(language, lic["localizations"])
+                if isinstance(lic_title, dict):
+                    linkedLicenses.append({"id": lic["license/id"], **lic_title})
             organizations[org_id]["workflows"].append(
-                {"id": workflow["id"], "title": title, "licenses": workflow["licenses"]}
+                {"id": workflow["id"], "title": title, "licenses": linkedLicenses}
             )
 
         for lic in licenses:

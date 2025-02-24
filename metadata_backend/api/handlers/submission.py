@@ -304,8 +304,6 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         await self._handle_check_ownership(req, "submission", submission_id)
 
-        submission = await operator.read_submission(submission_id)
-
         data = await self._get_data(req)
 
         if req.path.endswith("doi"):
@@ -316,20 +314,8 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         else:
             raise web.HTTPNotFound(reason=f"'{req.path}' does not exist")
 
-        op = "add"
-        if schema in submission:
-            op = "replace"
-        patch = [
-            {"op": op, "path": f"/{schema}", "value": data},
-        ]
-
-        submission[schema] = data
-        JSONValidator(submission, "submission").validate
-
-        upd_submission = await operator.update_submission(submission_id, patch)
-        body = ujson.dumps({"submissionId": upd_submission}, escape_forward_slashes=False)
-
-        LOG.info("PUT %r in submission with ID: %r was successful.", schema, submission_id)
+        upd_submission_id = await self.update_object_in_submission(operator, submission_id, schema, data)
+        body = ujson.dumps({"submissionId": upd_submission_id}, escape_forward_slashes=False)
         return web.Response(body=body, status=200, content_type="application/json")
 
     async def put_submission_files(self, req: Request) -> Response:

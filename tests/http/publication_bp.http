@@ -14,6 +14,7 @@
 @dataset_id = {{dataset_id_req.response.body.accessionId}}
 @image_id = {{image_id_req.response.body.$[0].accessionId}}
 @file_id = {{file_id_req.response.body.$[0].[0]}}
+@rems_id = {{rems_id_req.response.body.accessionId}}
 
 ### Mock authentication
 GET {{auth_url}}/setmock
@@ -57,11 +58,18 @@ PUT {{api_url}}/v1/submissions/{{submission_id}}/doi
 
 < ../test_files/doi/test_doi.json
 
-### Update DAC in submission
-PUT {{api_url}}/v1/submissions/{{submission_id}}/rems
+### Add REMS data to a submission
+# @name rems_id_req
+POST {{api_url}}/v1/objects/bprems
+     ?submission={{submission_id}}
+Content-Type: multipart/form-data; boundary=SomeWebKitFormBoundary
 
-< ../test_files/dac/dac_rems.json
+--SomeWebKitFormBoundary
+Content-Disposition: form-data; name="bprems"; filename="rems.xml"
+Content-Type: text/xml
 
+< ../test_files/bprems/rems.xml
+--SomeWebKitFormBoundary--
 
 ### Add dataset to a submission
 # @name dataset_id_req

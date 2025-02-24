@@ -7,16 +7,16 @@
             "required": true,
             "schemas": [
                 {
-                    "name": "dac",
+                    "name": "bprems",
                     "required": true,
-                    "allowMultipleObjects": true
+                    "allowMultipleObjects": false
                 },
                 {
-                    "name": "policy",
+                    "name": "bppolicy",
                     "required": true,
                     "allowMultipleObjects": true,
                     "requires": [
-                        "dac"
+                        "bprems"
                     ]
                 }
             ]
@@ -49,10 +49,7 @@
                 {
                     "name": "bpdataset",
                     "required": false,
-                    "allowMultipleObjects": true,
-                    "requires": [
-                        "policy"
-                    ]
+                    "allowMultipleObjects": true
                 },
                 {
                     "name": "bpstaining",
