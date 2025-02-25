@@ -257,19 +257,6 @@ class MetadataXMLConverter(XMLSchemaConverter):
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
 
-            if "processing" in key:
-                if not bool(value):
-                    continue
-
-            if "pipeSection" in key:
-                children[key] = [value]
-                continue
-
-            if "prevStepIndex" in key:
-                if not bool(value):
-                    children[key] = None
-                    continue
-
             if key in links and len(value) == 1:
                 grp = []
                 if isinstance(value[key[:-1]], dict):
