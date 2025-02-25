@@ -1,9 +1,0 @@
-{
-    "alias": "REMS_12345",
-    "workflowId": "workflow_001",
-    "organisationId": "org_001",
-    "datasetRef": {
-        "alias": "Dataset_12345"
-    },
-    "attributes": null
-}
