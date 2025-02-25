@@ -30,6 +30,7 @@ analysislinks
 analysisref
 analysistype
 andrée
+annotationfile
 annotationref
 annotinfo
 announce
@@ -541,6 +542,7 @@ observationsetattribute
 observationsref
 observedon
 observerref
+observertype
 occitan
 oidc
 oidcrp

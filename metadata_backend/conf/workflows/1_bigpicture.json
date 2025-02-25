@@ -55,12 +55,22 @@
                     ]
                 },
                 {
+                    "name": "bpstaining",
+                    "required": false,
+                    "allowMultipleObjects": true
+                },
+                {
                     "name": "bpobservation",
                     "required": false,
                     "allowMultipleObjects": true
                 },
                 {
-                    "name": "bpstaining",
+                    "name": "bpobserver",
+                    "required": false,
+                    "allowMultipleObjects": true
+                },
+                {
+                    "name": "bpannotation",
                     "required": false,
                     "allowMultipleObjects": true
                 }

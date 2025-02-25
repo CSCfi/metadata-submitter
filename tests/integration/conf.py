@@ -56,6 +56,7 @@ test_bigpicture_xml_files = [
     ("bpimage", "images_single.xml"),
     ("bpdataset", "dataset.xml"),
     ("bpobservation", "observations.xml"),
+    ("bpannotation", "annotations.xml"),
 ]
 test_json_files = [
     ("study", "SRP000539.json", "SRP000539.json"),

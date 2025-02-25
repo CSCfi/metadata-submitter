@@ -152,8 +152,17 @@
         },
         "provider": "BP"
     },
-    "bprems": {
+    "bpannotation": {
         "priority": 18,
+        "description": {
+            "title": "Bigpicture Annotation",
+            "detail": "An annotation object captures annotation objects.",
+            "url": "https://github.com/imi-bigpicture/bigpicture-metaflex/blob/v2.0.0/src/BP.annotation.xsd"
+        },
+        "provider": "BP"
+    },
+    "bprems": {
+        "priority": 19,
         "description": {
             "title": "Bigpicture REMS",
             "detail": "A container of rems objects.",
@@ -162,7 +171,7 @@
         "provider": "BP"
     },
     "bporganisation": {
-        "priority": 19,
+        "priority": 20,
         "description": {
             "title": "Bigpicture Organisation",
             "detail": "An organisation object contains information about the submitter of a dataset.",
@@ -171,7 +180,7 @@
         "provider": "BP"
     },
     "bppolicy": {
-        "priority": 20,
+        "priority": 21,
         "description": {
             "title": "Bigpicture Policy",
             "detail": "A policy object contains information about the terms of use for a dataset.",
@@ -180,7 +189,7 @@
         "provider": "BP"
     },
     "bplandingpage": {
-        "priority": 21,
+        "priority": 22,
         "description": {
             "title": "Bigpicture Landing page",
             "detail": "A landing page object contains the public information visible on a landing page for a dataset.",

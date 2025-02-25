@@ -1,0 +1,10 @@
+<ANNOTATION_SET>
+    <ANNOTATION alias="Annotation_12345">
+        <IMAGE_REF alias="Image_12345"/>
+        <FILES>
+            <FILE filename="project/folder/file.dcm" checksum_method="SHA256" checksum="123456789012345678901234567890123456789012345678901234567890abcd" filetype="dcm"/>
+            <FILE filename="project/folder/file.json" checksum_method="SHA256" checksum="abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd" filetype="json"/>
+        </FILES>
+        <ATTRIBUTES xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/>
+    </ANNOTATION>
+</ANNOTATION_SET>

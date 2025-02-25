@@ -107,7 +107,17 @@ class TestObjects:
                     root = ET.fromstring(reformatted_xml)
                     child_elements = list(root)
                     assert len(child_elements) == 1, "Wrong number of child elements found"
-                    tags = ["POLICY", "IMAGE", "BIOLOGICAL_BEING", "CASE", "SPECIMEN", "SLIDE", "BLOCK", "STAINING"]
+                    tags = [
+                        "POLICY",
+                        "IMAGE",
+                        "BIOLOGICAL_BEING",
+                        "CASE",
+                        "SPECIMEN",
+                        "SLIDE",
+                        "BLOCK",
+                        "STAINING",
+                        "OBSERVER",
+                    ]
                     assert child_elements[0].tag in tags, "Wrong child element was found"
 
         _schema = "policy"
@@ -130,7 +140,12 @@ class TestObjects:
         data = await post_multi_object(client_logged_in, _schema, submission_bigpicture, _filename)
         await test_query(data, _schema)
 
-        assert len(items) == 19, "Wrong amount of items were added during previous requests."
+        _schema = "bpobserver"
+        _filename = "observers.xml"
+        data = await post_multi_object(client_logged_in, _schema, submission_bigpicture, _filename)
+        await test_query(data, _schema)
+
+        assert len(items) == 21, "Wrong amount of items were added during previous requests."
         for item in items:
             _id, _schema = item["accessionId"], item["schema"]
             await delete_object(client_logged_in, _schema, _id)

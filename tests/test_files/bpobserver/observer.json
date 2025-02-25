@@ -1,0 +1,12 @@
+[
+    {
+        "alias": "Observer_12345",
+        "observerType": "Human",
+        "attributes": null
+    },
+    {
+        "alias": "Observer_67890",
+        "observerType": "Machine",
+        "attributes": null
+    }
+]

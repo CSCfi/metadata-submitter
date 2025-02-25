@@ -223,6 +223,30 @@ class ParserTestCase(unittest.TestCase):
         self.assertEqual("Dataset_12345", rems_json["datasetRef"]["alias"])
         self.assertEqual(rems_xml, output_xml[0])
 
+    def test_bp_annotation_is_parsed(self):
+        """Test that BP annotation is parsed correctly.
+
+        Tests for some values that converted JSON should have.
+        """
+        annotation_xml = self.load_file_to_text("bpannotation", "annotations.xml")
+        annotation_json, output_xml = self.xml_parser.parse("bpannotation", annotation_xml)
+        self.assertEqual("Annotation_12345", annotation_json["alias"])
+        self.assertEqual("Image_12345", annotation_json["imageRef"]["alias"])
+        self.assertEqual(len(annotation_json["files"]), 2)
+        self.assertEqual(annotation_xml, output_xml[0])
+
+    def test_bp_observer_is_parsed(self):
+        """Test that BP observer is parsed correctly.
+
+        Tests for some values that converted JSON should have.
+        """
+        observer_xml = self.load_file_to_text("bpobserver", "observers.xml")
+        observer_json, output_xml = self.xml_parser.parse("bpobserver", observer_xml)
+        self.assertEqual("Observer_12345", observer_json[0]["alias"])
+        self.assertEqual("Human", observer_json[0]["observerType"])
+        self.assertEqual("Observer_67890", observer_json[1]["alias"])
+        self.assertEqual("Machine", observer_json[1]["observerType"])
+
     def test_separate_xml_content_method_works(self):
         """Test that multipart xml content can be parsed into list of xml strings."""
         xml_str = """
