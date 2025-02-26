@@ -26,7 +26,7 @@ class TestBigPicture:
         """
 
         # Submit bpdataset
-        bpdataset = await post_object(client_logged_in, "bpdataset", submission_bigpicture, "template_dataset.xml")
+        bpdataset = await post_object(client_logged_in, "bpdataset", submission_bigpicture, "dataset.xml")
 
         # Add DOI and DAC for publishing the submission
         doi_data_raw = await create_request_json_data("doi", "test_doi.json")
@@ -54,7 +54,7 @@ class TestBigPicture:
         """
 
         # Submit samples
-        bpsamples, _ = await post_object(client_logged_in, "bpsample", submission_bigpicture, "template_samples.xml")
+        bpsamples, _ = await post_object(client_logged_in, "bpsample", submission_bigpicture, "samples.xml")
 
         # Retrieve samples with accession ids
         for sample in bpsamples:

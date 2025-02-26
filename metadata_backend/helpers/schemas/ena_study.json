@@ -190,8 +190,7 @@
             "title": "Study Details",
             "required": [
                 "studyTitle",
-                "studyType",
-                "studyAbstract"
+                "studyType"
             ],
             "properties": {
                 "studyTitle": {

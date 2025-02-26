@@ -54,7 +54,7 @@ test_fega_xml_files = [
 ]
 test_bigpicture_xml_files = [
     ("bpimage", "images_single.xml"),
-    ("bpdataset", "template_dataset.xml"),
+    ("bpdataset", "dataset.xml"),
     ("bpobservation", "observations.xml"),
 ]
 test_json_files = [

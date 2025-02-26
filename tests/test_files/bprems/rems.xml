@@ -1,0 +1,8 @@
+<REMS_SET>
+    <REMS alias="REMS_12345">
+        <WORKFLOW_ID>workflow_001</WORKFLOW_ID>
+        <ORGANISATION_ID>org_001</ORGANISATION_ID>
+        <DATASET_REF alias="Dataset_12345"/>
+        <ATTRIBUTES xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/>
+    </REMS>
+</REMS_SET>

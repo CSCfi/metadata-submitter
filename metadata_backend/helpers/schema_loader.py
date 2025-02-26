@@ -41,11 +41,10 @@ class SchemaLoader(ABC):
         schema_type = schema_type.lower()
         schema_file = None
         for file in list(self.path.iterdir()):
+            # The XML metadata schema naming convention is `<project>.<schema_type>.xsd`
+            # and we mainly care about the schema type in this operation
             filename_list = re.split(r"[_.]", file.name)
-            # if len(filename_list) == 2:
-            filename = filename_list[0]
-            if len(filename_list) == 3:
-                filename = filename_list[1]
+            filename = filename_list[1] if len(filename_list) == 3 else filename_list[0]
             if schema_type == filename and file.name.endswith(self.loader_type):
                 schema_file = file
                 break
