@@ -9,6 +9,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- Included new Bigpicture related schemas
 - Add /ingest endpoint for starting data ingestion
 - Mocked Admin API service #843
 - Instructions on how to use the SD Submit API for BigPicture programmatic dataset submissions #815
@@ -28,6 +29,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- (users) Bigpicture related metadata validation process now follows the Bigpicture metadata version 2.0.0
+- Updated XML to JSON conversion logic to accommodate new metadata schema versions
 - REMS object is refined and validated when it is added to a submission #532 #649
 - GET files request returns only latest file versions #840
 - Removed large taxonomy related `names.json` file from the repository commit history and brought  back as git LFS pointer file
@@ -42,6 +45,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Removed
 
+- Previously implemented logic that automatically converted ISO-8601 duration string in incoming metadata to a numeric value
 - Some schemas that are unnecessary for Generic use case workflow #841
 - RabbitMQ message broker functionality
 
