@@ -214,7 +214,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         )
 
     async def patch_submission(self, req: Request) -> Response:
-        """Update object submission with a specific submission id.
+        """Update info of a specific submission object based on its submission id.
 
         Submission only allows the 'name' and 'description' values to be patched.
 

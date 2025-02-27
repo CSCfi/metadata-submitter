@@ -48,7 +48,7 @@ class UserOperator(BaseOperator):
             project_id = await object_operator.get_object_project(collection, accession_id)
         elif collection == "submission":
             submission_operator = SubmissionOperator(db_client)
-            project_id = await submission_operator.get_submission_project(accession_id)
+            project_id = await submission_operator.get_submission_field_str(accession_id, "projectId")
         else:
             reason = f"collection must be submission or template, received {collection}"
             LOG.error(reason)

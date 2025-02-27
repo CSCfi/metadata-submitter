@@ -784,50 +784,63 @@ class TestOperators(IsolatedAsyncioTestCase):
         with self.assertRaises(HTTPBadRequest):
             await operator.get_object_project("something", self.accession_id)
 
-    async def test_get_submission_project_connfail(self):
-        """Test get submission project, db connection failure."""
+    async def test_get_submission_field_db_fail(self):
+        """Test get submission projectId, db connection and operation failure."""
         operator = SubmissionOperator(self.client)
         operator.db_service.query.side_effect = ConnectionFailure
         with self.assertRaises(HTTPInternalServerError):
-            await operator.get_submission_project(self.submission_id)
+            await operator.get_submission_field(self.submission_id, "projectId")
 
-    async def test_get_submission_project_opfail(self):
-        """Test get submission project, db operation failure."""
-        operator = SubmissionOperator(self.client)
         operator.db_service.query.side_effect = OperationFailure("err")
         with self.assertRaises(HTTPInternalServerError):
-            await operator.get_submission_project(self.submission_id)
+            await operator.get_submission_field(self.submission_id, "projectId")
 
-    async def test_get_submission_project_passes(self):
-        """Test get submission project returns project id."""
+    async def test_get_submission_field_passes(self):
+        """Test get submission projectId returns project id."""
         operator = SubmissionOperator(self.client)
         operator.db_service.query.return_value = AsyncIterator([self.test_submission])
-        result = await operator.get_submission_project(self.submission_id)
+        result = await operator.get_submission_field(self.submission_id, "projectId")
         operator.db_service.query.assert_called_once_with(
             "submission", {"submissionId": self.submission_id}, {"_id": False, "projectId": 1}, limit=1
         )
         self.assertEqual(result, self.project_generated_id)
 
-    async def test_get_submission_project_fails(self):
-        """Test get submission project returns nothing and raises an error."""
+    async def test_get_submission_field_fails(self):
+        """Test get submission projectId raises an error."""
         operator = SubmissionOperator(self.client)
+        # Submission is not found error
         operator.db_service.query.return_value = AsyncIterator([])
         with self.assertRaises(HTTPBadRequest):
-            await operator.get_submission_project(self.submission_id)
+            await operator.get_submission_field(self.submission_id, "projectId")
 
-    async def test_get_submission_project_fails_missing_project(self):
-        """Test get submission project returns faulty submission record that is missing project id."""
-        operator = SubmissionOperator(self.client)
+        # Submission doesn't have projectId
         operator.db_service.query.return_value = AsyncIterator([self.test_submission_no_project])
         with self.assertRaises(HTTPBadRequest):
-            await operator.get_submission_project(self.submission_id)
+            await operator.get_submission_field(self.submission_id, "projectId")
 
-    async def test_get_submission_project_fails_invalid_collection(self):
-        """Test get submission project raises bad request on invalid collection."""
+    async def test_get_submission_field_string(self):
+        """Test get submission field string."""
         operator = SubmissionOperator(self.client)
-        operator.db_service.query.return_value = AsyncIterator([])
-        with self.assertRaises(HTTPBadRequest):
-            await operator.get_submission_project(self.submission_id)
+        operator.db_service.query.return_value = AsyncIterator([self.test_submission])
+        result = await operator.get_submission_field(self.submission_id, "projectId")
+        self.assertEqual(result, self.project_generated_id)
+
+        # Raises an error when field is not a string
+        operator.db_service.query.return_value = AsyncIterator([self.test_submission])
+        with self.assertRaises(HTTPInternalServerError):
+            await operator.get_submission_field_str(self.submission_id, "metadataObjects")
+
+    async def test_get_submission_field_list(self):
+        """Test get submission field list."""
+        operator = SubmissionOperator(self.client)
+        operator.db_service.query.return_value = AsyncIterator([self.test_submission])
+        result = await operator.get_submission_field_list(self.submission_id, "metadataObjects")
+        self.assertEqual(result, [{"accessionId": "EGA1234567", "schema": "study"}])
+
+        # Raises an error when field is not a list
+        operator.db_service.query.return_value = AsyncIterator([self.test_submission])
+        with self.assertRaises(HTTPInternalServerError):
+            await operator.get_submission_field_list(self.submission_id, "projectId")
 
     async def test_create_submission_works_and_returns_submissionId(self):
         """Test create method for submissions work."""
@@ -1106,7 +1119,7 @@ class TestOperators(IsolatedAsyncioTestCase):
         request.app["db_client"] = db_client
         operator = UserOperator(self.client)
         with patch(
-            "metadata_backend.api.operators.submission.SubmissionOperator.get_submission_project",
+            "metadata_backend.api.operators.submission.SubmissionOperator.get_submission_field_str",
             return_value=self.project_generated_id,
         ):
             with self.p_get_sess_restapi:
