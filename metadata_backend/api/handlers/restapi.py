@@ -12,7 +12,7 @@ from aiohttp import web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
-from ...conf.conf import WORKFLOWS, schema_types
+from ...conf.conf import POLLING_INTERVAL, WORKFLOWS, schema_types
 from ...helpers.logger import LOG
 from ...helpers.schema_loader import JSONSchemaLoader, SchemaNotFoundException
 from ...helpers.validator import JSONValidator
@@ -381,40 +381,43 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
         return upd_submission_id
 
     async def start_file_polling(
-        self, req: Request, files: list[dict[str, Any]], file_op: FileOperator, data: dict[str, str]
+        self, req: Request, files: dict[str, str], file_op: FileOperator, data: dict[str, str]
     ) -> None:
         """Regularly poll files to see if they have status 'verified'.
 
         :param req: HTTP request
-        :param data: Includes 'user', 'submissionId', 'filepath', 'accessionId'
+        :param files: List of files to be polled
         :param file_op: File Operator
-        :returns: Dict with path of ingested file
+        :param data: Includes 'user' and 'submissionId'
         """
-        status_verified = {f["path"]: False for f in files}
+        status_verified = {f: False for f in files.keys()}
 
         while True:
             inbox_files = await self.admin_handler.get_user_files(req, data["user"])
-            for file in inbox_files:
-                if "inboxPath" not in file or "fileStatus" not in file:
+            for inbox_file in inbox_files:
+                if "inboxPath" not in inbox_file or "fileStatus" not in inbox_file:
                     reason = "'inboxPath' and 'fileStatus' are missing from file data."
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
-                if file["inboxPath"] in status_verified:
-                    if file["fileStatus"] == "verified":
-                        status_verified[file["inboxPath"]] = True
+
+                inbox_path = inbox_file["inboxPath"]
+                if not status_verified.get(inbox_path, True):
+                    if inbox_file["fileStatus"] == "verified":
+                        status_verified[inbox_path] = True
+                        accessionId = files[inbox_path]
                         await file_op.update_file_submission(
-                            file["accessionId"], data["submissionId"], {"files.$.status": "verified"}
+                            accessionId, data["submissionId"], {"files.$.status": "verified"}
                         )
                         await self.admin_handler.post_accession_id(
                             req,
                             {
                                 "user": data["user"],
-                                "filepath": file["path"],
-                                "accessionId": file["accessionId"],
+                                "filepath": inbox_path,
+                                "accessionId": accessionId,
                             },
                         )
-                    elif file["fileStatus"] == "error":
-                        reason = f"File {file['inboxPath']} in submission {data['submissionId']} has status 'error'"
+                    elif inbox_file["fileStatus"] == "error":
+                        reason = f"File {inbox_path} in submission {data['submissionId']} has status 'error'"
                         LOG.exception(reason)
                         raise web.HTTPInternalServerError(reason=reason)
 

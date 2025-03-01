@@ -274,3 +274,5 @@ if not TAXONOMY_NAME_FILE.is_file():
 
 with open(TAXONOMY_NAME_FILE, "r", encoding="utf-8") as file:
     TAXONOMY_NAME_DATA = ujson.load(file)
+
+POLLING_INTERVAL = 3600
