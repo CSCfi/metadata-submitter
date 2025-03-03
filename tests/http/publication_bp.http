@@ -150,6 +150,7 @@ GET {{api_url}}/v1/files
 # i.e. should check that accession id exists and add new item
 # can add random objectId so it should also check that object exists first
 # TODO: refactored to PATCH
+# also , at the end of list will cause 500 apparently
 PUT {{api_url}}/v1/submissions/{{submission_id}}/files
 
 [
