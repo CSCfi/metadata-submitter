@@ -4,7 +4,7 @@ import collections.abc
 import json
 import logging
 from copy import deepcopy
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from os import getenv
 
 from aiohttp import web
@@ -74,7 +74,7 @@ BASE_RESPONSE = {
                 "domains": "*",
                 "url": None,
                 "created": "2010-01-01 12:00:00.000",
-                "updated": str(datetime.utcnow()),
+                "updated": str(datetime.now(UTC)),
                 "isActive": True,
                 "hasPassword": True,
             },
@@ -123,10 +123,10 @@ async def create(req: web.Request) -> web.Response:
         LOG.exception(reason)
         raise web.HTTPBadRequest(reason=reason)
 
-    data["data"]["attributes"]["created"] = str(datetime.utcnow())
-    data["data"]["attributes"]["updated"] = str(datetime.utcnow())
-    data["included"][0]["attributes"]["created"] = str(datetime.utcnow())
-    data["included"][0]["attributes"]["updated"] = str(datetime.utcnow())
+    data["data"]["attributes"]["created"] = str(datetime.now(UTC))
+    data["data"]["attributes"]["updated"] = str(datetime.now(UTC))
+    data["included"][0]["attributes"]["created"] = str(datetime.now(UTC))
+    data["included"][0]["attributes"]["updated"] = str(datetime.now(UTC))
     DATASETS[_doi] = data
     return web.json_response(data, status=201)
 
@@ -142,8 +142,8 @@ async def update(req: web.Request) -> web.Response:
         raise web.HTTPBadRequest(reason=reason)
 
     data = DATASETS[_doi]
-    data["data"]["attributes"]["updated"] = str(datetime.utcnow())
-    data["included"][0]["attributes"]["updated"] = str(datetime.utcnow())
+    data["data"]["attributes"]["updated"] = str(datetime.now(UTC))
+    data["included"][0]["attributes"]["updated"] = str(datetime.now(UTC))
     try:
         data = update_dict(data, content)
     except Exception as e:
