@@ -200,7 +200,7 @@ datacite_config = {
 
 # CSC PID microservice for other cases
 pid_config = {
-    "api_url": os.getenv("PID_URL", "https://pidms-test.2.rahtiapp.fi/"),  # test url
+    "api_url": os.getenv("PID_URL", "http://mockpid:8005"),
     "api_key": os.getenv("PID_APIKEY", ""),
 }
 

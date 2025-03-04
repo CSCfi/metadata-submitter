@@ -14,7 +14,8 @@ services:
     depends_on:
       - database
       - mockauth
-      - mockdoi
+      - mockdatacite
+      - mockpid
       - mockmetax
     restart: on-failure
     environment:
@@ -80,20 +81,20 @@ services:
     volumes:
       - ./tests/integration/mock_auth.py:/mock_auth.py
     entrypoint: [ "python", "/mock_auth.py", "0.0.0.0", "8000" ]
-  mockdoi:
+  mockdatacite:
     build:
       dockerfile: ./dockerfiles/Dockerfile-dev
       context: .
       target: develop
     image: cscfi/metadata-submitter-dev
-    hostname: mockdoi
+    hostname: mockdatacite
     expose:
       - 8001
     ports:
       - "8001:8001"
     volumes:
-      - ./tests/integration/mock_doi_api.py:/mock_doi_api.py
-    entrypoint: [ "python", "/mock_doi_api.py", "0.0.0.0", "8001" ]
+      - ./tests/integration/mock_datacite_api.py:/mock_datacite_api.py
+    entrypoint: [ "python", "/mock_datacite_api.py", "0.0.0.0", "8001" ]
   mockmetax:
     build:
       dockerfile: ./dockerfiles/Dockerfile-dev
@@ -122,5 +123,17 @@ services:
     volumes:
       - ./tests/integration/mock_rems_api.py:/mock_rems_api.py
     entrypoint: [ "python", "/mock_rems_api.py", "0.0.0.0", "8003" ]
+  mockpid:
+    build:
+      dockerfile: ./dockerfiles/Dockerfile-dev
+      context: .
+      target: develop
+    image: cscfi/metadata-submitter-dev
+    hostname: mockpid
+    expose:
+      - 8005
+    ports:
+      - "8005:8005"
+    entrypoint: [ "python", "/mock_pid_api.py", "0.0.0.0", "8005" ]
 volumes:
   data:
