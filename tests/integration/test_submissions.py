@@ -49,7 +49,7 @@ class TestSubmissions:
         :param project_id: id of the project the submission belongs to
         """
         async with client_logged_in.get(f"{submissions_url}?projectId={project_id}") as resp:
-            LOG.debug(f"Reading submission {submission_fega}")
+            LOG.debug("Reading submission %s", submission_fega)
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
             response = await resp.json()
             assert len(response["submissions"]) == 1, response
@@ -70,7 +70,7 @@ class TestSubmissions:
         """
         accession_id = await post_object_json(client_logged_in, "study", submission_fega, "SRP000539.json")
         async with client_logged_in.get(f"{submissions_url}?projectId={project_id}") as resp:
-            LOG.debug(f"Reading submission {submission_fega}")
+            LOG.debug("Reading submission %s", submission_fega)
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
             response = await resp.json()
             assert len(response["submissions"]) == 1
@@ -123,7 +123,7 @@ class TestSubmissions:
 
         # check that objects are added to submission
         async with client_logged_in.get(f"{submissions_url}/{submission_fega}") as resp:
-            LOG.debug(f"Checking that submission {submission_fega} was patched")
+            LOG.debug("Checking that submission %s was patched", submission_fega)
             res = await resp.json()
             expected_study = {
                 "accessionId": study_access_id,
@@ -186,7 +186,7 @@ class TestSubmissions:
 
         # check that study is updated to submission
         async with client_logged_in.get(f"{submissions_url}/{submission_fega}") as resp:
-            LOG.debug(f"Checking that submission {submission_fega} was patched")
+            LOG.debug("Checking that submission %s was patched", submission_fega)
             res = await resp.json()
             expected_study = {
                 "accessionId": study_access_id,
@@ -232,13 +232,13 @@ class TestSubmissionOperations:
         }
         submission_fega = await post_submission(client_logged_in, submission_data)
         async with client_logged_in.get(f"{submissions_url}/{submission_fega}") as resp:
-            LOG.debug(f"Checking that submission {submission_fega} was created")
+            LOG.debug("Checking that submission %s was created", submission_fega)
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
         # Create draft from test XML file and patch the draft into the newly created submission
         draft_id = await post_draft(client_logged_in, "sample", submission_fega, "SRS001433.xml")
         async with client_logged_in.get(f"{submissions_url}/{submission_fega}") as resp:
-            LOG.debug(f"Checking that submission {submission_fega} was patched")
+            LOG.debug("Checking that submission %s was patched", submission_fega)
             res = await resp.json()
             assert res["submissionId"] == submission_fega, "expected submission id does not match"
             assert res["name"] == submission_data["name"], "expected submission name does not match"
@@ -271,7 +271,7 @@ class TestSubmissionOperations:
             accession_id = ans["accessionId"]
 
         async with client_logged_in.get(f"{submissions_url}/{submission_fega}") as resp:
-            LOG.debug(f"Checking that submission {submission_fega} was patched")
+            LOG.debug("Checking that submission %s was patched", submission_fega)
             res = await resp.json()
             assert res["submissionId"] == submission_fega, "expected submission id does not match"
             assert res["published"] is False, "submission is published, expected False"
@@ -323,7 +323,7 @@ class TestSubmissionOperations:
         await get_draft(client_logged_in, "sample", draft_id, 404)
 
         async with client_logged_in.get(f"{submissions_url}/{submission_fega}") as resp:
-            LOG.debug(f"Checking that submission {submission_fega} was patched")
+            LOG.debug("Checking that submission %s was patched", submission_fega)
             res = await resp.json()
             assert res["submissionId"] == submission_fega, "expected submission id does not match"
             assert res["published"] is True, "submission is not published, expected True"
@@ -345,7 +345,7 @@ class TestSubmissionOperations:
             LOG.debug("Trying to update submission objects")
             assert resp.status == 405, f"HTTP Status code error, got {resp.status}"
         async with client_logged_in.patch(f"{publish_url}/{submission_fega}") as resp:
-            LOG.debug(f"Trying to re-publish submission {submission_fega}")
+            LOG.debug("Trying to re-publish submission %s", submission_fega)
             assert resp.status == 405, f"HTTP Status code error, got {resp.status}"
 
         # Check submission objects cannot be replaced
@@ -409,13 +409,13 @@ class TestSubmissionOperations:
         }
         submission_fega = await post_submission(client_logged_in, submission_data)
         async with client_logged_in.get(f"{submissions_url}/{submission_fega}") as resp:
-            LOG.debug(f"Checking that submission {submission_fega} was created")
+            LOG.debug("Checking that submission %s was created", submission_fega)
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
         # Create draft from test XML file and patch the draft into the newly created submission
         draft_id = await post_draft(client_logged_in, "sample", submission_fega, "SRS001433.xml")
         async with client_logged_in.get(f"{submissions_url}/{submission_fega}") as resp:
-            LOG.debug(f"Checking that submission {submission_fega} was patched")
+            LOG.debug("Checking that submission %s was patched", submission_fega)
             res = await resp.json()
             assert res["submissionId"] == submission_fega, "expected submission id does not match"
             assert res["name"] == submission_data["name"], "expected submission name does not match"
@@ -446,7 +446,7 @@ class TestSubmissionOperations:
             accession_id = ans["accessionId"]
 
         async with client_logged_in.get(f"{submissions_url}/{submission_fega}") as resp:
-            LOG.debug(f"Checking that submission {submission_fega} was patched")
+            LOG.debug("Checking that submission %s was patched", submission_fega)
             res = await resp.json()
             assert res["submissionId"] == submission_fega, "expected submission id does not match"
             assert res["published"] is False, "submission is published, expected False"
@@ -475,7 +475,7 @@ class TestSubmissionOperations:
         # Delete submission
         await delete_submission(client_logged_in, submission_fega)
         async with client_logged_in.get(f"{submissions_url}/{submission_fega}") as resp:
-            LOG.debug(f"Checking that submission {submission_fega} was deleted")
+            LOG.debug("Checking that submission %s was deleted", submission_fega)
             assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
 
     async def test_adding_doi_info_to_submission_works(self, client_logged_in, project_id):
@@ -493,7 +493,7 @@ class TestSubmissionOperations:
         }
         submission_fega = await post_submission(client_logged_in, submission_data)
         async with client_logged_in.get(f"{submissions_url}/{submission_fega}") as resp:
-            LOG.debug(f"Checking that submission {submission_fega} was created")
+            LOG.debug("Checking that submission %s was created", submission_fega)
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
         # Get correctly formatted DOI info and patch it into the new submission successfully
@@ -502,7 +502,7 @@ class TestSubmissionOperations:
         await put_submission_doi(client_logged_in, submission_fega, doi_data_raw)
 
         async with client_logged_in.get(f"{submissions_url}/{submission_fega}") as resp:
-            LOG.debug(f"Checking that submission {submission_fega} was patched")
+            LOG.debug("Checking that submission %s was patched", submission_fega)
             res = await resp.json()
             assert res["submissionId"] == submission_fega, "expected submission id does not match"
             assert res["name"] == submission_data["name"], "expected submission name does not match"
@@ -515,7 +515,7 @@ class TestSubmissionOperations:
         async with client_logged_in.put(
             f"{submissions_url}/{submission_fega}/doi", data=json.dumps(put_bad_doi)
         ) as resp:
-            LOG.debug(f"Tried updating submission {submission_fega}")
+            LOG.debug("Tried updating submission %s", submission_fega)
             assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
             res = await resp.json()
             assert (
@@ -524,7 +524,7 @@ class TestSubmissionOperations:
 
         # Check the existing DOI info is not altered
         async with client_logged_in.get(f"{submissions_url}/{submission_fega}") as resp:
-            LOG.debug(f"Checking that submission {submission_fega} was not patched with bad DOI")
+            LOG.debug("Checking that submission %s was not patched with bad DOI", submission_fega)
             res = await resp.json()
             assert res["doiInfo"] == doi_data, "submission doi does not match"
 
@@ -533,7 +533,7 @@ class TestSubmissionOperations:
         async with client_logged_in.patch(
             f"{submissions_url}/{submission_fega}", data=json.dumps(patch_add_bad_doi)
         ) as resp:
-            LOG.debug(f"Tried updating submission {submission_fega}")
+            LOG.debug("Tried updating submission %s", submission_fega)
             assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
             res = await resp.json()
             detail = res["detail"]
@@ -544,7 +544,7 @@ class TestSubmissionOperations:
         # Delete submission
         await delete_submission(client_logged_in, submission_fega)
         async with client_logged_in.get(f"{submissions_url}/{submission_fega}") as resp:
-            LOG.debug(f"Checking that submission {submission_fega} was deleted")
+            LOG.debug("Checking that submission %s was deleted", submission_fega)
             assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
 
     async def test_linking_folder_to_submission_works(self, client_logged_in, project_id):
@@ -563,7 +563,7 @@ class TestSubmissionOperations:
 
         submission_id = await post_submission(client_logged_in, submission_data)
         async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
-            LOG.debug(f"Checking that submission {submission_id} was created")
+            LOG.debug("Checking that submission %s was created", submission_id)
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
         # Test linking a folder, removing it, linking another
@@ -589,7 +589,7 @@ class TestSubmissionOperations:
         }
         submission_sdsx = await post_submission(client_logged_in, submission_data)
         async with client_logged_in.get(f"{submissions_url}/{submission_sdsx}") as resp:
-            LOG.debug(f"Checking that submission {submission_sdsx} was created")
+            LOG.debug("Checking that submission %s was created", submission_sdsx)
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
         # Get correctly formatted REMS info and patch it into the new submission successfully
@@ -598,7 +598,7 @@ class TestSubmissionOperations:
         await put_submission_rems(client_logged_in, submission_sdsx, rems_data_raw)
 
         async with client_logged_in.get(f"{submissions_url}/{submission_sdsx}") as resp:
-            LOG.debug(f"Checking that submission {submission_sdsx} was patched")
+            LOG.debug("Checking that submission %s was patched", submission_sdsx)
             res = await resp.json()
             assert res["submissionId"] == submission_sdsx, "expected submission id does not match"
             assert res["name"] == submission_data["name"], "expected submission name does not match"
@@ -612,7 +612,7 @@ class TestSubmissionOperations:
         async with client_logged_in.put(
             f"{submissions_url}/{submission_sdsx}/rems", data=json.dumps(put_bad_rems)
         ) as resp:
-            LOG.debug(f"Tried updating submission {submission_sdsx}")
+            LOG.debug("Tried updating submission %s", submission_sdsx)
             assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
             res = await resp.json()
             assert (
@@ -841,6 +841,7 @@ class TestSubmissionPagination:
         """Check that /submissions returns submissions filtered by date modified.
 
         :param client_logged_in: HTTP client in which request call is made
+        :param database: database client
         :param project_id: id of the project the submission belongs to
         """
         submissions = []
@@ -951,7 +952,7 @@ class TestSubmissionDataIngestion:
 
         submission_id = await post_submission(admin_logged_in, submission_data)
         async with admin_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
-            LOG.debug(f"Checking that submission {submission_id} was created")
+            LOG.debug("Checking that submission %s was created", submission_id)
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
         dataset_id, _ = await post_object(admin_logged_in, "dataset", submission_id, "dataset.xml")

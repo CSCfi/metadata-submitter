@@ -41,7 +41,7 @@ class TestObjects:
             """Individual tests to be run in parallel."""
             accession_id = await post_object(client_logged_in, schema, submission_id, filename)
             async with client_logged_in.get(f"{objects_url}/{schema}/{accession_id[0]}") as resp:
-                LOG.debug(f"Checking that {accession_id[0]} JSON is in {schema}")
+                LOG.debug("Checking that %s JSON is in %s", accession_id[0], schema)
                 res = await resp.json()
                 assert resp.status == 200, f"HTTP Status code error, got {resp.status}: {res}"
                 title = res["descriptor"].get("studyTitle", "") if schema == "study" else res.get("title", "")
@@ -54,19 +54,19 @@ class TestObjects:
                 filename,
             )
             async with client_logged_in.get(f"{objects_url}/{schema}/{accession_id[0]}?format=xml") as resp:
-                LOG.debug(f"Checking that {accession_id[0]} XML is in {schema}")
+                LOG.debug("Checking that %s XML is in %s", accession_id[0], schema)
                 assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
             await delete_object(client_logged_in, schema, accession_id[0])
             async with client_logged_in.get(f"{objects_url}/{schema}/{accession_id[0]}") as resp:
-                LOG.debug(f"Checking that JSON object {accession_id[0]} was deleted")
+                LOG.debug("Checking that JSON object %s was deleted", accession_id[0])
                 assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
             async with client_logged_in.get(f"{objects_url}/{schema}/{accession_id[0]}?format=xml") as resp:
-                LOG.debug(f"Checking that XML object {accession_id[0]} was deleted")
+                LOG.debug("Checking that XML object %s was deleted", accession_id[0])
                 assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
 
             async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
-                LOG.debug(f"Checking that object {accession_id[0]} was deleted from submission {submission_id}")
+                LOG.debug("Checking that object %s was deleted from submission %s", accession_id[0], submission_id)
                 res = await resp.json()
                 expected_true = not any(d["accessionId"] == accession_id[0] for d in res["metadataObjects"])
                 assert expected_true, f"object {accession_id[0]} still exists"
@@ -96,10 +96,10 @@ class TestObjects:
             for item in data:
                 items.append(item)
                 async with client_logged_in.get(f"{objects_url}/{schema}/{item['accessionId']}") as resp:
-                    LOG.debug(f"Checking that {item['accessionId']} JSON is in {schema}")
+                    LOG.debug("Checking that %s JSON is in %s", item["accessionId"], schema)
                     assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
                 async with client_logged_in.get(f"{objects_url}/{schema}/{item['accessionId']}?format=xml") as resp:
-                    LOG.debug(f"Checking that {item['accessionId']} XML is in {schema}")
+                    LOG.debug("Checking that %s XML is in %s", item["accessionId"], schema)
                     assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
                     # Also check the stored XML contents were modified to match the json object
                     # and only include a single child item
@@ -150,10 +150,10 @@ class TestObjects:
             _id, _schema = item["accessionId"], item["schema"]
             await delete_object(client_logged_in, _schema, _id)
             async with client_logged_in.get(f"{objects_url}/{_schema}/{_id}") as resp:
-                LOG.debug(f"Checking that JSON object {_id} was deleted")
+                LOG.debug("Checking that JSON object %s was deleted", _id)
                 assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
             async with client_logged_in.get(f"{objects_url}/{_schema}/{_id}?format=xml") as resp:
-                LOG.debug(f"Checking that XML object {_id} was deleted")
+                LOG.debug("Checking that XML object %s was deleted", _id)
                 assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
 
     async def test_csv(self, client_logged_in, submission_fega):
@@ -174,7 +174,7 @@ class TestObjects:
         first_sample = samples[0][0]["accessionId"]
 
         async with client_logged_in.get(f"{objects_url}/{_schema}/{first_sample}") as resp:
-            LOG.debug(f"Checking that {first_sample} JSON is in {_schema}")
+            LOG.debug("Checking that %s JSON is in %s", first_sample, _schema)
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
             res = await resp.json()
             title = res.get("title", "")
@@ -182,11 +182,11 @@ class TestObjects:
 
         await delete_object(client_logged_in, _schema, first_sample)
         async with client_logged_in.get(f"{objects_url}/{_schema}/{first_sample}") as resp:
-            LOG.debug(f"Checking that JSON object {first_sample} was deleted")
+            LOG.debug("Checking that JSON object %s was deleted", first_sample)
             assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
 
         async with client_logged_in.get(f"{submissions_url}/{submission_fega}") as resp:
-            LOG.debug(f"Checking that object {first_sample} was deleted from submission {submission_fega}")
+            LOG.debug("Checking that object %s was deleted from submission %s", first_sample, submission_fega)
             res = await resp.json()
             expected_true = not any(d["accessionId"] == first_sample for d in res["metadataObjects"])
             assert expected_true, f"object {first_sample} still exists"

@@ -57,7 +57,7 @@ async def setmock(req: web.Request) -> web.Response:
     user_sub = req.query["sub"]
     user_family_name = req.query["family"]
     user_given_name = req.query["given"]
-    LOG.info(f"{mock_auth_url_local}: {user_sub}, {user_family_name}, {user_given_name}")
+    LOG.info("%s: %s, %s, %s", mock_auth_url_local, user_sub, user_family_name, user_given_name)
 
     return web.HTTPOk()
 

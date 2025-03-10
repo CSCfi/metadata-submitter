@@ -99,14 +99,14 @@ def isAdmin(req: web.Request) -> web.Response | None:
 
             subject = claims.get("sub")
             if subject not in admins:
-                LOG.error(f"{subject} is not an admin")
+                LOG.error("%s is not an admin", subject)
                 raise Exception("not authorized")
         except Exception as e:
             return web.json_response({"error": f"access denied: {str(e)}"}, status=401)
 
         return None
 
-    LOG.error(f"Invalid Authorization header {auth_header}")
+    LOG.error("Invalid Authorization header %s", auth_header)
 
     return web.json_response({"error": "bad token"}, status=401)
 
@@ -122,7 +122,7 @@ async def ingest_file(req: web.Request) -> web.Response:
         content = await req.json()
         ingestion_data = IngestionModel(**content)
     except (json.decoder.JSONDecodeError, ValidationError) as e:
-        LOG.exception(f"Invalid JSON payload: {e}")
+        LOG.exception("Invalid JSON payload: %s", e)
         return web.json_response(
             {"error": f"json decoding: {e}", "status": 400},
             status=400,
@@ -132,7 +132,7 @@ async def ingest_file(req: web.Request) -> web.Response:
     for file in user_files:
         if ingestion_data.filepath == file.get("inboxPath", ""):
             file["fileStatus"] = "verified"
-            LOG.info(f"Ingested file {ingestion_data.filepath}")
+            LOG.info("Ingested file %s", ingestion_data.filepath)
 
             return web.HTTPOk()
 
@@ -153,14 +153,14 @@ async def post_accession_id(req: web.Request) -> web.Response:
         content = await req.json()
         accession_data = AccessionModel(**content)
     except (json.decoder.JSONDecodeError, ValidationError) as e:
-        LOG.exception(f"Invalid JSON payload: {e}")
+        LOG.exception("Invalid JSON payload: %s", e)
         return web.json_response(
             {"error": f"json decoding: {e}", "status": 400},
             status=400,
         )
 
     if accession_data.accession_id in file_accession_ids:
-        reason = f"accession ID {accession_data.accession_id} already in use"
+        reason = "accession ID %s already in use" % accession_data.accession_id
         LOG.error(reason)
         return web.json_response(
             {"error": reason, "status": 400},
@@ -171,7 +171,7 @@ async def post_accession_id(req: web.Request) -> web.Response:
     for file in user_files:
         if accession_data.filepath == file.get("inboxPath", ""):
             if file.get("fileStatus", "") != "verified":
-                reason = f"File {accession_data.filepath} is not verified"
+                reason = "File %s is not verified" % accession_data.filepath
                 LOG.error(reason)
 
                 return web.json_response(reason=reason, status=400)
@@ -181,7 +181,7 @@ async def post_accession_id(req: web.Request) -> web.Response:
                 "filepath": accession_data.filepath,
             }
             file["fileStatus"] = "ready"
-            LOG.info(f"Assigned accession ID {accession_data.accession_id} for file {accession_data.filepath}")
+            LOG.info("Assigned accession ID %s for file %s", accession_data.accession_id, accession_data.filepath)
 
             return web.HTTPOk()
 
@@ -201,7 +201,7 @@ async def create_dataset(req: web.Request) -> web.Response:
         content = await req.json()
         dataset_data = DatasetModel(**content)
     except (json.decoder.JSONDecodeError, ValidationError) as e:
-        LOG.exception(f"Invalid JSON payload: {e}")
+        LOG.exception("Invalid JSON payload: %s", e)
         return web.json_response(
             {"error": f"json decoding: {e}", "status": 400},
             status=400,
@@ -211,7 +211,7 @@ async def create_dataset(req: web.Request) -> web.Response:
     found = [id in file_accession_ids.keys() for id in dataset_data.accession_ids]
     if not all(found):
         invalid_ids = [id for (id, f) in zip(dataset_data.accession_ids, found) if not f]
-        LOG.error(f"Accession IDs {invalid_ids} not found")
+        LOG.error("Accession IDs %s not found", invalid_ids)
         return web.json_response(
             "accession IDs are not valid",
             status=500,
@@ -226,11 +226,11 @@ async def create_dataset(req: web.Request) -> web.Response:
             files_in_inbox[user] = [file for file in files_in_inbox[user] if file["inboxPath"] != path]
             file_accession_ids.pop(id)
         except KeyError as e:
-            reason = f"Something went wrong trying to delete files from inbox: {e}"
+            reason = "Something went wrong trying to delete files from inbox: %s" % e
             LOG.exception(reason)
             raise web.HTTPServerError(reason=reason)
 
-    LOG.info(f"Created dataset {dataset_data.dataset_id}")
+    LOG.info("Created dataset %s", dataset_data.dataset_id)
 
     return web.HTTPOk()
 
@@ -255,11 +255,11 @@ async def release_dataset(req: web.Request) -> web.Response:
         raise web.HTTPBadRequest(reason=reason)
 
     if status != "registered":
-        reason = f"Dataset already {status}"
+        reason = "Dataset already %s" % status
         LOG.error(reason)
         raise web.HTTPBadRequest(reason=reason)
 
-    LOG.info(f"Released dataset {dataset}")
+    LOG.info("Released dataset %s", dataset)
     datasets[dataset]["status"] = "released"
 
     return web.HTTPOk()
@@ -289,7 +289,7 @@ async def post_key(req: web.Request) -> web.Response:
         content = await req.json()
         key_data = KeyModel(**content)
     except (json.decoder.JSONDecodeError, ValidationError) as e:
-        LOG.exception(f"Invalid JSON payload: {e}")
+        LOG.exception("Invalid JSON payload: %s", e)
         return web.json_response(
             {"error": f"json decoding: {e}", "status": 400},
             status=400,
@@ -304,7 +304,7 @@ async def post_key(req: web.Request) -> web.Response:
         )
         raw_key = base64.b64decode(key64)
     except binascii.Error as e:
-        LOG.exception(f"Invalid JSON payload: {e}")
+        LOG.exception("Invalid JSON payload: %s", e)
         return web.json_response(
             {"error": f"base64 decoding: {e}", "status": 400},
             status=400,
@@ -313,7 +313,7 @@ async def post_key(req: web.Request) -> web.Response:
     try:
         _ = PublicKey(raw_key)
     except (exc.TypeError, exc.ValueError) as e:
-        LOG.exception(f"Invalid JSON payload: {e}")
+        LOG.exception("Invalid JSON payload: %s", e)
         return web.json_response(
             {"error": f"not a public key: {e}", "status": 400},
             status=400,
@@ -327,7 +327,7 @@ async def post_key(req: web.Request) -> web.Response:
             status=409,
         )
 
-    LOG.info(f"Added public key {key_data.pubkey}")
+    LOG.info("Added public key %s", key_data.pubkey)
     public_keys[key_hex] = key_data.description
 
     return web.Response(status=200)
@@ -363,7 +363,7 @@ async def init() -> web.Application:
                 time.sleep(2)
                 continue
             except (json.decoder.JSONDecodeError, KeyError, IndexError) as e:
-                reason = f"Failed to retrieve jwt key: {e}"
+                reason = "Failed to retrieve jwt key: %s" % e
                 LOG.exception(reason)
                 raise web.HTTPServerError(reason=reason)
             else:

@@ -33,7 +33,7 @@ class TestMinimalJsonPublication:
         await publish_submission(client_logged_in, submission_fega)
 
         async with client_logged_in.get(f"{submissions_url}/{submission_fega}") as resp:
-            LOG.debug(f"Checking that submission {submission_fega} was published")
+            LOG.debug("Checking that submission %s was published", submission_fega)
             res = await resp.json()
             assert res["submissionId"] == submission_fega, "expected submission id does not match"
             assert res["published"] is True, "submission is published, expected False"
@@ -63,13 +63,13 @@ class TestMinimalJsonPublicationRems:
         await publish_submission(client_logged_in, submission_fega)
 
         async with client_logged_in.get(f"{submissions_url}/{submission_fega}") as resp:
-            LOG.debug(f"Checking that submission {submission_fega} was published")
+            LOG.debug("Checking that submission %s was published", submission_fega)
             res = await resp.json()
             assert res["submissionId"] == submission_fega, "expected submission id does not match"
             assert res["published"] is True, "submission is published, expected False"
 
         async with client_logged_in.get(f"{objects_url}/dataset/{ds_id}?submission_fega={submission_fega}") as resp:
-            LOG.debug(f"Checking that dataset {ds_id} in submission {submission_fega} has rems data")
+            LOG.debug("Checking that dataset %s in submission %s has rems data", ds_id, submission_fega)
             res = await resp.json()
             assert res["accessionId"] == ds_id, "expected dataset id does not match"
             assert "internal_rems" in res, "expected internal_rems field not found in dataset"

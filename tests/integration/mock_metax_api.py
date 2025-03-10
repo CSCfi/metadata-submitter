@@ -62,7 +62,7 @@ async def get_dataset(req: web.Request) -> web.Response:
     :return: HTTP response with mocked Metax dataset data
     """
     metax_id = req.match_info["metax_id"]
-    LOG.info(f"Retrieving Metax dataset {metax_id}")
+    LOG.info("Retrieving Metax dataset %s", metax_id)
     if not metax_id:
         LOG.error("Query params missing Metax ID.")
         raise web.HTTPBadRequest(
@@ -73,14 +73,14 @@ async def get_dataset(req: web.Request) -> web.Response:
         )
     datasets = list(drafts.keys()) + list(published.keys())
     if metax_id not in datasets:
-        LOG.error(f"No dataset found with identifier {metax_id}")
+        LOG.error("No dataset found with identifier %s", metax_id)
         raise web.HTTPNotFound(reason={"detail": f"{metax_id} Not found."})
     try:
         content = drafts[metax_id]
     except KeyError:
         content = published[metax_id]
 
-    LOG.debug(f"Found {content['state']} dataset {content['identifier']} with data: {content}")
+    LOG.debug("Found %s dataset %s with data: %s", content["state"], content["identifier"], content)
     return web.Response(
         body=ujson.dumps(content, escape_forward_slashes=False),
         status=200,
@@ -99,7 +99,7 @@ async def post_dataset(req: web.Request) -> web.Response:
         content = await req.json()
     except json.decoder.JSONDecodeError as e:
         reason = f"JSON is not correctly formatted. See: {e}"
-        LOG.exception(f"Error while validating payload: {reason}")
+        LOG.exception("Error while validating payload: %s", reason)
         raise web.HTTPBadRequest(
             reason={
                 "detail": reason,
@@ -123,7 +123,7 @@ async def post_dataset(req: web.Request) -> web.Response:
     }
     resp_data = dict(content, **metax_additions)
     drafts[metax_id] = resp_data
-    LOG.info(f'Created Metax dataset with identifier {resp_data["identifier"]}')
+    LOG.info("Created Metax dataset with identifier %s", resp_data["identifier"])
     return web.Response(
         body=ujson.dumps(resp_data, escape_forward_slashes=False),
         status=201,
@@ -147,14 +147,14 @@ async def update_dataset(req: web.Request) -> web.Response:
             }
         )
     if metax_id not in drafts.keys():
-        LOG.error(f"No dataset found with identifier {metax_id}")
+        LOG.error("No dataset found with identifier %s", metax_id)
         raise web.HTTPNotFound(reason={"detail": "Not found."})
 
     try:
         content = await req.json()
     except json.decoder.JSONDecodeError as e:
         reason = f"JSON is not correctly formatted. See: {e}"
-        LOG.exception(f"Error while validating payload: {reason}")
+        LOG.exception("Error while validating payload: %s", reason)
         raise web.HTTPBadRequest(
             reason={
                 "detail": reason,
@@ -168,7 +168,7 @@ async def update_dataset(req: web.Request) -> web.Response:
 
     drafts[metax_id]["date_modified"] = str(datetime.now())
 
-    LOG.info(f'Updated Metax dataset with identifier {drafts[metax_id]["identifier"]}')
+    LOG.info("Updated Metax dataset with identifier %s", drafts[metax_id]["identifier"])
     return web.Response(
         body=ujson.dumps(drafts[metax_id], escape_forward_slashes=False),
         status=200,
@@ -190,7 +190,7 @@ async def patch_datasets(req: web.Request) -> web.Response:
         content = await req.json()
     except json.decoder.JSONDecodeError as e:
         reason = f"JSON is not correctly formatted. See: {e}"
-        LOG.exception(f"Error while validating payload: {reason}")
+        LOG.exception("Error while validating payload: %s", reason)
         raise web.HTTPBadRequest(
             reason={
                 "detail": reason,
@@ -252,14 +252,14 @@ async def patch_dataset(req: web.Request) -> web.Response:
             }
         )
     if metax_id not in drafts.keys():
-        LOG.error(f"No dataset found with identifier {metax_id}")
+        LOG.error("No dataset found with identifier %s", metax_id)
         raise web.HTTPNotFound(reason={"detail": "Not found."})
 
     try:
         content = await req.json()
     except json.decoder.JSONDecodeError as e:
         reason = f"JSON is not correctly formatted. See: {e}"
-        LOG.exception(f"Error while validating payload: {reason}")
+        LOG.exception("Error while validating payload: %s", reason)
         raise web.HTTPBadRequest(
             reason={
                 "detail": reason,
@@ -271,7 +271,7 @@ async def patch_dataset(req: web.Request) -> web.Response:
 
     drafts[metax_id]["date_modified"] = str(datetime.now())
 
-    LOG.info(f'Updated Metax dataset with identifier {drafts[metax_id]["identifier"]}')
+    LOG.info("Updated Metax dataset with identifier %s", drafts[metax_id]["identifier"])
     return web.Response(
         body=ujson.dumps(drafts[metax_id], escape_forward_slashes=False),
         status=200,
@@ -296,11 +296,11 @@ async def publish_dataset(req: web.Request) -> web.Response:
             }
         )
     if metax_id in published:
-        LOG.error(f"Dataset {metax_id} is already published.")
+        LOG.error("Dataset %s is already published.", metax_id)
         reason = {"detail": ["Dataset is already published."], "error_identifier": str(datetime.now())}
         raise web.HTTPBadRequest(reason=reason)
     if metax_id not in drafts.keys():
-        LOG.error(f"No dataset found with identifier {metax_id}")
+        LOG.error("No dataset found with identifier %s", metax_id)
         raise web.HTTPNotFound(reason={"detail": "Not found."})
 
     data = drafts[metax_id]
@@ -309,7 +309,7 @@ async def publish_dataset(req: web.Request) -> web.Response:
     del drafts[metax_id]
     published[metax_id]["state"] = "published"
     published[metax_id]["modified"] = str(datetime.now())
-    LOG.info(f"Published Metax dataset with identifier {metax_id}")
+    LOG.info("Published Metax dataset with identifier %s", metax_id)
     return web.Response(
         body=ujson.dumps(
             {"preferred_identifier": data["research_dataset"]["preferred_identifier"]}, escape_forward_slashes=False
@@ -326,7 +326,7 @@ async def delete_dataset(req: web.Request) -> web.Response:
     :return: HTTP response with HTTP status
     """
     metax_id = req.match_info["metax_id"]
-    LOG.debug(f"Deleting Metax dataset {metax_id}")
+    LOG.debug("Deleting Metax dataset %s", metax_id)
 
     if not metax_id:
         raise web.HTTPBadRequest(
@@ -339,7 +339,7 @@ async def delete_dataset(req: web.Request) -> web.Response:
         raise web.HTTPNotFound(reason={"detail": "Not found."})
     else:
         del drafts[metax_id]
-    LOG.info(f"Deleted Metax dataset with identifier {metax_id}")
+    LOG.info("Deleted Metax dataset with identifier %s", metax_id)
     return web.HTTPNoContent()
 
 
@@ -367,12 +367,12 @@ def validate_data(data: Dict, draft=True) -> None:
     if not all(key in data.keys() for key in required):
         reason = {"detail": [f"Dataset did not include all required fields: {', '.join(required)}."]}
         reason = json.dumps(reason)
-        LOG.error(f"Error while validating payload: {reason}")
+        LOG.error("Error while validating payload: %s", reason)
         raise web.HTTPBadRequest(reason=reason, content_type="application/json")
     if not all(key in data["research_dataset"].keys() for key in rd_required):
         reason = {"detail": [f"Research dataset did not include all required fields: {', '.join(rd_required)}."]}
         reason = json.dumps(reason)
-        LOG.error(f"Error while validating payload: {reason}")
+        LOG.error("Error while validating payload: %s", reason)
         raise web.HTTPBadRequest(reason=reason, content_type="application/json")
 
 
