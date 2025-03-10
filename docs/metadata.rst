@@ -7,7 +7,7 @@ ENA Metadata Model
 The object schemas that are used for rendering the forms and validating the information submitted
 to the application are based on the `ENA (European Nucleotide Archive) Metadata Model <https://ena-docs.readthedocs.io/en/latest/submit/general-guide/metadata.html>`_.
 
-The source XML schemas are from `ENA Sequence Github repository <https://github.com/enasequence/schema/tree/master/src/main/resources/uk/ac/ebi/ena/sra/schema>`_.
+The source XML schemas are from `ENA Sequence Github repository <https://github.com/enasequence/webin-xml/tree/master/src/main/resources/uk/ac/ebi/ena/sra/schema>`_.
 The XML schemas are converted to JSON Schemas so that they can be both validate the submitted data as well as be rendered as forms in the User Interface.
 For this reason the translation from XML Schema to JSON schema is not a 1-1 mapping, but an interpretation.
 
@@ -54,7 +54,7 @@ Related guides for metadata submission:
 
 - EGA Metadata guides:
 
-    - `Submitting array based metadata <https://ega-archive.org/submission/array_based/metadata>`_
-    - `Submitting sequence and phenotype data <https://ega-archive.org/submission/tools/submitter-portal>`_
+    - `Submitting array based metadata <https://ega-archive.org/submission/metadata/submission/array/>`_
+    - `Submitting sequence and phenotype data <https://ega-archive.org/submission/metadata/submission/sequencing-phenotype/submitter-portal/>`_
 
 - ENA Data Submission `general Guide  <https://ena-docs.readthedocs.io/en/latest/submit/general-guide.html>`_
