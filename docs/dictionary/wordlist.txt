@@ -361,6 +361,7 @@ imageref
 imagesetattribute
 imagetype
 ini
+initdb
 inkeri
 insdc
 integrations
@@ -522,6 +523,7 @@ novaseq
 novia
 npx
 nuccore
+num
 numericattribute
 nuosu
 nynorsk
@@ -581,6 +583,7 @@ pcsubstance
 pdb
 pdbcls
 pdf
+perceivably
 perun
 pgm
 phenome
