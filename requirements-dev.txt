@@ -22,7 +22,7 @@ alabaster==1.0.0
     # via sphinx
 annotated-types==0.7.0
     # via pydantic
-astroid==3.3.8
+astroid==3.3.9
     # via pylint
 attrs==25.1.0
     # via
