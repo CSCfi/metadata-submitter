@@ -9,6 +9,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- Implemented support for Bigpicture annotation and observer metadata schemas
 - Included new Bigpicture related schemas
 - Add /ingest endpoint for starting data ingestion
 - Mocked Admin API service #843
@@ -29,6 +30,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- Updated some EGA related XML schemas to be up-to-date
 - (users) Bigpicture related metadata validation process now follows the Bigpicture metadata version 2.0.0
 - Updated XML to JSON conversion logic to accommodate new metadata schema versions
 - REMS object is refined and validated when it is added to a submission #532 #649
@@ -45,6 +47,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Removed
 
+- Some XSD files which are perceivably not being utilized at the moment
 - Previously implemented logic that automatically converted ISO-8601 duration string in incoming metadata to a numeric value
 - Some schemas that are unnecessary for Generic use case workflow #841
 - RabbitMQ message broker functionality
