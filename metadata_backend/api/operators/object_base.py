@@ -241,7 +241,7 @@ class BaseObjectOperator(ABC):
         return delete_success
 
     async def check_exists(self, schema_type: str, accession_id: str) -> None:
-        """Check the existance of a object by its id in the database.
+        """Check the existence of a object by its id in the database.
 
         :param schema_type: Schema type of the object to find.
         :param accession_id: Identifier of object to find.

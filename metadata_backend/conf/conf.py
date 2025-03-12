@@ -43,12 +43,12 @@ from ..helpers.parser import str_to_bool
 from ..helpers.workflow import Workflow
 from .taxonomy_files.taxonomy_conf import TAXONOMY_NAME_FILE
 
-# 1) Set up database client and custom timeouts for spesific parameters.
+# 1) Set up database client and custom timeouts for specific parameters.
 # Set custom timeouts and other parameters here so they can be imported to
 # other modules if needed.
 
-# If just MONGO_DATABASE is specified it will autenticate the user against it.
-# If just MONGO_AUTHDB is specified it will autenticate the user against it.
+# If just MONGO_DATABASE is specified it will authenticate the user against it.
+# If just MONGO_AUTHDB is specified it will authenticate the user against it.
 # If both MONGO_DATABASE and MONGO_AUTHDB are specified,
 # the client will attempt to authenticate the specified user to the MONGO_AUTHDB database.
 # If both MONGO_DATABASE and MONGO_AUTHDB are unspecified,

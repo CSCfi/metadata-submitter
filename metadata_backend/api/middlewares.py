@@ -130,7 +130,7 @@ def _json_problem(exception: web.HTTPError, url: URL, _type: str = "about:blank"
         "instance": url.path,  # optional
     }
     # we require the additional members to be sent as dict
-    # so that we can easily append them to preformated response
+    # so that we can easily append them to pre-formatted response
     if exception.text != exception.reason and exception.content_type == "application/json":
         # we use the content to append to extend application/problem+json
         # response, with additional members

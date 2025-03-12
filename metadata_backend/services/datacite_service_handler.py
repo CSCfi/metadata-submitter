@@ -129,7 +129,7 @@ class DataciteServiceHandler(ServiceHandler):
         LOG.info("Datacite DOI: %r deleted.", doi)
 
     async def _healthcheck(self) -> dict[str, Any]:
-        """Check DOI service hearthbeat.
+        """Check DOI service heartbeat.
 
         This can return only 200 or 500
 

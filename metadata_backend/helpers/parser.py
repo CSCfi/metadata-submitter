@@ -331,7 +331,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
         - dataBlock has the content of files array to be the same in run
           and analysis.
         - files is flatten for analysis and run so that it contains
-          an array of files indiferent of the number.
+          an array of files indifferent of the number.
         - spotDescriptor takes the value of its child spotDecodeSpec
         - process platform different for experiment
         - simplify assembly key and take the value from custom and standard keys
@@ -344,7 +344,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
         - analysisRef, sampleRef, runRef, experimentRef need to be an array
         - experimentRef in run is an array with maxitems 1
         - if processing is empty do not show it as it is not required
-        - processing pipeSection should be intepreted as an array
+        - processing pipeSection should be interpreted as an array
         - processing pipeSection prevStepIndex can be None if not specified empty
         - if sampleData does not exist (as it can only be added via forms) we will
           add it with default gender unknown
@@ -492,7 +492,7 @@ class XMLToJSONParser:
         samples: list[dict[str, Any]] = bio_beings + cases + specimens + blocks + slides
         if not samples:
             # In the off chance that the sample was not submitted inside a sample set
-            # we need to do this for subsuquent steps
+            # we need to do this for subsequent steps
             root = ET.fromstring(xml_data)
             match root.tag:
                 case "BIOLOGICAL_BEING":
@@ -646,9 +646,9 @@ class CSVToJSONParser:
             # This is required to pass validation against current sample schema
             if schema_type == "sample" and "sampleName" not in row:
                 # Without TaxonID provided we assume the sample relates to
-                # Homo Sapien which has default TaxonID of 9606
+                # Homo Sapiens which has default TaxonID of 9606
                 _tmp["sampleName"] = {"taxonId": 9606}
-            # if geneder exists we will format it accordingly
+            # if gender exists we will format it accordingly
             if not bool(_tmp["gender"]):
                 _tmp["sampleData"] = {"gender": "unknown"}
             else:

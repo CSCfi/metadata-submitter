@@ -19,7 +19,7 @@ matrix:
   # Attributes not specified: not included in the output
   - pyspelling.filters.html:
   sources:
-  - '*.md'
+  - '{DEPLOYMENT,README}.md'
   - 'docs/*.md'
   - '.github/**/*.md'
   default_encoding: utf-8
@@ -69,41 +69,24 @@ matrix:
 
 - name: python
   sources:
-  - '{metadata_submitter,scripts}/**/*.py'
+  - '{metadata_backend,scripts}/**/*.py'
   aspell:
     lang: en
+    ignore-case: true
   dictionary:
     wordlists:
     - docs/dictionary/wordlist.txt
   pipeline:
+  # Only spellcheck docstrings and comments
   - pyspelling.filters.python:
-      group_comments: true
-  - pyspelling.flow_control.wildcard:
-      allow:
-      - py-comment
+      strings: false
+      comments: true
+      docstrings: true
   - pyspelling.filters.context:
       context_visible_first: true
       delimiters:
-      # Ignore lint (noqa) and coverage (pragma) as well as shebang (#!) and bandit (nosec)
-      - open: '^(?: *(?:noqa\b|pragma: no cover|nosec)|!)'
+      # Ignore lint ignores
+      - open: '^(?: *(?:noqa\b|nosec\b))'
         close: '$'
-      # Ignore Python encoding string -*- encoding stuff -*-
-      - open: '^ *-\*-'
-        close: '-\*-$'
-      # Ignore docstring variable param
-      - open: '^(?: *(:param \w+:))'
-        close: '$'
-  - pyspelling.filters.context:
-      context_visible_first: true
-      escapes: '\\[\\`]'
-      delimiters:
-      # Ignore multiline content between fences (fences can have 3 or more back ticks)
-      # ```
-      # content
-      # ```
-      - open: '(?s)^(?P<open> *`{3,})$'
-        close: '^(?P=open)$'
-      # Ignore text between inline back ticks
-      - open: '(?P<open>`+)'
-        close: '(?P=open)'
+  # Ignore urls
   - pyspelling.filters.url:

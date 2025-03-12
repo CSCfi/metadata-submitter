@@ -40,7 +40,7 @@ async def multipart_content(
         # we expect a simple body part (BodyPartReader) instance here
         # otherwise, it will be another MultipartReader instance for the nested multipart.
         # we don't need to cast the part BodyPartReader, we fail if we get anything else.
-        # MultipartReader is aimed at ``multiplart/mixed``, ``multipart/related`` content
+        # MultipartReader is aimed at ``multipart/mixed``, ``multipart/related`` content
         # we will be working with ``multipart/form-data`` only.
         if isinstance(part, MultipartReader):
             reason = "We cannot work nested multipart content."
@@ -152,7 +152,7 @@ def _get_content_with_type(
         LOG.error(reason)
         raise web.HTTPBadRequest(reason=reason)
     if xml_files:
-        # Files are sorted to spesific order by their schema priorities
+        # Files are sorted to specific order by their schema priorities
         # (e.g. submission should be processed before study).
         return sorted(xml_files, key=lambda x: schema_types[x[1]]["priority"]), "xml"
     if csv_files:

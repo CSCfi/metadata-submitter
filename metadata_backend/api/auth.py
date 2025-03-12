@@ -80,7 +80,7 @@ class AccessHandler:
         """Redirect user to AAI login.
 
         :raises: HTTPInternalServerError if OIDC configuration init failed
-        :returns: HTTPSseeOther redirect to AAI
+        :returns: HTTPSeeOther redirect to AAI
         """
         LOG.debug("Start login")
 
@@ -328,7 +328,7 @@ class AAIServiceHandler(ServiceHandler):
         )
 
     async def _healthcheck(self) -> dict[str, str]:
-        """Check AAI service hearthbeat.
+        """Check AAI service heartbeat.
 
         This will return a JSON with well-known OIDC endpoints.
 

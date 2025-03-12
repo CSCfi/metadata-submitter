@@ -240,7 +240,7 @@ class ObjectOperator(BaseObjectOperator):
         as these are generated when created.
         Will not replace ``metaxIdentifier`` and ``doi`` for ``study`` and ``dataset``
         as it is generated when created.
-        We will keep also ``publisDate`` and ``dateCreated`` from old object.
+        We will keep also ``publishDate`` and ``dateCreated`` from old object.
 
         :param schema_type: Schema type of the object to replace.
         :param accession_id: Identifier of object to replace.
