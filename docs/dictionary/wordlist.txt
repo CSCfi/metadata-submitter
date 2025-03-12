@@ -65,6 +65,7 @@ exome
 exonym
 fastq
 fbtr
+fi
 flx
 followingly
 fula
@@ -108,6 +109,7 @@ kordelinin
 kubernetes
 kyrgyz
 lexically
+lfs
 liskov
 lissn
 liv
@@ -168,6 +170,7 @@ sairaanhoitopiiri
 sampledemuxdirective
 sda
 sdev
+sds
 sdsx
 sed
 selex
