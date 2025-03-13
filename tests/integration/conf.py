@@ -104,7 +104,7 @@ admin_url = f"{os.getenv('ADMIN_URL', 'http://localhost:8004')}"
 auth = aiohttp.BasicAuth(os.getenv("METAX_USER", "sd"), os.getenv("METAX_PASS", "test"))
 beacon_discovery_url = os.getenv("BEACON_DISCOVERY_URL", "https://bp-demo.rahtiapp.fi/")
 metax_discovery_url = os.getenv("METAX_DISCOVERY_URL", "https://etsin.fairdata.fi/dataset/")
-# to form direct contact to db with eg create_submission()
+# to form direct contact to db with e.g. create_submission()
 DATABASE = os.getenv("MONGO_DATABASE", "default")
 AUTHDB = os.getenv("MONGO_AUTHDB", "admin")
 HOST = os.getenv("MONGO_HOST", "localhost:27017")

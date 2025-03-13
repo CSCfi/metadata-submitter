@@ -9,7 +9,7 @@ class Mock_Request:
 
     It contains the dictionary
     representation of the requests that will be passed to the functions.
-    (the actual request eing a MutableMapping instance)
+    (the actual request being a MutableMapping instance)
     """
 
     def __init__(self):

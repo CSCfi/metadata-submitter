@@ -60,9 +60,9 @@ class TestQueries:
                 assert resp.status == expected_status, f"HTTP Status code error, got {resp.status}"
 
         for schema, schema_queries in queries.items():
-            LOG.debug(f"Querying {schema} collection with working params")
+            LOG.debug("Querying %s collection with working params", schema)
             await asyncio.gather(*[do_one_query(schema, key, value, 200) for key, value in schema_queries])
-            LOG.debug(f"Querying {schema} collection with non-working params")
+            LOG.debug("Querying %s collection with non-working params", schema)
             invalid = "yoloswaggings"
             await asyncio.gather(*[do_one_query(schema, key, invalid, 404) for key, _ in schema_queries])
 

@@ -114,7 +114,7 @@ async def get_object(sess, schema, accession_id):
     :return: data of an object
     """
     async with sess.get(f"{objects_url}/{schema}/{accession_id}") as resp:
-        LOG.debug(f"Getting object from {schema} with {accession_id}")
+        LOG.debug("Getting object from %s with %s", schema, accession_id)
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         data = await resp.json()
         return data
@@ -129,7 +129,7 @@ async def get_xml_object(sess, schema, accession_id):
     :return: data of an object
     """
     async with sess.get(f"{objects_url}/{schema}/{accession_id}?format=xml") as resp:
-        LOG.debug(f"Getting xml object from {schema} with {accession_id}")
+        LOG.debug("Getting xml object from %s with %s", schema, accession_id)
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         data = await resp.text()
         return data
@@ -150,7 +150,7 @@ async def post_object(sess, schema, submission_id, filename):
         params={"submission": submission_id},
         data=request_data,
     ) as resp:
-        LOG.debug(f"Adding new object to {schema}, via XML/CSV file {filename}")
+        LOG.debug("Adding new object to %s, via XML/CSV file %s", schema, filename)
         ans = await resp.json()
         assert resp.status == 201, f"HTTP Status code error, got {resp.status}: {ans}"
         return ans if isinstance(ans, list) else ans["accessionId"], schema
@@ -171,7 +171,7 @@ async def post_multi_object(sess, schema, submission_id, filename):
         params={"submission": submission_id},
         data=request_data,
     ) as resp:
-        LOG.debug(f"Adding new object to {schema}, via XML/CSV file {filename}")
+        LOG.debug("Adding new object to %s, via XML/CSV file %s", schema, filename)
         ans = await resp.json()
         assert resp.status == 201, f"HTTP Status code error, got {resp.status}: {ans}"
         return ans
@@ -193,7 +193,7 @@ async def post_object_expect_status(sess, schema, submission_id, filename, statu
         params={"submission": submission_id},
         data=request_data,
     ) as resp:
-        LOG.debug(f"Adding new object to {schema}, via XML/CSV file {filename} and expecting status: {status}")
+        LOG.debug("Adding new object to %s, via XML/CSV file %s and expecting status: %d", schema, filename, status)
         assert resp.status == status, f"HTTP Status code error, got {resp.status}"
         if status < 400:
             ans = await resp.json()
@@ -215,7 +215,7 @@ async def post_object_json(sess, schema, submission_id, filename):
         params={"submission": submission_id},
         data=request_data,
     ) as resp:
-        LOG.debug(f"Adding new object to {schema}, via JSON file {filename}")
+        LOG.debug("Adding new object to %s, via JSON file %s", schema, filename)
         ans = await resp.json()
         assert resp.status == 201, f"HTTP Status code error, got {resp.status}: {ans}"
         return ans["accessionId"]
@@ -229,7 +229,7 @@ async def delete_object(sess, schema, accession_id):
     :param accession_id: id of the object
     """
     async with sess.delete(f"{objects_url}/{schema}/{accession_id}") as resp:
-        LOG.debug(f"Deleting object {accession_id} from {schema}")
+        LOG.debug("Deleting object %s from %s", accession_id, schema)
         assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
 
@@ -248,7 +248,7 @@ async def post_draft(sess, schema, submission_id, filename):
         params={"submission": submission_id},
         data=request_data,
     ) as resp:
-        LOG.debug(f"Adding new draft object to {schema}, via XML file {filename}")
+        LOG.debug("Adding new draft object to %s, via XML file %s", schema, filename)
         assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
         return ans["accessionId"]
@@ -269,7 +269,7 @@ async def post_draft_json(sess, schema, submission_id, filename):
         params={"submission": submission_id},
         data=request_data,
     ) as resp:
-        LOG.debug(f"Adding new draft object to {schema}, via JSON file {filename}")
+        LOG.debug("Adding new draft object to %s, via JSON file %s", schema, filename)
         ans = await resp.json()
         assert resp.status == 201, f"HTTP Status code error, got {resp.status}: {ans}"
         return ans["accessionId"]
@@ -285,7 +285,7 @@ async def get_draft(sess, schema, draft_id, expected_status=200):
     :return: data of a draft
     """
     async with sess.get(f"{drafts_url}/{schema}/{draft_id}") as resp:
-        LOG.debug(f"Checking that {draft_id} JSON exists")
+        LOG.debug("Checking that %s JSON exists", draft_id)
         assert resp.status == expected_status, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
         return json.dumps(ans)
@@ -302,7 +302,7 @@ async def put_draft(sess, schema, draft_id, update_filename):
     """
     request_data = await create_request_json_data(schema, update_filename)
     async with sess.put(f"{drafts_url}/{schema}/{draft_id}", data=request_data) as resp:
-        LOG.debug(f"Replace draft object in {schema}")
+        LOG.debug("Replace draft object in %s", schema)
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         ans_put = await resp.json()
         assert ans_put["accessionId"] == draft_id, "accession ID error"
@@ -320,7 +320,7 @@ async def put_object_json(sess, schema, accession_id, update_filename):
     """
     request_data = await create_request_json_data(schema, update_filename)
     async with sess.put(f"{objects_url}/{schema}/{accession_id}", data=request_data) as resp:
-        LOG.debug(f"Try to replace object in {schema}")
+        LOG.debug("Try to replace object in %s", schema)
         assert resp.status == 415, f"HTTP Status code error, got {resp.status}"
 
 
@@ -335,7 +335,7 @@ async def patch_object_json(sess, schema, accession_id, update_filename):
     """
     request_data = await create_request_json_data(schema, update_filename)
     async with sess.patch(f"{objects_url}/{schema}/{accession_id}", data=request_data) as resp:
-        LOG.debug(f"Try to patch object in {schema}")
+        LOG.debug("Try to patch object in %s", schema)
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         ans_put = await resp.json()
         assert ans_put["accessionId"] == accession_id, "accession ID error"
@@ -353,7 +353,7 @@ async def put_object_xml(sess, schema, accession_id, update_filename):
     """
     request_data = await create_request_data(schema, update_filename)
     async with sess.put(f"{objects_url}/{schema}/{accession_id}", data=request_data) as resp:
-        LOG.debug(f"Replace object with XML data in {schema}")
+        LOG.debug("Replace object with XML data in %s", schema)
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         ans_put = await resp.json()
         assert ans_put["accessionId"] == accession_id, "accession ID error"
@@ -371,7 +371,7 @@ async def patch_draft(sess, schema, draft_id, update_filename):
     """
     request_data = await create_request_json_data(schema, update_filename)
     async with sess.patch(f"{drafts_url}/{schema}/{draft_id}", data=request_data) as resp:
-        LOG.debug(f"Update draft object in {schema}")
+        LOG.debug("Update draft object in %s", schema)
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         ans_put = await resp.json()
         assert ans_put["accessionId"] == draft_id, "accession ID error"
@@ -386,7 +386,7 @@ async def delete_draft(sess, schema, draft_id):
     :param draft_id: id of the draft
     """
     async with sess.delete(f"{drafts_url}/{schema}/{draft_id}") as resp:
-        LOG.debug(f"Deleting draft object {draft_id} from {schema}")
+        LOG.debug("Deleting draft object %s from %s", draft_id, schema)
         assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
 
@@ -407,7 +407,7 @@ async def post_template_json(sess, schema, filename, project_id):
         request_data["projectId"] = project_id
     request_data = json.dumps(request_data)
     async with sess.post(f"{templates_url}/{schema}", data=request_data) as resp:
-        LOG.debug(f"Adding new template object to {schema}, via JSON file {filename}")
+        LOG.debug("Adding new template object to %s, via JSON file %s", schema, filename)
         ans = await resp.json()
         assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
         if isinstance(ans, list):
@@ -423,10 +423,10 @@ async def get_templates(sess, project_id):
     :param project_id: id of the project the template belongs to
     """
     async with sess.get(f"{templates_url}?projectId={project_id}") as resp:
-        LOG.debug(f"Requesting templates from project={project_id}")
+        LOG.debug("Requesting templates from project=%s", project_id)
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
-        LOG.debug(f"Received {len(ans)} templates")
+        LOG.debug("Received %d templates", len(ans))
         return ans
 
 
@@ -438,7 +438,7 @@ async def get_template(sess, schema, template_id):
     :param template_id: id of the draft
     """
     async with sess.get(f"{templates_url}/{schema}/{template_id}") as resp:
-        LOG.debug(f"Checking that {template_id} JSON exists")
+        LOG.debug("Checking that %s JSON exists", template_id)
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
         return json.dumps(ans)
@@ -454,7 +454,7 @@ async def patch_template(sess, schema, template_id, update_filename):
     """
     request_data = await create_request_json_data(schema, update_filename)
     async with sess.patch(f"{templates_url}/{schema}/{template_id}", data=request_data) as resp:
-        LOG.debug(f"Update draft object in {schema}")
+        LOG.debug("Update draft object in %s", schema)
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         ans_put = await resp.json()
         assert ans_put["accessionId"] == template_id, "accession ID error"
@@ -469,7 +469,7 @@ async def delete_template(sess, schema, template_id):
     :param template_id: id of the draft
     """
     async with sess.delete(f"{templates_url}/{schema}/{template_id}") as resp:
-        LOG.debug(f"Deleting template object {template_id} from {schema}")
+        LOG.debug("Deleting template object %s from %s", template_id, schema)
         assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
 
@@ -482,7 +482,7 @@ async def post_submission(sess, data):
     async with sess.post(f"{submissions_url}", data=json.dumps(data)) as resp:
         ans = await resp.json()
         assert resp.status == 201, f"HTTP Status code error {resp.status} {ans}"
-        LOG.debug(f"Adding new submission {ans['submissionId']}")
+        LOG.debug("Adding new submission %s", ans["submissionId"])
         return ans["submissionId"]
 
 
@@ -494,7 +494,7 @@ async def patch_submission(sess, submission_id, data):
     :param data: JSON object to use in PATCH call
     """
     async with sess.patch(f"{submissions_url}/{submission_id}", data=json.dumps(data)) as resp:
-        LOG.debug(f"Updating submission {submission_id}")
+        LOG.debug("Updating submission %s", submission_id)
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         ans_patch = await resp.json()
         assert ans_patch["submissionId"] == submission_id, "submission ID error"
@@ -508,7 +508,7 @@ async def publish_submission(sess, submission_id):
     :param submission_id: id of the submission
     """
     async with sess.patch(f"{publish_url}/{submission_id}") as resp:
-        LOG.debug(f"Publishing submission {submission_id}")
+        LOG.debug("Publishing submission %s", submission_id)
         ans = await resp.json()
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}: {ans}"
         assert ans["submissionId"] == submission_id, "submission ID error"
@@ -522,7 +522,7 @@ async def announce_submission(sess, submission_id):
     :param submission_id: id of the submission
     """
     async with sess.patch(f"{announce_url}/{submission_id}") as resp:
-        LOG.debug(f"Announcing submission {submission_id}")
+        LOG.debug("Announcing submission %s", submission_id)
         ans = await resp.json()
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}: {ans}"
         assert ans["submissionId"] == submission_id, "submission ID error"
@@ -536,7 +536,7 @@ async def delete_submission(sess, submission_id):
     :param submission_id: id of the submission
     """
     async with sess.delete(f"{submissions_url}/{submission_id}") as resp:
-        LOG.debug(f"Deleting submission {submission_id}")
+        LOG.debug("Deleting submission %s", submission_id)
         assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
 
@@ -547,7 +547,7 @@ async def delete_published_submission(sess, submission_id):
     :param submission_id: id of the submission
     """
     async with sess.delete(f"{submissions_url}/{submission_id}") as resp:
-        LOG.debug(f"Deleting submission {submission_id}")
+        LOG.debug("Deleting submission %s", submission_id)
         assert resp.status == 405, f"HTTP Status code error, got {resp.status}"
 
 
@@ -562,7 +562,7 @@ async def put_submission_doi(sess, submission_id, data):
     async with sess.put(f"{submissions_url}/{submission_id}/doi", data=data) as resp:
         ans = await resp.json()
         assert resp.status == 200, f"HTTP Status code error {resp.status} {ans}"
-        LOG.debug(f"Adding doi to submission {ans['submissionId']}")
+        LOG.debug("Adding doi to submission %s", ans["submissionId"])
         return ans["submissionId"]
 
 
@@ -577,7 +577,7 @@ async def put_submission_rems(sess, submission_id, data):
     async with sess.put(f"{submissions_url}/{submission_id}/rems", data=data) as resp:
         ans = await resp.json()
         assert resp.status == 200, f"HTTP Status code error {resp.status} {ans}"
-        LOG.debug(f"Adding REMS DAC to submission {ans['submissionId']}")
+        LOG.debug("Adding REMS DAC to submission %s", ans["submissionId"])
         return ans["submissionId"]
 
 
@@ -589,7 +589,7 @@ async def create_submission(database, data):
     :returns: Submission id for the submission inserted to database
     """
     submission_id = uuid4().hex
-    LOG.info(f"Creating new submission {submission_id}")
+    LOG.info("Creating new submission %s", submission_id)
     data["submissionId"] = submission_id
     data["text_name"] = " ".join(re.split("[\\W_]", data["name"]))
     data["drafts"] = []
@@ -599,7 +599,7 @@ async def create_submission(database, data):
         return submission_id
 
     except Exception as e:
-        LOG.exception(f"Submission creation failed due to {str(e)}")
+        LOG.exception("Submission creation failed due to %s", str(e))
 
 
 async def delete_objects_metax_id(sess, database, collection, accession_id, metax_id):
@@ -614,11 +614,11 @@ async def delete_objects_metax_id(sess, database, collection, accession_id, meta
     try:
         await database[collection].find_one_and_update({"accessionId": accession_id}, {"$set": {"metaxIdentifier": ""}})
     except Exception as e:
-        LOG.exception(f"Object update failed due to {str(e)}")
+        LOG.exception("Object update failed due to %s", str(e))
     try:
         await sess.delete(f"{metax_api}/{metax_id}")
     except Exception as e:
-        LOG.exception(f"Object deletion from mocked Metax failed due to {str(e)}")
+        LOG.exception("Object deletion from mocked Metax failed due to %s", str(e))
 
 
 async def delete_user(sess, user_id):
@@ -628,7 +628,7 @@ async def delete_user(sess, user_id):
     :param user_id: id of the user (current)
     """
     async with sess.delete(f"{users_url}/{user_id}") as resp:
-        LOG.debug(f"Deleting user {user_id} {await resp.text()}")
+        LOG.debug("Deleting user %s %s", user_id, await resp.text())
         assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
 

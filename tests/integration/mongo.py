@@ -63,7 +63,7 @@ class Mongo:
         if self._db is not None:
             return self._db
 
-        LOG.debug(f"=== Database connection didn't exist, creating a new one === {self._database_name}")
+        LOG.debug("=== Database connection didn't exist, creating a new one === %s", self._database_name)
         self._db = self.client[self._database_name]
         return self._db
 
@@ -77,42 +77,42 @@ class Mongo:
 
     async def create_collections(self) -> None:
         """Create collections."""
-        LOG.debug(f"Current database: {self.db}")
+        LOG.debug("Current database: %s", self.db)
         LOG.debug("=== Create collections ===")
         for col in COLLECTIONS:
             try:
                 await self.db.create_collection(col)
             except pymongo.errors.CollectionInvalid as e:
-                LOG.debug(f"=== Collection {col} not created due to {str(e)} ===")
+                LOG.debug("=== Collection %s not created due to %s ===", col, str(e))
         LOG.debug("=== DONE ===")
 
     async def drop_collections(self) -> None:
         """Drop collections."""
-        LOG.debug(f"Current database: {self.db}")
+        LOG.debug("Current database: %s", self.db)
         LOG.debug("=== Drop collections ===")
         collections = await self.db.list_collection_names()
-        LOG.debug(f"=== Collections to be cleared: {collections} ===")
+        LOG.debug("=== Collections to be cleared: %s ===", collections)
         for col in collections:
             try:
                 await self.db.drop_collection(col)
             except pymongo.errors.CollectionInvalid as e:
-                LOG.debug(f"=== Collection {col} not dropped {str(e)} ===")
+                LOG.debug("=== Collection %s not dropped %s ===", col, str(e))
         LOG.debug("=== DONE ===")
 
     async def clean_db(self) -> None:
         """Clean Collections."""
-        LOG.debug(f"Database to clear: {self._database_name}")
+        LOG.debug("Database to clear: %s", self._database_name)
         LOG.debug("=== Delete all documents in all collections ===")
         collections = await self.db.list_collection_names()
-        LOG.debug(f"=== Collections to be cleared: {collections} ===")
+        LOG.debug("=== Collections to be cleared: %s ===", collections)
         for col in collections:
             x = await self.db[col].delete_many({})
-            LOG.debug(f"{x.deleted_count}{' documents deleted'}\t{'from '}{col}")
+            LOG.debug("%d documents deleted from %s", x.deleted_count, col)
         LOG.debug("=== DONE ===")
 
     async def create_indexes(self) -> None:
         """Create indexes for collections."""
-        LOG.debug(f"Current database: {self.db}")
+        LOG.debug("Current database: %s", self.db)
         LOG.debug("=== Create indexes ===")
 
         for collection, indexes in INDEXES.items():
@@ -120,15 +120,15 @@ class Mongo:
                 try:
                     await self.db[collection].create_index([index["index"]], unique=index["unique"])
                 except Exception:
-                    LOG.exception(f"=== Collection '{collection}' index '{index}' not created ===")
+                    LOG.exception("=== Collection '%s' index '%s' not created ===", collection, index)
             ind = await self.db[collection].index_information()
-            LOG.debug(f"==== Collection '{collection}' indexes created ==== {ind}")
+            LOG.debug("==== Collection '%s' indexes created ==== %s", collection, ind)
 
         LOG.debug("=== DONE ===")
 
     async def drop_indexes(self) -> None:
         """Drop indexes for collections."""
-        LOG.debug(f"Current database: {self.db}")
+        LOG.debug("Current database: %s", self.db)
         LOG.debug("=== Drop indexes ===")
 
         for collection in COLLECTIONS:
@@ -156,7 +156,7 @@ class Mongo:
         LOG.info("=== Number of documents per collection ===")
         for collection in COLLECTIONS:
             count = await self.db[collection].count_documents({})
-            LOG.info(f"Collection '{collection}' has {count} documents")
+            LOG.info("Collection '%s' has %d documents", collection, count)
         LOG.info("=== Done ===")
 
 
@@ -175,7 +175,7 @@ if __name__ == "__main__":
     if args.tls:
         _params = "?tls=true&tlsCAFile=./config/cacert&tlsCertificateKeyFile=./config/combined"
         url = f"mongodb://{AUTHDB}:{AUTHDB}@{HOST}/{DATABASE}{_params}&authSource=admin"
-    LOG.debug(f"=== Database url {url} ===")
+    LOG.debug("=== Database url %s ===", url)
     mongo = Mongo(url)
     if args.count:
         asyncio.run(mongo.get_count())

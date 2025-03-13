@@ -160,7 +160,7 @@ async def test_metax_id_not_updated_on_patch(client_logged_in, submission_fega):
             f"{objects_url}/{schema}/{accession_id}",
             data={"metaxIdentifier": "12345"},
         ) as resp:
-            LOG.debug(f"Trying to patch object in {schema}")
+            LOG.debug("Trying to patch object in %s", schema)
             assert resp.status == 400
 
             await delete_object(client_logged_in, schema, accession_id)

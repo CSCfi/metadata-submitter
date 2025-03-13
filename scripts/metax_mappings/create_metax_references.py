@@ -77,7 +77,7 @@ def get_languages() -> None:
             log.exception("No language match for %r and %r", k, v)
             no_matches += 1
             pass
-    log.error(f"{n_matches} languages matched, and {no_matches} didn't")
+    log.error("%i languages matched, and %i didn't", n_matches, no_matches)
 
     # Print to console, so the script caller should output it to the correct file
     print(json.dumps(langs, indent=4, sort_keys=True))

@@ -49,7 +49,7 @@ class TestDrafts:
 
             accession_id = await put_draft(client_logged_in, schema, draft_id, update_file)
             async with client_logged_in.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
-                LOG.debug(f"Checking that {accession_id} JSON is in {schema}")
+                LOG.debug("Checking that %s JSON is in %s", accession_id, schema)
                 assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
                 res = await resp.json()
                 title = res["descriptor"]["studyTitle"] if schema == "study" else res.get("title", "")
@@ -65,11 +65,11 @@ class TestDrafts:
 
             await delete_draft(client_logged_in, schema, accession_id)
             async with client_logged_in.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
-                LOG.debug(f"Checking that JSON object {accession_id} was deleted")
+                LOG.debug("Checking that JSON object %s was deleted", accession_id)
                 assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
 
             async with client_logged_in.get(f"{submissions_url}/{submission_fega}") as resp:
-                LOG.debug(f"Checking that JSON object {accession_id} was deleted from submission {submission_fega}")
+                LOG.debug("Checking that JSON object %s was deleted from submission %s", accession_id, submission_fega)
                 res = await resp.json()
                 expected_true = not any(d["accessionId"] == accession_id for d in res["drafts"])
                 assert expected_true, f"draft object {accession_id} still exists"
@@ -96,7 +96,7 @@ class TestDrafts:
             draft_id = await post_draft_json(client_logged_in, schema, submission_fega, original_file)
             accession_id = await patch_draft(client_logged_in, schema, draft_id, update_file)
             async with client_logged_in.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
-                LOG.debug(f"Checking that {accession_id} JSON is in {schema}")
+                LOG.debug("Checking that %s JSON is in %s", accession_id, schema)
                 res = await resp.json()
                 title = res["descriptor"]["studyTitle"] if schema == "study" else res.get("title", None)
                 assert res["centerName"] == "GEOM", "object centerName content mismatch"
@@ -114,5 +114,5 @@ class TestDrafts:
 
             await delete_draft(client_logged_in, schema, accession_id)
             async with client_logged_in.get(f"{drafts_url}/{schema}/{accession_id}") as resp:
-                LOG.debug(f"Checking that JSON object {accession_id} was deleted")
+                LOG.debug("Checking that JSON object %s was deleted", accession_id)
                 assert resp.status == 404, f"HTTP Status code error, got {resp.status}"

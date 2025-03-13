@@ -129,7 +129,7 @@ class TestUsers:
         """
         # Check user exists in database (requires an user object to be mocked)
         async with client_logged_in.get(f"{users_url}/{user_id}") as resp:
-            LOG.debug(f"Reading user {user_id}")
+            LOG.debug("Reading user %s", user_id)
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
         # Add user to client and create a patch to add submission to user
@@ -142,7 +142,7 @@ class TestUsers:
         submission_id = await post_submission(client_logged_in, submission_not_published)
 
         async with client_logged_in.get(f"{submissions_url}/{submission_id}?projectId={project_id}") as resp:
-            LOG.debug(f"Checking that submission {submission_id} was added")
+            LOG.debug("Checking that submission %s was added", submission_id)
             res = await resp.json()
             assert res["name"] == submission_not_published["name"]
             assert res["projectId"] == submission_not_published["projectId"]
@@ -169,7 +169,7 @@ class TestUsers:
 
         await publish_submission(client_logged_in, publish_submission_id)
         async with client_logged_in.get(f"{submissions_url}/{publish_submission_id}?projectId={project_id}") as resp:
-            LOG.debug(f"Checking that submission {publish_submission_id} was published")
+            LOG.debug("Checking that submission %s was published", publish_submission_id)
             res = await resp.json()
             assert res["published"] is True, "submission is not published, expected True"
 
@@ -181,19 +181,19 @@ class TestUsers:
         }
         delete_submission_id = await post_submission(client_logged_in, submission_not_published)
         async with client_logged_in.get(f"{submissions_url}/{delete_submission_id}?projectId={project_id}") as resp:
-            LOG.debug(f"Checking that submission {delete_submission_id} was added")
+            LOG.debug("Checking that submission %s was added", delete_submission_id)
             res = await resp.json()
             assert res["name"] == submission_not_published["name"]
             assert res["projectId"] == submission_not_published["projectId"]
         await delete_submission(client_logged_in, delete_submission_id)
         async with client_logged_in.get(f"{submissions_url}/{delete_submission_id}?projectId={project_id}") as resp:
-            LOG.debug(f"Checking that submission {delete_submission_id} was deleted")
+            LOG.debug("Checking that submission %s was deleted", delete_submission_id)
             assert resp.status == 404
 
         template_id = await post_template_json(client_logged_in, "study", "SRP000539_template.json", project_id)
         await patch_template(client_logged_in, "study", template_id, "patch.json")
         async with client_logged_in.get(f"{templates_url}/study/{template_id}") as resp:
-            LOG.debug(f"Checking that template: {template_id} was added")
+            LOG.debug("Checking that template: %s was added", template_id)
             res = await resp.json()
             assert res["accessionId"] == template_id
             assert res["projectId"] == project_id
@@ -206,7 +206,7 @@ class TestUsers:
 
         await delete_template(client_logged_in, "study", template_id)
         async with client_logged_in.get(f"{templates_url}/study/{template_id}") as resp:
-            LOG.debug(f"Checking that template {template_id} was deleted")
+            LOG.debug("Checking that template %s was deleted", template_id)
             assert resp.status == 404
 
         template_ids = await post_template_json(client_logged_in, "study", "SRP000539_list.json", project_id)
@@ -221,5 +221,5 @@ class TestUsers:
         # 401 means API is inaccessible thus client ended
         # this check is not needed but good to do
         async with client_logged_in.get(f"{users_url}/{user_id}") as resp:
-            LOG.debug(f"Checking that user {user_id} was deleted")
+            LOG.debug("Checking that user %s was deleted", user_id)
             assert resp.status == 401, f"HTTP Status code error, got {resp.status}"

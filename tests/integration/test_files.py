@@ -41,7 +41,7 @@ class TestFiles:
         }
 
         created_files = await post_project_files(client_logged_in, file_data)
-        LOG.debug(f"Created files: {created_files}")
+        LOG.debug("Created files: %s", created_files)
         assert len(created_files) == 1
 
         # Confirm file exists within project
@@ -64,7 +64,7 @@ class TestFiles:
             "files": [generate_mock_file("file_1"), generate_mock_file("file_2")],
         }
         created_files = await post_project_files(client_logged_in, file_data)
-        LOG.debug(f"Created files: {created_files}")
+        LOG.debug("Created files: %s", created_files)
         assert len(created_files) == len(file_data["files"])
 
         # Post files to another project
@@ -76,7 +76,7 @@ class TestFiles:
             "files": [generate_mock_file("file_3"), generate_mock_file("file_4")],
         }
         created_files = await post_project_files(client_logged_in, file_data)
-        LOG.debug(f"Created files: {created_files}")
+        LOG.debug("Created files: %s", created_files)
         assert len(created_files) == len(file_data["files"])
 
         # Get files from all projects
@@ -202,7 +202,7 @@ class TestFileSubmissions:
         }
         submission_id = await post_submission(client_logged_in, submission_data)
         async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
-            LOG.debug(f"Checking that submission {submission_id} was created")
+            LOG.debug("Checking that submission %s was created", submission_id)
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
         # Post a file
@@ -253,7 +253,7 @@ class TestFileSubmissions:
         }
         submission_id = await post_submission(client_logged_in, submission_data)
         async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
-            LOG.debug(f"Checking that submission {submission_id} was created")
+            LOG.debug("Checking that submission %s was created", submission_id)
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
         # Post files
