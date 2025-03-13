@@ -44,7 +44,7 @@ bracex==2.5.post1
     # via wcmatch
 build==1.2.2.post1
     # via pip-tools
-cachetools==5.5.0
+cachetools==5.5.2
     # via tox
 certifi==2025.1.31
     # via
