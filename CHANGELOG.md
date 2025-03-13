@@ -54,6 +54,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- Fix pyspelling not ignoring urls (#857)
+- Update broken and permanent redirect links in documentation (#856)
 - Fixed taxonomy script file permissions and ´docker casing warnings
 - Automated changelog generation with CI jobs and github actions recognizes git LFS files
 - Add missing schema check that disallowed multiple metadata objects
