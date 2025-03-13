@@ -100,7 +100,7 @@ class MetaDataMapper:
                 "items": {"type": "object", "$ref": "#/definitions/ResearchAgent"},
             },
             # study/dataset type
-            # not mappable as Metax requires identifier from preconfigured list
+            # not mappable as Metax requires identifier from pre-configured list
             "theme": {
                 "type": "array",
                 "items": {"type": "object", "$ref": "#/definitions/Concept"},
@@ -114,7 +114,7 @@ class MetaDataMapper:
                         "title": {
                             "description": (
                                 "A name of the Linguistic System. Name is given as localized text from IETF language "
-                                "codes. In case text cannot be localixed 'zxx' or 'und' language codes must be used."
+                                "codes. In case text cannot be localized 'zxx' or 'und' language codes must be used."
                             ),
                             "type": "object",
                             "$ref": "#/definitions/langString",
@@ -139,7 +139,7 @@ class MetaDataMapper:
                         "the relevant INSPIRE data specification (page 18), the following are all valid geographic "
                         "names for the Greek capital:"
                         "- Αθήνα (the Greek endonym written in the Greek script)"
-                        "- Athína (the standard Romanisation of the endonym)"
+                        "- Athína (the standard romanisation of the endonym)"
                         "- Athens (the English language exonym)"
                         "For INSPIRE-conformant data, provide the metadata for the geographic name using "
                         "a skos:Concept as a datatype."
@@ -257,7 +257,7 @@ class MetaDataMapper:
         :returns: Research dataset
         """
         LOG.info("Mapping datasite data to Metax metadata")
-        LOG.debug("Data incomming for mapping: %r.", self.datacite_data)
+        LOG.debug("Data incoming for mapping: %r.", self.datacite_data)
         for key, value in self.datacite_data["doiInfo"].items():
             if key == "creators":
                 self._map_creators(value)
@@ -406,7 +406,7 @@ class MetaDataMapper:
     def _map_spatial(self, locations: list[Any]) -> None:
         """Map geoLocations.
 
-        If geoLocationPoint or geoLocationBox is comming with location data
+        If geoLocationPoint or geoLocationBox is coming with location data
         lat lon coordinates will be mapped to wkt geometric presentation.
         Inputs MUST be WGS84 degrees coordinates as geographic coordinate system (GCS) is used here.
 

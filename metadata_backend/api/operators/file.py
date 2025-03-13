@@ -250,7 +250,7 @@ class FileOperator(BaseOperator):
             {"$match": {"submissionId": submission_id}},
             {"$unwind": "$files"},
             # check the status is not in failed or added
-            # failed can occour when an file ingestion/verification/mapping fails
+            # failed can occur when an file ingestion/verification/mapping fails
             {"$match": {"files.status": {"$in": ["added", "failed"]}}},
             {
                 "$project": {

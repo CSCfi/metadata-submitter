@@ -51,7 +51,7 @@ class XMLValidator:
             # Manually find pointer element
             lines = StringIO(self.xml_content).readlines()
             line = lines[error.position[0] - 1]  # line of pointer
-            pointer = line.lstrip().rstrip("\n")  # strip whitespaces and new line
+            pointer = line.lstrip().rstrip("\n")  # strip whitespace and new line
             LOG.exception("Submitted file does not not contain valid XML syntax.")
             xml_error_response = self._format_xml_error_response()
             xml_error_response["errors"].append({"reason": reason, "position": position, "pointer": pointer})

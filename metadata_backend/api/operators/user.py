@@ -178,7 +178,7 @@ class UserOperator(BaseOperator):
         return user_id
 
     async def _check_user_exists(self, user_id: str) -> None:
-        """Check the existance of a user by its id in the database.
+        """Check the existence of a user by its id in the database.
 
         :param user_id: Identifier of user to find.
         :raises: HTTPNotFound if user does not exist

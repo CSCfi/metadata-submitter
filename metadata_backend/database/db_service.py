@@ -14,7 +14,7 @@ from ..helpers.parser import jsonpatch_mongo
 
 
 def auto_reconnect(db_func: Callable[..., Any]) -> Callable[..., Any]:
-    """Auto reconnection decorator."""
+    """Auto re-connection decorator."""
 
     @wraps(db_func)
     async def retry(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
@@ -333,7 +333,7 @@ class DBService:
         id_key = self._get_id_key(collection)
         find_by_id = {id_key: accession_id}
         # push vs addtoSet
-        # push allows us to specify the postion but it does not check the items are unique
+        # push allows us to specify the position but it does not check the items are unique
         # addToSet cannot easily specify position
         append_op = {"$push": data_to_be_added}
         result: dict[str, Any] = await self.database[collection].find_one_and_update(

@@ -14,7 +14,7 @@ Unit Testing
 
 In order to run the unit tests, security checks with `bandit <https://github.com/PyCQA/bandit>`_,
 Sphinx documentation check for links consistency and HTML output
-and `flake8 <http://flake8.pycqa.org/en/latest/>`_ (coding style guide)
+and `flake8 <https://flake8.pycqa.org/en/latest/>`_ (coding style guide)
 `tox <https://tox.wiki/en/latest/>`_. To run the unit tests in parallel use:
 
 .. code-block:: console

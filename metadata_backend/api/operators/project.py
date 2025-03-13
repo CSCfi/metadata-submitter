@@ -60,7 +60,7 @@ class ProjectOperator(BaseOperator):
             raise web.HTTPNotFound(reason=reason)
 
     async def assign_templates(self, project_id: str, object_ids: list[str] | str) -> None:
-        """Assing templates to project.
+        """Assign templates to project.
 
         :param project_id: ID of project to update
         :param object_ids: ID or list of IDs of template(s) to assign

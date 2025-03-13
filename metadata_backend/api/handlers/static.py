@@ -20,7 +20,7 @@ class StaticHandler:
         """Serve requests related to frontend SPA.
 
         :param req: GET request
-        :returns: Response containing frontpage static file
+        :returns: Response containing front page static file
         """
         serve_path = self.path.joinpath("./" + req.path)
 

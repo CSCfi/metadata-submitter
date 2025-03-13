@@ -321,7 +321,7 @@ class SubmissionOperator(BaseOperator):
         return submission_id
 
     async def check_submission_exists(self, submission_id: str) -> None:
-        """Check the existance of a submission by its id in the database.
+        """Check the existence of a submission by its id in the database.
 
         :param submission_id: ID of the submission to check
         :raises: HTTPNotFound if submission does not exist

@@ -59,7 +59,7 @@ Form components
 
 Form components are crucial part of the application:
 
-- All submissions are made with `react-hook-form <https://react-hook-form.com/>`_.
+- All submissions are made with ``react-hook-form``.
   Latter uses form as a reference so submission can be triggered outside the form. JSON schema based forms are created with custom JSON schema parser, which builds
   ``react-hook-form`` based forms from given schema. The forms are validated against the JSON schema with ``Ajv``.
   React-hook-form is used for performance reasons: it uses uncontrolled components so adding a lot of fields to array doesn't slow rendering of the application.
@@ -240,9 +240,9 @@ Example:
 Styles
 ------
 
-App uses `Material UI <https://material-ui.com/>`_ components.
+App uses `Material UI <https://mui.com/material-ui/>`_ components.
 
 Global styles are defined with ``style.css`` and Material UI theme, customized for CSC. Material UI theme is set ``theme.js``, and added to ``index.js`` for use.
 
 Styles are also used inside components, either with ``withStyles`` (modifies Material UI components) or ``makeStyles``
-(creates css for component and its children). See `customizing components <https://material-ui.com/customization/components/>`_ for more info.
+(creates css for component and its children). See `how to customize components <https://mui.com/material-ui/customization/how-to-customize/>`_ for more info.
