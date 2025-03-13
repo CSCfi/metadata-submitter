@@ -82,7 +82,7 @@ class RemsServiceHandler(ServiceHandler):
     async def create_catalogue_item(
         self, resource_id: int, workflow_id: int, organization_id: str, localizations: dict[str, dict[str, str]]
     ) -> str:
-        """Create a REMS resource for a dataset.
+        """Create a REMS catalogue item for a dataset.
 
         :param resource_id: id of the REMS resource
         :param workflow_id: id of the REMS workflow/DAC
