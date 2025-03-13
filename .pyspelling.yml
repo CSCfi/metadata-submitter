@@ -3,6 +3,12 @@ matrix:
   aspell:
     lang: en
     ignore-case: true
+    # Make compounds words valid
+    run-together: true
+    # Min compound word length
+    run-together-min: 2
+    # Max compound words
+    run-together-limit: 4
   dictionary:
     wordlists:
     - docs/dictionary/wordlist.txt
@@ -28,6 +34,9 @@ matrix:
   aspell:
     lang: en
     ignore-case: true
+    run-together: true
+    run-together-min: 2
+    run-together-limit: 4
   dictionary:
     wordlists:
     - docs/dictionary/wordlist.txt
@@ -47,15 +56,13 @@ matrix:
   aspell:
     lang: en
     ignore-case: true
+    run-together: true
+    run-together-min: 2
+    run-together-limit: 5
   dictionary:
     wordlists:
     - docs/dictionary/wordlist.txt
   pipeline:
-  - pyspelling.filters.javascript:
-      jsdocs: true
-      line_comments: false
-      block_comments: false
-      strings: true
   - pyspelling.filters.context:
       context_visible_first: true
       escapes: '\\[\\`~]'
@@ -73,6 +80,9 @@ matrix:
   aspell:
     lang: en
     ignore-case: true
+    run-together: true
+    run-together-min: 2
+    run-together-limit: 4
   dictionary:
     wordlists:
     - docs/dictionary/wordlist.txt
