@@ -8,10 +8,10 @@ elif ! aspell -v > /dev/null 2>&1; then
     exit 0
 fi
 
-check_files=""
-for arg in "${@:2:$#}"
-do
-    check_files+="--source $arg "
-done
+#check_files=""
+#for arg in "${@:2:$#}"
+#do
+#    check_files+="--source $arg "
+#done
 
-pyspelling -v --name $1 ${check_files}
+pyspelling -v --name $1 #${check_files}
