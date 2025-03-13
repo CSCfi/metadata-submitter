@@ -2,8 +2,7 @@
 
 
 def pytest_itemcollected(item):
-    """Configure tests to print the docstrings (and class+function names if \
-    no docstrings)."""
+    """Configure tests to print the docstrings (and class+function names if no docstrings)."""
     par = item.parent.obj
     node = item.obj
     # First line only

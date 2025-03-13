@@ -41,7 +41,7 @@ class AppTestCase(AioHTTPTestCase):
     async def test_api_routes_are_set(self):
         """Test correct amount of API (no frontend) routes is set.
 
-        routes considered to be separate are eg.:
+        routes considered to be separate are e.g.:
         - /submissions
         - /submissions/{submissionId}
         - /submissions/{submissionId}/doi

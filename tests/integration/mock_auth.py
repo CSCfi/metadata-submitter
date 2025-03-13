@@ -19,7 +19,7 @@ LOG.setLevel(getenv("LOG_LEVEL", "INFO"))
 def generate_token() -> Tuple:
     """Generate RSA Key pair to be used to sign token and the JWT Token itself."""
     key = RSAKey.generate_key(is_private=True)
-    # we set no `exp` and other claims as they are optional in a real scenario these should bde set
+    # we set no `exp` and other claims as they are optional in a real scenario these should be set
     # See available claims here: https://www.iana.org/assignments/jwt/jwt.xhtml
     # the important claim is the "authorities"
     public_jwk = key.as_dict(is_private=False)
