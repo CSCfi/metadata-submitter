@@ -1,0 +1,10 @@
+{
+    "contacts": [
+        {
+            "name": "contact name",
+            "email": "contact@domain.com",
+            "mainContact": true
+        }
+    ],
+    "title": "DAC title"
+}

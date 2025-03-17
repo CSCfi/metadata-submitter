@@ -3,5 +3,19 @@
     "datasetType": [
         "Amplicon sequencing"
     ],
-    "description": "ome cool test description for json dataset"
+    "description": "ome cool test description for json dataset",
+    "runRef": [
+        {
+          "refname": "REFNAME",
+          "refcenter": "REFECENTER",
+          "accessionId": "RUN123",
+          "identifiers": {
+            "primaryId": "PRIMARYID",
+            "submitterId": {
+              "namespace": "NAMESPACE",
+              "value": "VALUE"
+            }
+          }
+        }
+    ]
 }

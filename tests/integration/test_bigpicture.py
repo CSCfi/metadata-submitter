@@ -11,19 +11,20 @@ from tests.integration.helpers import (
     get_xml_object,
     post_object,
     put_submission_doi,
-    put_submission_rems,
 )
 
 
 class TestBigPicture:
     """Tests with big picture schemas."""
 
-    async def test_bpdataset_gets_doi(self, client_logged_in, submission_bigpicture):
+    async def test_bpdataset_gets_doi(self, client_logged_in, submission_bigpicture, project_id):
         """Test bp dataset has doi generated.
 
         :param client_logged_in: HTTP client in which request call is made
         :param submission_bigpicture: submission ID, created with the BP workflow
         """
+        # Submit bprems
+        await post_object(client_logged_in, "bprems", submission_bigpicture, "rems.xml")
 
         # Submit bpdataset
         bpdataset = await post_object(client_logged_in, "bpdataset", submission_bigpicture, "dataset.xml")
@@ -31,9 +32,6 @@ class TestBigPicture:
         # Add DOI and DAC for publishing the submission
         doi_data_raw = await create_request_json_data("doi", "test_doi.json")
         await put_submission_doi(client_logged_in, submission_bigpicture, doi_data_raw)
-
-        rems_data = await create_request_json_data("dac", "dac_rems.json")
-        await put_submission_rems(client_logged_in, submission_bigpicture, rems_data)
 
         await announce_submission(client_logged_in, submission_bigpicture)
 

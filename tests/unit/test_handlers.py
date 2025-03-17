@@ -79,7 +79,11 @@ class HandlersTestCase(AioHTTPTestCase):
             "published": False,
             "metadataObjects": [
                 {"accessionId": "EDAG3991701442770179", "schema": "study"},
-                {"accessionId": "EGA123456", "schema": "sample"},
+                {"accessionId": "EGA111", "schema": "sample"},
+                {"accessionId": "EGA112", "schema": "dac"},
+                {"accessionId": "EGA113", "schema": "policy"},
+                {"accessionId": "EGA114", "schema": "run"},
+                {"accessionId": "EGA115", "schema": "dataset"},
             ],
             "drafts": [],
             "linkedFolder": "",

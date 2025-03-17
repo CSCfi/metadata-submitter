@@ -132,6 +132,19 @@ async def fixture_submission_bigpicture(client_logged_in: aiohttp.ClientSession,
         LOG.debug("Attempted to delete %r, which failed", submission_id)
 
 
+@pytest.fixture(name="submission_sdsx")
+async def fixture_submission_sdsx(client_logged_in: aiohttp.ClientSession, project_id: str):
+    """Create a SDSX submission to be reused across tests that are grouped under the same scope."""
+    submission_id = await make_submission(client_logged_in, project_id, "SDSX")
+    yield submission_id
+
+    try:
+        await delete_submission(client_logged_in, submission_id)
+    except AssertionError:
+        # Published submissions can't be deleted
+        LOG.debug("Attempted to delete %r, which failed", submission_id)
+
+
 @pytest.fixture(name="mongo")
 async def fixture_mongo(request):
     """Initialize the db, and create a client."""

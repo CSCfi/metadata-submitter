@@ -57,10 +57,6 @@
             "endpoint": "rems",
             "requires": [
                 "datacite"
-            ],
-            "requiredSchemas": [
-                "dac",
-                "policy"
             ]
         }
     ],

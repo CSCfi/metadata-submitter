@@ -1,0 +1,10 @@
+{
+    "policy": {
+        "policyText": "This is Policy text"
+    },
+    "dacRef": {
+        "accessionId": "DAC123",
+        "refname": "REFNAME",
+        "refcenter": "REFCENTER"
+    }
+}
