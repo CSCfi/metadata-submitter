@@ -114,6 +114,7 @@ class ServiceHandler(ABC):
         """Request to service REST API.
 
         :param method: HTTP method
+        :param headers: request headers
         :param url: Full service url. Uses self.base_url by default
         :param path: When requesting to self.base_url, provide only the path (shortcut).
         :param params: URL parameters, must be url encoded
@@ -148,12 +149,8 @@ class ServiceHandler(ABC):
                 if not response.ok:
                     content = await response.text()
                     log_msg = (
-                        "%s request to: %s, path %r returned: %s and content: %r",
-                        method,
-                        self.service_name,
-                        url,
-                        response.status,
-                        content,
+                        f"{method} request to: {self.service_name}, path {url} returned: "
+                        f"{response.status} and content: {content}"
                     )
                     if content:
                         content = self._process_error(content)
@@ -162,18 +159,8 @@ class ServiceHandler(ABC):
 
                 if response.content_type.endswith("json"):
                     content = await response.json()
-                elif self.service_name == "Admin":
-                    content = await response.text()
                 else:
                     content = await response.text()
-                    # We should get a JSON response in most requests.
-                    if method in {"GET", "POST", "PUT", "PATCH"}:
-                        message = (
-                            f"{method} request to {self.service_name} '{url}' "
-                            f"returned an unexpected answer: '{content}'."
-                        )
-                        LOG.error(message)
-                        raise ServiceServerError(text=message, reason=message)
 
             return content
 

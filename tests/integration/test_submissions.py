@@ -5,7 +5,7 @@ import logging
 import xml.etree.ElementTree as ET
 from datetime import datetime
 
-from tests.integration.conf import datacite_url, drafts_url, objects_url, publish_url, submit_url, testfiles_root
+from tests.integration.conf import drafts_url, objects_url, publish_url, submit_url, testfiles_root
 from tests.integration.helpers import (
     add_submission_files,
     add_submission_linked_folder,
@@ -373,23 +373,25 @@ class TestSubmissionOperations:
             LOG.debug("Trying to add object to already published submission")
             assert resp.status == 405, f"HTTP Status code error, got {resp.status}"
 
+        # Below should be adapted to PID ms when possible: currently not possible to retrieve existing DOIs
+
         # Check that datacite has references between datasets and study
-        async with client_logged_in.get(f"{datacite_url}/dois/{ds_1['doi']}") as datacite_resp:
-            assert datacite_resp.status == 200, f"HTTP Status code error, got {datacite_resp.status}"
-            datacite_res = await datacite_resp.json()
-            ds_1 = datacite_res
-        async with client_logged_in.get(f"{datacite_url}/dois/{ds_2['doi']}") as datacite_resp:
-            assert datacite_resp.status == 200, f"HTTP Status code error, got {datacite_resp.status}"
-            datacite_res = await datacite_resp.json()
-            ds_2 = datacite_res
-        async with client_logged_in.get(f"{datacite_url}/dois/{study['doi']}") as datacite_resp:
-            assert datacite_resp.status == 200, f"HTTP Status code error, got {datacite_resp.status}"
-            datacite_res = await datacite_resp.json()
-            study = datacite_res
-        assert ds_1["data"]["attributes"]["relatedIdentifiers"][0]["relatedIdentifier"] == study["id"]
-        assert ds_2["data"]["attributes"]["relatedIdentifiers"][0]["relatedIdentifier"] == study["id"]
-        for id in study["data"]["attributes"]["relatedIdentifiers"]:
-            assert id["relatedIdentifier"] in {ds_1["id"], ds_2["id"]}
+        # async with client_logged_in.get(f"{datacite_url}/dois/{ds_1['doi']}") as datacite_resp:
+        #     assert datacite_resp.status == 200, f"HTTP Status code error, got {datacite_resp.status}"
+        #     datacite_res = await datacite_resp.json()
+        #     ds_1 = datacite_res
+        # async with client_logged_in.get(f"{datacite_url}/dois/{ds_2['doi']}") as datacite_resp:
+        #     assert datacite_resp.status == 200, f"HTTP Status code error, got {datacite_resp.status}"
+        #     datacite_res = await datacite_resp.json()
+        #     ds_2 = datacite_res
+        # async with client_logged_in.get(f"{datacite_url}/dois/{study['doi']}") as datacite_resp:
+        #     assert datacite_resp.status == 200, f"HTTP Status code error, got {datacite_resp.status}"
+        #     datacite_res = await datacite_resp.json()
+        #     study = datacite_res
+        # assert ds_1["data"]["attributes"]["relatedIdentifiers"][0]["relatedIdentifier"] == study["id"]
+        # assert ds_2["data"]["attributes"]["relatedIdentifiers"][0]["relatedIdentifier"] == study["id"]
+        # for id in study["data"]["attributes"]["relatedIdentifiers"]:
+        #     assert id["relatedIdentifier"] in {ds_1["id"], ds_2["id"]}
 
         # Attempt deleting submission
         await delete_published_submission(client_logged_in, submission_fega)

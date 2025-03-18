@@ -16,7 +16,7 @@ from aiohttp import BasicAuth, ClientTimeout, web
 from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
 from yarl import URL
 
-from ..conf.conf import doi_config
+from ..conf.conf import datacite_config
 from ..helpers.logger import LOG
 from .service_handler import ServiceHandler
 
@@ -29,12 +29,12 @@ class DataciteServiceHandler(ServiceHandler):
     def __init__(self) -> None:
         """Get DOI credentials from config."""
         super().__init__(
-            auth=BasicAuth(login=doi_config["user"], password=doi_config["key"]),
-            base_url=URL(doi_config["api"]),
+            auth=BasicAuth(login=datacite_config["user"], password=datacite_config["key"]),
+            base_url=URL(datacite_config["api"]),
             http_client_timeout=ClientTimeout(total=2 * 60),  # 2 minutes timeout
             http_client_headers={"Content-Type": "application/vnd.api+json"},
         )
-        self.doi_prefix = doi_config["prefix"]
+        self.doi_prefix = datacite_config["prefix"]
 
     @staticmethod
     def _process_error(error: str) -> str:
@@ -80,7 +80,7 @@ class DataciteServiceHandler(ServiceHandler):
 
         return " | ".join(error_messages)
 
-    async def create_draft(self, prefix: str | None = None) -> dict[str, Any]:
+    async def _create_draft(self, prefix: str | None = None) -> dict[str, Any]:
         """Generate random suffix and POST request a draft DOI to DataCite DOI API.
 
         :param prefix: Custom prefix to add to the DOI e.g. study/dataset
@@ -102,6 +102,22 @@ class DataciteServiceHandler(ServiceHandler):
         }
 
         return doi_data
+
+    async def create_draft_doi_datacite(self, collection: str) -> str:
+        """Create draft DOI for study and dataset directly with Datacite API.
+
+        The Draft DOI will be created only on POST and the data added to the
+        submission. Any update of this should not be possible.
+
+        :param collection: either study or dataset
+        :returns: Dict with DOI of the study or dataset as well as the types.
+        """
+        _doi_data = await self._create_draft(prefix=collection)
+
+        LOG.debug("Created a DOI through Datacite with identifier: %r", _doi_data["fullDOI"])
+        doi: str = _doi_data["fullDOI"]
+
+        return doi
 
     async def publish(self, datacite_payload: dict[str, Any]) -> None:
         """Set DOI and associated metadata.

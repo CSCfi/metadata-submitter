@@ -37,9 +37,10 @@ class TestBigPicture:
 
         await announce_submission(client_logged_in, submission_bigpicture)
 
-        # DOI is generated in the publishing phase
+        # DOI is generated in the announcing phase
         bpdataset = await get_object(client_logged_in, "bpdataset", bpdataset[0])
-        assert bpdataset.get("doi") is not None
+        assert len(bpdataset.get("doi")) != 0
+
         async with client_logged_in.get(f"{datacite_url}/dois/{bpdataset['doi']}") as datacite_resp:
             assert datacite_resp.status == 200, f"HTTP Status code error, got {datacite_resp.status}"
 

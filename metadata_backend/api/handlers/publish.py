@@ -47,7 +47,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         :param study_data: Study Object read from the database
         :param general_info: General information that is captured in front-end and set in ``doiInfo`` key
         :param discovery_url: URL pointing to a  discovery service
-        :returns: Study Object ready to publish to Datacite
+        :returns: Study Object ready to publish to Datacite directly or through CSC PID ms
         """
         study = {
             "id": study_data["doi"],
@@ -125,7 +125,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         :param dataset_data: Dataset Object read from the database
         :param general_info: General information that is captured in front-end and set in `doiInfo` key
         :param discovery_url: URL pointing to a  discovery service
-        :returns: Dataset Object ready to publish to Datacite
+        :returns: Dataset Object ready to publish to Datacite directly or through CSC PID ms
         """
         dataset = {
             "id": dataset_data["doi"],
@@ -201,6 +201,35 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         return dataset
 
+    async def create_draft_doi(self, workflow: str, schema: str) -> str:
+        """Get a draft DOI through Datacite directly or from CSC PID depending on workflow.
+
+        :param workflow: Workflow of submission
+        :param schema: Schema to be included in DOI
+        :returns: DOI
+        """
+        datacite_service = WORKFLOWS[workflow].get_endpoint_conf("datacite", "service")
+        doi = (
+            await self.datacite_handler.create_draft_doi_datacite(schema)
+            if datacite_service == "datacite"
+            else await self.pid_handler.create_draft_doi_pid()
+        )
+
+        return doi
+
+    async def publish(self, workflow: str, data: dict[str, Any]) -> None:
+        """Publish through Datacite directly or through CSC PID depending on workflow.
+
+        :param workflow: Workflow of submission
+        :param data: Data to publish
+        """
+        datacite_service = WORKFLOWS[workflow].get_endpoint_conf("datacite", "service")
+        (
+            await self.datacite_handler.publish(data)
+            if datacite_service == "datacite"
+            else await self.pid_handler.publish(data)
+        )
+
     async def _prepare_datacite_publication(
         self, obj_op: ObjectOperator, submission: dict[str, Any]
     ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
@@ -250,7 +279,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                 if schema not in DATACITE_SCHEMAS:
                     continue
                 if "doi" not in object_data:
-                    object_data["doi"] = await self.create_draft_doi(schema)
+                    object_data["doi"] = await self.create_draft_doi(submission["workflow"], schema)
 
                 doi = object_data["doi"]
                 discovery_url = self._make_discovery_url(object_data, submission["workflow"])
@@ -321,7 +350,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         """
         datacite_study, datacite_datasets = await self._prepare_datacite_publication(obj_op, submission)
         extra_info_patch = []
-        await self.datacite_handler.publish(datacite_study)
+        await self.publish(submission["workflow"], datacite_study)
         study_patch = {
             "op": "add",
             "path": "/extraInfo/studyIdentifier",
@@ -338,7 +367,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         datasets_patch = []
 
         for ds in datacite_datasets:
-            await self.datacite_handler.publish(ds)
+            await self.publish(submission["workflow"], ds)
             patch_ds = {
                 "op": "add",
                 "path": "/extraInfo/datasetIdentifiers/-",
@@ -531,7 +560,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         async for accession_id, schema, object_data in self.iter_submission_objects_data(submission, obj_op):
             doi = object_data.get("doi", "")
             if schema in DATACITE_SCHEMAS and not doi:
-                doi = await self.create_draft_doi(schema)
+                doi = await self.create_draft_doi(submission["workflow"], schema)
                 object_data["doi"] = doi
                 await obj_op.update_identifiers(schema, accession_id, {"doi": doi})
 

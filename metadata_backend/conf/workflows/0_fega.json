@@ -91,6 +91,7 @@
         {
             "name": "datacite",
             "endpoint": "datacite",
+            "service": "pid",
             "requiredSchemas": [
                 "datacite"
             ]
