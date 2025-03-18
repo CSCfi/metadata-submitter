@@ -122,7 +122,7 @@ services:
     image: cscfi/metadata-submitter-dev
     environment:
       - "LOG_LEVEL=${LOG_LEVEL}"
-      - "OIDC_URL_TEST=${OIDC_URL_TEST}"
+      - "OIDC_URL_TEST=${OIDC_URL}"
     hostname: mockadmin
     expose:
       - 8004
