@@ -9,6 +9,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- Use CSC PID service for DOI in FEGA and generic workflows (#827)
 - Implemented support for Bigpicture annotation and observer metadata schemas
 - Included new Bigpicture related schemas
 - Add /ingest endpoint for starting data ingestion
