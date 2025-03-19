@@ -3,22 +3,6 @@
     "description": "",
     "steps": [
         {
-            "title": "DAC and Policy",
-            "required": true,
-            "schemas": [
-                {
-                    "name": "dac",
-                    "required": true,
-                    "allowMultipleObjects": false
-                },
-                {
-                    "name": "policy",
-                    "required": true,
-                    "allowMultipleObjects": true
-                }
-            ]
-        },
-        {
             "title": "Files",
             "required": true,
             "schemas": [

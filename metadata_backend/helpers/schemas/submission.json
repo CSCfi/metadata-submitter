@@ -1221,7 +1221,9 @@
                     "items": {
                         "type": "integer",
                         "title": "REMS id of a policy/license"
-                    }
+                    },
+                    "minItems": 0,
+                    "uniqueItems": true
                 }
             }
         },

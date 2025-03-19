@@ -14,6 +14,7 @@ from multidict import CIMultiDict
 from ...conf.conf import WORKFLOWS, schema_types
 from ...helpers.logger import LOG
 from ...helpers.schema_loader import JSONSchemaLoader, SchemaNotFoundException
+from ...helpers.validator import JSONValidator
 from ...helpers.workflow import Workflow
 from ...services.admin_service_handler import AdminServiceHandler
 from ...services.datacite_service_handler import DataciteServiceHandler
@@ -327,7 +328,11 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
         return metax_id
 
     async def check_rems_ok(self, submission: dict[str, Any]) -> bool:
-        """Check that REMS DAC in object is ok."""
+        """Check that REMS DAC in object is ok.
+
+        :param submission: Submission data
+        :returns: bool
+        """
         if "rems" not in submission:
             raise web.HTTPBadRequest(reason="REMS field is missing.")
 
@@ -344,6 +349,35 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
             )
 
         return True
+
+    async def update_object_in_submission(
+        self, submission_op: SubmissionOperator, submission_id: str, schema: str, schema_data: dict[str, Any]
+    ) -> str:
+        """Update object in submission from database.
+
+        The object's schema can be REMS or Datacite.
+
+        :param submission_op: Submission Operator
+        :param submission_id: ID of the submission
+        :param schema: schema type to be updated
+        :param schema_data: data of the schema to be updated
+        :returns: submission_id
+        """
+        submission = await submission_op.read_submission(submission_id)
+
+        op = "add"
+        if schema in submission:
+            op = "replace"
+        patch = [
+            {"op": op, "path": f"/{schema}", "value": schema_data},
+        ]
+
+        submission[schema] = schema_data
+        JSONValidator(submission, "submission").validate
+
+        upd_submission_id = await submission_op.update_submission(submission_id, patch)
+        LOG.info("PUT %r in submission with ID: %r was successful.", schema, submission_id)
+        return upd_submission_id
 
     async def start_file_ingestion(self, req: Request, data: dict[str, str], file_op: FileOperator) -> dict[str, Any]:
         """Start the file ingestion. File status in submission becomes 'verified'.

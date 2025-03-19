@@ -40,9 +40,9 @@ class TaxonomySearchHandler:
         returns: list of items
         """
         search_results = []
-        for item in TAXONOMY_NAME_DATA.keys():
-            if item.startswith(query):
-                search_results.append({"tax_id": item, **TAXONOMY_NAME_DATA[item]})
+        for key, value in TAXONOMY_NAME_DATA.items():
+            if key.startswith(query):
+                search_results.append({"tax_id": key, **value})
                 if len(search_results) >= max_results:
                     return search_results
         return search_results

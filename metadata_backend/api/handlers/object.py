@@ -11,6 +11,7 @@ from multidict import CIMultiDict
 
 from ...conf.conf import API_PREFIX
 from ...helpers.logger import LOG
+from ...helpers.parser import XMLToJSONParser
 from ...helpers.validator import JSONValidator
 from ..operators.object import ObjectOperator
 from ..operators.object_xml import XMLObjectOperator
@@ -157,6 +158,14 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
                 JSONValidator(content, schema_type).validate
             operator = ObjectOperator(db_client)
 
+        # If the schema is 'bprems': only add its data to the submission's rems object
+        # schema 'bprems' is not added to DB metadata collection
+        if schema_type == "bprems":
+            if isinstance(content, str):
+                await self.format_data_update_submission(schema_type, content, submission_id, submission_op)
+                return web.Response(status=201)
+            raise web.HTTPBadRequest(reason=f"XML file for schema {schema_type} is not correct.")
+
         is_single_instance = schema_type in workflow.single_instance_schemas
 
         # ensure only one object with the same schema exists in the submission
@@ -215,7 +224,6 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         await submission_op.update_submission(submission_id, patch)
 
         body = ujson.dumps(data, escape_forward_slashes=False)
-
         return web.Response(
             body=body,
             status=201,
@@ -473,3 +481,28 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         lastModified = {"op": "replace", "path": "/lastModified", "value": _now}
 
         return [patch_op, lastModified]
+
+    async def format_data_update_submission(
+        self, schema_type: str, xml_content: str, submission_id: str, submission_op: SubmissionOperator
+    ) -> None:
+        """Format schema data to be added to submission. Schema data can be REMS or Datacite.
+
+        :param schema_type: schema type to be updated
+        :param xml_content: XML content of the XML file
+        :param submission_id: ID of the submission
+        :param submission_op: Submission Operator
+        """
+        json_content, _ = XMLToJSONParser().parse(schema_type, xml_content)
+
+        if schema_type == "bprems":
+            # Format rems_data to add to submission
+            rems_data = {
+                "workflowId": int(json_content["workflowId"].strip()),
+                "organizationId": json_content["organisationId"],
+                "licenses": [],
+            }
+            await self.check_rems_ok({"rems": rems_data})
+            upd_submission_id = await self.update_object_in_submission(
+                submission_op, submission_id, schema="rems", schema_data=rems_data
+            )
+            LOG.info("Data from %s was added to submission %r successfully", schema_type, upd_submission_id)

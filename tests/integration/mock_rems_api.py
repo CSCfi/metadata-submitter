@@ -27,7 +27,7 @@ organizations = {
         "name": {"en": "Another organization"},
         "handlers": ["user_id_2", "user_id_1"],
         "workflows": [1],
-        "licenses": [1],
+        "licenses": [1, 3],
         "resources": {},
         "catalogue-items": {},
     },
@@ -97,7 +97,7 @@ workflows = {
         },
         "licenses": [],
         "enabled": True,
-        "archived": True,
+        "archived": False,
     },
 }
 licenses = {
@@ -134,6 +134,29 @@ licenses = {
         },
         "localizations": {
             "en": {"title": "Test License", "textcontent": "Everything is prohibited!", "attachment-id": None}
+        },
+        "enabled": True,
+        "archived": False,
+    },
+    3: {
+        "id": 3,
+        "licensetype": "text",
+        "organization": {
+            "organization/id": "CSC",
+            "organization/short-name": organizations["CSC"]["short-name"],
+            "organization/name": organizations["CSC"]["name"],
+        },
+        "localizations": {
+            "fi": {
+                "title": "Test License 2 FIN",
+                "textcontent": "This is Test License 2 FIN",
+                "attachment-id": None,
+            },
+            "en": {
+                "title": "Test License 2 EN",
+                "textcontent": "This is Test License 2 EN",
+                "attachment-id": None,
+            },
         },
         "enabled": True,
         "archived": False,

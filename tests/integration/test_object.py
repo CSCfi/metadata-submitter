@@ -203,6 +203,27 @@ class TestObjects:
         for sample in samples_2[0] + samples[0][1:]:
             await delete_object(client_logged_in, _schema, sample["accessionId"])
 
+    async def test_bprems_xml_works(self, client_logged_in, submission_bigpicture):
+        """Test POSTing bprems xml works and rems object in submission is updated."""
+        await post_object_expect_status(client_logged_in, "bprems", submission_bigpicture, "rems.xml", 201)
+
+        async with client_logged_in.get(f"{submissions_url}/{submission_bigpicture}") as resp:
+            LOG.debug("Checking that 'rems' object exists in %r", submission_bigpicture)
+            res = await resp.json()
+            assert res["rems"]["workflowId"] == 1, "'workflowId' is not 1"
+            assert res["rems"]["organizationId"] == "CSC", "'organizationId' is not CSC"
+            assert "licenses" in res["rems"], "'licenses' not found in rems object"
+
+        # POST bprems again with new XML file
+        # Assert that rems object data is updated in submission
+        await post_object_expect_status(client_logged_in, "bprems", submission_bigpicture, "rems_put.xml", 201)
+        async with client_logged_in.get(f"{submissions_url}/{submission_bigpicture}") as resp:
+            LOG.debug("Checking that 'rems' object exists in %r", submission_bigpicture)
+            res = await resp.json()
+            assert res["rems"]["workflowId"] == 3, "'workflowId' is not 3"
+            assert res["rems"]["organizationId"] == "testorg", "'organizationId' is not 'testorg'"
+            assert "licenses" in res["rems"], "'licenses' not found in rems object"
+
 
 class TestObjectsJsonXml:
     """Test creating objects with XML and CSV files."""
