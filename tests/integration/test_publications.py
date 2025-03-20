@@ -110,9 +110,7 @@ class TestMinimalPublicationRems:
             assert res["submissionId"] == submission_fega, "expected submission id does not match"
             assert res["published"] is True, "submission is published, expected False"
 
-        async with client_logged_in.get(
-            f"{objects_url}/dataset/{dataset_id}?submission_fega={submission_fega}"
-        ) as resp:
+        async with client_logged_in.get(f"{objects_url}/dataset/{dataset_id}") as resp:
             LOG.debug("Checking that dataset %s in submission %s has rems data", dataset_id, submission_fega)
             res = await resp.json()
             assert res["accessionId"] == dataset_id, "expected dataset id does not match"
@@ -142,9 +140,7 @@ class TestMinimalPublicationRems:
             assert res["submissionId"] == submission_bigpicture, "expected submission id does not match"
             assert res["published"] is True, "submission is published, expected False"
 
-        async with client_logged_in.get(
-            f"{objects_url}/bpdataset/{dataset_id}?submission_bigpicture={submission_bigpicture}"
-        ) as resp:
+        async with client_logged_in.get(f"{objects_url}/bpdataset/{dataset_id}") as resp:
             LOG.debug(f"Checking that dataset {dataset_id} in submission {submission_bigpicture} has rems data")
             res = await resp.json()
             assert res["accessionId"] == dataset_id, "expected dataset id does not match"
@@ -206,9 +202,7 @@ class TestFullPublication:
                 metax_res = await metax_resp.json()
                 assert metax_res["research_dataset"]["preferred_identifier"] == doi
 
-        async with client_logged_in.get(
-            f"{objects_url}/dataset/{dataset_id}?submission_fega={submission_fega}"
-        ) as resp:
+        async with client_logged_in.get(f"{objects_url}/dataset/{dataset_id}") as resp:
             LOG.debug(f"Checking that dataset {dataset_id} in submission {submission_fega} has rems data")
             res = await resp.json()
             assert res["accessionId"] == dataset_id, "expected dataset id does not match"
@@ -257,9 +251,7 @@ class TestFullPublication:
                 metax_res = await metax_resp.json()
                 assert metax_res["research_dataset"]["preferred_identifier"] == doi
 
-        async with client_logged_in.get(
-            f"{objects_url}/dataset/{dataset_id}?submission_sdsx={submission_sdsx}"
-        ) as resp:
+        async with client_logged_in.get(f"{objects_url}/dataset/{dataset_id}") as resp:
             LOG.debug(f"Checking that dataset {dataset_id} in submission {submission_sdsx} has rems data")
             res = await resp.json()
             assert res["accessionId"] == dataset_id, "expected dataset id does not match"
@@ -296,9 +288,7 @@ class TestFullPublication:
             assert res["submissionId"] == submission_bigpicture, "expected submission id does not match"
             assert res["published"] is True, "submission is published, expected False"
 
-        async with client_logged_in.get(
-            f"{objects_url}/bpdataset/{dataset_id}?submission_bigpicture={submission_bigpicture}"
-        ) as resp:
+        async with client_logged_in.get(f"{objects_url}/bpdataset/{dataset_id}") as resp:
             res = await resp.json()
             LOG.debug(
                 f"Checking that bpdataset {dataset_id} in submission {submission_bigpicture} published to Datacite"

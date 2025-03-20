@@ -3,7 +3,7 @@
     "datasetType": [
         "Amplicon sequencing"
     ],
-    "description": "ome cool test description for json dataset",
+    "description": "Some cool test description for json dataset",
     "runRef": [
         {
           "refname": "REFNAME",
