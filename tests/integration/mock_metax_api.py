@@ -39,7 +39,7 @@ async def get_root(req: web.Request) -> web.Response:
     """Mock endpoint for testing server responds.
 
     :params req: HTTP request with data for Metax dataset
-    :return: HTTPNoContent
+    :returns: HTTPNoContent
     """
     if req.method == "HEAD":
         return web.HTTPOk(body=None)
@@ -50,7 +50,7 @@ async def ping_pong(req: web.Request) -> web.Response:
     """Mock endpoint for testing server responds.
 
     :params req: HTTP request with data for Metax dataset
-    :return: HTTPNoContent
+    :returns: HTTPNoContent
     """
     return web.HTTPOk(body="pong")
 
@@ -59,7 +59,7 @@ async def get_dataset(req: web.Request) -> web.Response:
     """Mock endpoint for retrieving Metax dataset.
 
     :params req: HTTP request with data for Metax dataset
-    :return: HTTP response with mocked Metax dataset data
+    :returns: HTTP response with mocked Metax dataset data
     """
     metax_id = req.match_info["metax_id"]
     LOG.info("Retrieving Metax dataset %s", metax_id)
@@ -92,7 +92,7 @@ async def post_dataset(req: web.Request) -> web.Response:
     """Mock endpoint for creating draft Metax dataset.
 
     :params req: HTTP request with data for Metax dataset
-    :return: HTTP response with mocked Metax dataset data
+    :returns: HTTP response with mocked Metax dataset data
     """
     LOG.info("Creating Metax dataset")
     try:
@@ -135,7 +135,7 @@ async def update_dataset(req: web.Request) -> web.Response:
     """Mock endpoint for updating Metax dataset.
 
     :params req: HTTP request with data for Metax dataset
-    :return: HTTP response with mocked Metax dataset data
+    :returns: HTTP response with mocked Metax dataset data
     """
     LOG.info("Updating Metax dataset")
     metax_id = req.match_info["metax_id"]
@@ -180,7 +180,7 @@ async def patch_datasets(req: web.Request) -> web.Response:
     """Mock endpoint for patching bulk Metax datasets.
 
     :params req: HTTP request with data for Metax datasets
-    :return: HTTP response with IDs of patched Metax datasets and possible errors
+    :returns: HTTP response with IDs of patched Metax datasets and possible errors
     """
     LOG.info("Patching Metax datasets")
 
@@ -240,7 +240,7 @@ async def patch_dataset(req: web.Request) -> web.Response:
     """Mock endpoint for patching Metax dataset.
 
     :params req: HTTP request with data for Metax dataset
-    :return: HTTP response with mocked Metax dataset data
+    :returns: HTTP response with mocked Metax dataset data
     """
     LOG.info("Patching Metax dataset")
     metax_id = req.match_info["metax_id"]
@@ -283,7 +283,7 @@ async def publish_dataset(req: web.Request) -> web.Response:
     """Mock endpoint for publishing Metax dataset.
 
     :params req: HTTP request with data for Metax dataset
-    :return: HTTP response with mocked Metax dataset data
+    :returns: HTTP response with mocked Metax dataset data
     """
     LOG.info("Publishing Metax dataset")
     metax_id = req.query.get("identifier", None)
@@ -323,7 +323,7 @@ async def delete_dataset(req: web.Request) -> web.Response:
     """Mock endpoint for deleting Metax dataset.
 
     :params req: HTTP request with Metax dataset id
-    :return: HTTP response with HTTP status
+    :returns: HTTP response with HTTP status
     """
     metax_id = req.match_info["metax_id"]
     LOG.debug("Deleting Metax dataset %s", metax_id)

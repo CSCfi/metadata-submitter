@@ -148,10 +148,10 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         )
 
     async def post_submission(self, req: Request) -> Response:
-        """Save object submission to database.
+        """Save submission object to database.
 
         :param req: POST request
-        :returns: JSON response containing submission ID for submitted submission
+        :returns: JSON response containing submission ID for created submission
         """
         session = await aiohttp_session.get_session(req)
 
@@ -190,11 +190,11 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         )
 
     async def get_submission(self, req: Request) -> Response:
-        """Get one object submission by its submission id.
+        """Get one submission object by its submission id.
 
         :param req: GET request
         :raises: HTTPNotFound if submission not owned by user
-        :returns: JSON response containing object submission
+        :returns: JSON response containing submission object
         """
         submission_id = req.match_info["submissionId"]
         db_client = req.app["db_client"]
