@@ -174,7 +174,16 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)
 
+        # Check if the name of the submission is unique within the project
         operator = SubmissionOperator(db_client)
+        existing_submission, _ = await operator.query_submissions(
+            {"projectId": content["projectId"], "name": content["name"]}, page_num=1, page_size=1
+        )
+        if existing_submission:
+            reason = f"Submission with name '{content['name']}' already exists in project {content['projectId']}"
+            LOG.error(reason)
+            raise web.HTTPBadRequest(reason=reason)
+
         submission = await operator.create_submission(content)
 
         body = ujson.dumps({"submissionId": submission}, escape_forward_slashes=False)

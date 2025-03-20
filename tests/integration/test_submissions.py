@@ -235,6 +235,12 @@ class TestSubmissionOperations:
             LOG.debug("Checking that submission %s was created", submission_fega)
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
+        # Try creating the same submission again and check that it fails
+        async with client_logged_in.post(f"{submissions_url}", data=json.dumps(submission_data)) as resp:
+            ans = await resp.json()
+            assert resp.status == 400, f"HTTP Status code error {resp.status} {ans}"
+            assert ans["detail"] == f"Submission with name 'Mock Submission' already exists in project {project_id}"
+
         # Create draft from test XML file and patch the draft into the newly created submission
         draft_id = await post_draft(client_logged_in, "sample", submission_fega, "SRS001433.xml")
         async with client_logged_in.get(f"{submissions_url}/{submission_fega}") as resp:

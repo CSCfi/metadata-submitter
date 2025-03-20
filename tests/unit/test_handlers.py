@@ -968,6 +968,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
     async def test_submission_creation_works(self):
         """Test that submission is created and submission ID returned."""
         json_req = {"name": "test", "description": "test submission", "projectId": "1000", "workflow": "FEGA"}
+        self.MockedSubmissionOperator().query_submissions.return_value = ([], 0)
         with (
             patch(
                 "metadata_backend.api.operators.project.ProjectOperator.check_project_exists",
@@ -1006,6 +1007,22 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             json_resp = await response.json()
             self.assertEqual(response.status, 400)
             self.assertIn("JSON is not correctly formatted", json_resp["detail"])
+
+    async def test_submission_creation_with_duplicate_name_fails(self):
+        """Test that submission creation fails when duplicate name in request."""
+        json_req = {"name": "test", "description": "test submission", "projectId": "1000", "workflow": "FEGA"}
+        self.MockedSubmissionOperator().query_submissions.return_value = (self.test_submission, 1)
+        with (
+            patch(
+                "metadata_backend.api.operators.project.ProjectOperator.check_project_exists",
+                return_value=True,
+            ),
+            self.p_get_sess_restapi,
+        ):
+            response = await self.client.post(f"{API_PREFIX}/submissions", json=json_req)
+            json_resp = await response.json()
+            self.assertEqual(response.status, 400)
+            self.assertEqual("Submission with name 'test' already exists in project 1000", json_resp["detail"])
 
     async def test_get_submissions_with_1_submission(self):
         """Test get_submissions() endpoint returns list with 1 submission."""
