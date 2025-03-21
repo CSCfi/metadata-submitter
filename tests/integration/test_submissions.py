@@ -311,7 +311,7 @@ class TestSubmissionOperations:
 
         rems_data = await create_request_json_data("dac", "dac_rems.json")
         await put_submission_rems(client_logged_in, submission_fega, rems_data)
-
+        await post_object_json(client_logged_in, "policy", submission_fega, "policy.json")
         await post_object_json(client_logged_in, "run", submission_fega, "ERR000076.json")
 
         submission_fega = await publish_submission(client_logged_in, submission_fega)
@@ -330,7 +330,7 @@ class TestSubmissionOperations:
             assert "datePublished" in res.keys()
             assert "extraInfo" in res.keys()
             assert res["drafts"] == [], "there are drafts in submission, expected empty"
-            assert len(res["metadataObjects"]) == 5, "submission metadataObjects content mismatch"
+            assert len(res["metadataObjects"]) == 6, "submission metadataObjects content mismatch"
             assert "rems" in res.keys(), "submission does not have rems dac data"
 
         # Check that submission info and its objects cannot be updated and that publishing it again fails
@@ -647,6 +647,9 @@ class TestSubmissionPagination:
             await put_submission_doi(client_logged_in, submission_fega, doi_data_raw)
             rems_data = await create_request_json_data("dac", "dac_rems.json")
             await put_submission_rems(client_logged_in, submission_fega, rems_data)
+            await post_object_json(client_logged_in, "policy", submission_fega, "policy.json")
+            await post_object_json(client_logged_in, "run", submission_fega, "ERR000076.json")
+            await post_object_json(client_logged_in, "dataset", submission_fega, "dataset.json")
             await publish_submission(client_logged_in, submission_fega)
 
         # Test default values

@@ -150,10 +150,11 @@ async def post_object(sess, schema, submission_id, filename):
         params={"submission": submission_id},
         data=request_data,
     ) as resp:
-        LOG.debug("Adding new object to %s, via XML/CSV file %s", schema, filename)
-        ans = await resp.json()
-        assert resp.status == 201, f"HTTP Status code error, got {resp.status}: {ans}"
-        return ans if isinstance(ans, list) else ans["accessionId"], schema
+        LOG.debug(f"Adding new object to {schema}, via XML/CSV file {filename}")
+        assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
+        if schema != "bprems":
+            ans = await resp.json()
+            return ans if isinstance(ans, list) else ans["accessionId"], schema
 
 
 async def post_multi_object(sess, schema, submission_id, filename):

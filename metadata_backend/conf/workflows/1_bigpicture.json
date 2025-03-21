@@ -13,7 +13,7 @@
                 },
                 {
                     "name": "bppolicy",
-                    "required": true,
+                    "required": false,
                     "allowMultipleObjects": true,
                     "requires": [
                         "bprems"
@@ -101,8 +101,7 @@
                 "datacite"
             ],
             "requiredSchemas": [
-                "dac",
-                "policy"
+                "bprems"
             ]
         }
     ],

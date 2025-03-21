@@ -166,7 +166,7 @@ class TestUsers:
         await post_object_json(client_logged_in, "study", publish_submission_id, "SRP000539.json")
         await post_object(client_logged_in, "dataset", publish_submission_id, "dataset.xml")
         await post_object_json(client_logged_in, "run", publish_submission_id, "ERR000076.json")
-
+        await post_object_json(client_logged_in, "policy", publish_submission_id, "policy.json")
         await publish_submission(client_logged_in, publish_submission_id)
         async with client_logged_in.get(f"{submissions_url}/{publish_submission_id}?projectId={project_id}") as resp:
             LOG.debug("Checking that submission %s was published", publish_submission_id)

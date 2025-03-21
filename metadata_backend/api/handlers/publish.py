@@ -340,12 +340,13 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         return datacite_study, datacite_datasets
 
     async def _publish_datacite(
-        self, submission: dict[str, Any], obj_op: ObjectOperator, operator: SubmissionOperator
+        self, submission: dict[str, Any], obj_op: ObjectOperator, submission_op: SubmissionOperator
     ) -> dict[str, Any]:
-        """Prepare dictionary with values to be published to Metax.
+        """Prepare dictionary with values to be published to Datacite.
 
         :param submission: Submission data
         :param obj_op: ObjectOperator for reading objects from database.
+        :param submission_op: SubmissionOperator for updating submissions in the database
         :returns: Whether publishing to Datacite succeeded
         """
         datacite_study, datacite_datasets = await self._prepare_datacite_publication(obj_op, submission)
@@ -382,7 +383,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
             }
             datasets_patch.append(patch_ds)
         extra_info_patch.extend(datasets_patch)
-        await operator.update_submission(submission["submissionId"], extra_info_patch)
+        await submission_op.update_submission(submission["submissionId"], extra_info_patch)
 
         return datacite_study
 
@@ -434,7 +435,6 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         :returns: Whether publishing to REMS succeeded
         """
         rems_datasets: list[dict[str, Any]] = []
-
         async for accession_id, schema, object_data in self.iter_submission_objects_data(submission, obj_op):
             if schema in {"dataset", "bpdataset"}:
                 rems_ds = {
@@ -494,26 +494,27 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         """
         submission_id = req.match_info["submissionId"]
         db_client = req.app["db_client"]
-        operator = SubmissionOperator(db_client)
+        submission_op = SubmissionOperator(db_client)
         obj_op = ObjectOperator(db_client)
         xml_ops = XMLObjectOperator(db_client)
         file_op = FileOperator(db_client)
 
         # Check submission exists and is not already published
-        await operator.check_submission_exists(submission_id)
-        await operator.check_submission_published(submission_id, req.method)
+        await submission_op.check_submission_exists(submission_id)
+        await submission_op.check_submission_published(submission_id, req.method)
 
         await self._handle_check_ownership(req, "submission", submission_id)
 
-        submission = await operator.read_submission(submission_id)
+        submission = await submission_op.read_submission(submission_id)
         workflow = self.get_workflow(submission["workflow"])
 
         # Validate that submission has required data for publishing
         if "datacite" in workflow.required_schemas and "doiInfo" not in submission:
             raise web.HTTPBadRequest(reason=f"Submission '{submission_id}' must have the required DOI metadata.")
 
-        if "dac" in workflow.required_schemas and "rems" not in submission:
-            raise web.HTTPBadRequest(reason=f"Submission '{submission_id}' must have rems information.")
+        if "dac" in workflow.required_schemas or "bprems" in workflow.required_schemas:
+            if "rems" not in submission:
+                raise web.HTTPBadRequest(reason=f"Submission '{submission_id}' must have rems information.")
 
         schemas_in_submission = set()
         has_study = False
@@ -528,7 +529,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                 raise web.HTTPBadRequest(reason=reason)
             schemas_in_submission.add(schema)
 
-        if workflow.name != "BigPicture" and not has_study:
+        if workflow.name not in {"BigPicture", "SDSX"} and not has_study:
             raise web.HTTPBadRequest(reason=f"Submission '{submission_id}' must have a study.")
 
         for _, schema in self.iter_submission_objects(submission):
@@ -544,16 +545,17 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                     )
                     raise web.HTTPBadRequest(reason=reason)
 
-        # TO_DO: Need to include all required objects before publishing submission in unit and integration tests
-        # missing_schemas = set()
-        # for required_schema in workflow.required_schemas:
-        #     if required_schema not in schemas_in_submission:
-        #         missing_schemas.add(required_schema)
-        # if missing_schemas:
-        #     required = ", ".join(missing_schemas)
-        #     raise web.HTTPBadRequest(
-        #         reason=f"{workflow.name} submission '{submission_id}' is missing '{required}' schema(s)."
-        #     )
+        missing_schemas = set()
+        for required_schema in workflow.required_schemas:
+            # Exceptional schemas only require to be added to submission for publishing, their checks are added above.
+            exceptional_schemas = {"dac", "bprems", "datacite", "file"}
+            if required_schema not in schemas_in_submission and required_schema not in exceptional_schemas:
+                missing_schemas.add(required_schema)
+        if missing_schemas:
+            required = ", ".join(missing_schemas)
+            raise web.HTTPBadRequest(
+                reason=f"{workflow.name} submission '{submission_id}' is missing '{required}' schema(s)."
+            )
 
         # Create draft DOI and Metax records if not existing
         external_user_id = await self.get_user_external_id(req)
@@ -574,7 +576,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         await file_op.check_submission_files_ready(submission_id)
         if "datacite" in workflow.endpoints:
             try:
-                datacite_study = await self._publish_datacite(submission, obj_op, operator)
+                datacite_study = await self._publish_datacite(submission, obj_op, submission_op)
                 publish_status["datacite"] = "published"
             except Exception as error:
                 LOG.exception(error)
@@ -583,7 +585,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         metax_datasets = []
         if "metax" in workflow.endpoints:
             try:
-                operators = {"object": obj_op, "submission": operator, "file": file_op}
+                operators = {"object": obj_op, "submission": submission_op, "file": file_op}
                 metax_datasets = await self._pre_publish_metax(submission, operators, external_user_id)
                 publish_status["metax"] = "published"
             except Exception as error:
@@ -598,7 +600,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                 LOG.exception(error)
                 publish_status["rems"] = "failed"
 
-        # REMS needs to update metax drafts, so we publish to Metax after publishing to REMS
+        # REMS needs to update metax drafts' description, so we publish to Metax after publishing to REMS
         if "metax" in workflow.endpoints and metax_datasets:
             await self.metax_handler.publish_dataset(metax_datasets)
 
@@ -636,7 +638,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                 }
             )
 
-        await operator.update_submission(submission_id, patch)
+        await submission_op.update_submission(submission_id, patch)
 
         result = {"submissionId": submission_id, "published": publish_status}
         body = ujson.dumps(result, escape_forward_slashes=False)

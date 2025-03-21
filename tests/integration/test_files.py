@@ -112,50 +112,41 @@ class TestFiles:
         submission_id = await post_submission(client_logged_in, submission_data)
 
         # Post 3 files
-        mock_file_1 = generate_mock_file("test_delete_project_file_1")
-        mock_file_2 = generate_mock_file("test_delete_project_file_2")
-        mock_file_3 = generate_mock_file("test_delete_project_file_3")
+        mock_files = []
+        for index in range(1, 4):
+            mock_file = generate_mock_file(f"test_delete_project_file_{index}")
+            mock_files.append(mock_file)
+
         file_data = {
             "userId": user_data["userId"],
             "projectId": project_id,
-            "files": [mock_file_1, mock_file_2, mock_file_3],
+            "files": mock_files,
         }
         created_files = await post_project_files(client_logged_in, file_data)
         assert len(created_files) == 3
 
         # Confirm files exist inside project
-        file_id_1 = created_files[0]["accessionId"]
-        file_id_2 = created_files[1]["accessionId"]
-        file_id_3 = created_files[2]["accessionId"]
-        file_1_exists = await find_project_file(client_logged_in, project_id, file_id_1)
-        file_2_exists = await find_project_file(client_logged_in, project_id, file_id_2)
-        file_3_exists = await find_project_file(client_logged_in, project_id, file_id_3)
-        assert file_1_exists is True
-        assert file_2_exists is True
-        assert file_3_exists is True
+        files_info = []
+        for index, file in enumerate(created_files):
+            file_exists = await find_project_file(client_logged_in, project_id, file["accessionId"])
+            assert file_exists is True
+            # Append file info as dict to a list
+            files_info.append(
+                {"accessionId": file["accessionId"], "version": file["version"], "path": mock_files[index]["path"]}
+            )
 
         # Add files to a submission
-        file_info = [
-            {"accessionId": file_id_1, "version": created_files[0]["version"]},
-            {"accessionId": file_id_2, "version": created_files[1]["version"]},
-            {"accessionId": file_id_3, "version": created_files[2]["version"]},
-        ]
-        await add_submission_files(client_logged_in, file_info, submission_id)
+        await add_submission_files(client_logged_in, files_info, submission_id)
         submission_info = await get_submission(client_logged_in, submission_id)
         assert len(submission_info["files"]) == 3
 
-        # Query created files in database
-        db_file_1 = await database["file"].find_one({"accessionId": file_id_1, "projectId": project_id})
-        db_file_2 = await database["file"].find_one({"accessionId": file_id_2, "projectId": project_id})
-        db_file_3 = await database["file"].find_one({"accessionId": file_id_3, "projectId": project_id})
-
-        # Verify that all 3 files are not flagged as deleted
-        assert db_file_1["flagDeleted"] is False
-        assert db_file_2["flagDeleted"] is False
-        assert db_file_3["flagDeleted"] is False
+        # Query created files in database. Verify that all 3 files are not flagged as deleted
+        for file in files_info:
+            db_file = await database["file"].find_one({"accessionId": file["accessionId"], "projectId": project_id})
+            assert db_file["flagDeleted"] is False
 
         # Flag 2 files as deleted in DB and remove 2 files from current submission
-        await delete_project_files(client_logged_in, project_id, [mock_file_1["path"], mock_file_2["path"]])
+        await delete_project_files(client_logged_in, project_id, [files_info[0]["path"], files_info[1]["path"]])
 
         # Verify that 2 files were removed from current submission
         submission_info = await get_submission(client_logged_in, submission_id)
@@ -164,21 +155,19 @@ class TestFiles:
         # Verify that 2 files are flagged as deleted and not shown anymore in the list of project files
         project_files = await get_project_files(client_logged_in, project_id)
         assert len(project_files) == 1
+        for index in range(2):
+            file_exists = await find_project_file(client_logged_in, project_id, files_info[index]["accessionId"])
+            assert file_exists is False
 
-        file_1_exists = await find_project_file(client_logged_in, project_id, file_id_1)
-        file_2_exists = await find_project_file(client_logged_in, project_id, file_id_2)
-        assert file_1_exists is False
-        assert file_2_exists is False
-
-        # Query flagged as deleted files in database
-        db_file_1_deleted = await database["file"].find_one({"accessionId": file_id_1, "projectId": project_id})
-        db_file_2_deleted = await database["file"].find_one({"accessionId": file_id_2, "projectId": project_id})
-        db_file_3_deleted = await database["file"].find_one({"accessionId": file_id_3, "projectId": project_id})
-
-        # Verify that 2 files are flagged as deleted, 1 file is kept as it is
-        assert db_file_1_deleted["flagDeleted"] is True
-        assert db_file_2_deleted["flagDeleted"] is True
-        assert db_file_3_deleted["flagDeleted"] is False
+        # Query flagged as deleted files in database. Verify that 2 files are flagged as deleted, 1 is kept as it is
+        for index, file in enumerate(files_info):
+            db_file_deleted = await database["file"].find_one(
+                {"accessionId": file["accessionId"], "projectId": project_id}
+            )
+            if index == 2:
+                assert db_file_deleted["flagDeleted"] is False
+            else:
+                assert db_file_deleted["flagDeleted"] is True
 
 
 class TestFileSubmissions:
