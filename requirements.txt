@@ -56,7 +56,7 @@ idna==3.10
     #   yarl
 idpyoidc==5.0.0
     # via -r requirements.in
-jinja2==3.1.5
+jinja2==3.1.6
     # via idpyoidc
 jsonschema==4.23.0
     # via -r requirements.in
@@ -74,6 +74,10 @@ multidict==6.1.0
     #   yarl
 packaging==24.2
     # via gunicorn
+propcache==0.3.0
+    # via
+    #   aiohttp
+    #   yarl
 pycparser==2.22
     # via cffi
 pydantic==2.10.5
@@ -114,6 +118,7 @@ typing-extensions==4.12.2
     #   -r requirements.in
     #   pydantic
     #   pydantic-core
+    #   referencing
 ujson==5.10.0
     # via -r requirements.in
 urllib3==2.3.0
