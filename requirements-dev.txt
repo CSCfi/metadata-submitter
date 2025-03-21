@@ -210,6 +210,11 @@ pluggy==1.5.0
     #   tox
 pre-commit==4.0.1
     # via -r requirements-dev.in
+propcache==0.3.0
+    # via
+    #   -r requirements.txt
+    #   aiohttp
+    #   yarl
 pycodestyle==2.12.1
     # via flake8
 pycparser==2.22
@@ -341,6 +346,7 @@ typing-extensions==4.12.2
     #   mypy
     #   pydantic
     #   pydantic-core
+    #   referencing
 ujson==5.10.0
     # via -r requirements.txt
 urllib3==2.3.0
