@@ -31,13 +31,7 @@ jobs:
           driver-opts: network=host
 
       - name: Set build target branch
-        run: |
-          if [[ ${{ github.event.pull_request.base.ref }} == master ]]; then
-            BRANCH=master
-          else
-            BRANCH=develop
-          fi
-          echo "BUILD_BRANCH=$BRANCH" >> $GITHUB_ENV
+        run: echo "BUILD_BRANCH=main" >> $GITHUB_ENV
 
       - name: Build
         uses: docker/build-push-action@v6

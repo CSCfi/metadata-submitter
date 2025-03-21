@@ -6,7 +6,7 @@ RUN apk add --update \
     && apk add --no-cache git\
     && rm -rf /var/cache/apk/*
 
-ARG BRANCH=master
+ARG BRANCH=main
 
 RUN git clone -b ${BRANCH} https://github.com/CSCfi/metadata-submitter-frontend.git
 
