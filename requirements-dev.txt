@@ -78,7 +78,7 @@ cryptography==44.0.2
     #   authlib
     #   cryptojwt
     #   pyopenssl
-cryptojwt==1.9.3
+cryptojwt==1.9.4
     # via
     #   -r requirements.txt
     #   idpyoidc

@@ -34,7 +34,7 @@ cryptography==44.0.2
     #   -r requirements.in
     #   cryptojwt
     #   pyopenssl
-cryptojwt==1.9.3
+cryptojwt==1.9.4
     # via idpyoidc
 defusedxml==0.7.1
     # via -r requirements.in
