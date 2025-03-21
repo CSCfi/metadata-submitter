@@ -9,6 +9,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- minimal and full publication test cases for each workflow
 - (users) Process information from XML file for bprems schema and add it to the rems key in a BP submission
 - Use CSC PID service for DOI in FEGA and generic workflows (#827)
 - Implemented support for Bigpicture annotation and observer metadata schemas
@@ -32,6 +33,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- all required schemas are needed before publishing a submission in unit and integration tests
 - Updated some EGA related XML schemas to be up-to-date
 - (users) Bigpicture related metadata validation process now follows the Bigpicture metadata version 2.0.0
 - Updated XML to JSON conversion logic to accommodate new metadata schema versions
