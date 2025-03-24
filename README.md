@@ -198,7 +198,7 @@ Additionally, we use pre-commit hooks in the CI/CD pipeline for automated tests 
 Production version can be built and run with following docker commands:
 ```bash
 $ docker build --no-cache -f dockerfiles/Dockerfile -t cscfi/metadata-submitter .
-$ docker run -p 5430:5430 metadata-submitter
+$ docker run -p 5430:5430 cscfi/metadata-submitter
 ```
 
 The [frontend](https://github.com/CSCfi/metadata-submitter-frontend) is built and added as static files to the backend deployment with this method.

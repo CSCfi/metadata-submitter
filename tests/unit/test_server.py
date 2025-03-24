@@ -58,11 +58,11 @@ class AppTestCase(AioHTTPTestCase):
         frontend_static = "metadata_backend.server.frontend_static_files"
         with tempfile.TemporaryDirectory() as tempdir:
             temppath = Path(tempdir)
-            Path(temppath / "static").mkdir()
+            Path(temppath / "assets").mkdir()
             with patch(frontend_static, temppath):
                 server = await self.get_application()
                 routes = str([x for x in server.router.routes()])
-                self.assertIn(f"{tempdir}/static", routes)
+                self.assertIn(f"{tempdir}/assets", routes)
                 self.assertIn("DynamicResource  /{path}", routes)
 
     async def test_response_headers(self):
