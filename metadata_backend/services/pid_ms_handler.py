@@ -3,7 +3,8 @@
 import time
 from typing import Any
 
-from aiohttp import web
+from aiohttp.client_exceptions import ClientConnectorError
+from aiohttp.web import HTTPError
 from yarl import URL
 
 from ..conf.conf import pid_config
@@ -66,14 +67,21 @@ class PIDServiceHandler(ServiceHandler):
         try:
             start = time.time()
             # returns dict {status: "", checks : []}
-            resp = await self._request(method="GET", path="q/health/live")
-            LOG.debug("PID API status is: %s.", resp["status"])
-            if resp["status"] == "UP":
-                status = "Ok" if (time.time() - start) < 1000 else "Degraded"
-            else:
-                status = "Down"
-            return {"status": status}
-        except web.HTTPError as e:
+            async with self._client.request(
+                method="GET",
+                url=f"{URL(self.base_url)}/q/health/live",
+            ) as response:
+                LOG.debug("PID API status is: %s.", response.status)
+                content = await response.json()
+                if content["status"] == "UP":
+                    status = "Ok" if (time.time() - start) < 1000 else "Degraded"
+                else:
+                    status = "Down"
+                return {"status": status}
+        except ClientConnectorError:
+            LOG.exception("Connection cannot be established with PID API.")
+            return {"status": "Down"}
+        except HTTPError as e:
             LOG.exception("PID API status retrieval failed with: %r.", e)
             return {"status": "Error"}
 

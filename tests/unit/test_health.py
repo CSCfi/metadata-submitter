@@ -21,7 +21,7 @@ class HealthTestCase(AioHTTPTestCase):
             "services": {
                 "database": {"status": "Ok"},
                 "datacite": {"status": "Down"},
-                "pid": {"status": "Error"},
+                "pid": {"status": "Down"},
                 "metax": {"status": "Down"},
                 "rems": {"status": "Down"},
                 "aai": {"status": "Error"},
