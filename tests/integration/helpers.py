@@ -732,8 +732,8 @@ async def find_project_file(sess, projectId, fileId):
         return False
 
 
-async def add_submission_files(sess, file_data, submission_id):
-    """Add files to an existing submission.
+async def patch_submission_files(sess, file_data, submission_id):
+    """Add or update files to an existing submission.
 
     :param sess: HTTP session in which request call is made
     :param file_data: details of files to add to a submission
@@ -741,10 +741,7 @@ async def add_submission_files(sess, file_data, submission_id):
     """
     url = f"{submissions_url}/{submission_id}/files"
 
-    async with sess.post(
-        url,
-        data=ujson.dumps(file_data),
-    ) as resp:
+    async with sess.patch(url, data=ujson.dumps(file_data)) as resp:
         assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
 
@@ -778,19 +775,6 @@ async def add_submission_linked_folder(sess, submission_id, name):
         data=ujson.dumps(data),
     ) as resp:
         assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
-
-
-async def update_submission_files(sess, submission_id, files_data):
-    """Update submission files.
-
-    :param sess: HTTP session in which request call is made
-    :param submission_id: id of submission to update files for
-    :param files_data: list of dict with accessionId
-    """
-    url = f"{submissions_url}/{submission_id}/files"
-
-    async with sess.put(url, data=ujson.dumps(files_data)) as resp:
-        assert resp.status == 204, f"HTTP Status code error {resp.status}"
 
 
 async def remove_submission_file(sess, submission_id, file_id):

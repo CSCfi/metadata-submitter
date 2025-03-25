@@ -197,6 +197,8 @@ class FileOperator(BaseOperator):
             raise web.HTTPInternalServerError(reason=reason) from error
         if not file:
             reason = f"File '{accession_id}' was not found."
+            if version:
+                reason = f"File '{accession_id}' (version: '{version}') was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
 
@@ -422,18 +424,6 @@ class FileOperator(BaseOperator):
             raise web.HTTPBadRequest(reason=reason)
 
         LOG.info("Updating file with file ID: %r in submission %r succeeded.", accession_id, submission_id)
-
-    async def add_files_submission(self, files: list[dict[str, Any]], submission_id: str) -> bool:
-        """Add files to a submission.
-
-        Doesn't check if files are already present in the submission.
-
-        :param files: list of files according to submission schema
-        :param submission_id: Submission ID to add files to
-        :returns: True if operation to append was successful
-        """
-        success: bool = await self.db_service.append("submission", submission_id, {"files": {"$each": files}})
-        return success
 
     async def check_submission_has_file(self, submission_id: str, file_id: str) -> bool:
         """Check if submission has a file with given accession id.

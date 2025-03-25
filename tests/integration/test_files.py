@@ -3,18 +3,17 @@
 import logging
 
 from tests.integration.helpers import (
-    add_submission_files,
     delete_project_files,
     find_project_file,
     generate_mock_file,
     get_project_files,
     get_submission,
     get_user_data,
+    patch_submission_files,
     post_project_files,
     post_submission,
     remove_submission_file,
     submissions_url,
-    update_submission_files,
 )
 
 LOG = logging.getLogger(__name__)
@@ -136,7 +135,7 @@ class TestFiles:
             )
 
         # Add files to a submission
-        await add_submission_files(client_logged_in, files_info, submission_id)
+        await patch_submission_files(client_logged_in, files_info, submission_id)
         submission_info = await get_submission(client_logged_in, submission_id)
         assert len(submission_info["files"]) == 3
 
@@ -210,14 +209,14 @@ class TestFileSubmissions:
 
         # Add file to a submission and verify
         file_info = [{"accessionId": file_id, "version": created_files[0]["version"]}]
-        await add_submission_files(client_logged_in, file_info, submission_id)
+        await patch_submission_files(client_logged_in, file_info, submission_id)
         submission_info = await get_submission(client_logged_in, submission_id)
         assert submission_info["files"][0]["accessionId"] == file_info[0]["accessionId"]
         assert submission_info["files"][0]["status"] == "added"
 
         # Update submission file status
         updated_file_info = [{**file_info[0], "status": "ready"}]
-        await update_submission_files(client_logged_in, submission_id, updated_file_info)
+        await patch_submission_files(client_logged_in, updated_file_info, submission_id)
 
         # Get submission
         submission_info = await get_submission(client_logged_in, submission_id)
@@ -259,7 +258,7 @@ class TestFileSubmissions:
             {"accessionId": created_files[0]["accessionId"], "version": created_files[0]["version"]},
             {"accessionId": created_files[1]["accessionId"], "version": created_files[1]["version"]},
         ]
-        await add_submission_files(client_logged_in, file_info, submission_id)
+        await patch_submission_files(client_logged_in, file_info, submission_id)
 
         # Verify that files were added
         submission_info = await get_submission(client_logged_in, submission_id)

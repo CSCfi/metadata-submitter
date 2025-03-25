@@ -1603,16 +1603,6 @@ class TestOperators(IsolatedAsyncioTestCase):
         with self.assertRaises(HTTPBadRequest):
             await self.file_operator.update_file_submission("accession123", "submission1", {"$set": "something"})
 
-    async def test_add_files_submission(self):
-        """Test adding files to submission passes."""
-        self.file_operator.db_service.append = AsyncMock(return_value=True)
-        resp = await self.file_operator.add_files_submission([{}], "submission1")
-        self.assertTrue(resp)
-
-        self.file_operator.db_service.append = AsyncMock(return_value=False)
-        resp = await self.file_operator.add_files_submission([{}], "submission1")
-        self.assertFalse(resp)
-
     async def test_check_submission_has_file(self):
         """Test checking submission has a file."""
         self.file_operator.db_service.read = AsyncMock(return_value=None)

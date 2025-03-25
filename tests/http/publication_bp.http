@@ -13,8 +13,7 @@
 @submission_id = {{submission_id_req.response.body.submissionId}}
 @dataset_id = {{dataset_id_req.response.body.accessionId}}
 @image_id = {{image_id_req.response.body.$[0].accessionId}}
-@file_id = {{file_id_req.response.body.$[0].[0]}}
-@rems_id = {{rems_id_req.response.body.accessionId}}
+@file_id = {{file_id_req.response.body.$[0].accessionId}}
 
 ### Mock authentication
 GET {{auth_url}}/setmock
@@ -122,7 +121,7 @@ POST {{api_url}}/v1/files
     "projectId": "{{project_id}}",
     "files": [
         {
-            "name": "image",
+            "name": "image2",
             "path": "s3:/bucket/image",
             "bytes": 100,
             "encrypted_checksums": [
@@ -146,12 +145,7 @@ GET {{api_url}}/v1/files
     ?projectId={{project_id}}
 
 ### Add file to submission
-# Returns regular 204 with random accessionId value
-# i.e. should check that accession id exists and add new item
-# can add random objectId so it should also check that object exists first
-# TODO: refactored to PATCH
-# also , at the end of list will cause 500 apparently
-PUT {{api_url}}/v1/submissions/{{submission_id}}/files
+PATCH {{api_url}}/v1/submissions/{{submission_id}}/files
 
 [
     {

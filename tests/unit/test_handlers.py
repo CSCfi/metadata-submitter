@@ -957,6 +957,10 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         self.patch_xmloperator = patch(class_xmloperator, **self.xmloperator_config, spec=True)
         self.MockedXMLOperator = self.patch_xmloperator.start()
 
+        class_fileoperator = "metadata_backend.api.handlers.submission.FileOperator"
+        self.patch_fileoperator = patch(class_fileoperator, **self.fileoperator_config, spec=True)
+        self.MockedFileOperator = self.patch_fileoperator.start()
+
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
         await super().tearDownAsync()
@@ -964,6 +968,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         self.patch_useroperator.stop()
         self.patch_operator.stop()
         self.patch_xmloperator.stop()
+        self.patch_fileoperator.stop()
 
     async def test_submission_creation_works(self):
         """Test that submission is created and submission ID returned."""
@@ -1195,6 +1200,76 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             response = await self.client.put(f"{API_PREFIX}/submissions/{self.submission_id}/rems", json=data)
             self.assertEqual(response.status, 400)
             self.assertIn("Organization ID '1' must be a string.", await response.text())
+
+    async def test_patch_submission_files_works(self):
+        """Test patch method for submission files works."""
+        self.MockedSubmissionOperator().read_submission.return_value = self.test_submission
+        self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
+        data = [{"accessionId": "file123", "version": 1}]
+        with self.p_get_sess_restapi:
+            response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/files", json=data)
+            self.assertEqual(response.status, 204)
+
+        # Test the same file can be modified
+        data = [{**data[0], "status": "verified", "objectId": {"accessionId": "EGA111", "schema": "sample"}}]
+        with self.p_get_sess_restapi:
+            response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/files", json=data)
+            self.assertEqual(response.status, 204)
+
+    async def test_patch_submission_files_fails_with_bad_json(self):
+        """Test patch method for submission files fails with incorrectly formatted JSON."""
+        self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
+        data = "[{'bad': 'json',}]"
+        with self.p_get_sess_restapi:
+            response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/files", data=data)
+            self.assertEqual(response.status, 400)
+            json_resp = await response.json()
+            self.assertIn("JSON is not correctly formatted", json_resp["detail"])
+
+    async def test_patch_submission_files_fails_with_missing_fields(self):
+        """Test patch method for submission files fails with missing fields."""
+        self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
+        data = [{"accessionId": "file123"}]
+        with self.p_get_sess_restapi:
+            response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/files", json=data)
+            self.assertEqual(response.status, 400)
+            json_resp = await response.json()
+            self.assertIn("Each file must contain 'accessionId' and 'version'.", json_resp["detail"])
+
+        data = [{**data[0], "version": 1, "objectId": {"accessionId": "EGA111"}}]
+        with self.p_get_sess_restapi:
+            response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/files", json=data)
+            self.assertEqual(response.status, 400)
+            json_resp = await response.json()
+            self.assertIn(
+                "The objectId value must contain object with only 'accessionId' and 'schema' keys.", json_resp["detail"]
+            )
+
+    async def test_patch_submission_files_fails_when_file_not_found(self):
+        """Test patch method for submission files fails when file is not part of the project."""
+        self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
+        error_reason = "File 'file123' (version: '1') was not found."
+        self.MockedFileOperator().read_file.side_effect = web.HTTPNotFound(reason=error_reason)
+        data = [{"accessionId": "file123", "version": 1}]
+        with self.p_get_sess_restapi:
+            response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/files", json=data)
+            self.assertEqual(response.status, 404)
+            json_resp = await response.json()
+            self.assertIn(error_reason, json_resp["detail"])
+
+    async def test_patch_submission_files_fails_when_metadata_object_not_found(self):
+        """Test patch method for submission files fails when metadata object is not part of the submission."""
+        self.MockedSubmissionOperator().read_submission.return_value = self.test_submission
+        self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
+        data = [{"accessionId": "file123", "version": 1, "objectId": {"accessionId": "none", "schema": "sample"}}]
+        with self.p_get_sess_restapi:
+            response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/files", json=data)
+            self.assertEqual(response.status, 400)
+            json_resp = await response.json()
+            self.assertIn(
+                "A sample object with accessionId 'none' does not exist in the submission's list of metadata objects.",
+                json_resp["detail"],
+            )
 
 
 class PublishSubmissionHandlerTestCase(HandlersTestCase):
