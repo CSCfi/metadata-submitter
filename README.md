@@ -156,7 +156,9 @@ The project Python package dependencies are automatically being kept up to date 
 
 <details><summary>Click to expand</summary>
 
-If you want to contribute to a project and make it better, your help is very welcome. For more info about how to contribute, see [CONTRIBUTING](CONTRIBUTING.md).
+Development team members should check internal [contributing guidelines for Gitlab](https://gitlab.ci.csc.fi/groups/sds-dev/-/wikis/Guides/Contributing).
+
+If you are not part of CSC and our development team, your help is nevertheless very welcome. Please see [contributing guidelines for Github](CONTRIBUTING.md).
 
 </details>
 
