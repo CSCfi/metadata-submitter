@@ -331,6 +331,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         :param req: PATCH request with metadata schema in the body
         :returns: HTTP No Content response
+        :raises: HTTPBadRequest if there are issues with the JSON payload
         """
         submission_id = req.match_info["submissionId"]
         db_client = req.app["db_client"]
