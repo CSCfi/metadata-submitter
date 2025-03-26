@@ -8,6 +8,8 @@ from uuid import uuid4
 
 from aiohttp import web
 
+mock_pid_prefix = "10.80869"
+
 FORMAT = "[%(asctime)s][%(levelname)-8s](L:%(lineno)s) %(funcName)s: %(message)s"
 logging.basicConfig(format=FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
 
@@ -36,7 +38,7 @@ async def create(req: web.Request) -> web.Response:
     try:
         if content["data"]["attributes"]["doi"] == "":
             uuid = uuid4()
-            doi = f"10.80869/sd-{uuid}"
+            doi = f"{mock_pid_prefix}/sd-{uuid}"
             DOIS.update({doi: ""})
             return web.Response(status=200, text=doi)
     except Exception as e:

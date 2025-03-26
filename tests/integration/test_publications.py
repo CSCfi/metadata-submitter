@@ -2,7 +2,14 @@
 
 import logging
 
-from tests.integration.conf import metax_api, metax_discovery_url, objects_url, submissions_url
+from tests.integration.conf import (
+    datacite_prefix,
+    metax_api,
+    metax_discovery_url,
+    mock_pid_prefix,
+    objects_url,
+    submissions_url,
+)
 from tests.integration.helpers import (
     announce_submission,
     create_request_json_data,
@@ -43,6 +50,9 @@ class TestMinimalPublication:
             assert res["published"] is True, "submission is published, expected False"
             # Check that discovery service for publication is correct
             assert res["extraInfo"]["studyIdentifier"]["url"].startswith(metax_discovery_url)
+            assert res["extraInfo"]["studyIdentifier"]["identifier"]["doi"].startswith(
+                mock_pid_prefix
+            ), "expected FEGA study DOI to be created with PID"
 
     async def test_minimal_sdsx_json_publication(self, client_logged_in, submission_sdsx):
         """Test minimal SDSX publication workflow with JSON submissions.
@@ -62,12 +72,16 @@ class TestMinimalPublication:
             res = await resp.json()
             assert res["submissionId"] == submission_sdsx, "expected submission id does not match"
             assert res["published"] is True, "submission is published, expected False"
+            # Uncomment when issue #863 is solved
+            # assert res["extraInfo"]["datasetIdentifiers"][0]["identifier"]["doi"].startswith(
+            #    mock_pid_prefix
+            # ), "expected SDSX dataset DOI to be created with PID"
 
     async def test_minimal_bigpicture_xml_publication(self, client_logged_in, submission_bigpicture):
         """Test minimal BP publication workflow with XML submissions.
 
         :param client_logged_in: HTTP client in which request call is made
-        :param submission_bigpicture: submission ID, created with the sdsx workflow
+        :param submission_bigpicture: submission ID, created with the BP workflow
         """
         # TO_DO: User datacite.xml instead json file
         doi_data_raw = await create_request_json_data("doi", "test_doi.json")
@@ -109,6 +123,9 @@ class TestMinimalPublicationRems:
             res = await resp.json()
             assert res["submissionId"] == submission_fega, "expected submission id does not match"
             assert res["published"] is True, "submission is published, expected False"
+            assert res["extraInfo"]["studyIdentifier"]["identifier"]["doi"].startswith(
+                mock_pid_prefix
+            ), "expected FEGA study DOI to be created with PID"
 
         async with client_logged_in.get(f"{objects_url}/dataset/{dataset_id}") as resp:
             LOG.debug("Checking that dataset %s in submission %s has rems data", dataset_id, submission_fega)
@@ -139,6 +156,10 @@ class TestMinimalPublicationRems:
             res = await resp.json()
             assert res["submissionId"] == submission_bigpicture, "expected submission id does not match"
             assert res["published"] is True, "submission is published, expected False"
+            # Uncomment when issue #863 is solved
+            # assert res["extraInfo"]["datasetIdentifiers"][0]["identifier"]["doi"].startswith(
+            #    datacite_prefix
+            # ), "expected BP dataset DOI to be created directly with Datacite"
 
         async with client_logged_in.get(f"{objects_url}/bpdataset/{dataset_id}") as resp:
             LOG.debug(f"Checking that dataset {dataset_id} in submission {submission_bigpicture} has rems data")
@@ -186,13 +207,16 @@ class TestFullPublication:
             res = await resp.json()
             assert res["submissionId"] == submission_fega, "expected submission id does not match"
             assert res["published"] is True, "submission is published, expected False"
+            assert res["extraInfo"]["studyIdentifier"]["identifier"]["doi"].startswith(
+                mock_pid_prefix
+            ), "expected FEGA study DOI to be created with PID"
 
         for schema, object_id in objects:
             async with client_logged_in.get(f"{objects_url}/{schema}/{object_id}") as resp:
                 res = await resp.json()
                 LOG.debug(f"Checking that {schema} {object_id} in submission {submission_fega} published to Datacite")
                 doi = res.get("doi", "")
-                assert doi != ""
+                assert doi.startswith(mock_pid_prefix), "expected FEGA dataset DOI to be created with PID"
                 metax_id = res.get("metaxIdentifier", "")
                 assert metax_id != ""
 
@@ -235,13 +259,17 @@ class TestFullPublication:
             res = await resp.json()
             assert res["submissionId"] == submission_sdsx, "expected submission id does not match"
             assert res["published"] is True, "submission is published, expected False"
+            # Uncomment when issue #863 is solved
+            # assert res["extraInfo"]["datasetIdentifiers"][0]["identifier"]["doi"].startswith(
+            #    mock_pid_prefix
+            # ), "expected SDSX dataset DOI to be created with PID"
 
         for schema, object_id in objects:
             async with client_logged_in.get(f"{objects_url}/{schema}/{object_id}") as resp:
                 res = await resp.json()
                 LOG.debug(f"Checking that {schema} {object_id} in submission {submission_sdsx} published to Datacite")
                 doi = res.get("doi", "")
-                assert doi != ""
+                assert doi.startswith(mock_pid_prefix), "expected SDSX dataset DOI to be created with PID"
                 metax_id = res.get("metaxIdentifier", "")
                 assert metax_id != ""
 
@@ -294,7 +322,7 @@ class TestFullPublication:
                 f"Checking that bpdataset {dataset_id} in submission {submission_bigpicture} published to Datacite"
             )
             doi = res.get("doi", "")
-            assert doi != ""
+            assert doi.startswith(datacite_prefix), "expected BP dataset DOI to be created directly with Datacite"
 
             LOG.debug(f"Checking that metaxIdentifier do not exist in bpdataset {dataset_id}")
             metax_id = res.get("metaxIdentifier", "")

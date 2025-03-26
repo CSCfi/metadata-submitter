@@ -15,15 +15,17 @@ logging.basicConfig(format=FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
 LOG = logging.getLogger("server")
 LOG.setLevel(getenv("LOG_LEVEL", "INFO"))
 
+datacite_prefix = getenv("DATACITE_PREFIX", "10.xxxx")
+
 BASE_RESPONSE = {
     "data": {
-        "id": "10.xxxx/yyyy",
+        "id": f"{datacite_prefix}/yyyy",
         "type": "dois",
         "attributes": {
-            "doi": "10.xxxx/yyyy",
-            "prefix": "10.xxxx",
+            "doi": f"{datacite_prefix}/yyyy",
+            "prefix": datacite_prefix,
             "suffix": "yyyy",
-            "identifiers": [{"identifier": "https://mock_doi.org/10.xxxx/yyyy", "identifierType": "DOI"}],
+            "identifiers": [{"identifier": f"https://mock_doi.org/{datacite_prefix}/yyyy", "identifierType": "DOI"}],
             "creators": [],
             "titles": [],
             "publisher": None,
@@ -80,7 +82,7 @@ BASE_RESPONSE = {
             },
             "relationships": {
                 "provider": {"data": {"id": "mockcite", "type": "providers"}},
-                "prefixes": {"data": [{"id": "10.xxxx", "type": "prefixes"}]},
+                "prefixes": {"data": [{"id": datacite_prefix, "type": "prefixes"}]},
             },
         }
     ],
