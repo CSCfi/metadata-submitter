@@ -50,9 +50,13 @@ class PIDServiceHandler(ServiceHandler):
 
         :param doi_payload: Dictionary with payload to send to PID ms
         :raises: HTTPBadRequest if DOI payload is invalid
+        :raises: HTTPBadRequest if DOI is missing in doi_payload
         :raises: HTTPInternalServerError if DOI update fails
         """
-        doi = doi_payload["id"]
+        try:
+            doi = doi_payload["id"]
+        except KeyError as exc:
+            raise self.make_exception(reason="Missing 'id' field in object data", status=400) from exc
         path = f"v1/pid/doi/{doi}"
         headers = {"Content-Type": "application/json", "apikey": pid_config["api_key"]}
         await self._request(method="PUT", headers=headers, path=path, json_data=doi_payload)

@@ -72,10 +72,9 @@ class TestMinimalPublication:
             res = await resp.json()
             assert res["submissionId"] == submission_sdsx, "expected submission id does not match"
             assert res["published"] is True, "submission is published, expected False"
-            # Uncomment when issue #863 is solved
-            # assert res["extraInfo"]["datasetIdentifiers"][0]["identifier"]["doi"].startswith(
-            #    mock_pid_prefix
-            # ), "expected SDSX dataset DOI to be created with PID"
+            assert res["extraInfo"]["datasetIdentifiers"][0]["identifier"]["doi"].startswith(
+                mock_pid_prefix
+            ), "expected SDSX dataset DOI to be created with PID"
 
     async def test_minimal_bigpicture_xml_publication(self, client_logged_in, submission_bigpicture):
         """Test minimal BP publication workflow with XML submissions.
@@ -156,10 +155,9 @@ class TestMinimalPublicationRems:
             res = await resp.json()
             assert res["submissionId"] == submission_bigpicture, "expected submission id does not match"
             assert res["published"] is True, "submission is published, expected False"
-            # Uncomment when issue #863 is solved
-            # assert res["extraInfo"]["datasetIdentifiers"][0]["identifier"]["doi"].startswith(
-            #    datacite_prefix
-            # ), "expected BP dataset DOI to be created directly with Datacite"
+            assert res["extraInfo"]["datasetIdentifiers"][0]["identifier"]["doi"].startswith(
+                datacite_prefix
+            ), "expected BP dataset DOI to be created directly with Datacite"
 
         async with client_logged_in.get(f"{objects_url}/bpdataset/{dataset_id}") as resp:
             LOG.debug(f"Checking that dataset {dataset_id} in submission {submission_bigpicture} has rems data")
@@ -259,10 +257,9 @@ class TestFullPublication:
             res = await resp.json()
             assert res["submissionId"] == submission_sdsx, "expected submission id does not match"
             assert res["published"] is True, "submission is published, expected False"
-            # Uncomment when issue #863 is solved
-            # assert res["extraInfo"]["datasetIdentifiers"][0]["identifier"]["doi"].startswith(
-            #    mock_pid_prefix
-            # ), "expected SDSX dataset DOI to be created with PID"
+            assert res["extraInfo"]["datasetIdentifiers"][0]["identifier"]["doi"].startswith(
+                mock_pid_prefix
+            ), "expected SDSX dataset DOI to be created with PID"
 
         for schema, object_id in objects:
             async with client_logged_in.get(f"{objects_url}/{schema}/{object_id}") as resp:

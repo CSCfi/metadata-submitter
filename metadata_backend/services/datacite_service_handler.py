@@ -127,9 +127,13 @@ class DataciteServiceHandler(ServiceHandler):
         Partial updates are possible.
 
         :param datacite_payload: Dictionary with payload to send to Datacite
+        :raises: HTTPBadRequest if DOI is missing in datacite_payload
         :raises: HTTPInternalServerError if the Datacite DOI update fails
         """
-        _id = datacite_payload["id"]
+        try:
+            _id = datacite_payload["id"]
+        except KeyError as exc:
+            raise self.make_exception(reason="Missing 'id' field in object data", status=400) from exc
         await self._request(method="PUT", path=f"/dois/{_id}", json_data=datacite_payload)
         LOG.info("Datacite DOI: %r updated.", _id)
 
