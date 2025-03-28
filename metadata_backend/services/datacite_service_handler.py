@@ -16,7 +16,7 @@ from aiohttp import BasicAuth, ClientTimeout, web
 from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
 from yarl import URL
 
-from ..conf.conf import datacite_config
+from ..conf.conf import DATACITE_SCHEMAS, datacite_config
 from ..helpers.logger import LOG
 from .service_handler import ServiceHandler
 
@@ -80,42 +80,31 @@ class DataciteServiceHandler(ServiceHandler):
 
         return " | ".join(error_messages)
 
-    async def _create_draft(self, prefix: str | None = None) -> dict[str, Any]:
-        """Generate random suffix and POST request a draft DOI to DataCite DOI API.
+    async def create_draft_doi_datacite(self, schema: str | None = None) -> str:
+        """Create draft DOI for study or dataset directly with Datacite API.
 
-        :param prefix: Custom prefix to add to the DOI e.g. study/dataset
+        The Draft DOI will be created on POST.
+
+        :param schema: Schema to be included in DOI (e.g. study, dataset, or bpdataset)
+        :raises: HTTPBadRequest if schema is invalid
         :raises: HTTPInternalServerError if we the Datacite DOI draft registration fails
-        :returns: Dictionary with DOI and URL
+        :returns: created DOI
         """
         suffix = uuid4().hex[:10]
-        doi_suffix = f"{prefix}.{suffix[:4]}-{suffix[4:]}" if prefix else f"{suffix[:4]}-{suffix[4:]}"
+        doi_suffix = f"{suffix[:4]}-{suffix[4:]}"
+        if schema:
+            if schema in DATACITE_SCHEMAS:
+                doi_suffix = f"{schema}." + doi_suffix
+            else:
+                raise self.make_exception(
+                    reason=f"Invalid schema: {schema}. Allowed schemas: {DATACITE_SCHEMAS}", status=400
+                )
         # this payload is sufficient to get a draft DOI
         doi_payload = {"data": {"type": "dois", "attributes": {"doi": f"{self.doi_prefix}/{doi_suffix}"}}}
 
         draft_resp = await self._request(method="POST", path="/dois", json_data=doi_payload)
-        full_doi = draft_resp["data"]["attributes"]["doi"]
-        returned_suffix = draft_resp["data"]["attributes"]["suffix"]
-        LOG.info("DOI draft created with identifier: %r.", full_doi)
-        doi_data = {
-            "fullDOI": full_doi,
-            "dataset": str(self.base_url / returned_suffix.lower()),
-        }
-
-        return doi_data
-
-    async def create_draft_doi_datacite(self, collection: str) -> str:
-        """Create draft DOI for study and dataset directly with Datacite API.
-
-        The Draft DOI will be created only on POST and the data added to the
-        submission. Any update of this should not be possible.
-
-        :param collection: either study or dataset
-        :returns: Dict with DOI of the study or dataset as well as the types.
-        """
-        _doi_data = await self._create_draft(prefix=collection)
-
-        LOG.debug("Created a DOI through Datacite with identifier: %r", _doi_data["fullDOI"])
-        doi: str = _doi_data["fullDOI"]
+        doi: str = draft_resp["data"]["attributes"]["doi"]
+        LOG.debug("Created a DOI through Datacite with identifier: %r", doi)
 
         return doi
 
