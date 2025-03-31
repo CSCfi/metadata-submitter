@@ -5,7 +5,6 @@ from typing import Any
 from aiohttp import web
 from motor.motor_asyncio import AsyncIOMotorClient
 
-from ...conf.conf import mongo_database
 from ...helpers.logger import LOG
 from ...helpers.parser import XMLToJSONParser
 from .object import ObjectOperator
@@ -26,7 +25,7 @@ class XMLObjectOperator(BaseObjectOperator):
         running on same loop with aiohttp, so needs to be passed from aiohttp
         Application.
         """
-        super().__init__(mongo_database, "text/xml", db_client)
+        super().__init__("text/xml", db_client)
 
     async def _format_data_to_create_and_add_to_db(self, schema_type: str, data: str) -> list[dict[str, Any]]:
         """Format XML metadata object and add it to db.

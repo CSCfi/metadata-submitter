@@ -139,9 +139,6 @@ class TestOperators(IsolatedAsyncioTestCase):
             "userId": self.user_generated_id,
             "name": "tester",
         }
-        class_dbservice = "metadata_backend.api.operators.object_base.DBService"
-        self.patch_object_dbservice = patch(class_dbservice, spec=True)
-        self.MockedObjectDbService = self.patch_object_dbservice.start()
         class_dbservice = "metadata_backend.api.operators.base.DBService"
         self.patch_dbservice = patch(class_dbservice, spec=True)
         self.MockedDbService = self.patch_dbservice.start()
@@ -196,7 +193,6 @@ class TestOperators(IsolatedAsyncioTestCase):
 
     def tearDown(self):
         """Stop patchers."""
-        self.patch_object_dbservice.stop()
         self.patch_dbservice.stop()
         self.patch_accession.stop()
         self.patch_submission.stop()
@@ -286,8 +282,7 @@ class TestOperators(IsolatedAsyncioTestCase):
         """
         operator = ObjectOperator(self.client)
         bp_image_data = {
-            "studyRef": {"accessionID": uuid4().hex},
-            "imageOf": [{"accessionID": uuid4().hex}],
+            "imageOf": [{"alias": "image_alias"}],
             "imageType": "wsiImage",
             "files": [
                 {
@@ -301,7 +296,7 @@ class TestOperators(IsolatedAsyncioTestCase):
         operator.db_service.create = AsyncMock(return_value=True)
         data = await operator.create_metadata_object("bpimage", bp_image_data)
         operator.db_service.create.assert_called_once()
-        bp_id_pattern = re.compile("^[0-9a-z]{1,}-Image(-[0-9a-z]{6}){2}$")
+        bp_id_pattern = re.compile("^bb-image(-[a-hj-knm-z23456789]{6}){2}$")
         self.assertTrue(bp_id_pattern.match(data["accessionId"]))
 
     async def test_json_replace_passes_and_returns_accessionId(self):

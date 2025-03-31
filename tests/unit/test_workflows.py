@@ -36,7 +36,7 @@ class TestWorkflowSchema(unittest.TestCase):
             for step in workflow["steps"]:
                 for schema in step["schemas"]:
                     # test that schema exists
-                    if schema["name"] != "file":
+                    if schema["name"] != "file" and schema["name"] != "bpfile":
                         self.assertIn(schema["name"], schemas)
 
                     # test that each schema shows up once in the workflow

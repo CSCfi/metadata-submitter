@@ -681,18 +681,16 @@ async def check_submissions_object_patch(sess, submission_id, schema, accession_
         return schema
 
 
-async def post_project_files(sess, file_data):
+async def post_project_files(sess, file_data, is_bigpicture=""):
     """Post files within session, returns created file ids.
 
     :param sess: HTTP session in which request call is made
     :param file_data: new file data containing userId, projectId, file info
+    :param is_bigpicture: specify if the file belongs to Big Picture
     :returns: list of file ids of created files
     """
-
-    async with sess.post(
-        files_url,
-        data=ujson.dumps(file_data),
-    ) as resp:
+    params = {"is_bigpicture": is_bigpicture}
+    async with sess.post(files_url, data=ujson.dumps(file_data), params=params) as resp:
         ans = await resp.json()
         assert resp.status == 201, f"HTTP Status code error, got {resp.status}: {ans}"
         return ans

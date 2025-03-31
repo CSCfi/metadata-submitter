@@ -1,17 +1,17 @@
 """Base object operator class shared by object operators."""
 
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Any
 
 from aiohttp import web
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import ConnectionFailure, OperationFailure
 
-from ...database.db_service import DBService
 from ...helpers.logger import LOG
+from .base import BaseOperator
 
 
-class BaseObjectOperator(ABC):
+class BaseObjectOperator(BaseOperator):
     """Base class for object operators, implements shared functionality.
 
     This BaseObjectOperator is mainly addressed for working with objects owned by
@@ -19,7 +19,7 @@ class BaseObjectOperator(ABC):
     :param ABC: The abstract base class
     """
 
-    def __init__(self, db_name: str, content_type: str, db_client: AsyncIOMotorClient) -> None:  # type: ignore
+    def __init__(self, content_type: str, db_client: AsyncIOMotorClient) -> None:  # type: ignore
         """Init needed variables, must be given by subclass.
 
         :param db_name: Name for database to save objects to.
@@ -28,7 +28,8 @@ class BaseObjectOperator(ABC):
         running on same loop with aiohttp, so needs to be passed from aiohttp
         Application.
         """
-        self.db_service = DBService(db_name, db_client)
+
+        super().__init__(db_client)
         self.content_type = content_type
 
     async def create_metadata_object(

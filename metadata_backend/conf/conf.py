@@ -248,6 +248,21 @@ discovery_config = {
 
 DATACITE_SCHEMAS = {"study", "dataset", "bpdataset"}
 METAX_SCHEMAS = {"study", "dataset"}
+BP_SCHEMA_TYPES = [
+    "bpannotation",
+    "bpdataset",
+    "bpfile",
+    "bpimage",
+    "bpobservation",
+    "bppolicy",
+    "bpbiologicalBeing",
+    "bpcase",
+    "bpspecimen",
+    "bpblock",
+    "bpslide",
+    "bpstaining",
+    "bpobserver",
+]
 
 TAXONOMY_NAME_DATA: dict[str, dict[Any, Any]] = {}
 # Load taxonomy name data into a single dict
