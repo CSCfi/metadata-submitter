@@ -13,11 +13,11 @@ from tests.integration.conf import (
 from tests.integration.helpers import (
     announce_submission,
     create_request_json_data,
+    patch_submission_doi,
+    patch_submission_rems,
     post_object,
     post_object_json,
     publish_submission,
-    put_submission_doi,
-    put_submission_rems,
 )
 
 LOG = logging.getLogger(__name__)
@@ -35,9 +35,9 @@ class TestMinimalPublication:
         """
         await post_object_json(client_logged_in, "study", submission_fega, "SRP000539.json")
         doi_data_raw = await create_request_json_data("doi", "test_doi.json")
-        await put_submission_doi(client_logged_in, submission_fega, doi_data_raw)
+        await patch_submission_doi(client_logged_in, submission_fega, doi_data_raw)
         rems_data = await create_request_json_data("dac", "dac_rems.json")
-        await put_submission_rems(client_logged_in, submission_fega, rems_data)
+        await patch_submission_rems(client_logged_in, submission_fega, rems_data)
         await post_object_json(client_logged_in, "policy", submission_fega, "policy.json")
         await post_object_json(client_logged_in, "run", submission_fega, "ERR000076.json")
         await post_object_json(client_logged_in, "dataset", submission_fega, "dataset.json")
@@ -61,9 +61,9 @@ class TestMinimalPublication:
         :param submission_sdsx: submission ID, created with the sdsx workflow
         """
         doi_data_raw = await create_request_json_data("doi", "test_doi.json")
-        await put_submission_doi(client_logged_in, submission_sdsx, doi_data_raw)
+        await patch_submission_doi(client_logged_in, submission_sdsx, doi_data_raw)
         rems_data = await create_request_json_data("dac", "dac_rems.json")
-        await put_submission_rems(client_logged_in, submission_sdsx, rems_data)
+        await patch_submission_rems(client_logged_in, submission_sdsx, rems_data)
         await post_object_json(client_logged_in, "dataset", submission_sdsx, "dataset.json")
         await publish_submission(client_logged_in, submission_sdsx)
 
@@ -84,7 +84,7 @@ class TestMinimalPublication:
         """
         # TO_DO: User datacite.xml instead json file
         doi_data_raw = await create_request_json_data("doi", "test_doi.json")
-        await put_submission_doi(client_logged_in, submission_bigpicture, doi_data_raw)
+        await patch_submission_doi(client_logged_in, submission_bigpicture, doi_data_raw)
 
         await post_object(client_logged_in, "bprems", submission_bigpicture, "rems.xml")
         await announce_submission(client_logged_in, submission_bigpicture)
@@ -110,10 +110,10 @@ class TestMinimalPublicationRems:
         await post_object_json(client_logged_in, "run", submission_fega, "ERR000076.json")
 
         doi_data_raw = await create_request_json_data("doi", "test_doi.json")
-        await put_submission_doi(client_logged_in, submission_fega, doi_data_raw)
+        await patch_submission_doi(client_logged_in, submission_fega, doi_data_raw)
 
         rems_data = await create_request_json_data("dac", "dac_rems.json")
-        await put_submission_rems(client_logged_in, submission_fega, rems_data)
+        await patch_submission_rems(client_logged_in, submission_fega, rems_data)
         await post_object_json(client_logged_in, "policy", submission_fega, "policy.json")
         await publish_submission(client_logged_in, submission_fega)
 
@@ -144,7 +144,7 @@ class TestMinimalPublicationRems:
         dataset_id, _ = await post_object(client_logged_in, "bpdataset", submission_bigpicture, "dataset.xml")
         # TO_DO: User datacite.xml instead json file
         doi_data_raw = await create_request_json_data("doi", "test_doi.json")
-        await put_submission_doi(client_logged_in, submission_bigpicture, doi_data_raw)
+        await patch_submission_doi(client_logged_in, submission_bigpicture, doi_data_raw)
 
         await post_object(client_logged_in, "bprems", submission_bigpicture, "rems.xml")
 
@@ -193,10 +193,10 @@ class TestFullPublication:
         objects.append(["dataset", dataset_id])
 
         doi_data_raw = await create_request_json_data("doi", "test_doi.json")
-        await put_submission_doi(client_logged_in, submission_fega, doi_data_raw)
+        await patch_submission_doi(client_logged_in, submission_fega, doi_data_raw)
 
         rems_data = await create_request_json_data("dac", "dac_rems.json")
-        await put_submission_rems(client_logged_in, submission_fega, rems_data)
+        await patch_submission_rems(client_logged_in, submission_fega, rems_data)
 
         await publish_submission(client_logged_in, submission_fega)
 
@@ -242,13 +242,13 @@ class TestFullPublication:
         objects = []
 
         rems_data = await create_request_json_data("dac", "dac_rems.json")
-        await put_submission_rems(client_logged_in, submission_sdsx, rems_data)
+        await patch_submission_rems(client_logged_in, submission_sdsx, rems_data)
 
         dataset_id = await post_object_json(client_logged_in, "dataset", submission_sdsx, "dataset.json")
         objects.append(["dataset", dataset_id])
 
         doi_data_raw = await create_request_json_data("doi", "test_doi.json")
-        await put_submission_doi(client_logged_in, submission_sdsx, doi_data_raw)
+        await patch_submission_doi(client_logged_in, submission_sdsx, doi_data_raw)
 
         await publish_submission(client_logged_in, submission_sdsx)
 
@@ -299,9 +299,9 @@ class TestFullPublication:
         await post_object(client_logged_in, "bpobserver", submission_bigpicture, "observers.xml")
         await post_object(client_logged_in, "bpannotation", submission_bigpicture, "annotations.xml")
 
-        # TO_DO: User datacite.xml instead json file
+        # TO_DO: Use datacite.xml instead json file
         doi_data_raw = await create_request_json_data("doi", "test_doi.json")
-        await put_submission_doi(client_logged_in, submission_bigpicture, doi_data_raw)
+        await patch_submission_doi(client_logged_in, submission_bigpicture, doi_data_raw)
 
         await post_object(client_logged_in, "bprems", submission_bigpicture, "rems.xml")
 

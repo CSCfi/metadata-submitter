@@ -225,7 +225,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
     async def patch_submission(self, req: Request) -> Response:
         """Update info of a specific submission object based on its submission id.
 
-        Submission only allows the 'name' and 'description' values to be patched.
+        Submission initially only allows the 'name' and 'description' values to be patched.
 
         :param req: PATCH request
         :returns: JSON response containing submission ID for updated submission
@@ -295,11 +295,11 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         LOG.info("DELETE submission with ID: %r was successful.", _submission_id)
         return web.HTTPNoContent()
 
-    async def put_submission_path(self, req: Request) -> Response:
-        """Put or replace metadata to a submission.
+    async def patch_submission_doi_rems(self, req: Request) -> Response:
+        """Add or replace extra metadata (DOI and REMS info) of a submission.
 
-        :param req: PUT request with metadata schema in the body
-        :returns: updated submission object
+        :param req: PATCH request with metadata schema in the body
+        :returns: JSON response containing submission ID for updated submission
         """
         submission_id = req.match_info["submissionId"]
         db_client = req.app["db_client"]
@@ -404,10 +404,10 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         LOG.info("PATCH files in submission with ID: %r was successful.", submission_id)
         return web.HTTPNoContent()
 
-    async def put_submission_linked_folder(self, req: Request) -> Response:
-        """Put a linked folder name to a submission.
+    async def patch_submission_linked_folder(self, req: Request) -> Response:
+        """Add or remove a linked folder name to a submission.
 
-        :param req: PUT request with metadata schema in the body
+        :param req: PATCH request with metadata schema in the body
         :raises: HTTP Bad Request if submission already has a linked folder
         or request has missing / invalid linkedFolder
         :returns: HTTP No Content response
@@ -415,7 +415,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         submission_id = req.match_info["submissionId"]
         db_client = req.app["db_client"]
         operator = SubmissionOperator(db_client)
-        data: dict[str, str] = await req.json()
+        data: dict[str, str] = await self._get_data(req)
 
         # Check submission existence, ownership and published state
         await operator.check_submission_exists(submission_id)

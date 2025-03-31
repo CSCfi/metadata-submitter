@@ -53,7 +53,7 @@ GET {{api_url}}/v1/submissions
 GET {{api_url}}/v1/submissions/{{submission_id}}
 
 ### Update DOI in submission
-PUT {{api_url}}/v1/submissions/{{submission_id}}/doi
+PATCH {{api_url}}/v1/submissions/{{submission_id}}/doi
 
 < ../test_files/doi/test_doi.json
 
@@ -121,7 +121,7 @@ POST {{api_url}}/v1/files
     "projectId": "{{project_id}}",
     "files": [
         {
-            "name": "image2",
+            "name": "image",
             "path": "s3:/bucket/image",
             "bytes": 100,
             "encrypted_checksums": [
