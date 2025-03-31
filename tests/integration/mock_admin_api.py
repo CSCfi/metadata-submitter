@@ -117,7 +117,7 @@ async def ingest_file(req: web.Request) -> web.Response:
     if resp is not None:
         return resp
 
-    global files_in_inbox
+    global files_in_inbox  # noqa: F824
     try:
         content = await req.json()
         ingestion_data = IngestionModel(**content)
@@ -148,7 +148,7 @@ async def post_accession_id(req: web.Request) -> web.Response:
     if resp is not None:
         return resp
 
-    global files_in_inbox
+    global files_in_inbox  # noqa: F824
     try:
         content = await req.json()
         accession_data = AccessionModel(**content)
@@ -207,7 +207,7 @@ async def create_dataset(req: web.Request) -> web.Response:
             status=400,
         )
 
-    global file_accession_ids, datasets, files_in_inbox
+    global file_accession_ids, datasets, files_in_inbox  # noqa: F824
     found = [id in file_accession_ids.keys() for id in dataset_data.accession_ids]
     if not all(found):
         invalid_ids = [id for (id, f) in zip(dataset_data.accession_ids, found) if not f]
@@ -241,7 +241,7 @@ async def release_dataset(req: web.Request) -> web.Response:
     if resp is not None:
         return resp
 
-    global datasets
+    global datasets  # noqa: F824
     dataset = req.match_info["dataset"]
     if dataset not in datasets:
         reason = "Dataset not found"
@@ -284,7 +284,7 @@ async def post_key(req: web.Request) -> web.Response:
     if resp is not None:
         return resp
 
-    global public_keys
+    global public_keys  # noqa: F824
     try:
         content = await req.json()
         key_data = KeyModel(**content)

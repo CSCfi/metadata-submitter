@@ -53,7 +53,7 @@ header = {
 
 async def setmock(req: web.Request) -> web.Response:
     """Auth endpoint."""
-    global user_sub, user_family_name, user_given_name
+    global user_sub, user_family_name, user_given_name  # noqa: F824
     user_sub = req.query["sub"]
     user_family_name = req.query["family"]
     user_given_name = req.query["given"]
@@ -68,7 +68,7 @@ async def auth(req: web.Request) -> web.Response:
         "state": req.query["state"],
         "code": "code",
     }
-    global nonce, user_family_name, user_given_name
+    global nonce, user_family_name, user_given_name  # noqa: F824
     nonce = req.query["nonce"]
     callback_url = req.query["redirect_uri"]
     url = f"{callback_url}?{urllib.parse.urlencode(params)}"
@@ -81,7 +81,7 @@ async def auth(req: web.Request) -> web.Response:
 
 async def token(req: web.Request) -> web.Response:
     """Auth endpoint."""
-    global nonce, user_sub, user_family_name, user_given_name
+    global nonce, user_sub, user_family_name, user_given_name  # noqa: F824
     # idpyoidc is strict about iat, exp, ttl, so we can't hard code them
     iat = int(time())
     ttl = 3600
@@ -132,7 +132,7 @@ async def jwk_response(request: web.Request) -> web.Response:
 
 async def userinfo(request: web.Request) -> web.Response:
     """Mock an authentication to ELIXIR AAI for GA4GH claims."""
-    global nonce, user_sub, user_family_name, user_given_name
+    global nonce, user_sub, user_family_name, user_given_name  # noqa: F824
     user_info = {
         "eduPersonAffiliation": "member;staff",
         "sub": user_sub,
