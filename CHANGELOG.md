@@ -9,6 +9,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- Added mock PID service and PID tests (#839)
 - minimal and full publication test cases for each workflow
 - (users) Process information from XML file for bprems schema and add it to the rems key in a BP submission
 - Use CSC PID service for DOI in FEGA and generic workflows (#827)
@@ -61,6 +62,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- Fixed faulty Datacite unit tests (#859)
 - Addressed utcnow deprecation warnings
 - Fix pyspelling not ignoring urls (#857)
 - Update broken and permanent redirect links in documentation (#856)
