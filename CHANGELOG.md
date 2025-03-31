@@ -33,6 +33,9 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- (users) Submission can no longer have the same name inside the project
+- (users) Previous functionality behind POST and PUT request for adding/modifying submission files is unified and the endpoint is retitled to `PATCH /v1/submissions/{submissionId}/files`
+- Updated OpenAPI specifications
 - all required schemas are needed before publishing a submission in unit and integration tests
 - Updated some EGA related XML schemas to be up-to-date
 - (users) Bigpicture related metadata validation process now follows the Bigpicture metadata version 2.0.0
@@ -58,6 +61,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- Addressed utcnow deprecation warnings
 - Fix pyspelling not ignoring urls (#857)
 - Update broken and permanent redirect links in documentation (#856)
 - Fixed taxonomy script file permissions and ´docker casing warnings
