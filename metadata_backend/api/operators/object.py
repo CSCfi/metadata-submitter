@@ -1,7 +1,7 @@
 """Object operator class."""
 
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -221,10 +221,10 @@ class ObjectOperator(BaseObjectOperator):
         else:
             data["accessionId"] = self._generate_accession_id()
 
-        data["dateCreated"] = datetime.utcnow()
-        data["dateModified"] = datetime.utcnow()
+        data["dateCreated"] = datetime.now(UTC)
+        data["dateModified"] = datetime.now(UTC)
         if schema_type == "study":
-            data["publishDate"] = datetime.utcnow() + relativedelta(months=2)
+            data["publishDate"] = datetime.now(UTC) + relativedelta(months=2)
         LOG.debug("ObjectOperator formatted data for collection: %r to add to DB.", schema_type)
         await self._insert_formatted_object_to_db(schema_type, data)
         return data
@@ -253,7 +253,7 @@ class ObjectOperator(BaseObjectOperator):
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         data["accessionId"] = accession_id
-        data["dateModified"] = datetime.utcnow()
+        data["dateModified"] = datetime.now(UTC)
         LOG.debug("ObjectOperator formatted data for collection: %r to add to DB.", schema_type)
         await self._replace_object_from_db(schema_type, accession_id, data)
         return data
@@ -277,7 +277,7 @@ class ObjectOperator(BaseObjectOperator):
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         data["accessionId"] = accession_id
-        data["dateModified"] = datetime.utcnow()
+        data["dateModified"] = datetime.now(UTC)
 
         LOG.debug("ObjectOperator formatted data for collection: %r to add to DB.", schema_type)
         return await self._update_object_from_db(schema_type, accession_id, data)

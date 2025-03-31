@@ -96,8 +96,8 @@ async def fixture_admin_project_id(admin_logged_in: aiohttp.ClientSession):
 async def make_submission(client_logged_in: aiohttp.ClientSession, project_id: str, workflow: str):
     """Create a submission to be reused across tests."""
     submission = {
-        "name": "submission test 1",
-        "description": "submission test submission 1",
+        "name": f"{workflow} submission test",
+        "description": f"test submission for {workflow} workflow",
         "projectId": project_id,
         "workflow": workflow,
     }

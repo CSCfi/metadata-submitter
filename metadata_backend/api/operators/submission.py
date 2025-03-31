@@ -88,14 +88,6 @@ class SubmissionOperator(BaseOperator):
         LOG.error(reason)
         raise web.HTTPInternalServerError(reason=reason)
 
-    async def get_submission_project(self, submission_id: str) -> str:
-        """Get the project ID the submission is associated to.
-
-        :param submission_id: internal accession ID of submission
-        :returns: project ID submission is associated to
-        """
-        return await self.get_submission_field_str(submission_id, "projectId")
-
     async def check_object_in_submission(self, collection: str, accession_id: str) -> tuple[str, bool]:
         """Check a object/draft is in a submission.
 
@@ -337,7 +329,7 @@ class SubmissionOperator(BaseOperator):
 
         :param submission_id: ID of the submission to check
         :param method: Name of HTTP method used when this check is executed
-        :raises: HTTPMethodNotAllowed if submission is not published
+        :raises: HTTPMethodNotAllowed if submission is already published
         """
         published = await self.db_service.published_submission(submission_id)
         if published:

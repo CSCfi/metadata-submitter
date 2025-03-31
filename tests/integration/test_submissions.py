@@ -7,7 +7,6 @@ from datetime import datetime
 
 from tests.integration.conf import drafts_url, objects_url, publish_url, submit_url, testfiles_root
 from tests.integration.helpers import (
-    add_submission_files,
     add_submission_linked_folder,
     create_multi_file_request_data,
     create_request_data,
@@ -22,6 +21,7 @@ from tests.integration.helpers import (
     get_object,
     get_submission,
     get_user_data,
+    patch_submission_files,
     post_data_ingestion,
     post_draft,
     post_object,
@@ -234,6 +234,12 @@ class TestSubmissionOperations:
         async with client_logged_in.get(f"{submissions_url}/{submission_fega}") as resp:
             LOG.debug("Checking that submission %s was created", submission_fega)
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+
+        # Try creating the same submission again and check that it fails
+        async with client_logged_in.post(f"{submissions_url}", data=json.dumps(submission_data)) as resp:
+            ans = await resp.json()
+            assert resp.status == 400, f"HTTP Status code error {resp.status} {ans}"
+            assert ans["detail"] == f"Submission with name 'Mock Submission' already exists in project {project_id}"
 
         # Create draft from test XML file and patch the draft into the newly created submission
         draft_id = await post_draft(client_logged_in, "sample", submission_fega, "SRS001433.xml")
@@ -983,7 +989,7 @@ class TestSubmissionDataIngestion:
                     "objectId": {"accessionId": dataset_id, "schema": "dataset"},
                 }
             )
-        await add_submission_files(admin_logged_in, submission_files, submission_id)
+        await patch_submission_files(admin_logged_in, submission_files, submission_id)
 
         db_submission = await database["submission"].find_one({"submissionId": submission_id})
         files_for_ingestion = []

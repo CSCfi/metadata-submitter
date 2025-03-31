@@ -180,7 +180,7 @@ class ServiceHandler(ABC):
 
         :param reason: Error message
         :param status: HTTP status code
-        :returns MetaxServerError or MetaxClientError. HTTPInternalServerError on invalid input
+        :returns: ServiceServerError or ServiceClientError or HTTPInternalServerError on invalid input
         """
         if status < 400:
             LOG.error("HTTP status code must be an error code, >400 received %s.", status)
