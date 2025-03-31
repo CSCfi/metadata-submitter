@@ -2,7 +2,7 @@
 
 import defusedxml.ElementTree as ET
 
-from tests.integration.conf import datacite_url
+from tests.integration.conf import datacite_prefix, datacite_url
 from tests.integration.helpers import (
     announce_submission,
     create_request_json_data,
@@ -37,7 +37,9 @@ class TestBigPicture:
 
         # DOI is generated in the announcing phase
         bpdataset = await get_object(client_logged_in, "bpdataset", bpdataset[0])
-        assert len(bpdataset.get("doi")) != 0
+        doi = bpdataset.get("doi", "")
+        assert doi.startswith(datacite_prefix)
+        assert "bpdataset" in doi
 
         async with client_logged_in.get(f"{datacite_url}/dois/{bpdataset['doi']}") as datacite_resp:
             assert datacite_resp.status == 200, f"HTTP Status code error, got {datacite_resp.status}"

@@ -183,7 +183,7 @@ class ServiceHandler(ABC):
         :returns: ServiceServerError or ServiceClientError or HTTPInternalServerError on invalid input
         """
         if status < 400:
-            LOG.error("HTTP status code must be an error code, >400 received %s.", status)
+            LOG.error("HTTP status code must be an error code, received <400: %s.", status)
             return HTTPInternalServerError(reason="Server encountered an unexpected situation.")
         reason = f"{self.service_name} error: {reason}"
         if status >= 500:

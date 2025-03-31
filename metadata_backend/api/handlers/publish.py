@@ -247,7 +247,6 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         """
         datacite_study: dict[str, Any] = {}
         datacite_datasets: list[dict[str, Any]] = []
-        datacite_bpdatasets: list[dict[str, Any]] = []
 
         # we need to re-format these for Datacite, as in the JSON schemas
         # we split the words so that front-end will display them nicely
@@ -289,7 +288,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                     datacite_study = self._prepare_datacite_study(object_data, _info, discovery_url)
 
                     # there are cases where datasets are added first
-                    datasets = [*datacite_datasets, *datacite_bpdatasets]
+                    datasets = [*datacite_datasets]
                     LOG.info("datacite datasets: %r", datacite_datasets)
                     for ds in datasets:
                         ds["data"]["attributes"]["relatedIdentifiers"].append(
@@ -351,21 +350,23 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         """
         datacite_study, datacite_datasets = await self._prepare_datacite_publication(obj_op, submission)
         extra_info_patch = []
-        await self.publish(submission["workflow"], datacite_study)
-        study_patch = {
-            "op": "add",
-            "path": "/extraInfo/studyIdentifier",
-            "value": {
-                "identifier": {
-                    "identifierType": "DOI",
-                    "doi": datacite_study["id"],
+
+        if datacite_study:
+            # Study is optional for some workflows
+            await self.publish(submission["workflow"], datacite_study)
+            study_patch = {
+                "op": "add",
+                "path": "/extraInfo/studyIdentifier",
+                "value": {
+                    "identifier": {
+                        "identifierType": "DOI",
+                        "doi": datacite_study["id"],
+                    },
+                    "url": datacite_study["data"]["attributes"]["url"],
+                    "types": datacite_study["data"]["attributes"]["types"],
                 },
-                "url": datacite_study["data"]["attributes"]["url"],
-                "types": datacite_study["data"]["attributes"]["types"],
-            },
-        }
-        extra_info_patch.append(study_patch)
-        datasets_patch = []
+            }
+            extra_info_patch.append(study_patch)
 
         for ds in datacite_datasets:
             await self.publish(submission["workflow"], ds)
@@ -381,8 +382,8 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                     "types": ds["data"]["attributes"]["types"],
                 },
             }
-            datasets_patch.append(patch_ds)
-        extra_info_patch.extend(datasets_patch)
+            extra_info_patch.append(patch_ds)
+
         await submission_op.update_submission(submission["submissionId"], extra_info_patch)
 
         return datacite_study

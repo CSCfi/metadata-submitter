@@ -192,7 +192,7 @@ doi_config = {
 # Datacite API currently only for Big Picture workflow
 datacite_config = {
     "api": os.getenv("DATACITE_API", "http://localhost:8001/dois"),
-    "prefix": os.getenv("DATACITE_PREFIX", ""),
+    "prefix": os.getenv("DATACITE_PREFIX", "10.xxxx"),
     "user": os.getenv("DATACITE_USER", ""),
     "key": os.getenv("DATACITE_KEY", ""),
     "url": os.getenv("DATACITE_URL", "https://doi.org"),
@@ -200,7 +200,7 @@ datacite_config = {
 
 # CSC PID microservice for other cases
 pid_config = {
-    "api_url": os.getenv("PID_URL", "https://pidms-test.2.rahtiapp.fi/"),  # test url
+    "api_url": os.getenv("PID_URL", "http://mockpid:8005"),
     "api_key": os.getenv("PID_APIKEY", ""),
 }
 
