@@ -7,6 +7,10 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Updated dependencies
+
 ## [2025.4.0] - 2025-04-01
 
 ### Added
