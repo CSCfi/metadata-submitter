@@ -22,7 +22,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install requirements
         run: |
-          pip install aiohttp aiofiles motor pytest pytest-asyncio
+          pip install -r requirements-dev.txt
 
       - name: Start Services
         run: |
@@ -76,5 +76,5 @@ jobs:
         if: ${{ failure() }}
         uses: actions/upload-artifact@v4
         with:
-          name: test_debugging_help
+          name: test_debugging_help_tls
           path: tests
