@@ -7,6 +7,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ## [Unreleased]
 
+## [2025.4.0] - 2025-04-01
+
 ### Added
 
 - Added mock PID service and PID tests (#839)
@@ -34,6 +36,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- Updated instructions in the README and the CONTRIBUTING files
+- Altered and removed some of the Github actions workflows that were either not doing the correct thing or not needed anymore
 - (users) Submission can no longer have the same name inside the project
 - (users) Previous functionality behind POST and PUT request for adding/modifying submission files is unified and the endpoint is retitled to `PATCH /v1/submissions/{submissionId}/files`
 - Updated OpenAPI specifications
@@ -509,7 +513,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 - Files are also validated during submission process.
 
 
-[unreleased]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/-/compare/2024.1.0...HEAD
+[Unreleased]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/compare/2025.4.0...HEAD
+[2025.4.0]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/-/compare/2024.1.0...2025.4.0
 [2024.01.1]: https://gitlab.ci.csc.fi/sds-dev/sd-submit/metadata-submitter/-/compare/v0.13.1...2024.01.0
 [0.13.1]: https://github.com/CSCfi/metadata-submitter/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/CSCfi/metadata-submitter/compare/v0.10.0...v0.13.0
