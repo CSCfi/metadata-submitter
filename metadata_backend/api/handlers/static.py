@@ -46,7 +46,7 @@ class StaticHandler:
         mimetypes.types_map[".css"] = "text/css"
         mimetypes.types_map[".css.map"] = "application/json"
         LOG.debug("static paths for SPA set.")
-        return self.path / "static"
+        return self.path / "assets"  # static files are in /assets folder in frontend build
 
 
 def html_handler_factory(html_static_path: Path) -> Handler:

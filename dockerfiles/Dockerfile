@@ -1,22 +1,25 @@
 #=======================
-FROM node:20-alpine AS BUILD-FRONTEND
+FROM node:20-alpine AS build-frontend
 #=======================
 
 RUN apk add --update \
     && apk add --no-cache git\
     && rm -rf /var/cache/apk/*
 
-ARG BRANCH=master
+ARG BRANCH=main
 
 RUN git clone -b ${BRANCH} https://github.com/CSCfi/metadata-submitter-frontend.git
 
 WORKDIR /metadata-submitter-frontend
-RUN npx --quiet pinst --disable \
-    && pnpm install --prod \
-    && pnpm run build --prod
+
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+RUN pnpm install --prod --ignore-scripts && pnpm add -D vite-plugin-node-polyfills
+
+RUN pnpm run build
 
 #=======================
-FROM python:3.12-alpine3.17 AS BUILD-BACKEND
+FROM python:3.12-alpine3.17 AS build-backend
 #=======================
 
 RUN apk add --update \
