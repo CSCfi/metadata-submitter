@@ -35,13 +35,13 @@ repos:
       args: [-l, "120"]
 
   - repo: https://github.com/pycqa/isort
-    rev: 6.0.0
+    rev: 6.0.1
     hooks:
     - id: isort
       args: [--profile, black, --filter-files]
 
   - repo: https://github.com/pycqa/flake8
-    rev: 7.1.2
+    rev: 7.2.0
     hooks:
     - id: flake8
       additional_dependencies:
@@ -62,7 +62,7 @@ repos:
       files: docs/openapi.yml
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.31.2
+    rev: 0.32.1
     hooks:
       - id: check-metaschema
         name: Validate schemas

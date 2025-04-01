@@ -319,7 +319,7 @@ async def post_resource(request: web.Request) -> web.Response:
 
 async def post_catalogue_item(request: web.Request) -> web.Response:
     """REMS create resource and return id."""
-    global catalogue, catalogue_id
+    global catalogue, catalogue_id  # noqa: F824
     try:
         catalogue_request = await request.json()
         catalogue_id += 1
