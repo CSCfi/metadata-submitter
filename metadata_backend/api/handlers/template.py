@@ -57,7 +57,7 @@ class TemplatesAPIHandler(RESTAPIHandler):
     async def get_template(self, req: Request) -> Response:
         """Get one metadata template by its accession id.
 
-        Returns  JSON.
+        Returns JSON.
 
         :param req: GET request
         :returns: JSON response containing template

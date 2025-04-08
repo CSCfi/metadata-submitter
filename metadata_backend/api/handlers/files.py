@@ -29,8 +29,8 @@ class FilesAPIHandler(RESTAPIHandler):
         project_op = ProjectOperator(db_client)
         await project_op.check_project_exists(project_id)
 
+        # Check that user is affiliated with project
         user_operator = UserOperator(db_client)
-
         current_user = session["user_info"]
         user = await user_operator.read_user(current_user)
         user_has_project = await user_operator.check_user_has_project(project_id, user["userId"])
@@ -46,14 +46,16 @@ class FilesAPIHandler(RESTAPIHandler):
         """Handle files post request.
 
         :param request: POST request
+        :raises: HTTP Bad Request if response body format is invalid
+        :raises: HTTP Unauthorized if user not affiliated with project
         :returns: JSON response containing a list of file IDs of created files
         """
         db_client = request.app["db_client"]
         data = await self._get_data(request)
 
         try:
-            userId = data["userId"]
-            projectId = data["projectId"]
+            user_id = data["userId"]
+            project_id = data["projectId"]
             if isinstance(data["files"], list):
                 files = data["files"]
             else:
@@ -69,13 +71,13 @@ class FilesAPIHandler(RESTAPIHandler):
 
         # Check that project exists
         project_op = ProjectOperator(db_client)
-        await project_op.check_project_exists(projectId)
+        await project_op.check_project_exists(project_id)
 
         # Check that user is affiliated with project
-        user_op = UserOperator(db_client)
-        user_has_project = await user_op.check_user_has_project(projectId, userId)
+        user_operator = UserOperator(db_client)
+        user_has_project = await user_operator.check_user_has_project(project_id, user_id)
         if not user_has_project:
-            reason = f"user {userId} is not affiliated with project {projectId}"
+            reason = f"user {user_id} is not affiliated with project {project_id}"
             LOG.error(reason)
             raise web.HTTPUnauthorized(reason=reason)
 
@@ -88,7 +90,7 @@ class FilesAPIHandler(RESTAPIHandler):
                 new_file = File(
                     file["name"],
                     file["path"],
-                    projectId,
+                    project_id,
                     file["bytes"],
                     file["encrypted_checksums"],
                     file["unencrypted_checksums"],
@@ -113,9 +115,11 @@ class FilesAPIHandler(RESTAPIHandler):
         """Remove a file from a project.
 
         :param request: DELETE request
-        :raises HTTP Not Found if file not associated with submission
+        :raises: HTTP Bad Request if response body format is invalid
+        :raises: HTTP Unauthorized if user not affiliated with project
         :returns: HTTP No Content response
         """
+        session = await aiohttp_session.get_session(request)
         project_id = request.match_info["projectId"]
         db_client = request.app["db_client"]
 
@@ -123,12 +127,23 @@ class FilesAPIHandler(RESTAPIHandler):
         project_op = ProjectOperator(db_client)
         await project_op.check_project_exists(project_id)
 
+        # Check that user is affiliated with project
+        user_operator = UserOperator(db_client)
+        current_user = session["user_info"]
+        user = await user_operator.read_user(current_user)
+        user_has_project = await user_operator.check_user_has_project(project_id, user["userId"])
+        if not user_has_project:
+            reason = f"user {user['userId']} is not affiliated with project {project_id}"
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason=reason)
+
         data = await self._get_data(request)
 
         if not isinstance(data, list):
             reason = "Deleting files must be passed as a list of file paths."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
+
         # Check file exists in database
         file_operator = FileOperator(db_client)
         for file_path in data:

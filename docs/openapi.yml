@@ -53,7 +53,7 @@ paths:
     get:
       tags:
         - Query
-      summary: Retrieve JSON schema by its name.
+      summary: Retrieve JSON schema by its name
       parameters:
         - name: schema
           in: path
@@ -286,7 +286,7 @@ paths:
     get:
       tags:
         - Query
-      summary: Retrieve object by accession ID.
+      summary: Retrieve object by accession ID
       parameters:
         - name: schema
           in: path
@@ -337,7 +337,7 @@ paths:
     patch:
       tags:
         - Manage
-      summary: Update information on an object, on success return the updated object
+      summary: Update information on an object
       requestBody:
         content:
           application/json:
@@ -390,7 +390,7 @@ paths:
     put:
       tags:
         - Manage
-      summary: Update the whole object, on success return the updated object
+      summary: Add or replace the entire object
       requestBody:
         content:
           multipart/form-data:
@@ -444,7 +444,7 @@ paths:
     delete:
       tags:
         - Manage
-      summary: Delete object from a schema with a specified accession ID
+      summary: Delete object of a specific schema with a specified accession ID
       parameters:
         - name: schema
           in: path
@@ -545,7 +545,7 @@ paths:
     get:
       tags:
         - Query
-      summary: Retrieve draft object by accession ID.
+      summary: Retrieve draft object by accession ID
       parameters:
         - name: schema
           in: path
@@ -596,7 +596,7 @@ paths:
     patch:
       tags:
         - Manage
-      summary: Update information on an object, on success return the updated object
+      summary: Update information of an object
       requestBody:
         content:
           application/json:
@@ -649,7 +649,7 @@ paths:
     put:
       tags:
         - Manage
-      summary: Update the whole object, on success return the updated object
+      summary: Add or replace the entire object
       requestBody:
         content:
           multipart/form-data:
@@ -772,7 +772,7 @@ paths:
     post:
       tags:
         - Submission
-      summary: XML submission endpoint, will also trigger validation.
+      summary: XML submission endpoint, which will also trigger validation
       parameters:
         - name: workflow
           in: path
@@ -822,7 +822,7 @@ paths:
     post:
       tags:
         - Submission
-      summary: Validate XML before submission.
+      summary: Validate XML file before submission
       requestBody:
         content:
           multipart/form-data:
@@ -858,7 +858,7 @@ paths:
     get:
       tags:
         - Query
-      summary: Available workflows
+      summary: List of available workflows
       responses:
         200:
           description: OK
@@ -877,7 +877,7 @@ paths:
     get:
       tags:
         - Query
-      summary: Retrieve a workflow definition by its name.
+      summary: Retrieve a workflow definition by its name
       parameters:
         - name: workflow
           in: path
@@ -914,7 +914,7 @@ paths:
     get:
       tags:
         - Query
-      summary: Get templates from selected project
+      summary: List of templates from selected project
       parameters:
         - name: projectId
           in: query
@@ -987,7 +987,53 @@ paths:
     get:
       tags:
         - Query
-      summary: List of object by accession ID.
+      summary: Retrieve template object by accession ID
+      parameters:
+        - name: schema
+          in: path
+          description: Unique id of the targeted service.
+          schema:
+            type: string
+          required: true
+        - name: accessionId
+          in: path
+          description: filter objects in schema using accession ID
+          schema:
+            type: string
+          required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Object"
+            text/xml:
+              schema:
+                type: string
+                format: binary
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
+        404:
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/404NotFound"
+    patch:
+      tags:
+        - Manage
+      summary: Update template object
       parameters:
         - name: schema
           in: path
@@ -1073,7 +1119,7 @@ paths:
     get:
       tags:
         - Query
-      summary: List of submissions available for the user.
+      summary: List of submissions available for the user
       parameters:
         - in: query
           name: projectId
@@ -1141,7 +1187,7 @@ paths:
     post:
       tags:
         - Submission
-      summary: Create a new submission for the user.
+      summary: Create a new submission for the user
       requestBody:
         content:
           application/json:
@@ -1187,7 +1233,7 @@ paths:
     get:
       tags:
         - Query
-      summary: Object submission by its submission ID.
+      summary: Object submission by its submission ID
       parameters:
         - name: submissionId
           in: path
@@ -1223,7 +1269,7 @@ paths:
     patch:
       tags:
         - Submission
-      summary: Update information of a submission object.
+      summary: Update information of a submission object
       requestBody:
         content:
           application/json:
@@ -1281,7 +1327,7 @@ paths:
     delete:
       tags:
         - Manage
-      summary: Delete an object submission with a specified submission ID.
+      summary: Delete an object submission with a specified submission ID
       parameters:
         - name: submissionId
           in: path
@@ -1320,7 +1366,7 @@ paths:
     patch:
       tags:
         - Submission
-      summary: Update DOI for the submission with a specified submission ID.
+      summary: Update DOI for the submission with a specified submission ID
       parameters:
         - name: submissionId
           in: path
@@ -1368,7 +1414,7 @@ paths:
     patch:
       tags:
         - Submission
-      summary: Update REMS (DAC) for the submission with a specified submission ID.
+      summary: Update REMS (DAC) for the submission with a specified submission ID
       parameters:
         - name: submissionId
           in: path
@@ -1416,7 +1462,7 @@ paths:
     get:
       tags:
         - Query
-      summary: Retrieve all files with detailed info specific to a submission.
+      summary: Retrieve all files with detailed info specific to a submission
       parameters:
         - name: submissionId
           in: path
@@ -1454,7 +1500,7 @@ paths:
     patch:
       tags:
         - Submission
-      summary: Add or update files for the submission with a specified submission ID.
+      summary: Add or update files for the submission with a specified submission ID
       parameters:
         - name: submissionId
           in: path
@@ -1494,7 +1540,7 @@ paths:
     delete:
       tags:
         - Manage
-      summary: Remove file from a submission.
+      summary: Remove file from a submission
       parameters:
         - name: submissionId
           in: path
@@ -1533,7 +1579,7 @@ paths:
     patch:
       tags:
         - Submission
-      summary: Update linked folder name associated with a submission.
+      summary: Update linked folder name associated with a submission
       parameters:
         - name: submissionId
           in: path
@@ -1577,7 +1623,7 @@ paths:
     post:
       tags:
         - Submission
-      summary: Start the data ingestion process when the submission is ready.
+      summary: Start the data ingestion process when the submission is ready
       parameters:
         - name: submissionId
           in: path
@@ -1623,17 +1669,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
-        405:
-          description: Method Not Allowed
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/405MethodNotAllowed"
   /v1/publish/{submissionId}:
     patch:
       tags:
         - Submission
-      summary: Update object submission into published state.
+      summary: Update object submission into published state
       parameters:
         - name: submissionId
           in: path
@@ -1688,7 +1728,7 @@ paths:
     patch:
       tags:
         - Submission
-      summary: Update object submission into published state for Bigpicture case.
+      summary: Update object submission into published state for Bigpicture case
       parameters:
         - name: submissionId
           in: path
@@ -1743,7 +1783,7 @@ paths:
     get:
       tags:
         - Query
-      summary: User object by its user ID.
+      summary: User object by its user ID
       parameters:
         - name: userId
           in: path
@@ -1776,51 +1816,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
-    patch:
-      tags:
-        - Manage
-      summary: Update user's submission related information.
-      requestBody:
-        content:
-          application/json-patch+json:
-            schema:
-              $ref: "#/components/schemas/JSONPatch"
-      parameters:
-        - name: userId
-          in: path
-          description: ID of the user object.
-          schema:
-            type: string
-          required: true
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/UserUpdated"
-        400:
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/400BadRequest"
-        401:
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/401Unauthorized"
-        403:
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/403Forbidden"
     delete:
       tags:
         - Manage
-      summary: Delete an user object with a specified user ID.
+      summary: Delete an user object with a specified user ID
       parameters:
         - name: userId
           in: path
@@ -1853,7 +1852,7 @@ paths:
     get:
       tags:
         - Query
-      summary: Generate new signing key for personal token.
+      summary: Generate new signing key for personal token
       parameters:
         - name: userId
           in: path
@@ -1964,17 +1963,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/404NotFound"
-        405:
-          description: Method Not Allowed
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/405MethodNotAllowed"
   /v1/files/{projectId}:
     delete:
       tags:
         - File
-      summary: Flag files as deleted in a project and remove files from unpublished submissions.
+      summary: Flag files as deleted in a project and remove files from unpublished submissions
       parameters:
         - name: projectId
           in: path
@@ -2011,12 +2004,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
-        405:
-          description: Method Not Allowed
+        404:
+          description: Not Found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/405MethodNotAllowed"
+                $ref: "#/components/schemas/404NotFound"
   /v1/taxonomy:
     get:
       tags:
