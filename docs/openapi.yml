@@ -1951,7 +1951,7 @@ paths:
       parameters:
         - name: is_bigpicture
           in: query
-          description: specify if the files belong to Big Picture project
+          description: specify if the files belong to Bigpicture project
           schema:
             type: boolean
       requestBody:

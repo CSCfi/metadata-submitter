@@ -121,8 +121,8 @@ async def fixture_submission_fega(client_logged_in: aiohttp.ClientSession, proje
 
 @pytest.fixture(name="submission_bigpicture")
 async def fixture_submission_bigpicture(client_logged_in: aiohttp.ClientSession, project_id: str):
-    """Create a BigPicture submission to be reused across tests that are grouped under the same scope."""
-    submission_id = await make_submission(client_logged_in, project_id, "BigPicture")
+    """Create a Bigpicture submission to be reused across tests that are grouped under the same scope."""
+    submission_id = await make_submission(client_logged_in, project_id, "Bigpicture")
     yield submission_id
 
     try:

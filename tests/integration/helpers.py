@@ -686,7 +686,7 @@ async def post_project_files(sess, file_data, is_bigpicture=""):
 
     :param sess: HTTP session in which request call is made
     :param file_data: new file data containing userId, projectId, file info
-    :param is_bigpicture: specify if the file belongs to Big Picture
+    :param is_bigpicture: specify if the file belongs to Bigpicture
     :returns: list of file ids of created files
     """
     params = {"is_bigpicture": is_bigpicture}

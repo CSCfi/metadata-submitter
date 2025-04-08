@@ -225,7 +225,7 @@ class TestFileSubmissions:
             "name": "Test submission",
             "description": "Test submission with file updating",
             "projectId": project_id,
-            "workflow": "BigPicture",
+            "workflow": "Bigpicture",
         }
         submission_id = await post_submission(client_logged_in, submission_data)
         async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:

@@ -43,7 +43,7 @@ class FileOperator(BaseOperator):
 
         :param path: file path
         :param project_id: project id of file
-        :param is_bigpicture: specify if the file belongs to Big Picture
+        :param is_bigpicture: specify if the file belongs to Bigpicture
         :raises: HTTPInternalServerError if db operation failed because of connection
         or other db issue
         :returns: dict with file accession id and file version
@@ -70,7 +70,7 @@ class FileOperator(BaseOperator):
         Checks if file with the same path already exists.
 
         :param file: File with all class properties
-        :param is_bigpicture: specify if the file belongs to Big Picture
+        :param is_bigpicture: specify if the file belongs to Bigpicture
         :returns: validated file object according to file.json schema
         """
         id_and_version = await self._get_file_id_and_version(file.path, file.projectId, is_bigpicture)

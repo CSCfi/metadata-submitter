@@ -42,7 +42,7 @@ POST {{api_url}}/v1/submissions
     "name": "submission test 1",
     "description": "submission test 1",
     "projectId": "{{project_id}}",
-    "workflow": "BigPicture"
+    "workflow": "Bigpicture"
 }
 
 ### List submissions
@@ -115,6 +115,7 @@ GET {{api_url}}/v1/objects/bpimage/{{image_id}}
 ### Post files
 # @name file_id_req
 POST {{api_url}}/v1/files
+    ?is_bigpicture=true
 
 {
     "userId": "{{user_id}}",

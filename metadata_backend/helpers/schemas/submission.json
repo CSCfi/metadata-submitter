@@ -36,7 +36,7 @@
             "description": "Each submission is created according a specific workflow, which is indicated by this field",
             "enum": [
                 "FEGA",
-                "BigPicture",
+                "Bigpicture",
                 "SDSX"
             ]
         },

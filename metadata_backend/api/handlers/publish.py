@@ -530,7 +530,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                 raise web.HTTPBadRequest(reason=reason)
             schemas_in_submission.add(schema)
 
-        if workflow.name not in {"BigPicture", "SDSX"} and not has_study:
+        if workflow.name not in {"Bigpicture", "SDSX"} and not has_study:
             raise web.HTTPBadRequest(reason=f"Submission '{submission_id}' must have a study.")
 
         for _, schema in self.iter_submission_objects(submission):
