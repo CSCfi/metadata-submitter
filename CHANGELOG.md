@@ -9,6 +9,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- Updated OpenAPI specifications to version 3.1.1
+- Retitled PUT requests for updating DOI, REMS or linked folder info in a submission to be a PATCH request instead
 - Updated dependencies
 
 ## [2025.4.0] - 2025-04-01
