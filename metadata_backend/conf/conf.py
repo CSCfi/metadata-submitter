@@ -263,7 +263,7 @@ BP_SCHEMA_TYPES = [
     "bpstaining",
     "bpobserver",
 ]
-BP_CENTER_ID = "bb"
+BP_CENTER_ID = os.getenv("BP_CENTER_ID", "bb")
 
 TAXONOMY_NAME_DATA: dict[str, dict[Any, Any]] = {}
 # Load taxonomy name data into a single dict
