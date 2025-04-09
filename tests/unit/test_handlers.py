@@ -1129,13 +1129,13 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             self.MockedSubmissionOperator().delete_submission.assert_called_once()
             self.assertEqual(response.status, 204)
 
-    async def test_put_submission_doi_passes_and_returns_id(self):
-        """Test put method for submission doi works."""
+    async def test_patch_submission_doi_passes_and_returns_id(self):
+        """Test method for adding DOI to submission works."""
         self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
         data = ujson.load(open(self.TESTFILES_ROOT / "doi" / "test_doi.json"))
 
         with self.p_get_sess_restapi:
-            response = await self.client.put(f"{API_PREFIX}/submissions/FOL12345678/doi", json=data)
+            response = await self.client.patch(f"{API_PREFIX}/submissions/FOL12345678/doi", json=data)
             self.assertEqual(response.status, 200)
             json_resp = await response.json()
             self.assertEqual(json_resp["submissionId"], self.submission_id)
@@ -1145,25 +1145,25 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             json_resp = await response.json()
             self.assertIn("doiInfo", json_resp)
 
-    async def test_put_linked_folder_passes(self):
-        """Test put method for updating linked folder to submission works."""
+    async def test_patch_linked_folder_passes(self):
+        """Test method for adding linked folder to submission works."""
         self.MockedSubmissionOperator().check_submission_linked_folder.return_value = False
         data = {"linkedFolder": "folderName"}
         with self.p_get_sess_restapi:
-            response = await self.client.put(f"{API_PREFIX}/submissions/FOL12345678/folder", json=data)
+            response = await self.client.patch(f"{API_PREFIX}/submissions/FOL12345678/folder", json=data)
             self.assertEqual(response.status, 204)
 
-    async def test_put_linked_folder_fails(self):
-        """Test put method for adding linked folder fails if it already exists."""
+    async def test_patch_linked_folder_fails(self):
+        """Test method for adding linked folder fails if it already exists."""
         self.MockedSubmissionOperator().check_submission_linked_folder.return_value = True
         data = {"linkedFolder": "folderName"}
         with self.p_get_sess_restapi:
-            response = await self.client.put(f"{API_PREFIX}/submissions/FOL12345678/folder", json=data)
+            response = await self.client.patch(f"{API_PREFIX}/submissions/FOL12345678/folder", json=data)
             self.assertEqual(response.status, 400)
             self.assertIn("It already has a linked folder", await response.text())
 
-    async def test_put_submission_rems_works(self):
-        """Test put method for rems data to submission works."""
+    async def test_patch_submission_rems_works(self):
+        """Test method for adding rems data to submission works."""
         self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
         data = ujson.load(open(self.TESTFILES_ROOT / "dac" / "dac_rems.json"))
         with (
@@ -1173,7 +1173,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             ),
             self.p_get_sess_restapi,
         ):
-            response = await self.client.put(f"{API_PREFIX}/submissions/{self.submission_id}/rems", json=data)
+            response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/rems", json=data)
             self.assertEqual(response.status, 200)
             json_resp = await response.json()
             self.assertEqual(json_resp["submissionId"], self.submission_id)
@@ -1183,21 +1183,21 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             json_resp = await response.json()
             self.assertIn("rems", json_resp)
 
-    async def test_put_submission_rems_fails_with_missing_fields(self):
-        """Test put method for rems data to submission fails if required fields are missing."""
+    async def test_patch_submission_rems_fails_with_missing_fields(self):
+        """Test method for adding rems data to submission fails if required fields are missing."""
         self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
         data = {"workflowId": 1}
         with self.p_get_sess_restapi:
-            response = await self.client.put(f"{API_PREFIX}/submissions/{self.submission_id}/rems", json=data)
+            response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/rems", json=data)
             self.assertEqual(response.status, 400)
             self.assertIn("REMS DAC is missing one or more of the required fields", await response.text())
 
-    async def test_put_submission_rems_fails_with_wrong_value_type(self):
-        """Test put method for rems data to submission fails if values have incorrect types."""
+    async def test_patch_submission_rems_fails_with_wrong_value_type(self):
+        """Test method for adding rems data to submission fails if values have incorrect types."""
         self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
         data = {"workflowId": 1, "organizationId": 1, "licenses": [1]}
         with self.p_get_sess_restapi:
-            response = await self.client.put(f"{API_PREFIX}/submissions/{self.submission_id}/rems", json=data)
+            response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/rems", json=data)
             self.assertEqual(response.status, 400)
             self.assertIn("Organization ID '1' must be a string.", await response.text())
 

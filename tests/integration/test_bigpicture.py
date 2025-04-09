@@ -9,8 +9,8 @@ from tests.integration.helpers import (
     delete_published_submission,
     get_object,
     get_xml_object,
+    patch_submission_doi,
     post_object,
-    put_submission_doi,
 )
 
 
@@ -31,7 +31,7 @@ class TestBigPicture:
 
         # Add DOI and DAC for publishing the submission
         doi_data_raw = await create_request_json_data("doi", "test_doi.json")
-        await put_submission_doi(client_logged_in, submission_bigpicture, doi_data_raw)
+        await patch_submission_doi(client_logged_in, submission_bigpicture, doi_data_raw)
 
         await announce_submission(client_logged_in, submission_bigpicture)
 

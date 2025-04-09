@@ -21,7 +21,9 @@ from tests.integration.helpers import (
     get_object,
     get_submission,
     get_user_data,
+    patch_submission_doi,
     patch_submission_files,
+    patch_submission_rems,
     post_data_ingestion,
     post_draft,
     post_object,
@@ -29,8 +31,6 @@ from tests.integration.helpers import (
     post_project_files,
     post_submission,
     publish_submission,
-    put_submission_doi,
-    put_submission_rems,
     submissions_url,
 )
 
@@ -306,7 +306,7 @@ class TestSubmissionOperations:
 
         # Add DOI for publishing the submission
         doi_data_raw = await create_request_json_data("doi", "test_doi.json")
-        await put_submission_doi(client_logged_in, submission_fega, doi_data_raw)
+        await patch_submission_doi(client_logged_in, submission_fega, doi_data_raw)
 
         # Add a study and dataset for publishing a submission
         ds_1 = await post_object(client_logged_in, "dataset", submission_fega, "dataset.xml")
@@ -316,7 +316,7 @@ class TestSubmissionOperations:
         ds_2 = await post_object(client_logged_in, "dataset", submission_fega, "dataset_put.xml")
 
         rems_data = await create_request_json_data("dac", "dac_rems.json")
-        await put_submission_rems(client_logged_in, submission_fega, rems_data)
+        await patch_submission_rems(client_logged_in, submission_fega, rems_data)
         await post_object_json(client_logged_in, "policy", submission_fega, "policy.json")
         await post_object_json(client_logged_in, "run", submission_fega, "ERR000076.json")
 
@@ -507,7 +507,7 @@ class TestSubmissionOperations:
         # Get correctly formatted DOI info and patch it into the new submission successfully
         doi_data_raw = await create_request_json_data("doi", "test_doi.json")
         doi_data = json.loads(doi_data_raw)
-        await put_submission_doi(client_logged_in, submission_fega, doi_data_raw)
+        await patch_submission_doi(client_logged_in, submission_fega, doi_data_raw)
 
         async with client_logged_in.get(f"{submissions_url}/{submission_fega}") as resp:
             LOG.debug("Checking that submission %s was patched", submission_fega)
@@ -520,7 +520,7 @@ class TestSubmissionOperations:
 
         # Test that an incomplete DOI object fails to patch into the submission
         put_bad_doi = {"identifier": {}}
-        async with client_logged_in.put(
+        async with client_logged_in.patch(
             f"{submissions_url}/{submission_fega}/doi", data=json.dumps(put_bad_doi)
         ) as resp:
             LOG.debug("Tried updating submission %s", submission_fega)
@@ -603,7 +603,7 @@ class TestSubmissionOperations:
         # Get correctly formatted REMS info and patch it into the new submission successfully
         rems_data_raw = await create_request_json_data("dac", "dac_rems.json")
         rems_data = json.loads(rems_data_raw)
-        await put_submission_rems(client_logged_in, submission_sdsx, rems_data_raw)
+        await patch_submission_rems(client_logged_in, submission_sdsx, rems_data_raw)
 
         async with client_logged_in.get(f"{submissions_url}/{submission_sdsx}") as resp:
             LOG.debug("Checking that submission %s was patched", submission_sdsx)
@@ -617,7 +617,7 @@ class TestSubmissionOperations:
         # Test that an incorrect REMS object fails to patch into the submission
         # error case: REMS's licenses do not include DAC's linked license
         put_bad_rems = {"workflowId": 1, "organizationId": "CSC", "licenses": [2, 3]}
-        async with client_logged_in.put(
+        async with client_logged_in.patch(
             f"{submissions_url}/{submission_sdsx}/rems", data=json.dumps(put_bad_rems)
         ) as resp:
             LOG.debug("Tried updating submission %s", submission_sdsx)
@@ -650,9 +650,9 @@ class TestSubmissionPagination:
         for submission_fega in submissions[6:9]:
             await post_object_json(client_logged_in, "study", submission_fega, "SRP000539.json")
             doi_data_raw = await create_request_json_data("doi", "test_doi.json")
-            await put_submission_doi(client_logged_in, submission_fega, doi_data_raw)
+            await patch_submission_doi(client_logged_in, submission_fega, doi_data_raw)
             rems_data = await create_request_json_data("dac", "dac_rems.json")
-            await put_submission_rems(client_logged_in, submission_fega, rems_data)
+            await patch_submission_rems(client_logged_in, submission_fega, rems_data)
             await post_object_json(client_logged_in, "policy", submission_fega, "policy.json")
             await post_object_json(client_logged_in, "run", submission_fega, "ERR000076.json")
             await post_object_json(client_logged_in, "dataset", submission_fega, "dataset.json")

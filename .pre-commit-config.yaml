@@ -54,11 +54,10 @@ repos:
     - id: bandit
       files: ^metadata_backend
 
-  - repo: https://github.com/APIDevTools/swagger-cli
-    rev: v4.0.4
+  - repo: https://github.com/python-openapi/openapi-spec-validator
+    rev: 0.7.1
     hooks:
-    - id: swagger-validation
-      args: [validate]
+    - id: openapi-spec-validator
       files: docs/openapi.yml
 
   - repo: https://github.com/python-jsonschema/check-jsonschema

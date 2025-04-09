@@ -4,6 +4,9 @@ Converts an openapi YAML spec file to HTML + Swagger UI.
 
 Usage: python swagger-yaml-to-html.py < openapi.yml > index.html
 
+Note: Whenever updating the OAS version, go check what the latest library is here and update the URLs below
+https://cdnjs.com/libraries/swagger-ui
+
 Credits:
 - https://github.com/oseiskar
 - https://gist.github.com/oseiskar/dbd51a3727fc96dcf5ed189fca491fb3
@@ -28,7 +31,7 @@ TEMPLATE = """
   <link
     rel="stylesheet"
     type="text/css"
-    href="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.11.1/swagger-ui.css"
+    href="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.20.2/swagger-ui.css"
   >
   <style>
     html
@@ -51,8 +54,8 @@ TEMPLATE = """
 </head>
 <body>
 <div id="swagger-ui"></div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.11.1/swagger-ui-bundle.js"> </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.11.1/swagger-ui-standalone-preset.js"> </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.20.2/swagger-ui-bundle.js"> </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.20.2/swagger-ui-standalone-preset.js"> </script>
 <script>
 window.onload = function() {
   var spec = %s;

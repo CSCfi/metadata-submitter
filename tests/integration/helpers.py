@@ -552,30 +552,30 @@ async def delete_published_submission(sess, submission_id):
         assert resp.status == 405, f"HTTP Status code error, got {resp.status}"
 
 
-async def put_submission_doi(sess, submission_id, data):
-    """Put doi into submission within session, returns submissionId.
+async def patch_submission_doi(sess, submission_id, data):
+    """Patch doi into submission within session, returns submissionId.
 
     :param sess: HTTP session in which request call is made
     :param submission_id: id of the submission
     :param data: doi data used to update the submission
     :returns: Submission id for the submission inserted to database
     """
-    async with sess.put(f"{submissions_url}/{submission_id}/doi", data=data) as resp:
+    async with sess.patch(f"{submissions_url}/{submission_id}/doi", data=data) as resp:
         ans = await resp.json()
         assert resp.status == 200, f"HTTP Status code error {resp.status} {ans}"
         LOG.debug("Adding doi to submission %s", ans["submissionId"])
         return ans["submissionId"]
 
 
-async def put_submission_rems(sess, submission_id, data):
-    """Put REMS (DAC) into submission within session, returns submissionId.
+async def patch_submission_rems(sess, submission_id, data):
+    """Patch REMS (DAC) into submission within session, returns submissionId.
 
     :param sess: HTTP session in which request call is made
     :param submission_id: id of the submission
     :param data: REMS data used to update the submission
     :returns: Submission id for the submission inserted to database
     """
-    async with sess.put(f"{submissions_url}/{submission_id}/rems", data=data) as resp:
+    async with sess.patch(f"{submissions_url}/{submission_id}/rems", data=data) as resp:
         ans = await resp.json()
         assert resp.status == 200, f"HTTP Status code error {resp.status} {ans}"
         LOG.debug("Adding REMS DAC to submission %s", ans["submissionId"])
@@ -770,7 +770,7 @@ async def add_submission_linked_folder(sess, submission_id, name):
     data = {"linkedFolder": name}
     url = f"{submissions_url}/{submission_id}/folder"
 
-    async with sess.put(
+    async with sess.patch(
         url,
         data=ujson.dumps(data),
     ) as resp:
