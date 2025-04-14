@@ -530,7 +530,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                 raise web.HTTPBadRequest(reason=reason)
             schemas_in_submission.add(schema)
 
-        if workflow.name not in {"BigPicture", "SDSX"} and not has_study:
+        if workflow.name not in {"Bigpicture", "SDSX"} and not has_study:
             raise web.HTTPBadRequest(reason=f"Submission '{submission_id}' must have a study.")
 
         for _, schema in self.iter_submission_objects(submission):
@@ -549,7 +549,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         missing_schemas = set()
         for required_schema in workflow.required_schemas:
             # Exceptional schemas only require to be added to submission for publishing, their checks are added above.
-            exceptional_schemas = {"dac", "bprems", "datacite", "file"}
+            exceptional_schemas = {"dac", "bprems", "datacite", "file", "bpfile"}
             if required_schema not in schemas_in_submission and required_schema not in exceptional_schemas:
                 missing_schemas.add(required_schema)
         if missing_schemas:

@@ -52,6 +52,7 @@ class FilesAPIHandler(RESTAPIHandler):
         """
         db_client = request.app["db_client"]
         data = await self._get_data(request)
+        is_bigpicture = request.query.get("is_bigpicture", "").strip().lower() == "true"
 
         try:
             user_id = data["userId"]
@@ -95,7 +96,7 @@ class FilesAPIHandler(RESTAPIHandler):
                     file["encrypted_checksums"],
                     file["unencrypted_checksums"],
                 )
-                file_object = await file_op.form_validated_file_object(new_file)
+                file_object = await file_op.form_validated_file_object(new_file, is_bigpicture)
                 validated_file_objects.append(file_object)
         except KeyError as file_key_error:
             reason = "Fields `path`, `name`, `bytes`, `encrypted_checksums`, `unencrypted_checksums` are required."

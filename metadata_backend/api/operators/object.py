@@ -3,7 +3,6 @@
 import re
 from datetime import UTC, datetime
 from typing import Any
-from uuid import uuid4
 
 from aiohttp import web
 from dateutil.relativedelta import relativedelta
@@ -11,7 +10,7 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
 from multidict import MultiMapping
 from pymongo.errors import ConnectionFailure, OperationFailure
 
-from ...conf.conf import DATACITE_SCHEMAS, mongo_database, query_map
+from ...conf.conf import BP_SCHEMA_TYPES, DATACITE_SCHEMAS, query_map
 from ...database.db_service import auto_reconnect
 from ...helpers.logger import LOG
 from .object_base import BaseObjectOperator
@@ -30,7 +29,7 @@ class ObjectOperator(BaseObjectOperator):
         running on same loop with aiohttp, so needs to be passed from aiohttp
         Application.
         """
-        super().__init__(mongo_database, "application/json", db_client)
+        super().__init__("application/json", db_client)
 
     async def query_templates_by_project(self, project_id: str) -> list[dict[str, dict[str, str] | str]]:
         """Get templates list from given project ID.
@@ -214,9 +213,8 @@ class ObjectOperator(BaseObjectOperator):
         :param data: Metadata object
         :returns: Metadata object with some additional keys/values
         """
-        bp_schema_types = ["bpdataset", "bpimage", "bpobservation", "bpsample", "bpstaining"]
 
-        if schema_type in bp_schema_types:
+        if schema_type in BP_SCHEMA_TYPES:
             data["accessionId"] = self._generate_bp_accession_id(schema_type)
         else:
             data["accessionId"] = self._generate_accession_id()
@@ -281,33 +279,6 @@ class ObjectOperator(BaseObjectOperator):
 
         LOG.debug("ObjectOperator formatted data for collection: %r to add to DB.", schema_type)
         return await self._update_object_from_db(schema_type, accession_id, data)
-
-    def _generate_accession_id(self) -> str:
-        """Generate random accession id.
-
-        Will be replaced later with external id generator.
-        """
-        sequence = uuid4().hex
-        LOG.debug("Generated accession ID.")
-        return sequence
-
-    def _generate_bp_accession_id(self, schema_type: str) -> str:
-        """Generate accession id for BigPicture metadata objects.
-
-        :returns: BP accession id as str
-        """
-        center = "bb"
-        sequence = uuid4().hex
-        schema_types = ["bpdataset", "bpimage", "bpobservation", "bpsample", "bpstaining"]
-
-        if schema_type not in schema_types:
-            reason = "Provided invalid BigPicture schema type."
-            LOG.error(reason)
-            raise ValueError(reason)
-
-        bp_id = f"{center}-{schema_type[2:].capitalize()}-{sequence[0:6]}-{sequence[6:12]}"
-        LOG.debug("Generated BigPicture accession ID.")
-        return bp_id
 
     @auto_reconnect
     async def _format_read_data(

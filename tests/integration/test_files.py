@@ -1,6 +1,7 @@
 """Test operations with files."""
 
 import logging
+import re
 
 from tests.integration.helpers import (
     delete_project_files,
@@ -91,6 +92,44 @@ class TestFiles:
         for index, file in enumerate(files):
             assert file["name"] == f"file_{index + 1}.c4gh"
             assert file["projectId"] == user_data["projects"][int(index / 2)]["projectId"]
+
+    async def test_post_project_bigpicture_file(self, client_logged_in):
+        """Test file posting to BP project has correct accessionId format.
+
+        :param client_logged_in: HTTP client in which request call is made
+        """
+        # Get user data: userId and projects
+        user_data = await get_user_data(client_logged_in)
+        projectId = user_data["projects"][0]["projectId"]
+
+        # Post BP file
+        bp_file_data = {
+            "userId": user_data["userId"],
+            "projectId": projectId,
+            "files": [generate_mock_file("bp_file")],
+        }
+
+        bp_files = await post_project_files(client_logged_in, bp_file_data, "true")
+        assert len(bp_files) == 1
+
+        # Confirm file exists within project
+        file_exists = await find_project_file(client_logged_in, projectId, bp_files[0]["accessionId"])
+        assert file_exists is True
+
+        # Assert file's accession id has correct format for Bigpicture
+        bp_file_id_pattern = re.compile("^bb-file(-[a-hj-knm-z23456789]{6}){2}$")
+        assert bp_file_id_pattern.match(bp_files[0]["accessionId"]), "BP file id did not have correct format"
+
+        # Post another normal file
+        file_data = {
+            "userId": user_data["userId"],
+            "projectId": projectId,
+            "files": [generate_mock_file("mock_file")],
+        }
+
+        files = await post_project_files(client_logged_in, file_data)
+        assert len(files) == 1
+        assert not bp_file_id_pattern.match(files[0]["accessionId"]), "Normal file id did not have correct format"
 
     async def test_delete_project_files(self, client_logged_in, database):
         """Test that specific file is flagged as deleted and removed from current submissions (not published).
@@ -186,7 +225,7 @@ class TestFileSubmissions:
             "name": "Test submission",
             "description": "Test submission with file updating",
             "projectId": project_id,
-            "workflow": "BigPicture",
+            "workflow": "Bigpicture",
         }
         submission_id = await post_submission(client_logged_in, submission_data)
         async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:

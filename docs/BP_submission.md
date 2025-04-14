@@ -1,7 +1,7 @@
-## BigPicture Submission Workflow with SD Submit API
+## Bigpicture Submission Workflow with SD Submit API
 
 SD Submit is a service that will support several use-cases including
-the submission of BigPicture datasets. The project currently includes
+the submission of Bigpicture datasets. The project currently includes
 an API solution developed and maintained in this repository, which
 enables programmatic submission of these datasets.
 
@@ -9,7 +9,7 @@ The flowchart below depicts the steps for the programmatic submission
 process. Each step is explained below in this markdown document with
 instructions on how to execute them via the command line.
 
-![BigPicture Submission flowchart](_static/bp-flowchart.svg)
+![Bigpicture Submission flowchart](_static/bp-flowchart.svg)
 
 ### Further context
 
@@ -107,7 +107,7 @@ curl -H "Cookie: $session_cookie" \
        "name": "<ENTER NAME HERE>",
        "description": "<ENTER DESCRIPTION HERE>",
        "projectId": "'$project_id'",
-       "workflow": "BigPicture"
+       "workflow": "Bigpicture"
      }' | jq
 ```
 
@@ -309,5 +309,5 @@ curl -H "Cookie: $session_cookie" \
 
 After this, the dataset described in the submission object will be registered
 to DataCite, made accessible via the REMS service and discoverable by
-BigPicture Imaging Beacon discovery service. The submission object can still be
+Bigpicture Imaging Beacon discovery service. The submission object can still be
 viewed via the API but it can no longer be edited with previously covered commands.

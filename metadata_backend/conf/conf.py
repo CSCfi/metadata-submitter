@@ -189,7 +189,7 @@ doi_config = {
     "publisher": "CSC - IT Center for Science",
 }
 
-# Datacite API currently only for Big Picture workflow
+# Datacite API currently only for Bigpicture workflow
 datacite_config = {
     "api": os.getenv("DATACITE_API", "http://localhost:8001/dois"),
     "prefix": os.getenv("DATACITE_PREFIX", "10.xxxx"),
@@ -248,6 +248,22 @@ discovery_config = {
 
 DATACITE_SCHEMAS = {"study", "dataset", "bpdataset"}
 METAX_SCHEMAS = {"study", "dataset"}
+BP_SCHEMA_TYPES = [
+    "bpannotation",
+    "bpdataset",
+    "bpfile",
+    "bpimage",
+    "bpobservation",
+    "bppolicy",
+    "bpbiologicalBeing",
+    "bpcase",
+    "bpspecimen",
+    "bpblock",
+    "bpslide",
+    "bpstaining",
+    "bpobserver",
+]
+BP_CENTER_ID = os.getenv("BP_CENTER_ID", "bb")
 
 TAXONOMY_NAME_DATA: dict[str, dict[Any, Any]] = {}
 # Load taxonomy name data into a single dict

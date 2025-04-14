@@ -34,13 +34,16 @@ class FileOperator(BaseOperator):
         """Get current time."""
         return int(datetime.now().timestamp())
 
-    async def _get_file_id_and_version(self, path: str, project_id: str) -> dict[str, str | int]:
+    async def _get_file_id_and_version(
+        self, path: str, project_id: str, is_bigpicture: bool = False
+    ) -> dict[str, str | int]:
         """Get an accession id and file version for a file.
 
         Checks if file already exists. Generates data if file not found in db.
 
         :param path: file path
         :param project_id: project id of file
+        :param is_bigpicture: specify if the file belongs to Bigpicture
         :raises: HTTPInternalServerError if db operation failed because of connection
         or other db issue
         :returns: dict with file accession id and file version
@@ -51,7 +54,9 @@ class FileOperator(BaseOperator):
                 accession_id = file["accessionId"]
                 version = file["currentVersion"]["version"] + 1
             else:
-                accession_id = self._generate_accession_id()
+                accession_id = (
+                    self._generate_bp_accession_id("bpfile") if is_bigpicture else self._generate_accession_id()
+                )
                 version = 1
             return {"accessionId": accession_id, "version": version}
         except (ConnectionFailure, OperationFailure) as error:
@@ -59,15 +64,16 @@ class FileOperator(BaseOperator):
             LOG.exception(reason)
             raise web.HTTPInternalServerError(reason=reason) from error
 
-    async def form_validated_file_object(self, file: File) -> dict[str, Any]:
+    async def form_validated_file_object(self, file: File, is_bigpicture: bool = False) -> dict[str, Any]:
         """Formulate a file object from File fit for inserting to db.
 
         Checks if file with the same path already exists.
 
         :param file: File with all class properties
+        :param is_bigpicture: specify if the file belongs to Bigpicture
         :returns: validated file object according to file.json schema
         """
-        id_and_version = await self._get_file_id_and_version(file.path, file.projectId)
+        id_and_version = await self._get_file_id_and_version(file.path, file.projectId, is_bigpicture)
         LOG.info(id_and_version)
 
         file_object = {

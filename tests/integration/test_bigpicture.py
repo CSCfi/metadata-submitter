@@ -1,4 +1,4 @@
-"""Tests with big picture schemas."""
+"""Tests with Bigpicture schemas."""
 
 import defusedxml.ElementTree as ET
 
@@ -14,8 +14,8 @@ from tests.integration.helpers import (
 )
 
 
-class TestBigPicture:
-    """Tests with big picture schemas."""
+class TestBigpicture:
+    """Tests with Bigpicture schemas."""
 
     async def test_bpdataset_gets_doi(self, client_logged_in, submission_bigpicture, project_id):
         """Test bp dataset has doi generated.
