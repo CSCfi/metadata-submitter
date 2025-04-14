@@ -9,6 +9,9 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- Reword all "Big Picture" related words to the correct format "Bigpicture"
+- object_base inherits from BaseOperator class instead of abstract base class
+- Reformat accession ID for Bigpicture's schemas and file
 - Updated OpenAPI specifications to version 3.1.1
 - Retitled PUT requests for updating DOI, REMS or linked folder info in a submission to be a PATCH request instead
 - Updated dependencies
