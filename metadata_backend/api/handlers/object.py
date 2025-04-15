@@ -9,7 +9,7 @@ from aiohttp import web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
-from ...conf.conf import API_PREFIX
+from ...conf.conf import API_PREFIX, SUBMISSION_ONLY_SCHEMAS
 from ...helpers.logger import LOG
 from ...helpers.parser import XMLToJSONParser
 from ...helpers.validator import JSONValidator
@@ -22,6 +22,16 @@ from .restapi import RESTAPIIntegrationHandler
 
 class ObjectAPIHandler(RESTAPIIntegrationHandler):
     """API Handler for Objects."""
+
+    def _check_schema_not_submission_only(self, schema: str) -> None:
+        """Check if objects of given schema are added to DB.
+
+        :param schema: schema of object
+        :raises: HTTPBadRequest if object of given schema are submission-only
+        """
+        if schema in SUBMISSION_ONLY_SCHEMAS:
+            reason = f"'{schema}' object is a submission-only object. Use '/submissions' endpoints to retrieve it."
+            raise web.HTTPBadRequest(reason=reason)
 
     async def _handle_query(self, req: Request) -> Response:
         """Handle query results.
@@ -79,6 +89,8 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         accession_id = req.match_info["accessionId"]
         schema_type = req.match_info["schema"]
         self._check_schema_exists(schema_type)
+        self._check_schema_not_submission_only(schema_type)
+
         collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
 
         req_format = req.query.get("format", "json").lower()
@@ -158,9 +170,9 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
                 JSONValidator(content, schema_type).validate
             operator = ObjectOperator(db_client)
 
-        # If the schema is 'bprems': only add its data to the submission's rems object
-        # schema 'bprems' is not added to DB metadata collection
-        if schema_type == "bprems":
+        # For some schemas (e.g.'bprems'): only add its data to the submission's object
+        # schema is not added to DB metadata collection
+        if schema_type in SUBMISSION_ONLY_SCHEMAS:
             if isinstance(content, str):
                 await self.format_data_update_submission(schema_type, content, submission_id, submission_op)
                 return web.Response(status=201)
@@ -239,6 +251,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         """
         schema_type = req.match_info["schema"]
         self._check_schema_exists(schema_type)
+        self._check_schema_not_submission_only(schema_type)
         return await self._handle_query(req)
 
     async def delete_object(self, req: Request) -> web.HTTPNoContent:

@@ -873,6 +873,19 @@ class ObjectHandlerTestCase(HandlersTestCase):
             json_get_resp = await get_resp.json()
             self.assertIn("Specified schema", json_get_resp["detail"])
 
+    async def test_get_object_fails_for_certain_schemas(self):
+        """Test 400 error is raised if object cannot be retrieved from /objects endpoints."""
+        with self.p_get_sess_restapi:
+            get_resp = await self.client.get(f"{API_PREFIX}/objects/bprems/some_id")
+            self.assertEqual(get_resp.status, 400)
+            json_get_resp = await get_resp.json()
+            self.assertIn("'bprems' object is a submission-only", json_get_resp["detail"])
+
+            get_resp = await self.client.get(f"{API_PREFIX}/objects/bprems")
+            self.assertEqual(get_resp.status, 400)
+            json_get_resp = await get_resp.json()
+            self.assertIn("'bprems' object is a submission-only", json_get_resp["detail"])
+
     async def test_query_with_invalid_pagination_params(self):
         """Test that 400s are raised correctly with pagination."""
         with self.p_get_sess_restapi:

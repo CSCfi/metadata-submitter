@@ -248,6 +248,7 @@ discovery_config = {
 
 DATACITE_SCHEMAS = {"study", "dataset", "bpdataset"}
 METAX_SCHEMAS = {"study", "dataset"}
+SUBMISSION_ONLY_SCHEMAS = {"bprems"}
 BP_SCHEMA_TYPES = [
     "bpannotation",
     "bpdataset",
