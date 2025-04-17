@@ -20,6 +20,11 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 - Clarify error when trying to retrieve bprems from objects endpoints (#871)
 
+### Added
+
+- post file accession IDs via Admin API once files are verified
+- polling Admin API to see when all files are verified
+
 ## [2025.4.0] - 2025-04-01
 
 ### Added
