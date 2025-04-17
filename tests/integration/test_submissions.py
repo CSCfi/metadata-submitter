@@ -8,6 +8,7 @@ from datetime import datetime
 from tests.integration.conf import drafts_url, objects_url, publish_url, submit_url, testfiles_root
 from tests.integration.helpers import (
     add_submission_linked_folder,
+    check_file_accession_ids,
     create_multi_file_request_data,
     create_request_data,
     create_request_json_data,
@@ -947,7 +948,7 @@ class TestSubmissionDataIngestion:
     """Testing data ingestion when the metadata submission with files is ready."""
 
     async def test_file_ingestion_works(self, admin_logged_in, database, admin_project_id):
-        """Test that files are ingested successfully and its status becomes 'verified'.
+        """Test that files are ingested successfully and their status becomes 'verified'.
 
         :param admin_logged_in: HTTP client as admin role in which request call is made
         :param database: database client to perform db operations
@@ -1011,3 +1012,6 @@ class TestSubmissionDataIngestion:
         db_submission = await database["submission"].find_one({"submissionId": submission_id})
         for db_submission_file in db_submission["files"]:
             assert db_submission_file["status"] == "verified"
+
+        # Assert the file accession IDs in archive are correct
+        await check_file_accession_ids(admin_logged_in, ingestion_data, id_token)

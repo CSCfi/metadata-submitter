@@ -11,6 +11,7 @@ import ujson
 from aiohttp import FormData
 
 from .conf import (
+    admin_url,
     announce_url,
     base_url,
     drafts_url,
@@ -859,3 +860,19 @@ async def post_data_ingestion(sess, submission_id, ingestion_data, id_token):
         url, data=ujson.dumps(ingestion_data), headers={"Authorization": f"Bearer {id_token}"}
     ) as resp:
         assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
+
+
+async def check_file_accession_ids(sess, ingestion_data, id_token):
+    """Check that accession IDs are added correctly to files in inbox.
+
+    :param sess: HTTP session in which request call is made
+    :param files: List of files including accessionId and path
+    :param id_token: Token for authorizing admin user
+    """
+    url = f"{admin_url}/users/{ingestion_data['username']}/accessionids"
+
+    async with sess.get(url, headers={"Authorization": f"Bearer {id_token}"}) as resp:
+        assert resp.status == 200, f"HTTP Status code error {resp.status}"
+        ans = await resp.json()
+        for file in ingestion_data["files"]:
+            assert ans[file["path"]] == file["accessionId"]

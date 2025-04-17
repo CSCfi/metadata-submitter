@@ -1,7 +1,7 @@
 ﻿"""Class for integrating with Admin API service."""
 
 import time
-from typing import Any
+from typing import Any, cast
 
 from aiohttp import ClientTimeout, web
 from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
@@ -44,7 +44,32 @@ class AdminServiceHandler(ServiceHandler):
         admin_auth_headers = self.get_admin_auth_headers(req)
         ingestion_data = {"user": data["user"], "filepath": data["filepath"]}
         await self._request(method="POST", path="/file/ingest", json_data=ingestion_data, headers=admin_auth_headers)
-        LOG.info("The ingestion for file with path %r is started", ingestion_data["filepath"])
+        LOG.info("File in submission %s with path %r is being ingested", data["submissionId"], data["filepath"])
+
+    async def get_user_files(self, req: web.Request, username: str) -> list[dict[str, Any]]:
+        """Return information on all the user's files in inbox.
+
+        :param req: HTTP request
+        :param username: Username of the user whose files are retrieved
+        :raises: HTTPInternalServerError if the file ingestion fails
+        """
+        admin_auth_headers = self.get_admin_auth_headers(req)
+        user_files = await self._request(method="GET", path=f"/users/{username}/files", headers=admin_auth_headers)
+        LOG.info("Fetched files from inbox for user %s", username)
+        return cast(list[dict[str, Any]], user_files)
+
+    async def post_accession_id(self, req: web.Request, data: dict[str, str]) -> None:
+        """Assign accession ID to a file.
+
+        :param req: HTTP request
+        :param data: Dict with request data including 'user', 'filepath' and 'accessionId'
+        :raises: HTTPInternalServerError if the file ingestion fails
+        :raises: HTTPBadRequest if file does not belong to user
+        """
+        admin_auth_headers = self.get_admin_auth_headers(req)
+        accession_data = {"user": data["user"], "filepath": data["filepath"], "accession_id": data["accessionId"]}
+        await self._request(method="POST", path="/file/accession", json_data=accession_data, headers=admin_auth_headers)
+        LOG.info("Accession ID %s assigned to file %s", accession_data["accession_id"], accession_data["filepath"])
 
     async def _healthcheck(self) -> dict[str, Any]:
         """Check Admin service readiness.

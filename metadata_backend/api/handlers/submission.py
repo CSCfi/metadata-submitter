@@ -537,13 +537,14 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
             LOG.exception("%s: %s", reason, str(e))
             raise web.HTTPBadRequest(reason=reason) from e
 
+        polling_file_data = {}
         for file in files:
             if "path" not in file or "accessionId" not in file:
                 reason = "'path' and 'accessionId' are required for file ingestion."
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
             # Trigger file ingestion
-            ingestedFile = await self.start_file_ingestion(
+            await self.admin_handler.ingest_file(
                 req,
                 {
                     "user": username,  # User's username in inbox
@@ -551,7 +552,11 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
                     "filepath": file["path"],
                     "accessionId": file["accessionId"],
                 },
-                file_operator,
             )
-            LOG.debug("Ingested file: %r", ingestedFile["filepath"])
+            polling_file_data[file["path"]] = file["accessionId"]
+
+        await self.start_file_polling(
+            req, polling_file_data, file_operator, {"user": username, "submissionId": submission_id}
+        )
+
         return web.HTTPNoContent()

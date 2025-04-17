@@ -110,7 +110,7 @@ class ServiceHandler(ABC):
         json_data: Optional[dict[str, Any] | list[dict[str, Any]]] = None,
         timeout: int = 10,
         headers: Optional[dict[str, Any]] = None,
-    ) -> dict[str, Any] | str:
+    ) -> dict[str, Any] | list[dict[str, Any]] | str:
         """Request to service REST API.
 
         :param method: HTTP method
