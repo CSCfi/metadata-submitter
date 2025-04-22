@@ -142,7 +142,7 @@ class SubmissionOperator(BaseOperator):
             raise web.HTTPBadRequest(reason=reason)
 
         if len(submissions) >= 1:
-            return [i["accessionId"] for i in submissions[0][submission_path]]
+            return [i["accessionId"] for i in submissions[0][submission_path] if i["schema"] == collection]
 
         return []
 
