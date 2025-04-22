@@ -71,6 +71,18 @@ class AdminServiceHandler(ServiceHandler):
         await self._request(method="POST", path="/file/accession", json_data=accession_data, headers=admin_auth_headers)
         LOG.info("Accession ID %s assigned to file %s", accession_data["accession_id"], accession_data["filepath"])
 
+    async def create_dataset(self, req: web.Request, data: dict[str, str | list[str]]) -> None:
+        """Create dataset for user.
+
+        :param req: HTTP request
+        :param data: Dict with request data including 'user', 'fileIds' and 'datasetId'
+        :raises: HTTPInternalServerError if the file accession IDs are not valid
+        """
+        admin_auth_headers = self.get_admin_auth_headers(req)
+        dataset_data = {"user": data["user"], "accession_ids": data["fileIds"], "dataset_id": data["datasetId"]}
+        await self._request(method="POST", path="/dataset/create", json_data=dataset_data, headers=admin_auth_headers)
+        LOG.info("Dataset %s created for user %s", dataset_data["dataset_id"], dataset_data["user"])
+
     async def _healthcheck(self) -> dict[str, Any]:
         """Check Admin service readiness.
 

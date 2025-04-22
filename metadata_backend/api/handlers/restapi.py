@@ -381,52 +381,52 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
         return upd_submission_id
 
     async def start_file_polling(
-        self, req: Request, files: dict[str, str], file_op: FileOperator, data: dict[str, str]
+        self, req: Request, files: dict[str, str], file_op: FileOperator, data: dict[str, str], status: str
     ) -> None:
-        """Regularly poll files to see if they have status 'verified'.
+        """Regularly poll files to see if they have required status.
 
         :param req: HTTP request
         :param files: List of files to be polled
         :param file_op: File Operator
         :param data: Includes 'user' and 'submissionId'
+        :param status: The expected file status that is polled
         """
-        status_verified = {f: False for f in files.keys()}
+        status_found = {f: False for f in files.keys()}
 
         while True:
             inbox_files = await self.admin_handler.get_user_files(req, data["user"])
             for inbox_file in inbox_files:
                 if "inboxPath" not in inbox_file or "fileStatus" not in inbox_file:
-                    reason = "'inboxPath' and 'fileStatus' are missing from file data."
+                    reason = "'inboxPath' or 'fileStatus' are missing from file data."
                     LOG.error(reason)
                     raise web.HTTPBadRequest(reason=reason)
 
                 inbox_path = inbox_file["inboxPath"]
-                if not status_verified.get(inbox_path, True):
-                    if inbox_file["fileStatus"] == "verified":
-                        status_verified[inbox_path] = True
+                if not status_found.get(inbox_path, True):
+                    if inbox_file["fileStatus"] == status:
+                        status_found[inbox_path] = True
                         accessionId = files[inbox_path]
                         await file_op.update_file_submission(
-                            accessionId, data["submissionId"], {"files.$.status": "verified"}
+                            accessionId, data["submissionId"], {"files.$.status": status}
                         )
-                        await self.admin_handler.post_accession_id(
-                            req,
-                            {
-                                "user": data["user"],
-                                "filepath": inbox_path,
-                                "accessionId": accessionId,
-                            },
-                        )
+                        if status == "verified":
+                            await self.admin_handler.post_accession_id(
+                                req,
+                                {
+                                    "user": data["user"],
+                                    "filepath": inbox_path,
+                                    "accessionId": accessionId,
+                                },
+                            )
                     elif inbox_file["fileStatus"] == "error":
                         reason = f"File {inbox_path} in submission {data['submissionId']} has status 'error'"
                         LOG.exception(reason)
                         raise web.HTTPInternalServerError(reason=reason)
 
-            success = all(status_verified.values())
+            success = all(status_found.values())
             if success:
                 break
 
-            num_waiting = sum((not x for x in status_verified.values()))
-            LOG.debug("%d files were not yet verified for submission %s", num_waiting, data["submissionId"])
+            num_waiting = sum((not x for x in status_found.values()))
+            LOG.debug("%d files were not yet %s for submission %s", num_waiting, status, data["submissionId"])
             await sleep(POLLING_INTERVAL)
-
-        LOG.info("Ingesting files for submission with ID: %s was successful.", data["submissionId"])
