@@ -30,7 +30,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         :raises: HTTPBadRequest if object of given schema are submission-only
         """
         if schema in SUBMISSION_ONLY_SCHEMAS:
-            reason = f"'{schema}' object is a submission-only object. Use '/submissions' endpoints to retrieve it."
+            reason = f"'{schema}' object is a submission-only object. Use '/submissions' endpoints instead."
             raise web.HTTPBadRequest(reason=reason)
 
     async def _handle_query(self, req: Request) -> Response:
@@ -267,6 +267,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         LOG.debug("Deleting object in collection: %r with accession ID: %r.", schema_type, accession_id)
 
         self._check_schema_exists(schema_type)
+        self._check_schema_not_submission_only(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
         db_client = req.app["db_client"]
 
@@ -313,6 +314,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         LOG.debug("Replacing object in collection: %r with accession ID: %r.", schema_type, accession_id)
 
         self._check_schema_exists(schema_type)
+        self._check_schema_not_submission_only(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
 
         db_client = req.app["db_client"]
@@ -364,6 +366,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         LOG.debug("Patching object in collection: %r with accession ID: %r.", schema_type, accession_id)
 
         self._check_schema_exists(schema_type)
+        self._check_schema_not_submission_only(schema_type)
         collection = f"draft-{schema_type}" if req.path.startswith(f"{API_PREFIX}/drafts") else schema_type
 
         db_client = req.app["db_client"]
