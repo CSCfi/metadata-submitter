@@ -22,6 +22,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- Clarify that bprems cannot be deleted or modified through objects endpoints (#879)
 - post file accession IDs via Admin API once files are verified
 - polling Admin API to see when all files are verified
 
