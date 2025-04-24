@@ -559,15 +559,17 @@ class XMLToJSONParser:
         # The accession id is assigned to first available element that matches
         # the naming in list of possible metadata object types below
         bp_elems = [
+            "ANNOTATION",
+            "BIOLOGICAL_BEING",
+            "BLOCK",
+            "CASE",
             "DATASET",
             "IMAGE",
             "OBSERVATION",
-            "STAINING",
-            "BIOLOGICAL_BEING",
-            "CASE",
-            "SPECIMEN",
-            "BLOCK",
+            "OBSERVER",
             "SLIDE",
+            "SPECIMEN",
+            "STAINING",
         ]
         root = ET.fromstring(xml)
         for elem_name in bp_elems:
@@ -592,6 +594,36 @@ class XMLToJSONParser:
             raise web.HTTPBadRequest(reason=reason)
 
         return modified_xml
+
+    def get_accession_ids_from_xml_content(self, schema_type: str, xml: dict[str, Any] | str) -> list[str]:
+        """Get accession IDs from BP related XML metadata objects.
+
+        We can assume that the method receives valid XML metadata objects according to the BP metadata schemas.
+
+        :param schema_type: BP schema type
+        :param xml: XML content
+        :returns: A list with accession IDs
+        """
+        accession_ids: list[str] = []
+        root = ET.fromstring(xml)
+        if schema_type == "bpsample":
+            xml_tags = {"BIOLOGICAL_BEING", "BLOCK", "CASE", "SLIDE", "SPECIMEN"}
+            if root.tag in xml_tags:
+                accession_ids.append(root.attrib.get("accession", ""))
+            else:
+                for child in root:
+                    if child.tag in xml_tags:
+                        accession_ids.append(child.attrib.get("accession", ""))
+        else:
+            if root.tag.lower() in schema_type:
+                accession_ids.append(root.attrib.get("accession", ""))
+            else:
+                for child in root:
+                    if child.tag.lower() in schema_type:
+                        accession_ids.append(child.attrib.get("accession", ""))
+        # Return list without empty items
+        accession_ids = [id for id in accession_ids if id]
+        return accession_ids
 
 
 class CSVToJSONParser:

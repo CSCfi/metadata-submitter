@@ -325,6 +325,20 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
             files, _ = await multipart_content(req, extract_one=True, expect_xml=True)
             content, _, _ = files[0]
             operator = XMLObjectOperator(db_client)
+            if schema_type[:2] == "bp":
+                accession_ids_in_xml: list[str] = XMLToJSONParser().get_accession_ids_from_xml_content(
+                    schema_type, content
+                )
+                if not accession_ids_in_xml:
+                    reason = f"XML is missing an accession attribute for {schema_type} object."
+                    LOG.error(reason)
+                    raise web.HTTPBadRequest(reason=reason)
+                if not accession_ids_in_xml[0] == accession_id:
+                    reason = (
+                        f"Accession in XML {accession_ids_in_xml[0]} doesn't match the id in request: {accession_id}."
+                    )
+                    LOG.error(reason)
+                    raise web.HTTPBadRequest(reason=reason)
         else:
             content = await self._get_data(req)
             if not req.path.startswith(f"{API_PREFIX}/drafts"):
