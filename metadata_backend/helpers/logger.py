@@ -13,21 +13,34 @@ LOG = logging.getLogger("server")
 LOG.setLevel(os.getenv("LOG_LEVEL", "INFO"))
 
 
-def get_attributes(obj: dict[str, Any]) -> None:
-    """Print all attributes of given object.
+def log_debug_attributes(obj: dict[str, Any]) -> None:
+    """
+    Logs all accessible attributes of the given object at the debug level.
 
-    :param obj: Any kind of object
+    Iterates over the attributes returned by `dir(obj)` and attempts to retrieve
+    and log each attribute's value. If an attribute cannot be accessed (e.g., raises
+    an AttributeError), logs the error with contextual information.
+
+    :param obj: The object whose attributes will be logged.
+    :type obj: dict[str, Any]
     """
     for attr in dir(obj):
         try:
             LOG.debug("obj.%s = %r", attr, getattr(obj, attr))
         except AttributeError as error:
-            LOG.exception("Error: %r", error)
+            LOG.exception(
+                "Failed to access attribute '%s' of object of type '%s': %s",
+                attr,
+                type(obj).__name__,
+                error
+            )
 
 
-def pprint_json(content: dict[str, Any]) -> None:
-    """Print given JSON object to LOG.
+def log_debug_json(content: dict[str, Any]) -> None:
+    """
+    Logs a JSON-formatted dictionary at the debug level with pretty-printing.
 
-    :param content: JSON-formatted content to be printed
+    :param content: A dictionary representing JSON data to be logged.
+    :type content: dict[str, Any]
     """
     LOG.debug(ujson.dumps(content, indent=4, escape_forward_slashes=False))
