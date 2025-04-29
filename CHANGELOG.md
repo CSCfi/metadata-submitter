@@ -9,6 +9,9 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- renamed vulture whitelist to vulture_whitelist.py.
+- moved spellcheck to tox.
+- use tox-uv to manage virtual environments using tox.
 - Reword all "Big Picture" related words to the correct format "Bigpicture"
 - object_base inherits from BaseOperator class instead of abstract base class
 - Reformat accession ID for Bigpicture's schemas and file
@@ -22,9 +25,16 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- uv to manage virtual environments, tools and dependencies.
 - Clarify that bprems cannot be deleted or modified through objects endpoints (#879)
 - post file accession IDs via Admin API once files are verified
 - polling Admin API to see when all files are verified
+
+### Removed
+
+- Spellchecking in gitlab-ci.yml (#858)
+- GitHub workflows.
+- overlapping tasks in gitlab-ci.yml, pre-commit and tox.
 
 ## [2025.4.0] - 2025-04-01
 
