@@ -3,34 +3,39 @@ FROM python:3.13-slim-bullseye AS appbase
 #=======================
 
 RUN apt-get update \
-    && apt-get install -y ca-certificates git
+    && apt-get install -y ca-certificates git curl
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
-RUN pip install --upgrade pip
-
+# Copy uv files
 COPY pyproject.toml .
+COPY uv.lock .
+COPY .python-version .
+
+# Copy project files
 COPY README.md .
-COPY requirements.txt .
-COPY metadata_backend/ ./metadata_backend
+COPY metadata_backend ./metadata_backend
 COPY scripts ./scripts
 
-RUN pip install authlib requests  # required for mockauth (integration test)
-RUN pip install .
+# Install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="/app/uv" sh
+ENV PATH="/app/uv:$PATH"
+
+# Install dependencies and create virtual environment
+RUN uv sync --dev
+
+# Use virtual environment by default
+ENV PATH="/app/.venv/bin:$PATH"
+
+# Container listens on port 5430
 EXPOSE 5430
 
 #=======================
 FROM appbase AS develop
 #=======================
 
-CMD ["metadata_submitter"]
+COPY ./deploy/app.sh .
+RUN chmod +x /app/app.sh
 
-#=======================
-FROM appbase AS local
-#=======================
-
-COPY requirements-dev.txt .
-
-RUN pip install --no-cache-dir -r requirements-dev.txt
-
-ENV PYTHONUNBUFFERED=1
+# Start up the web server (metadata_submitter is a pyproject.toml script).
+CMD ["uv", "run", "metadata_submitter"]

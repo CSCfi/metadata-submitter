@@ -24,22 +24,33 @@ FROM python:3.12-alpine3.17 AS build-backend
 
 RUN apk add --update \
     && apk add --no-cache build-base curl-dev linux-headers bash git musl-dev libffi-dev \
-    && apk add --no-cache python3-dev openssl-dev rust cargo libstdc++ \
+    && apk add --no-cache python3-dev openssl-dev rust cargo libstdc++ curl \
     && rm -rf /var/cache/apk/*
 
-COPY requirements.txt /root/submitter/requirements.txt
-COPY README.md /root/submitter/README.md
-COPY pyproject.toml /root/submitter/pyproject.toml
-COPY metadata_backend /root/submitter/metadata_backend
-COPY scripts /root/submitter/scripts
-COPY docs/openapi.yml /root/submitter/docs/openapi.yml
+WORKDIR /app
 
+# Copy uv files
+COPY pyproject.toml .
+COPY uv.lock .
+COPY .python-version .
+
+# Copy project files
+COPY README.md .
+COPY metadata_backend ./metadata_backend
+COPY scripts ./scripts
+COPY docs/openapi.yml ./docs/openapi.yml
 COPY --from=BUILD-FRONTEND /metadata-submitter-frontend/build \
-    /root/submitter/metadata_backend/frontend
+    ./metadata_backend/frontend
 
-RUN pip install --upgrade pip pyyaml && \
-    ./root/submitter/scripts/swagger/generate.sh && \
-    pip install /root/submitter
+# Install uv
+RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="/app/uv" sh
+ENV PATH="/app/uv:$PATH"
+
+# Install dependencies and create virtual environment
+RUN uv sync
+
+# Generate OpenAPI docs.
+RUN uv run scripts/swagger/generate.sh
 
 #=======================
 FROM python:3.12-alpine3.17
@@ -52,22 +63,16 @@ LABEL maintainer="CSC Developers"
 LABEL org.label-schema.schema-version="1.0"
 LABEL org.label-schema.vcs-url="https://github.com/CSCfi/metadata-submitter"
 
-COPY --from=BUILD-BACKEND /usr/local/lib/python3.12/ /usr/local/lib/python3.12/
-
-COPY --from=BUILD-BACKEND /usr/local/bin/gunicorn /usr/local/bin/
-
-COPY --from=BUILD-BACKEND /usr/local/bin/metadata_submitter /usr/local/bin/
-
-RUN mkdir -p /app
-
 WORKDIR /app
 
-COPY ./deploy/app.sh /app/app.sh
-
+COPY --from=BUILD-BACKEND /app .
+COPY ./deploy/app.sh .
 RUN chmod +x /app/app.sh
 
 RUN addgroup -g 1001 submitter && \
     adduser -D -u 1001 --disabled-password \
     --no-create-home -G submitter submitter
 
-ENTRYPOINT ["/bin/sh", "-c", "/app/app.sh"]
+ENV PATH="/app/uv:$PATH"
+
+ENTRYPOINT ["uv", "run", "/app/app.sh"]
