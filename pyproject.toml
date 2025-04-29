@@ -1,10 +1,10 @@
 [build-system]
-requires = ["hatchling", "hatch-requirements-txt"]
+requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
 name = "metadata_backend"
-dynamic = ["version", "dependencies"]
+dynamic = ["version"]
 description = "metadata_backend"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -21,19 +21,49 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
 ]
 
-[project.optional-dependencies]
-test = [
-    "coverage==7.8.0",
+dependencies = [
+    "aiohttp==3.11.14",
+    "aiohttp-session==2.12.1",
+    "cryptography==44.0.2",
+    "defusedxml==0.7.1",
+    "gunicorn==23.0.0",
+    "metomi-isodatetime==1!3.1.0",
+    "jsonschema==4.23.0",
+    "motor==3.7.0",
+    "idpyoidc==5.0.0",
+    "pydantic==2.11.1",
+    "pynacl==1.5.0",
+    "python-dateutil==2.9.0.post0",
+    "PyYAML==6.0.2", # for building swagger html
+    "requests==2.32.3",
+    "ujson==5.10.0",
+    "uvloop==0.21.0",
+    "xmlschema==3.4.5",
+    "typing-extensions==4.13.0",
+]
+
+[dependency-groups]
+dev = [
+    # pylint
+    "pylint==3.3.6",
+    # mypy
+    "mypy>=1.15.0",
+    "types-requests==2.32.0.20250328",
+    "types-ujson==5.10.0.20250326",
+    "types-python-dateutil>=2.9.0.20241206",
+    # black
+    "black==25.1.0",
+    # pytest
     "pytest==8.3.5",
+    "pytest-asyncio==0.26.0",
     "pytest-cov==5.0.0",
     "pytest-xdist==3.6.1",
-    "tox==4.25.0",
-    "setuptools==72.2.0",
-]
-docs = [
-    "sphinx >= 1.4",
-    "sphinx_rtd_theme==3.0.2",
-]
+    # other
+    "aiofiles==24.1.0",
+    "authlib==1.5.1",
+    "certifi==2025.1.31",
+    "honcho==2.0.0",
+ ]
 
 [tool.black]
 line-length = 120
@@ -51,11 +81,49 @@ metadata_submitter = "metadata_backend.server:main"
 [project.urls]
 Source = "https://github.com/CSCfi/metadata_submitter"
 
+[project.optional-dependencies]
+verify = [
+    # flake
+    "flake8>=7.2.0",
+    "flake8-annotations>=3.1.1",
+    "flake8-docstrings>=1.7.0",
+    # isort
+    "isort>=6.0.1",
+    # pylint
+    "pylint==3.3.6",
+    # mypy
+    "mypy>=1.15.0",
+    "types-python-dateutil>=2.9.0.20241206",
+    # black
+    "black>=25.1.0",
+    # bandit
+    "bandit>=1.8.3",
+    # vulture
+    "vulture>=2.14",
+    # pyspelling (requires aspell command line program)
+    "pyspelling>=2.10",
+]
+
+test = [
+    # pytest
+    "pytest==8.3.5",
+    "pytest-cov==5.0.0",
+    "pytest-xdist==3.6.1",
+]
+
+docs = [
+    "sphinx>=1.4",
+    "sphinx_rtd_theme==3.0.2",
+]
+
 [tool.hatch.version]
 path = "metadata_backend/__init__.py"
 
-[tool.hatch.metadata.hooks.requirements_txt]
-files = ["requirements.txt"]
+# Tool configuration options
+#
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
 
 [tool.mypy]
 strict = true

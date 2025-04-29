@@ -4,6 +4,15 @@ repos:
     - id: check-hooks-apply
     - id: check-useless-excludes
 
+  # Make sure uv.lock file is up to date even if pyproject.toml was changed via pre-commit.
+  # https://docs.astral.sh/uv/guides/integration/pre-commit/
+  # repos:
+  # - repo: https://github.com/astral-sh/uv-pre-commit
+  #   # uv version.
+  #   rev: 0.6.14
+  #   hooks:
+  #     - id: uv-lock
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
@@ -28,32 +37,6 @@ repos:
     - id: check-xml
       exclude: tests/test_files/study/SRP000539_invalid[0-9]?.xml
 
-  - repo: https://github.com/psf/black
-    rev: 25.1.0
-    hooks:
-    - id: black
-      args: [-l, "120"]
-
-  - repo: https://github.com/pycqa/isort
-    rev: 6.0.1
-    hooks:
-    - id: isort
-      args: [--profile, black, --filter-files]
-
-  - repo: https://github.com/pycqa/flake8
-    rev: 7.2.0
-    hooks:
-    - id: flake8
-      additional_dependencies:
-        - flake8-docstrings
-        - flake8-annotations
-
-  - repo: https://github.com/PyCQA/bandit
-    rev: 1.8.3
-    hooks:
-    - id: bandit
-      files: ^metadata_backend
-
   - repo: https://github.com/python-openapi/openapi-spec-validator
     rev: 0.7.1
     hooks:
@@ -72,57 +55,16 @@ repos:
         files: ^metadata_backend/conf/workflows/.*\.json$
         args: ["--schemafile", "metadata_backend/helpers/schemas/workflow.json"]
 
-      - id: check-dependabot
-      - id: check-github-workflows
-
-  - repo: https://github.com/jendrikseipp/vulture
-    rev: 'v2.14'
-    hooks:
-    - id: vulture
-      args: [metadata_backend/, whitelist_dead_code.py]
-
   - repo: local
     hooks:
-    - id: sort
-      name: sort dictionary
-      entry: ./scripts/dictionary/sort.sh
-      language: script
-      files: ^(docs|.*md)
-      require_serial: true
+    - id: verify
+      name: verify
+      entry: tox --skip-env 'pytest'
+      language: system
       pass_filenames: false
 
-    - id: pylint
-      name: pylint
-      entry: pylint
+    - id: test
+      name: test
+      entry: tox -e pytest
       language: system
-      types: [python]
-      files: ^metadata_backend
-      args:
-        [
-          -rn, # Only display messages
-          -sn, # Don't display the score
-        ]
-
-    - id: pyspelling-docs
-      name: pyspelling-docs
-      entry: ./scripts/dictionary/pyspelling.sh
-      language: script
-      args: [markdown]
-      types_or: [markdown, rst]
-      require_serial: true
-
-    - id: mypy
-      name: mypy
-      entry: mypy
-      language: system
-      types: [python]
-      files: ^metadata_backend
-
-    - id: pyspelling-schemas
-      name: pyspelling-schemas
-      entry: ./scripts/dictionary/pyspelling.sh
-      language: script
-      args: [json-schemas]
-      files: ^metadata_backend/helpers/schemas/
-      types: [json]
-      require_serial: true
+      pass_filenames: false

@@ -39,23 +39,59 @@ flowchart LR
 
 ### Prerequisites
 
-- `Python 3.12+`
 - `Docker`
+
+Aspell for spell checking:
+- Mac: `brew install aspell`
+- Ubuntu/Debian:`sudo apt-get install aspell`
+
 - [`Git LFS`](https://git-lfs.com/)
 
-> **Note:** Git LFS is not necessarily required to be installed but the file affected by Git LFS needs to be generated via the following command otherwise:
+Git LFS is required to checkout the `metadata_backend/conf/taxonomy_files/names.json` file. This file can be generated
+from NCBI taxonomy using the following command:
 ```bash
-$ scripts/taxonomy/generate_name_taxonomy.sh
+scripts/taxonomy/generate_name_taxonomy.sh
 ```
 
-### Simple local testing environment
+### Initialise the project for development and testing
 
-To get started, the quickest way to setup the API in a local environment is to do the following in a terminal:
+Clone the repository and go to the project directory:
 
-- clone the repository with `git clone`
-- go to the resulting directory: `cd metadata-submitter`
-- copy the contents of .env.example file to .env file: `cp .env.example .env`
-- launch both server and database with Docker by running: `docker compose up --build` (add `-d` flag to the command to run containers in the background).
+ ```
+ git clone
+ cd metadata-submitter
+```
+
+The project is managed by `uv` that creates a virtual environment in `.venv` directory
+using the python version defined in the `.python-version`. The  `uv` also installs the
+depencies defined in `uv.lock` file. The `uv.lock` file captures the exact versions of
+all direct and transitive dependencies specified in the `pyproject.toml` file. Tox
+depencies are managed in the `test` optional dependency group.  Dependencies are added and
+removed using the `uv add` and `uv remove` commands or by directly editing
+the `pyproject.toml` file. In the latter case run `uv sync` or `uv sync --dev` to update
+the `uv.lock` file.
+
+Create and activate the virtual environment, install the dependencies and the tox and
+pre-commit tools:
+
+```
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv tool install tox --with tox-uv
+uv tool install pre-commit --with pre-commit-uv
+uv sync --dev
+pre-commit install
+```
+
+### Configure environmental variables
+
+
+Copy the contents of `.env.example` file to `.env` file and edit it as needed:
+
+```cp .env.example .env```
+
+### Run the web service and database locally
+
+Launch both server and database with Docker by running: `docker compose up --build` (add `-d` flag to the command to run containers in the background).
 
 Server can then be found from `http://localhost:5430`.
 
@@ -74,20 +110,9 @@ Alternatively, there is a more convenient method for developing the SD Submit AP
 
 ### Developing with Python virtual environment
 
-First, install Python dependencies with `pip` and other development tools:
+Please use `uv` to create the virtual environment for development and testing as instructed above. Then follows these instructions:
 
 ```bash
-# Optional: create virtual Python environment
-$ python3 -m venv venv --prompt submitter
-$ source venv/bin/activate  # Activates virtual environment
-
-$ pip install -U pip
-$ pip install -Ue .
-$ pip install -r requirements-dev.txt
-
-# Optional: install pre-commit hooks
-$ pre-commit install
-
 # Optional: update references for metax integration
 $ scripts/metax_mappings/fetch_refs.sh
 
@@ -106,7 +131,7 @@ $ cp .env.example .env  # Make any changes you need to the file
 Finally, start the servers with code reloading enabled, so any code changes restarts the servers automatically.
 
 ```bash
-$ honcho start
+$ uv run honcho start
 ```
 
 The development server should now be accessible at `localhost:5430`.
@@ -128,27 +153,9 @@ Restart the server, and the swagger docs will be available at http://localhost:5
 
 ### Keeping Python requirements up to date
 
-The project Python package dependencies are automatically being kept up to date with [renovatebot](https://github.com/renovatebot/renovate). However, if there is ever a need to update the package requirements manually, you can do the following:
+The project Python package dependencies are automatically being kept up to date with [renovatebot](https://github.com/renovatebot/renovate).
 
-1. Install `pip-tools`:
-    * `pip install pip-tools`
-    * if using docker compose pip-tools are installed automatically
-
-2. Add new package names to `requirements.in` or `requirements-dev.in`
-    * `requirements.in` file is reserved for all dependencies necessary to the production deployment
-    * `requirements-dev.in` file may also include all packages required for development purposes
-
-3. Update `.txt` file for the changed requirements file:
-    * `pip-compile requirements.in`
-    * `pip-compile requirements-dev.in`
-
-4. If you want to update all dependencies to their newest versions, run:
-    * `pip-compile --upgrade requirements.in`
-    * `pip-compile --upgrade requirements-dev.in`
-
-5. To install Python requirements run:
-    * `pip-sync requirements.txt`
-    * `pip-sync requirements-dev.txt`
+Dependencies are added and removed to the project using the `uv` commands or by directly editing the `pyproject.toml` file. In the latter case run `uv sync` or `uv sync --dev` to update the `uv.lock` file.
 
 </details>
 
@@ -168,17 +175,9 @@ If you are not part of CSC and our development team, your help is nevertheless v
 
 Majority of the automated tests (such as unit tests, code style checks etc.) can be run with [`tox`](https://tox.wiki/en/4.24.2/) automation. Integration tests are run separately with [`pytest`](https://docs.pytest.org/en/stable/) as they require the full test environment to be running with a local database instance and all the mocked versions of related external services.
 
-Below are minimal instructions for executing the automated tests of this project locally. Run the below commands in the project root:
+Please use `uv` to create the virtual environment for development and testing as instructed above. Then follows the minimal instructions below for executing the automated tests of this project locally. Run the below commands in the project root:
 
 ```bash
-# Optional: set up virtual python env
-python3 -m venv venv --prompt submitter
-source venv/bin/activate
-
-# Install python dependencies
-pip install -U pip
-pip install -r requirements-dev.txt
-
 # Unit tests, linting, etc.
 tox -p auto
 
