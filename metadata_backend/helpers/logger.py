@@ -15,7 +15,7 @@ LOG.setLevel(os.getenv("LOG_LEVEL", "INFO"))
 
 def log_debug_attributes(obj: dict[str, Any]) -> None:
     """
-    Logs all accessible attributes of the given object at the debug level.
+    Log all accessible attributes of the given object at the debug level.
 
     Iterates over the attributes returned by `dir(obj)` and attempts to retrieve
     and log each attribute's value. If an attribute cannot be accessed (e.g., raises
@@ -28,17 +28,12 @@ def log_debug_attributes(obj: dict[str, Any]) -> None:
         try:
             LOG.debug("obj.%s = %r", attr, getattr(obj, attr))
         except AttributeError as error:
-            LOG.exception(
-                "Failed to access attribute '%s' of object of type '%s': %s",
-                attr,
-                type(obj).__name__,
-                error
-            )
+            LOG.exception("Failed to access attribute '%s' of object of type '%s': %s", attr, type(obj).__name__, error)
 
 
 def log_debug_json(content: dict[str, Any]) -> None:
     """
-    Logs a JSON-formatted dictionary at the debug level with pretty-printing.
+    Log a JSON-formatted dictionary at the debug level with pretty-printing.
 
     :param content: A dictionary representing JSON data to be logged.
     :type content: dict[str, Any]
