@@ -9,6 +9,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- Renamed and tested debug log helpers (#869)
+- Moved vulture configuration to project.toml (#869)
 - renamed vulture whitelist to vulture_whitelist.py.
 - moved spellcheck to tox.
 - use tox-uv to manage virtual environments using tox.
