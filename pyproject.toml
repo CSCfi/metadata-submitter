@@ -130,3 +130,15 @@ strict = true
 ignore_missing_imports = true
 namespace_packages = false
 strict_optional = false
+
+[tool.vulture]
+exclude = []
+ignore_decorators = []
+ignore_names = [
+    "log_debug_attributes", # metadata_backend/helpers/logger.py
+    "log_debug_json", # metadata_backend/helpers/logger.py
+    "element_decode", # metadata_backend/helpers/parser.py
+    "lossy", # metadata_backend/helpers/parser.py
+    "level", # metadata_backend/helpers/parser.py
+]
+paths = ["metadata_backend"]
