@@ -29,7 +29,7 @@ class MetadataXMLConverter(XMLSchemaConverter):
 
     def __init__(
         self,
-        namespaces: Optional[aliases.NamespacesType] = None,
+        namespaces: Optional[aliases.NsmapType] = None,
         dict_class: Optional[Type[dict[str, Any]]] = None,
         list_class: Optional[Type[list[Any]]] = None,
         # difficult to pinpoint type as xmlschema library does the same
