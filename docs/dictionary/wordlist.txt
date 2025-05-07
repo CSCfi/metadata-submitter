@@ -79,6 +79,7 @@ guaraní
 http
 https
 hälsa
+iat
 icdo
 ido
 idpyoidc
@@ -99,6 +100,7 @@ joensuun
 jq
 js
 json
+jwt
 kalaallisut
 kallisto
 kashmiri
@@ -160,6 +162,7 @@ pre
 procfile
 protfam
 py
+pyjwterror
 pytest
 redux
 req

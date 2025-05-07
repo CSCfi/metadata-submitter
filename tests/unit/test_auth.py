@@ -1,14 +1,24 @@
 """Test API auth endpoints."""
 
+from datetime import timedelta
+import os
 import time
-from unittest import IsolatedAsyncioTestCase
+from unittest import IsolatedAsyncioTestCase, TestCase
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import jwt
 import aiohttp_session
 from aiohttp.test_utils import AioHTTPTestCase
 from aiohttp.web_exceptions import HTTPBadRequest, HTTPInternalServerError, HTTPSeeOther, HTTPUnauthorized
 
 from metadata_backend.api.auth import AccessHandler
+from metadata_backend.api.services.auth import (
+    API_KEY_LENGTH,
+    JWT_ALGORITHM,
+    JWT_ISSUER,
+    JWT_SECRET_ENV,
+    AccessService
+)
 from metadata_backend.server import init
 
 from .mockups import Mock_Request
@@ -339,3 +349,196 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
         userinfo = {}
         with self.assertRaises(HTTPUnauthorized):
             await AccessHandler._get_projects_from_userinfo(self, userinfo)
+
+
+class AccessServiceTestCase(TestCase):
+    """Test Auth API services."""
+
+    def setUp(self) -> None:
+        self.user_id = "test-user"
+        self.expiration = timedelta(minutes=10)
+        self.jwt_secret = "test-secret"
+        self.jwt_secret_env = os.getenv(JWT_SECRET_ENV)
+        os.environ[JWT_SECRET_ENV] = self.jwt_secret
+
+    def tearDown(self) -> None:
+        if self.jwt_secret_env is not None:
+            os.environ[JWT_SECRET_ENV] = self.jwt_secret_env
+
+    def test_create_jwt_token_contains_required_claims(self) -> None:
+        token = AccessService.create_jwt_token(self.user_id, self.expiration)
+        decoded = jwt.decode(token, self.jwt_secret, algorithms=[JWT_ALGORITHM], issuer=JWT_ISSUER)
+
+        self.assertEqual(decoded["sub"], self.user_id)
+        self.assertEqual(decoded["iss"], JWT_ISSUER)
+        self.assertIn("exp", decoded)
+        self.assertIn("iat", decoded)
+
+    def test_read_jwt_token_returns_user_id(self) -> None:
+        token = AccessService.create_jwt_token(self.user_id, self.expiration)
+        user_id = AccessService.read_jwt_token(token)
+        self.assertEqual(user_id, self.user_id)
+
+    def test_create_jwt_token_missing_secret_raises(self) -> None:
+        os.environ.pop(JWT_SECRET_ENV, None)
+        with self.assertRaises(RuntimeError):
+            AccessService.create_jwt_token(self.user_id, self.expiration)
+
+    def test_read_jwt_token_missing_secret_raises(self) -> None:
+        token = AccessService.create_jwt_token(self.user_id, self.expiration)
+        os.environ.pop(JWT_SECRET_ENV, None)
+        with self.assertRaises(RuntimeError):
+            AccessService.read_jwt_token(token)
+
+    def test_read_invalid_jwt_token_raises(self) -> None:
+        invalid_token = "invalid"
+        with self.assertRaises(jwt.InvalidTokenError):
+            AccessService.read_jwt_token(invalid_token)
+
+    def test_read_expired_jwt_token_raises(self) -> None:
+        expired_token = AccessService.create_jwt_token(self.user_id, timedelta(seconds=-1))
+        with self.assertRaises(jwt.ExpiredSignatureError):
+            AccessService.read_jwt_token(expired_token)
+
+    def test_read_wrong_issuer_jwt_token_raises(self) -> None:
+        token = AccessService.create_jwt_token(self.user_id, self.expiration)
+
+        with self.assertRaises(jwt.InvalidIssuerError):
+            jwt.decode(
+                token,
+                os.getenv(JWT_SECRET_ENV),
+                algorithms=["HS256"],
+                issuer="invalid"
+            )
+
+    def test_hash_api_key(self) -> None:
+        """Test the API key hash algorithm."""
+
+        service = AccessService()
+
+        user_id = "test-user"
+        key_id = "test-key"
+
+        api_key = service.create_api_key(user_id, key_id)
+        salt = "mysalt456"
+
+        # Hash should be deterministic
+        hash1 = service._hash_api_key(api_key, salt)
+        hash2 = service._hash_api_key(api_key, salt)
+
+        self.assertEqual(hash1, hash2)
+        self.assertEqual(len(hash1), 64)  # SHA-256 hex digest is 64 characters
+        self.assertTrue(all(c in "0123456789abcdef" for c in hash1.lower()))
+
+    def test_create_api_key(self) -> None:
+        """Test the creation of an API key."""
+
+        service = AccessService()
+
+        user_id = "test-user"
+        key_id = "test-key"
+
+        # Create an API key
+        api_key = service.create_api_key(user_id, key_id)
+
+        # Check if the plain-text key is returned
+        self.assertIsInstance(api_key, str)
+        self.assertEqual(len(api_key), API_KEY_LENGTH)
+
+    def test_validate_api_key_valid(self) -> None:
+        """Test that a valid API key can be validated."""
+
+        service = AccessService()
+
+        user_id = "test-user"
+        key_id = "test-key"
+
+        # Create API key and get the plain-text key
+        api_key = service.create_api_key(user_id, key_id)
+
+        # Validate the API key
+        is_valid = service.validate_api_key(user_id, api_key)
+
+        self.assertTrue(is_valid)
+
+    def test_validate_api_key_invalid(self) -> None:
+        """Test that an invalid API key is rejected."""
+
+        service = AccessService()
+
+        user_id = "test-user"
+        key_id = "test-key"
+
+        # Create API key and get the plain-text key
+        valid_key = service.create_api_key(user_id, key_id)
+
+        # Provide an incorrect API key for validation
+        invalid_key = "invalid-test-key"
+
+        is_valid = service.validate_api_key(user_id, invalid_key)
+
+        self.assertFalse(is_valid)
+
+        # The valid key should still work
+        is_valid = service.validate_api_key(user_id, valid_key)
+        self.assertTrue(is_valid)
+
+    def test_revoke_api_key_by_key_id(self) -> None:
+        """Test that an API key can be revoked by key_id."""
+
+        service = AccessService()
+
+        user_id = "test-user"
+        key_id = "test-key"
+
+        # Create an API key
+        service.create_api_key(user_id, key_id)
+
+        # Revoke the API key
+        revoked = service.revoke_api_key(user_id, key_id)
+
+        self.assertTrue(revoked)
+
+        # Check if the key is actually removed
+        self.assertNotIn(key_id, service.api_keys[user_id])
+
+    def test_revoke_api_key_by_api_key(self) -> None:
+        """Test that an API key can be revoked by the plain-text API key."""
+
+        service = AccessService()
+
+        user_id = "test-user"
+        key_id = "test-key"
+
+        # Create an API key
+        api_key = service.create_api_key(user_id, key_id)
+
+        # Revoke the API key by passing the plain-text key
+        revoked = service.revoke_api_key(user_id, api_key)
+
+        self.assertTrue(revoked)
+
+        # Check if the key is actually removed
+        self.assertNotIn(key_id, service.api_keys[user_id])
+
+    def test_list_api_keys(self) -> None:
+        """Test that we can list API keys for a given user."""
+
+        service = AccessService()
+
+        user_id = "user123"
+
+        # Create some API keys for the user
+        service.create_api_key(user_id, "key1")
+        service.create_api_key(user_id, "key2")
+
+        # List the API keys
+        keys = service.list_api_keys(user_id)
+
+        self.assertEqual(keys, ["key1", "key2"])
+
+        # Create another key and verify the list updates
+        service.create_api_key(user_id, "key3")
+        keys = service.list_api_keys(user_id)
+
+        self.assertEqual(keys, ["key1", "key2", "key3"])

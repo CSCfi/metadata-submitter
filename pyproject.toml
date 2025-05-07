@@ -38,8 +38,9 @@ dependencies = [
     "requests==2.32.3",
     "ujson==5.10.0",
     "uvloop==0.21.0",
-    "xmlschema==4.0.1",
-    "typing-extensions==4.13.2",
+    "xmlschema==3.4.5",
+    "typing-extensions==4.13.0",
+    "pyjwt>=2.10.1",
 ]
 
 [dependency-groups]
@@ -140,5 +141,12 @@ ignore_names = [
     "element_decode", # metadata_backend/helpers/parser.py
     "lossy", # metadata_backend/helpers/parser.py
     "level", # metadata_backend/helpers/parser.py
+    "AccessService", # metadata-submitter/metadata_backend/api/services/auth.py
+    "create_jwt_token", # metadata-submitter/metadata_backend/api/services/auth.py
+    "read_jwt_token", # metadata-submitter/metadata_backend/api/services/auth.py
+    "create_api_key", # metadata-submitter/metadata_backend/api/services/auth.py
+    "validate_api_key", # metadata-submitter/metadata_backend/api/services/auth.py
+    "revoke_api_key", # metadata-submitter/metadata_backend/api/services/auth.py
+    "list_api_keys" # metadata-submitter/metadata_backend/api/services/auth.py
 ]
 paths = ["metadata_backend"]
