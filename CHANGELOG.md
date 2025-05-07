@@ -23,6 +23,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- (users) any user_id can be provided in post project files endpoint (#874)
 - Clarify error when trying to retrieve bprems from objects endpoints (#871)
 
 ### Added
