@@ -65,7 +65,7 @@ class FilesAPIHandler(RESTAPIHandler):
                 raise TypeError
         except (KeyError, TypeError) as exc:
             reason = (
-                "Fields `userId`, `projectId`, `files` are required."
+                "Fields `projectId`, `files` are required."
                 if isinstance(exc, KeyError)
                 else "Field `files` must be a list."
             )
