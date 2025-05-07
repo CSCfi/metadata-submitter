@@ -28,6 +28,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- Functions for API key creation, validation, revoking, and listing. Storage to be changed to persistent storage in a future MR.
+- Functions for JWT token creation and validation. Uses standard subject (`sub`), expiration (`exp`), issued-at (`iat`), and issuer (`iss`) claims. Internal user id stored in 'sub'. Signature, expiration and issuer are checked during validation.
 - uv to manage virtual environments, tools and dependencies.
 - Clarify that bprems cannot be deleted or modified through objects endpoints (#879)
 - post file accession IDs via Admin API once files are verified
