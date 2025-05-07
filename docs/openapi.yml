@@ -3474,10 +3474,6 @@ components:
       type: object
       description: Shows POST v1/files request payload
       properties:
-        userId:
-          type: string
-          title: User Id
-          example: 6150d339ab2440898540b3f8d9fdbe72
         projectId:
           type: string
           title: Project Id

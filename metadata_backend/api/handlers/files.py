@@ -50,12 +50,14 @@ class FilesAPIHandler(RESTAPIHandler):
         :raises: HTTP Unauthorized if user not affiliated with project
         :returns: JSON response containing a list of file IDs of created files
         """
+        session = await aiohttp_session.get_session(request)
+        user_id = session["user_info"]
+
         db_client = request.app["db_client"]
         data = await self._get_data(request)
         is_bigpicture = request.query.get("is_bigpicture", "").strip().lower() == "true"
 
         try:
-            user_id = data["userId"]
             project_id = data["projectId"]
             if isinstance(data["files"], list):
                 files = data["files"]
