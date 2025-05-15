@@ -960,7 +960,7 @@ class TestSubmissionDataIngestion:
             "name": "Test submission",
             "description": "Mock a submission for testing file ingestion",
             "projectId": admin_project_id,
-            "workflow": "SDSX",
+            "workflow": "Bigpicture",
         }
 
         submission_id = await post_submission(admin_logged_in, submission_data)
@@ -968,7 +968,7 @@ class TestSubmissionDataIngestion:
             LOG.debug("Checking that submission %s was created", submission_id)
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
-        dataset_id, _ = await post_object(admin_logged_in, "dataset", submission_id, "dataset.xml")
+        dataset_id, _ = await post_object(admin_logged_in, "bpdataset", submission_id, "dataset.xml")
 
         user_data = await get_user_data(admin_logged_in)
         # Create files and add files to submission
@@ -988,7 +988,7 @@ class TestSubmissionDataIngestion:
                 {
                     "accessionId": file["accessionId"],
                     "version": file["version"],
-                    "objectId": {"accessionId": dataset_id, "schema": "dataset"},
+                    "objectId": {"accessionId": dataset_id, "schema": "bpdataset"},
                 }
             )
         await patch_submission_files(admin_logged_in, submission_files, submission_id)
