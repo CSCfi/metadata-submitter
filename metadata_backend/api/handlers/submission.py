@@ -555,8 +555,33 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
             )
             polling_file_data[file["path"]] = file["accessionId"]
 
+        LOG.info("Polling for status 'verified' in submission with ID: %r", submission_id)
         await self.start_file_polling(
-            req, polling_file_data, file_operator, {"user": username, "submissionId": submission_id}
+            req, polling_file_data, file_operator, {"user": username, "submissionId": submission_id}, "verified"
         )
+        LOG.info("Polling for status 'ready' in submission with ID: %r", submission_id)
+        await self.start_file_polling(
+            req, polling_file_data, file_operator, {"user": username, "submissionId": submission_id}, "ready"
+        )
+
+        ids = await submission_operator.get_collection_objects(submission_id, "dataset")
+        bp_ids = await submission_operator.get_collection_objects(submission_id, "bpdataset")
+        ids = ids + bp_ids
+
+        if len(ids) != 1:
+            reason = f"Submission {submission_id} has {len(ids)} datasets, required 1"
+            LOG.exception(reason)
+            raise web.HTTPInternalServerError(reason=reason)
+        dataset_id = ids[0]
+        await self.admin_handler.create_dataset(
+            req,
+            {
+                "user": username,
+                "fileIds": list(polling_file_data.values()),
+                "datasetId": dataset_id,
+            },
+        )
+
+        LOG.info("Ingesting files for submission with ID: %r was successful.", submission_id)
 
         return web.HTTPNoContent()

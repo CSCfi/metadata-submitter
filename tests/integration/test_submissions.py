@@ -8,6 +8,7 @@ from datetime import datetime
 from tests.integration.conf import drafts_url, objects_url, publish_url, submit_url, testfiles_root
 from tests.integration.helpers import (
     add_submission_linked_folder,
+    check_dataset_accession_ids,
     check_file_accession_ids,
     create_multi_file_request_data,
     create_request_data,
@@ -948,7 +949,7 @@ class TestSubmissionDataIngestion:
     """Testing data ingestion when the metadata submission with files is ready."""
 
     async def test_file_ingestion_works(self, admin_logged_in, database, admin_project_id):
-        """Test that files are ingested successfully and their status becomes 'verified'.
+        """Test that files are ingested successfully and their status becomes 'ready'.
 
         :param admin_logged_in: HTTP client as admin role in which request call is made
         :param database: database client to perform db operations
@@ -959,7 +960,7 @@ class TestSubmissionDataIngestion:
             "name": "Test submission",
             "description": "Mock a submission for testing file ingestion",
             "projectId": admin_project_id,
-            "workflow": "SDSX",
+            "workflow": "Bigpicture",
         }
 
         submission_id = await post_submission(admin_logged_in, submission_data)
@@ -967,7 +968,7 @@ class TestSubmissionDataIngestion:
             LOG.debug("Checking that submission %s was created", submission_id)
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
-        dataset_id, _ = await post_object(admin_logged_in, "dataset", submission_id, "dataset.xml")
+        dataset_id, _ = await post_object(admin_logged_in, "bpdataset", submission_id, "dataset.xml")
 
         user_data = await get_user_data(admin_logged_in)
         # Create files and add files to submission
@@ -987,7 +988,7 @@ class TestSubmissionDataIngestion:
                 {
                     "accessionId": file["accessionId"],
                     "version": file["version"],
-                    "objectId": {"accessionId": dataset_id, "schema": "dataset"},
+                    "objectId": {"accessionId": dataset_id, "schema": "bpdataset"},
                 }
             )
         await patch_submission_files(admin_logged_in, submission_files, submission_id)
@@ -1008,10 +1009,13 @@ class TestSubmissionDataIngestion:
         id_token = await get_mock_admin_token(admin_logged_in)
         await post_data_ingestion(admin_logged_in, submission_id, ingestion_data, id_token)
 
-        # Assert the file status in submission is changed to "verified"
+        # Assert the file status in submission is changed to "ready"
         db_submission = await database["submission"].find_one({"submissionId": submission_id})
         for db_submission_file in db_submission["files"]:
-            assert db_submission_file["status"] == "verified"
+            assert db_submission_file["status"] == "ready"
 
         # Assert the file accession IDs in archive are correct
         await check_file_accession_ids(admin_logged_in, ingestion_data, id_token)
+
+        # Assert the dataset has been created correctly
+        await check_dataset_accession_ids(admin_logged_in, ingestion_data, dataset_id, id_token)

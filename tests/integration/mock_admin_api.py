@@ -148,7 +148,7 @@ async def post_accession_id(req: web.Request) -> web.Response:
     if resp is not None:
         return resp
 
-    global files_in_inbox  # noqa: F824
+    global files_in_inbox, file_accession_ids  # noqa: F824
     try:
         content = await req.json()
         accession_data = AccessionModel(**content)
@@ -224,9 +224,8 @@ async def create_dataset(req: web.Request) -> web.Response:
             user = file_accession_ids[id]["user"]
             path = file_accession_ids[id]["filepath"]
             files_in_inbox[user] = [file for file in files_in_inbox[user] if file["inboxPath"] != path]
-            file_accession_ids.pop(id)
         except KeyError as e:
-            reason = "Something went wrong trying to delete files from inbox: %s" % e
+            reason = "Something went wrong trying to delete files: %s" % e
             LOG.exception(reason)
             raise web.HTTPServerError(reason=reason)
 
@@ -266,7 +265,7 @@ async def release_dataset(req: web.Request) -> web.Response:
 
 
 async def get_user_files(req: web.Request) -> web.Response:
-    """Mock endpoint for getting a user's files in inbox."""
+    """Mock endpoint for getting a user's files that are not part of any dataset."""
     resp = isAdmin(req)
     if resp is not None:
         return resp
@@ -287,6 +286,17 @@ async def get_accession_ids(req: web.Request) -> web.Response:
     user_file_ids = {value["filepath"]: key for key, value in file_accession_ids.items() if value["user"] == username}
 
     return web.json_response(user_file_ids)
+
+
+async def get_dataset(req: web.Request) -> web.Response:
+    """Test endpoint for getting data associated with dataset."""
+    resp = isAdmin(req)
+    if resp is not None:
+        return resp
+
+    dataset = req.match_info["dataset"]
+
+    return web.json_response(datasets.get(dataset, {}))
 
 
 async def post_key(req: web.Request) -> web.Response:
@@ -357,7 +367,8 @@ async def init() -> web.Application:
     app.router.add_post("/dataset/create", create_dataset)
     app.router.add_post("/dataset/release/{dataset}", release_dataset)
     app.router.add_get("/users/{username}/files", get_user_files)
-    app.router.add_get("/users/{username}/accessionids", get_accession_ids)
+    app.router.add_get("/users/{username}/accessions", get_accession_ids)
+    app.router.add_get("/dataset/{dataset}", get_dataset)
     app.router.add_post("/c4gh-keys/add", post_key)
     app.router.add_get("/ready", ready)
 

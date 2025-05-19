@@ -851,7 +851,7 @@ async def post_data_ingestion(sess, submission_id, ingestion_data, id_token):
 
     :param sess: HTTP session in which request call is made
     :param submission_id: id of the submission
-    :param files: List of files including accessionId and path
+    :param ingestion_data: Dict with data including 'username' and 'files' list
     :param id_token: Token for authorizing admin user
     """
     url = f"{submissions_url}/{submission_id}/ingest"
@@ -863,16 +863,32 @@ async def post_data_ingestion(sess, submission_id, ingestion_data, id_token):
 
 
 async def check_file_accession_ids(sess, ingestion_data, id_token):
-    """Check that accession IDs are added correctly to files in inbox.
+    """Check that accession IDs are added correctly to files in archive.
 
     :param sess: HTTP session in which request call is made
-    :param files: List of files including accessionId and path
+    :param ingestion_data: Dict with data including 'username' and 'files' list
     :param id_token: Token for authorizing admin user
     """
-    url = f"{admin_url}/users/{ingestion_data['username']}/accessionids"
+    url = f"{admin_url}/users/{ingestion_data['username']}/accessions"
 
     async with sess.get(url, headers={"Authorization": f"Bearer {id_token}"}) as resp:
         assert resp.status == 200, f"HTTP Status code error {resp.status}"
         ans = await resp.json()
         for file in ingestion_data["files"]:
             assert ans[file["path"]] == file["accessionId"]
+
+
+async def check_dataset_accession_ids(sess, ingestion_data, dataset_id, id_token):
+    """Check that the dataset has been created and assigned the correct file accession IDs.
+
+    :param sess: HTTP session in which request call is made
+    :param ingestion_data: Dict with data including 'username' and 'files' list
+    :param dataset_id: Dataset accession ID
+    :param id_token: Token for authorizing admin user
+    """
+    url = f"{admin_url}/dataset/{dataset_id}"
+
+    async with sess.get(url, headers={"Authorization": f"Bearer {id_token}"}) as resp:
+        assert resp.status == 200, f"HTTP Status code error {resp.status}"
+        ans = await resp.json()
+        assert sorted(list(x["accessionId"] for x in ingestion_data["files"])) == sorted(ans["files"])
