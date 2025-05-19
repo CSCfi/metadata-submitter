@@ -23,11 +23,14 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- Filter accession IDs in `get_collection_objects()` to only match `collection`
 - (users) any user_id can be provided in post project files endpoint (#874)
 - Clarify error when trying to retrieve bprems from objects endpoints (#871)
 
 ### Added
 
+- create dataset via Admin API once files are ready
+- polling Admin API to see when all files are ready
 - Functions for API key creation, validation, revoking, and listing. Storage to be changed to persistent storage in a future MR.
 - Functions for JWT token creation and validation. Uses standard subject (`sub`), expiration (`exp`), issued-at (`iat`), and issuer (`iss`) claims. Internal user id stored in 'sub'. Signature, expiration and issuer are checked during validation.
 - uv to manage virtual environments, tools and dependencies.
