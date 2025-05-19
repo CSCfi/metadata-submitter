@@ -23,6 +23,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- (users) Removed no longer used userId field from post_project_files payload validation error message. #883)
 - Filter accession IDs in `get_collection_objects()` to only match `collection`
 - (users) any user_id can be provided in post project files endpoint (#874)
 - Clarify error when trying to retrieve bprems from objects endpoints (#871)
