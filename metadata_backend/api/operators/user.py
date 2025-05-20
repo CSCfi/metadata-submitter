@@ -9,7 +9,6 @@ from pymongo.errors import ConnectionFailure, OperationFailure
 from ...helpers.logger import LOG
 from ...helpers.validator import JSONValidator
 from .base import BaseOperator
-from .object import ObjectOperator
 from .submission import SubmissionOperator
 
 
@@ -22,7 +21,7 @@ class UserOperator(BaseOperator):
     async def check_user_has_doc(
         self, req: web.Request, collection: str, user_id: str, accession_id: str
     ) -> tuple[bool, str]:
-        """Check a submission/template belongs to same project the user is in.
+        """Check a submission belongs to same project the user is in.
 
         :param req: HTTP request
         :param collection: collection it belongs to, it would be used as path
@@ -43,14 +42,11 @@ class UserOperator(BaseOperator):
         user_operator = UserOperator(db_client)
 
         project_id = ""
-        if collection.startswith("template"):
-            object_operator = ObjectOperator(db_client)
-            project_id = await object_operator.get_object_project(collection, accession_id)
-        elif collection == "submission":
+        if collection == "submission":
             submission_operator = SubmissionOperator(db_client)
             project_id = await submission_operator.get_submission_field_str(accession_id, "projectId")
         else:
-            reason = f"collection must be submission or template, received {collection}"
+            reason = f"collection must be submission, received {collection}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 

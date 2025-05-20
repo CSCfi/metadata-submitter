@@ -18,7 +18,6 @@ from .api.handlers.rems_proxy import RemsAPIHandler
 from .api.handlers.restapi import RESTAPIHandler
 from .api.handlers.static import StaticHandler, html_handler_factory
 from .api.handlers.submission import SubmissionAPIHandler
-from .api.handlers.template import TemplatesAPIHandler
 from .api.handlers.user import UserAPIHandler
 from .api.handlers.xml_submission import XMLSubmissionAPIHandler
 from .api.health import HealthHandler
@@ -115,7 +114,6 @@ async def init(
         admin_handler=admin_handler,
         pid_handler=pid_handler,
     )
-    _template = TemplatesAPIHandler()
     _file = FilesAPIHandler()
     api_routes = [
         # retrieve workflows
@@ -137,12 +135,6 @@ async def init(
         web.put("/drafts/{schema}/{accessionId}", _object.put_object),
         web.patch("/drafts/{schema}/{accessionId}", _object.patch_object),
         web.delete("/drafts/{schema}/{accessionId}", _object.delete_object),
-        # template objects operations
-        web.get("/templates", _template.get_templates),
-        web.post("/templates/{schema}", _template.post_template),
-        web.get("/templates/{schema}/{accessionId}", _template.get_template),
-        web.patch("/templates/{schema}/{accessionId}", _template.patch_template),
-        web.delete("/templates/{schema}/{accessionId}", _template.delete_template),
         # submissions operations
         web.get("/submissions", _submission.get_submissions),
         web.post("/submissions", _submission.post_submission),

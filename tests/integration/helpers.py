@@ -22,7 +22,6 @@ from .conf import (
     publish_url,
     submissions_url,
     taxonomy_url,
-    templates_url,
     testfiles_root,
     users_url,
 )
@@ -389,89 +388,6 @@ async def delete_draft(sess, schema, draft_id):
     """
     async with sess.delete(f"{drafts_url}/{schema}/{draft_id}") as resp:
         LOG.debug("Deleting draft object %s from %s", draft_id, schema)
-        assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
-
-
-async def post_template_json(sess, schema, filename, project_id):
-    """Post one metadata object within session, returns accessionId.
-
-    :param sess: HTTP session in which request call is made
-    :param schema: name of the schema (submission) used for testing
-    :param filename: name of the file used for testing.
-    :param project_id: id of the project the template belongs to
-    """
-    request_data = await create_request_json_data(schema, filename)
-    request_data = json.loads(request_data)
-    if type(request_data) is list:
-        for rd in request_data:
-            rd["projectId"] = project_id
-    else:
-        request_data["projectId"] = project_id
-    request_data = json.dumps(request_data)
-    async with sess.post(f"{templates_url}/{schema}", data=request_data) as resp:
-        LOG.debug("Adding new template object to %s, via JSON file %s", schema, filename)
-        ans = await resp.json()
-        assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
-        if isinstance(ans, list):
-            return ans
-        else:
-            return ans["accessionId"]
-
-
-async def get_templates(sess, project_id):
-    """Get templates from project.
-
-    :param sess: HTTP session in which request call is made
-    :param project_id: id of the project the template belongs to
-    """
-    async with sess.get(f"{templates_url}?projectId={project_id}") as resp:
-        LOG.debug("Requesting templates from project=%s", project_id)
-        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-        ans = await resp.json()
-        LOG.debug("Received %d templates", len(ans))
-        return ans
-
-
-async def get_template(sess, schema, template_id):
-    """Get and return a drafted metadata object.
-
-    :param sess: HTTP session in which request call is made
-    :param schema: name of the schema (submission) used for testing
-    :param template_id: id of the draft
-    """
-    async with sess.get(f"{templates_url}/{schema}/{template_id}") as resp:
-        LOG.debug("Checking that %s JSON exists", template_id)
-        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-        ans = await resp.json()
-        return json.dumps(ans)
-
-
-async def patch_template(sess, schema, template_id, update_filename):
-    """Patch one metadata object within session, return accessionId.
-
-    :param sess: HTTP session in which request call is made
-    :param schema: name of the schema (submission) used for testing
-    :param template_id: id of the draft
-    :param update_filename: name of the file used to use for updating data.
-    """
-    request_data = await create_request_json_data(schema, update_filename)
-    async with sess.patch(f"{templates_url}/{schema}/{template_id}", data=request_data) as resp:
-        LOG.debug("Update draft object in %s", schema)
-        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-        ans_put = await resp.json()
-        assert ans_put["accessionId"] == template_id, "accession ID error"
-        return ans_put["accessionId"]
-
-
-async def delete_template(sess, schema, template_id):
-    """Delete metadata object within session.
-
-    :param sess: HTTP session in which request call is made
-    :param schema: name of the schema (submission) used for testing
-    :param template_id: id of the draft
-    """
-    async with sess.delete(f"{templates_url}/{schema}/{template_id}") as resp:
-        LOG.debug("Deleting template object %s from %s", template_id, schema)
         assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
 
