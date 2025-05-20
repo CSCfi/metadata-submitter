@@ -41,6 +41,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Removed
 
+- (users) template related API endpoints and database layer functions as unnecessary functionality. This is not needed by programmatic submitters and not used by the interactive frontend (#885).
+- template related API endpoints and database layer functions to lower the total cost of ownership and get the product to production faster (#885).
 - Spellchecking in gitlab-ci.yml (#858)
 - GitHub workflows.
 - overlapping tasks in gitlab-ci.yml, pre-commit and tox.
