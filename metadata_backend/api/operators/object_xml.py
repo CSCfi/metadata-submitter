@@ -79,6 +79,8 @@ class XMLObjectOperator(BaseObjectOperator):
         # remove `draft-` from schema type
         schema = schema_type[6:] if schema_type.startswith("draft") else schema_type
         data_as_json, parsed_xml = XMLToJSONParser().parse(schema, data)
+        # xml contains accession id, but json should not
+        data_as_json.pop("accessionId", None)
         data_with_id = await ObjectOperator(db_client)._format_data_to_replace_and_add_to_db(
             schema_type, accession_id, data_as_json
         )

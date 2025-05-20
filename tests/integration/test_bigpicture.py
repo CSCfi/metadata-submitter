@@ -2,9 +2,10 @@
 
 import defusedxml.ElementTree as ET
 
-from tests.integration.conf import datacite_prefix, datacite_url
+from tests.integration.conf import datacite_prefix, datacite_url, objects_url
 from tests.integration.helpers import (
     announce_submission,
+    create_request_data,
     create_request_json_data,
     delete_published_submission,
     get_object,
@@ -72,3 +73,23 @@ class TestBigpicture:
             assert child_elements[0].tag in tags, "Wrong child element was found"
             child_attributes = child_elements[0].attrib
             assert child_attributes["accession"] == sample["accessionId"], "Wrong accession ID was stored in XML"
+
+    async def test_bpdataset_replace_fails(self, client_logged_in, submission_bigpicture):
+        """Test bp dataset PUT fails when accession id is missing in XML.
+
+        :param client_logged_in: HTTP client in which request call is made
+        :param submission_bigpicture: submission ID, created with the BP workflow
+        """
+        # Submit bpdataset
+        accession_id, _ = await post_object(client_logged_in, "bpdataset", submission_bigpicture, "dataset.xml")
+
+        # Verify accession id was added to dataset object
+        bpdataset_data = await get_object(client_logged_in, "bpdataset", accession_id)
+        assert bpdataset_data.get("accessionId", "") == accession_id
+
+        # Attempt to replace object without accession id in xml
+        request_data = await create_request_data("bpdataset", "dataset.xml")
+        async with client_logged_in.put(f"{objects_url}/bpdataset/{accession_id}", data=request_data) as resp:
+            assert resp.status == 400
+            res = await resp.json()
+            assert "accession" in res["detail"]

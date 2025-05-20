@@ -278,6 +278,13 @@ class ParserTestCase(unittest.TestCase):
         mod_xml = self.xml_parser.assign_accession_to_xml_content("study", study_xml, "test123456")
         self.assertNotIn('accession="test123456"', mod_xml)
 
+    def test_get_accession_ids_from_xml_content(self):
+        """Test that accession IDs can be extracted from BP object XML."""
+        bpdataset_put_xml = self.load_file_to_text("bpdataset", "dataset_put.xml")
+        accession_ids = self.xml_parser.get_accession_ids_from_xml_content("bpdataset", bpdataset_put_xml)
+        self.assertTrue(len(accession_ids) == 1)
+        self.assertEqual(accession_ids[0], "bpdataset-id")
+
     def test_error_raised_when_schema_not_found(self):
         """Test 400 is returned when schema type is invalid."""
         with self.assertRaises(web.HTTPBadRequest):
