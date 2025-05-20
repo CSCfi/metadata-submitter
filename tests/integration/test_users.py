@@ -11,7 +11,6 @@ from tests.integration.conf import (
     other_test_user_family,
     other_test_user_given,
     submissions_url,
-    templates_url,
     test_user,
     test_user_family,
     test_user_given,
@@ -21,18 +20,14 @@ from tests.integration.conf import (
 from tests.integration.helpers import (
     create_request_json_data,
     delete_submission,
-    delete_template,
     delete_user,
-    get_templates,
     get_user_data,
     login,
     patch_submission_doi,
     patch_submission_rems,
-    patch_template,
     post_object,
     post_object_json,
     post_submission,
-    post_template_json,
     publish_submission,
 )
 
@@ -189,32 +184,6 @@ class TestUsers:
         async with client_logged_in.get(f"{submissions_url}/{delete_submission_id}?projectId={project_id}") as resp:
             LOG.debug("Checking that submission %s was deleted", delete_submission_id)
             assert resp.status == 404
-
-        template_id = await post_template_json(client_logged_in, "study", "SRP000539_template.json", project_id)
-        await patch_template(client_logged_in, "study", template_id, "patch.json")
-        async with client_logged_in.get(f"{templates_url}/study/{template_id}") as resp:
-            LOG.debug("Checking that template: %s was added", template_id)
-            res = await resp.json()
-            assert res["accessionId"] == template_id
-            assert res["projectId"] == project_id
-            assert res["identifiers"]["primaryId"] == "SRP000539"
-
-        async with client_logged_in.get(f"{templates_url}?projectId={project_id}") as resp:
-            LOG.debug("Checking that template display title was updated in separate templates list")
-            res = await resp.json()
-            assert res[0]["tags"]["displayTitle"] == "new name"
-
-        await delete_template(client_logged_in, "study", template_id)
-        async with client_logged_in.get(f"{templates_url}/study/{template_id}") as resp:
-            LOG.debug("Checking that template %s was deleted", template_id)
-            assert resp.status == 404
-
-        template_ids = await post_template_json(client_logged_in, "study", "SRP000539_list.json", project_id)
-        assert len(template_ids) == 2, "templates could not be added as batch"
-        templates = await get_templates(client_logged_in, project_id)
-
-        assert len(templates) == 2, f"should be 2 templates, got {len(templates)}"
-        assert templates[0]["schema"] == "template-study", "wrong template schema"
 
         # Delete user
         await delete_user(client_logged_in, user_id)

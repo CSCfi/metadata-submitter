@@ -736,49 +736,6 @@ class TestOperators(IsolatedAsyncioTestCase):
             operator.db_service.do_aggregate.assert_has_calls(calls, any_order=True)
             self.assertEqual(operator.db_service.do_aggregate.call_count, 2)
 
-    async def test_get_object_project_connfail(self):
-        """Test get object project, db connection failure."""
-        operator = ObjectOperator(self.client)
-        operator.db_service.query.side_effect = ConnectionFailure
-        with self.assertRaises(HTTPBadRequest):
-            await operator.get_object_project("template", self.accession_id)
-
-    async def test_get_object_project_opfail(self):
-        """Test get object project, db operation failure."""
-        operator = ObjectOperator(self.client)
-        operator.db_service.query.side_effect = OperationFailure("err")
-        with self.assertRaises(HTTPBadRequest):
-            await operator.get_object_project("template", self.accession_id)
-
-    async def test_get_object_project_passes(self):
-        """Test get object project returns project id."""
-        operator = ObjectOperator(self.client)
-        operator.db_service.query.return_value = AsyncIterator([self.test_submission])
-        result = await operator.get_object_project("template", self.accession_id)
-        operator.db_service.query.assert_called_once_with("template", {"accessionId": self.accession_id})
-        self.assertEqual(result, self.project_generated_id)
-
-    async def test_get_object_project_fails(self):
-        """Test get object project returns nothing and raises an error."""
-        operator = ObjectOperator(self.client)
-        operator.db_service.query.return_value = AsyncIterator([])
-        with self.assertRaises(HTTPBadRequest):
-            await operator.get_object_project("template", self.accession_id)
-
-    async def test_get_object_project_fails_missing_project(self):
-        """Test get object project returns faulty object record that is missing project id."""
-        operator = ObjectOperator(self.client)
-        operator.db_service.query.return_value = AsyncIterator([self.test_submission_no_project])
-        with self.assertRaises(HTTPBadRequest):
-            await operator.get_object_project("template", self.accession_id)
-
-    async def test_get_object_project_fails_invalid_collection(self):
-        """Test get object project raises bad request on invalid collection."""
-        operator = ObjectOperator(self.client)
-        operator.db_service.query.return_value = AsyncIterator([])
-        with self.assertRaises(HTTPBadRequest):
-            await operator.get_object_project("something", self.accession_id)
-
     async def test_get_submission_field_db_fail(self):
         """Test get submission projectId, db connection and operation failure."""
         operator = SubmissionOperator(self.client)
@@ -1353,89 +1310,6 @@ class TestOperators(IsolatedAsyncioTestCase):
         operator.db_service.exists = AsyncMock(return_value=True)
         await operator.check_project_exists(self.project_id)
         operator.db_service.exists.assert_called_once()
-
-    async def test_project_objects_remove_passes(self):
-        """Test remove objects method for projects works."""
-        operator = ProjectOperator(self.client)
-        operator.db_service.exists = AsyncMock(return_value=True)
-        operator.db_service.remove = AsyncMock(return_value=None)
-        await operator.remove_templates(self.project_generated_id, ["id"])
-        operator.db_service.exists.assert_called_once()
-        operator.db_service.remove.assert_called_once()
-        self.assertEqual(len(operator.db_service.remove.mock_calls), 1)
-
-    async def test_project_objects_remove_fails(self):
-        """Test remove objects method for projects fails."""
-        operator = ProjectOperator(self.client)
-        operator.db_service.exists = AsyncMock(return_value=True)
-        operator.db_service.remove.side_effect = ConnectionFailure
-        with self.assertRaises(HTTPBadRequest):
-            await operator.remove_templates(self.project_generated_id, ["id"])
-
-    async def test_project_objects_append_passes(self):
-        """Test append objects method for projects works."""
-        operator = ProjectOperator(self.client)
-        operator.db_service.exists = AsyncMock(return_value=True)
-        operator.db_service.append = AsyncMock(return_value=True)
-        await operator.assign_templates(self.project_generated_id, [])
-        operator.db_service.exists.assert_called_once()
-        operator.db_service.append.assert_called_once()
-        self.assertEqual(len(operator.db_service.append.mock_calls), 1)
-
-    async def test_project_objects_append_on_result_fails(self):
-        """Test append objects method for projects fails on db response validation."""
-        operator = ProjectOperator(self.client)
-        operator.db_service.exists = AsyncMock(return_value=True)
-        operator.db_service.append = AsyncMock(return_value=False)
-        with self.assertRaises(HTTPBadRequest):
-            await operator.assign_templates(self.project_generated_id, [])
-            operator.db_service.exists.assert_called_once()
-            operator.db_service.append.assert_called_once()
-
-    async def test_project_objects_assing_fails(self):
-        """Test append objects method for projects fails."""
-        operator = ProjectOperator(self.client)
-        operator.db_service.exists.side_effect = ConnectionFailure
-        with self.assertRaises(HTTPBadRequest):
-            await operator.assign_templates(self.project_generated_id, [])
-
-    async def test_update_project_fail_no_project(self):
-        """Test that project which does not exist can not be updated."""
-        operator = ProjectOperator(self.client)
-        with self.assertRaises(HTTPNotFound):
-            with patch(
-                "metadata_backend.api.operators.project.ProjectOperator.check_project_exists",
-                side_effect=HTTPNotFound,
-            ):
-                await operator.update_project(self.project_generated_id, [])
-
-    async def test_update_project_fail_connfail(self):
-        """Test project update failure with database connection failure."""
-        operator = ProjectOperator(self.client)
-        operator.db_service.patch.side_effect = ConnectionFailure
-        with self.assertRaises(HTTPBadRequest):
-            with patch(
-                "metadata_backend.api.operators.project.ProjectOperator.check_project_exists", return_value=True
-            ):
-                await operator.update_project(self.project_generated_id, [])
-
-    async def test_update_project_fail_general(self):
-        """Test project update failure with general error."""
-        operator = ProjectOperator(self.client)
-        operator.db_service.patch = AsyncMock(return_value=False)
-        with self.assertRaises(HTTPBadRequest):
-            with patch(
-                "metadata_backend.api.operators.project.ProjectOperator.check_project_exists", return_value=True
-            ):
-                await operator.update_project(self.project_generated_id, [])
-
-    async def test_update_project_pass(self):
-        """Test project update passes."""
-        operator = ProjectOperator(self.client)
-        operator.db_service.patch = AsyncMock(return_value=True)
-        with patch("metadata_backend.api.operators.project.ProjectOperator.check_project_exists", return_value=True):
-            pid = await operator.update_project(self.project_generated_id, [])
-            self.assertEqual(pid, self.project_generated_id)
 
     async def test_create_file_pass(self):
         """Test creating a new file passes."""

@@ -1,7 +1,5 @@
 """Project operator class."""
 
-from typing import Any
-
 from aiohttp import web
 from pymongo.errors import ConnectionFailure, OperationFailure
 
@@ -31,7 +29,6 @@ class ProjectOperator(BaseOperator):
                 return existing_project_id
 
             project_id = self._generate_accession_id()
-            project_data["templates"] = []
             project_data["projectId"] = project_id
             project_data["externalId"] = project_number
             insert_success = await self.db_service.create("project", project_data)
@@ -58,72 +55,3 @@ class ProjectOperator(BaseOperator):
             reason = f"Project with ID: '{project_id}' was not found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
-
-    async def assign_templates(self, project_id: str, object_ids: list[str] | str) -> None:
-        """Assign templates to project.
-
-        :param project_id: ID of project to update
-        :param object_ids: ID or list of IDs of template(s) to assign
-        :raises: HTTPBadRequest if assigning templates to project was not successful
-        returns: None
-        """
-        try:
-            await self.check_project_exists(project_id)
-            assign_success = await self.db_service.append(
-                "project", project_id, {"templates": {"$each": object_ids, "$position": 0}}
-            )
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting project, err: {error}"
-            LOG.exception(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        if not assign_success:
-            reason = "Assigning templates to project failed."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        LOG.info("Assigning templates: %r to project: %r succeeded.", object_ids, project_id)
-
-    async def remove_templates(self, project_id: str, object_ids: list[str]) -> None:
-        """Remove templates from project.
-
-        :param project_id: ID of project to update
-        :param object_ids: ID or list of IDs of template(s) to remove
-        :raises: HTTPBadRequest if db connection fails
-        returns: None
-        """
-        remove_content: dict[str, dict[str, str]]
-        try:
-            await self.check_project_exists(project_id)
-            for obj in object_ids:
-                remove_content = {"templates": {"accessionId": obj}}
-                await self.db_service.remove("project", project_id, remove_content)
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while removing templates from project, err: {error}"
-            LOG.exception(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        LOG.info("Removing templates: %r from project: %r succeeded.", ", ".join(object_ids), project_id)
-
-    async def update_project(self, project_id: str, patch: list[dict[str, Any]]) -> str:
-        """Update project object in database.
-
-        :param project_id: ID of project to update
-        :param patch: Patch operations determined in the request
-        :returns: ID of the project updated to database
-        """
-        try:
-            await self.check_project_exists(project_id)
-            update_success = await self.db_service.patch("project", project_id, patch)
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting project, err: {error}"
-            LOG.exception(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        if not update_success:
-            reason = "Updating project in database failed for some reason."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        LOG.info("Updating project: %r to database succeeded.", project_id)
-        return project_id

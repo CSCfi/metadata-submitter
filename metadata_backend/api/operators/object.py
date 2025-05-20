@@ -31,60 +31,6 @@ class ObjectOperator(BaseObjectOperator):
         """
         super().__init__("application/json", db_client)
 
-    async def query_templates_by_project(self, project_id: str) -> list[dict[str, dict[str, str] | str]]:
-        """Get templates list from given project ID.
-
-        :param project_id: project internal ID that owns templates
-        :returns: list of templates in project
-        """
-        try:
-            templates_cursor = self.db_service.query(
-                "project", {"projectId": project_id}, custom_projection={"_id": 0, "templates": 1}
-            )
-            templates = [template async for template in templates_cursor]
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting templates from project {project_id}, err: {error}"
-            LOG.exception(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        if len(templates) == 1:
-            # Fixes no-any-return
-            temp: list[dict[str, dict[str, str] | str]] = templates[0]["templates"]
-            return temp
-
-        return []
-
-    async def get_object_project(self, collection: str, accession_id: str) -> str:
-        """Get the project ID the object is associated to.
-
-        :param collection: database table to look into
-        :param accession_id: internal accession ID of object
-        :returns: project ID object is associated to
-        """
-        try:
-            object_cursor = self.db_service.query(collection, {"accessionId": accession_id})
-            objects = [object async for object in object_cursor]
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting object from {collection}, err: {error}"
-            LOG.exception(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        if len(objects) == 1:
-            try:
-                projectId: str = objects[0]["projectId"]
-                return projectId
-            except KeyError as error:
-                # This should not be possible and should never happen, if the object was created properly
-                reason = (
-                    f"In {collection}, accession ID {accession_id} does not have an associated project, err:{error}"
-                )
-                LOG.exception(reason)
-                raise web.HTTPBadRequest(reason=reason)
-        else:
-            reason = f"{collection} {accession_id} not found"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
     async def query_metadata_database(
         self, schema_type: str, que: MultiMapping[str], page_num: int, page_size: int, filter_objects: list[Any]
     ) -> tuple[list[dict[str, Any]], int, int, int]:

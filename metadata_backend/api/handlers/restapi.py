@@ -103,11 +103,6 @@ class RESTAPIHandler:
             if submission_id:
                 # if the draft object is found in submission we just need to check if the submission belongs to user
                 _check, project_id = await user_op.check_user_has_doc(req, "submission", current_user, submission_id)
-            elif collection.startswith("template"):
-                # if collection is template but not found in a submission
-                # we also check if object is in templates of the user
-                # they will be here if they will not be deleted after publish
-                _check, project_id = await user_op.check_user_has_doc(req, collection, current_user, accession_id)
             else:
                 _check = False
         else:

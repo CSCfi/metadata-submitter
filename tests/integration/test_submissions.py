@@ -630,7 +630,7 @@ class TestSubmissionOperations:
 
 
 class TestSubmissionPagination:
-    """Testing getting submissions, draft submissions and draft templates with pagination."""
+    """Testing getting submissions, draft submissions with pagination."""
 
     async def test_getting_paginated_submissions(self, client_logged_in, project_id):
         """Check that /submissions returns submissions with correct pagination.
