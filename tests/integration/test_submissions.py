@@ -1,5 +1,6 @@
 """Test operations with submissions."""
 
+import aiohttp
 import json
 import logging
 import xml.etree.ElementTree as ET
@@ -19,7 +20,6 @@ from tests.integration.helpers import (
     delete_submission,
     generate_mock_file,
     get_draft,
-    get_mock_admin_token,
     get_object,
     get_submission,
     get_user_data,
@@ -948,40 +948,41 @@ class TestSubmissionPagination:
 class TestSubmissionDataIngestion:
     """Testing data ingestion when the metadata submission with files is ready."""
 
-    async def test_file_ingestion_works(self, admin_logged_in, database, admin_project_id):
+    async def test_file_ingestion_works(self, client_logged_in, database, project_id, admin_token):
         """Test that files are ingested successfully and their status becomes 'ready'.
 
-        :param admin_logged_in: HTTP client as admin role in which request call is made
+        :param client_logged_in: HTTP client in which request call is made
         :param database: database client to perform db operations
-        :param admin_project_id: id of the admin user's project the submission belongs to
+        :param project_id: id of the project the submission belongs to
+        :param admin_token: a JWT with admin credentials
         """
         # Create new submission and check its creation succeeded
         submission_data = {
             "name": "Test submission",
             "description": "Mock a submission for testing file ingestion",
-            "projectId": admin_project_id,
+            "projectId": project_id,
             "workflow": "Bigpicture",
         }
 
-        submission_id = await post_submission(admin_logged_in, submission_data)
-        async with admin_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
+        submission_id = await post_submission(client_logged_in, submission_data)
+        async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
             LOG.debug("Checking that submission %s was created", submission_id)
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
-        dataset_id, _ = await post_object(admin_logged_in, "bpdataset", submission_id, "dataset.xml")
+        dataset_id, _ = await post_object(client_logged_in, "bpdataset", submission_id, "dataset.xml")
 
-        user_data = await get_user_data(admin_logged_in)
+        user_data = await get_user_data(client_logged_in)
         # Create files and add files to submission
         mock_file_1 = generate_mock_file("file1")
         mock_file_2 = generate_mock_file("file2")
 
         file_data = {
             "userId": user_data["userId"],
-            "projectId": admin_project_id,
+            "projectId": project_id,
             "files": [mock_file_1, mock_file_2],
         }
 
-        created_files = await post_project_files(admin_logged_in, file_data)
+        created_files = await post_project_files(client_logged_in, file_data)
         submission_files = []
         for file in created_files:
             submission_files.append(
@@ -991,7 +992,7 @@ class TestSubmissionDataIngestion:
                     "objectId": {"accessionId": dataset_id, "schema": "bpdataset"},
                 }
             )
-        await patch_submission_files(admin_logged_in, submission_files, submission_id)
+        await patch_submission_files(client_logged_in, submission_files, submission_id)
 
         db_submission = await database["submission"].find_one({"submissionId": submission_id})
         files_for_ingestion = []
@@ -999,23 +1000,21 @@ class TestSubmissionDataIngestion:
             # Assert the file status in submission is "added"
             assert db_submission_file["status"] == "added"
             db_file = await database["file"].find_one(
-                {"accessionId": db_submission_file["accessionId"], "projectId": admin_project_id}
+                {"accessionId": db_submission_file["accessionId"], "projectId": project_id}
             )
-            # Start file ingestion
             files_for_ingestion.append({"accessionId": db_file["accessionId"], "path": db_file["path"]})
 
-        ingestion_data = {"username": "test_user", "files": files_for_ingestion}
-
-        id_token = await get_mock_admin_token(admin_logged_in)
-        await post_data_ingestion(admin_logged_in, submission_id, ingestion_data, id_token)
+        # Start file ingestion
+        await post_data_ingestion(client_logged_in, submission_id, admin_token)
 
         # Assert the file status in submission is changed to "ready"
         db_submission = await database["submission"].find_one({"submissionId": submission_id})
         for db_submission_file in db_submission["files"]:
             assert db_submission_file["status"] == "ready"
 
-        # Assert the file accession IDs in archive are correct
-        await check_file_accession_ids(admin_logged_in, ingestion_data, id_token)
+        async with aiohttp.ClientSession(headers={"Authorization": "Bearer " + admin_token}) as admin_client:
+            # Assert the file accession IDs in archive are correct
+            await check_file_accession_ids(admin_client, files_for_ingestion, user_data["externalId"])
 
-        # Assert the dataset has been created correctly
-        await check_dataset_accession_ids(admin_logged_in, ingestion_data, dataset_id, id_token)
+            # Assert the dataset has been created correctly
+            await check_dataset_accession_ids(admin_client, files_for_ingestion, dataset_id)

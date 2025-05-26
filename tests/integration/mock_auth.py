@@ -36,9 +36,9 @@ exp = iat + ttl
 nonce = "nonce"
 jwk_pair = generate_token()
 
-user_sub = "test@test.example"
-user_given_name = "User"
-user_family_name = "test"
+user_sub = "admin_user@test.what"
+user_given_name = "Admin Mock"
+user_family_name = "Admin Family"
 
 mock_auth_url_docker = getenv("OIDC_URL", "http://mockauth:8000")  # called from inside docker-network
 mock_auth_url_local = getenv("OIDC_URL_TEST", "http://localhost:8000")  # called from local machine

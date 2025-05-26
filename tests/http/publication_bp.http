@@ -174,21 +174,9 @@ GET {{api_url}}/v1/submissions/{{submission_id}}
 ### Delete files
 DELETE {{api_url}}/v1/submissions/{{submission_id}}/files/{{file_id}}
 
-
 ### Begin ingestion
 POST {{api_url}}/v1/submissions/{{submission_id}}/ingest
-Authorization: Bearer {{admin_token}}
-
-{
-    "username": "test_user",
-    "files": [
-        {
-            "accessionId": "{{file_id}}",
-            "path": "{{file_path}}"
-        }
-    ]
-}
-
+X-Authorization: Bearer {{admin_token}}
 
 ### Announce submission
 PATCH {{api_url}}/v1/announce/{{submission_id}}
