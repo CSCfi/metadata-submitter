@@ -30,6 +30,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- LDAP service to get user's CSC project.
 - Check accession id in PUT object XML content (#876)
 - create dataset via Admin API once files are ready
 - polling Admin API to see when all files are ready
