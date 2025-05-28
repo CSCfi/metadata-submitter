@@ -1,11 +1,14 @@
 """Test operations with users."""
 
+from dotenv import load_dotenv; load_dotenv()
 import logging
 from hmac import new
 from time import time
 
 import aiohttp
+import pytest
 
+from metadata_backend.api.services.ldap import get_user_projects, verify_user_project
 from tests.integration.conf import (
     other_test_user,
     other_test_user_family,
@@ -16,6 +19,8 @@ from tests.integration.conf import (
     test_user_given,
     user_id,
     users_url,
+    ldap_user_id,
+    ldap_project_id,
 )
 from tests.integration.helpers import (
     create_request_json_data,
@@ -192,3 +197,20 @@ class TestUsers:
         async with client_logged_in.get(f"{users_url}/{user_id}") as resp:
             LOG.debug("Checking that user %s was deleted", user_id)
             assert resp.status == 401, f"HTTP Status code error, got {resp.status}"
+
+
+class TestLdap:
+    """Test CSC's LDAP service."""
+
+    def test_get_user_projects(self) -> None:
+        """Test get user projects."""
+        projects = get_user_projects(ldap_user_id)
+        assert ldap_project_id in projects, f"Project ID {ldap_project_id} not found in '{ldap_user_id}' user projects"
+
+    def test_verify_user_projects(self) -> None:
+        """Test verify user projects."""
+
+        verify_user_project(ldap_user_id, ldap_project_id)
+
+        with pytest.raises(aiohttp.web.HTTPUnauthorized):
+            verify_user_project(ldap_user_id, "-1")

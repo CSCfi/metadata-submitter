@@ -110,6 +110,7 @@ kirundi
 kordelinin
 kubernetes
 kyrgyz
+ldap
 lexically
 lfs
 liskov

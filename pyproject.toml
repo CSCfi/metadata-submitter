@@ -41,6 +41,11 @@ dependencies = [
     "xmlschema==4.0.1",
     "typing-extensions==4.13.2",
     "pyjwt>=2.10.1",
+    "ldap3 @ git+https://github.com/cannatag/ldap3.git@refs/pull/983/head",
+    # Above is a workaround found here until new version is released: https://github.com/cannatag/ldap3/issues/1159#issuecomment-2535547426
+    "cachetools>=5.5.2",
+    "python-dotenv>=1.1.0",
+    "types-cachetools>=5.5.0.20240820",
 ]
 
 [dependency-groups]
@@ -120,6 +125,10 @@ docs = [
 [tool.hatch.version]
 path = "metadata_backend/__init__.py"
 
+# Added temporarily so ldap3 can be installed from a specific commit
+[tool.hatch.metadata]
+allow-direct-references = true
+
 # Tool configuration options
 #
 
@@ -147,6 +156,7 @@ ignore_names = [
     "create_api_key", # metadata-submitter/metadata_backend/api/services/auth.py
     "validate_api_key", # metadata-submitter/metadata_backend/api/services/auth.py
     "revoke_api_key", # metadata-submitter/metadata_backend/api/services/auth.py
-    "list_api_keys" # metadata-submitter/metadata_backend/api/services/auth.py
+    "list_api_keys", # metadata-submitter/metadata_backend/api/services/auth.py
+    "verify_user_project", # metadata-submitter/metadata_backend/api/services/ldap.py
 ]
 paths = ["metadata_backend"]
