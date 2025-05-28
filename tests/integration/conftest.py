@@ -25,7 +25,7 @@ from tests.integration.conf import (
     other_test_user_family,
     other_test_user_given,
 )
-from tests.integration.helpers import delete_submission, get_user_data, post_submission
+from tests.integration.helpers import delete_submission, get_mock_admin_token, get_user_data, post_submission
 from tests.integration.mongo import Mongo
 
 LOG = logging.getLogger(__name__)
@@ -64,9 +64,9 @@ async def fixture_client_logged_in():
         yield client
 
 
-@pytest.fixture(name="admin_logged_in")
-async def fixture_admin_logged_in():
-    """Reusable aiohttp client with admin user credentials."""
+@pytest.fixture(name="admin_token")
+async def fixture_admin_token():
+    """Get JWT with admin user credentials."""
     async with aiohttp.ClientSession() as client:
         params = {
             "sub": admin_test_user,
@@ -75,21 +75,15 @@ async def fixture_admin_logged_in():
         }
 
         await client.get(f"{mock_auth_url}/setmock?{urlencode(params)}")
-        await client.get(f"{base_url}/aai")
-        yield client
+        admin_token = await get_mock_admin_token(client)
+
+        return admin_token
 
 
 @pytest.fixture(name="project_id")
 async def fixture_project_id(client_logged_in: aiohttp.ClientSession):
     """Get a project_id for the normal user session."""
     user_data = await get_user_data(client_logged_in)
-    return user_data["projects"][0]["projectId"]
-
-
-@pytest.fixture(name="admin_project_id")
-async def fixture_admin_project_id(admin_logged_in: aiohttp.ClientSession):
-    """Get a project_id for the admin user session."""
-    user_data = await get_user_data(admin_logged_in)
     return user_data["projects"][0]["projectId"]
 
 

@@ -28,7 +28,7 @@ class AdminServiceHandler(ServiceHandler):
         :param req: HTTP request
         """
         try:
-            admin_auth_header = {"Authorization": req.headers["Authorization"]}
+            admin_auth_header = {"Authorization": req.headers["X-Authorization"]}
             return admin_auth_header
         except KeyError as e:
             LOG.exception("Missing Authorization header")
@@ -81,7 +81,7 @@ class AdminServiceHandler(ServiceHandler):
         admin_auth_headers = self.get_admin_auth_headers(req)
         dataset_data = {"user": data["user"], "accession_ids": data["fileIds"], "dataset_id": data["datasetId"]}
         await self._request(method="POST", path="/dataset/create", json_data=dataset_data, headers=admin_auth_headers)
-        LOG.info("Dataset %s created for user %s", dataset_data["dataset_id"], dataset_data["user"])
+        LOG.info("Dataset %s has been created", dataset_data["dataset_id"])
 
     async def _healthcheck(self) -> dict[str, Any]:
         """Check Admin service readiness.

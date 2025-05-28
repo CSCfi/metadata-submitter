@@ -516,52 +516,49 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         :param req: HTTP request
         """
         submission_id = req.match_info["submissionId"]
-        data = await self._get_data(req)
-
         db_client = req.app["db_client"]
         submission_operator = SubmissionOperator(db_client)
         file_operator = FileOperator(db_client)
+        user_operator = UserOperator(db_client)
 
         # Check submission exists and is not already published
         await submission_operator.check_submission_exists(submission_id)
         await self._handle_check_ownership(req, "submission", submission_id)
         await submission_operator.check_submission_published(submission_id, req.method)
 
-        try:
-            username, files = data["username"], data["files"]
-            if not isinstance(username, str) or not isinstance(files, list) or not username or not files:
-                reason = "Invalid input: 'username' must be a string and 'files' must be a non-empty list."
-                raise ValueError(reason)
-        except (KeyError, ValueError) as e:
-            reason = "'username' and 'files' are mandatory parameters."
-            LOG.exception("%s: %s", reason, str(e))
-            raise web.HTTPBadRequest(reason=reason) from e
+        # Get submission files
+        submission_files = await submission_operator.get_submission_field_list(submission_id, "files")
+
+        # Get current user's external ID
+        session = await aiohttp_session.get_session(req)
+        current_user = session["user_info"]
+        user = await user_operator.read_user(current_user)
+        external_id = user["externalId"]
 
         polling_file_data = {}
-        for file in files:
-            if "path" not in file or "accessionId" not in file:
-                reason = "'path' and 'accessionId' are required for file ingestion."
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
+        for submission_file in submission_files:
+            file_accession_id = submission_file["accessionId"]
+            file = await file_operator.read_file(file_accession_id)
+            file_path = file["path"]
             # Trigger file ingestion
             await self.admin_handler.ingest_file(
                 req,
                 {
-                    "user": username,  # User's username in inbox
+                    "user": external_id,  # User's username in inbox
                     "submissionId": submission_id,
-                    "filepath": file["path"],
-                    "accessionId": file["accessionId"],
+                    "filepath": file_path,
+                    "accessionId": file_accession_id,
                 },
             )
-            polling_file_data[file["path"]] = file["accessionId"]
+            polling_file_data[file_path] = file_accession_id
 
         LOG.info("Polling for status 'verified' in submission with ID: %r", submission_id)
         await self.start_file_polling(
-            req, polling_file_data, file_operator, {"user": username, "submissionId": submission_id}, "verified"
+            req, polling_file_data, file_operator, {"user": external_id, "submissionId": submission_id}, "verified"
         )
         LOG.info("Polling for status 'ready' in submission with ID: %r", submission_id)
         await self.start_file_polling(
-            req, polling_file_data, file_operator, {"user": username, "submissionId": submission_id}, "ready"
+            req, polling_file_data, file_operator, {"user": external_id, "submissionId": submission_id}, "ready"
         )
 
         ids = await submission_operator.get_collection_objects(submission_id, "dataset")
@@ -576,7 +573,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         await self.admin_handler.create_dataset(
             req,
             {
-                "user": username,
+                "user": external_id,
                 "fileIds": list(polling_file_data.values()),
                 "datasetId": dataset_id,
             },

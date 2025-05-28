@@ -24,9 +24,9 @@ LOG.setLevel(getenv("LOG_LEVEL", "INFO"))
 
 mock_auth_url = getenv("OIDC_URL_TEST", "http://localhost:8000")
 
-admins = ["test@test.example"]
+admins = ["admin_user@test.what"]
 files_in_inbox = {
-    "test_user": [
+    "mock_user@test.what": [
         {
             "inboxPath": "s3:/bucket/mock_files/file1.c4gh",
             "fileStatus": "uploaded",

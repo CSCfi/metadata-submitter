@@ -122,7 +122,7 @@ other_test_user = "mock_user@test.what"
 
 admin_test_user_given = "Admin Mock"
 admin_test_user_family = "Admin Family"
-admin_test_user = "test@test.example"
+admin_test_user = "admin_user@test.what"
 
 ldap_user_id = "katajate"
 ldap_project_id = "2001599"
