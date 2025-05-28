@@ -40,15 +40,15 @@ flowchart LR
 ### Prerequisites
 
 - `Docker`
-
-Aspell for spell checking:
-- Mac: `brew install aspell`
-- Ubuntu/Debian:`sudo apt-get install aspell`
-
+- `Aspell` for spell checking:
+  - Mac: `brew install aspell`
+  - Ubuntu/Debian: `sudo apt-get install aspell`
+- [`Vault CLI`](https://developer.hashicorp.com/vault/docs/get-vault)
 - [`Git LFS`](https://git-lfs.com/)
 
-Git LFS is required to checkout the `metadata_backend/conf/taxonomy_files/names.json` file. This file can be generated
-from NCBI taxonomy using the following command:
+Git LFS is required to checkout the `metadata_backend/conf/taxonomy_files/names.json` file.
+This file can be generated from NCBI taxonomy using the following command:
+
 ```bash
 scripts/taxonomy/generate_name_taxonomy.sh
 ```
@@ -57,9 +57,9 @@ scripts/taxonomy/generate_name_taxonomy.sh
 
 Clone the repository and go to the project directory:
 
- ```
- git clone
- cd metadata-submitter
+```bash
+git clone
+cd metadata-submitter
 ```
 
 The project is managed by `uv` that creates a virtual environment in `.venv` directory
@@ -74,7 +74,7 @@ the `uv.lock` file.
 Create and activate the virtual environment, install the dependencies and the tox and
 pre-commit tools:
 
-```
+```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
 uv tool install tox --with tox-uv
 uv tool install pre-commit --with pre-commit-uv
@@ -84,10 +84,18 @@ pre-commit install
 
 ### Configure environmental variables
 
-
 Copy the contents of `.env.example` file to `.env` file and edit it as needed:
 
-```cp .env.example .env```
+```bash
+cp .env.example .env
+```
+
+Additionally, secrets for live services can be inserted into the `.env` file automatically with:
+
+```bash
+export VAULT_ADDR=  # Define URL address for a Vault instance
+make get_env  # This will prompt a login in the web browser
+```
 
 ### Run the web service and database locally
 
@@ -114,24 +122,32 @@ Please use `uv` to create the virtual environment for development and testing as
 
 ```bash
 # Optional: update references for metax integration
-$ scripts/metax_mappings/fetch_refs.sh
+scripts/metax_mappings/fetch_refs.sh
 
 # Optional: update taxonomy names for taxonomy search endpoint
 # However, this is a NECESSARY step if you have not installed Git LFS
-$ scripts/taxonomy/generate_name_taxonomy.sh
+scripts/taxonomy/generate_name_taxonomy.sh
 ```
 
 Then copy `.env` file and set up the environment variables.
-The example file has hostnames for development with Docker network (via `docker compose`). You will have to change the hostnames to `localhost`.
+The example file has hostnames for development with Docker network (via `docker compose`).
+You will have to change the hostnames to `localhost`.
 
 ```bash
-$ cp .env.example .env  # Make any changes you need to the file
+cp .env.example .env  # Make any changes you need to the file
 ```
 
-Finally, start the servers with code reloading enabled, so any code changes restarts the servers automatically.
+Secrets, which are used for testing against other services are fetched from Vault and added to the `.env` file with the following:
 
 ```bash
-$ uv run honcho start
+export VAULT_ADDR=  # Add correct URL here
+make get_env  # This will prompt a login in the web browser
+```
+
+Finally, start the servers with code reloading enabled, so any code changes restarts the servers automatically:
+
+```bash
+uv run honcho start
 ```
 
 The development server should now be accessible at `localhost:5430`.
@@ -147,7 +163,7 @@ Restart the server, and the swagger docs will be available at http://localhost:5
 
 **Swagger docs requirements:**
 - `bash`
-- `Python 3.12+`
+- `Python 3.13+`
 - `PyYaml` (installed via the development dependencies)
 - `realpath` (default Linux terminal command)
 
@@ -196,8 +212,8 @@ Additionally, we use pre-commit hooks in the CI/CD pipeline for automated tests 
 
 Production version can be built and run with following docker commands:
 ```bash
-$ docker build --no-cache -f dockerfiles/Dockerfile -t cscfi/metadata-submitter .
-$ docker run -p 5430:5430 cscfi/metadata-submitter
+docker build --no-cache -f dockerfiles/Dockerfile -t cscfi/metadata-submitter .
+docker run -p 5430:5430 cscfi/metadata-submitter
 ```
 
 The [frontend](https://github.com/CSCfi/metadata-submitter-frontend) is built and added as static files to the backend deployment with this method.
