@@ -9,6 +9,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- when calling backend, the admin token is assumed to be in the `X-Authorization` header
+- `/ingest` no longer needs json payload
 - Renamed and tested debug log helpers (#869)
 - Moved vulture configuration to project.toml (#869)
 - renamed vulture whitelist to vulture_whitelist.py.
