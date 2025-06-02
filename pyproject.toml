@@ -39,7 +39,7 @@ dependencies = [
     "ujson==5.10.0",
     "uvloop==0.21.0",
     "xmlschema==4.0.1",
-    "typing-extensions==4.13.2",
+    "typing-extensions==4.14.0",
     "pyjwt>=2.10.1",
     "ldap3 @ git+https://github.com/cannatag/ldap3.git@refs/pull/983/head",
     # Above is a workaround found here until new version is released: https://github.com/cannatag/ldap3/issues/1159#issuecomment-2535547426
@@ -54,7 +54,7 @@ dev = [
     "pylint==3.3.7",
     # mypy
     "mypy>=1.15.0",
-    "types-requests==2.32.0.20250515",
+    "types-requests==2.32.0.20250602",
     "types-ujson==5.10.0.20250326",
     "types-python-dateutil>=2.9.0.20241206",
     # black
