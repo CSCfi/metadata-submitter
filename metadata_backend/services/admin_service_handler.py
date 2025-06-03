@@ -83,6 +83,18 @@ class AdminServiceHandler(ServiceHandler):
         await self._request(method="POST", path="/dataset/create", json_data=dataset_data, headers=admin_auth_headers)
         LOG.info("Dataset %s has been created", dataset_data["dataset_id"])
 
+    async def release_dataset(self, req: web.Request, dataset: str) -> None:
+        """Create dataset for user.
+
+        :param req: HTTP request
+        :param dataset: Dataset accession ID
+        :raises: HTTPNotFound if the dataset is not found
+        :raises: HTTPBadRequest if the dataset does not have status 'registered'
+        """
+        admin_auth_headers = self.get_admin_auth_headers(req)
+        await self._request(method="POST", path=f"/dataset/release/{dataset}", headers=admin_auth_headers)
+        LOG.info("Dataset %s has been released", dataset)
+
     async def _healthcheck(self) -> dict[str, Any]:
         """Check Admin service readiness.
 

@@ -639,6 +639,12 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                 }
             )
 
+        if workflow.name == "Bigpicture":
+            released_dataset = await submission_op.get_collection_objects(submission_id, "bpdataset")
+            if len(released_dataset) != 1:
+                raise web.HTTPBadRequest(reason=f"Submission '{submission_id}' has {len(released_dataset)} datasets.")
+            await self.admin_handler.release_dataset(req, released_dataset[0])
+
         await submission_op.update_submission(submission_id, patch)
 
         result = {"submissionId": submission_id, "published": publish_status}
