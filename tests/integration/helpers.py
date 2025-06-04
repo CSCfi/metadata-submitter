@@ -1,5 +1,6 @@
 """Helper functions for the integration tests."""
 
+import aiohttp
 import json
 import logging
 import re
@@ -433,13 +434,13 @@ async def publish_submission(sess, submission_id):
         return ans["submissionId"]
 
 
-async def announce_submission(sess, submission_id):
+async def announce_submission(sess, submission_id, id_token):
     """Announce one object submission within session, return submissionId. Uses BP publication endpoint.
 
     :param sess: HTTP session in which request call is made
     :param submission_id: id of the submission
     """
-    async with sess.patch(f"{announce_url}/{submission_id}") as resp:
+    async with sess.patch(f"{announce_url}/{submission_id}", headers={"X-Authorization": f"Bearer {id_token}"}) as resp:
         LOG.debug("Announcing submission %s", submission_id)
         ans = await resp.json()
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}: {ans}"
@@ -617,6 +618,7 @@ async def get_project_files(sess, project_id):
     """Get files within session.
 
     :param sess: HTTP session in which request call is made
+    :param project_id: project ID where the file belongs to
     :returns: list of files
     """
     params = {"projectId": project_id}
@@ -762,6 +764,44 @@ async def get_mock_admin_token(sess):
         return id_token
 
 
+async def setup_files_for_ingestion(sess, dataset_id, submission_id, project_id, id_token):
+    """Create files for a BigPicture submission, and add them to the database, submission and inbox
+
+    :param sess: HTTP session in which request call is made
+    :param dataset_id: Dataset accession ID
+    :param submission_id: id of the submission
+    :param project_id: project ID where the file belongs to
+    :param id_token: Token for authorizing admin user
+    """
+    user_data = await get_user_data(sess)
+
+    # Create files and add files to submission
+    mock_file_1 = generate_mock_file("file10")
+    mock_file_2 = generate_mock_file("file20")
+
+    file_data = {
+        "userId": user_data["userId"],
+        "projectId": project_id,
+        "files": [mock_file_1, mock_file_2],
+    }
+
+    created_files = await post_project_files(sess, file_data)
+    submission_files = []
+    for file in created_files:
+        submission_files.append(
+            {
+                "accessionId": file["accessionId"],
+                "version": file["version"],
+                "objectId": {"accessionId": dataset_id, "schema": "bpdataset"},
+            }
+        )
+    await patch_submission_files(sess, submission_files, submission_id)
+
+    async with aiohttp.ClientSession(headers={"Authorization": "Bearer " + id_token}) as admin_client:
+        await add_file_to_inbox(admin_client, mock_file_1["path"], user_data["externalId"])
+        await add_file_to_inbox(admin_client, mock_file_2["path"], user_data["externalId"])
+
+
 async def post_data_ingestion(sess, submission_id, id_token):
     """Start the data ingestion with files inside submission.
 
@@ -773,6 +813,7 @@ async def post_data_ingestion(sess, submission_id, id_token):
 
     async with sess.post(url, headers={"X-Authorization": f"Bearer {id_token}"}
     ) as resp:
+        LOG.debug("Ingesting submission %s", submission_id)
         assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
 
@@ -801,3 +842,15 @@ async def check_dataset_accession_ids(sess, files, dataset_id):
         assert resp.status == 200, f"HTTP Status code error {resp.status}"
         ans = await resp.json()
         assert sorted(list(x["accessionId"] for x in files)) == sorted(ans["files"])
+
+
+async def add_file_to_inbox(sess, filepath, username):
+    """Add a new file to inbox via the Admin API
+
+    :param sess: HTTP session in which request call is made
+    :param filepath: path of the file
+    :param username: username of the user (current)
+    """
+    file_data = {"user": username, "filepath": filepath}
+    async with sess.post(f"{admin_url}/file/create", json=file_data) as resp:
+        assert resp.status == 201, f"HTTP Status code error {resp.status}"

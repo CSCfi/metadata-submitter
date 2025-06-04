@@ -18,21 +18,19 @@ from tests.integration.helpers import (
     delete_object,
     delete_published_submission,
     delete_submission,
-    generate_mock_file,
     get_draft,
     get_object,
     get_submission,
     get_user_data,
     patch_submission_doi,
-    patch_submission_files,
     patch_submission_rems,
     post_data_ingestion,
     post_draft,
     post_object,
     post_object_json,
-    post_project_files,
     post_submission,
     publish_submission,
+    setup_files_for_ingestion,
     submissions_url,
 )
 
@@ -971,28 +969,7 @@ class TestSubmissionDataIngestion:
 
         dataset_id, _ = await post_object(client_logged_in, "bpdataset", submission_id, "dataset.xml")
 
-        user_data = await get_user_data(client_logged_in)
-        # Create files and add files to submission
-        mock_file_1 = generate_mock_file("file1")
-        mock_file_2 = generate_mock_file("file2")
-
-        file_data = {
-            "userId": user_data["userId"],
-            "projectId": project_id,
-            "files": [mock_file_1, mock_file_2],
-        }
-
-        created_files = await post_project_files(client_logged_in, file_data)
-        submission_files = []
-        for file in created_files:
-            submission_files.append(
-                {
-                    "accessionId": file["accessionId"],
-                    "version": file["version"],
-                    "objectId": {"accessionId": dataset_id, "schema": "bpdataset"},
-                }
-            )
-        await patch_submission_files(client_logged_in, submission_files, submission_id)
+        await setup_files_for_ingestion(client_logged_in, dataset_id, submission_id, project_id, admin_token)
 
         db_submission = await database["submission"].find_one({"submissionId": submission_id})
         files_for_ingestion = []
@@ -1014,6 +991,7 @@ class TestSubmissionDataIngestion:
 
         async with aiohttp.ClientSession(headers={"Authorization": "Bearer " + admin_token}) as admin_client:
             # Assert the file accession IDs in archive are correct
+            user_data = await get_user_data(client_logged_in)
             await check_file_accession_ids(admin_client, files_for_ingestion, user_data["externalId"])
 
             # Assert the dataset has been created correctly

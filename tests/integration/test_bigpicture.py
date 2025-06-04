@@ -11,14 +11,16 @@ from tests.integration.helpers import (
     get_object,
     get_xml_object,
     patch_submission_doi,
+    post_data_ingestion,
     post_object,
+    setup_files_for_ingestion,
 )
 
 
 class TestBigpicture:
     """Tests with Bigpicture schemas."""
 
-    async def test_bpdataset_gets_doi(self, client_logged_in, submission_bigpicture, project_id):
+    async def test_bpdataset_gets_doi(self, client_logged_in, submission_bigpicture, project_id, admin_token):
         """Test bp dataset has doi generated.
 
         :param client_logged_in: HTTP client in which request call is made
@@ -28,16 +30,19 @@ class TestBigpicture:
         await post_object(client_logged_in, "bprems", submission_bigpicture, "rems.xml")
 
         # Submit bpdataset
-        bpdataset = await post_object(client_logged_in, "bpdataset", submission_bigpicture, "dataset.xml")
+        dataset_id, _ = await post_object(client_logged_in, "bpdataset", submission_bigpicture, "dataset.xml")
 
         # Add DOI and DAC for publishing the submission
         doi_data_raw = await create_request_json_data("doi", "test_doi.json")
         await patch_submission_doi(client_logged_in, submission_bigpicture, doi_data_raw)
 
-        await announce_submission(client_logged_in, submission_bigpicture)
+        await setup_files_for_ingestion(client_logged_in, dataset_id, submission_bigpicture, project_id, admin_token)
+        await post_data_ingestion(client_logged_in, submission_bigpicture, admin_token)
+
+        await announce_submission(client_logged_in, submission_bigpicture, admin_token)
 
         # DOI is generated in the announcing phase
-        bpdataset = await get_object(client_logged_in, "bpdataset", bpdataset[0])
+        bpdataset = await get_object(client_logged_in, "bpdataset", dataset_id)
         doi = bpdataset.get("doi", "")
         assert doi.startswith(datacite_prefix)
         assert "bpdataset" in doi

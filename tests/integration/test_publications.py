@@ -15,9 +15,11 @@ from tests.integration.helpers import (
     create_request_json_data,
     patch_submission_doi,
     patch_submission_rems,
+    post_data_ingestion,
     post_object,
     post_object_json,
     publish_submission,
+    setup_files_for_ingestion,
 )
 
 LOG = logging.getLogger(__name__)
@@ -76,7 +78,7 @@ class TestMinimalPublication:
                 mock_pid_prefix
             ), "expected SDSX dataset DOI to be created with PID"
 
-    async def test_minimal_bigpicture_xml_publication(self, client_logged_in, submission_bigpicture):
+    async def test_minimal_bigpicture_xml_publication(self, client_logged_in, submission_bigpicture, project_id, admin_token):
         """Test minimal BP publication workflow with XML submissions.
 
         :param client_logged_in: HTTP client in which request call is made
@@ -86,8 +88,13 @@ class TestMinimalPublication:
         doi_data_raw = await create_request_json_data("doi", "test_doi.json")
         await patch_submission_doi(client_logged_in, submission_bigpicture, doi_data_raw)
 
+        dataset_id, _ = await post_object(client_logged_in, "bpdataset", submission_bigpicture, "dataset.xml")
         await post_object(client_logged_in, "bprems", submission_bigpicture, "rems.xml")
-        await announce_submission(client_logged_in, submission_bigpicture)
+
+        await setup_files_for_ingestion(client_logged_in, dataset_id, submission_bigpicture, project_id, admin_token)
+        await post_data_ingestion(client_logged_in, submission_bigpicture, admin_token)
+
+        await announce_submission(client_logged_in, submission_bigpicture, admin_token)
 
         async with client_logged_in.get(f"{submissions_url}/{submission_bigpicture}") as resp:
             LOG.debug(f"Checking that submission {submission_bigpicture} was published")
@@ -135,7 +142,7 @@ class TestMinimalPublicationRems:
             assert "resourceId" in res["internal_rems"], "expected resourceId not found in internal_rems field"
             assert "catalogueId" in res["internal_rems"], "expected catalogueId not found in internal_rems field"
 
-    async def test_minimal_bigpicture_xml_publication_rems(self, client_logged_in, submission_bigpicture, database):
+    async def test_minimal_bigpicture_xml_publication_rems(self, client_logged_in, submission_bigpicture, project_id, admin_token):
         """Test minimal BP publication workflow with XML submissions to REMS.
 
         :param client_logged_in: HTTP client in which request call is made
@@ -148,7 +155,10 @@ class TestMinimalPublicationRems:
 
         await post_object(client_logged_in, "bprems", submission_bigpicture, "rems.xml")
 
-        await announce_submission(client_logged_in, submission_bigpicture)
+        await setup_files_for_ingestion(client_logged_in, dataset_id, submission_bigpicture, project_id, admin_token)
+        await post_data_ingestion(client_logged_in, submission_bigpicture, admin_token)
+
+        await announce_submission(client_logged_in, submission_bigpicture, admin_token)
 
         async with client_logged_in.get(f"{submissions_url}/{submission_bigpicture}") as resp:
             LOG.debug(f"Checking that submission {submission_bigpicture} was published")
@@ -285,7 +295,7 @@ class TestFullPublication:
             assert "resourceId" in res["internal_rems"], "expected resourceId not found in internal_rems field"
             assert "catalogueId" in res["internal_rems"], "expected catalogueId not found in internal_rems field"
 
-    async def test_full_bigpicture_xml_publication_rems(self, client_logged_in, submission_bigpicture):
+    async def test_full_bigpicture_xml_publication_rems(self, client_logged_in, submission_bigpicture, project_id, admin_token):
         """Test full BP publication workflow with XML submissions to REMS.
 
         :param client_logged_in: HTTP client in which request call is made
@@ -305,7 +315,10 @@ class TestFullPublication:
 
         await post_object(client_logged_in, "bprems", submission_bigpicture, "rems.xml")
 
-        await announce_submission(client_logged_in, submission_bigpicture)
+        await setup_files_for_ingestion(client_logged_in, dataset_id, submission_bigpicture, project_id, admin_token)
+        await post_data_ingestion(client_logged_in, submission_bigpicture, admin_token)
+
+        await announce_submission(client_logged_in, submission_bigpicture, admin_token)
 
         async with client_logged_in.get(f"{submissions_url}/{submission_bigpicture}") as resp:
             LOG.debug(f"Checking that submission {submission_bigpicture} was published")
