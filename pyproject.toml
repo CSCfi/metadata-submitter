@@ -44,8 +44,12 @@ dependencies = [
     "ldap3 @ git+https://github.com/cannatag/ldap3.git@refs/pull/983/head",
     # Above is a workaround found here until new version is released: https://github.com/cannatag/ldap3/issues/1159#issuecomment-2535547426
     "cachetools>=5.5.2",
-    "python-dotenv>=1.1.0",
     "types-cachetools>=5.5.0.20240820",
+    "sqlalchemy>=2.0.41",
+    "aiosqlite>=0.21.0",
+    "psycopg[binary]>=3.2.9",
+    "greenlet>=3.2.2",
+    "asyncpg>=0.30.0",
 ]
 
 [dependency-groups]
@@ -158,5 +162,15 @@ ignore_names = [
     "revoke_api_key", # metadata-submitter/metadata_backend/api/services/auth.py
     "list_api_keys", # metadata-submitter/metadata_backend/api/services/auth.py
     "verify_user_project", # metadata-submitter/metadata_backend/api/services/ldap.py
+    "user_key_id", # metadata-submitter/metadata_backend/database/postgres/models.py
+    "created_at", # metadata-submitter/metadata_backend/database/postgres/models.py
+    "create_postgres_engine", # metadata-submitter/metadata_backend/database/postgres/repository.py
+    "create_sqllite_engine", # metadata-submitter/metadata_backend/database/postgres/repository.py
+    "create_session_factory", # metadata-submitter/metadata_backend/database/postgres/repository.py
+    "ApiKeyRepository", # metadata-submitter/metadata_backend/database/postgres/repository.py
+    "add_api_key", # metadata-submitter/metadata_backend/database/postgres/repository.py
+    "get_api_key", # metadata-submitter/metadata_backend/database/postgres/repository.py
+    "get_api_keys", # metadata-submitter/metadata_backend/database/postgres/repository.py
+    "delete_api_key", # metadata-submitter/metadata_backend/database/postgres/repository.py
 ]
 paths = ["metadata_backend"]
