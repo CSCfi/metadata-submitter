@@ -2,6 +2,7 @@ aai
 abkhaz
 agp
 aiohttp
+aiosqlite
 ajv
 amr
 amrantibiogram
@@ -162,6 +163,7 @@ pnpm
 pre
 procfile
 protfam
+psycopg
 py
 pyjwterror
 pytest

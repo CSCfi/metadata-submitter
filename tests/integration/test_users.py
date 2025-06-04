@@ -1,6 +1,5 @@
 """Test operations with users."""
 
-from dotenv import load_dotenv; load_dotenv()
 import logging
 from hmac import new
 from time import time
