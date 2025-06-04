@@ -32,6 +32,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- release dataset for BigPicture submissions during `/announce`
 - APiKeyRepository to save and remove API keys in Postgres.
 - Makefile for pulling secrets from a Vault instance required by new integration tests
 - LDAP service to get user's CSC project.
