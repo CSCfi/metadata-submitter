@@ -32,6 +32,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- APiKeyRepository to save and remove API keys in Postgres.
 - Makefile for pulling secrets from a Vault instance required by new integration tests
 - LDAP service to get user's CSC project.
 - Check accession id in PUT object XML content (#876)
