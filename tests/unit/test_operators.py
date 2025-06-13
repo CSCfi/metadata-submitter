@@ -156,7 +156,7 @@ class TestOperators(IsolatedAsyncioTestCase):
 
         self.patch_verify_authorization = patch(
             "metadata_backend.api.middlewares.verify_authorization",
-            new=AsyncMock(return_value=("mock-userid", "mock-username"))
+            new=AsyncMock(return_value=("mock-userid", "mock-username")),
         )
 
     def tearDown(self):

@@ -52,9 +52,9 @@ class Mongo:
 
     _db = None
 
-    def __init__(self, url: str, database=DATABASE):
+    def __init__(self, mongo_url: str, database=DATABASE):
         """Take a mongo connection URI and create a client."""
-        self.client = self.create_db_client(url, 15000, 15000)
+        self.client = self.create_db_client(mongo_url, 15000, 15000)
         self._database_name = database
 
     @property
@@ -68,12 +68,12 @@ class Mongo:
         return self._db
 
     @staticmethod
-    def create_db_client(url: str, connectTimeout: int, serverTimeout: int) -> AsyncIOMotorClient:
+    def create_db_client(mongo_url: str, connectTimeout: int, serverTimeout: int) -> AsyncIOMotorClient:
         """Initialize database client for AioHTTP App.
 
         :returns: Coroutine-based Motor client for Mongo operations
         """
-        return AsyncIOMotorClient(url, connectTimeoutMS=connectTimeout, serverSelectionTimeoutMS=serverTimeout)
+        return AsyncIOMotorClient(mongo_url, connectTimeoutMS=connectTimeout, serverSelectionTimeoutMS=serverTimeout)
 
     async def create_collections(self) -> None:
         """Create collections."""

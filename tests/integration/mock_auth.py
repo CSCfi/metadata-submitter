@@ -27,6 +27,7 @@ def generate_token() -> Tuple:
 
     return (public_jwk, private_jwk)
 
+
 nonce: str | None = None
 jwk_pair = generate_token()
 

@@ -1,7 +1,7 @@
 """Test logger utilities."""
 
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from metadata_backend.helpers.logger import log_debug_attributes, log_debug_json
 
@@ -28,15 +28,10 @@ class TestLogging(unittest.TestCase):
     def test_log_debug_json(self, mock_log: MagicMock) -> None:
         """Test log_debug_json."""
 
-        log_debug_json({ "name": "test_name", "value": 42 })
+        log_debug_json({"name": "test_name", "value": 42})
 
         mock_log.debug.assert_called_once()
         args, _ = mock_log.debug.call_args
         logged_output = args[0]
-        expected_output = (
-            '{\n'
-            '    "name": "test_name",\n'
-            '    "value": 42\n'
-            '}'
-        )
+        expected_output = "{\n" '    "name": "test_name",\n' '    "value": 42\n' "}"
         self.assertEqual(logged_output, expected_output)

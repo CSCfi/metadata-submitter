@@ -1,15 +1,15 @@
 """Test API endpoints from handlers module."""
 
-from pathlib import Path
-from unittest.mock import AsyncMock, call, patch, MagicMock
 import json
-import uuid
 import os
+import uuid
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import ujson
 from aiohttp import FormData, web
-from aiohttp.web import Request
 from aiohttp.test_utils import AioHTTPTestCase, make_mocked_coro
+from aiohttp.web import Request
 
 from metadata_backend.api.handlers.restapi import RESTAPIHandler
 from metadata_backend.api.models import Project, User
@@ -43,19 +43,17 @@ class HandlersTestCase(AioHTTPTestCase):
         # Mock user authorisation.
         self.patch_verify_authorization = patch(
             "metadata_backend.api.middlewares.verify_authorization",
-            new=AsyncMock(return_value=("mock-userid", "mock-username"))
+            new=AsyncMock(return_value=("mock-userid", "mock-username")),
         )
 
         # Mock project verification.
         self.patch_verify_user_project_success = patch.object(
-            ProjectService,
-             "verify_user_project",
-            new=AsyncMock(return_value=True)
+            ProjectService, "verify_user_project", new=AsyncMock(return_value=True)
         )
         self.patch_verify_user_project_failure = patch.object(
             ProjectService,
             "verify_user_project",
-            new=AsyncMock(side_effect=web.HTTPUnauthorized(reason="Mocked unauthorized access"))
+            new=AsyncMock(side_effect=web.HTTPUnauthorized(reason="Mocked unauthorized access")),
         )
 
         await self.client.start_server()
@@ -732,9 +730,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
             },
         }
         call = f"{API_PREFIX}/drafts/study/EGA123456"
-        with (
-            self.patch_verify_authorization,
-        ):
+        with (self.patch_verify_authorization,):
             response = await self.client.put(call, json=json_req)
             self.assertEqual(response.status, 200)
             self.assertIn(self.test_ega_string, await response.text())
@@ -745,9 +741,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         files = [("study", "SRP000539.xml")]
         data = self.create_submission_data(files)
         call = f"{API_PREFIX}/drafts/study/EGA123456"
-        with (
-            self.patch_verify_authorization,
-        ):
+        with (self.patch_verify_authorization,):
             response = await self.client.put(call, data=data)
             self.assertEqual(response.status, 200)
             self.assertIn(self.test_ega_string, await response.text())
@@ -1479,8 +1473,9 @@ class ApiKeyHandlerTestCase(HandlersTestCase):
             key_id_2 = str(uuid.uuid4())
 
             # Create first key.
-            response = await self.client.post(f"{API_PREFIX}/api/keys",
-                                              json=ApiKey(key_id=key_id_1).model_dump(mode="json"))
+            response = await self.client.post(
+                f"{API_PREFIX}/api/keys", json=ApiKey(key_id=key_id_1).model_dump(mode="json")
+            )
             self.assertEqual(response.status, 200)
 
             # Check first key exists.
@@ -1493,8 +1488,9 @@ class ApiKeyHandlerTestCase(HandlersTestCase):
             self.assertIsNotNone(api_key_1.created_at)
 
             # Create second key.
-            response = await self.client.post(f"{API_PREFIX}/api/keys",
-                                              json=ApiKey(key_id=key_id_2).model_dump(mode="json"))
+            response = await self.client.post(
+                f"{API_PREFIX}/api/keys", json=ApiKey(key_id=key_id_2).model_dump(mode="json")
+            )
             self.assertEqual(response.status, 200)
 
             # Check first and second key exist.
@@ -1510,8 +1506,9 @@ class ApiKeyHandlerTestCase(HandlersTestCase):
             self.assertIsNotNone(ApiKey(**json[1]).created_at)
 
             # Remove second key.
-            response = await self.client.delete(f"{API_PREFIX}/api/keys",
-                                                json=ApiKey(key_id=key_id_2).model_dump(mode="json"))
+            response = await self.client.delete(
+                f"{API_PREFIX}/api/keys", json=ApiKey(key_id=key_id_2).model_dump(mode="json")
+            )
             self.assertEqual(response.status, 204)
 
             # Check first key exists.
@@ -1534,18 +1531,16 @@ class UserHandlerTestCase(HandlersTestCase):
 
         with (
             self.patch_verify_authorization,
-            patch.dict(os.environ, {
-                "CSC_LDAP_HOST": "ldap://mockhost",
-                "CSC_LDAP_USER": "mockuser",
-                "CSC_LDAP_PASSWORD": "mockpassword"
-            }),
-            patch('metadata_backend.api.services.ldap.Connection') as mock_connection
+            patch.dict(
+                os.environ,
+                {"CSC_LDAP_HOST": "ldap://mockhost", "CSC_LDAP_USER": "mockuser", "CSC_LDAP_PASSWORD": "mockpassword"},
+            ),
+            patch("metadata_backend.api.services.ldap.Connection") as mock_connection,
         ):
             mock_conn_instance, mock_entry = MagicMock(), MagicMock()
-            mock_entry.entry_to_json.return_value = json.dumps({
-                "dn": "ou=SP_SD-SUBMIT,ou=idm,dc=csc,dc=fi",
-                "attributes": {"CSCPrjNum": [project_id]}
-            })
+            mock_entry.entry_to_json.return_value = json.dumps(
+                {"dn": "ou=SP_SD-SUBMIT,ou=idm,dc=csc,dc=fi", "attributes": {"CSCPrjNum": [project_id]}}
+            )
             mock_conn_instance.entries = [mock_entry]
             mock_connection.return_value.__enter__.return_value = mock_conn_instance
 

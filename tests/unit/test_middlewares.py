@@ -30,7 +30,7 @@ class ErrorMiddlewareTestCase(AioHTTPTestCase):
 
         self.patch_verify_authorization = patch(
             "metadata_backend.api.middlewares.verify_authorization",
-            new=AsyncMock(return_value=("mock-userid", "mock-username"))
+            new=AsyncMock(return_value=("mock-userid", "mock-username")),
         )
 
         await self.client.start_server()
@@ -65,5 +65,5 @@ def _create_improper_data():
     """
     path_to_file = Path(__file__).parent.parent / "test_files" / "study" / "SRP000539_invalid.xml"
     data = FormData()
-    data.add_field("STUDY", open(path_to_file.as_posix(), "r"), filename="file", content_type="text/xml")
+    data.add_field("STUDY", open(path_to_file.as_posix(), "r", encoding="utf-8"), filename="file", content_type="text/xml")
     return data

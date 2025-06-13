@@ -97,7 +97,10 @@ class TestWorkflow(HandlersTestCase):
 
     async def test_workflow_endpoints(self):
         """Test workflow endpoints."""
-        with patch.dict("metadata_backend.conf.conf.WORKFLOWS", self.WORKFLOWS, clear=True), self.patch_verify_authorization:
+        with (
+            patch.dict("metadata_backend.conf.conf.WORKFLOWS", self.WORKFLOWS, clear=True),
+            self.patch_verify_authorization,
+        ):
             async with self.client.get(f"{API_PREFIX}/workflows") as response:
                 self.assertEqual(response.status, 200)
                 self.assertEqual(response.content_type, "application/json")

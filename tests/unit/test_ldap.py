@@ -3,7 +3,8 @@
 import json
 import os
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from aiohttp import web
 
 from metadata_backend.api.services.ldap import get_user_projects, verify_user_project
@@ -15,17 +16,15 @@ class TestLdap(unittest.TestCase):
 
     def test_get_user_projects_with_mocked_ldap(self) -> None:
         """Test get_user_projects with a mocked LDAP connection."""
-        with patch.dict(os.environ, {
-            "CSC_LDAP_HOST": "ldap://mockhost",
-            "CSC_LDAP_USER": "mockuser",
-            "CSC_LDAP_PASSWORD": "mockpassword"
-        }):
-            with patch('metadata_backend.api.services.ldap.Connection') as mock_connection:
+        with patch.dict(
+            os.environ,
+            {"CSC_LDAP_HOST": "ldap://mockhost", "CSC_LDAP_USER": "mockuser", "CSC_LDAP_PASSWORD": "mockpassword"},
+        ):
+            with patch("metadata_backend.api.services.ldap.Connection") as mock_connection:
                 mock_conn_instance, mock_entry = MagicMock(), MagicMock()
-                mock_entry.entry_to_json.return_value = json.dumps({
-                    "dn": "ou=SP_SD-SUBMIT,ou=idm,dc=csc,dc=fi",
-                    "attributes": {"CSCPrjNum": ["PRJ123"]}
-                })
+                mock_entry.entry_to_json.return_value = json.dumps(
+                    {"dn": "ou=SP_SD-SUBMIT,ou=idm,dc=csc,dc=fi", "attributes": {"CSCPrjNum": ["PRJ123"]}}
+                )
                 mock_conn_instance.entries = [mock_entry]
                 mock_connection.return_value.__enter__.return_value = mock_conn_instance
 
@@ -40,7 +39,7 @@ class TestLdap(unittest.TestCase):
 
     async def test_verify_user_projects(self) -> None:
         """Test verify user projects."""
-        with patch('metadata_backend.api.services.ldap.get_user_projects', return_value=["123"]):
+        with patch("metadata_backend.api.services.ldap.get_user_projects", return_value=["123"]):
             assert verify_user_project("test_user", "123")
             assert not verify_user_project("test_user", "-1")
 
@@ -48,5 +47,5 @@ class TestLdap(unittest.TestCase):
 
             await service.verify_user_project("test_user", "123")
 
-            with self.assertRaises(web.HTTPUnauthorized) as e:
+            with self.assertRaises(web.HTTPUnauthorized):
                 await service.verify_user_project("test_user", "-1")
