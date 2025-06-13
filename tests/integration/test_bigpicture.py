@@ -20,7 +20,7 @@ from tests.integration.helpers import (
 class TestBigpicture:
     """Tests with Bigpicture schemas."""
 
-    async def test_bpdataset_gets_doi(self, client_logged_in, submission_bigpicture, project_id, admin_token):
+    async def test_bpdataset_gets_doi(self, client_logged_in, submission_bigpicture, user_id, project_id, admin_token):
         """Test bp dataset has doi generated.
 
         :param client_logged_in: HTTP client in which request call is made
@@ -36,7 +36,7 @@ class TestBigpicture:
         doi_data_raw = await create_request_json_data("doi", "test_doi.json")
         await patch_submission_doi(client_logged_in, submission_bigpicture, doi_data_raw)
 
-        await setup_files_for_ingestion(client_logged_in, dataset_id, submission_bigpicture, project_id, admin_token)
+        await setup_files_for_ingestion(client_logged_in, dataset_id, submission_bigpicture, user_id, project_id, admin_token)
         await post_data_ingestion(client_logged_in, submission_bigpicture, admin_token)
 
         await announce_submission(client_logged_in, submission_bigpicture, admin_token)

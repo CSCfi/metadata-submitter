@@ -98,35 +98,6 @@ class DBService:
         return bool(exists)
 
     @auto_reconnect
-    async def exists_project_by_external_id(self, external_id: str) -> None | str:
-        """Check project exists by its external id.
-
-        :param external_id: project external id
-        :returns: Id if exists and None if it does not
-        """
-        find_by_id = {"externalId": external_id}
-        project: dict[str, str] | None = await self.database["project"].find_one(
-            find_by_id, {"_id": False, "externalId": False}
-        )
-        LOG.debug("DB check project exists for: %r returned: '%r'.", external_id, project)
-        return project["projectId"] if project else None
-
-    @auto_reconnect
-    async def exists_user_by_external_id(self, external_id: str, name: str) -> None | str:
-        """Check user exists by its eppn.
-
-        :param external_id: external user ID
-        :param name: eduPersonPrincipalName to be searched
-        :returns: User ID if exists and None if it does not
-        """
-        find_by_id = {"externalId": external_id, "name": name}
-        user: dict[str, str] | None = await self.database["user"].find_one(
-            find_by_id, {"_id": False, "externalId": False, "signingKey": False}
-        )
-        LOG.debug("DB check user exists for: %r returned: %r.", external_id, user)
-        return user["userId"] if user else None
-
-    @auto_reconnect
     async def published_submission(self, submission_id: str) -> bool:
         """Check submission is published.
 

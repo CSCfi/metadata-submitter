@@ -1,13 +1,12 @@
 """Handle HTTP methods for server."""
 
-import aiohttp_session
 import ujson
 from aiohttp import web
 
 from ...helpers.logger import LOG
+from ..auth import get_authorized_user_id
 from ..operators.file import File, FileOperator
-from ..operators.project import ProjectOperator
-from ..operators.user import UserOperator
+from ..services.project import ProjectService
 from .restapi import RESTAPIHandler
 
 
@@ -20,24 +19,14 @@ class FilesAPIHandler(RESTAPIHandler):
         :param request: GET request
         :returns: JSON response containing submission ID for updated submission
         """
-        session = await aiohttp_session.get_session(request)
+        user_id = get_authorized_user_id(request)
 
         project_id = self._get_param(request, name="projectId")
         db_client = request.app["db_client"]
+        project_service: ProjectService = request.app["project_service"]
 
-        # Check that project exists
-        project_op = ProjectOperator(db_client)
-        await project_op.check_project_exists(project_id)
-
-        # Check that user is affiliated with project
-        user_operator = UserOperator(db_client)
-        current_user = session["user_info"]
-        user = await user_operator.read_user(current_user)
-        user_has_project = await user_operator.check_user_has_project(project_id, user["userId"])
-        if not user_has_project:
-            reason = f"user {user['userId']} is not affiliated with project {project_id}"
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
+        # Check that user is affiliated with the project.
+        await project_service.verify_user_project(user_id, project_id)
 
         file_op = FileOperator(db_client)
         return self._json_response(await file_op.read_project_files(project_id))
@@ -50,10 +39,11 @@ class FilesAPIHandler(RESTAPIHandler):
         :raises: HTTP Unauthorized if user not affiliated with project
         :returns: JSON response containing a list of file IDs of created files
         """
-        session = await aiohttp_session.get_session(request)
-        user_id = session["user_info"]
+        user_id = get_authorized_user_id(request)
 
         db_client = request.app["db_client"]
+        project_service: ProjectService = request.app["project_service"]
+
         data = await self._get_data(request)
         is_bigpicture = request.query.get("is_bigpicture", "").strip().lower() == "true"
 
@@ -72,17 +62,8 @@ class FilesAPIHandler(RESTAPIHandler):
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        # Check that project exists
-        project_op = ProjectOperator(db_client)
-        await project_op.check_project_exists(project_id)
-
-        # Check that user is affiliated with project
-        user_operator = UserOperator(db_client)
-        user_has_project = await user_operator.check_user_has_project(project_id, user_id)
-        if not user_has_project:
-            reason = f"user {user_id} is not affiliated with project {project_id}"
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
+        # Check that user is affiliated with the project.
+        await project_service.verify_user_project(user_id, project_id)
 
         # Form file objects and validate against schema before creation
         file_op = FileOperator(db_client)
@@ -122,23 +103,15 @@ class FilesAPIHandler(RESTAPIHandler):
         :raises: HTTP Unauthorized if user not affiliated with project
         :returns: HTTP No Content response
         """
-        session = await aiohttp_session.get_session(request)
+        user_id = get_authorized_user_id(request)
+
         project_id = request.match_info["projectId"]
+
         db_client = request.app["db_client"]
+        project_service: ProjectService = request.app["project_service"]
 
-        # Check that project exists
-        project_op = ProjectOperator(db_client)
-        await project_op.check_project_exists(project_id)
-
-        # Check that user is affiliated with project
-        user_operator = UserOperator(db_client)
-        current_user = session["user_info"]
-        user = await user_operator.read_user(current_user)
-        user_has_project = await user_operator.check_user_has_project(project_id, user["userId"])
-        if not user_has_project:
-            reason = f"user {user['userId']} is not affiliated with project {project_id}"
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
+        # Check that user is affiliated with the project.
+        await project_service.verify_user_project(user_id, project_id)
 
         data = await self._get_data(request)
 

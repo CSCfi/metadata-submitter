@@ -152,26 +152,6 @@ class DatabaseTestCase(IsolatedAsyncioTestCase):
         )
         self.assertEqual(found_submission, True)
 
-    async def test_external_id_exists_returns_false(self):
-        """Test that externalId exists method works and returns None."""
-        self.collection.find_one.return_value = None
-        found_doc = await self.test_service.exists_user_by_external_id("test_user@eppn.fi", "name")
-        self.assertEqual(found_doc, None)
-        self.collection.find_one.assert_called_once_with(
-            {"externalId": "test_user@eppn.fi", "name": "name"},
-            {"_id": False, "externalId": False, "signingKey": False},
-        )
-
-    async def test_external_id_exists_returns_true(self):
-        """Test that externalId exists method works and returns user id."""
-        self.collection.find_one.return_value = self.user_stub
-        found_doc = await self.test_service.exists_user_by_external_id("test_user@eppn.fi", "name")
-        self.assertEqual(found_doc, self.user_id_stub)
-        self.collection.find_one.assert_called_once_with(
-            {"externalId": "test_user@eppn.fi", "name": "name"},
-            {"_id": False, "externalId": False, "signingKey": False},
-        )
-
     async def test_aggregate_performed(self):
         """Test that aggregate is executed, so cursor is returned."""
         # this does not like the coroutine that AsyncMock returns

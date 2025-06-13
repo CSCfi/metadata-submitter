@@ -2,27 +2,15 @@
 
 import unittest
 import uuid
-from metadata_backend.database.postgres.models import ApiKey
-from metadata_backend.database.postgres.repository import (
-    ApiKeyRepository,
-    create_session_factory,
-    create_sqllite_engine
-)
+from metadata_backend.database.postgres.models import ApiKeyEntity
+from metadata_backend.database.postgres.repository import ApiKeyRepository, create_engine, create_session_factory
 
 
 class TestApiKeyRepository(unittest.IsolatedAsyncioTestCase):
     """Test ApiKeyRepository using sqllite in-memory engine."""
 
     async def asyncSetUp(self) -> None:
-        self.engine = await create_sqllite_engine()  # pylint: disable=attribute-defined-outside-init
-
-        # self.engine = await create_postgres_engine(  # pylint: disable=attribute-defined-outside-init
-        #     host="",
-        #     user="",
-        #     password="",
-        #     database="sd_submit_dev"
-        # )
-
+        self.engine = await create_engine()  # pylint: disable=attribute-defined-outside-init
         self.session_factory = create_session_factory(self.engine)  # pylint: disable=attribute-defined-outside-init
         self.repo = ApiKeyRepository(self.session_factory)  # pylint: disable=attribute-defined-outside-init
 
@@ -36,7 +24,7 @@ class TestApiKeyRepository(unittest.IsolatedAsyncioTestCase):
         api_key = f"key{str(uuid.uuid4())}"
         salt = f"salt{str(uuid.uuid4())}"
 
-        await self.repo.add_api_key(ApiKey(
+        await self.repo.add_api_key(ApiKeyEntity(
             key_id=key_id,
             user_id=user_id,
             user_key_id=user_key_id,
@@ -61,7 +49,7 @@ class TestApiKeyRepository(unittest.IsolatedAsyncioTestCase):
         user_key_id = f"user_key_id{str(uuid.uuid4())}"
         api_key = f"key{str(uuid.uuid4())}"
         salt = f"salt{str(uuid.uuid4())}"
-        await self.repo.add_api_key(ApiKey(
+        await self.repo.add_api_key(ApiKeyEntity(
             key_id=key_id,
             user_id=user_id,
             user_key_id=user_key_id,
@@ -74,7 +62,7 @@ class TestApiKeyRepository(unittest.IsolatedAsyncioTestCase):
         user_key_id_2 = f"user_key_id{str(uuid.uuid4())}"
         api_key_2 = f"key{str(uuid.uuid4())}"
         salt_2 = f"salt{str(uuid.uuid4())}"
-        await self.repo.add_api_key(ApiKey(
+        await self.repo.add_api_key(ApiKeyEntity(
             key_id=key_id_2,
             user_id=user_id,
             user_key_id=user_key_id_2,
@@ -102,7 +90,7 @@ class TestApiKeyRepository(unittest.IsolatedAsyncioTestCase):
         api_key = f"key{str(uuid.uuid4())}"
         salt = f"salt{str(uuid.uuid4())}"
 
-        await self.repo.add_api_key(ApiKey(
+        await self.repo.add_api_key(ApiKeyEntity(
             key_id=key_id,
             user_id=user_id,
             user_key_id=user_key_id,
@@ -113,7 +101,7 @@ class TestApiKeyRepository(unittest.IsolatedAsyncioTestCase):
         result = await self.repo.get_api_key(key_id)
         self.assertIsNotNone(result)
 
-        await self.repo.delete_api_key(user_id, key_id)
+        await self.repo.delete_api_key(user_id, user_key_id)
         result_after = await self.repo.get_api_key(key_id)
         self.assertIsNone(result_after)
 

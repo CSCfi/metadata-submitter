@@ -1,16 +1,14 @@
 """Functions to launch backend server."""
 
 import asyncio
-import base64
 from typing import Any, Optional
 
-import aiohttp_session
-import aiohttp_session.cookie_storage
 import uvloop
 from aiohttp import web
-from cryptography.fernet import Fernet
 
 from .api.auth import AAIServiceHandler, AccessHandler
+from .api.handlers import auth as APIKeyHandler
+from .api.handlers import user as UserHandler
 from .api.handlers.files import FilesAPIHandler
 from .api.handlers.object import ObjectAPIHandler
 from .api.handlers.publish import PublishSubmissionAPIHandler
@@ -18,11 +16,13 @@ from .api.handlers.rems_proxy import RemsAPIHandler
 from .api.handlers.restapi import RESTAPIHandler
 from .api.handlers.static import StaticHandler, html_handler_factory
 from .api.handlers.submission import SubmissionAPIHandler
-from .api.handlers.user import UserAPIHandler
 from .api.handlers.xml_submission import XMLSubmissionAPIHandler
 from .api.health import HealthHandler
-from .api.middlewares import check_session, http_error_handler
+from .api.middlewares import authorization, http_error_handler
+from .api.services.auth import AccessService
+from .api.services.project import CscLdapProjectService
 from .conf.conf import API_PREFIX, aai_config, create_db_client, frontend_static_files, swagger_static_path
+from .database.postgres.repository import ApiKeyRepository, create_engine, create_session_factory
 from .helpers.logger import LOG
 from .services.admin_service_handler import AdminServiceHandler
 from .services.datacite_service_handler import DataciteServiceHandler
@@ -50,16 +50,38 @@ async def init(
     :param inject_middleware: list of middlewares to inject
     :returns: Web Application
     """
-    middlewares = [http_error_handler, check_session]
+    middlewares = [http_error_handler, authorization]
     if inject_middleware:
         middlewares = middlewares + inject_middleware
-    api = web.Application(middlewares=middlewares)  # type: ignore
 
-    sec_key = base64.urlsafe_b64decode(Fernet.generate_key())
-    session_middleware = aiohttp_session.session_middleware(
-        aiohttp_session.cookie_storage.EncryptedCookieStorage(sec_key)
-    )
-    server = web.Application(middlewares=[session_middleware])
+    api = web.Application(middlewares=middlewares)  # type: ignore
+    server = web.Application()
+
+    # Initialise shared resources.
+    #
+
+    # Mongo.
+    db_client = create_db_client()
+    api["db_client"] = db_client
+    server["db_client"] = db_client
+
+    # Repositories.
+    engine = await create_engine()
+    session_factory = create_session_factory(engine)
+    api_key_repository = ApiKeyRepository(session_factory)
+
+    # Project service.
+    project_service = CscLdapProjectService()
+    api["project_service"] = project_service
+    server["project_service"] = project_service
+
+    # Access service.
+    access_service = AccessService(api_key_repository)
+    api["access_service"] = access_service
+    server["access_service"] = access_service
+
+    # Initialize handlers.
+    #
 
     metax_handler = MetaxServiceHandler()
     datacite_handler = DataciteServiceHandler()
@@ -106,7 +128,6 @@ async def init(
         admin_handler=admin_handler,
         pid_handler=pid_handler,
     )
-    _user = UserAPIHandler()
     _xml_submission = XMLSubmissionAPIHandler(
         metax_handler=metax_handler,
         datacite_handler=datacite_handler,
@@ -148,14 +169,16 @@ async def init(
         web.delete("/submissions/{submissionId}", _submission.delete_submission),
         web.delete("/submissions/{submissionId}/files/{fileId}", _submission.delete_submission_files),
         web.post("/submissions/{submissionId}/ingest", _submission.post_data_ingestion),
+        # user operations
+        web.get("/users", UserHandler.get_user),
         # publish submissions - endpoint for general case
         web.patch("/publish/{submissionId}", _publish_submission.publish_submission),
         # announce submissions - endpoint for BP case
         web.patch("/announce/{submissionId}", _publish_submission.publish_submission),
-        # users operations
-        web.get("/users/{userId}", _user.get_user),
-        web.delete("/users/{userId}", _user.delete_user),
-        web.get("/users/{userId}/key", _user.generate_new_key),
+        # api key operations
+        web.post("/api/keys", APIKeyHandler.post_api_key),
+        web.delete("/api/keys", APIKeyHandler.delete_api_key),
+        web.get("/api/keys", APIKeyHandler.get_api_keys),
         # XML submission
         web.post("/submit/{workflow}", _xml_submission.submit),
         # validate
@@ -182,8 +205,8 @@ async def init(
     _access = AccessHandler(aai_config)
     aai_routes = [
         web.get("/aai", _access.login),
-        web.get("/logout", _access.logout),
         web.get("/callback", _access.callback),
+        web.get("/logout", _access.logout),
     ]
     server.add_routes(aai_routes)
     LOG.info("AAI routes loaded")
@@ -215,10 +238,16 @@ async def init(
         server.add_routes(frontend_routes)
         LOG.info("Frontend routes loaded")
 
-    db_client = create_db_client()
-    api["db_client"] = db_client
-    server["db_client"] = db_client
-    LOG.info("Database client loaded")
+    # Cleanup shared resources.
+    #
+
+    # Sqlalcehemy.
+    async def dispose_engine(_: web.Application) -> None:
+        """Dispose the SQLAlchemy engine."""
+        await engine.dispose()
+
+    server.on_cleanup.append(dispose_engine)
+
     return server
 
 

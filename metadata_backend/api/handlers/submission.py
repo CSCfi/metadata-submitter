@@ -5,7 +5,6 @@ from datetime import datetime
 from math import ceil
 from typing import Any
 
-import aiohttp_session
 import ujson
 from aiohttp import web
 from aiohttp.web import Request, Response
@@ -14,12 +13,12 @@ from multidict import CIMultiDict
 from ...helpers.logger import LOG
 from ...helpers.parser import str_to_bool
 from ...helpers.validator import JSONValidator
+from ..auth import get_authorized_user_id
 from ..operators.file import FileOperator
 from ..operators.object import ObjectOperator
 from ..operators.object_xml import XMLObjectOperator
-from ..operators.project import ProjectOperator
 from ..operators.submission import SubmissionOperator
-from ..operators.user import UserOperator
+from ..services.project import ProjectService
 from .restapi import RESTAPIIntegrationHandler
 
 
@@ -32,23 +31,18 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         :param req: GET Request
         :returns: JSON list of submissions available for the user
         """
-        session = await aiohttp_session.get_session(req)
+        user_id = get_authorized_user_id(req)
 
         page = self._get_page_param(req, "page", 1)
         per_page = self._get_page_param(req, "per_page", 5)
         project_id = self._get_param(req, "projectId")
         sort = {"date": True, "score": False, "modified": False}
+
         db_client = req.app["db_client"]
+        project_service: ProjectService = req.app["project_service"]
 
-        user_operator = UserOperator(db_client)
-
-        current_user = session["user_info"]
-        user = await user_operator.read_user(current_user)
-        user_has_project = await user_operator.check_user_has_project(project_id, user["userId"])
-        if not user_has_project:
-            reason = f"user {user['userId']} is not affiliated with project {project_id}"
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
+        # Check that user is affiliated with the project.
+        await project_service.verify_user_project(user_id, project_id)
 
         submission_query: dict[str, str | dict[str, str | bool | float]] = {"projectId": project_id}
         # Check if only published or draft submissions are requested
@@ -153,26 +147,17 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         :param req: POST request
         :returns: JSON response containing submission ID for created submission
         """
-        session = await aiohttp_session.get_session(req)
+        user_id = get_authorized_user_id(req)
 
         db_client = req.app["db_client"]
+        project_service: ProjectService = req.app["project_service"]
+
         content = await self._get_data(req)
 
         JSONValidator(content, "submission").validate
 
-        # Check that project exists
-        project_op = ProjectOperator(db_client)
-        await project_op.check_project_exists(content["projectId"])
-
-        # Check that user is affiliated with project
-        user_op = UserOperator(db_client)
-        current_user = session["user_info"]
-        user = await user_op.read_user(current_user)
-        user_has_project = await user_op.check_user_has_project(content["projectId"], user["userId"])
-        if not user_has_project:
-            reason = f"user {user['userId']} is not affiliated with project {content['projectId']}"
-            LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
+        # Check that user is affiliated with the project.
+        await project_service.verify_user_project(user_id, content["projectId"])
 
         # Check if the name of the submission is unique within the project
         operator = SubmissionOperator(db_client)
@@ -270,7 +255,6 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         :param req: DELETE request
         :returns: HTTP No Content response
         """
-        await aiohttp_session.get_session(req)
 
         submission_id = req.match_info["submissionId"]
         db_client = req.app["db_client"]
@@ -515,11 +499,12 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         :param req: HTTP request
         """
+        user_id = get_authorized_user_id(req)
+
         submission_id = req.match_info["submissionId"]
         db_client = req.app["db_client"]
         submission_operator = SubmissionOperator(db_client)
         file_operator = FileOperator(db_client)
-        user_operator = UserOperator(db_client)
 
         # Check submission exists and is not already published
         await submission_operator.check_submission_exists(submission_id)
@@ -528,12 +513,6 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         # Get submission files
         submission_files = await submission_operator.get_submission_field_list(submission_id, "files")
-
-        # Get current user's external ID
-        session = await aiohttp_session.get_session(req)
-        current_user = session["user_info"]
-        user = await user_operator.read_user(current_user)
-        external_id = user["externalId"]
 
         polling_file_data = {}
         for submission_file in submission_files:
@@ -544,7 +523,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
             await self.admin_handler.ingest_file(
                 req,
                 {
-                    "user": external_id,  # User's username in inbox
+                    "user": user_id,
                     "submissionId": submission_id,
                     "filepath": file_path,
                     "accessionId": file_accession_id,
@@ -554,11 +533,11 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         LOG.info("Polling for status 'verified' in submission with ID: %r", submission_id)
         await self.start_file_polling(
-            req, polling_file_data, file_operator, {"user": external_id, "submissionId": submission_id}, "verified"
+            req, polling_file_data, file_operator, {"user": user_id, "submissionId": submission_id}, "verified"
         )
         LOG.info("Polling for status 'ready' in submission with ID: %r", submission_id)
         await self.start_file_polling(
-            req, polling_file_data, file_operator, {"user": external_id, "submissionId": submission_id}, "ready"
+            req, polling_file_data, file_operator, {"user": user_id, "submissionId": submission_id}, "ready"
         )
 
         ids = await submission_operator.get_collection_objects(submission_id, "dataset")
@@ -573,7 +552,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         await self.admin_handler.create_dataset(
             req,
             {
-                "user": external_id,
+                "user": user_id,
                 "fileIds": list(polling_file_data.values()),
                 "datasetId": dataset_id,
             },

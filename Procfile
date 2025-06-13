@@ -1,4 +1,5 @@
 db:             docker run -v ${PWD}/scripts/mongodb/init_mongo.js:/docker-entrypoint-initdb.d/init_mongo.js:ro --env-file ${PWD}/.env -p 27017:27017 -p 28017:28017 mongo
+mockldap:       docker build -f ${PWD}/dockerfiles/Dockerfile-ldap-dev -t ldap . && docker run --rm -p 389:389 --name mock-ldap ldap
 mockauth:       gunicorn --reload --worker-class aiohttp.GunicornUVLoopWebWorker --workers 1 --log-level debug --graceful-timeout 60 --timeout 120 --bind ${BACKEND_HOST}:8000              tests.integration.mock_auth:init
 mockdatacite:   gunicorn --reload --worker-class aiohttp.GunicornUVLoopWebWorker --workers 1 --log-level debug --graceful-timeout 60 --timeout 120 --bind ${BACKEND_HOST}:8001              tests.integration.mock_datacite_api:init
 mockmetax:      gunicorn --reload --worker-class aiohttp.GunicornUVLoopWebWorker --workers 1 --log-level debug --graceful-timeout 60 --timeout 120 --bind ${BACKEND_HOST}:8002              tests.integration.mock_metax_api:init

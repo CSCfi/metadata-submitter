@@ -7,10 +7,10 @@ import ujson
 from aiohttp import web
 from aiohttp.web import Request, Response
 
-from metadata_backend.api.operators.file import FileOperator
-
 from ...conf.conf import DATACITE_SCHEMAS, METAX_SCHEMAS, WORKFLOWS, discovery_config, doi_config
 from ...helpers.logger import LOG
+from ..auth import get_authorized_user_id
+from ..operators.file import FileOperator
 from ..operators.object import ObjectOperator
 from ..operators.object_xml import XMLObjectOperator
 from ..operators.submission import SubmissionOperator
@@ -493,6 +493,8 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         :param req: PATCH request
         :returns: JSON response containing submission ID for updated submission
         """
+        user_id = get_authorized_user_id(req)
+
         submission_id = req.match_info["submissionId"]
         db_client = req.app["db_client"]
         submission_op = SubmissionOperator(db_client)
@@ -559,7 +561,6 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
             )
 
         # Create draft DOI and Metax records if not existing
-        external_user_id = await self.get_user_external_id(req)
         async for accession_id, schema, object_data in self.iter_submission_objects_data(submission, obj_op):
             doi = object_data.get("doi", "")
             if schema in DATACITE_SCHEMAS and not doi:
@@ -568,7 +569,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                 await obj_op.update_identifiers(schema, accession_id, {"doi": doi})
 
             if schema in METAX_SCHEMAS and "metaxIdentifier" not in object_data:
-                await self.create_metax_dataset(obj_op, schema, object_data, external_user_id)
+                await self.create_metax_dataset(obj_op, schema, object_data, user_id)
 
         # Publish to external services - must already have DOI and Metax ID
         publish_status = {}
@@ -587,7 +588,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         if "metax" in workflow.endpoints:
             try:
                 operators = {"object": obj_op, "submission": submission_op, "file": file_op}
-                metax_datasets = await self._pre_publish_metax(submission, operators, external_user_id)
+                metax_datasets = await self._pre_publish_metax(submission, operators, user_id)
                 publish_status["metax"] = "published"
             except Exception as error:
                 LOG.exception(error)

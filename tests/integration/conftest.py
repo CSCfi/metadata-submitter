@@ -6,9 +6,11 @@ to share functionality of the `class` scoped fixtures.
 
 import logging
 from urllib.parse import urlencode
+from typing import AsyncGenerator
 
 import aiohttp
 import pytest
+from yarl import URL
 
 from tests.integration.conf import (
     AUTHDB,
@@ -25,7 +27,7 @@ from tests.integration.conf import (
     other_test_user_family,
     other_test_user_given,
 )
-from tests.integration.helpers import delete_submission, get_mock_admin_token, get_user_data, post_submission
+from tests.integration.helpers import delete_submission, post_submission, get_mock_admin_token
 from tests.integration.mongo import Mongo
 
 LOG = logging.getLogger(__name__)
@@ -41,17 +43,17 @@ def pytest_addoption(parser):
         help="run tests without any cleanup",
     )
 
-
 @pytest.fixture(name="client")
-async def fixture_client():
-    """Reusable aiohttp client."""
+async def fixture_client() -> AsyncGenerator[aiohttp.ClientSession]:
+    """Get an HTTP client without JWT authentication."""
     async with aiohttp.ClientSession() as client:
         yield client
 
 
 @pytest.fixture(name="client_logged_in")
-async def fixture_client_logged_in():
-    """Reusable aiohttp client with normal user credentials."""
+async def fixture_client_logged_in() -> AsyncGenerator[aiohttp.ClientSession]:
+    """Create client by using the OIDC standard authentication flow."""
+
     async with aiohttp.ClientSession() as client:
         params = {
             "sub": other_test_user,
@@ -59,14 +61,37 @@ async def fixture_client_logged_in():
             "given": other_test_user_given,
         }
 
+        # Set mock user in the mock auth service.
         await client.get(f"{mock_auth_url}/setmock?{urlencode(params)}")
-        await client.get(f"{base_url}/aai")
+
+        # Start OIDC authentication.
+        async with client.get(f"{base_url}/aai", allow_redirects=False) as resp:
+            assert resp.status in (302, 303)
+            first_redirect = resp.headers["Location"]
+
+            # Follow the first redirect to OIDC /authorize.
+            async with client.get(first_redirect, allow_redirects=False) as second_resp:
+                assert resp.status in (302, 303)
+                second_redirect = second_resp.headers["Location"]
+
+                # Follow the second redirect to API /callback.
+                async with client.get(second_redirect, allow_redirects=False) as third_resp:
+                    assert resp.status in (302, 303)
+
+                    # Extract the JWT token from the cookie.
+                    cookies = third_resp.cookies
+                    access_token = cookies.get("access_token").value
+
+        # Add the JWT token in the cookie.
+        client.cookie_jar.update_cookies({"access_token": access_token}, response_url=URL(base_url))
+        # client.headers["Authorization"] = f"Bearer {token}"
+
         yield client
 
 
 @pytest.fixture(name="admin_token")
 async def fixture_admin_token():
-    """Get JWT with admin user credentials."""
+    """Get JWT with admin user credentials used in ingest."""
     async with aiohttp.ClientSession() as client:
         params = {
             "sub": admin_test_user,
@@ -79,12 +104,20 @@ async def fixture_admin_token():
 
         return admin_token
 
+@pytest.fixture(name="user_id")
+async def fixture_user_id() -> str:
+    """Return the user id for the default authenticated user."""
+    return other_test_user
 
 @pytest.fixture(name="project_id")
-async def fixture_project_id(client_logged_in: aiohttp.ClientSession):
-    """Get a project_id for the normal user session."""
-    user_data = await get_user_data(client_logged_in)
-    return user_data["projects"][0]["projectId"]
+async def fixture_project_id() -> str:
+    """Return the first project id for the authenticated user."""
+    return "1000"
+
+@pytest.fixture(name="project_id_2")
+async def fixture_project_id_2() -> str:
+    """Return the second project id for the authenticated user."""
+    return "2000"
 
 
 async def make_submission(client_logged_in: aiohttp.ClientSession, project_id: str, workflow: str):
