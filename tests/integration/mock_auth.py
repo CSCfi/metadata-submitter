@@ -27,18 +27,17 @@ def generate_token() -> Tuple:
 
     return (public_jwk, private_jwk)
 
-
-# idpyoidc is strict about iat, exp, ttl, so we can't hard code them
-iat = int(time())
-ttl = 3600
-exp = iat + ttl
-
-nonce = "nonce"
+nonce: str | None = None
 jwk_pair = generate_token()
 
-user_sub = "admin_user@test.what"
-user_given_name = "Admin Mock"
-user_family_name = "Admin Family"
+# Default user is required for frontend testing.
+DEFAULT_MOCK_SUB = "admin_user@test.what"
+DEFAULT_MOCK_GIVEN_NAME = "Admin Mock"
+DEFAULT_MOCK_FAMILY_NAME = "Admin Family"
+
+mock_sub: str = DEFAULT_MOCK_SUB
+mock_given_name: str = DEFAULT_MOCK_GIVEN_NAME
+mock_family_name: str = DEFAULT_MOCK_FAMILY_NAME
 
 mock_auth_url_docker = getenv("OIDC_URL", "http://mockauth:8000")  # called from inside docker-network
 mock_auth_url_local = getenv("OIDC_URL_TEST", "http://localhost:8000")  # called from local machine
@@ -52,36 +51,36 @@ header = {
 
 
 async def setmock(req: web.Request) -> web.Response:
-    """Auth endpoint."""
-    global user_sub, user_family_name, user_given_name  # noqa: F824
-    user_sub = req.query["sub"]
-    user_family_name = req.query["family"]
-    user_given_name = req.query["given"]
-    LOG.info("%s: %s, %s, %s", mock_auth_url_local, user_sub, user_family_name, user_given_name)
+    """Mock OIDC claims."""
+    global mock_sub, mock_family_name, mock_given_name  # noqa: F824
+    mock_sub = req.query["sub"]
+    mock_family_name = req.query["family"]
+    mock_given_name = req.query["given"]
+
+    LOG.info("%s: %s, %s, %s", mock_auth_url_local, mock_sub, mock_family_name, mock_given_name)
 
     return web.HTTPOk()
 
 
-async def auth(req: web.Request) -> web.Response:
-    """Auth endpoint."""
+async def authorize(req: web.Request) -> web.Response:
+    """OIDC /authorize endpoint."""
     params = {
         "state": req.query["state"],
         "code": "code",
     }
-    global nonce, user_family_name, user_given_name  # noqa: F824
+    global nonce  # noqa: F824
     nonce = req.query["nonce"]
+
     callback_url = req.query["redirect_uri"]
     url = f"{callback_url}?{urllib.parse.urlencode(params)}"
 
     LOG.info(url)
 
-    response = web.HTTPSeeOther(url)
-    return response
+    return web.HTTPSeeOther(url)
 
 
-async def token(req: web.Request) -> web.Response:
-    """Auth endpoint."""
-    global nonce, user_sub, user_family_name, user_given_name  # noqa: F824
+async def token(_: web.Request) -> web.Response:
+    """OIDC /token endpoint."""
     # idpyoidc is strict about iat, exp, ttl, so we can't hard code them
     iat = int(time())
     ttl = 3600
@@ -89,23 +88,23 @@ async def token(req: web.Request) -> web.Response:
     id_token = {
         "at_hash": "fSi3VUa5i2o2SgY5gPJZgg",
         "eduPersonAffiliation": "member;staff",
-        "sub": user_sub,
-        "displayName": f"{user_given_name} {user_family_name}",
+        "sub": mock_sub,
+        "displayName": f"{mock_given_name} {mock_family_name}",
         "iss": mock_auth_url_docker,
         "schacHomeOrganizationType": "urn:schac:homeOrganizationType:test:other",
-        "given_name": user_given_name,
+        "given_name": mock_given_name,
         "nonce": nonce,
         "aud": "aud2",
         "acr": f"{mock_auth_url_docker}/LoginHaka",
         "nsAccountLock": "false",
         "eduPersonScopedAffiliation": "staff@test.what;member@test.what",
         "auth_time": iat,
-        "name": f"{user_given_name} {user_family_name}",
+        "name": f"{mock_given_name} {mock_family_name}",
         "schacHomeOrganization": "test.what",
         "exp": exp,
         "iat": iat,
-        "family_name": user_family_name,
-        "email": user_sub,
+        "family_name": mock_family_name,
+        "email": mock_sub,
     }
     data = {
         "access_token": "test",
@@ -119,7 +118,7 @@ async def token(req: web.Request) -> web.Response:
     return web.json_response(data)
 
 
-async def jwk_response(request: web.Request) -> web.Response:
+async def jwk_response(_: web.Request) -> web.Response:
     """Mock JSON Web Key server."""
     keys = [jwk_pair[0]]
     keys[0]["kid"] = "rsa1"
@@ -130,22 +129,21 @@ async def jwk_response(request: web.Request) -> web.Response:
     return web.json_response(data)
 
 
-async def userinfo(request: web.Request) -> web.Response:
-    """Mock an authentication to ELIXIR AAI for GA4GH claims."""
-    global nonce, user_sub, user_family_name, user_given_name  # noqa: F824
+async def userinfo(_: web.Request) -> web.Response:
+    """OIDC /userinfo endpoint."""
     user_info = {
         "eduPersonAffiliation": "member;staff",
-        "sub": user_sub,
-        "displayName": f"{user_given_name} {user_family_name}",
+        "sub": mock_sub,
+        "displayName": f"{mock_given_name} {mock_family_name}",
         "schacHomeOrganizationType": "urn:schac:homeOrganizationType:test:other",
-        "given_name": user_given_name,
-        "uid": user_sub,
+        "given_name": mock_given_name,
+        "uid": mock_sub,
         "nsAccountLock": "false",
         "eduPersonScopedAffiliation": "staff@test.what;member@test.what",
-        "name": f"{user_given_name} {user_family_name}",
+        "name": f"{mock_given_name} {mock_family_name}",
         "schacHomeOrganization": "test.what",
-        "family_name": user_family_name,
-        "email": user_sub,
+        "family_name": mock_family_name,
+        "email": mock_sub,
         "sdSubmitProjects": "1000 2000 3000",
         "eduperson_entitlement": [
             "test_namespace:test_root:group1#client",
@@ -159,8 +157,8 @@ async def userinfo(request: web.Request) -> web.Response:
     return web.json_response(user_info)
 
 
-async def oidc_config(request: web.Request) -> web.Response:
-    """Return standard OIDC configuration."""
+async def oidc_config(_: web.Request) -> web.Response:
+    """OIDC standard OIDC configuration endpoint."""
     oidc_config_json = {
         "issuer": mock_auth_url_docker,
         "authorization_endpoint": f"{mock_auth_url_local}/authorize",
@@ -280,7 +278,7 @@ async def init() -> web.Application:
     """Start server."""
     app = web.Application()
     app.router.add_get("/setmock", setmock)
-    app.router.add_get("/authorize", auth)
+    app.router.add_get("/authorize", authorize)
     app.router.add_post("/token", token)
     app.router.add_get("/keyset", jwk_response)
     app.router.add_get("/userinfo", userinfo)

@@ -3,21 +3,20 @@
 import json
 import os
 import unittest
-
 from unittest.mock import patch, MagicMock
-
 from aiohttp import web
 
 from metadata_backend.api.services.ldap import get_user_projects, verify_user_project
+from metadata_backend.api.services.project import CscLdapProjectService
 
 
 class TestLdap(unittest.TestCase):
     """Test CSC's LDAP service."""
 
-    def test_get_user_projects_with_mocked_ldap(self):
+    def test_get_user_projects_with_mocked_ldap(self) -> None:
         """Test get_user_projects with a mocked LDAP connection."""
         with patch.dict(os.environ, {
-            "CSC_LDAP_HOST": "mockhost",
+            "CSC_LDAP_HOST": "ldap://mockhost",
             "CSC_LDAP_USER": "mockuser",
             "CSC_LDAP_PASSWORD": "mockpassword"
         }):
@@ -39,12 +38,15 @@ class TestLdap(unittest.TestCase):
             get_user_projects("non_existent_user")
         self.assertEqual(str(e.exception), "Missing required environment variable: CSC_LDAP_HOST")
 
-
-    def test_verify_user_projects(self) -> None:
+    async def test_verify_user_projects(self) -> None:
         """Test verify user projects."""
         with patch('metadata_backend.api.services.ldap.get_user_projects', return_value=["123"]):
-            # Should not raise
-            verify_user_project("test_user", "123")
+            assert verify_user_project("test_user", "123")
+            assert not verify_user_project("test_user", "-1")
 
-            with self.assertRaises(web.HTTPUnauthorized):
-                verify_user_project("test_user", "-1")
+            service = CscLdapProjectService()
+
+            await service.verify_user_project("test_user", "123")
+
+            with self.assertRaises(web.HTTPUnauthorized) as e:
+                await service.verify_user_project("test_user", "-1")

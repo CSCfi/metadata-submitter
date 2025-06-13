@@ -24,7 +24,6 @@ from .conf import (
     submissions_url,
     taxonomy_url,
     testfiles_root,
-    users_url,
 )
 
 LOG = logging.getLogger(__name__)
@@ -45,18 +44,6 @@ async def login(sess, sub, given, family):
         LOG.debug("Setting mock user")
     async with sess.get(f"{base_url}/aai"):
         LOG.debug("Doing mock user login")
-
-
-async def get_user_data(sess, headers={}):
-    """Get current logged in user's data model.
-
-    :param sess: HTTP session in which request call is made
-    """
-    async with sess.get(f"{users_url}/current", headers=headers) as resp:
-        LOG.debug("Get userdata")
-        ans = await resp.json()
-        assert resp.status == 200, f"HTTP Status code error {resp.status} {ans}"
-        return ans
 
 
 async def create_request_data(schema, filename):
@@ -540,17 +527,6 @@ async def delete_objects_metax_id(sess, database, collection, accession_id, meta
         LOG.exception("Object deletion from mocked Metax failed due to %s", str(e))
 
 
-async def delete_user(sess, user_id):
-    """Delete user object within session.
-
-    :param sess: HTTP session in which request call is made
-    :param user_id: id of the user (current)
-    """
-    async with sess.delete(f"{users_url}/{user_id}") as resp:
-        LOG.debug("Deleting user %s %s", user_id, await resp.text())
-        assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
-
-
 def extract_submissions_object(res, accession_id, draft):
     """Extract object from submission metadataObjects with provided accessionId.
 
@@ -614,7 +590,7 @@ async def post_project_files(sess, file_data, is_bigpicture=""):
         return ans
 
 
-async def get_project_files(sess, project_id):
+async def get_project_files(sess, project_id: str):
     """Get files within session.
 
     :param sess: HTTP session in which request call is made
@@ -764,23 +740,22 @@ async def get_mock_admin_token(sess):
         return id_token
 
 
-async def setup_files_for_ingestion(sess, dataset_id, submission_id, project_id, id_token):
+async def setup_files_for_ingestion(sess, dataset_id, submission_id, user_id, project_id, id_token):
     """Create files for a BigPicture submission, and add them to the database, submission and inbox
 
     :param sess: HTTP session in which request call is made
     :param dataset_id: Dataset accession ID
     :param submission_id: id of the submission
+    :param user_id: ID of user
     :param project_id: project ID where the file belongs to
     :param id_token: Token for authorizing admin user
     """
-    user_data = await get_user_data(sess)
-
     # Create files and add files to submission
     mock_file_1 = generate_mock_file("file10")
     mock_file_2 = generate_mock_file("file20")
 
     file_data = {
-        "userId": user_data["userId"],
+        "userId": user_id,
         "projectId": project_id,
         "files": [mock_file_1, mock_file_2],
     }
@@ -798,8 +773,8 @@ async def setup_files_for_ingestion(sess, dataset_id, submission_id, project_id,
     await patch_submission_files(sess, submission_files, submission_id)
 
     async with aiohttp.ClientSession(headers={"Authorization": "Bearer " + id_token}) as admin_client:
-        await add_file_to_inbox(admin_client, mock_file_1["path"], user_data["externalId"])
-        await add_file_to_inbox(admin_client, mock_file_2["path"], user_data["externalId"])
+        await add_file_to_inbox(admin_client, mock_file_1["path"], user_id)
+        await add_file_to_inbox(admin_client, mock_file_2["path"], user_id)
 
 
 async def post_data_ingestion(sess, submission_id, id_token):

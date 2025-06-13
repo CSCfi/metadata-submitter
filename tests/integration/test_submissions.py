@@ -21,7 +21,6 @@ from tests.integration.helpers import (
     get_draft,
     get_object,
     get_submission,
-    get_user_data,
     patch_submission_doi,
     patch_submission_rems,
     post_data_ingestion,
@@ -946,7 +945,7 @@ class TestSubmissionPagination:
 class TestSubmissionDataIngestion:
     """Testing data ingestion when the metadata submission with files is ready."""
 
-    async def test_file_ingestion_works(self, client_logged_in, database, project_id, admin_token):
+    async def test_file_ingestion_works(self, client_logged_in, database, user_id, project_id, admin_token):
         """Test that files are ingested successfully and their status becomes 'ready'.
 
         :param client_logged_in: HTTP client in which request call is made
@@ -969,7 +968,7 @@ class TestSubmissionDataIngestion:
 
         dataset_id, _ = await post_object(client_logged_in, "bpdataset", submission_id, "dataset.xml")
 
-        await setup_files_for_ingestion(client_logged_in, dataset_id, submission_id, project_id, admin_token)
+        await setup_files_for_ingestion(client_logged_in, dataset_id, submission_id, user_id, project_id, admin_token)
 
         db_submission = await database["submission"].find_one({"submissionId": submission_id})
         files_for_ingestion = []
@@ -991,8 +990,7 @@ class TestSubmissionDataIngestion:
 
         async with aiohttp.ClientSession(headers={"Authorization": "Bearer " + admin_token}) as admin_client:
             # Assert the file accession IDs in archive are correct
-            user_data = await get_user_data(client_logged_in)
-            await check_file_accession_ids(admin_client, files_for_ingestion, user_data["externalId"])
+            await check_file_accession_ids(admin_client, files_for_ingestion, user_id)
 
             # Assert the dataset has been created correctly
             await check_dataset_accession_ids(admin_client, files_for_ingestion, dataset_id)

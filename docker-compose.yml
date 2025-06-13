@@ -12,8 +12,9 @@ services:
       - database
       - mockauth
       - mockdatacite
-      - mockpid
       - mockmetax
+      - mockpid
+      - mockldap
     restart: on-failure
     environment:
       - "MONGO_HOST=${MONGO_HOST}"
@@ -44,6 +45,8 @@ services:
       - "CSC_LDAP_HOST=${CSC_LDAP_HOST}"
       - "CSC_LDAP_USER=${CSC_LDAP_USER}"
       - "CSC_LDAP_PASSWORD=${CSC_LDAP_PASSWORD}"
+      - "JWT_SECRET=${JWT_SECRET}"
+      - "PG_DATABASE_URL=${PG_DATABASE_URL}"
   database:
     image: "mongo"
     container_name: "metadata_submitter_database_dev"
@@ -152,5 +155,15 @@ services:
     volumes:
       - ./tests/integration/mock_pid_api.py:/mock_pid_api.py
     entrypoint: [ "python", "/mock_pid_api.py", "0.0.0.0", "8005" ]
+  mockldap:
+    build:
+      dockerfile: dockerfiles/Dockerfile-ldap-dev
+      context: .
+    image: cscfi/mockldap
+    hostname: mockldap
+    expose:
+      - 389
+    ports:
+      - "389:389"
 volumes:
   data:

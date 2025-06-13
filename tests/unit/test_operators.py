@@ -2,13 +2,10 @@
 
 import datetime
 import re
-import time
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, MagicMock, call, patch
 from uuid import uuid4
 
-import aiohttp_session
-from aiohttp.test_utils import make_mocked_coro
 from aiohttp.web import (
     HTTPBadRequest,
     HTTPInternalServerError,
@@ -22,11 +19,7 @@ from pymongo.errors import ConnectionFailure, OperationFailure
 from metadata_backend.api.operators.file import File, FileOperator
 from metadata_backend.api.operators.object import ObjectOperator
 from metadata_backend.api.operators.object_xml import XMLObjectOperator
-from metadata_backend.api.operators.project import ProjectOperator
 from metadata_backend.api.operators.submission import SubmissionOperator
-from metadata_backend.api.operators.user import UserOperator
-
-from .mockups import Mock_Request
 
 
 class AsyncIterator:
@@ -154,18 +147,6 @@ class TestOperators(IsolatedAsyncioTestCase):
             autospec=True,
         )
         self.patch_submission.start()
-        self.patch_user = patch(
-            "metadata_backend.api.operators.user.UserOperator._generate_accession_id",
-            return_value=self.user_generated_id,
-            autospec=True,
-        )
-        self.patch_user.start()
-        self.patch_project = patch(
-            "metadata_backend.api.operators.project.ProjectOperator._generate_accession_id",
-            return_value=self.project_generated_id,
-            autospec=True,
-        )
-        self.patch_project.start()
         self.patch_file = patch(
             "metadata_backend.api.operators.file.FileOperator._generate_accession_id",
             return_value=self.file_id,
@@ -173,22 +154,9 @@ class TestOperators(IsolatedAsyncioTestCase):
         )
         self.patch_file.start()
 
-        self.session_return = aiohttp_session.Session(
-            "test-identity",
-            new=True,
-            data={},
-        )
-
-        self.session_return["access_token"] = "not-really-a-token"  # nosec
-        self.session_return["at"] = time.time()
-        self.session_return["user_info"] = "value"
-        self.session_return["oidc_state"] = "state"
-
-        self.aiohttp_session_get_session_mock = AsyncMock()
-        self.aiohttp_session_get_session_mock.return_value = self.session_return
-        self.p_get_sess_restapi = patch(
-            "metadata_backend.api.handlers.restapi.aiohttp_session.get_session",
-            self.aiohttp_session_get_session_mock,
+        self.patch_verify_authorization = patch(
+            "metadata_backend.api.middlewares.verify_authorization",
+            new=AsyncMock(return_value=("mock-userid", "mock-username"))
         )
 
     def tearDown(self):
@@ -196,8 +164,6 @@ class TestOperators(IsolatedAsyncioTestCase):
         self.patch_dbservice.stop()
         self.patch_accession.stop()
         self.patch_submission.stop()
-        self.patch_user.stop()
-        self.patch_project.stop()
         self.patch_file.stop()
 
     async def test_reading_metadata_works(self):
@@ -1022,294 +988,6 @@ class TestOperators(IsolatedAsyncioTestCase):
         operator.db_service.delete.side_effect = ConnectionFailure
         with self.assertRaises(HTTPBadRequest):
             await operator.delete_submission(self.submission_id)
-
-    async def test_create_user_works_and_returns_userId(self):
-        """Test create method for users work."""
-        operator = UserOperator(self.client)
-        data = {"user_id": "externalId", "real_name": "name", "projects": ""}
-        operator.db_service.exists_user_by_external_id.return_value = None
-        operator.db_service.create.return_value = True
-        user = await operator.create_user(data)
-        operator.db_service.create.assert_called_once()
-        self.assertEqual(user, self.user_generated_id)
-
-    async def test_create_user_on_create_fails(self):
-        """Test create method fails on db create."""
-        operator = UserOperator(self.client)
-        data = {"user_id": "externalId", "real_name": "name", "projects": ""}
-        operator.db_service.exists_user_by_external_id.return_value = None
-        operator.db_service.create.return_value = False
-        with self.assertRaises(HTTPBadRequest):
-            await operator.create_user(data)
-            operator.db_service.create.assert_called_once()
-
-    async def test_check_user_doc_fails(self):
-        """Test check user doc fails."""
-        request = Mock_Request()
-        db_client = MagicMock()
-        db_database = MagicMock()
-        db_collection = AsyncMock()
-        db_client.__getitem__.return_value = db_database
-        db_database.__getitem__.return_value = db_collection
-
-        request.app["db_client"] = db_client
-        with self.p_get_sess_restapi:
-            operator = UserOperator(self.client)
-            with self.assertRaises(HTTPBadRequest):
-                await operator.check_user_has_doc(request, "something", self.user_generated_id, self.submission_id)
-
-    async def test_check_user_doc_passes(self):
-        """Test check user doc passes when object has same project id and user."""
-        UserOperator.check_user_has_doc = make_mocked_coro(True)
-        request = Mock_Request()
-        db_client = MagicMock()
-        db_database = MagicMock()
-        db_collection = AsyncMock()
-        db_client.__getitem__.return_value = db_database
-        db_database.__getitem__.return_value = db_collection
-
-        request.app["db_client"] = db_client
-        operator = UserOperator(self.client)
-        with patch(
-            "metadata_backend.api.operators.submission.SubmissionOperator.get_submission_field_str",
-            return_value=self.project_generated_id,
-        ):
-            with self.p_get_sess_restapi:
-                with patch(
-                    "metadata_backend.api.operators.user.UserOperator.read_user",
-                    return_value={"userId": "test"},
-                ):
-                    with patch(
-                        "metadata_backend.api.operators.user.UserOperator.check_user_has_project",
-                        return_value=True,
-                    ):
-                        result = await operator.check_user_has_doc(
-                            request, "submissions", self.user_generated_id, self.submission_id
-                        )
-                        self.assertTrue(result)
-
-    async def test_create_user_works_existing_userId(self):
-        """Test create method for existing user."""
-        operator = UserOperator(self.client)
-        data = {"user_id": "eppn", "real_name": "name", "projects": ""}
-        operator.db_service.exists_user_by_external_id.return_value = self.user_generated_id
-        user = await operator.create_user(data)
-        operator.db_service.create.assert_not_called()
-        self.assertEqual(user, self.user_generated_id)
-
-    async def test_create_user_fails(self):
-        """Test create user fails."""
-        data = {"user_id": "eppn", "real_name": "name", "projects": ""}
-        operator = UserOperator(self.client)
-        operator.db_service.exists_user_by_external_id.side_effect = ConnectionFailure
-        with self.assertRaises(HTTPBadRequest):
-            await operator.create_user(data)
-
-    async def test_reading_user_works(self):
-        """Test user object is read from db correctly."""
-        operator = UserOperator(self.client)
-        operator.db_service.exists.return_value = True
-        operator.db_service.read.return_value = self.test_user
-        read_data = await operator.read_user(self.user_id)
-        operator.db_service.exists.assert_called_once()
-        operator.db_service.read.assert_called_once_with("user", self.user_id)
-        self.assertEqual(read_data, self.test_user)
-
-    async def test_read_user_fails(self):
-        """Test user read fails."""
-        operator = UserOperator(self.client)
-        operator.db_service.exists.side_effect = ConnectionFailure
-        with self.assertRaises(HTTPBadRequest):
-            await operator.read_user(self.user_id)
-
-    async def test_check_user_exists_passes(self):
-        """Test user exists passes."""
-        operator = UserOperator(self.client)
-        operator.db_service.exists = AsyncMock(return_value=True)
-        await operator._check_user_exists(self.user_id)
-        operator.db_service.exists.assert_called_once()
-
-    async def test_check_user_exists_fails(self):
-        """Test user exists fails."""
-        operator = UserOperator(self.client)
-        operator.db_service.exists = AsyncMock(return_value=False)
-        with self.assertRaises(HTTPNotFound):
-            await operator._check_user_exists(self.user_id)
-            operator.db_service.exists.assert_called_once()
-
-    async def test_user_update_passes_and_returns_id(self):
-        """Test update method for users works."""
-        patch = [{"op": "add", "path": "/name", "value": "test2"}]
-        operator = UserOperator(self.client)
-        operator.db_service.exists.return_value = True
-        operator.db_service.patch.return_value = True
-        user = await operator.update_user(self.test_user, patch)
-        operator.db_service.exists.assert_called_once()
-        operator.db_service.patch.assert_called_once()
-        self.assertEqual(user["userId"], self.user_generated_id)
-
-    async def test_user_update_fails_with_bad_patch(self):
-        """Test user update raises error with improper JSON Patch."""
-        patch = [{"op": "replace", "path": "/nothing"}]
-        operator = UserOperator(self.client)
-        operator.db_service.exists.return_value = True
-        operator.db_service.patch.return_value = False
-        with self.assertRaises(HTTPBadRequest):
-            await operator.update_user(self.test_user, patch)
-            operator.db_service.exists.assert_called_once()
-
-    async def test_update_user_fails(self):
-        """Test user update fails."""
-        operator = UserOperator(self.client)
-        operator.db_service.exists.side_effect = ConnectionFailure
-        with self.assertRaises(HTTPBadRequest):
-            await operator.update_user(self.user_id, [])
-
-    async def test_deleting_user_passes(self):
-        """Test user is deleted correctly."""
-        operator = UserOperator(self.client)
-        operator.db_service.exists.return_value = True
-        operator.db_service.delete.return_value = True
-        await operator.delete_user(self.user_id)
-        operator.db_service.delete.assert_called_with("user", "current")
-
-    async def test_deleting_user_fails_on_delete(self):
-        """Test user fails on delete operation."""
-        operator = UserOperator(self.client)
-        operator.db_service.exists.return_value = True
-        operator.db_service.delete.return_value = False
-        with self.assertRaises(HTTPBadRequest):
-            await operator.delete_user(self.user_id)
-            operator.db_service.delete.assert_called_with("user", "current")
-
-    async def test_deleting_user_fails(self):
-        """Test user delete fails."""
-        operator = UserOperator(self.client)
-        operator.db_service.exists.side_effect = ConnectionFailure
-        with self.assertRaises(HTTPBadRequest):
-            await operator.delete_user(self.user_id)
-
-    async def test_check_user_has_project_passes(self):
-        """Test check user has project and doesn't raise an exception."""
-        operator = UserOperator(self.client)
-        operator.db_service.query.return_value = AsyncIterator(["1"])
-        result = await operator.check_user_has_project(self.project_generated_id, self.user_generated_id)
-        operator.db_service.query.assert_called_once_with(
-            "user",
-            {"projects": {"$elemMatch": {"projectId": self.project_generated_id}}, "userId": self.user_generated_id},
-        )
-        self.assertTrue(result)
-
-    async def test_check_user_has_no_project(self):
-        """Test check user does not have project and raises unauthorised."""
-        operator = UserOperator(self.client)
-        self.MockedDbService().query.return_value = AsyncIterator([])
-        result = await operator.check_user_has_project(self.project_generated_id, self.user_generated_id)
-        operator.db_service.query.assert_called_once_with(
-            "user",
-            {"projects": {"$elemMatch": {"projectId": self.project_generated_id}}, "userId": self.user_generated_id},
-        )
-        self.assertFalse(result)
-
-    async def test_check_user_has_project_connfail(self):
-        """Test check user has project, db connection failure."""
-        operator = UserOperator(self.client)
-        operator.db_service.query.side_effect = ConnectionFailure
-        with self.assertRaises(HTTPBadRequest):
-            await operator.check_user_has_project(self.project_generated_id, self.user_generated_id)
-
-    async def test_check_user_has_project_opfail(self):
-        """Test check user has project, db operation failure."""
-        operator = UserOperator(self.client)
-        operator.db_service.query.side_effect = OperationFailure("err")
-        with self.assertRaises(HTTPBadRequest):
-            await operator.check_user_has_project(self.project_generated_id, self.user_generated_id)
-
-    async def test_get_signing_key_found(self):
-        """Test existing key can be read with user id."""
-        operator = UserOperator(self.client)
-        operator.db_service.exists.return_value = True
-        operator.db_service.read_by_key_value.return_value = {"signingKey": "testkey"}
-        read_signing_key = await operator.get_signing_key(self.user_id)
-        operator.db_service.exists.assert_called_once()
-        operator.db_service.read_by_key_value.assert_called_once_with(
-            "user",
-            {
-                "userId": self.user_id,
-            },
-            {
-                "_id": 0,
-                "signingKey": 1,
-            },
-        )
-        self.assertEqual(read_signing_key, "testkey")
-
-    async def test_get_signing_key_not_found(self):
-        """Test that we get None when user has no key."""
-        operator = UserOperator(self.client)
-        operator.db_service.exists.return_value = True
-        operator.db_service.read_by_key_value.return_value = {}
-        read_signing_key = await operator.get_signing_key(self.user_id)
-        operator.db_service.exists.assert_called_once()
-        operator.db_service.read_by_key_value.assert_called_once_with(
-            "user",
-            {
-                "userId": self.user_id,
-            },
-            {
-                "_id": 0,
-                "signingKey": 1,
-            },
-        )
-        self.assertIsNone(read_signing_key)
-
-    async def test_create_project_works_and_returns_projectId(self):
-        """Test create method for projects work."""
-        operator = ProjectOperator(self.client)
-        operator.db_service.exists_project_by_external_id = AsyncMock(return_value=None)
-        operator.db_service.create = AsyncMock(return_value=True)
-        project = await operator.create_project(self.project_id)
-        operator.db_service.create.assert_called_once()
-        self.assertEqual(project, self.project_generated_id)
-
-    async def test_create_project_works_existing_projectId(self):
-        """Test create method for existing user."""
-        operator = ProjectOperator(self.client)
-        operator.db_service.exists_project_by_external_id = AsyncMock(return_value=self.project_generated_id)
-        project = await operator.create_project(self.project_id)
-        operator.db_service.create.assert_not_called()
-        self.assertEqual(project, self.project_generated_id)
-
-    async def test_create_project_on_create_fails(self):
-        """Test create method fails on db create."""
-        operator = ProjectOperator(self.client)
-        operator.db_service.exists_project_by_external_id = AsyncMock(return_value=None)
-        operator.db_service.create = AsyncMock(return_value=False)
-        with self.assertRaises(HTTPBadRequest):
-            await operator.create_project(self.project_id)
-            operator.db_service.create.assert_called_once()
-
-    async def test_create_project_fails(self):
-        """Test create project fails."""
-        operator = ProjectOperator(self.client)
-        self.MockedDbService().exists_project_by_external_id.side_effect = ConnectionFailure
-        with self.assertRaises(HTTPBadRequest):
-            await operator.create_project(self.project_id)
-
-    async def test_check_project_exists_fails(self):
-        """Test project exists fails."""
-        operator = ProjectOperator(self.client)
-        operator.db_service.exists = AsyncMock(return_value=False)
-        with self.assertRaises(HTTPNotFound):
-            await operator.check_project_exists(self.project_id)
-            operator.db_service.exists.assert_called_once()
-
-    async def test_check_project_exists_passes(self):
-        """Test project exists passes."""
-        operator = ProjectOperator(self.client)
-        operator.db_service.exists = AsyncMock(return_value=True)
-        await operator.check_project_exists(self.project_id)
-        operator.db_service.exists.assert_called_once()
 
     async def test_create_file_pass(self):
         """Test creating a new file passes."""

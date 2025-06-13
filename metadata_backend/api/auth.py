@@ -1,27 +1,56 @@
 """Handle Access for request and OIDC workflow."""
 
 import time
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
-import aiohttp_session
 from aiohttp import ClientTimeout, web
 from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
 from aiohttp.web import Request, Response
 from idpyoidc.client.rp_handler import RPHandler
 from idpyoidc.exception import OidcMsgError
+from pydantic import BaseModel
 from yarl import URL
 
 from ..conf.conf import aai_config
 from ..helpers.logger import LOG
 from ..services.service_handler import ServiceHandler
-from .operators.project import ProjectOperator
-from .operators.user import UserOperator
+from .services.auth import JWT_EXPIRATION, AccessService
 
-# Type aliases
-# ProjectList is a list of projects and their origins
-ProjectList = list[dict[str, str]]
-# UserData contains user profile from AAI userinfo, such as name, username and projects
-UserData = dict[str, ProjectList | str]
+
+class Authorization(BaseModel):
+    """Authorization token."""
+
+    user_id: str
+    user_name: str
+
+    class Config:
+        """Authorization token configuration."""
+
+        extra = "ignore"  # Ignore any extra fields in the payload
+
+
+def get_authorized_user_id(req: Request) -> str:
+    """
+    Get the authorized user id.
+
+    :param req: The aiohttp request.
+    :returns: The authorized user id.
+    """
+    if "user_id" not in req:
+        raise web.HTTPUnauthorized(reason="Missing authorized user id.")
+    return cast(str, req["user_id"])
+
+
+def get_authorized_user_name(req: Request) -> str:
+    """
+    Get the authorized user name.
+
+    :param req: The aiohttp request.
+    :returns: The authorized user name.
+    """
+    if "user_name" not in req:
+        raise web.HTTPUnauthorized(reason="Missing authorized user name.")
+    return cast(str, req["user_name"])
 
 
 class AccessHandler:
@@ -100,20 +129,24 @@ class AccessHandler:
         return response
 
     async def callback(self, req: Request) -> Response:
-        """Include correct tokens in cookies as a callback after login.
+        """Handle the OIDC callback and redirect the user with a JWT token in the URL fragment.
 
-        Sets session information such as access_token and user_info.
-        Sets encrypted cookie to identify clients.
+        This function completes the OpenID Connect (OIDC) authorization code flow. It exchanges
+        the authorization code for tokens (ID token, access token), retrieves user information
+        from the identity provider, creates an application-specific JWT, and then redirects
+        the user to the frontend application with the JWT token appended in the URL fragment.
 
-        :raises: HTTPUnauthorized in case login failed
-        :raises: HTTPBadRequest AAI sends wrong parameters
-        :raises: HTTPForbidden in case of bad session
+        The token is included as a URL fragment so that it is only accessible to client-side
+        scripts and not sent to the server in future requests.
+
         :param req: A HTTP request instance with callback parameters
-        :returns: HTTPSeeOther redirect to home page
+
+        # Returns:
+            A redirect response to the frontend app with the JWT token included in the URL fragment.
         """
+
         # Response from AAI must have the query params `state` and `code`
         if "state" in req.query and "code" in req.query:
-            LOG.debug("AAI response contained the correct params.")
             params = {"state": req.query["state"], "code": req.query["code"]}
         else:
             reason = f"AAI response is missing mandatory params, received: {req.query}"
@@ -145,22 +178,19 @@ class AccessHandler:
             LOG.exception("OIDC Callback failed with: %r", e)
             raise web.HTTPUnauthorized(reason="Invalid OIDC callback.")
 
-        # Parse data from the userinfo endpoint to create user data containing username, real name and projects/groups
-        user_data: UserData = await self._create_user_data(session["userinfo"])
-        projects: ProjectList = await self._get_projects_from_userinfo(session["userinfo"])
+        # Generate a JWT token.
+        jwt_token = await self._create_jwt_token(session["userinfo"])
 
-        # Process project external IDs into the database and return accession IDs back to user_data
-        user_data["projects"] = await self._process_projects(req, projects)
-
-        # Create session
-        browser_session = await aiohttp_session.new_session(req)
-        browser_session["at"] = time.time()
-        browser_session["oidc_state"] = session["state"]
-        browser_session["access_token"] = session["token"]
-        await self._set_user(req, browser_session, user_data)
-
-        # Create response
         response = web.HTTPSeeOther(f"{self.redirect}/home")
+        response.set_cookie(
+            name="access_token",
+            value=jwt_token,
+            httponly=True,
+            secure=True,
+            samesite="Strict",  # or "Lax" depending on your needs
+            path="/",
+            max_age=int(JWT_EXPIRATION.total_seconds()),
+        )
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         response.headers["Pragma"] = "no-Cache"
         response.headers["Expires"] = "0"
@@ -168,153 +198,47 @@ class AccessHandler:
         response.headers["Location"] = "/home" if self.redirect == self.domain else f"{self.redirect}/home"
         return response
 
-    async def logout(self, req: Request) -> web.HTTPSeeOther:
-        """Log the user out by revoking tokens.
+    async def logout(self, _: Request) -> web.HTTPSeeOther:
+        """Log the user out by clearing cookie.
 
-        :param req: A HTTP request instance
-        :raises: HTTPUnauthorized in case logout failed
         :returns: HTTPSeeOther redirect to login page
         """
-        # Revoke token at AAI
-        # Implement, when revocation_endpoint is supported by AAI
-
-        try:
-            session = await aiohttp_session.get_session(req)
-            session.invalidate()
-        except Exception as e:
-            LOG.exception("Trying to log out an invalidated session, failed with: %r", e)
-            raise web.HTTPUnauthorized
-
         response = web.HTTPSeeOther(f"{self.redirect}/")
+        response.del_cookie("access_token", path="/")
         response.headers["Location"] = "/" if self.redirect == self.domain else f"{self.redirect}/"
         LOG.debug("Logged out user.")
-
         return response
 
-    async def _process_projects(self, req: Request, projects: ProjectList) -> ProjectList:
-        """Process project external IDs to internal accession IDs by getting IDs\
-            from database and creating projects that are missing.
-
-        :raises: HTTPBadRequest in failed to add project to database
-        :param req: A HTTP request instance
-        :param projects: A list of project external IDs
-        :returns: A list of objects containing project accession IDs and project numbers
+    async def _create_jwt_token(self, userinfo: dict[str, Any]) -> str:
         """
-        new_project_ids: ProjectList = []
+        Parse user identity information from the /userinfo response.
 
-        db_client = req.app["db_client"]
-        operator = ProjectOperator(db_client)
-        for project in projects:
-            project_id = await operator.create_project(project["project_name"])
-            project_data = {
-                "projectId": project_id,  # internal ID
-                "projectNumber": project["project_name"],  # human friendly
-                "projectOrigin": project["project_origin"],  # where this project came from: [csc | lifescience]
-            }
-            new_project_ids.append(project_data)
-
-        return new_project_ids
-
-    async def _set_user(
-        self,
-        req: Request,
-        browser_session: aiohttp_session.Session,
-        user_data: UserData,
-    ) -> str:
-        """Set user in current session and return user id based on result of create_user.
-
-        :raises: HTTPBadRequest in could not get user info from AAI OIDC
-        :param req: A HTTP request instance
-        :param user_data: user id and given name
-        :returns: None
+        :param userinfo: Dictionary containing user profile claims from the AAI /userinfo endpoint.
+        :returns: The JET token.
+        :raises HTTPUnauthorized: If the required user ID claims is not found.
         """
-        LOG.debug("Create and set user to database")
-
-        db_client = req.app["db_client"]
-        operator = UserOperator(db_client)
-
-        # Create user
-        user_id = await operator.create_user(user_data)
-
-        # Check if user's projects have changed
-        old_user = await operator.read_user(user_id)
-        if old_user["projects"] != user_data["projects"]:
-            update_operation = [
-                {
-                    "op": "replace",
-                    "path": "/projects",
-                    "value": user_data["projects"],
-                }
-            ]
-            user_id = await operator.update_user(user_id, update_operation)
-
-        browser_session["user_info"] = user_id
-        return user_id
-
-    async def _create_user_data(self, userinfo: dict[str, Any]) -> UserData:
-        """Parse user profile data from userinfo endpoint response.
-
-        :param userinfo: dict from userinfo containing user profile
-        :returns: parsed user profile data containing username and real name
-        """
-        # User data is read from AAI /userinfo and is used to create the user model in database
-        user_data: UserData = {
-            "user_id": "",
-            "real_name": f"{userinfo['given_name']} {userinfo['family_name']}",
-            "projects": [],
-        }
+        # Extract user ID.
         if "CSCUserName" in userinfo:
-            user_data["user_id"] = userinfo["CSCUserName"]
+            user_id = userinfo["CSCUserName"]
         elif "remoteUserIdentifier" in userinfo:
-            user_data["user_id"] = userinfo["remoteUserIdentifier"]
+            user_id = userinfo["remoteUserIdentifier"]
         elif "sub" in userinfo:
-            user_data["user_id"] = userinfo["sub"]
+            user_id = userinfo["sub"]
         else:
-            LOG.error(
-                "User was authenticated, but they are missing mandatory claim CSCUserName, remoteUserIdentifier or sub."
-            )
-            raise web.HTTPUnauthorized(
-                reason="Could not set user, missing claim CSCUserName, remoteUserIdentifier or sub."
-            )
+            reason = "Authenticated user is missing required claims."
+            LOG.error(reason)
+            raise web.HTTPUnauthorized(reason="reason")
 
-        return user_data
+        # Extract user name, fallback to user_id if not available.
+        given_name = userinfo.get("given_name", "").strip()
+        family_name = userinfo.get("family_name", "").strip()
 
-    async def _get_projects_from_userinfo(self, userinfo: dict[str, Any]) -> ProjectList:
-        """Parse projects and groups from userinfo endpoint response.
+        if given_name or family_name:
+            user_name = f"{given_name} {family_name}".strip()
+        else:
+            user_name = user_id
 
-        :param userinfo: dict from userinfo containing user profile
-        :returns: parsed projects and groups and their origins
-        """
-        # Handle projects, they come in different formats depending on the service used.
-        # Current project sources: CSC projects, LS AAI groups
-        projects: ProjectList = []
-        if "sdSubmitProjects" in userinfo:
-            # CSC projects come in format "project1 project2"
-            csc_projects = userinfo["sdSubmitProjects"].split(" ")
-            for csc_project in csc_projects:
-                projects.append(
-                    {
-                        "project_name": csc_project,
-                        "project_origin": "csc",
-                    }
-                )
-        if "eduperson_entitlement" in userinfo:
-            # LS AAI groups come in format ["group1", "group2"]
-            for group in userinfo["eduperson_entitlement"]:
-                projects.append(
-                    {
-                        # remove the oidc client information, as it's not important to the user
-                        "project_name": group.split("#")[0],
-                        "project_origin": "lifescience",
-                    }
-                )
-
-        if len(projects) == 0:
-            # No project group information received, abort, as metadata-submitter
-            # object hierarchy depends on a project group to act as owner for objects
-            raise web.HTTPUnauthorized(reason="User is not a member of any project.")
-
-        return projects
+        return AccessService.create_jwt_token(user_id, user_name)
 
 
 class AAIServiceHandler(ServiceHandler):

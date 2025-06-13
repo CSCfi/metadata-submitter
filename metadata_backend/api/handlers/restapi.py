@@ -6,7 +6,6 @@ from collections.abc import AsyncIterator, Iterator
 from math import ceil
 from typing import Any
 
-import aiohttp_session
 import ujson
 from aiohttp import web
 from aiohttp.web import Request, Response
@@ -22,10 +21,11 @@ from ...services.datacite_service_handler import DataciteServiceHandler
 from ...services.metax_service_handler import MetaxServiceHandler
 from ...services.pid_ms_handler import PIDServiceHandler
 from ...services.rems_service_handler import RemsServiceHandler
+from ..auth import get_authorized_user_id
 from ..operators.file import FileOperator
 from ..operators.object import ObjectOperator
 from ..operators.submission import SubmissionOperator
-from ..operators.user import UserOperator
+from ..services.project import ProjectService
 
 
 class RESTAPIHandler:
@@ -76,7 +76,7 @@ class RESTAPIHandler:
             raise web.HTTPBadRequest(reason=reason)
         return param
 
-    async def _handle_check_ownership(self, req: Request, collection: str, accession_id: str) -> tuple[bool, str]:
+    async def _handle_check_ownership(self, req: Request, collection: str, accession_id: str) -> None:
         """Check if object belongs to project.
 
         For this we need to check the object is in exactly 1 submission and we need to check
@@ -84,36 +84,33 @@ class RESTAPIHandler:
 
         :param req: HTTP request
         :param collection: collection or schema of document
-        :param doc_id: document accession id
+        :param accession_id: document accession id
         :raises: HTTPUnauthorized if accession id does not belong to user
         :returns: bool and possible project id
         """
-        session = await aiohttp_session.get_session(req)
+
+        user_id = get_authorized_user_id(req)
 
         db_client = req.app["db_client"]
+        project_service: ProjectService = req.app["project_service"]
 
-        current_user = session["user_info"]
-        user_op = UserOperator(db_client)
-        _check = False
+        project_id: str | None = None
 
-        project_id = ""
+        submission_op = SubmissionOperator(db_client)
         if collection != "submission":
-            submission_op = SubmissionOperator(db_client)
             submission_id, _ = await submission_op.check_object_in_submission(collection, accession_id)
             if submission_id:
                 # if the draft object is found in submission we just need to check if the submission belongs to user
-                _check, project_id = await user_op.check_user_has_doc(req, "submission", current_user, submission_id)
-            else:
-                _check = False
+                project_id = await submission_op.get_submission_field_str(submission_id, "projectId")
         else:
-            _check, project_id = await user_op.check_user_has_doc(req, collection, current_user, accession_id)
+            project_id = await submission_op.get_submission_field_str(accession_id, "projectId")
 
-        if not _check:
+        if project_id is not None:
+            await project_service.verify_user_project(user_id, project_id)
+        else:
             reason = f"{collection} {accession_id}."
             LOG.error(reason)
-            raise web.HTTPUnauthorized(reason=reason)
-
-        return _check, project_id
+            raise web.HTTPBadRequest(reason=reason)
 
     async def _get_data(self, req: Request) -> dict[str, Any]:
         """Get the data content from a request.
@@ -283,20 +280,6 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
         self.pid_handler = pid_handler
         self.rems_handler = rems_handler
         self.admin_handler = admin_handler
-
-    @staticmethod
-    async def get_user_external_id(request: web.Request) -> str:
-        """Get current user's external id.
-
-        :param request: current HTTP request made by the user
-        :returns: Current users external ID
-        """
-        session = await aiohttp_session.get_session(request)
-        current_user = session["user_info"]
-        user_op = UserOperator(request.app["db_client"])
-        user = await user_op.read_user(current_user)
-        metadata_provider_user: str = user["externalId"]
-        return metadata_provider_user
 
     async def create_metax_dataset(
         self, obj_op: ObjectOperator, collection: str, obj: dict[str, Any], external_id: str

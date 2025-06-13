@@ -1,10 +1,8 @@
 """Test API middlewares."""
 
-import time
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-import aiohttp_session
 from aiohttp import FormData
 from aiohttp.test_utils import AioHTTPTestCase
 
@@ -30,22 +28,9 @@ class ErrorMiddlewareTestCase(AioHTTPTestCase):
         self.server = await self.get_server(self.app)
         self.client = await self.get_client(self.server)
 
-        self.session_return = aiohttp_session.Session(
-            "test-identity",
-            new=True,
-            data={},
-        )
-
-        self.session_return["access_token"] = "not-really-a-token"  # nosec
-        self.session_return["at"] = time.time()
-        self.session_return["user_info"] = "value"
-        self.session_return["oidc_state"] = "state"
-
-        self.aiohttp_session_get_session_mock = AsyncMock()
-        self.aiohttp_session_get_session_mock.return_value = self.session_return
-        self.p_get_sess_restapi = patch(
-            "metadata_backend.api.handlers.restapi.aiohttp_session.get_session",
-            self.aiohttp_session_get_session_mock,
+        self.patch_verify_authorization = patch(
+            "metadata_backend.api.middlewares.verify_authorization",
+            new=AsyncMock(return_value=("mock-userid", "mock-username"))
         )
 
         await self.client.start_server()
@@ -53,7 +38,7 @@ class ErrorMiddlewareTestCase(AioHTTPTestCase):
     async def test_bad_HTTP_request_converts_into_json_response(self):
         """Test that middleware reformats 400 error with problem details."""
         data = _create_improper_data()
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.post(f"{API_PREFIX}/submit/FEGA", data=data)
             self.assertEqual(response.status, 400)
             self.assertEqual(response.content_type, "application/problem+json")
@@ -64,7 +49,7 @@ class ErrorMiddlewareTestCase(AioHTTPTestCase):
 
     async def test_bad_url_returns_json_response(self):
         """Test that unrouted API url returns a 404 in JSON format."""
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.get(f"{API_PREFIX}/objects/swagadagamaster")
             self.assertEqual(response.status, 404)
             self.assertEqual(response.content_type, "application/problem+json")

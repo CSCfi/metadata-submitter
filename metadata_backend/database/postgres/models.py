@@ -10,7 +10,7 @@ class Base(DeclarativeBase):
     """Base model for all tables."""
 
 
-class ApiKey(Base):
+class ApiKeyEntity(Base):
     """Model for the API keys."""
 
     __tablename__ = "api_keys"

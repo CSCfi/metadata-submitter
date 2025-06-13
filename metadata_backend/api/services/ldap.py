@@ -2,15 +2,17 @@
 
 import json
 import os
+from urllib.parse import urlparse
 
-from aiohttp import web
 from cachetools import TTLCache, cached
 from ldap3 import Connection, Server
+
+from ...helpers.logger import LOG
 
 CSC_LDAP_HOST_ENV = "CSC_LDAP_HOST"
 CSC_LDAP_USER_ENV = "CSC_LDAP_USER"
 CSC_LDAP_PASSWORD_ENV = "CSC_LDAP_PASSWORD"  # nosec
-CSC_LDAP_PORT = 636
+
 CSC_LDAP_DN = "ou=idm,dc=csc,dc=fi"
 CSC_LDAP_PROJECT_ATTRIBUTE = "CSCPrjNum"
 CSC_LDAP_SERVICE_PROFILE = "SP_SD-SUBMIT"
@@ -28,7 +30,7 @@ def get_user_projects(user_id: str) -> list[str]:
         user_id: The user ID.
 
     Returns:
-        list[str]: A list of project IDs.
+        A list of project IDs.
     """
 
     def _env(key: str, default_value: str | None = None) -> str:
@@ -41,11 +43,25 @@ def get_user_projects(user_id: str) -> list[str]:
     user = _env(CSC_LDAP_USER_ENV)
     password = _env(CSC_LDAP_PASSWORD_ENV)
 
+    parsed = urlparse(host)
+    scheme = parsed.scheme.lower()
+
+    if scheme == "ldaps":
+        use_ssl = True
+        port = parsed.port if parsed.port else 636  # default LDAPS port
+    elif scheme == "ldap":
+        use_ssl = False
+        port = parsed.port if parsed.port else 389  # default LDAP port
+    else:
+        raise RuntimeError(f"Unsupported LDAP protocol: {scheme}")
+
     try:
+        LOG.info("Connecting to LDAP server '%s' using port '%s' with ssl '%s'", host, port, use_ssl)
+
         server = Server(
             host=host,
-            port=CSC_LDAP_PORT,
-            use_ssl=True,
+            port=port,
+            use_ssl=use_ssl,
             connect_timeout=5,
         )
 
@@ -62,22 +78,22 @@ def get_user_projects(user_id: str) -> list[str]:
             for entry in conn.entries:
                 entry_dict = json.loads(entry.entry_to_json())
                 if CSC_LDAP_SERVICE_PROFILE in entry_dict["dn"]:
-                    projects.append(entry_dict["attributes"]["CSCPrjNum"][0])
+                    projects.extend(entry_dict["attributes"]["CSCPrjNum"])
 
         return projects
     except Exception as ex:
         raise RuntimeError("Failed to retrieve user projects.") from ex
 
 
-def verify_user_project(user_id: str, project_id: str) -> None:
+def verify_user_project(user_id: str, project_id: str) -> bool:
     """
     Check if the user is affiliated with the project.
 
     Args:
         user_id: The user ID.
         project_id: The project ID.
-    """
 
-    if project_id not in get_user_projects(user_id):
-        reason = f"User {user_id} is not affiliated with project {project_id}"
-        raise web.HTTPUnauthorized(reason=reason)
+    Returns:
+        True if the user is affiliated with the project. False otherwise.
+    """
+    return project_id in get_user_projects(user_id)

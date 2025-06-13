@@ -1,15 +1,20 @@
 """Test API endpoints from handlers module."""
 
-import time
 from pathlib import Path
-from unittest.mock import AsyncMock, call, patch
+from unittest.mock import AsyncMock, call, patch, MagicMock
+import json
+import uuid
+import os
 
-import aiohttp_session
 import ujson
 from aiohttp import FormData, web
+from aiohttp.web import Request
 from aiohttp.test_utils import AioHTTPTestCase, make_mocked_coro
 
 from metadata_backend.api.handlers.restapi import RESTAPIHandler
+from metadata_backend.api.models import Project, User
+from metadata_backend.api.services.auth import ApiKey
+from metadata_backend.api.services.project import ProjectService
 from metadata_backend.conf.conf import API_PREFIX
 from metadata_backend.server import init
 
@@ -24,7 +29,7 @@ class HandlersTestCase(AioHTTPTestCase):
         server = await init()
         return server
 
-    async def setUpAsync(self):
+    async def setUpAsync(self) -> None:
         """Configure default values for testing and other modules.
 
         Patches used modules and sets default return values for their
@@ -35,22 +40,22 @@ class HandlersTestCase(AioHTTPTestCase):
         self.server = await self.get_server(self.app)
         self.client = await self.get_client(self.server)
 
-        self.session_return = aiohttp_session.Session(
-            "test-identity",
-            new=True,
-            data={},
+        # Mock user authorisation.
+        self.patch_verify_authorization = patch(
+            "metadata_backend.api.middlewares.verify_authorization",
+            new=AsyncMock(return_value=("mock-userid", "mock-username"))
         )
 
-        self.session_return["access_token"] = "not-really-a-token"  # nosec
-        self.session_return["at"] = time.time()
-        self.session_return["user_info"] = "value"
-        self.session_return["oidc_state"] = "state"
-
-        self.aiohttp_session_get_session_mock = AsyncMock()
-        self.aiohttp_session_get_session_mock.return_value = self.session_return
-        self.p_get_sess_restapi = patch(
-            "metadata_backend.api.handlers.restapi.aiohttp_session.get_session",
-            self.aiohttp_session_get_session_mock,
+        # Mock project verification.
+        self.patch_verify_user_project_success = patch.object(
+            ProjectService,
+             "verify_user_project",
+            new=AsyncMock(return_value=True)
+        )
+        self.patch_verify_user_project_failure = patch.object(
+            ProjectService,
+            "verify_user_project",
+            new=AsyncMock(side_effect=web.HTTPUnauthorized(reason="Mocked unauthorized access"))
         )
 
         await self.client.start_server()
@@ -170,7 +175,16 @@ class HandlersTestCase(AioHTTPTestCase):
         }
 
         RESTAPIHandler._handle_check_ownership = make_mocked_coro(True)
-        RESTAPIHandler._get_param = make_mocked_coro("project123")
+
+        def mocked_get_param(self, req: Request, name: str) -> str:
+            if name == "projectId":
+                return "mock-project"
+            param = req.query.get(name, "")
+            if param == "":
+                raise web.HTTPBadRequest(reason=f"mandatory query parameter {name} is not set")
+            return param
+
+        RESTAPIHandler._get_param = mocked_get_param
 
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
@@ -293,7 +307,7 @@ class APIHandlerTestCase(HandlersTestCase):
 
     async def test_correct_schema_types_are_returned(self):
         """Test API endpoint for all schema types."""
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.get(f"{API_PREFIX}/schemas")
             response_text = await response.text()
             schema_titles = [
@@ -325,7 +339,7 @@ class APIHandlerTestCase(HandlersTestCase):
 
     async def test_correct_study_schema_are_returned(self):
         """Test API endpoint for study schema types."""
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.get(f"{API_PREFIX}/schemas/study")
             response_text = await response.text()
             self.assertIn("study", response_text)
@@ -333,13 +347,13 @@ class APIHandlerTestCase(HandlersTestCase):
 
     async def test_raises_invalid_schema(self):
         """Test API endpoint for study schema types."""
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.get(f"{API_PREFIX}/schemas/something")
             self.assertEqual(response.status, 404)
 
     async def test_raises_not_found_schema(self):
         """Test API endpoint for study schema types."""
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.get(f"{API_PREFIX}/schemas/project")
             self.assertEqual(response.status, 400)
             resp_json = await response.json()
@@ -374,7 +388,7 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
 
     async def test_submit_endpoint_submission_does_not_fail(self):
         """Test that submission with valid SUBMISSION.xml does not fail."""
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             files = [("submission", "ERA521986_valid.xml")]
             data = self.create_submission_data(files)
             self.MockedParser().parse.return_value = [{"actions": {"action": []}}, data]
@@ -388,7 +402,7 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
 
         User should also be notified for missing file.
         """
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             files = [("analysis", "ERZ266973.xml")]
             data = self.create_submission_data(files)
             response = await self.client.post(f"{API_PREFIX}/submit/FEGA", data=data)
@@ -401,7 +415,7 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
 
         User should be notified for submitting too many files.
         """
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             files = [("submission", "ERA521986_valid.xml"), ("submission", "ERA521986_valid2.xml")]
             data = self.create_submission_data(files)
             response = await self.client.post(f"{API_PREFIX}/submit/FEGA", data=data)
@@ -411,7 +425,7 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
 
     async def test_validation_passes_for_valid_xml(self):
         """Test validation endpoint for valid xml."""
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             files = [("study", "SRP000539.xml")]
             data = self.create_submission_data(files)
             response = await self.client.post(f"{API_PREFIX}/validate", data=data)
@@ -420,7 +434,7 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
 
     async def test_validation_fails_bad_schema(self):
         """Test validation fails for bad schema and valid xml."""
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             files = [("fake", "SRP000539.xml")]
             data = self.create_submission_data(files)
             response = await self.client.post(f"{API_PREFIX}/validate", data=data)
@@ -428,7 +442,7 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
 
     async def test_validation_fails_for_invalid_xml_syntax(self):
         """Test validation endpoint for XML with bad syntax."""
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             files = [("study", "SRP000539_invalid.xml")]
             data = self.create_submission_data(files)
             response = await self.client.post(f"{API_PREFIX}/validate", data=data)
@@ -441,7 +455,7 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
 
     async def test_validation_fails_for_invalid_xml(self):
         """Test validation endpoint for invalid xml."""
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             files = [("study", "SRP000539_invalid2.xml")]
             data = self.create_submission_data(files)
             response = await self.client.post(f"{API_PREFIX}/validate", data=data)
@@ -454,7 +468,7 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
 
     async def test_validation_fails_for_invalid_xml_structure(self):
         """Test validation endpoint for invalid xml structure."""
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             files = [("study", "SRP000539_invalid3.xml")]
             data = self.create_submission_data(files)
             response = await self.client.post(f"{API_PREFIX}/validate", data=data)
@@ -469,7 +483,7 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
 
     async def test_validation_fails_for_another_invalid_xml(self):
         """Test validation endpoint for invalid xml tags."""
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             files = [("study", "SRP000539_invalid4.xml")]
             data = self.create_submission_data(files)
             response = await self.client.post(f"{API_PREFIX}/validate", data=data)
@@ -485,7 +499,7 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
 
     async def test_validation_fails_with_too_many_files(self):
         """Test validation endpoint for too many files."""
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             files = [("submission", "ERA521986_valid.xml"), ("submission", "ERA521986_valid2.xml")]
             data = self.create_submission_data(files)
             response = await self.client.post(f"{API_PREFIX}/validate", data=data)
@@ -540,7 +554,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
                 f"{self._publish_handler}.create_draft_doi",
                 return_value=self._draft_doi_data,
             ),
-            self.p_get_sess_restapi,
+            self.patch_verify_authorization,
         ):
             response = await self.client.post(
                 f"{API_PREFIX}/objects/study", params={"submission": "some id"}, data=data
@@ -565,7 +579,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
                 f"{self._publish_handler}.create_draft_doi",
                 return_value=self._draft_doi_data,
             ),
-            self.p_get_sess_restapi,
+            self.patch_verify_authorization,
         ):
             response = await self.client.post(
                 f"{API_PREFIX}/objects/study", params={"submission": "some id"}, json=json_req
@@ -576,7 +590,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
     async def test_submit_object_missing_field_json(self):
         """Test that JSON has missing property."""
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             json_req = {"centerName": "GEO", "alias": "GSE10966"}
             response = await self.client.post(
                 f"{API_PREFIX}/objects/study", params={"submission": "some id"}, json=json_req
@@ -596,7 +610,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
                 "studyAbstract": "abstract description for testing",
             },
         }
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.post(
                 f"{API_PREFIX}/objects/study", params={"submission": "some id"}, json=json_req
             )
@@ -615,7 +629,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
                 "studyAbstract": "abstract description for testing",
             },
         }
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.post(
                 f"{API_PREFIX}/objects/study", params={"submission": "some id"}, data=json_req
             )
@@ -629,7 +643,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         data = self.create_submission_data(files)
         file_content = self.get_file_data("sample", "EGAformat.csv")
         self.MockedCSVParser().parse.return_value = [{}, {}, {}]
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.post(
                 f"{API_PREFIX}/objects/sample", params={"submission": "some id"}, data=data
             )
@@ -650,7 +664,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         """Test multipart request post fails when no objects are parsed."""
         files = [("sample", "empty.csv")]
         data = self.create_submission_data(files)
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.post(
                 f"{API_PREFIX}/objects/sample", params={"submission": "some id"}, data=data
             )
@@ -671,7 +685,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
             },
         }
         call = f"{API_PREFIX}/drafts/study/EGA123456"
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.put(call, data=json_req)
             reason = "JSON is not correctly formatted, err: Expecting value: line 1 column 1 (char 0)"
             self.assertEqual(response.status, 400)
@@ -681,7 +695,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         """Test that patch JSON is badly formated."""
         json_req = {"centerName": "GEO", "alias": "GSE10966"}
         call = f"{API_PREFIX}/drafts/study/EGA123456"
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.patch(call, data=json_req)
             reason = "JSON is not correctly formatted, err: Expecting value: line 1 column 1 (char 0)"
             self.assertEqual(response.status, 400)
@@ -698,7 +712,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
                 "studyAbstract": "abstract description for testing",
             },
         }
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.post(
                 f"{API_PREFIX}/drafts/study", params={"submission": "some id"}, json=json_req
             )
@@ -719,10 +733,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         }
         call = f"{API_PREFIX}/drafts/study/EGA123456"
         with (
-            patch(
-                "metadata_backend.api.handlers.object.ObjectAPIHandler.get_user_external_id", return_value=self.user_id
-            ),
-            self.p_get_sess_restapi,
+            self.patch_verify_authorization,
         ):
             response = await self.client.put(call, json=json_req)
             self.assertEqual(response.status, 200)
@@ -735,10 +746,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         data = self.create_submission_data(files)
         call = f"{API_PREFIX}/drafts/study/EGA123456"
         with (
-            patch(
-                "metadata_backend.api.handlers.object.ObjectAPIHandler.get_user_external_id", return_value=self.user_id
-            ),
-            self.p_get_sess_restapi,
+            self.patch_verify_authorization,
         ):
             response = await self.client.put(call, data=data)
             self.assertEqual(response.status, 200)
@@ -749,7 +757,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         """Test that draft JSON patch method is handled, operator is called."""
         json_req = {"centerName": "GEO", "alias": "GSE10966"}
         call = f"{API_PREFIX}/drafts/study/EGA123456"
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.patch(call, json=json_req)
             self.assertEqual(response.status, 200)
             self.assertIn(self.test_ega_string, await response.text())
@@ -757,7 +765,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
     async def test_patch_draft_raises_with_xml(self):
         """Test that patch XML submisssion raises error."""
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             files = [("study", "SRP000539.xml")]
             data = self.create_submission_data(files)
             call = f"{API_PREFIX}/drafts/study/EGA123456"
@@ -766,7 +774,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
     async def test_submit_object_fails_with_too_many_files(self):
         """Test that sending two files to endpoint results failure."""
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             files = [("study", "SRP000539.xml"), ("study", "SRP000539_copy.xml")]
             data = self.create_submission_data(files)
             response = await self.client.post(
@@ -778,7 +786,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
     async def test_get_object(self):
         """Test that accessionId returns correct JSON object."""
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             url = f"{API_PREFIX}/objects/study/{self.query_accessionId}"
             response = await self.client.get(url)
             self.assertEqual(response.status, 200)
@@ -787,7 +795,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
     async def test_get_draft_object(self):
         """Test that draft accessionId returns correct JSON object."""
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             url = f"{API_PREFIX}/drafts/study/{self.query_accessionId}"
             response = await self.client.get(url)
             self.assertEqual(response.status, 200)
@@ -797,7 +805,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
     async def test_get_object_as_xml(self):
         """Test that accessionId  with XML query returns XML object."""
         url = f"{API_PREFIX}/objects/study/{self.query_accessionId}"
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.get(f"{url}?format=xml")
             self.assertEqual(response.status, 200)
             self.assertEqual(response.content_type, "text/xml")
@@ -806,7 +814,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
     async def test_query_is_called_and_returns_json_in_correct_format(self):
         """Test query method calls operator and returns mocked JSON object."""
         url = f"{API_PREFIX}/objects/study?studyType=foo&name=bar&page={self.page_num}" f"&per_page={self.page_size}"
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.get(url)
             self.assertEqual(response.status, 200)
             self.assertEqual(response.content_type, "application/json")
@@ -830,7 +838,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
             patch(
                 "metadata_backend.services.datacite_service_handler.DataciteServiceHandler.delete", return_value=None
             ),
-            self.p_get_sess_restapi,
+            self.patch_verify_authorization,
         ):
             response = await self.client.delete(url)
             self.assertEqual(response.status, 204)
@@ -839,7 +847,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
     async def test_query_fails_with_xml_format(self):
         """Test query method calls operator and returns status correctly."""
         url = f"{API_PREFIX}/objects/study?studyType=foo&name=bar&format=xml"
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.get(url)
             json_resp = await response.json()
             self.assertEqual(response.status, 400)
@@ -847,7 +855,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
     async def test_operations_fail_for_wrong_schema_type(self):
         """Test 404 error is raised if incorrect schema name is given."""
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             get_resp = await self.client.get(f"{API_PREFIX}/objects/bad_scehma_name/some_id")
             self.assertEqual(get_resp.status, 404)
             json_get_resp = await get_resp.json()
@@ -875,7 +883,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
     async def test_operations_fail_for_submission_only_schemas(self):
         """Test 400 error is raised if object cannot be accessed through /objects endpoints."""
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             get_resp = await self.client.get(f"{API_PREFIX}/objects/bprems/some_id")
             self.assertEqual(get_resp.status, 400)
             json_get_resp = await get_resp.json()
@@ -903,59 +911,13 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
     async def test_query_with_invalid_pagination_params(self):
         """Test that 400s are raised correctly with pagination."""
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             get_resp = await self.client.get(f"{API_PREFIX}/objects/study?page=2?title=joo")
             self.assertEqual(get_resp.status, 400)
             get_resp = await self.client.get(f"{API_PREFIX}/objects/study?page=0")
             self.assertEqual(get_resp.status, 400)
             get_resp = await self.client.get(f"{API_PREFIX}/objects/study?per_page=0")
             self.assertEqual(get_resp.status, 400)
-
-
-class UserHandlerTestCase(HandlersTestCase):
-    """User API endpoint class test cases."""
-
-    async def setUpAsync(self):
-        """Configure default values for testing and other modules.
-
-        This patches used modules and sets default return values for their
-        methods.
-        """
-        await super().setUpAsync()
-        class_useroperator = "metadata_backend.api.handlers.user.UserOperator"
-        self.patch_useroperator = patch(class_useroperator, **self.useroperator_config, spec=True)
-        self.MockedUserOperator = self.patch_useroperator.start()
-
-    async def tearDownAsync(self):
-        """Cleanup mocked stuff."""
-        await super().tearDownAsync()
-        self.patch_useroperator.stop()
-
-    async def test_get_user_works(self):
-        """Test user object is returned when correct user id is given."""
-        with self.p_get_sess_restapi:
-            response = await self.client.get(f"{API_PREFIX}/users/current")
-            self.assertEqual(response.status, 200)
-            self.MockedUserOperator().read_user.assert_called_once()
-            json_resp = await response.json()
-            self.assertEqual(self.test_user, json_resp)
-
-    async def test_user_deletion_is_called(self):
-        """Test that user object would be deleted."""
-        with self.p_get_sess_restapi:
-            self.MockedUserOperator().read_user.return_value = self.test_user
-            self.MockedUserOperator().delete_user.return_value = None
-            await self.client.delete(f"{API_PREFIX}/users/current")
-            self.MockedUserOperator().delete_user.assert_called_once()
-
-    async def test_generate_signing_key_works(self):
-        """Test that a key is generated, stored and returned."""
-        with self.p_get_sess_restapi:
-            response = await self.client.get(f"{API_PREFIX}/users/current/key")
-            self.assertEqual(response.status, 200)
-            self.MockedUserOperator().update_user.assert_called_once()
-            json_resp = await response.json()
-            self.assertEqual(len(json_resp["signingKey"]), 64)  # 64 length signing key
 
 
 class SubmissionHandlerTestCase(HandlersTestCase):
@@ -973,10 +935,6 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         self.patch_submissionoperator = patch(class_submissionoperator, **self.submissionoperator_config, spec=True)
         self.MockedSubmissionOperator = self.patch_submissionoperator.start()
 
-        class_useroperator = "metadata_backend.api.handlers.submission.UserOperator"
-        self.patch_useroperator = patch(class_useroperator, **self.useroperator_config, spec=True)
-        self.MockedUserOperator = self.patch_useroperator.start()
-
         class_operator = "metadata_backend.api.handlers.submission.ObjectOperator"
         self.patch_operator = patch(class_operator, **self.operator_config, spec=True)
         self.MockedOperator = self.patch_operator.start()
@@ -993,7 +951,6 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         """Cleanup mocked stuff."""
         await super().tearDownAsync()
         self.patch_submissionoperator.stop()
-        self.patch_useroperator.stop()
         self.patch_operator.stop()
         self.patch_xmloperator.stop()
         self.patch_fileoperator.stop()
@@ -1003,11 +960,8 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         json_req = {"name": "test", "description": "test submission", "projectId": "1000", "workflow": "FEGA"}
         self.MockedSubmissionOperator().query_submissions.return_value = ([], 0)
         with (
-            patch(
-                "metadata_backend.api.operators.project.ProjectOperator.check_project_exists",
-                return_value=True,
-            ),
-            self.p_get_sess_restapi,
+            self.patch_verify_authorization,
+            self.patch_verify_user_project_success,
         ):
             response = await self.client.post(f"{API_PREFIX}/submissions", json=json_req)
             json_resp = await response.json()
@@ -1018,7 +972,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
     async def test_submission_creation_with_missing_name_fails(self):
         """Test that submission creation fails when missing name in request."""
         json_req = {"description": "test submission", "projectId": "1000"}
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.post(f"{API_PREFIX}/submissions", json=json_req)
             json_resp = await response.json()
             self.assertEqual(response.status, 400)
@@ -1027,7 +981,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
     async def test_submission_creation_with_missing_project_fails(self):
         """Test that submission creation fails when missing project in request."""
         json_req = {"description": "test submission", "name": "name"}
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.post(f"{API_PREFIX}/submissions", json=json_req)
             json_resp = await response.json()
             self.assertEqual(response.status, 400)
@@ -1035,7 +989,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
 
     async def test_submission_creation_with_empty_body_fails(self):
         """Test that submission creation fails when no data in request."""
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.post(f"{API_PREFIX}/submissions")
             json_resp = await response.json()
             self.assertEqual(response.status, 400)
@@ -1046,11 +1000,8 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         json_req = {"name": "test", "description": "test submission", "projectId": "1000", "workflow": "FEGA"}
         self.MockedSubmissionOperator().query_submissions.return_value = (self.test_submission, 1)
         with (
-            patch(
-                "metadata_backend.api.operators.project.ProjectOperator.check_project_exists",
-                return_value=True,
-            ),
-            self.p_get_sess_restapi,
+            self.patch_verify_user_project_success,
+            self.patch_verify_authorization,
         ):
             response = await self.client.post(f"{API_PREFIX}/submissions", json=json_req)
             json_resp = await response.json()
@@ -1060,7 +1011,10 @@ class SubmissionHandlerTestCase(HandlersTestCase):
     async def test_get_submissions_with_1_submission(self):
         """Test get_submissions() endpoint returns list with 1 submission."""
         self.MockedSubmissionOperator().query_submissions.return_value = (self.test_submission, 1)
-        with self.p_get_sess_restapi:
+        with (
+            self.patch_verify_user_project_success,
+            self.patch_verify_authorization,
+        ):
             response = await self.client.get(f"{API_PREFIX}/submissions?projectId=1000")
             self.MockedSubmissionOperator().query_submissions.assert_called_once()
             self.assertEqual(response.status, 200)
@@ -1078,7 +1032,10 @@ class SubmissionHandlerTestCase(HandlersTestCase):
     async def test_get_submissions_with_no_submissions(self):
         """Test get_submissions() endpoint returns empty list."""
         self.MockedSubmissionOperator().query_submissions.return_value = ([], 0)
-        with self.p_get_sess_restapi:
+        with (
+            self.patch_verify_user_project_success,
+            self.patch_verify_authorization,
+        ):
             response = await self.client.get(f"{API_PREFIX}/submissions?projectId=1000")
             self.MockedSubmissionOperator().query_submissions.assert_called_once()
             self.assertEqual(response.status, 200)
@@ -1095,7 +1052,10 @@ class SubmissionHandlerTestCase(HandlersTestCase):
 
     async def test_get_submissions_with_bad_params(self):
         """Test get_submissions() with faulty pagination parameters."""
-        with self.p_get_sess_restapi:
+        with (
+            self.patch_verify_user_project_success,
+            self.patch_verify_authorization,
+        ):
             response = await self.client.get(f"{API_PREFIX}/submissions?page=ayylmao&projectId=1000")
             self.assertEqual(response.status, 400)
             resp = await response.json()
@@ -1113,7 +1073,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
 
     async def test_get_submission_works(self):
         """Test submission is returned when correct submission id is given."""
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.get(f"{API_PREFIX}/submissions/FOL12345678")
             self.assertEqual(response.status, 200)
             self.MockedSubmissionOperator().read_submission.assert_called_once()
@@ -1123,7 +1083,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
     async def test_update_submission_fails_with_wrong_key(self):
         """Test that submission does not update when wrong keys are provided."""
         data = [{"op": "add", "path": f"{API_PREFIX}/objects"}]
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.patch(f"{API_PREFIX}/submissions/FOL12345678", json=data)
             self.assertEqual(response.status, 400)
             json_resp = await response.json()
@@ -1141,7 +1101,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         """Test that submission would update with correct keys."""
         self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
         data = {"name": "test2"}
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.patch(f"{API_PREFIX}/submissions/FOL12345678", json=data)
             self.MockedSubmissionOperator().update_submission.assert_called_once()
             self.assertEqual(response.status, 200)
@@ -1151,7 +1111,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
     async def test_submission_deletion_is_called(self):
         """Test that submission would be deleted."""
         self.MockedSubmissionOperator().read_submission.return_value = self.test_submission
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.delete(f"{API_PREFIX}/submissions/FOL12345678")
             self.MockedSubmissionOperator().read_submission.assert_called_once()
             self.MockedSubmissionOperator().delete_submission.assert_called_once()
@@ -1162,7 +1122,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
         data = ujson.load(open(self.TESTFILES_ROOT / "doi" / "test_doi.json"))
 
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.patch(f"{API_PREFIX}/submissions/FOL12345678/doi", json=data)
             self.assertEqual(response.status, 200)
             json_resp = await response.json()
@@ -1177,7 +1137,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         """Test method for adding linked folder to submission works."""
         self.MockedSubmissionOperator().check_submission_linked_folder.return_value = False
         data = {"linkedFolder": "folderName"}
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.patch(f"{API_PREFIX}/submissions/FOL12345678/folder", json=data)
             self.assertEqual(response.status, 204)
 
@@ -1185,7 +1145,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         """Test method for adding linked folder fails if it already exists."""
         self.MockedSubmissionOperator().check_submission_linked_folder.return_value = True
         data = {"linkedFolder": "folderName"}
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.patch(f"{API_PREFIX}/submissions/FOL12345678/folder", json=data)
             self.assertEqual(response.status, 400)
             self.assertIn("It already has a linked folder", await response.text())
@@ -1199,7 +1159,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
                 "metadata_backend.services.rems_service_handler.RemsServiceHandler.validate_workflow_licenses",
                 return_value=True,
             ),
-            self.p_get_sess_restapi,
+            self.patch_verify_authorization,
         ):
             response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/rems", json=data)
             self.assertEqual(response.status, 200)
@@ -1215,7 +1175,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         """Test method for adding rems data to submission fails if required fields are missing."""
         self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
         data = {"workflowId": 1}
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/rems", json=data)
             self.assertEqual(response.status, 400)
             self.assertIn("REMS DAC is missing one or more of the required fields", await response.text())
@@ -1224,7 +1184,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         """Test method for adding rems data to submission fails if values have incorrect types."""
         self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
         data = {"workflowId": 1, "organizationId": 1, "licenses": [1]}
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/rems", json=data)
             self.assertEqual(response.status, 400)
             self.assertIn("Organization ID '1' must be a string.", await response.text())
@@ -1234,13 +1194,13 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         self.MockedSubmissionOperator().read_submission.return_value = self.test_submission
         self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
         data = [{"accessionId": "file123", "version": 1}]
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/files", json=data)
             self.assertEqual(response.status, 204)
 
         # Test the same file can be modified
         data = [{**data[0], "status": "verified", "objectId": {"accessionId": "EGA111", "schema": "sample"}}]
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/files", json=data)
             self.assertEqual(response.status, 204)
 
@@ -1248,7 +1208,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         """Test patch method for submission files fails with incorrectly formatted JSON."""
         self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
         data = "[{'bad': 'json',}]"
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/files", data=data)
             self.assertEqual(response.status, 400)
             json_resp = await response.json()
@@ -1258,14 +1218,14 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         """Test patch method for submission files fails with missing fields."""
         self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
         data = [{"accessionId": "file123"}]
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/files", json=data)
             self.assertEqual(response.status, 400)
             json_resp = await response.json()
             self.assertIn("Each file must contain 'accessionId' and 'version'.", json_resp["detail"])
 
         data = [{**data[0], "version": 1, "objectId": {"accessionId": "EGA111"}}]
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/files", json=data)
             self.assertEqual(response.status, 400)
             json_resp = await response.json()
@@ -1279,7 +1239,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         error_reason = "File 'file123' (version: '1') was not found."
         self.MockedFileOperator().read_file.side_effect = web.HTTPNotFound(reason=error_reason)
         data = [{"accessionId": "file123", "version": 1}]
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/files", json=data)
             self.assertEqual(response.status, 404)
             json_resp = await response.json()
@@ -1290,7 +1250,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         self.MockedSubmissionOperator().read_submission.return_value = self.test_submission
         self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
         data = [{"accessionId": "file123", "version": 1, "objectId": {"accessionId": "none", "schema": "sample"}}]
-        with self.p_get_sess_restapi:
+        with self.patch_verify_authorization:
             response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/files", json=data)
             self.assertEqual(response.status, 400)
             json_resp = await response.json()
@@ -1345,7 +1305,6 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
         with (
             patch(f"{self._publish_handler}.create_draft_doi", return_value=self.user_id),
-            patch(f"{self._publish_handler}.get_user_external_id", return_value=self.user_id),
             patch(
                 self._mock_prepare_doi,
                 return_value=(
@@ -1354,7 +1313,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                 ),
             ),
             patch(f"{self._publish_handler}.create_metax_dataset", return_value=None),
-            self.p_get_sess_restapi,
+            self.patch_verify_authorization,
         ):
             response = await self.client.patch(f"{API_PREFIX}/publish/FOL12345678")
             json_resp = await response.json()
@@ -1376,10 +1335,6 @@ class FilesHandlerTestCase(HandlersTestCase):
         class_fileoperator = "metadata_backend.api.handlers.files.FileOperator"
         self.patch_fileoperator = patch(class_fileoperator, **self.fileoperator_config, spec=True)
         self.MockedFileOperator = self.patch_fileoperator.start()
-
-        class_useroperator = "metadata_backend.api.handlers.files.UserOperator"
-        self.patch_useroperator = patch(class_useroperator, **self.useroperator_config, spec=True)
-        self.MockedUserOperator = self.patch_useroperator.start()
 
         self.mock_file_data = {
             "userId": self.user_id,
@@ -1406,63 +1361,55 @@ class FilesHandlerTestCase(HandlersTestCase):
         """Cleanup mocked stuff."""
         await super().tearDownAsync()
         self.patch_fileoperator.stop()
-        self.patch_useroperator.stop()
 
-    async def test_get_project_files(self):
+    async def test_get_project_files(self) -> None:
         """Test fetching files belonging to specific project."""
         with (
-            patch(
-                "metadata_backend.api.operators.project.ProjectOperator.check_project_exists",
-                return_value=True,
-            ),
-            self.p_get_sess_restapi,
+            self.patch_verify_user_project_failure,
+            self.patch_verify_authorization,
         ):
             # User is not part of project
-            self.MockedUserOperator().read_user.return_value = self.test_user
-            self.MockedUserOperator().check_user_has_project.return_value = False
             response = await self.client.get(f"{API_PREFIX}/files")
             self.assertEqual(response.status, 401)
 
+        with (
+            self.patch_verify_user_project_success,
+            self.patch_verify_authorization,
+        ):
             # Successful fetching of project-wise file list
-            self.MockedUserOperator().check_user_has_project.return_value = True
             self.MockedFileOperator().read_project_files.return_value = self.test_submission["files"]
             response = await self.client.get(f"{API_PREFIX}/files")
             self.assertEqual(response.status, 200)
             json_resp = await response.json()
             self.assertEqual(json_resp[0]["accessionId"], "file1")
 
-    async def test_post_project_files_works(self):
+    async def test_post_project_files_works(self) -> None:
         """Test file post request handler."""
         with (
-            patch(
-                "metadata_backend.api.operators.project.ProjectOperator.check_project_exists",
-                return_value=True,
-            ),
-            self.p_get_sess_restapi,
+            self.patch_verify_user_project_success,
+            self.patch_verify_authorization,
         ):
-            self.MockedUserOperator().check_user_has_project.return_value = True
             self.MockedFileOperator().create_file_or_version.return_value = "accession_id1", 1
             response = await self.client.post(f"{API_PREFIX}/files", json=self.mock_file_data)
             self.assertEqual(response.status, 201)
             json_resp = await response.json()
             self.assertEqual(json_resp, [["accession_id1", 1]])
 
-    async def test_post_project_files_fails(self):
+    async def test_post_project_files_fails(self) -> None:
         """Test file post request handler for error instances."""
         with (
-            patch(
-                "metadata_backend.api.operators.project.ProjectOperator.check_project_exists",
-                return_value=True,
-            ),
-            self.p_get_sess_restapi,
+            self.patch_verify_user_project_failure,
+            self.patch_verify_authorization,
         ):
             # Requesting user is not part of the project
-            self.MockedUserOperator().check_user_has_project.return_value = False
             response = await self.client.post(f"{API_PREFIX}/files", json=self.mock_file_data)
             self.assertEqual(response.status, 401)
 
+        with (
+            self.patch_verify_user_project_success,
+            self.patch_verify_authorization,
+        ):
             # Faulty request data
-            self.MockedUserOperator().check_user_has_project.return_value = True
             alt_data = self.mock_file_data
             alt_data["files"] = "not a list"
             response = await self.client.post(f"{API_PREFIX}/files", json=alt_data)
@@ -1481,14 +1428,11 @@ class FilesHandlerTestCase(HandlersTestCase):
                 "Fields `path`, `name`, `bytes`, `encrypted_checksums`, `unencrypted_checksums` are required.",
             )
 
-    async def test_delete_project_files_works(self):
+    async def test_delete_project_files_works(self) -> None:
         """Test deleting file request handler."""
         with (
-            patch(
-                "metadata_backend.api.operators.project.ProjectOperator.check_project_exists",
-                return_value=True,
-            ),
-            self.p_get_sess_restapi,
+            self.patch_verify_user_project_success,
+            self.patch_verify_authorization,
         ):
             url = f"{API_PREFIX}/files/{self.mock_single_file['projectId']}"
             self.MockedFileOperator().check_file_exists.return_value = self.mock_single_file
@@ -1496,14 +1440,11 @@ class FilesHandlerTestCase(HandlersTestCase):
             self.assertEqual(self.MockedFileOperator().flag_file_deleted.call_count, 3)
             self.assertEqual(response.status, 204)
 
-    async def test_delete_project_files_not_in_database(self):
+    async def test_delete_project_files_not_in_database(self) -> None:
         """Test deleting file request handler with error if file does not exist in database."""
         with (
-            patch(
-                "metadata_backend.api.operators.project.ProjectOperator.check_project_exists",
-                return_value=True,
-            ),
-            self.p_get_sess_restapi,
+            self.patch_verify_user_project_success,
+            self.patch_verify_authorization,
         ):
             url = f"{API_PREFIX}/files/{self.mock_single_file['projectId']}"
             # File does not exist in database
@@ -1511,17 +1452,107 @@ class FilesHandlerTestCase(HandlersTestCase):
             await self.client.delete(url, json=self.mock_file_paths)
             self.MockedFileOperator().flag_file_deleted.assert_not_called()
 
-    async def test_delete_project_files_not_valid(self):
+    async def test_delete_project_files_not_valid(self) -> None:
         """Test deleting file request handler with error if files in request are not valid."""
         with (
-            patch(
-                "metadata_backend.api.operators.project.ProjectOperator.check_project_exists",
-                return_value=True,
-            ),
-            self.p_get_sess_restapi,
+            self.patch_verify_user_project_success,
+            self.patch_verify_authorization,
         ):
             url = f"{API_PREFIX}/files/{self.mock_single_file['projectId']}"
             # Invalid file as request payload
             await self.client.delete(url, json=self.mock_single_file)
             self.MockedFileOperator().check_file_exists.assert_not_called()
             self.MockedFileOperator().flag_file_deleted.assert_not_called()
+
+
+class ApiKeyHandlerTestCase(HandlersTestCase):
+    """API key handler test cases."""
+
+    async def test_post_get_delete_api_key(self) -> None:
+        """Test API key creation, listing and revoking."""
+
+        with (
+            self.patch_verify_authorization,
+            self.patch_verify_user_project_success,
+        ):
+            key_id_1 = str(uuid.uuid4())
+            key_id_2 = str(uuid.uuid4())
+
+            # Create first key.
+            response = await self.client.post(f"{API_PREFIX}/api/keys",
+                                              json=ApiKey(key_id=key_id_1).model_dump(mode="json"))
+            self.assertEqual(response.status, 200)
+
+            # Check first key exists.
+            response = await self.client.get(f"{API_PREFIX}/api/keys")
+            self.assertEqual(response.status, 200)
+            json = await response.json()
+            assert len(json) == 1
+            api_key_1 = ApiKey(**json[0])
+            self.assertEqual(api_key_1.key_id, key_id_1)
+            self.assertIsNotNone(api_key_1.created_at)
+
+            # Create second key.
+            response = await self.client.post(f"{API_PREFIX}/api/keys",
+                                              json=ApiKey(key_id=key_id_2).model_dump(mode="json"))
+            self.assertEqual(response.status, 200)
+
+            # Check first and second key exist.
+            response = await self.client.get(f"{API_PREFIX}/api/keys")
+            self.assertEqual(response.status, 200)
+            json = await response.json()
+            assert len(json) == 2
+
+            key_ids = [ApiKey(**key).key_id for key in json]
+            assert key_id_1 in key_ids
+            assert key_id_2 in key_ids
+            self.assertIsNotNone(ApiKey(**json[0]).created_at)
+            self.assertIsNotNone(ApiKey(**json[1]).created_at)
+
+            # Remove second key.
+            response = await self.client.delete(f"{API_PREFIX}/api/keys",
+                                                json=ApiKey(key_id=key_id_2).model_dump(mode="json"))
+            self.assertEqual(response.status, 204)
+
+            # Check first key exists.
+            response = await self.client.get(f"{API_PREFIX}/api/keys")
+            self.assertEqual(response.status, 200)
+            json = await response.json()
+            assert len(json) == 1
+            api_key_1 = ApiKey(**json[0])
+            self.assertEqual(api_key_1.key_id, key_id_1)
+            self.assertIsNotNone(api_key_1.created_at)
+
+
+class UserHandlerTestCase(HandlersTestCase):
+    """User handler test cases."""
+
+    async def test_get_user(self) -> None:
+        """Test getting user information."""
+
+        project_id = "PRJ123"
+
+        with (
+            self.patch_verify_authorization,
+            patch.dict(os.environ, {
+                "CSC_LDAP_HOST": "ldap://mockhost",
+                "CSC_LDAP_USER": "mockuser",
+                "CSC_LDAP_PASSWORD": "mockpassword"
+            }),
+            patch('metadata_backend.api.services.ldap.Connection') as mock_connection
+        ):
+            mock_conn_instance, mock_entry = MagicMock(), MagicMock()
+            mock_entry.entry_to_json.return_value = json.dumps({
+                "dn": "ou=SP_SD-SUBMIT,ou=idm,dc=csc,dc=fi",
+                "attributes": {"CSCPrjNum": [project_id]}
+            })
+            mock_conn_instance.entries = [mock_entry]
+            mock_connection.return_value.__enter__.return_value = mock_conn_instance
+
+            response = await self.client.get(f"{API_PREFIX}/users")
+            self.assertEqual(response.status, 200)
+
+            user = User(**await response.json())
+            assert user.user_id == "mock-userid"
+            assert user.user_name == "mock-username"
+            assert user.projects == [Project(project_id=project_id)]

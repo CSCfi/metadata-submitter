@@ -84,6 +84,6 @@ class RemsAPIHandler(RESTAPIIntegrationHandler):
             org_id = lic["organization"]["organization/id"]
             if org_id not in organizations:
                 add_organization(str(org_id), str(org_name))
-            organizations[org_id]["licenses"].append({"id": lic["id"], **title})
+            organizations[org_id]["licenses"].append({"id": lic["id"], **title})  # type: ignore
 
         return web.json_response(data=list(organizations.values()))

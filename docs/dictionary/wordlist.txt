@@ -112,6 +112,7 @@ kordelinin
 kubernetes
 kyrgyz
 ldap
+ldaps
 lexically
 lfs
 liskov
@@ -185,6 +186,7 @@ sha
 shona
 sllversion
 snp
+sqlalcehemy
 sra
 src
 srf
