@@ -208,11 +208,13 @@ async def create_file(req: web.Request) -> web.Response:
             status=400,
         )
 
-    files_in_inbox[file_data.user].append({
-        "inboxPath": file_data.filepath,
-        "fileStatus": "uploaded",
-        "createAt": datetime.now().isoformat(),
-    })
+    files_in_inbox[file_data.user].append(
+        {
+            "inboxPath": file_data.filepath,
+            "fileStatus": "uploaded",
+            "createAt": datetime.now().isoformat(),
+        }
+    )
 
     return web.HTTPCreated()
 

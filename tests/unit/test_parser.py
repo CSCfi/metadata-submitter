@@ -241,7 +241,7 @@ class ParserTestCase(unittest.TestCase):
         Tests for some values that converted JSON should have.
         """
         observer_xml = self.load_file_to_text("bpobserver", "observers.xml")
-        observer_json, output_xml = self.xml_parser.parse("bpobserver", observer_xml)
+        observer_json, _ = self.xml_parser.parse("bpobserver", observer_xml)
         self.assertEqual("Observer_12345", observer_json[0]["alias"])
         self.assertEqual("Human", observer_json[0]["observerType"])
         self.assertEqual("Observer_67890", observer_json[1]["alias"])

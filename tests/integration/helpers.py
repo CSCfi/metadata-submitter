@@ -1,6 +1,5 @@
 """Helper functions for the integration tests."""
 
-import aiohttp
 import json
 import logging
 import re
@@ -8,6 +7,7 @@ from urllib.parse import urlencode
 from uuid import uuid4
 
 import aiofiles
+import aiohttp
 import ujson
 from aiohttp import FormData
 
@@ -128,7 +128,7 @@ async def post_object(sess, schema, submission_id, filename):
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (submission) used for testing
-    :submission_id: submission object belongs to
+    :param submission_id: submission object belongs to
     :param filename: name of the file used for testing.
     :returns: accessionId of created object
     """
@@ -150,7 +150,7 @@ async def post_multi_object(sess, schema, submission_id, filename):
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (submission) used for testing
-    :submission_id: submission object belongs to
+    :param submission_id: submission object belongs to
     :param filename: name of the file used for testing.
     :returns: response data after created objects
     """
@@ -171,9 +171,9 @@ async def post_object_expect_status(sess, schema, submission_id, filename, statu
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (submission) used for testing
-    :submission_id: submission object belongs to
+    :param submission_id: submission object belongs to
     :param filename: name of the file used for testing
-    :param: HTTP status to expect for
+    :param status: HTTP status to expect for
     :returns: accessionId of created object
     """
     request_data = await create_request_data(schema, filename)
@@ -194,7 +194,7 @@ async def post_object_json(sess, schema, submission_id, filename):
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (submission) used for testing
-    :submission_id: submission object belongs to
+    :param submission_id: submission object belongs to
     :param filename: name of the file used for testing.
     :returns: accessionId of created object
     """
@@ -227,7 +227,7 @@ async def post_draft(sess, schema, submission_id, filename):
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (submission) used for testing
-    :submission_id: submission object belongs to
+    :param submission_id: submission object belongs to
     :param filename: name of the file used for testing.
     :returns: accessionId of created draft
     """
@@ -248,7 +248,7 @@ async def post_draft_json(sess, schema, submission_id, filename):
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (submission) used for testing
-    :submission_id: submission object belongs to
+    :param submission_id: submission object belongs to
     :param filename: name of the file used for testing.
     :returns: accessionId of created draft
     """
@@ -305,7 +305,6 @@ async def put_object_json(sess, schema, accession_id, update_filename):
     :param schema: name of the schema (submission) used for testing
     :param accession_id: id of the object
     :param update_filename: name of the file used to use for updating data.
-    :returns: accession id of updated object
     """
     request_data = await create_request_json_data(schema, update_filename)
     async with sess.put(f"{objects_url}/{schema}/{accession_id}", data=request_data) as resp:
@@ -426,6 +425,7 @@ async def announce_submission(sess, submission_id, id_token):
 
     :param sess: HTTP session in which request call is made
     :param submission_id: id of the submission
+    :param id_token: ID token for the user to announce the submission
     """
     async with sess.patch(f"{announce_url}/{submission_id}", headers={"X-Authorization": f"Bearer {id_token}"}) as resp:
         LOG.debug("Announcing submission %s", submission_id)
@@ -532,6 +532,7 @@ def extract_submissions_object(res, accession_id, draft):
 
     :param res: JSON parsed responce from submission query request
     :param accession_id: accession ID of reviwed object
+    :param draft: indication of object draft status, default False
     :returns: dict of object entry in submission
     """
     object = "drafts" if draft else "metadataObjects"
@@ -703,7 +704,7 @@ async def delete_project_files(sess, project_id, file_paths):
 
     :param sess: HTTP session in which request call is made
     :param project_id: project ID where the file belongs to
-    :param file_path: path of the file to be flagged as deleted
+    :param file_paths: path of the file to be flagged as deleted
     """
     url = f"{files_url}/{project_id}"
     async with sess.delete(url, data=ujson.dumps(file_paths)) as resp:
@@ -713,6 +714,7 @@ async def delete_project_files(sess, project_id, file_paths):
 async def search_taxonomy(sess, query: str, max_results: int = 10):
     """Send a taxonomy name search query.
 
+    :param sess: HTTP session in which request call is made
     :param query: string to query taxonomy for
     :param max_results: how many search results to display (Optional)
     """
@@ -741,7 +743,7 @@ async def get_mock_admin_token(sess):
 
 
 async def setup_files_for_ingestion(sess, dataset_id, submission_id, user_id, project_id, id_token):
-    """Create files for a BigPicture submission, and add them to the database, submission and inbox
+    """Create files for a BigPicture submission, and add them to the database, submission and inbox.
 
     :param sess: HTTP session in which request call is made
     :param dataset_id: Dataset accession ID
@@ -786,8 +788,7 @@ async def post_data_ingestion(sess, submission_id, id_token):
     """
     url = f"{submissions_url}/{submission_id}/ingest"
 
-    async with sess.post(url, headers={"X-Authorization": f"Bearer {id_token}"}
-    ) as resp:
+    async with sess.post(url, headers={"X-Authorization": f"Bearer {id_token}"}) as resp:
         LOG.debug("Ingesting submission %s", submission_id)
         assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
@@ -813,14 +814,14 @@ async def check_dataset_accession_ids(sess, files, dataset_id):
     :param files: List of files with their accession IDs and paths
     :param dataset_id: Dataset accession ID
     """
-    async with sess.get(url = f"{admin_url}/dataset/{dataset_id}") as resp:
+    async with sess.get(url=f"{admin_url}/dataset/{dataset_id}") as resp:
         assert resp.status == 200, f"HTTP Status code error {resp.status}"
         ans = await resp.json()
         assert sorted(list(x["accessionId"] for x in files)) == sorted(ans["files"])
 
 
 async def add_file_to_inbox(sess, filepath, username):
-    """Add a new file to inbox via the Admin API
+    """Add a new file to inbox via the Admin API.
 
     :param sess: HTTP session in which request call is made
     :param filepath: path of the file

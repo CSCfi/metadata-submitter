@@ -5,8 +5,8 @@ to share functionality of the `class` scoped fixtures.
 """
 
 import logging
-from urllib.parse import urlencode
 from typing import AsyncGenerator
+from urllib.parse import urlencode
 
 import aiohttp
 import pytest
@@ -27,7 +27,7 @@ from tests.integration.conf import (
     other_test_user_family,
     other_test_user_given,
 )
-from tests.integration.helpers import delete_submission, post_submission, get_mock_admin_token
+from tests.integration.helpers import delete_submission, get_mock_admin_token, post_submission
 from tests.integration.mongo import Mongo
 
 LOG = logging.getLogger(__name__)
@@ -42,6 +42,7 @@ def pytest_addoption(parser):
         default=False,
         help="run tests without any cleanup",
     )
+
 
 @pytest.fixture(name="client")
 async def fixture_client() -> AsyncGenerator[aiohttp.ClientSession]:
@@ -104,15 +105,18 @@ async def fixture_admin_token():
 
         return admin_token
 
+
 @pytest.fixture(name="user_id")
 async def fixture_user_id() -> str:
     """Return the user id for the default authenticated user."""
     return other_test_user
 
+
 @pytest.fixture(name="project_id")
 async def fixture_project_id() -> str:
     """Return the first project id for the authenticated user."""
     return "1000"
+
 
 @pytest.fixture(name="project_id_2")
 async def fixture_project_id_2() -> str:

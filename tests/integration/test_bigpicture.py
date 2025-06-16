@@ -25,6 +25,9 @@ class TestBigpicture:
 
         :param client_logged_in: HTTP client in which request call is made
         :param submission_bigpicture: submission ID, created with the BP workflow
+        :param user_id: User ID of the logged in user
+        :param project_id: Project ID of the logged in user
+        :param admin_token: Admin token for the logged in user
         """
         # Submit bprems
         await post_object(client_logged_in, "bprems", submission_bigpicture, "rems.xml")
@@ -36,7 +39,9 @@ class TestBigpicture:
         doi_data_raw = await create_request_json_data("doi", "test_doi.json")
         await patch_submission_doi(client_logged_in, submission_bigpicture, doi_data_raw)
 
-        await setup_files_for_ingestion(client_logged_in, dataset_id, submission_bigpicture, user_id, project_id, admin_token)
+        await setup_files_for_ingestion(
+            client_logged_in, dataset_id, submission_bigpicture, user_id, project_id, admin_token
+        )
         await post_data_ingestion(client_logged_in, submission_bigpicture, admin_token)
 
         await announce_submission(client_logged_in, submission_bigpicture, admin_token)

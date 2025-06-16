@@ -27,6 +27,8 @@ class TestFiles:
         """Test file posting endpoint.
 
         :param client_logged_in: HTTP client in which request call is made
+        :param user_id: User ID of the logged in user
+        :param project_id: Project ID of the logged in user
         """
 
         # Post file and check its creation succeeded
@@ -48,6 +50,9 @@ class TestFiles:
         """Test that files are properly posted and retrieved for multiple projects.
 
         :param client_logged_in: HTTP client in which request call is made
+        :param user_id: User ID of the logged in user
+        :param project_id: Project ID of the logged in user
+        :param project_id_2: Second project ID of the logged in user
         """
         # Post files to one project and check that creation succeeded
         file_data = {
@@ -73,8 +78,8 @@ class TestFiles:
 
         projects_ids = [project_id, project_id_2]
 
-        for project_id in projects_ids:
-            project_files = await get_project_files(client_logged_in, project_id)
+        for pro_id in projects_ids:
+            project_files = await get_project_files(client_logged_in, pro_id)
             for file in project_files:
                 files.append(file)
         assert len(files) == 4
@@ -88,6 +93,8 @@ class TestFiles:
         """Test file posting to BP project has correct accessionId format.
 
         :param client_logged_in: HTTP client in which request call is made
+        :param user_id: User ID of the logged in user
+        :param project_id: Project ID of the logged in user
         """
         # Post BP file
         bp_file_data = {
@@ -122,6 +129,9 @@ class TestFiles:
         """Test that specific file is flagged as deleted and removed from current submissions (not published).
 
         :param client_logged_in: HTTP client in which request call is made
+        :param user_id: User ID of the logged in user
+        :param project_id: Project ID of the logged in user
+        :param database: Database connection to use for queries
         """
         # Create a new submission and check its creation succeeded
         submission_data = {
@@ -198,6 +208,8 @@ class TestFileSubmissions:
         """Test that adding and updating files in a submission works.
 
         :param client_logged_in: HTTP client in which request call is made
+        :param user_id: User ID of the logged in user
+        :param project_id: Project ID of the logged in user
         """
         # Create a new submission and check its creation succeeded
         submission_data = {
@@ -245,6 +257,8 @@ class TestFileSubmissions:
         """Test that adding and removing files in a submission works.
 
         :param client_logged_in: HTTP client in which request call is made
+        :param user_id: User ID of the logged in user
+        :param project_id: Project ID of the logged in user
         """
 
         # Create a new submission and check its creation succeeded
@@ -291,6 +305,8 @@ class TestFileSubmissions:
         """Test creating a file version.
 
         :param client_logged_in: HTTP client in which request call is made
+        :param user_id: User ID of the logged in user
+        :param project_id: Project ID of the logged in user
         """
         # Post file and check its version number
         file_data = {

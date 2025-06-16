@@ -58,7 +58,7 @@ async def update(req: web.Request) -> web.Response:
     prefix = req.match_info["prefix"]
     suffix = req.match_info["suffix"]
     doi = f"{prefix}/{suffix}"
-    if doi not in DOIS.keys():
+    if doi not in DOIS:
         reason = f"Invalid draft DOI in request: {doi}"
         LOG.exception(reason)
         raise web.HTTPBadRequest(reason=reason)

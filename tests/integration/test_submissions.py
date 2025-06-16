@@ -1,10 +1,11 @@
 """Test operations with submissions."""
 
-import aiohttp
 import json
 import logging
 import xml.etree.ElementTree as ET
 from datetime import datetime
+
+import aiohttp
 
 from tests.integration.conf import drafts_url, objects_url, publish_url, submit_url, testfiles_root
 from tests.integration.helpers import (
@@ -209,7 +210,7 @@ class TestSubmissions:
         for elem in root.iter("STUDY"):
             del elem.attrib["accession"]
         tree.write(mod_study, encoding="utf-8")
-        with open(mod_study, "a") as f:
+        with open(mod_study, "a", encoding="utf-8") as f:
             f.write("\n")
 
 
@@ -950,6 +951,7 @@ class TestSubmissionDataIngestion:
 
         :param client_logged_in: HTTP client in which request call is made
         :param database: database client to perform db operations
+        :param user_id: id of the user the submission belongs to
         :param project_id: id of the project the submission belongs to
         :param admin_token: a JWT with admin credentials
         """

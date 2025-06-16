@@ -31,8 +31,6 @@ class TestObjects:
         was deleted.
 
         :param client_logged_in: HTTP client_logged_in_logged_inion in which request call is made
-        :param schema: name of the schema (submission) used for testing
-        :param filename: name of the file used for testing
         :param submission_fega: id of the submission used to group fega submission
         :param submission_bigpicture: id of submission used to group BP submission
         """
