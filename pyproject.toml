@@ -22,7 +22,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "aiohttp==3.12.12",
+    "aiohttp==3.12.13",
     "cryptography==45.0.4",
     "defusedxml==0.7.1",
     "gunicorn==23.0.0",
@@ -30,14 +30,14 @@ dependencies = [
     "jsonschema==4.24.0",
     "motor==3.7.1",
     "idpyoidc==5.0.0",
-    "pydantic==2.11.5",
+    "pydantic==2.11.7",
     "pynacl==1.5.0",
     "python-dateutil==2.9.0.post0",
     "PyYAML==6.0.2", # for building swagger html
-    "requests==2.32.3",
+    "requests==2.32.4",
     "ujson==5.10.0",
     "uvloop==0.21.0",
-    "xmlschema==4.0.1",
+    "xmlschema==4.1.0",
     "typing-extensions==4.14.0",
     "pyjwt>=2.10.1",
     "ldap3 @ git+https://github.com/cannatag/ldap3.git@refs/pull/983/head",
@@ -57,15 +57,15 @@ dev = [
     "pylint==3.3.7",
     # mypy
     "mypy>=1.15.0",
-    "types-requests==2.32.0.20250602",
+    "types-requests==2.32.4.20250611",
     "types-ujson==5.10.0.20250326",
     "types-python-dateutil>=2.9.0.20241206",
     # black
     "black==25.1.0",
     # pytest
-    "pytest==8.3.5",
+    "pytest==8.4.0",
     "pytest-asyncio==1.0.0",
-    "pytest-cov==6.1.1",
+    "pytest-cov==6.2.1",
     "pytest-xdist==3.7.0",
     # other
     "aiofiles==24.1.0",
@@ -115,8 +115,8 @@ verify = [
 
 test = [
     # pytest
-    "pytest==8.3.5",
-    "pytest-cov==6.1.1",
+    "pytest==8.4.0",
+    "pytest-cov==6.2.1",
     "pytest-xdist==3.7.0",
 ]
 
