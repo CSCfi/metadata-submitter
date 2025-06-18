@@ -171,6 +171,7 @@ pytest
 redux
 req
 reqs
+rkms
 ror
 rpc
 sairaanhoitopiiri
