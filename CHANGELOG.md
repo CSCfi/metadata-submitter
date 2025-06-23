@@ -9,6 +9,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- (users) Updated creators in submission doiInfo schema to resemble Qvain
 - when calling backend, the admin token is assumed to be in the `X-Authorization` header
 - `/ingest` no longer needs json payload
 - Renamed and tested debug log helpers (#869)
