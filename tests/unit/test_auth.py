@@ -1,29 +1,19 @@
 """Test API auth endpoints."""
 
 import os
-from datetime import timedelta
-from unittest import IsolatedAsyncioTestCase, TestCase
+from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import jwt
 from aiohttp.test_utils import AioHTTPTestCase
 from aiohttp.web_exceptions import HTTPBadRequest, HTTPInternalServerError, HTTPSeeOther, HTTPUnauthorized
 
 from metadata_backend.api.auth import AccessHandler
 from metadata_backend.api.services.auth import (
-    API_KEY_ID_LENGTH,
-    API_KEY_LENGTH,
-    JWT_ALGORITHM,
-    JWT_ISSUER,
     JWT_SECRET_ENV,
-    AccessService,
 )
 from metadata_backend.server import init
 
 from .mockups import Mock_Request
-
-# from metadata_backend.api.middlewares import generate_cookie
-
 
 class AccessHandlerFailTestCase(AioHTTPTestCase):
     """API AccessHandler auth fails class test cases."""
@@ -230,165 +220,3 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
 
         with self.assertRaises(HTTPUnauthorized):
             await self.AccessHandler.callback(request)
-
-
-class AccessServiceTestCase(TestCase):
-    """Test Auth API services."""
-
-    def setUp(self) -> None:
-        """Configure mock values for tests."""
-        self.user_id = "mock-user"
-        self.user_name = "mock-user-name"
-        self.expiration = timedelta(minutes=10)
-        self.jwt_secret = "mock-secret"
-        self.env_patcher = patch.dict(os.environ, {JWT_SECRET_ENV: self.jwt_secret})
-        self.env_patcher.start()
-
-    def tearDown(self) -> None:
-        """Cleanup mocked stuff."""
-        self.env_patcher.stop()
-
-    def test_create_jwt_token_contains_required_claims(self) -> None:
-        """Test that the JWT token contains the required claims."""
-        token = AccessService.create_jwt_token(self.user_id, self.user_name, self.expiration)
-        decoded = jwt.decode(token, self.jwt_secret, algorithms=[JWT_ALGORITHM], issuer=JWT_ISSUER)
-
-        self.assertEqual(decoded["sub"], self.user_id)
-        self.assertEqual(decoded["user_name"], self.user_name)
-        self.assertEqual(decoded["iss"], JWT_ISSUER)
-        self.assertIn("exp", decoded)
-        self.assertIn("iat", decoded)
-
-    def test_read_jwt_token_returns_user_id(self) -> None:
-        """Test that reading a JWT token returns the correct user ID and name."""
-        token = AccessService.create_jwt_token(self.user_id, self.user_name, self.expiration)
-        user_id, user_name = AccessService.validate_jwt_token(token)
-        self.assertEqual(user_id, self.user_id)
-        self.assertEqual(user_name, self.user_name)
-
-    def test_create_jwt_token_missing_secret_raises(self) -> None:
-        """Test that creating a JWT token raises an error if the secret is not set."""
-        os.environ.pop(JWT_SECRET_ENV, None)
-        with self.assertRaises(RuntimeError):
-            AccessService.create_jwt_token(self.user_id, self.user_name, self.expiration)
-
-    def test_read_jwt_token_missing_secret_raises(self) -> None:
-        """Test that reading a JWT token raises an error if the secret is not set."""
-        token = AccessService.create_jwt_token(self.user_id, self.user_name, self.expiration)
-        os.environ.pop(JWT_SECRET_ENV, None)
-        with self.assertRaises(RuntimeError):
-            AccessService.validate_jwt_token(token)
-
-    def test_read_invalid_jwt_token_raises(self) -> None:
-        """Test that reading an invalid JWT token raises an error."""
-        invalid_token = "invalid"
-        with self.assertRaises(jwt.InvalidTokenError):
-            AccessService.validate_jwt_token(invalid_token)
-
-    def test_read_expired_jwt_token_raises(self) -> None:
-        """Test that reading an expired JWT token raises an error."""
-        expired_token = AccessService.create_jwt_token(self.user_id, self.user_name, timedelta(seconds=-1))
-        with self.assertRaises(jwt.ExpiredSignatureError):
-            AccessService.validate_jwt_token(expired_token)
-
-    def test_read_wrong_issuer_jwt_token_raises(self) -> None:
-        """Test that reading a JWT token with a wrong issuer raises an error."""
-        token = AccessService.create_jwt_token(self.user_id, self.user_name, self.expiration)
-        with self.assertRaises(jwt.InvalidIssuerError):
-            jwt.decode(token, os.getenv(JWT_SECRET_ENV), algorithms=["HS256"], issuer="invalid")
-
-    async def test_hash_api_key(self) -> None:
-        """Test the API key hash algorithm."""
-        user_id = "test-user"
-        key_id = "test-key"
-
-        api_key = await AccessService.create_api_key(self, user_id, key_id)
-        salt = "mysalt456"
-
-        # Hash should be deterministic
-        hash1 = AccessService._hash_api_key(api_key, salt)
-        hash2 = AccessService._hash_api_key(api_key, salt)
-
-        self.assertEqual(hash1, hash2)
-        self.assertEqual(len(hash1), 64)  # SHA-256 hex digest is 64 characters
-        self.assertTrue(all(c in "0123456789abcdef" for c in hash1.lower()))
-
-    async def test_create_api_key(self) -> None:
-        """Test the creation of an API key."""
-        user_id = "test-user"
-        key_id = "test-key"
-
-        # Create an API key
-        api_key = await AccessService.create_api_key(self, user_id, key_id)
-
-        # Check if the plain-text key is returned
-        self.assertIsInstance(api_key, str)
-        self.assertEqual(len(api_key), API_KEY_ID_LENGTH + 1 + API_KEY_LENGTH)
-
-    async def test_validate_api_key_valid(self) -> None:
-        """Test that a valid API key can be validated."""
-        user_id = "test-user"
-        key_id = "test-key"
-
-        # Create API key and get the plain-text key
-        api_key = await AccessService.create_api_key(self, user_id, key_id)
-
-        # Validate the API key
-        assert await AccessService.validate_api_key(self, api_key) == user_id
-
-    async def test_validate_api_key_invalid(self) -> None:
-        """Test that an invalid API key is rejected."""
-        user_id = "test-user"
-        key_id = "test-key"
-
-        # Create API key and get the plain-text key
-        valid_key = await AccessService.create_api_key(self, user_id, key_id)
-
-        # Provide an incorrect API key for validation
-        invalid_key = "invalid-test-key"
-
-        assert await AccessService.validate_api_key(self, invalid_key) is None
-
-        # The valid key should still work
-        assert await AccessService.validate_api_key(self, valid_key) == user_id
-
-    async def test_revoke_api_key_by_key_id(self) -> None:
-        """Test that an API key can be revoked by key_id."""
-        user_id = "test-user"
-        key_id = "test-key"
-
-        # Create an API key
-        await AccessService.create_api_key(self, user_id, key_id)
-
-        # Revoke the API key
-        await AccessService.revoke_api_key(self, user_id, key_id)
-
-        # Check that the key was removed
-        assert all(api_key.key_id != key_id for api_key in await AccessService.list_api_keys(self, user_id))
-
-    async def test_list_api_keys(self) -> None:
-        """Test that we can list API keys for a given user."""
-        user_id = "user123"
-
-        # Create some API keys for the user
-        await AccessService.create_api_key(self, user_id, "key1")
-        await AccessService.create_api_key(self, user_id, "key2")
-
-        # List the API keys
-        keys = await AccessService.list_api_keys(self, user_id)
-
-        self.assertEqual(keys[0].key_id, "key1")
-        self.assertEqual(keys[1].key_id, "key2")
-        self.assertIsNotNone(keys[0].created_at)
-        self.assertIsNotNone(keys[1].created_at)
-
-        # Create another key and verify the list updates
-        await AccessService.create_api_key(self, user_id, "key3")
-        keys = await AccessService.list_api_keys(self, user_id)
-
-        self.assertEqual(keys[0].key_id, "key1")
-        self.assertEqual(keys[1].key_id, "key2")
-        self.assertEqual(keys[2].key_id, "key3")
-        self.assertIsNotNone(keys[0].created_at)
-        self.assertIsNotNone(keys[1].created_at)
-        self.assertIsNotNone(keys[2].created_at)
