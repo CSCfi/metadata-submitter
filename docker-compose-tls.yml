@@ -47,6 +47,7 @@ services:
       - "REMS_USER_ID=${REMS_USER_ID}"
       - "REMS_KEY=${REMS_KEY}"
       - "REMS_URL=${REMS_URL}"
+      - "POLLING_INTERVAL=${POLLING_INTERVAL}"
   database:
     image: "mongo"
     container_name: "metadata_submitter_database_dev"

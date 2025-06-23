@@ -47,6 +47,7 @@ services:
       - "CSC_LDAP_PASSWORD=${CSC_LDAP_PASSWORD}"
       - "JWT_SECRET=${JWT_SECRET}"
       - "PG_DATABASE_URL=${PG_DATABASE_URL}"
+      - "POLLING_INTERVAL=${POLLING_INTERVAL}"
   database:
     image: "mongo"
     container_name: "metadata_submitter_database_dev"
