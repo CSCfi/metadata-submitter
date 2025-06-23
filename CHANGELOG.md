@@ -33,6 +33,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- env `POLLING_INTERVAL` so that `POLLING_INTERVAL` is configurable
 - release dataset for BigPicture submissions during `/announce`
 - APiKeyRepository to save and remove API keys in Postgres.
 - Makefile for pulling secrets from a Vault instance required by new integration tests
