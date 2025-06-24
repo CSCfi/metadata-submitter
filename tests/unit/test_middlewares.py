@@ -47,16 +47,6 @@ class ErrorMiddlewareTestCase(AioHTTPTestCase):
             self.assertEqual("There must be a submission.xml file in submission.", resp_dict["detail"])
             self.assertEqual(f"{API_PREFIX}/submit/FEGA", resp_dict["instance"])
 
-    async def test_bad_url_returns_json_response(self):
-        """Test that unrouted API url returns a 404 in JSON format."""
-        with self.patch_verify_authorization:
-            response = await self.client.get(f"{API_PREFIX}/objects/swagadagamaster")
-            self.assertEqual(response.status, 404)
-            self.assertEqual(response.content_type, "application/problem+json")
-            resp_dict = await response.json()
-            self.assertEqual("Not Found", resp_dict["title"])
-
-
 def _create_improper_data():
     """Create request data that produces a 400 error.
 

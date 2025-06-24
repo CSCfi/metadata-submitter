@@ -122,42 +122,6 @@ for workflow_path in path_to_workflows.iterdir():
         workflow = ujson.load(workflow_file)
         WORKFLOWS[workflow["name"]] = Workflow(workflow)
 
-# 3) Define mapping between url query parameters and mongodb queries
-query_map = {
-    "title": "title",
-    "description": "description",
-    "centerName": "centerName",
-    "name": "name",
-    "studyTitle": "descriptor.studyTitle",
-    "studyType": "descriptor.studyType",
-    "studyAbstract": "descriptor.studyAbstract",
-    "studyAttributes": {"base": "studyAttributes", "keys": ["tag", "value"]},
-    "sampleName": {
-        "base": "sampleName",
-        "keys": ["taxonId", "scientificName", "commonName"],
-    },
-    "scientificName": "sampleName.scientificName",
-    "fileType": "files.filetype",
-    "studyReference": {
-        "base": "studyRef",
-        "keys": ["accessionId", "refname", "refcenter"],
-    },
-    "sampleReference": {
-        "base": "sampleRef",
-        "keys": ["accessionId", "label", "refname", "refcenter"],
-    },
-    "experimentReference": {
-        "base": "experimentRef",
-        "keys": ["accessionId", "refname", "refcenter"],
-    },
-    "runReference": {"base": "runRef", "keys": ["accessionId", "refname", "refcenter"]},
-    "analysisReference": {
-        "base": "analysisRef",
-        "keys": ["accessionId", "refname", "refcenter"],
-    },
-}
-
-
 # 4) Set frontend folder to be inside metadata_backend modules root
 frontend_static_files = Path(__file__).parent.parent / "frontend"
 

@@ -144,7 +144,6 @@ class HandlersTestCase(AioHTTPTestCase):
 
         self.operator_config = {
             "read_metadata_object.side_effect": self.fake_operator_read_metadata_object,
-            "query_metadata_database.side_effect": self.fake_operator_query_metadata_object,
             "create_metadata_object.side_effect": self.fake_operator_create_metadata_object,
             "delete_metadata_object.side_effect": self.fake_operator_delete_metadata_object,
             "update_metadata_object.side_effect": self.fake_operator_update_metadata_object,
@@ -222,10 +221,6 @@ class HandlersTestCase(AioHTTPTestCase):
     async def fake_operator_read_metadata_object(self, schema_type, accession_id):
         """Fake read operation to return mocked JSON."""
         return (self.metadata_json, "application/json")
-
-    async def fake_operator_query_metadata_object(self, schema_type, query, page_num, page_size, filtered_list):
-        """Fake query operation to return list containing mocked JSON."""
-        return ([self.metadata_json], self.page_num, self.page_size, self.total_objects)
 
     async def fake_xmloperator_read_metadata_object(self, schema_type, accession_id):
         """Fake read operation to return mocked xml."""
@@ -805,26 +800,6 @@ class ObjectHandlerTestCase(HandlersTestCase):
             self.assertEqual(response.content_type, "text/xml")
             self.assertEqual(self.metadata_xml, await response.text())
 
-    async def test_query_is_called_and_returns_json_in_correct_format(self):
-        """Test query method calls operator and returns mocked JSON object."""
-        url = f"{API_PREFIX}/objects/study?studyType=foo&name=bar&page={self.page_num}" f"&per_page={self.page_size}"
-        with self.patch_verify_authorization:
-            response = await self.client.get(url)
-            self.assertEqual(response.status, 200)
-            self.assertEqual(response.content_type, "application/json")
-            json_resp = await response.json()
-            self.assertEqual(json_resp["page"]["page"], self.page_num)
-            self.assertEqual(json_resp["page"]["size"], self.page_size)
-            self.assertEqual(json_resp["page"]["totalPages"], (self.total_objects / self.page_size))
-            self.assertEqual(json_resp["page"]["totalObjects"], self.total_objects)
-            self.assertEqual(json_resp["objects"][0], self.metadata_json)
-            self.MockedOperator().query_metadata_database.assert_called_once()
-            args = self.MockedOperator().query_metadata_database.call_args[0]
-            self.assertEqual("study", args[0])
-            self.assertIn("studyType': 'foo', 'name': 'bar'", str(args[1]))
-            self.assertEqual(self.page_num, args[2])
-            self.assertEqual(self.page_size, args[3])
-
     async def test_delete_is_called(self):
         """Test query method calls operator and returns status correctly."""
         url = f"{API_PREFIX}/objects/study/EGA123456"
@@ -838,29 +813,10 @@ class ObjectHandlerTestCase(HandlersTestCase):
             self.assertEqual(response.status, 204)
             self.MockedOperator().delete_metadata_object.assert_called_once()
 
-    async def test_query_fails_with_xml_format(self):
-        """Test query method calls operator and returns status correctly."""
-        url = f"{API_PREFIX}/objects/study?studyType=foo&name=bar&format=xml"
-        with self.patch_verify_authorization:
-            response = await self.client.get(url)
-            json_resp = await response.json()
-            self.assertEqual(response.status, 400)
-            self.assertIn("xml-formatted query results are not supported", json_resp["detail"])
-
     async def test_operations_fail_for_wrong_schema_type(self):
         """Test 404 error is raised if incorrect schema name is given."""
         with self.patch_verify_authorization:
             get_resp = await self.client.get(f"{API_PREFIX}/objects/bad_scehma_name/some_id")
-            self.assertEqual(get_resp.status, 404)
-            json_get_resp = await get_resp.json()
-            self.assertIn("Specified schema", json_get_resp["detail"])
-
-            post_rep = await self.client.post(f"{API_PREFIX}/objects/bad_scehma_name", params={"submission": "some id"})
-            self.assertEqual(post_rep.status, 404)
-            post_json_rep = await post_rep.json()
-            self.assertIn("Specified schema", post_json_rep["detail"])
-
-            get_resp = await self.client.get(f"{API_PREFIX}/objects/bad_scehma_name")
             self.assertEqual(get_resp.status, 404)
             json_get_resp = await get_resp.json()
             self.assertIn("Specified schema", json_get_resp["detail"])
@@ -883,11 +839,6 @@ class ObjectHandlerTestCase(HandlersTestCase):
             json_get_resp = await get_resp.json()
             self.assertIn("'bprems' object is a submission-only", json_get_resp["detail"])
 
-            get_resp = await self.client.get(f"{API_PREFIX}/objects/bprems")
-            self.assertEqual(get_resp.status, 400)
-            json_get_resp = await get_resp.json()
-            self.assertIn("'bprems' object is a submission-only", json_get_resp["detail"])
-
             get_resp = await self.client.patch(f"{API_PREFIX}/objects/bprems/some_id")
             self.assertEqual(get_resp.status, 400)
             json_get_resp = await get_resp.json()
@@ -902,16 +853,6 @@ class ObjectHandlerTestCase(HandlersTestCase):
             self.assertEqual(get_resp.status, 400)
             json_get_resp = await get_resp.json()
             self.assertIn("'bprems' object is a submission-only", json_get_resp["detail"])
-
-    async def test_query_with_invalid_pagination_params(self):
-        """Test that 400s are raised correctly with pagination."""
-        with self.patch_verify_authorization:
-            get_resp = await self.client.get(f"{API_PREFIX}/objects/study?page=2?title=joo")
-            self.assertEqual(get_resp.status, 400)
-            get_resp = await self.client.get(f"{API_PREFIX}/objects/study?page=0")
-            self.assertEqual(get_resp.status, 400)
-            get_resp = await self.client.get(f"{API_PREFIX}/objects/study?per_page=0")
-            self.assertEqual(get_resp.status, 400)
 
 
 class SubmissionHandlerTestCase(HandlersTestCase):

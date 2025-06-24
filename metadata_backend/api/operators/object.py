@@ -1,16 +1,14 @@
 """Object operator class."""
 
-import re
 from datetime import UTC, datetime
 from typing import Any
 
 from aiohttp import web
 from dateutil.relativedelta import relativedelta
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorCursor
-from multidict import MultiMapping
 from pymongo.errors import ConnectionFailure, OperationFailure
 
-from ...conf.conf import BP_SCHEMA_TYPES, DATACITE_SCHEMAS, query_map
+from ...conf.conf import BP_SCHEMA_TYPES, DATACITE_SCHEMAS
 from ...database.db_service import auto_reconnect
 from ...helpers.logger import LOG
 from .object_base import BaseObjectOperator
@@ -31,95 +29,21 @@ class ObjectOperator(BaseObjectOperator):
         """
         super().__init__("application/json", db_client)
 
-    async def query_metadata_database(
-        self, schema_type: str, que: MultiMapping[str], page_num: int, page_size: int, filter_objects: list[Any]
-    ) -> tuple[list[dict[str, Any]], int, int, int]:
-        """Query database based on url query parameters.
-
-        Url queries are mapped to mongodb queries based on query_map in
-        apps config.
+    async def query_by_alias(self, schema_type: str, alias: str) -> list[dict[str, Any]]:
+        """Read objects from database based on alias.
 
         :param schema_type: Schema type of the object to read.
-        :param que: Dict containing query information
-        :param page_size: Results per page
-        :param page_num: Page number
-        :param filter_objects: List of objects belonging to a user
-        :raises: HTTPBadRequest if error happened when connection to database
-        and HTTPNotFound error if object with given accession id is not found.
-        :returns: Tuple of query result with pagination numbers
+        :param alias: The object alias.
+        :returns: The objects with the given alias.
         """
-        # Redact the query by checking the accessionId belongs to user
-        redacted_content = {
-            "$redact": {
-                "$cond": {
-                    "if": {"$in": ["$accessionId", filter_objects]} if len(filter_objects) > 1 else {},
-                    "then": "$$DESCEND",
-                    "else": "$$PRUNE",
-                }
-            }
-        }
-        # Generate mongodb query from query parameters
-        mongo_query: dict[Any, Any] = {}
-        for query, value in que.items():
-            if query in query_map:
-                regx = re.compile(f".*{value}.*", re.IGNORECASE)
-                if isinstance(query_map[query], dict):
-                    # Make or-query for keys in dictionary
-                    base = query_map[query]["base"]  # type: ignore
-                    if "$or" not in mongo_query:
-                        mongo_query["$or"] = []
-                    for key in query_map[query]["keys"]:  # type: ignore
-                        if value.isdigit():
-                            regi = {
-                                "$expr": {
-                                    "$regexMatch": {
-                                        "input": {"$toString": f"${base}.{key}"},
-                                        "regex": f".*{int(value)}.*",
-                                    }
-                                }
-                            }
-                            mongo_query["$or"].append(regi)
-                        else:
-                            mongo_query["$or"].append({f"{base}.{key}": regx})
-                else:
-                    # Query with regex from just one field
-                    mongo_query = {query_map[query]: regx}
-        LOG.debug("Query construct: %r ", mongo_query)
-        LOG.debug("Redacted filter: %r", redacted_content)
-        skips = page_size * (page_num - 1)
-        aggregate_query = [
-            {"$match": mongo_query},
-            redacted_content,
-            {"$skip": skips},
-            {"$limit": page_size},
-            {"$project": {"_id": 0}},
-        ]
+
         try:
-            result_aggregate = await self.db_service.do_aggregate(schema_type, aggregate_query)
+            object_cursor = self.db_service.query(schema_type, {"alias": alias})
+            return [obj async for obj in object_cursor]
         except (ConnectionFailure, OperationFailure) as error:
             reason = f"Error happened while getting object: {error}"
             LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
-        data = await self._format_read_data(schema_type, result_aggregate)
-
-        if not data:
-            reason = f"could not find any data in {schema_type}."
-            LOG.error(reason)
-            raise web.HTTPNotFound(reason=reason)
-
-        page_size = len(data) if len(data) != page_size else page_size
-        count_query = [{"$match": mongo_query}, redacted_content, {"$count": "total"}]
-        total_objects = await self.db_service.do_aggregate(schema_type, count_query)
-
-        LOG.debug("DB query: %r", que)
-        LOG.info(
-            "DB query successful in collection: %r resulted in: %d objects. Requested was page: %d & page size: %d.",
-            schema_type,
-            total_objects[0]["total"],
-            page_num,
-            page_size,
-        )
-        return data, page_num, page_size, total_objects[0]["total"]
 
     async def update_identifiers(self, schema_type: str, accession_id: str, data: dict[str, Any]) -> bool:
         """Update study, dataset or bpdataset object with doi and/or metax info.
