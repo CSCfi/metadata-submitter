@@ -49,6 +49,7 @@ dependencies = [
     "psycopg[binary]>=3.2.9",
     "greenlet>=3.2.2",
     "asyncpg>=0.30.0",
+    "aioboto3>=14.3.0",
 ]
 
 [dependency-groups]
@@ -72,7 +73,8 @@ dev = [
     "authlib==1.6.0",
     "certifi==2025.4.26",
     "honcho==2.0.0",
- ]
+    "moto[server]>=5.1.6",
+]
 
 [tool.black]
 line-length = 120
