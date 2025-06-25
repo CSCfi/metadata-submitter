@@ -9,6 +9,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- fixed and refactored AccessService tests.
 - (users) Updated creators in submission doiInfo schema to resemble Qvain
 - when calling backend, the admin token is assumed to be in the `X-Authorization` header
 - `/ingest` no longer needs json payload
@@ -33,6 +34,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- FileService to check that submitter files exist and return their size.
 - env `POLLING_INTERVAL` so that `POLLING_INTERVAL` is configurable
 - release dataset for BigPicture submissions during `/announce`
 - APiKeyRepository to save and remove API keys in Postgres.
