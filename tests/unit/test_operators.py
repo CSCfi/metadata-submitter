@@ -526,7 +526,7 @@ class TestOperators(IsolatedAsyncioTestCase):
             operator.db_service.delete.assert_called_with("sample", "EGA123456")
 
     async def test_query_by_alias(self):
-        """Test that database query by alias world."""
+        """Test that database query by alias works."""
         operator = ObjectOperator(self.client)
         alias = "test"
         operator.db_service.query.return_value = AsyncIterator([{"alias": alias}])
