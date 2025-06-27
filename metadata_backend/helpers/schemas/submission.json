@@ -61,7 +61,6 @@
             "title": "Datacite DOI Registration Information",
             "required": [
                 "creators",
-                "subjects",
                 "keywords"
             ],
             "properties": {
@@ -135,7 +134,7 @@
                 },
                 "subjects": {
                     "type": "array",
-                    "title": "Subjects",
+                    "title": "Field of Science",
                     "description": "Information describing the subject of resources",
                     "items": {
                         "type": "object",
@@ -146,8 +145,8 @@
                         "properties": {
                             "subject": {
                                 "type": "string",
-                                "title": "Subject name",
-                                "description": "Subject, keyword, classification code, or key phrase describing the resource. The accepted subject names are based on the field of science classification specified by OKM.",
+                                "title": "Field of Science",
+                                "description": "Select one or multiple fields of science from the Statistics Finland field of science classification.",
                                 "enum": [
                                     "1 - Natural sciences",
                                     "111 - Mathematics",
@@ -224,26 +223,6 @@
                                     "9 - Other",
                                     "999 - Other"
                                 ]
-                            },
-                            "subjectScheme": {
-                                "type": "string",
-                                "title": "Subject scheme name",
-                                "description": "The name of the subject scheme or classification code or authority if one is used"
-                            },
-                            "schemeUri": {
-                                "type": "string",
-                                "title": "Scheme URI",
-                                "description": "The URI of the subject identifier scheme"
-                            },
-                            "valueUri": {
-                                "type": "string",
-                                "title": "Value URI",
-                                "description": "The URI of the subject term"
-                            },
-                            "classificationCode": {
-                                "type": "string",
-                                "title": "Classification Code",
-                                "description": "The classification code used for the subject term in the subject scheme"
                             }
                         },
                         "additionalProperties": false
