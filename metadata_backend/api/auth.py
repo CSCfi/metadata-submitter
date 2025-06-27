@@ -1,5 +1,6 @@
 """Handle Access for request and OIDC workflow."""
 
+import os
 import time
 from typing import Any, Optional, cast
 
@@ -182,11 +183,12 @@ class AccessHandler:
         jwt_token = await self._create_jwt_token(session["userinfo"])
 
         response = web.HTTPSeeOther(f"{self.redirect}/home")
+        secure_cookie = os.environ.get("OIDC_SECURE_COOKIE", "").upper() != "FALSE"
         response.set_cookie(
             name="access_token",
             value=jwt_token,
             httponly=True,
-            secure=True,
+            secure=secure_cookie,
             samesite="Strict",  # or "Lax" depending on your needs
             path="/",
             max_age=int(JWT_EXPIRATION.total_seconds()),

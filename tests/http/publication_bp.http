@@ -10,13 +10,12 @@
 
 @file_path = s3:/bucket/mock_files/file1.c4gh
 
-@user_id = {{user_data_req.response.body.userId}}
-@user_name = {{user_data_req.response.body.name}}
-@project_id = {{user_data_req.response.body.projects[0].projectId}}
+@user_id = {{user_data_req.response.body.user_id}}
+@user_name = {{user_data_req.response.body.user_name}}
+@project_id = {{user_data_req.response.body.projects[0].project_id}}
 @submission_id = {{submission_id_req.response.body.submissionId}}
 @dataset_id = {{dataset_id_req.response.body.accessionId}}
 @image_id = {{image_id_req.response.body.$[0].accessionId}}
-@rems_id = {{rems_id_req.response.body.accessionId}}
 @file_id = {{file_id_req.response.body.$[0].accessionId}}
 @admin_token = {{admin_token_req.response.body.id_token}}
 
@@ -38,7 +37,7 @@ GET {{api_url}}/logout
 
 ### Get user data
 # @name user_data_req
-GET {{api_url}}/v1/users/current
+GET {{api_url}}/v1/users
 
 
 
@@ -66,7 +65,6 @@ PATCH {{api_url}}/v1/submissions/{{submission_id}}/doi
 < ../test_files/doi/test_doi.json
 
 ### Add REMS data to a submission
-# @name rems_id_req
 POST {{api_url}}/v1/objects/bprems
      ?submission={{submission_id}}
 Content-Type: multipart/form-data; boundary=SomeWebKitFormBoundary

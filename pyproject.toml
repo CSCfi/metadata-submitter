@@ -7,7 +7,7 @@ name = "metadata_backend"
 dynamic = ["version"]
 description = "metadata_backend"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 license = {text = "MIT License"}
 authors = [
     { name = "CSC Developers" },
@@ -17,7 +17,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: Information Technology",
     "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
 ]
 
@@ -78,13 +78,13 @@ dev = [
 
 [tool.black]
 line-length = 120
-target-version = ['py312']
+target-version = ['py313']
 
 [tool.isort]
 atomic = true
 profile = "black"
 line_length = 120
-py_version=312
+py_version=313
 
 [project.scripts]
 metadata_submitter = "metadata_backend.server:main"
