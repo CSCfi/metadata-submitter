@@ -244,7 +244,6 @@
                         "required": [
                             "givenName",
                             "familyName",
-                            "contributorType",
                             "affiliation"
                         ],
                         "properties": {
@@ -256,35 +255,6 @@
                                 "type": "string",
                                 "title": "Family Name"
                             },
-                            "name": {
-                                "type": "string",
-                                "description": "This field will be constructed based from Given Name and Family Name.",
-                                "title": "Full name."
-                            },
-                            "contributorType": {
-                                "type": "string",
-                                "title": "Type of contributor",
-                                "enum": [
-                                    "Contact Person",
-                                    "Data Collector",
-                                    "Data Curator",
-                                    "Data Manager",
-                                    "Distributor",
-                                    "Editor",
-                                    "Producer",
-                                    "Project Leader",
-                                    "Project Manager",
-                                    "Project Member",
-                                    "Related Person",
-                                    "Research Group",
-                                    "Researcher",
-                                    "Rights Holder",
-                                    "Sponsor",
-                                    "Supervisor",
-                                    "Work Package Leader",
-                                    "Other"
-                                ]
-                            },
                             "affiliation": {
                                 "type": "array",
                                 "title": "Affiliations",
@@ -292,25 +262,19 @@
                                 "items": {
                                     "type": "object",
                                     "title": "Affiliation Details",
+                                    "required": [
+                                        "name",
+                                        "affiliationIdentifier"
+                                    ],
                                     "properties": {
                                         "name": {
                                             "type": "string",
                                             "title": "Name of the place of affiliation"
                                         },
-                                        "schemeUri": {
-                                            "type": "string",
-                                            "description": "Name identifier scheme. This will default to https://ror.org/ .",
-                                            "title": "URI (location) of the affiliation scheme"
-                                        },
                                         "affiliationIdentifier": {
                                             "type": "string",
                                             "description": "URI location based on the URI scheme of the name identifier this will be pre-filled based on  https://ror.org/name.",
                                             "title": "Location of affiliation identifier"
-                                        },
-                                        "affiliationIdentifierScheme": {
-                                            "type": "string",
-                                            "description": "Identifier scheme name. This will default to ROR.",
-                                            "title": "Name of affiliation identifier scheme"
                                         }
                                     }
                                 },
@@ -324,21 +288,10 @@
                                     "type": "object",
                                     "title": "Contributor Name Identifier",
                                     "properties": {
-                                        "schemeUri": {
-                                            "type": "string",
-                                            "description": "Depending on the name identifier scheme e.g. https://isni.org/ or https://orcid.org/ or https://ror.org/ or https://www.grid.ac/ .",
-                                            "title": "Scheme of the URI (location) of the name identifier",
-                                            "format": "uri"
-                                        },
                                         "nameIdentifier": {
                                             "type": "string",
-                                            "description": "URI location based on the URI scheme of the name identifier e.g. https://orcid.org/nameIdentifier .",
+                                            "description": "E.g. http://orcid.org. It is recommended to use persistent identifiers, if available.",
                                             "title": "URI (location) of name identifier. "
-                                        },
-                                        "nameIdentifierScheme": {
-                                            "type": "string",
-                                            "description": "Identifier scheme name e.g. ORCID, ROR or ISNI .",
-                                            "title": "Name of identifier scheme."
                                         }
                                     }
                                 },
