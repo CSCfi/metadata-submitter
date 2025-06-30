@@ -50,7 +50,7 @@ class ErrorMiddlewareTestCase(AioHTTPTestCase):
     async def test_bad_url_returns_json_response(self):
         """Test that unrouted API url returns a 404 in JSON format."""
         with self.patch_verify_authorization:
-            response = await self.client.get(f"{API_PREFIX}/objects/swagadagamaster")
+            response = await self.client.get(f"{API_PREFIX}/bad_url")
             self.assertEqual(response.status, 404)
             self.assertEqual(response.content_type, "application/problem+json")
             resp_dict = await response.json()

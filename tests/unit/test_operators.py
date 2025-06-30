@@ -13,7 +13,6 @@ from aiohttp.web import (
     HTTPNotFound,
     HTTPUnprocessableEntity,
 )
-from multidict import MultiDict, MultiDictProxy
 from pymongo.errors import ConnectionFailure, OperationFailure
 
 from metadata_backend.api.operators.file import File, FileOperator
@@ -526,181 +525,13 @@ class TestOperators(IsolatedAsyncioTestCase):
             self.assertEqual(operator.db_service.delete.call_count, 1)
             operator.db_service.delete.assert_called_with("sample", "EGA123456")
 
-    async def test_working_query_params_are_passed_to_db_query(self):
-        """Test that database is called with correct query."""
+    async def test_query_by_alias(self):
+        """Test that database query by alias works."""
         operator = ObjectOperator(self.client)
-        study_test = [
-            {
-                "publishDate": datetime.datetime(2020, 6, 14, 0, 0),
-                "accessionId": "EDAG3945644754983408",
-                "dateCreated": datetime.datetime(2020, 6, 14, 0, 0),
-                "dateModified": datetime.datetime(2020, 6, 14, 0, 0),
-            }
-        ]
-        study_total = [{"total": 0}]
-        operator.db_service.do_aggregate.side_effect = [study_test, study_total]
-        operator.db_service.do_aggregate = AsyncMock(side_effect=[study_test, study_total])
-        query = MultiDictProxy(MultiDict([("studyAttributes", "foo")]))
-        await operator.query_metadata_database("study", query, 1, 10, [])
-        calls = [
-            call(
-                "study",
-                [
-                    {
-                        "$match": {
-                            "$or": [
-                                {"studyAttributes.tag": re.compile(".*foo.*", re.IGNORECASE)},
-                                {"studyAttributes.value": re.compile(".*foo.*", re.IGNORECASE)},
-                            ]
-                        }
-                    },
-                    {"$redact": {"$cond": {"if": {}, "then": "$$DESCEND", "else": "$$PRUNE"}}},
-                    {"$skip": 0},
-                    {"$limit": 10},
-                    {"$project": {"_id": 0}},
-                ],
-            ),
-            call(
-                "study",
-                [
-                    {
-                        "$match": {
-                            "$or": [
-                                {"studyAttributes.tag": re.compile(".*foo.*", re.IGNORECASE)},
-                                {"studyAttributes.value": re.compile(".*foo.*", re.IGNORECASE)},
-                            ]
-                        }
-                    },
-                    {"$redact": {"$cond": {"if": {}, "then": "$$DESCEND", "else": "$$PRUNE"}}},
-                    {"$count": "total"},
-                ],
-            ),
-        ]
-        operator.db_service.do_aggregate.assert_has_calls(calls, any_order=True)
-
-    async def test_non_working_query_params_are_not_passed_to_db_query(self):
-        """Test that database with empty query, when url params are wrong."""
-        operator = ObjectOperator(self.client)
-        study_test = [
-            {
-                "publishDate": datetime.datetime(2020, 6, 14, 0, 0),
-                "accessionId": "EDAG3945644754983408",
-                "dateCreated": datetime.datetime(2020, 6, 14, 0, 0),
-                "dateModified": datetime.datetime(2020, 6, 14, 0, 0),
-            }
-        ]
-        study_total = [{"total": 0}]
-        operator.db_service.do_aggregate = AsyncMock(side_effect=[study_test, study_total])
-        query = MultiDictProxy(MultiDict([("swag", "littinen")]))
-        with patch(
-            "metadata_backend.api.operators.object.ObjectOperator._format_read_data",
-            return_value=study_test,
-        ):
-            await operator.query_metadata_database("study", query, 1, 10, [])
-        calls = [
-            call(
-                "study",
-                [
-                    {"$match": {}},
-                    {"$redact": {"$cond": {"if": {}, "then": "$$DESCEND", "else": "$$PRUNE"}}},
-                    {"$skip": 0},
-                    {"$limit": 10},
-                    {"$project": {"_id": 0}},
-                ],
-            ),
-            call(
-                "study",
-                [
-                    {"$match": {}},
-                    {"$redact": {"$cond": {"if": {}, "then": "$$DESCEND", "else": "$$PRUNE"}}},
-                    {"$count": "total"},
-                ],
-            ),
-        ]
-        operator.db_service.do_aggregate.assert_has_calls(calls, any_order=True)
-        self.assertEqual(operator.db_service.do_aggregate.call_count, 2)
-
-    async def test_query_result_is_parsed_correctly(self):
-        """Test JSON is read and correct pagination values are returned."""
-        operator = ObjectOperator(self.client)
-        multiple_result = [
-            {
-                "dateCreated": datetime.datetime(2020, 6, 14, 0, 0),
-                "dateModified": datetime.datetime(2020, 6, 14, 0, 0),
-                "accessionId": "EGA123456",
-                "foo": "bar",
-                "total": 100,
-            },
-            {
-                "dateCreated": datetime.datetime(2020, 6, 14, 0, 0),
-                "dateModified": datetime.datetime(2020, 6, 14, 0, 0),
-                "accessionId": "EGA123456",
-                "foo": "bar",
-                "total": 100,
-            },
-        ]
-        study_total = [{"total": 100}]
-        operator.db_service.do_aggregate = AsyncMock(side_effect=[multiple_result, study_total])
-        query = MultiDictProxy(MultiDict([]))
-        (
-            parsed,
-            page_num,
-            page_size,
-            total_objects,
-        ) = await operator.query_metadata_database("sample", query, 1, 10, [])
-        for doc in parsed:
-            self.assertEqual(doc["dateCreated"], "2020-06-14T00:00:00")
-            self.assertEqual(doc["dateModified"], "2020-06-14T00:00:00")
-            self.assertEqual(doc["accessionId"], "EGA123456")
-        self.assertEqual(page_num, 1)
-        self.assertEqual(page_size, 2)
-        self.assertEqual(total_objects, 100)
-
-    async def test_non_empty_query_result_raises_notfound(self):
-        """Test that 404 is raised with empty query result."""
-        operator = ObjectOperator(self.client)
-        operator.db_service.do_aggregate = AsyncMock(return_value=None)
-        query = MultiDictProxy(MultiDict([]))
-        with patch(
-            "metadata_backend.api.operators.object.ObjectOperator._format_read_data",
-            return_value=[],
-        ):
-            with self.assertRaises(HTTPNotFound):
-                await operator.query_metadata_database("study", query, 1, 10, [])
-
-    async def test_query_skip_and_limit_are_set_correctly(self):
-        """Test custom skip and limits."""
-        operator = ObjectOperator(self.client)
-        data = {"foo": "bar"}
-        result = []
-        operator.db_service.do_aggregate = AsyncMock(side_effect=[result, [{"total": 0}]])
-        with patch(
-            "metadata_backend.api.operators.object.ObjectOperator._format_read_data",
-            return_value=data,
-        ):
-            await operator.query_metadata_database("sample", {}, 3, 50, [])
-            calls = [
-                call(
-                    "sample",
-                    [
-                        {"$match": {}},
-                        {"$redact": {"$cond": {"if": {}, "then": "$$DESCEND", "else": "$$PRUNE"}}},
-                        {"$skip": 50 * (3 - 1)},
-                        {"$limit": 50},
-                        {"$project": {"_id": 0}},
-                    ],
-                ),
-                call(
-                    "sample",
-                    [
-                        {"$match": {}},
-                        {"$redact": {"$cond": {"if": {}, "then": "$$DESCEND", "else": "$$PRUNE"}}},
-                        {"$count": "total"},
-                    ],
-                ),
-            ]
-            operator.db_service.do_aggregate.assert_has_calls(calls, any_order=True)
-            self.assertEqual(operator.db_service.do_aggregate.call_count, 2)
+        alias = "test"
+        operator.db_service.query.return_value = AsyncIterator([{"alias": alias}])
+        await operator.query_by_alias("study", alias)
+        operator.db_service.query.assert_has_calls([call('study', {'alias': 'test'})])
 
     async def test_get_submission_field_db_fail(self):
         """Test get submission projectId, db connection and operation failure."""

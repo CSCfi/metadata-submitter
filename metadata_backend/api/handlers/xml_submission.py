@@ -6,7 +6,6 @@ from typing import Any
 import ujson
 from aiohttp import web
 from aiohttp.web import Request, Response
-from multidict import MultiDict, MultiDictProxy
 from xmlschema import XMLSchemaException
 
 from ...conf.conf import API_PREFIX
@@ -226,13 +225,16 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
             accession_id = data_as_json["accessionId"]
         else:
             alias = data_as_json["alias"]
-            query = MultiDictProxy(MultiDict([("alias", alias)]))
-            data, _, _, _ = await operator.query_metadata_database(schema, query, 1, 1, [])
-            if len(data) > 1:
-                reason = "Alias in provided XML file corresponds with more than one existing metadata object."
+            objects = await operator.query_by_alias(schema, alias)
+            if len(objects) == 0:
+                reason = f"No metadata object found for alias {alias}."
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
-            accession_id = data[0]["accessionId"]
+            if len(objects) > 1:
+                reason = f"More than one metadata object found for alias {alias}."
+                LOG.error(reason)
+                raise web.HTTPBadRequest(reason=reason)
+            accession_id = objects[0]["accessionId"]
         data_as_json.pop("accessionId", None)
         result = {
             # should here be replace_metadata_object ??

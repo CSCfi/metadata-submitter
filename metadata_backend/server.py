@@ -144,7 +144,6 @@ async def init(
         web.get("/schemas", _common_api_handler.get_schema_types),
         web.get("/schemas/{schema}", _common_api_handler.get_json_schema),
         # metadata objects operations
-        web.get("/objects/{schema}", _object.query_objects),
         web.post("/objects/{schema}", _object.post_object),
         web.get("/objects/{schema}/{accessionId}", _object.get_object),
         web.put("/objects/{schema}/{accessionId}", _object.put_object),

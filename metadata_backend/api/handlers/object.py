@@ -1,7 +1,6 @@
 """Handle HTTP methods for server."""
 
 from datetime import datetime
-from math import ceil
 from typing import Any
 
 import ujson
@@ -32,50 +31,6 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         if schema in SUBMISSION_ONLY_SCHEMAS:
             reason = f"'{schema}' object is a submission-only object. Use '/submissions' endpoints instead."
             raise web.HTTPBadRequest(reason=reason)
-
-    async def _handle_query(self, req: Request) -> Response:
-        """Handle query results.
-
-        :param req: GET request with query parameters
-        :returns: JSON with query results
-        """
-        collection = req.match_info["schema"]
-        req_format = req.query.get("format", "json").lower()
-        if req_format == "xml":
-            reason = "xml-formatted query results are not supported"
-            raise web.HTTPBadRequest(reason=reason)
-
-        page = self._get_page_param(req, "page", 1)
-        per_page = self._get_page_param(req, "per_page", 10)
-        db_client = req.app["db_client"]
-
-        filter_list: list[Any] = []  # DEPRECATED, users don't own submissions anymore
-        data, page_num, page_size, total_objects = await ObjectOperator(db_client).query_metadata_database(
-            collection, req.query, page, per_page, filter_list
-        )
-
-        result = ujson.dumps(
-            {
-                "page": {
-                    "page": page_num,
-                    "size": page_size,
-                    "totalPages": ceil(total_objects / per_page),
-                    "totalObjects": total_objects,
-                },
-                "objects": data,
-            },
-            escape_forward_slashes=False,
-        )
-        url = f"{req.scheme}://{req.host}{req.path}"
-        link_headers = self._header_links(url, page_num, per_page, total_objects)
-        LOG.debug("Pagination header links: %r", link_headers)
-        LOG.info("Querying for objects in collection: %r resulted in %d objects.", collection, total_objects)
-        return web.Response(
-            body=result,
-            status=200,
-            headers=link_headers,
-            content_type="application/json",
-        )
 
     async def get_object(self, req: Request) -> Response:
         """Get one metadata object by its accession id.
@@ -242,17 +197,6 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
             headers=location_headers,
             content_type="application/json",
         )
-
-    async def query_objects(self, req: Request) -> Response:
-        """Query metadata objects from database.
-
-        :param req: GET request with query parameters (can be empty).
-        :returns: Query results as JSON
-        """
-        schema_type = req.match_info["schema"]
-        self._check_schema_exists(schema_type)
-        self._check_schema_not_submission_only(schema_type)
-        return await self._handle_query(req)
 
     async def delete_object(self, req: Request) -> web.HTTPNoContent:
         """Delete metadata object from database.
