@@ -821,6 +821,11 @@ class ObjectHandlerTestCase(HandlersTestCase):
             json_get_resp = await get_resp.json()
             self.assertIn("Specified schema", json_get_resp["detail"])
 
+            post_rep = await self.client.post(f"{API_PREFIX}/objects/bad_scehma_name", params={"submission": "some id"})
+            self.assertEqual(post_rep.status, 404)
+            post_json_rep = await post_rep.json()
+            self.assertIn("Specified schema", post_json_rep["detail"])
+
             get_resp = await self.client.delete(f"{API_PREFIX}/objects/bad_scehma_name/some_id")
             self.assertEqual(get_resp.status, 404)
             json_get_resp = await get_resp.json()
