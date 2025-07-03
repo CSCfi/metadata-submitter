@@ -88,7 +88,6 @@ mock_auth_url = os.getenv("OIDC_URL_TEST", "http://localhost:8000")
 objects_url = f"{base_url}{API_PREFIX}/objects"
 drafts_url = f"{base_url}{API_PREFIX}/drafts"
 submissions_url = f"{base_url}{API_PREFIX}/submissions"
-submit_url = f"{base_url}{API_PREFIX}/submit"
 publish_url = f"{base_url}{API_PREFIX}/publish"
 announce_url = f"{base_url}{API_PREFIX}/announce"
 schemas_url = f"{base_url}{API_PREFIX}/schemas"

@@ -178,8 +178,6 @@ async def init(
         web.post("/api/keys", APIKeyHandler.post_api_key),
         web.delete("/api/keys", APIKeyHandler.delete_api_key),
         web.get("/api/keys", APIKeyHandler.get_api_keys),
-        # XML submission
-        web.post("/submit/{workflow}", _xml_submission.submit),
         # validate
         web.post("/validate", _xml_submission.validate),
         # File operations
