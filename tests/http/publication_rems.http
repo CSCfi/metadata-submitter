@@ -10,7 +10,7 @@
 @auth_email = mock_user@test.what
 
 
-@project_id = {{user_data_req.response.body.projects[0].projectId}}
+@project_id = {{user_data_req.response.body.projects[0].project_id}}
 @submission_id = {{submission_id_req.response.body.submissionId}}
 @study_id = {{study_id_req.response.body.accessionId}}
 @dataset_id = {{dataset_id_req.response.body.accessionId}}
@@ -30,7 +30,7 @@ GET {{backend_url}}/logout
 
 ### Get user data
 # @name user_data_req
-GET {{backend_url}}/v1/users/current
+GET {{backend_url}}/v1/users
 
 
 

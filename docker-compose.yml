@@ -22,6 +22,7 @@ services:
       - "AAI_CLIENT_ID=${AAI_CLIENT_ID}"
       - "OIDC_URL=${OIDC_URL}"
       - "OIDC_URL_TEST=${OIDC_URL_TEST}"
+      - "OIDC_SECURE_COOKIE=${OIDC_SECURE_COOKIE}"  # Set to TRUE or remove for production use
       - "BASE_URL=${BASE_URL}"
       - "REDIRECT_URL=${REDIRECT_URL}"
       - "LOG_LEVEL=${LOG_LEVEL}"

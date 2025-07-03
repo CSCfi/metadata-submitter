@@ -19,7 +19,7 @@ RUN pnpm install --prod --ignore-scripts && pnpm add -D vite-plugin-node-polyfil
 RUN pnpm run build
 
 #=======================
-FROM python:3.12-alpine3.17 AS build-backend
+FROM python:3.13-alpine3.17 AS build-backend
 #=======================
 
 RUN apk add --update \
@@ -53,7 +53,7 @@ RUN uv sync
 RUN uv run scripts/swagger/generate.sh
 
 #=======================
-FROM python:3.12-alpine3.17
+FROM python:3.13-alpine3.17
 #=======================
 
 RUN apk add --update \

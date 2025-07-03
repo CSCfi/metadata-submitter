@@ -1,5 +1,5 @@
 #=======================
-FROM python:3.13-slim-bullseye AS appbase
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS appbase
 #=======================
 
 RUN apt-get update \
@@ -16,10 +16,6 @@ COPY .python-version .
 COPY README.md .
 COPY metadata_backend ./metadata_backend
 COPY scripts ./scripts
-
-# Install uv
-RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="/app/uv" sh
-ENV PATH="/app/uv:$PATH"
 
 # Install dependencies and create virtual environment
 RUN uv sync --dev
