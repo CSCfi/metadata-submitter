@@ -9,6 +9,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- Secure header used in cookies is configurable with environment variable
+- Docker file uses base uv image instead of installing uv from script
 - fixed and refactored AccessService tests.
 - (users) Updated creators in submission doiInfo schema to resemble Qvain
 - when calling backend, the admin token is assumed to be in the `X-Authorization` header
@@ -34,6 +36,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- Automatic version number updating CI job
 - FileService to check that submitter files exist and return their size.
 - env `POLLING_INTERVAL` so that `POLLING_INTERVAL` is configurable
 - release dataset for BigPicture submissions during `/announce`
