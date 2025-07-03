@@ -2,7 +2,7 @@ openapi: 3.1.1
 info:
   description: |-
     This is a definition of CSC Metadata Submitter API.
-  version: 2025.4.0
+  version: 2025.7.0
   title: SD Submit API
   license:
     name: MIT License
