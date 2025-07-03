@@ -9,6 +9,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- (users) Updated subjects and contributors in submission doiInfo schema to resemble Qvain
 - Secure header used in cookies is configurable with environment variable
 - Docker file uses base uv image instead of installing uv from script
 - fixed and refactored AccessService tests.
