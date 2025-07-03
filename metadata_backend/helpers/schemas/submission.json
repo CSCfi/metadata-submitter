@@ -61,7 +61,6 @@
             "title": "Datacite DOI Registration Information",
             "required": [
                 "creators",
-                "subjects",
                 "keywords"
             ],
             "properties": {
@@ -135,7 +134,7 @@
                 },
                 "subjects": {
                     "type": "array",
-                    "title": "Subjects",
+                    "title": "Field of Science",
                     "description": "Information describing the subject of resources",
                     "items": {
                         "type": "object",
@@ -146,8 +145,8 @@
                         "properties": {
                             "subject": {
                                 "type": "string",
-                                "title": "Subject name",
-                                "description": "Subject, keyword, classification code, or key phrase describing the resource. The accepted subject names are based on the field of science classification specified by OKM.",
+                                "title": "Field of Science",
+                                "description": "Select one or multiple fields of science from the Statistics Finland field of science classification.",
                                 "enum": [
                                     "1 - Natural sciences",
                                     "111 - Mathematics",
@@ -224,26 +223,6 @@
                                     "9 - Other",
                                     "999 - Other"
                                 ]
-                            },
-                            "subjectScheme": {
-                                "type": "string",
-                                "title": "Subject scheme name",
-                                "description": "The name of the subject scheme or classification code or authority if one is used"
-                            },
-                            "schemeUri": {
-                                "type": "string",
-                                "title": "Scheme URI",
-                                "description": "The URI of the subject identifier scheme"
-                            },
-                            "valueUri": {
-                                "type": "string",
-                                "title": "Value URI",
-                                "description": "The URI of the subject term"
-                            },
-                            "classificationCode": {
-                                "type": "string",
-                                "title": "Classification Code",
-                                "description": "The classification code used for the subject term in the subject scheme"
                             }
                         },
                         "additionalProperties": false
@@ -265,7 +244,6 @@
                         "required": [
                             "givenName",
                             "familyName",
-                            "contributorType",
                             "affiliation"
                         ],
                         "properties": {
@@ -277,35 +255,6 @@
                                 "type": "string",
                                 "title": "Family Name"
                             },
-                            "name": {
-                                "type": "string",
-                                "description": "This field will be constructed based from Given Name and Family Name.",
-                                "title": "Full name."
-                            },
-                            "contributorType": {
-                                "type": "string",
-                                "title": "Type of contributor",
-                                "enum": [
-                                    "Contact Person",
-                                    "Data Collector",
-                                    "Data Curator",
-                                    "Data Manager",
-                                    "Distributor",
-                                    "Editor",
-                                    "Producer",
-                                    "Project Leader",
-                                    "Project Manager",
-                                    "Project Member",
-                                    "Related Person",
-                                    "Research Group",
-                                    "Researcher",
-                                    "Rights Holder",
-                                    "Sponsor",
-                                    "Supervisor",
-                                    "Work Package Leader",
-                                    "Other"
-                                ]
-                            },
                             "affiliation": {
                                 "type": "array",
                                 "title": "Affiliations",
@@ -313,25 +262,19 @@
                                 "items": {
                                     "type": "object",
                                     "title": "Affiliation Details",
+                                    "required": [
+                                        "name",
+                                        "affiliationIdentifier"
+                                    ],
                                     "properties": {
                                         "name": {
                                             "type": "string",
                                             "title": "Name of the place of affiliation"
                                         },
-                                        "schemeUri": {
-                                            "type": "string",
-                                            "description": "Name identifier scheme. This will default to https://ror.org/ .",
-                                            "title": "URI (location) of the affiliation scheme"
-                                        },
                                         "affiliationIdentifier": {
                                             "type": "string",
                                             "description": "URI location based on the URI scheme of the name identifier this will be pre-filled based on  https://ror.org/name.",
                                             "title": "Location of affiliation identifier"
-                                        },
-                                        "affiliationIdentifierScheme": {
-                                            "type": "string",
-                                            "description": "Identifier scheme name. This will default to ROR.",
-                                            "title": "Name of affiliation identifier scheme"
                                         }
                                     }
                                 },
@@ -345,21 +288,10 @@
                                     "type": "object",
                                     "title": "Contributor Name Identifier",
                                     "properties": {
-                                        "schemeUri": {
-                                            "type": "string",
-                                            "description": "Depending on the name identifier scheme e.g. https://isni.org/ or https://orcid.org/ or https://ror.org/ or https://www.grid.ac/ .",
-                                            "title": "Scheme of the URI (location) of the name identifier",
-                                            "format": "uri"
-                                        },
                                         "nameIdentifier": {
                                             "type": "string",
-                                            "description": "URI location based on the URI scheme of the name identifier e.g. https://orcid.org/nameIdentifier .",
+                                            "description": "E.g. http://orcid.org. It is recommended to use persistent identifiers, if available.",
                                             "title": "URI (location) of name identifier. "
-                                        },
-                                        "nameIdentifierScheme": {
-                                            "type": "string",
-                                            "description": "Identifier scheme name e.g. ORCID, ROR or ISNI .",
-                                            "title": "Name of identifier scheme."
                                         }
                                     }
                                 },
