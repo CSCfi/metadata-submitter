@@ -7,7 +7,7 @@ from datetime import datetime
 
 import aiohttp
 
-from tests.integration.conf import drafts_url, objects_url, publish_url, submit_url, testfiles_root
+from tests.integration.conf import drafts_url, objects_url, publish_url, testfiles_root
 from tests.integration.helpers import (
     add_submission_linked_folder,
     check_dataset_accession_ids,
@@ -79,140 +79,6 @@ class TestSubmissions:
             assert response["submissions"][0]["metadataObjects"][0]["tags"]["submissionType"] == "Form"
 
         await delete_object(client_logged_in, "study", accession_id)
-
-    async def test_submissions_work(self, client_logged_in, submission_fega):
-        """Test actions in submission XML files.
-
-        :param client_logged_in: HTTP client in which request call is made
-        :param submission_fega: id of the submission used to group submission objects
-        """
-        # Post original submission with two 'add' actions
-        sub_files = [
-            ("submission", "ERA521986_valid.xml"),
-            ("study", "SRP000539.xml"),
-            ("sample", "SRS001433.xml"),
-        ]
-        submission_data = await create_multi_file_request_data(sub_files)
-
-        async with client_logged_in.post(
-            f"{submit_url}/FEGA", params={"submission": submission_fega}, data=submission_data
-        ) as resp:
-            LOG.debug("Checking initial submission worked")
-            res = await resp.json()
-            assert resp.status == 200, f"HTTP Status code error, got {resp.status}: {res}"
-            assert len(res) == 2, "expected 2 objects"
-            assert res[0]["schema"] == "study", "expected first element to be study"
-            assert res[1]["schema"] == "sample", "expected second element to be sample"
-            study_access_id = res[0]["accessionId"]
-            sample_access_id = res[1]["accessionId"]
-
-        # Sanity check that the study object was inserted correctly before modifying it
-        async with client_logged_in.get(f"{objects_url}/study/{study_access_id}") as resp:
-            LOG.debug("Sanity checking that previous object was added correctly")
-            assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-            res = await resp.json()
-            assert res["accessionId"] == study_access_id, "study accession id does not match"
-            assert res["alias"] == "GSE10966", "study alias does not match"
-            assert res["descriptor"]["studyTitle"] == (
-                "Highly integrated epigenome maps in Arabidopsis - whole genome shotgun bisulfite sequencing"
-            ), "study title does not match"
-            # metax_id = res.get("metaxIdentifier", None)
-            # doi = res.get("doi", None)
-            # assert metax_id is not None
-            # assert doi is not None
-
-        # check that objects are added to submission
-        async with client_logged_in.get(f"{submissions_url}/{submission_fega}") as resp:
-            LOG.debug("Checking that submission %s was patched", submission_fega)
-            res = await resp.json()
-            expected_study = {
-                "accessionId": study_access_id,
-                "schema": "study",
-                "tags": {
-                    "submissionType": "XML",
-                    "displayTitle": (
-                        "Highly integrated epigenome maps in Arabidopsis - whole genome shotgun bisulfite sequencing"
-                    ),
-                    "fileName": "SRP000539.xml",
-                },
-            }
-            assert expected_study in res["metadataObjects"], "submission metadataObjects content mismatch"
-            expected_sample = {
-                "accessionId": sample_access_id,
-                "schema": "sample",
-                "tags": {
-                    "submissionType": "XML",
-                    "displayTitle": "HapMap sample from Homo sapiens",
-                    "fileName": "SRS001433.xml",
-                },
-            }
-            assert expected_sample in res["metadataObjects"], "submission metadataObjects content mismatch"
-
-        # Give test file the correct accession id
-        LOG.debug("Sharing the correct accession ID created in this test instance")
-        mod_study = testfiles_root / "study" / "SRP000539_modified.xml"
-        tree = ET.parse(mod_study)
-        root = tree.getroot()
-        for elem in root.iter("STUDY"):
-            elem.set("accession", study_access_id)
-        tree.write(mod_study, encoding="utf-8")
-
-        # Post new submission that modifies previously added study object and validates it
-        sub_files = [
-            ("submission", "ERA521986_modify.xml"),
-            ("study", "SRP000539_modified.xml"),
-        ]
-        more_submission_data = await create_multi_file_request_data(sub_files)
-        async with client_logged_in.post(f"{submit_url}/FEGA", data=more_submission_data) as resp:
-            LOG.debug("Checking object in initial submission was modified")
-            assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-            res = await resp.json()
-            assert len(res) == 2, "expected 2 objects"
-            new_study_access_id = res[0]["accessionId"]
-            assert study_access_id == new_study_access_id
-
-        # Check the modified object was inserted correctly
-        async with client_logged_in.get(f"{objects_url}/study/{new_study_access_id}") as resp:
-            LOG.debug("Checking that previous object was modified correctly")
-            assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-            res = await resp.json()
-            assert res["accessionId"] == new_study_access_id, "study accession id does not match"
-            assert res["alias"] == "GSE10966", "study alias does not match"
-            assert res["descriptor"]["studyTitle"] == (
-                "Different title for testing purposes"
-            ), "updated study title does not match"
-            # assert res["metaxIdentifier"] == metax_id
-            # assert res["doi"] == doi
-
-        # check that study is updated to submission
-        async with client_logged_in.get(f"{submissions_url}/{submission_fega}") as resp:
-            LOG.debug("Checking that submission %s was patched", submission_fega)
-            res = await resp.json()
-            expected_study = {
-                "accessionId": study_access_id,
-                "schema": "study",
-                "tags": {
-                    "submissionType": "XML",
-                    "displayTitle": "Different title for testing purposes",
-                    "fileName": "SRP000539_modified.xml",
-                },
-            }
-            assert expected_study in res["metadataObjects"], "submission metadataObjects content mismatch"
-
-        await delete_object(client_logged_in, "sample", sample_access_id)
-        await delete_object(client_logged_in, "study", study_access_id)
-
-        # Remove the accession id that was used for testing from test file
-        LOG.debug("Sharing the correct accession ID created in this test instance")
-        mod_study = testfiles_root / "study" / "SRP000539_modified.xml"
-        tree = ET.parse(mod_study)
-        root = tree.getroot()
-        for elem in root.iter("STUDY"):
-            del elem.attrib["accession"]
-        tree.write(mod_study, encoding="utf-8")
-        with open(mod_study, "a", encoding="utf-8") as f:
-            f.write("\n")
-
 
 class TestSubmissionOperations:
     """Testing basic CRUD submission operations."""

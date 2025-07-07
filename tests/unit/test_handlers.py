@@ -358,64 +358,6 @@ class APIHandlerTestCase(HandlersTestCase):
 class XMLSubmissionHandlerTestCase(HandlersTestCase):
     """Submission API endpoint class test cases."""
 
-    async def setUpAsync(self):
-        """Configure default values for testing and other modules.
-
-        This patches used modules and sets default return values for their
-        methods.
-        """
-        await super().setUpAsync()
-        class_parser = "metadata_backend.api.handlers.xml_submission.XMLToJSONParser"
-        self.patch_parser = patch(class_parser, spec=True)
-        self.MockedParser = self.patch_parser.start()
-
-        class_xmloperator = "metadata_backend.api.handlers.xml_submission.XMLObjectOperator"
-        self.patch_xmloperator = patch(class_xmloperator, **self.xmloperator_config, spec=True)
-        self.MockedXMLOperator = self.patch_xmloperator.start()
-
-    async def tearDownAsync(self):
-        """Cleanup mocked stuff."""
-        await super().tearDownAsync()
-        self.patch_parser.stop()
-        self.patch_xmloperator.stop()
-
-    async def test_submit_endpoint_submission_does_not_fail(self):
-        """Test that submission with valid SUBMISSION.xml does not fail."""
-        with self.patch_verify_authorization:
-            files = [("submission", "ERA521986_valid.xml")]
-            data = self.create_submission_data(files)
-            self.MockedParser().parse.return_value = [{"actions": {"action": []}}, data]
-            response = await self.client.post(f"{API_PREFIX}/submit/FEGA", data=data)
-            self.assertEqual(response.status, 200)
-            self.assertEqual(response.content_type, "application/json")
-            self.MockedParser().parse.assert_called_once()
-
-    async def test_submit_endpoint_fails_without_submission_xml(self):
-        """Test that basic POST submission fails with no submission.xml.
-
-        User should also be notified for missing file.
-        """
-        with self.patch_verify_authorization:
-            files = [("analysis", "ERZ266973.xml")]
-            data = self.create_submission_data(files)
-            response = await self.client.post(f"{API_PREFIX}/submit/FEGA", data=data)
-            failure_text = "There must be a submission.xml file in submission."
-            self.assertEqual(response.status, 400)
-            self.assertIn(failure_text, await response.text())
-
-    async def test_submit_endpoint_fails_with_many_submission_xmls(self):
-        """Test submission fails when there's too many submission.xml -files.
-
-        User should be notified for submitting too many files.
-        """
-        with self.patch_verify_authorization:
-            files = [("submission", "ERA521986_valid.xml"), ("submission", "ERA521986_valid2.xml")]
-            data = self.create_submission_data(files)
-            response = await self.client.post(f"{API_PREFIX}/submit/FEGA", data=data)
-            failure_text = "You should submit only one submission.xml file."
-            self.assertEqual(response.status, 400)
-            self.assertIn(failure_text, await response.text())
-
     async def test_validation_passes_for_valid_xml(self):
         """Test validation endpoint for valid xml."""
         with self.patch_verify_authorization:

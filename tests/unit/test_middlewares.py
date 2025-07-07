@@ -35,35 +35,22 @@ class ErrorMiddlewareTestCase(AioHTTPTestCase):
 
         await self.client.start_server()
 
-    async def test_bad_HTTP_request_converts_into_json_response(self):
-        """Test that middleware reformats 400 error with problem details."""
-        data = _create_improper_data()
+    async def test_bad_request_returns_json_response(self):
+        """Test that the middleware returns bad requests (400) in JSON with problem details."""
         with self.patch_verify_authorization:
-            response = await self.client.post(f"{API_PREFIX}/submit/FEGA", data=data)
+            response = await self.client.post(f"{API_PREFIX}/objects/dataset", json={})
             self.assertEqual(response.status, 400)
             self.assertEqual(response.content_type, "application/problem+json")
             resp_dict = await response.json()
             self.assertEqual("Bad Request", resp_dict["title"])
-            self.assertEqual("There must be a submission.xml file in submission.", resp_dict["detail"])
-            self.assertEqual(f"{API_PREFIX}/submit/FEGA", resp_dict["instance"])
+            self.assertIn("Submission ID is a required query parameter.", resp_dict["detail"])
+            self.assertEqual(f"{API_PREFIX}/objects/dataset", resp_dict["instance"])
 
     async def test_bad_url_returns_json_response(self):
-        """Test that unrouted API url returns a 404 in JSON format."""
+        """Test that the middleware returns bad URL requests as not found (404) in JSON with problem details."""
         with self.patch_verify_authorization:
             response = await self.client.get(f"{API_PREFIX}/bad_url")
             self.assertEqual(response.status, 404)
             self.assertEqual(response.content_type, "application/problem+json")
             resp_dict = await response.json()
             self.assertEqual("Not Found", resp_dict["title"])
-
-
-def _create_improper_data():
-    """Create request data that produces a 400 error.
-
-    Submission method in API handlers raises Bad Request (400) error
-    if 'submission' is not included on the first field of request
-    """
-    path_to_file = Path(__file__).parent.parent / "test_files" / "study" / "SRP000539_invalid.xml"
-    data = FormData()
-    data.add_field("STUDY", open(path_to_file.as_posix(), "r", encoding="utf-8"), filename="file", content_type="text/xml")
-    return data
