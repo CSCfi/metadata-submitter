@@ -2,45 +2,29 @@
 
 import json
 from asyncio import sleep
-from collections.abc import AsyncIterator, Iterator
 from math import ceil
 from typing import Any
 
-import ujson
 from aiohttp import web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
-from ...conf.conf import POLLING_INTERVAL, WORKFLOWS, schema_types
+from ...conf.conf import POLLING_INTERVAL, WORKFLOWS, get_workflow, schema_types
+from ...database.postgres.models import IngestStatus
 from ...helpers.logger import LOG
 from ...helpers.schema_loader import JSONSchemaLoader, SchemaNotFoundException
-from ...helpers.validator import JSONValidator
-from ...helpers.workflow import Workflow
 from ...services.admin_service_handler import AdminServiceHandler
 from ...services.datacite_service_handler import DataciteServiceHandler
 from ...services.metax_service_handler import MetaxServiceHandler
 from ...services.pid_ms_handler import PIDServiceHandler
 from ...services.rems_service_handler import RemsServiceHandler
-from ..auth import get_authorized_user_id
-from ..operators.file import FileOperator
-from ..operators.object import ObjectOperator
-from ..operators.submission import SubmissionOperator
-from ..services.project import ProjectService
+from ..models import Rems
+from ..resources import get_file_service
+from .common import to_json
 
 
 class RESTAPIHandler:
     """Handler for REST API methods."""
-
-    def _check_schema_exists(self, schema_type: str) -> None:
-        """Check if schema type exists.
-
-        :param schema_type: schema type.
-        :raises: HTTPNotFound if schema does not exist.
-        """
-        if schema_type not in set(schema_types.keys()):
-            reason = f"Specified schema {schema_type} was not found."
-            LOG.error(reason)
-            raise web.HTTPNotFound(reason=reason)
 
     def _get_page_param(self, req: Request, name: str, default: int) -> int:
         """Handle page parameter value extracting.
@@ -76,46 +60,11 @@ class RESTAPIHandler:
             raise web.HTTPBadRequest(reason=reason)
         return param
 
-    async def _handle_check_ownership(self, req: Request, collection: str, accession_id: str) -> None:
-        """Check if object belongs to project.
-
-        For this we need to check the object is in exactly 1 submission and we need to check
-        that submission belongs to a project.
+    @staticmethod
+    async def _json_data(req: Request) -> dict[str, Any]:
+        """Get the JSON data content from a request.
 
         :param req: HTTP request
-        :param collection: collection or schema of document
-        :param accession_id: document accession id
-        :raises: HTTPUnauthorized if accession id does not belong to user
-        :returns: bool and possible project id
-        """
-
-        user_id = get_authorized_user_id(req)
-
-        db_client = req.app["db_client"]
-        project_service: ProjectService = req.app["project_service"]
-
-        project_id: str | None = None
-
-        submission_op = SubmissionOperator(db_client)
-        if collection != "submission":
-            submission_id, _ = await submission_op.check_object_in_submission(collection, accession_id)
-            if submission_id:
-                # if the draft object is found in submission we just need to check if the submission belongs to user
-                project_id = await submission_op.get_submission_field_str(submission_id, "projectId")
-        else:
-            project_id = await submission_op.get_submission_field_str(accession_id, "projectId")
-
-        if project_id is not None:
-            await project_service.verify_user_project(user_id, project_id)
-        else:
-            reason = f"{collection} {accession_id}."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-    async def _get_data(self, req: Request) -> dict[str, Any]:
-        """Get the data content from a request.
-
-        :param req: POST/PUT/PATCH request
         :raises: HTTPBadRequest if request does not have proper JSON data
         :returns: JSON content of the request
         """
@@ -133,9 +82,7 @@ class RESTAPIHandler:
 
         :param data: Data to be serialized and made into HTTP 200 response
         """
-        return web.Response(
-            body=ujson.dumps(data, escape_forward_slashes=False), status=200, content_type="application/json"
-        )
+        return web.Response(body=to_json(data), status=200, content_type="application/json")
 
     async def get_schema_types(self, _: Request) -> Response:
         """Get all possible metadata schema types from database.
@@ -149,15 +96,19 @@ class RESTAPIHandler:
         return self._json_response(data)
 
     async def get_json_schema(self, req: Request) -> Response:
-        """Get all JSON Schema for a specific schema type.
+        """
+        Get JSON Schema for a specific schema type.
 
-        Basically returns which objects user can submit and query for.
         :param req: GET Request
         :raises: HTTPBadRequest if request does not find the schema
         :returns: JSON list of schema types
         """
         schema_type = req.match_info["schema"]
-        self._check_schema_exists(schema_type)
+
+        if schema_type not in set(schema_types.keys()):
+            reason = f"Specified schema {schema_type} was not found."
+            LOG.error(reason)
+            raise web.HTTPNotFound(reason=reason)
 
         try:
             if schema_type == "datacite":
@@ -169,7 +120,7 @@ class RESTAPIHandler:
             return self._json_response(schema)
 
         except SchemaNotFoundException as error:
-            reason = f"{error} Occured for JSON schema: '{schema_type}'."
+            reason = f"{error} Occurred for JSON schema: '{schema_type}'."
             LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)
 
@@ -193,23 +144,11 @@ class RESTAPIHandler:
         """
         workflow_name = req.match_info["workflow"]
         LOG.info("GET workflow: %r.", workflow_name)
-        workflow = self.get_workflow(workflow_name)
+        workflow = get_workflow(workflow_name)
         return self._json_response(workflow.workflow)
 
-    def get_workflow(self, workflow_name: str) -> Workflow:
-        """Get a single workflow definition by name.
-
-        :param workflow_name: Name of the workflow
-        :raises: HTTPNotFound if workflow doesn't exist
-        :returns: Workflow
-        """
-        if workflow_name not in WORKFLOWS:
-            reason = f"Workflow {workflow_name} was not found."
-            LOG.error(reason)
-            raise web.HTTPNotFound(reason=reason)
-        return WORKFLOWS[workflow_name]
-
-    def _header_links(self, url: str, page: int, size: int, total_objects: int) -> CIMultiDict[str]:
+    @staticmethod
+    def _pagination_header_links(url: str, page: int, size: int, total_objects: int) -> CIMultiDict[str]:
         """Create link header for pagination.
 
         :param url: base url for request
@@ -228,39 +167,6 @@ class RESTAPIHandler:
         link_headers = CIMultiDict(Link=f"{links}")
         LOG.debug("Link headers created")
         return link_headers
-
-    @staticmethod
-    def iter_submission_objects(submission: dict[str, Any]) -> Iterator[tuple[str, str]]:
-        """Iterate over a submission's objects.
-
-        :param submission: Submission data
-
-        yields accession_id, schema
-        """
-        for _obj in submission["metadataObjects"]:
-            accession_id = _obj["accessionId"]
-            schema = _obj["schema"]
-
-            yield accession_id, schema
-
-    async def iter_submission_objects_data(
-        self, submission: dict[str, Any], obj_op: ObjectOperator
-    ) -> AsyncIterator[tuple[str, str, dict[str, Any]]]:
-        """Iterate over a submission's objects and retrieve their data.
-
-        :param submission: Submission data
-        :param obj_op: Object ObjectOperator
-
-        yields accession_id, schema, object_data
-        """
-        for accession_id, schema in self.iter_submission_objects(submission):
-            object_data, _ = await obj_op.read_metadata_object(schema, accession_id)
-
-            if not isinstance(object_data, dict):
-                LOG.error("Object with accession ID %r is not a Dict. This might be a bug", accession_id)
-                continue
-
-            yield accession_id, schema, object_data
 
 
 class RESTAPIIntegrationHandler(RESTAPIHandler):
@@ -281,95 +187,24 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
         self.rems_handler = rems_handler
         self.admin_handler = admin_handler
 
-    async def create_metax_dataset(
-        self, obj_op: ObjectOperator, collection: str, obj: dict[str, Any], external_id: str
-    ) -> str:
-        """Handle connection to Metax api handler for dataset creation.
+    async def check_rems_ok(self, rems: Rems) -> None:
+        """Check REMS workflow and licenses.
 
-        Dataset or Study object is assigned with DOI
-        and it's data is sent to Metax api handler.
-        Object database entry is updated with metax ID returned by Metax service.
-
-        :param obj_op: Object ObjectOperator
-        :param collection: object's schema
-        :param obj: metadata object
-        :param external_id: user id
-        :returns: Metax ID
+        :param rems: the REMS data
         """
-        LOG.info("Creating draft dataset to Metax.")
-        new_info = {}
-        if "doi" in obj:
-            new_info["doi"] = obj["doi"]
-        metax_id = await self.metax_handler.post_dataset_as_draft(external_id, collection, obj)
-        new_info["metaxIdentifier"] = metax_id
-        await obj_op.update_identifiers(collection, obj["accessionId"], new_info)
+        await self.rems_handler.validate_workflow_licenses(rems.organization_id, rems.workflow_id, rems.licenses)
 
-        return metax_id
-
-    async def check_rems_ok(self, submission: dict[str, Any]) -> bool:
-        """Check that REMS DAC in object is ok.
-
-        :param submission: Submission data
-        :returns: bool
-        """
-        if "rems" not in submission:
-            raise web.HTTPBadRequest(reason="REMS field is missing.")
-
-        dac = submission["rems"]
-
-        if "workflowId" in dac and "organizationId" in dac and "licenses" in dac:
-            await self.rems_handler.validate_workflow_licenses(
-                dac["organizationId"], dac["workflowId"], dac["licenses"]
-            )
-        else:
-            raise web.HTTPBadRequest(
-                reason="REMS DAC is missing one or more of the required fields: "
-                "'workflowId', 'organizationId', or 'licenses'."
-            )
-
-        return True
-
-    async def update_object_in_submission(
-        self, submission_op: SubmissionOperator, submission_id: str, schema: str, schema_data: dict[str, Any]
-    ) -> str:
-        """Update object in submission from database.
-
-        The object's schema can be REMS or Datacite.
-
-        :param submission_op: Submission Operator
-        :param submission_id: ID of the submission
-        :param schema: schema type to be updated
-        :param schema_data: data of the schema to be updated
-        :returns: submission_id
-        """
-        submission = await submission_op.read_submission(submission_id)
-
-        op = "add"
-        if schema in submission:
-            op = "replace"
-        patch = [
-            {"op": op, "path": f"/{schema}", "value": schema_data},
-        ]
-
-        submission[schema] = schema_data
-        JSONValidator(submission, "submission").validate
-
-        upd_submission_id = await submission_op.update_submission(submission_id, patch)
-        LOG.info("PUT %r in submission with ID: %r was successful.", schema, submission_id)
-        return upd_submission_id
-
-    async def start_file_polling(
-        self, req: Request, files: dict[str, str], file_op: FileOperator, data: dict[str, str], status: str
-    ) -> None:
+    async def start_file_polling(self, req: Request, files: dict[str, str], data: dict[str, str], status: str) -> None:
         """Regularly poll files to see if they have required status.
 
         :param req: HTTP request
         :param files: List of files to be polled
-        :param file_op: File Operator
         :param data: Includes 'user' and 'submissionId'
         :param status: The expected file status that is polled
         """
         status_found = {f: False for f in files.keys()}
+
+        file_service = get_file_service(req)
 
         while True:
             inbox_files = await self.admin_handler.get_user_files(req, data["user"])
@@ -383,17 +218,15 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
                 if not status_found.get(inbox_path, True):
                     if inbox_file["fileStatus"] == status:
                         status_found[inbox_path] = True
-                        accessionId = files[inbox_path]
-                        await file_op.update_file_submission(
-                            accessionId, data["submissionId"], {"files.$.status": status}
-                        )
+                        file_id = files[inbox_path]
+                        await file_service.update_ingest_status(file_id, IngestStatus(status))
                         if status == "verified":
                             await self.admin_handler.post_accession_id(
                                 req,
                                 {
                                     "user": data["user"],
                                     "filepath": inbox_path,
-                                    "accessionId": accessionId,
+                                    "accessionId": file_id,
                                 },
                             )
                     elif inbox_file["fileStatus"] == "error":

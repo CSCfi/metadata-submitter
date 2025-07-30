@@ -159,6 +159,7 @@ disable=locally-disabled,
         broad-except,
         duplicate-code,
         missing-raises-doc,
+        redundant-returns-doc,
         R0801
 
 # Enable the message, report, category or checker with the given id(s). You can

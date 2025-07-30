@@ -6,7 +6,7 @@ from aiohttp import web
 from ...helpers.logger import LOG
 from ..auth import get_authorized_user_id
 from ..operators.file import File, FileOperator
-from ..services.project import ProjectService
+from ..resources import get_mongo_client, get_project_service
 from .restapi import RESTAPIHandler
 
 
@@ -22,8 +22,8 @@ class FilesAPIHandler(RESTAPIHandler):
         user_id = get_authorized_user_id(request)
 
         project_id = self._get_param(request, name="projectId")
-        db_client = request.app["db_client"]
-        project_service: ProjectService = request.app["project_service"]
+        db_client = get_mongo_client(request)
+        project_service = get_project_service(request)
 
         # Check that user is affiliated with the project.
         await project_service.verify_user_project(user_id, project_id)
@@ -41,10 +41,10 @@ class FilesAPIHandler(RESTAPIHandler):
         """
         user_id = get_authorized_user_id(request)
 
-        db_client = request.app["db_client"]
-        project_service: ProjectService = request.app["project_service"]
+        db_client = get_mongo_client(request)
+        project_service = get_project_service(request)
 
-        data = await self._get_data(request)
+        data = await self._json_data(request)
         is_bigpicture = request.query.get("is_bigpicture", "").strip().lower() == "true"
 
         try:
@@ -107,13 +107,12 @@ class FilesAPIHandler(RESTAPIHandler):
 
         project_id = request.match_info["projectId"]
 
-        db_client = request.app["db_client"]
-        project_service: ProjectService = request.app["project_service"]
+        project_service = get_project_service(request)
 
         # Check that user is affiliated with the project.
         await project_service.verify_user_project(user_id, project_id)
 
-        data = await self._get_data(request)
+        data = await self._json_data(request)
 
         if not isinstance(data, list):
             reason = "Deleting files must be passed as a list of file paths."
@@ -121,7 +120,7 @@ class FilesAPIHandler(RESTAPIHandler):
             raise web.HTTPBadRequest(reason=reason)
 
         # Check file exists in database
-        file_operator = FileOperator(db_client)
+        file_operator = FileOperator(get_mongo_client(request))
         for file_path in data:
             if not isinstance(file_path, str):
                 reason = "File path must be a string"

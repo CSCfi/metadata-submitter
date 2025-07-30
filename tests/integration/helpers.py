@@ -46,51 +46,17 @@ async def login(sess, sub, given, family):
         LOG.debug("Doing mock user login")
 
 
-async def create_request_data(schema, filename):
-    """Create request data from pairs of schemas and filenames.
+async def get_request_data(schema, filename) -> str:
+    """Get request data from a test file.
 
-    :param schema: name of the schema (submission) used for testing
-    :param filename: name of the file used for testing.
-    """
-    request_data = FormData()
-    path_to_file = testfiles_root / schema / filename
-    path = path_to_file.as_posix()
-    async with aiofiles.open(path, mode="r") as f:
-        c_type = "text/xml" if filename[-3:] == "xml" else "text/csv"
-        request_data.add_field(schema.upper(), await f.read(), filename=filename, content_type=c_type)
-    return request_data
-
-
-async def create_multi_file_request_data(filepairs):
-    """Create request data with multiple files.
-
-    :param filepairs: tuple containing pairs of schemas and filenames used for testing
-    """
-    request_data = FormData()
-    for schema, filename in filepairs:
-        path_to_file = testfiles_root / schema / filename
-        path = path_to_file.as_posix()
-        async with aiofiles.open(path, mode="r") as f:
-            request_data.add_field(
-                schema.upper(),
-                await f.read(),
-                filename=filename,
-                content_type="text/xml",
-            )
-    return request_data
-
-
-async def create_request_json_data(schema, filename):
-    """Create request data from pairs of schemas and filenames.
-
-    :param schema: name of the schema (submission) used for testing
-    :param filename: name of the file used for testing.
+    :param schema: name of the schema.
+    :param filename: name of the test file.
+    :return: Contents of the test file.
     """
     path_to_file = testfiles_root / schema / filename
     path = path_to_file.as_posix()
     async with aiofiles.open(path, mode="r") as f:
-        request_data = await f.read()
-    return request_data
+        return await f.read()
 
 
 async def get_object(sess, schema, accession_id):
@@ -103,8 +69,8 @@ async def get_object(sess, schema, accession_id):
     """
     async with sess.get(f"{objects_url}/{schema}/{accession_id}") as resp:
         LOG.debug("Getting object from %s with %s", schema, accession_id)
-        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         data = await resp.json()
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
         return data
 
 
@@ -123,8 +89,8 @@ async def get_xml_object(sess, schema, accession_id):
         return data
 
 
-async def post_object(sess, schema, submission_id, filename):
-    """Post one metadata object within session, returns accessionId.
+async def post_object(sess, schema, submission_id, filename) -> str | None:
+    """Post one XML or JSON metadata object within session, returns accessionId.
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (submission) used for testing
@@ -132,21 +98,36 @@ async def post_object(sess, schema, submission_id, filename):
     :param filename: name of the file used for testing.
     :returns: accessionId of created object
     """
-    request_data = await create_request_data(schema, filename)
+    LOG.debug(f"Adding new {schema} object from file {filename}")
+    data = await get_request_data(schema, filename)
+    return await post_object_data(sess, schema, submission_id, data)
+
+
+async def post_object_data(sess, schema, submission_id, data) -> str | None:
+    """Post one XML or JSON metadata object within session, returns accessionId.
+
+    :param sess: HTTP session in which request call is made
+    :param schema: name of the schema (submission) used for testing
+    :param submission_id: submission object belongs to
+    :param data: the metadata object data
+    :returns: accessionId of created object
+    """
     async with sess.post(
-        f"{objects_url}/{schema}",
-        params={"submission": submission_id},
-        data=request_data,
+            f"{objects_url}/{schema}",
+            params={"submission": submission_id},
+            data=data,
     ) as resp:
-        LOG.debug(f"Adding new object to {schema}, via XML/CSV file {filename}")
+        response = await resp.json()
+        LOG.debug(f"Adding new {schema} object")
         assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
-        if schema != "bprems":
-            ans = await resp.json()
-            return ans if isinstance(ans, list) else ans["accessionId"], schema
+
+        if schema == "bprems":
+            return None
+        return (response[0] if isinstance(response, list) else response)["accessionId"]
 
 
-async def post_multi_object(sess, schema, submission_id, filename):
-    """Post metadata objects from one file within session, returns response body (json).
+async def post_multi_object(sess, schema, submission_id, filename) -> list[str]:
+    """Post multiple metadata objects. Returns list of object accessions.
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (submission) used for testing
@@ -154,60 +135,15 @@ async def post_multi_object(sess, schema, submission_id, filename):
     :param filename: name of the file used for testing.
     :returns: response data after created objects
     """
-    request_data = await create_request_data(schema, filename)
+    request_data = await get_request_data(schema, filename)
     async with sess.post(
-        f"{objects_url}/{schema}",
-        params={"submission": submission_id},
-        data=request_data,
+            f"{objects_url}/{schema}",
+            params={"submission": submission_id},
+            data=request_data,
     ) as resp:
-        LOG.debug("Adding new object to %s, via XML/CSV file %s", schema, filename)
-        ans = await resp.json()
-        assert resp.status == 201, f"HTTP Status code error, got {resp.status}: {ans}"
-        return ans
-
-
-async def post_object_expect_status(sess, schema, submission_id, filename, status):
-    """Post one metadata object within session, returns accessionId.
-
-    :param sess: HTTP session in which request call is made
-    :param schema: name of the schema (submission) used for testing
-    :param submission_id: submission object belongs to
-    :param filename: name of the file used for testing
-    :param status: HTTP status to expect for
-    :returns: accessionId of created object
-    """
-    request_data = await create_request_data(schema, filename)
-    async with sess.post(
-        f"{objects_url}/{schema}",
-        params={"submission": submission_id},
-        data=request_data,
-    ) as resp:
-        LOG.debug("Adding new object to %s, via XML/CSV file %s and expecting status: %d", schema, filename, status)
-        assert resp.status == status, f"HTTP Status code error, got {resp.status}"
-        if status < 400 and schema != "bprems":
-            ans = await resp.json()
-            return ans if isinstance(ans, list) else ans["accessionId"], schema
-
-
-async def post_object_json(sess, schema, submission_id, filename):
-    """Post & put one metadata object within session, returns accessionId.
-
-    :param sess: HTTP session in which request call is made
-    :param schema: name of the schema (submission) used for testing
-    :param submission_id: submission object belongs to
-    :param filename: name of the file used for testing.
-    :returns: accessionId of created object
-    """
-    request_data = await create_request_json_data(schema, filename)
-    async with sess.post(
-        f"{objects_url}/{schema}",
-        params={"submission": submission_id},
-        data=request_data,
-    ) as resp:
-        LOG.debug("Adding new object to %s, via JSON file %s", schema, filename)
-        ans = await resp.json()
-        assert resp.status == 201, f"HTTP Status code error, got {resp.status}: {ans}"
-        return ans["accessionId"]
+        LOG.debug("Posting  %s objects from file %s", schema, filename)
+        assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
+        return [r["accessionId"] for r in await resp.json()]
 
 
 async def delete_object(sess, schema, accession_id):
@@ -223,7 +159,7 @@ async def delete_object(sess, schema, accession_id):
 
 
 async def post_draft(sess, schema, submission_id, filename):
-    """Post one draft metadata object within session, returns accessionId.
+    """Post one draft XML or JSON metadata object within session, returns accessionId.
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (submission) used for testing
@@ -231,37 +167,16 @@ async def post_draft(sess, schema, submission_id, filename):
     :param filename: name of the file used for testing.
     :returns: accessionId of created draft
     """
-    request_data = await create_request_data(schema, filename)
+    request_data = await get_request_data(schema, filename)
     async with sess.post(
-        f"{drafts_url}/{schema}",
-        params={"submission": submission_id},
-        data=request_data,
+            f"{drafts_url}/{schema}",
+            params={"submission": submission_id},
+            data=request_data,
     ) as resp:
         LOG.debug("Adding new draft object to %s, via XML file %s", schema, filename)
         assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
-        ans = await resp.json()
-        return ans["accessionId"]
-
-
-async def post_draft_json(sess, schema, submission_id, filename):
-    """Post & put one metadata object within session, returns accessionId.
-
-    :param sess: HTTP session in which request call is made
-    :param schema: name of the schema (submission) used for testing
-    :param submission_id: submission object belongs to
-    :param filename: name of the file used for testing.
-    :returns: accessionId of created draft
-    """
-    request_data = await create_request_json_data(schema, filename)
-    async with sess.post(
-        f"{drafts_url}/{schema}",
-        params={"submission": submission_id},
-        data=request_data,
-    ) as resp:
-        LOG.debug("Adding new draft object to %s, via JSON file %s", schema, filename)
-        ans = await resp.json()
-        assert resp.status == 201, f"HTTP Status code error, got {resp.status}: {ans}"
-        return ans["accessionId"]
+        response = await resp.json()
+        return (response[0] if isinstance(response, list) else response)["accessionId"]
 
 
 async def get_draft(sess, schema, draft_id, expected_status=200):
@@ -274,7 +189,7 @@ async def get_draft(sess, schema, draft_id, expected_status=200):
     :returns: data of a draft
     """
     async with sess.get(f"{drafts_url}/{schema}/{draft_id}") as resp:
-        LOG.debug("Checking that %s JSON exists", draft_id)
+        LOG.debug("Checking that %s draft exists", draft_id)
         assert resp.status == expected_status, f"HTTP Status code error, got {resp.status}"
         ans = await resp.json()
         return json.dumps(ans)
@@ -289,7 +204,7 @@ async def put_draft(sess, schema, draft_id, update_filename):
     :param update_filename: name of the file used to use for updating data.
     :returns: accession id of updated draft
     """
-    request_data = await create_request_json_data(schema, update_filename)
+    request_data = await get_request_data(schema, update_filename)
     async with sess.put(f"{drafts_url}/{schema}/{draft_id}", data=request_data) as resp:
         LOG.debug("Replace draft object in %s", schema)
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
@@ -298,22 +213,22 @@ async def put_draft(sess, schema, draft_id, update_filename):
         return ans_put["accessionId"]
 
 
-async def put_object_json(sess, schema, accession_id, update_filename):
-    """Put one metadata object within session, returns accessionId.
+async def put_object(sess, schema, accession_id, update_filename):
+    """Put one JSON or XML metadata object within session.
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (submission) used for testing
     :param accession_id: id of the object
     :param update_filename: name of the file used to use for updating data.
     """
-    request_data = await create_request_json_data(schema, update_filename)
+    request_data = await get_request_data(schema, update_filename)
     async with sess.put(f"{objects_url}/{schema}/{accession_id}", data=request_data) as resp:
-        LOG.debug("Try to replace object in %s", schema)
-        assert resp.status == 415, f"HTTP Status code error, got {resp.status}"
+        LOG.debug("Put %s metadata object", schema)
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
 
-async def patch_object_json(sess, schema, accession_id, update_filename):
-    """Patch one metadata object within session, returns accessionId.
+async def patch_object(sess, schema, accession_id, update_filename):
+    """Patch one JSON or XML metadata object within session.
 
     :param sess: HTTP session in which request call is made
     :param schema: name of the schema (submission) used for testing
@@ -321,31 +236,10 @@ async def patch_object_json(sess, schema, accession_id, update_filename):
     :param update_filename: name of the file used to use for updating data.
     :returns: accession id of updated object
     """
-    request_data = await create_request_json_data(schema, update_filename)
+    request_data = await get_request_data(schema, update_filename)
     async with sess.patch(f"{objects_url}/{schema}/{accession_id}", data=request_data) as resp:
-        LOG.debug("Try to patch object in %s", schema)
+        LOG.debug("Patch %s metadata object", schema)
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-        ans_put = await resp.json()
-        assert ans_put["accessionId"] == accession_id, "accession ID error"
-        return ans_put["accessionId"]
-
-
-async def put_object_xml(sess, schema, accession_id, update_filename):
-    """Put one metadata object within session, returns accessionId.
-
-    :param sess: HTTP session in which request call is made
-    :param schema: name of the schema (submission) used for testing
-    :param accession_id: id of the object
-    :param update_filename: name of the file used to use for updating data.
-    :returns: accession id of updated object
-    """
-    request_data = await create_request_data(schema, update_filename)
-    async with sess.put(f"{objects_url}/{schema}/{accession_id}", data=request_data) as resp:
-        LOG.debug("Replace object with XML data in %s", schema)
-        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-        ans_put = await resp.json()
-        assert ans_put["accessionId"] == accession_id, "accession ID error"
-        return ans_put["accessionId"]
 
 
 async def patch_draft(sess, schema, draft_id, update_filename):
@@ -357,7 +251,7 @@ async def patch_draft(sess, schema, draft_id, update_filename):
     :param update_filename: name of the file used to use for updating data.
     :returns: accession id of updated draft
     """
-    request_data = await create_request_json_data(schema, update_filename)
+    request_data = await get_request_data(schema, update_filename)
     async with sess.patch(f"{drafts_url}/{schema}/{draft_id}", data=request_data) as resp:
         LOG.debug("Update draft object in %s", schema)
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
@@ -406,47 +300,39 @@ async def patch_submission(sess, submission_id, data):
         return ans_patch["submissionId"]
 
 
-async def publish_submission(sess, submission_id):
+async def publish_submission(sess, submission_id, *, no_files: bool = True):
     """Publish one object submission within session, return submissionId.
 
     :param sess: HTTP session in which request call is made
     :param submission_id: id of the submission
     """
-    async with sess.patch(f"{publish_url}/{submission_id}") as resp:
+    async with sess.patch(f"{publish_url}/{submission_id}?no_files=true") as resp:
         LOG.debug("Publishing submission %s", submission_id)
-        ans = await resp.json()
-        assert resp.status == 200, f"HTTP Status code error, got {resp.status}: {ans}"
-        assert ans["submissionId"] == submission_id, "submission ID error"
-        return ans["submissionId"]
+        result = await resp.json()
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}: {result}"
+        assert result["submissionId"] == submission_id, "submission ID error"
+        return result["submissionId"]
 
 
-async def announce_submission(sess, submission_id, id_token):
-    """Announce one object submission within session, return submissionId. Uses BP publication endpoint.
-
-    :param sess: HTTP session in which request call is made
-    :param submission_id: id of the submission
-    :param id_token: ID token for the user to announce the submission
-    """
-    async with sess.patch(f"{announce_url}/{submission_id}", headers={"X-Authorization": f"Bearer {id_token}"}) as resp:
-        LOG.debug("Announcing submission %s", submission_id)
-        ans = await resp.json()
-        assert resp.status == 200, f"HTTP Status code error, got {resp.status}: {ans}"
-        assert ans["submissionId"] == submission_id, "submission ID error"
-        return ans["submissionId"]
-
-
-async def delete_submission(sess, submission_id):
-    """Delete object submission within session successfully.
+async def delete_submission(sess, submission_id,
+                            ignore_published_error: bool = False,
+                            ignore_not_found_error: bool = False):
+    """Delete submission.
 
     :param sess: HTTP session in which request call is made
     :param submission_id: id of the submission
+    :param ignore_published_error: ignore error when submission has been published and can't be deleted
+    :param ignore_not_found_error: ignore error when submission does not exist
     """
     async with sess.delete(f"{submissions_url}/{submission_id}") as resp:
         LOG.debug("Deleting submission %s", submission_id)
-        assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
+        result = await resp.text()
+        assert resp.status == 204 or (
+                resp.status == 400 and ignore_published_error and "has been published" in result
+        ) or (resp.status == 404 and ignore_not_found_error)
 
 
-async def delete_published_submission(sess, submission_id):
+async def delete_published_submission(sess, submission_id, *, expected_status=405):
     """Delete object submission within session unsuccessfully because it's already published.
 
     :param sess: HTTP session in which request call is made
@@ -454,7 +340,7 @@ async def delete_published_submission(sess, submission_id):
     """
     async with sess.delete(f"{submissions_url}/{submission_id}") as resp:
         LOG.debug("Deleting submission %s", submission_id)
-        assert resp.status == 405, f"HTTP Status code error, got {resp.status}"
+        assert resp.status == expected_status, f"HTTP Status code error, got {resp.status}"
 
 
 async def patch_submission_doi(sess, submission_id, data):
@@ -527,53 +413,18 @@ async def delete_objects_metax_id(sess, database, collection, accession_id, meta
         LOG.exception("Object deletion from mocked Metax failed due to %s", str(e))
 
 
-def extract_submissions_object(res, accession_id, draft):
-    """Extract object from submission metadataObjects with provided accessionId.
-
-    :param res: JSON parsed responce from submission query request
-    :param accession_id: accession ID of reviwed object
-    :param draft: indication of object draft status, default False
-    :returns: dict of object entry in submission
-    """
-    object = "drafts" if draft else "metadataObjects"
-    actual_res = next(obj for obj in res[object] if obj["accessionId"] == accession_id)
-    return actual_res
-
-
-async def check_submissions_object_patch(sess, submission_id, schema, accession_id, title, filename, draft=False):
-    """Check that draft is added correctly to submission.
-
-    Get draft or metadata object from the submission and assert with data
-    returned from object endpoint itself.
+async def check_object_exists(sess, schema, accession_id, draft=False):
+    """Check that the metadata object is added to submission.
 
     :param sess: HTTP session in which request call is made
-    :param submission_id: id of the submission
     :param schema: name of the schema (submission) used for testing
-    :param accession_id: accession ID of reviwed object
-    :param title: title of reviwed object
-    :param filename: name of the file used for inserting data
+    :param accession_id: accession ID of metadata object
     :param draft: indication of object draft status, default False
     """
-    sub_type = "Form" if filename.split(".")[-1] == "json" else filename.split(".")[-1].upper()
-    async with sess.get(f"{submissions_url}/{submission_id}") as resp:
-        res = await resp.json()
-        try:
-            actual = extract_submissions_object(res, accession_id, draft)
-            expected = {
-                "accessionId": accession_id,
-                "schema": schema if not draft else f"draft-{schema}",
-                "tags": {
-                    "submissionType": sub_type,
-                    "displayTitle": title,
-                    "fileName": filename,
-                },
-            }
-            if sub_type == "Form":
-                del expected["tags"]["fileName"]
-            assert actual == expected, "actual end expected data did not match"
-        except StopIteration:
-            pass
-        return schema
+    if draft:
+        await get_draft(sess, schema, accession_id)
+    else:
+        await get_object(sess, schema, accession_id)
 
 
 async def post_project_files(sess, file_data, is_bigpicture=""):
@@ -639,6 +490,31 @@ async def patch_submission_files(sess, file_data, submission_id):
         assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
 
+async def get_submission_files(sess, submission_id):
+    """Get submission files.
+
+    :param sess: HTTP session in which request call is made
+    :param submission_id: The submission id
+    """
+    url = f"{submissions_url}/{submission_id}/files"
+    async with sess.get(url) as resp:
+        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+        result = await resp.json()
+        return result
+
+
+async def delete_submission_file(sess, submission_id, file_id):
+    """Delete submission file.
+
+    :param sess: HTTP session in which request call is made
+    :param submission_id: The submission id
+    :param file_id: The file id
+    """
+    url = f"{submissions_url}/{submission_id}/files/{file_id}"
+    async with sess.delete(url) as resp:
+        assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
+
+
 async def get_submission(sess, submission_id):
     """Get submission with the given id.
 
@@ -665,8 +541,8 @@ async def add_submission_linked_folder(sess, submission_id, name):
     url = f"{submissions_url}/{submission_id}/folder"
 
     async with sess.patch(
-        url,
-        data=ujson.dumps(data),
+            url,
+            data=ujson.dumps(data),
     ) as resp:
         assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
@@ -777,20 +653,6 @@ async def setup_files_for_ingestion(sess, dataset_id, submission_id, user_id, pr
     async with aiohttp.ClientSession(headers={"Authorization": "Bearer " + id_token}) as admin_client:
         await add_file_to_inbox(admin_client, mock_file_1["path"], user_id)
         await add_file_to_inbox(admin_client, mock_file_2["path"], user_id)
-
-
-async def post_data_ingestion(sess, submission_id, id_token):
-    """Start the data ingestion with files inside submission.
-
-    :param sess: HTTP session in which request call is made
-    :param submission_id: id of the submission
-    :param id_token: Token for authorizing admin user
-    """
-    url = f"{submissions_url}/{submission_id}/ingest"
-
-    async with sess.post(url, headers={"X-Authorization": f"Bearer {id_token}"}) as resp:
-        LOG.debug("Ingesting submission %s", submission_id)
-        assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
 
 async def check_file_accession_ids(sess, files, username):

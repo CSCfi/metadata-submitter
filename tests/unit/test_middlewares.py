@@ -43,7 +43,7 @@ class ErrorMiddlewareTestCase(AioHTTPTestCase):
             self.assertEqual(response.content_type, "application/problem+json")
             resp_dict = await response.json()
             self.assertEqual("Bad Request", resp_dict["title"])
-            self.assertIn("Submission ID is a required query parameter.", resp_dict["detail"])
+            self.assertIn("Missing required query parameter: submission", resp_dict["detail"])
             self.assertEqual(f"{API_PREFIX}/objects/dataset", resp_dict["instance"])
 
     async def test_bad_url_returns_json_response(self):

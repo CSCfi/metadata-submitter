@@ -11,7 +11,7 @@ from metadata_backend.api.services.ldap import get_user_projects, verify_user_pr
 from metadata_backend.api.services.project import CscLdapProjectService
 
 
-class TestLdap(unittest.TestCase):
+class TestLdap(unittest.IsolatedAsyncioTestCase):
     """Test CSC's LDAP service."""
 
     def test_get_user_projects_with_mocked_ldap(self) -> None:

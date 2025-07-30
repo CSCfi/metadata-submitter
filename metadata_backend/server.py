@@ -6,6 +6,14 @@ from typing import Any, Optional
 import uvloop
 from aiohttp import web
 
+from metadata_backend.api.services.object import JsonObjectService, XmlObjectService
+from metadata_backend.database.postgres.repositories.api_key import ApiKeyRepository
+from metadata_backend.database.postgres.repositories.file import FileRepository
+from metadata_backend.database.postgres.repositories.object import ObjectRepository
+from metadata_backend.database.postgres.repositories.registration import RegistrationRepository
+from metadata_backend.database.postgres.repositories.submission import SubmissionRepository
+from metadata_backend.database.postgres.services.registration import RegistrationService
+
 from .api.auth import AAIServiceHandler, AccessHandler
 from .api.handlers import auth as APIKeyHandler
 from .api.handlers import user as UserHandler
@@ -19,10 +27,17 @@ from .api.handlers.submission import SubmissionAPIHandler
 from .api.handlers.xml_submission import XMLSubmissionAPIHandler
 from .api.health import HealthHandler
 from .api.middlewares import authorization, http_error_handler
+from .api.resources import ResourceType, set_resource
 from .api.services.auth import AccessService
 from .api.services.project import CscLdapProjectService
 from .conf.conf import API_PREFIX, aai_config, create_db_client, frontend_static_files, swagger_static_path
-from .database.postgres.repository import ApiKeyRepository, create_engine, create_session_factory
+from .database.postgres.repository import (
+    create_engine,
+    create_session_factory,
+)
+from .database.postgres.services.file import FileService
+from .database.postgres.services.object import ObjectService
+from .database.postgres.services.submission import SubmissionService
 from .helpers.logger import LOG
 from .services.admin_service_handler import AdminServiceHandler
 from .services.datacite_service_handler import DataciteServiceHandler
@@ -57,28 +72,31 @@ async def init(
     api = web.Application(middlewares=middlewares)  # type: ignore
     server = web.Application()
 
-    # Initialise shared resources.
+    # Initialise resources.
     #
 
-    # Mongo.
-    db_client = create_db_client()
-    api["db_client"] = db_client
-    server["db_client"] = db_client
-
-    # Repositories.
     engine = await create_engine()
     session_factory = create_session_factory(engine)
     api_key_repository = ApiKeyRepository(session_factory)
 
-    # Project service.
-    project_service = CscLdapProjectService()
-    api["project_service"] = project_service
-    server["project_service"] = project_service
+    def _set_resource(resource_type: ResourceType, resource: Any) -> None:  # noqa: ANN401
+        set_resource(api, resource_type, resource)
+        set_resource(server, resource_type, resource)
 
-    # Access service.
-    access_service = AccessService(api_key_repository)
-    api["access_service"] = access_service
-    server["access_service"] = access_service
+    submission_service = SubmissionService(SubmissionRepository(session_factory))
+    object_service = ObjectService(ObjectRepository(session_factory))
+    json_object_service = JsonObjectService(submission_service, object_service)
+    xml_object_service = XmlObjectService(submission_service, object_service, json_object_service)
+
+    _set_resource(ResourceType.MONGO_CLIENT, create_db_client())
+    _set_resource(ResourceType.ACCESS_SERVICE, AccessService(api_key_repository))
+    _set_resource(ResourceType.PROJECT_SERVICE, CscLdapProjectService())
+    _set_resource(ResourceType.SUBMISSION_SERVICE, submission_service)
+    _set_resource(ResourceType.OBJECT_SERVICE, object_service)
+    _set_resource(ResourceType.FILE_SERVICE, FileService(FileRepository(session_factory)))
+    _set_resource(ResourceType.REGISTRATION_SERVICE, RegistrationService(RegistrationRepository(session_factory)))
+    _set_resource(ResourceType.JSON_OBJECT_SERVICE, json_object_service)
+    _set_resource(ResourceType.XML_OBJECT_SERVICE, xml_object_service)
 
     # Initialize handlers.
     #
@@ -145,23 +163,25 @@ async def init(
         web.get("/schemas/{schema}", _common_api_handler.get_json_schema),
         # metadata objects operations
         web.post("/objects/{schema}", _object.post_object),
+        web.get("/objects/{schema}", _object.get_objects),
         web.get("/objects/{schema}/{accessionId}", _object.get_object),
-        web.put("/objects/{schema}/{accessionId}", _object.put_object),
-        web.patch("/objects/{schema}/{accessionId}", _object.patch_object),
+        web.put("/objects/{schema}/{accessionId}", _object.put_or_patch_object),
+        web.patch("/objects/{schema}/{accessionId}", _object.put_or_patch_object),
         web.delete("/objects/{schema}/{accessionId}", _object.delete_object),
         # draft objects operations
         web.post("/drafts/{schema}", _object.post_object),
         web.get("/drafts/{schema}/{accessionId}", _object.get_object),
-        web.put("/drafts/{schema}/{accessionId}", _object.put_object),
-        web.patch("/drafts/{schema}/{accessionId}", _object.patch_object),
+        web.put("/drafts/{schema}/{accessionId}", _object.put_or_patch_object),
+        web.patch("/drafts/{schema}/{accessionId}", _object.put_or_patch_object),
         web.delete("/drafts/{schema}/{accessionId}", _object.delete_object),
         # submissions operations
         web.get("/submissions", _submission.get_submissions),
         web.post("/submissions", _submission.post_submission),
         web.get("/submissions/{submissionId}", _submission.get_submission),
         web.get("/submissions/{submissionId}/files", _submission.get_submission_files),
-        web.patch("/submissions/{submissionId}/doi", _submission.patch_submission_doi_rems),
-        web.patch("/submissions/{submissionId}/rems", _submission.patch_submission_doi_rems),
+        web.get("/submissions/{submissionId}/registrations", _submission.get_submission_registrations),
+        web.patch("/submissions/{submissionId}/doi", _submission.patch_submission_doi),
+        web.patch("/submissions/{submissionId}/rems", _submission.patch_submission_rems),
         web.patch("/submissions/{submissionId}/folder", _submission.patch_submission_linked_folder),
         web.patch("/submissions/{submissionId}/files", _submission.patch_submission_files),
         web.patch("/submissions/{submissionId}", _submission.patch_submission),
@@ -170,10 +190,8 @@ async def init(
         web.post("/submissions/{submissionId}/ingest", _submission.post_data_ingestion),
         # user operations
         web.get("/users", UserHandler.get_user),
-        # publish submissions - endpoint for general case
+        # publish submission
         web.patch("/publish/{submissionId}", _publish_submission.publish_submission),
-        # announce submissions - endpoint for BP case
-        web.patch("/announce/{submissionId}", _publish_submission.publish_submission),
         # api key operations
         web.post("/api/keys", APIKeyHandler.post_api_key),
         web.delete("/api/keys", APIKeyHandler.delete_api_key),

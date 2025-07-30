@@ -8,7 +8,7 @@
             "schemas": [
                 {
                     "name": "bprems",
-                    "required": true,
+                    "required": false,
                     "allowMultipleObjects": false
                 },
                 {
@@ -24,13 +24,7 @@
         {
             "title": "Files",
             "required": true,
-            "schemas": [
-                {
-                    "name": "bpfile",
-                    "required": true,
-                    "allowMultipleObjects": true
-                }
-            ]
+            "schemas": []
         },
         {
             "title": "Describe",
@@ -49,7 +43,7 @@
                 {
                     "name": "bpdataset",
                     "required": false,
-                    "allowMultipleObjects": true
+                    "allowMultipleObjects": false
                 },
                 {
                     "name": "bpstaining",
@@ -85,25 +79,24 @@
             ]
         }
     ],
-    "announce": [
-        {
-            "name": "datacite",
-            "endpoint": "datacite",
+    "publish": {
+        "datacite": {
             "service": "datacite",
-            "requiredSchemas": [
-                "datacite"
+            "schemas": [
+                "bpdataset"
             ]
         },
-        {
-            "name": "rems",
-            "endpoint": "rems",
-            "requires": [
-                "datacite"
-            ],
-            "requiredSchemas": [
-                "bprems"
+        "rems": {
+            "service": "csc",
+            "schemas": [
+                "bpdataset"
+            ]
+        },
+        "discovery": {
+            "service": "beacon",
+            "schemas": [
+                "bpdataset"
             ]
         }
-    ],
-    "discovery_service": "beacon"
+    }
 }

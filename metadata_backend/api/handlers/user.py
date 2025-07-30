@@ -5,7 +5,7 @@ from aiohttp.web import Request, Response
 
 from ..auth import get_authorized_user_id, get_authorized_user_name
 from ..models import User
-from ..services.project import ProjectService
+from ..resources import get_project_service
 
 
 async def get_user(req: Request) -> Response:
@@ -21,7 +21,7 @@ async def get_user(req: Request) -> Response:
     user_id = get_authorized_user_id(req)
     user_name = get_authorized_user_name(req)
 
-    project_service: ProjectService = req.app["project_service"]
+    project_service = get_project_service(req)
 
     user = User(
         user_id=user_id,

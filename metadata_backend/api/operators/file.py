@@ -4,12 +4,12 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Optional
 
-import ujson
 from aiohttp import web
 from pymongo.errors import ConnectionFailure, OperationFailure
 
 from ...helpers.logger import LOG
 from ...helpers.validator import JSONValidator
+from ..services.accession import generate_bp_accession, generate_default_accession
 from .base import BaseOperator
 
 
@@ -54,9 +54,7 @@ class FileOperator(BaseOperator):
                 accession_id = file["accessionId"]
                 version = file["currentVersion"]["version"] + 1
             else:
-                accession_id = (
-                    self._generate_bp_accession_id("bpfile") if is_bigpicture else self._generate_accession_id()
-                )
+                accession_id = generate_bp_accession("bpfile") if is_bigpicture else generate_default_accession()
                 version = 1
             return {"accessionId": accession_id, "version": version}
         except (ConnectionFailure, OperationFailure) as error:
@@ -94,7 +92,7 @@ class FileOperator(BaseOperator):
             ],
             "flagDeleted": False,
         }
-        JSONValidator(file_object, "file").validate
+        JSONValidator(file_object, "file").validate()
         return file_object
 
     async def _create_file(self, file: dict[str, Any]) -> dict[str, str | int]:
@@ -244,90 +242,6 @@ class FileOperator(BaseOperator):
             LOG.exception(reason)
             raise web.HTTPInternalServerError(reason=reason) from error
 
-    async def check_submission_files_ready(self, submission_id: str) -> None:
-        """Check all files in a submission are marked as ready.
-
-        Files marked as ready in a submission, means an metadata object has been
-        attached to the file.
-
-        :param submission_id: Submission ID to get associated files status
-        :raises: HTTPInternalServerError if db operation failed because of connection
-        or other db issue
-        """
-        aggregate_query = [
-            {"$match": {"submissionId": submission_id}},
-            {"$unwind": "$files"},
-            # check the status is not in failed or added
-            # failed can occur when an file ingestion/verification/mapping fails
-            {"$match": {"files.status": {"$in": ["added", "failed"]}}},
-            {
-                "$project": {
-                    "_id": 0,
-                    "accessionId": "$files.accessionId",
-                    "version": "$files.version",
-                    "status": "$files.status",
-                }
-            },
-        ]
-        try:
-            problematic_files = await self.db_service.do_aggregate("submission", aggregate_query)
-            if len(problematic_files) > 0:
-                reason = (
-                    f"There are problematic files: {','.join([i['accessionId'] for i in problematic_files])} "
-                    f"in the submission with id: {submission_id}"
-                )
-                LOG.error(reason)
-                raise web.HTTPBadRequest(
-                    reason=reason,
-                    text=ujson.dumps({"problematic-files": problematic_files}),
-                    content_type="application/json",
-                )
-            LOG.debug("All files have been marked as ready")
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting submission, err: {error}"
-            LOG.exception(reason)
-            raise web.HTTPInternalServerError(reason=reason) from error
-
-    async def read_submission_files(
-        self, submission_id: str, expected_status: Optional[list[Any]] = None
-    ) -> list[dict[str, Any]]:
-        """Get files in a submission.
-
-        The files are identified in a submission by version.
-
-        :param submission_id: Submission ID to read files associated with a submission
-        :param expected_status: List of expected statuses (can be one or more statuses)
-        :raises: HTTPInternalServerError if db operation failed because of connection
-        or other db issue or db aggregate does not return a list
-        :returns: List of files specific to a submission
-        """
-        aggregate_query = [
-            {"$match": {"submissionId": submission_id}},
-            {"$unwind": "$files"},
-            {"$project": {"_id": 0, "accessionId": "$files.accessionId", "version": "$files.version"}},
-        ]
-        if expected_status:
-            # we match only the files that have a specific status
-            aggregate_query.insert(
-                2,
-                {"$match": {"files.status": {"$in": expected_status}}},
-            )
-        files = []
-        try:
-            submission_files = await self.db_service.do_aggregate("submission", aggregate_query)
-            if not isinstance(submission_files, list):
-                reason = f"Reading submission files for '{submission_id}' failed"
-                LOG.error(reason)
-                raise web.HTTPInternalServerError(reason=reason)
-            for file in submission_files:
-                files.append(await self.read_file(file["accessionId"], file["version"]))
-
-            return files
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while getting submission, err: {error}"
-            LOG.exception(reason)
-            raise web.HTTPInternalServerError(reason=reason) from error
-
     async def flag_file_deleted(self, file: dict[str, Any], deleted: bool = True) -> None:
         """Flag file as deleted.
 
@@ -397,53 +311,6 @@ class FileOperator(BaseOperator):
             reason = f"Removing file by accession ID: {accession_id} from submission failed."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-
-    async def update_file_submission(self, accession_id: str, submission_id: str, update_data: dict[str, Any]) -> None:
-        """Update file in a submission.
-
-        File should not be deleted from DB, only flagged as not available anymore
-
-        :param accession_id: Accession ID of the file to update
-        :param submission_id: Submission ID to update file associated with it
-        :param update_data: Mongodb ``$set`` operation to be performed on the submission
-        :raises: HTTPBadRequest if deleting was not successful
-        :raises: HTTPInternalServerError if db operation failed because of connection
-        or other db issue
-        """
-        try:
-            update_success = await self.db_service.update_by_key_value(
-                "submission",
-                {"submissionId": submission_id, "files": {"$elemMatch": {"accessionId": accession_id}}},
-                # this can take the form of: {"files.$.status": "failed"} or
-                # {"files.$.status": "failed", "files.$.version": 3,
-                # "files.$.objectId": {"accessionId": 4, "schema": "study"}
-                # ideally we check before that we don't update the accessionId
-                update_data,
-            )
-        except (ConnectionFailure, OperationFailure) as error:
-            reason = f"Error happened while updating file in submission, err: {error}"
-            LOG.exception(reason)
-            raise web.HTTPInternalServerError(reason=reason) from error
-        if not update_success:
-            reason = f"Updating file with '{accession_id}' in '{submission_id}' failed."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        LOG.info("Updating file with file ID: %r in submission %r succeeded.", accession_id, submission_id)
-
-    async def check_submission_has_file(self, submission_id: str, file_id: str) -> bool:
-        """Check if submission has a file with given accession id.
-
-        :param submission_id: submission ID to check files of
-        :param file_id: accession ID of file
-        :returns: True if file found
-        """
-        submission = await self.db_service.read("submission", submission_id)
-        if submission:
-            for file in submission["files"]:
-                if file["accessionId"] == file_id:
-                    return True
-        return False
 
     async def check_file_exists(self, project_id: str, file_path: str) -> None | dict[str, Any]:
         """Check if file already exists in the database.

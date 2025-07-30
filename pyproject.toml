@@ -50,6 +50,7 @@ dependencies = [
     "greenlet>=3.2.2",
     "asyncpg>=0.30.0",
     "aioboto3>=14.3.0",
+    "ulid-py>=1.1.0",
 ]
 
 [dependency-groups]
@@ -142,6 +143,7 @@ strict = true
 ignore_missing_imports = true
 namespace_packages = false
 strict_optional = false
+plugins = ["pydantic.mypy"]
 
 [tool.vulture]
 exclude = []

@@ -16,7 +16,7 @@ from aiohttp import BasicAuth, ClientTimeout, web
 from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
 from yarl import URL
 
-from ..conf.conf import DATACITE_SCHEMAS, datacite_config
+from ..conf.conf import datacite_config
 from ..helpers.logger import LOG
 from .service_handler import ServiceHandler
 
@@ -92,13 +92,8 @@ class DataciteServiceHandler(ServiceHandler):
         """
         suffix = uuid4().hex[:10]
         doi_suffix = f"{suffix[:4]}-{suffix[4:]}"
-        if schema:
-            if schema in DATACITE_SCHEMAS:
-                doi_suffix = f"{schema}." + doi_suffix
-            else:
-                raise self.make_exception(
-                    reason=f"Invalid schema: {schema}. Allowed schemas: {DATACITE_SCHEMAS}", status=400
-                )
+        doi_suffix = f"{schema}." + doi_suffix
+
         # this payload is sufficient to get a draft DOI
         doi_payload = {"data": {"type": "dois", "attributes": {"doi": f"{self.doi_prefix}/{doi_suffix}"}}}
 

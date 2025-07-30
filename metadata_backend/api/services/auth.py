@@ -11,7 +11,7 @@ import jwt
 
 from ...api.models import ApiKey
 from ...database.postgres.models import ApiKeyEntity
-from ...database.postgres.repository import ApiKeyRepository
+from ...database.postgres.repositories.api_key import ApiKeyRepository
 
 JWT_ALGORITHM = "HS256"
 JWT_ISSUER = "SD Submit"
@@ -23,7 +23,7 @@ API_KEY_LENGTH = 32
 
 
 class AccessService:
-    """Access service."""
+    """Service for issuing JWT tokens and API keys."""
 
     def __init__(self, repository: ApiKeyRepository) -> None:
         """Initialize the service."""

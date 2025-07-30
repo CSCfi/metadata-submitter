@@ -1,16 +1,12 @@
 {
   "creators": [
     {
-      "name": "Creator, Test",
-      "nameType": "Personal",
       "givenName": "Test",
       "familyName": "Creator",
       "affiliation": [
         {
           "name": "affiliation place",
-          "schemeUri": "https://ror.org",
-          "affiliationIdentifier": "https://ror.org/test1",
-          "affiliationIdentifierScheme": "ROR"
+          "affiliationIdentifier": "https://ror.org/test1"
         }
       ],
       "nameIdentifiers": []
@@ -24,49 +20,34 @@
   "keywords": "test,keyword",
   "contributors": [
     {
-      "name": "Contributor, Test",
-      "nameType": "Personal",
       "givenName": "Test",
       "familyName": "contributor",
       "affiliation": [
         {
           "name": "affiliation place",
-          "schemeUri": "https://ror.org",
-          "affiliationIdentifier": "https://ror.org/test2",
-          "affiliationIdentifierScheme": "ROR"
+          "affiliationIdentifier": "https://ror.org/test2"
         }
-      ],
-      "contributorType": "Researcher"
+      ]
     },
     {
-      "name": "Curator, Test",
-      "nameType": "Personal",
       "givenName": "Test",
       "familyName": "Curator",
       "affiliation": [
         {
           "name": "affiliation place",
-          "schemeUri": "https://ror.org",
-          "affiliationIdentifier": "https://ror.org/test3",
-          "affiliationIdentifierScheme": "ROR"
+          "affiliationIdentifier": "https://ror.org/test3"
         }
-      ],
-      "contributorType": "Data Curator"
+      ]
     },
     {
-      "name": "Rights, Holder",
-      "nameType": "Personal",
       "givenName": "Rights",
       "familyName": "Holder",
       "affiliation": [
         {
           "name": "affiliation place",
-          "schemeUri": "https://ror.org",
-          "affiliationIdentifier": "https://ror.org/test3",
-          "affiliationIdentifierScheme": "ROR"
+          "affiliationIdentifier": "https://ror.org/test3"
         }
-      ],
-      "contributorType": "Rights Holder"
+      ]
     }
   ],
   "dates": [

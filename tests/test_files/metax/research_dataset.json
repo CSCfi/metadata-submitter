@@ -5,7 +5,7 @@
     "issued": "2020-10-10",
     "creator": [
         {
-            "name": "Creator, Test",
+            "name": "Test Creator",
             "@type": "Person",
             "member_of": {
                 "name": {
@@ -56,15 +56,37 @@
     },
     "contributor": [
         {
-            "name": "Contributor, Test",
             "@type": "Person",
             "member_of": {
+                "@type": "Organization",
+                "identifier": "https://ror.org/test2",
                 "name": {
                     "en": "affiliation place"
-                },
+                }
+            },
+            "name": "Test contributor"
+        },
+        {
+            "@type": "Person",
+            "member_of": {
                 "@type": "Organization",
-                "identifier": "https://ror.org/test2"
-            }
+                "identifier": "https://ror.org/test3",
+                "name": {
+                    "en": "affiliation place"
+                }
+            },
+            "name": "Test Curator"
+        },
+        {
+            "@type": "Person",
+            "member_of": {
+                "@type": "Organization",
+                "identifier": "https://ror.org/test3",
+                "name": {
+                    "en": "affiliation place"
+                }
+            },
+            "name": "Rights Holder"
         }
     ],
     "description": {

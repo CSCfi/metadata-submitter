@@ -5,13 +5,7 @@
         {
             "title": "Files",
             "required": true,
-            "schemas": [
-                {
-                    "name": "file",
-                    "required": true,
-                    "allowMultipleObjects": true
-                }
-            ]
+            "schemas": []
         },
         {
             "title": "Describe",
@@ -30,35 +24,30 @@
             "schemas": [
                 {
                     "name": "datacite",
-                    "required": true,
+                    "required": false,
                     "allowMultipleObjects": false
                 }
             ]
         }
     ],
-    "publish": [
-        {
-            "name": "datacite",
-            "endpoint": "datacite",
-            "service": "pid",
-            "requiredSchemas": [
-                "datacite"
+    "publish": {
+        "datacite": {
+            "service": "csc",
+            "schemas": [
+                "dataset"
             ]
         },
-        {
-            "name": "metax",
-            "endpoint": "metax",
-            "requires": [
-                "datacite"
+        "rems": {
+            "service": "csc",
+            "schemas": [
+                "dataset"
             ]
         },
-        {
-            "name": "rems",
-            "endpoint": "rems",
-            "requires": [
-                "datacite"
+        "discovery": {
+            "service": "metax",
+            "schemas": [
+                "dataset"
             ]
         }
-    ],
-    "discovery_service": "metax"
+    }
 }
