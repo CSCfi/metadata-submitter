@@ -1079,6 +1079,7 @@ dependencies = [
     { name = "types-cachetools" },
     { name = "typing-extensions" },
     { name = "ujson" },
+    { name = "ulid-py" },
     { name = "uvloop" },
     { name = "xmlschema" },
 ]
@@ -1168,6 +1169,7 @@ requires-dist = [
     { name = "types-python-dateutil", marker = "extra == 'verify'", specifier = ">=2.9.0.20241206" },
     { name = "typing-extensions", specifier = "==4.14.0" },
     { name = "ujson", specifier = "==5.10.0" },
+    { name = "ulid-py", specifier = ">=1.1.0" },
     { name = "uvloop", specifier = "==0.21.0" },
     { name = "vulture", marker = "extra == 'verify'", specifier = ">=2.14" },
     { name = "xmlschema", specifier = "==4.1.0" },
@@ -2262,6 +2264,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/45/ed/582c4daba0f3e1688d923b5cb914ada1f9defa702df38a1916c899f7c4d1/ujson-5.10.0-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:b9500e61fce0cfc86168b248104e954fead61f9be213087153d272e817ec7b4f", size = 1043580, upload_time = "2024-05-14T02:01:31.447Z" },
     { url = "https://files.pythonhosted.org/packages/d7/0c/9837fece153051e19c7bade9f88f9b409e026b9525927824cdf16293b43b/ujson-5.10.0-cp313-cp313-win32.whl", hash = "sha256:4c4fc16f11ac1612f05b6f5781b384716719547e142cfd67b65d035bd85af165", size = 38766, upload_time = "2024-05-14T02:01:32.856Z" },
     { url = "https://files.pythonhosted.org/packages/d7/72/6cb6728e2738c05bbe9bd522d6fc79f86b9a28402f38663e85a28fddd4a0/ujson-5.10.0-cp313-cp313-win_amd64.whl", hash = "sha256:4573fd1695932d4f619928fd09d5d03d917274381649ade4328091ceca175539", size = 42212, upload_time = "2024-05-14T02:01:33.97Z" },
+]
+
+[[package]]
+name = "ulid-py"
+version = "1.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/3b/53/d14a8ec344048e21431821cb49e9a6722384f982b889c2dd449428dbdcc1/ulid-py-1.1.0.tar.gz", hash = "sha256:dc6884be91558df077c3011b9fb0c87d1097cb8fc6534b11f310161afd5738f0", size = 22514 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/42/7c/a12c879fe6c2b136a718c142115ff99397fbf62b4929d970d58ae386d55f/ulid_py-1.1.0-py2.py3-none-any.whl", hash = "sha256:b56a0f809ef90d6020b21b89a87a48edc7c03aea80e5ed5174172e82d76e3987", size = 25753 },
 ]
 
 [[package]]

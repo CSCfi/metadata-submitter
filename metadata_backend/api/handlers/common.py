@@ -1,7 +1,9 @@
 """Functions shared between handlers."""
 
 import csv
+import json
 import string
+from datetime import datetime
 from typing import Any
 
 from aiohttp import BodyPartReader, MultipartReader, hdrs, web
@@ -12,6 +14,18 @@ from xmlschema import XMLResource
 from ...conf.conf import schema_types
 from ...helpers.logger import LOG
 from ...helpers.parser import CSVToJSONParser
+
+
+def to_json(data: dict[str, Any] | list[dict[str, Any]]) -> str:
+    """
+    Convert dict to JSON. Supports datatime without microseconds.
+
+    :param data: the dict to convert to JSON.
+    :returns: the dict converted to JSON.
+    """
+    return json.dumps(
+        data, default=lambda o: o.replace(microsecond=0).isoformat() if isinstance(o, datetime) else str(o)
+    )
 
 
 async def multipart_content(

@@ -10,6 +10,8 @@ from pydantic import ValidationError
 from yarl import URL
 
 from ..helpers.logger import LOG
+from .exceptions import NotFoundUserException, SystemException, UserException
+from .resources import get_access_service
 from .services.auth import AccessService
 
 AUTHORIZATION_COOKIE = "access_token"
@@ -48,6 +50,21 @@ async def http_error_handler(req: web.Request, handler: Handler) -> web.StreamRe
             raise error
         LOG.exception(HTTP_ERROR_MESSAGE_BUG, req.method, req.path, error.status)
         raise web.HTTPInternalServerError(text=problem, content_type=c_type)
+    except NotFoundUserException as e:
+        not_found_exception = web.HTTPNotFound(reason=e.message, content_type=c_type)
+        problem = _json_problem(not_found_exception, req.url)
+        not_found_exception.text = problem
+        raise not_found_exception from e
+    except UserException as e:
+        user_exception = web.HTTPBadRequest(reason=e.message, content_type=c_type)
+        problem = _json_problem(user_exception, req.url)
+        user_exception.text = problem
+        raise user_exception from e
+    except SystemException as e:
+        system_exception = web.HTTPInternalServerError(reason=e.message, content_type=c_type)
+        problem = _json_problem(system_exception, req.url)
+        system_exception.text = problem
+        raise system_exception from e
     except ValidationError as exc:
         LOG.exception("Pydantic validation error")
         reason = "; ".join(f"{err['loc']}: {err['msg']}" for err in exc.errors())
@@ -58,7 +75,9 @@ async def http_error_handler(req: web.Request, handler: Handler) -> web.StreamRe
     except Exception as exc:
         # We don't expect any other errors, so we log it and return a nice message instead of letting server crash
         LOG.exception("HTTP %r request to %r raised an unexpected exception. This IS a bug.", req.method, req.path)
-        exception = web.HTTPInternalServerError(reason="Server ran into an unexpected error", content_type=c_type)
+        exception = web.HTTPInternalServerError(
+            reason=f"Server ran into an unexpected error: {str(exc)}", content_type=c_type
+        )
         problem = _json_problem(exception, req.url)
         exception.text = problem
         raise exception from exc
@@ -132,7 +151,7 @@ async def authorization(req: web.Request, handler: Handler) -> web.StreamRespons
                     api_key = api_key_or_jwt_token
                     LOG.debug("Found API key in Authorization header")
 
-    req["user_id"], req["user_name"] = await verify_authorization(req.app["access_service"], jwt_token, api_key)
+    req["user_id"], req["user_name"] = await verify_authorization(get_access_service(req), jwt_token, api_key)
 
     LOG.debug("Successfully authorized request")
 

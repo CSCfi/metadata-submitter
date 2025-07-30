@@ -1,17 +1,38 @@
 """Utilities for processing a workflow."""
 
-from typing import Any, Set
+from typing import Any, ClassVar, Set
 
-from aiohttp import web
+from pydantic import BaseModel, ConfigDict, Field
 
+from ..api.exceptions import SystemException
 from .validator import JSONValidator
 
 
+class PublishServiceConfig(BaseModel):
+    """Service configuration."""
+
+    service: str
+    schemas: list[str]
+
+
+class PublishConfig(BaseModel):
+    """Publish service configuration."""
+
+    model_config: ClassVar[ConfigDict] = {
+        "populate_by_name": True,
+        "populate_by_alias": True,  # type: ignore
+    }
+
+    datacite_config: PublishServiceConfig = Field(..., alias="datacite")
+    rems_config: PublishServiceConfig = Field(..., alias="rems")
+    discovery_config: PublishServiceConfig = Field(..., alias="discovery")
+
+
 class Workflow:
-    """Submission workflow."""
+    """Submission workflow configuration."""
 
     def __init__(self, workflow: dict[str, Any]) -> None:
-        """Submission workflow.
+        """Submission workflow configuration.
 
         :param workflow: Workflow data
         """
@@ -19,13 +40,27 @@ class Workflow:
         self.name = workflow["name"]
         self.description = workflow["description"]
 
-    def validate(self) -> bool:
+    def validate(self) -> None:
         """Validate workflow against its schema."""
-        try:
-            JSONValidator(self._workflow, "workflow").validate
-            return True
-        except web.HTTPException:
-            return False
+
+        JSONValidator(self._workflow, "workflow").validate()
+
+        publish_config = self.publish_config
+        datacite_config: PublishServiceConfig = publish_config.datacite_config
+        rems_config: PublishServiceConfig = publish_config.rems_config
+        discovery_config: PublishServiceConfig = publish_config.discovery_config
+
+        missing = set(rems_config.schemas) - set(datacite_config.schemas)  # pylint: disable=no-member
+        if missing:
+            raise SystemException(
+                f"REMS metadata object requires DOI from DataCite for schemas: {missing} in workflow: {Workflow}"
+            )
+
+        missing = set(discovery_config.schemas) - set(datacite_config.schemas)  # pylint: disable=no-member
+        if missing:
+            raise SystemException(
+                f"Discovery metadata object requires DOI from DataCite for schemas: {missing} in workflow: {Workflow}"
+            )
 
     @property
     def workflow(self) -> dict[str, Any]:
@@ -73,12 +108,6 @@ class Workflow:
                         for item in schema["requires"]:
                             required_schemas.add(item)
 
-        if ("publish" or "announce") in self._workflow:
-            publishing = self._workflow["publish"] if "publish" in self._workflow else self._workflow["announce"]
-            if "requiredSchemas" in publishing:
-                for item in publishing["requiredSchemas"]:
-                    required_schemas.add(item)
-
         return required_schemas
 
     @property
@@ -94,18 +123,9 @@ class Workflow:
         return single_instance
 
     @property
-    def endpoints(self) -> Set[str]:
-        """Get endpoint names that the submission should be published to."""
-        publishing = self._workflow["publish"] if "publish" in self._workflow else self._workflow["announce"]
-        return {publish["name"] for publish in publishing}
+    def publish_config(self) -> PublishConfig:
+        """Get publish service configuration."""
+        if "publish" in self._workflow:
+            return PublishConfig(**self._workflow["publish"])
 
-    def get_endpoint_conf(self, name: str, value: str) -> str:
-        """Get endpoint config value for a particular publishing endpoint."""
-        publishing = self._workflow["publish"] if "publish" in self._workflow else self._workflow["announce"]
-        conf: str = next(publish[value] for publish in publishing if publish["name"] == name)
-        return conf
-
-    def get_workflow_discovery_service(self) -> str:
-        """Get the discovery service defined in a particular workflow."""
-        service: str = self._workflow["discovery_service"]
-        return service
+        raise SystemException(f"Missing 'publish' configuration for workflow: {self._workflow}")

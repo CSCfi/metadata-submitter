@@ -2,21 +2,35 @@
 
 import json
 import os
+import re
+from datetime import datetime, timedelta
+
+import pytest
 import uuid
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, call, patch
-
+from typing import Any, Callable
+from unittest.mock import AsyncMock, MagicMock, patch
+from defusedxml import ElementTree
 import ujson
 from aiohttp import FormData, web
 from aiohttp.test_utils import AioHTTPTestCase, make_mocked_coro
 from aiohttp.web import Request
 
+from .database.postgres.helpers import create_submission_entity, create_object_entity
 from metadata_backend.api.handlers.restapi import RESTAPIHandler
-from metadata_backend.api.models import Project, User
+from metadata_backend.api.models import Project, User, File, Rems, Object, SubmissionWorkflow
 from metadata_backend.api.services.auth import ApiKey
 from metadata_backend.api.services.project import ProjectService
-from metadata_backend.conf.conf import API_PREFIX
+from metadata_backend.conf.conf import API_PREFIX, get_workflow
+from metadata_backend.database.postgres.models import FileEntity
+from metadata_backend.database.postgres.repositories.file import FileRepository
+from metadata_backend.database.postgres.repositories.object import ObjectRepository
+from metadata_backend.database.postgres.repositories.submission import SubmissionRepository, SUB_FIELD_REMS, \
+    SUB_FIELD_DOI
+from metadata_backend.database.postgres.repository import transaction
 from metadata_backend.server import init
+from metadata_backend.services.rems_service_handler import RemsServiceHandler
+from .conftest import _session_factory
 
 
 class HandlersTestCase(AioHTTPTestCase):
@@ -47,7 +61,7 @@ class HandlersTestCase(AioHTTPTestCase):
         )
 
         # Mock project verification.
-        self.patch_verify_user_project_success = patch.object(
+        self.patch_verify_user_project = patch.object(
             ProjectService, "verify_user_project", new=AsyncMock(return_value=True)
         )
         self.patch_verify_user_project_failure = patch.object(
@@ -56,13 +70,16 @@ class HandlersTestCase(AioHTTPTestCase):
             new=AsyncMock(side_effect=web.HTTPUnauthorized(reason="Mocked unauthorized access")),
         )
 
+        # Mock REMS license verification.
+        self.patch_verify_rems_workflow_licence = patch(
+            "metadata_backend.services.rems_service_handler.RemsServiceHandler.validate_workflow_licenses",
+            return_value=True
+        )
+
         await self.client.start_server()
 
         self.test_ega_string = "EGA123456"
         self.query_accessionId = ("EDAG3991701442770179",)
-        self.page_num = 3
-        self.page_size = 50
-        self.total_objects = 150
         self.metadata_json = {
             "attributes": {"centerName": "GEO", "alias": "GSE10966", "accession": "SRP000539"},
             "accessionId": "EDAG3991701442770179",
@@ -73,6 +90,24 @@ class HandlersTestCase(AioHTTPTestCase):
         self.submission_id = "FOL12345678"
         self.project_id = "1001"
         self.workflow = "FEGA"
+        self.doi_info = {
+            "creators": [
+                {
+                    "givenName": "Test",
+                    "familyName": "Creator",
+                    "affiliation": [
+                        {
+                            "name": "affiliation place",
+                            "schemeUri": "https://ror.org",
+                            "affiliationIdentifier": "https://ror.org/test1",
+                            "affiliationIdentifierScheme": "ROR",
+                        }
+                    ],
+                }
+            ],
+            "subjects": [{"subject": "999 - Other"}],
+            "keywords": "test,keyword",
+        }
         self.test_submission = {
             "projectId": self.project_id,
             "submissionId": self.submission_id,
@@ -90,24 +125,7 @@ class HandlersTestCase(AioHTTPTestCase):
             ],
             "drafts": [],
             "linkedFolder": "",
-            "doiInfo": {
-                "creators": [
-                    {
-                        "givenName": "Test",
-                        "familyName": "Creator",
-                        "affiliation": [
-                            {
-                                "name": "affiliation place",
-                                "schemeUri": "https://ror.org",
-                                "affiliationIdentifier": "https://ror.org/test1",
-                                "affiliationIdentifierScheme": "ROR",
-                            }
-                        ],
-                    }
-                ],
-                "subjects": [{"subject": "999 - Other"}],
-                "keywords": "test,keyword",
-            },
+            "doiInfo": self.doi_info,
             "files": [{"accessionId": "file1", "version": 1, "status": "added"}],
         }
         self.user_id = "USR12345678"
@@ -166,16 +184,13 @@ class HandlersTestCase(AioHTTPTestCase):
             "create_user.side_effect": self.fake_useroperator_create_user,
             "read_user.side_effect": self.fake_useroperator_read_user,
         }
-        self.fileoperator_config = {
-            "read_submission_files.side_effect": self.fake_read_submission_files,
-            "check_submission_files_ready.side_effect": self.fake_check_submission_files,
-        }
 
-        RESTAPIHandler._handle_check_ownership = make_mocked_coro(True)
+        RESTAPIHandler.check_ownership = make_mocked_coro(True)
 
         def mocked_get_param(self, req: Request, name: str) -> str:
-            if name == "projectId":
+            if name == "projectId" and "projectId" not in req.query:
                 return "mock-project"
+
             param = req.query.get(name, "")
             if param == "":
                 raise web.HTTPBadRequest(reason=f"mandatory query parameter {name} is not set")
@@ -186,6 +201,12 @@ class HandlersTestCase(AioHTTPTestCase):
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
         await self.client.close()
+
+    def read_metadata_object(self, schema: str, file_name: str) -> str:
+        """Read metadata object from file."""
+        file_path = self.TESTFILES_ROOT / schema / file_name
+        with open(file_path.as_posix(), "r", encoding="utf-8") as f:
+            return f.read()
 
     def create_submission_data(self, files):
         """Create request data from pairs of schemas and filenames."""
@@ -294,6 +315,45 @@ class HandlersTestCase(AioHTTPTestCase):
         """Fake check submission files."""
         return True, []
 
+    async def post_submission(self,
+                              name: str | None = None,
+                              description: str | None = None,
+                              project_id: str | None = None,
+                              workflow: str = "SDSX",
+                              ) -> str:
+        """Post a submission."""
+
+        if name is None:
+            name = f"name_{uuid.uuid4()}"
+        if description is None:
+            description = f"description_{uuid.uuid4()}"
+        if project_id is None:
+            project_id = f"project_{uuid.uuid4()}"
+
+        with (
+            self.patch_verify_authorization,
+            self.patch_verify_user_project,
+        ):
+            data = {
+                "name": name,
+                "description": description,
+                "projectId": project_id,
+                "workflow": workflow
+            }
+            response = await self.client.post(f"{API_PREFIX}/submissions", json=data)
+            response.raise_for_status()
+            return (await response.json())["submissionId"]
+
+    async def get_submission(self, submission_id) -> dict[str, Any]:
+        """Get a submission."""
+        with (
+            self.patch_verify_user_project,
+            self.patch_verify_authorization,
+        ):
+            response = await self.client.get(f"{API_PREFIX}/submissions/{submission_id}")
+            response.raise_for_status()
+            return await response.json()
+
 
 class APIHandlerTestCase(HandlersTestCase):
     """Schema API endpoint class test cases."""
@@ -351,9 +411,17 @@ class APIHandlerTestCase(HandlersTestCase):
             self.assertEqual(response.status, 400)
             resp_json = await response.json()
             self.assertEqual(
-                resp_json["detail"], "The provided schema type could not be found. Occured for JSON schema: 'project'."
+                resp_json["detail"], "The provided schema type could not be found. Occurred for JSON schema: 'project'."
             )
 
+    async def test_get_schema_submission(self):
+        """Test API endpoint for submission schema type."""
+        with self.patch_verify_authorization:
+            response = await self.client.get(f"{API_PREFIX}/schemas/submission")
+            self.assertEqual(response.status, 200)
+            resp_json = await response.json()
+            assert resp_json['$schema'] == 'https://json-schema.org/draft/2020-12/schema'
+            assert resp_json['description'] == 'Submission that contains submitted metadata objects'
 
 class XMLSubmissionHandlerTestCase(HandlersTestCase):
     """Submission API endpoint class test cases."""
@@ -446,430 +514,475 @@ class XMLSubmissionHandlerTestCase(HandlersTestCase):
 class ObjectHandlerTestCase(HandlersTestCase):
     """Object API endpoint class test cases."""
 
-    async def setUpAsync(self):
-        """Configure default values for testing and other modules.
+    @staticmethod
+    def assert_xml(expected: str, actual: str, remove_attr_xpath: tuple[str, str] | None = None) -> None:
+        def clean_xml(xml_str):
+            root = ElementTree.fromstring(xml_str)
 
-        This patches used modules and sets default return values for their
-        methods.
-        """
-        await super().setUpAsync()
+            # Remove xmlns* attributes
+            for elem in root.iter():
+                elem.attrib = {k: v for k, v in elem.attrib.items() if not k.startswith("xmlns")}
 
-        class_xmloperator = "metadata_backend.api.handlers.object.XMLObjectOperator"
-        self.patch_xmloperator = patch(class_xmloperator, **self.xmloperator_config, spec=True)
-        self.MockedXMLOperator = self.patch_xmloperator.start()
+            # Remove specific attribute at a given XPath
+            if remove_attr_xpath:
+                xpath, attr_name = remove_attr_xpath
+                for target in root.findall(xpath):
+                    if attr_name in target.attrib:
+                        del target.attrib[attr_name]
 
-        class_operator = "metadata_backend.api.handlers.object.ObjectOperator"
-        self.patch_operator = patch(class_operator, **self.operator_config, spec=True)
-        self.MockedOperator = self.patch_operator.start()
+            return root
 
-        class_csv_parser = "metadata_backend.api.handlers.common.CSVToJSONParser"
-        self.patch_csv_parser = patch(class_csv_parser, spec=True)
-        self.MockedCSVParser = self.patch_csv_parser.start()
+        cleaned_expected = ElementTree.tostring(clean_xml(expected))
+        cleaned_actual = ElementTree.tostring(clean_xml(actual))
 
-        class_submissionoperator = "metadata_backend.api.handlers.object.SubmissionOperator"
-        self.patch_submissionoperator = patch(class_submissionoperator, **self.submissionoperator_config, spec=True)
-        self.MockedSubmissionOperator = self.patch_submissionoperator.start()
+        assert cleaned_expected == cleaned_actual
 
-        self._publish_handler = "metadata_backend.api.handlers.publish.PublishSubmissionAPIHandler"
+    @staticmethod
+    def change_xml_attribute(xml: str, xpath: str, attribute: str, new_value: str) -> str:
+        root = ElementTree.fromstring(xml)
+        for elem in root.findall(xpath):
+            if attribute in elem.attrib:
+                elem.attrib[attribute] = new_value
+        return ElementTree.tostring(root, encoding="unicode")
 
-    async def tearDownAsync(self):
-        """Cleanup mocked stuff."""
-        await super().tearDownAsync()
-        self.patch_xmloperator.stop()
-        self.patch_csv_parser.stop()
-        self.patch_submissionoperator.stop()
-        self.patch_operator.stop()
+    async def test_post_get_delete_xml_object(self):
+        """Test that creating, modifying and deleting XML metadata object works."""
 
-    async def test_submit_object_works(self):
-        """Test that submission is handled, XMLObjectOperator is called."""
-        files = [("study", "SRP000539.xml")]
-        data = self.create_submission_data(files)
+        bp_files = [
+            ("bpannotation", "annotation.xml", (".//ANNOTATION", "alias"), (".//ANNOTATION", "accession")),
+            ("bpobservation", "observation.xml", (".//OBSERVATION", "alias"), (".//OBSERVATION", "accession")),
+            # TODO(improve): test all BP XML files
+        ]
+
+        fega_files = [
+            ("policy", "policy.xml", (".//POLICY", "alias"), (".//POLICY", "accession")),
+            # TODO(improve): test all FEGA XML files
+        ]
+
+        workflow_files = {
+            SubmissionWorkflow.BP: bp_files,
+            SubmissionWorkflow.FEGA: fega_files,
+        }
+
+        for workflow in {SubmissionWorkflow.BP, SubmissionWorkflow.FEGA}:
+            submission_id = await self.post_submission(workflow=workflow.value)
+
+            files = workflow_files[workflow]
+
+            with (
+                self.patch_verify_user_project,
+                self.patch_verify_authorization,
+            ):
+                for schema, file_name, alias_xpath, accession_xpath in files:
+                    xml_document = self.read_metadata_object(schema, file_name)
+
+                    alias = f"alias-{uuid.uuid4()}"
+                    xml_document = self.change_xml_attribute(xml_document, *alias_xpath, alias)
+
+                    # Create metadata object with content type auto-detection.
+
+                    response = await self.client.post(
+                        f"{API_PREFIX}/objects/{schema}",
+                        params={"submission": submission_id},
+                        data=xml_document
+                    )
+                    assert response.status == 201
+                    result = await response.json()
+                    assert result[0]["alias"] == alias
+                    assert "accessionId" in result[0]
+
+                    accession_id = result[0]["accessionId"]
+
+                    # Read metadata object as xml.
+
+                    response = await self.client.get(
+                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
+                        headers={"Content-Type": "application/xml"},
+                        data=xml_document
+                    )
+                    assert response.status == 200
+                    self.assert_xml(xml_document, await response.text(), accession_xpath)
+
+                    # Read metadata object as json.
+
+                    response = await self.client.get(
+                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
+                        headers={"Content-Type": "application/json"},
+                    )
+                    assert response.status == 200
+                    assert (await response.json())["accessionId"] == accession_id
+
+                    # Read metadata object as json (default content type).
+
+                    response = await self.client.get(
+                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
+                    )
+                    assert response.status == 200
+                    assert (await response.json())["accessionId"] == accession_id
+
+                    # Read metadata object ids.
+
+                    response = await self.client.get(
+                        f"{API_PREFIX}/objects/{schema}?submission={submission_id}"
+                    )
+                    assert response.status == 200
+                    assert Object(object_id=accession_id, submission_id=submission_id, schema_type=schema) == Object(
+                        **(await response.json())[0])
+
+                    # Update metadata object (put) without content type auto-detection.
+
+                    alias = f"alias-{uuid.uuid4()}"  # Changing alias as its updated is allowed.
+                    xml_document = self.change_xml_attribute(xml_document, *alias_xpath, alias)
+
+                    response = await self.client.put(
+                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
+                        headers={"Content-Type": "application/xml"},
+                        data=xml_document
+                    )
+                    assert response.status == 200
+                    result = await response.json()
+                    assert result["accessionId"] == accession_id
+
+                    # Read metadata object as xml.
+
+                    response = await self.client.get(
+                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
+                        headers={"Content-Type": "application/xml"},
+                    )
+                    assert response.status == 200
+                    self.assert_xml(xml_document, await response.text(), accession_xpath)
+
+                    # Update metadata object (patch) with content type auto-detection.
+
+                    alias = f"alias-{uuid.uuid4()}"  # Changing alias as its updated is allowed.
+                    xml_document = self.change_xml_attribute(xml_document, *alias_xpath, alias)
+
+                    response = await self.client.patch(
+                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
+                        data=xml_document
+                    )
+                    assert response.status == 200
+                    result = await response.json()
+                    assert result["accessionId"] == accession_id
+
+                    # Read metadata object as xml.
+
+                    response = await self.client.get(
+                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
+                        headers={"Content-Type": "application/xml"},
+                    )
+                    assert response.status == 200
+                    self.assert_xml(xml_document, await response.text(), accession_xpath)
+
+                    # Delete metadata object
+
+                    response = await self.client.delete(
+                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
+                    )
+                    assert response.status == 204
+
+                    # Read metadata object.
+
+                    response = await self.client.get(
+                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
+                    )
+                    assert response.status == 404
+
+    async def test_post_get_delete_json_object(self):
+        """Test that creating, modifying and deleting JSON metadata object works."""
+
+        bp_files = [
+            ("bpannotation", "annotation.json"),
+            ("bpobserver", "observer.json")
+            # TODO(improve): test all BP JSON files
+        ]
+
+        fega_files = [
+            ("dataset", "dataset.json"),
+            # TODO(improve): test all FEGA JSON files
+        ]
+
+        workflow_files = {
+            SubmissionWorkflow.BP: bp_files,
+            SubmissionWorkflow.FEGA: fega_files,
+        }
+
+        alias_callback = lambda d, val: {**d, "alias": val}
+
+        def update_json_field(json_str: str, val: str, update_callback: Callable[[dict, str], dict]) -> str:
+            return json.dumps(update_callback(json.loads(json_str), val))
+
+        for workflow in {SubmissionWorkflow.BP, SubmissionWorkflow.FEGA}:
+            submission_id = await self.post_submission(workflow=workflow.value)
+
+            files = workflow_files[workflow]
+
+            with (
+                self.patch_verify_user_project,
+                self.patch_verify_authorization,
+            ):
+                for schema, file_name in files:
+                    json_document = self.read_metadata_object(schema, file_name)
+
+                    alias = f"alias-{uuid.uuid4()}"
+                    json_document = update_json_field(json_document, alias, alias_callback)
+
+                    # Create metadata object with content type auto-detection.
+
+                    response = await self.client.post(
+                        f"{API_PREFIX}/objects/{schema}",
+                        params={"submission": submission_id},
+                        data=json_document
+                    )
+                    assert response.status == 201
+                    result = await response.json()
+                    assert result[0]["alias"] == alias
+                    assert "accessionId" in result[0]
+
+                    accession_id = result[0]["accessionId"]
+
+                    # Read metadata object as json.
+
+                    response = await self.client.get(
+                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
+                        headers={"Content-Type": "application/json"},
+                    )
+                    assert response.status == 200
+                    result = await response.json()
+                    assert {**json.loads(json_document), "accessionId": accession_id} == result
+
+                    # Read metadata object as json (default content type).
+
+                    response = await self.client.get(
+                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
+                    )
+                    assert response.status == 200
+                    result = await response.json()
+                    assert {**json.loads(json_document), "accessionId": accession_id} == result
+
+                    # Read metadata object ids.
+
+                    response = await self.client.get(
+                        f"{API_PREFIX}/objects/{schema}?submission={submission_id}"
+                    )
+                    assert response.status == 200
+                    assert Object(object_id=accession_id, submission_id=submission_id, schema_type=schema) == Object(
+                        **(await response.json())[0])
+
+                    # Update metadata object (put) without content type auto-detection.
+
+                    alias = f"alias-{uuid.uuid4()}"  # Changing alias as its update is allowed.
+                    json_document = update_json_field(json_document, alias, alias_callback)
+
+                    response = await self.client.put(
+                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
+                        headers={"Content-Type": "application/json"},
+                        data=json_document
+                    )
+                    assert response.status == 200
+                    result = await response.json()
+                    assert result["accessionId"] == accession_id
+
+                    # Read metadata object as json.
+
+                    response = await self.client.get(
+                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
+                    )
+                    assert response.status == 200
+                    result = await response.json()
+                    assert {**json.loads(json_document), "accessionId": accession_id} == result
+
+                    # Update metadata object (patch) with content type auto-detection.
+
+                    alias = f"alias-{uuid.uuid4()}"  # Changing alias as its update is allowed.
+                    json_document = update_json_field(json_document, alias, alias_callback)
+
+                    response = await self.client.patch(
+                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
+                        data=json_document
+                    )
+                    assert response.status == 200
+                    result = await response.json()
+                    assert result["accessionId"] == accession_id
+
+                    # Read metadata object as json.
+
+                    response = await self.client.get(
+                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
+                    )
+                    assert response.status == 200
+                    result = await response.json()
+                    assert {**json.loads(json_document), "accessionId": accession_id} == result
+
+                    # Delete metadata object
+
+                    response = await self.client.delete(
+                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
+                    )
+                    assert response.status == 204
+
+                    # Read metadata object.
+
+                    response = await self.client.get(
+                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
+                    )
+                    assert response.status == 404
+
+    async def test_post_invalid_json_object(self):
+        """Test posting invalid JSON metadata object."""
+
+        workflow = SubmissionWorkflow.FEGA
+        schema = "dataset"
+        submission_id = await self.post_submission(workflow=workflow.value)
+
         with (
-            patch(
-                f"{self._publish_handler}.create_draft_doi",
-                return_value=self._draft_doi_data,
-            ),
+            self.patch_verify_user_project,
             self.patch_verify_authorization,
         ):
             response = await self.client.post(
-                f"{API_PREFIX}/objects/study", params={"submission": "some id"}, data=data
+                f"{API_PREFIX}/objects/{schema}",
+                params={"submission": submission_id},
+                data="invalid"
             )
-            self.assertEqual(response.status, 201)
-            self.assertIn(self.test_ega_string, await response.text())
-            self.MockedXMLOperator().create_metadata_object.assert_called_once()
+            assert response.status == 400
+            assert "Invalid JSON payload" in await response.text()
 
-    async def test_submit_object_works_with_json(self):
-        """Test that JSON submission is handled, operator is called."""
-        json_req = {
-            "centerName": "GEO",
-            "alias": "GSE10966",
-            "descriptor": {
-                "studyTitle": "Highly",
-                "studyType": "Other",
-                "studyAbstract": "abstract description for testing",
-            },
-        }
+    async def test_post_invalid_xml_object(self):
+        """Test posting invalid XML metadata object."""
+
+        workflow = SubmissionWorkflow.FEGA
+        schema = "dataset"
+        submission_id = await self.post_submission(workflow=workflow.value)
+
         with (
-            patch(
-                f"{self._publish_handler}.create_draft_doi",
-                return_value=self._draft_doi_data,
-            ),
+            self.patch_verify_user_project,
             self.patch_verify_authorization,
         ):
             response = await self.client.post(
-                f"{API_PREFIX}/objects/study", params={"submission": "some id"}, json=json_req
+                f"{API_PREFIX}/objects/{schema}",
+                params={"submission": submission_id},
+                headers={"Content-Type": "application/xml"},
+                data="invalid"
             )
-            self.assertEqual(response.status, 201)
-            self.assertIn(self.test_ega_string, await response.text())
-            self.MockedOperator().create_metadata_object.assert_called_once()
+            assert response.status == 400
+            assert "not valid" in await response.text()
 
-    async def test_submit_object_missing_field_json(self):
-        """Test that JSON has missing property."""
-        with self.patch_verify_authorization:
-            json_req = {"centerName": "GEO", "alias": "GSE10966"}
-            response = await self.client.post(
-                f"{API_PREFIX}/objects/study", params={"submission": "some id"}, json=json_req
-            )
-            reason = "Provided input does not seem correct because: ''descriptor' is a required property'"
-            self.assertEqual(response.status, 400)
-            self.assertIn(reason, await response.text())
+    async def test_post_invalid_schema(self):
+        """Test posting invalid metadata object schema."""
 
-    async def test_submit_object_bad_field_json(self):
-        """Test that JSON has bad studyType."""
-        json_req = {
-            "centerName": "GEO",
-            "alias": "GSE10966",
-            "descriptor": {
-                "studyTitle": "Highly",
-                "studyType": "ceva",
-                "studyAbstract": "abstract description for testing",
-            },
-        }
-        with self.patch_verify_authorization:
-            response = await self.client.post(
-                f"{API_PREFIX}/objects/study", params={"submission": "some id"}, json=json_req
-            )
-            reason = "Provided input does not seem correct for field: 'studyType'"
-            self.assertEqual(response.status, 400)
-            self.assertIn(reason, await response.text())
+        workflow = SubmissionWorkflow.BP
+        schema = "invalid"
+        submission_id = await self.post_submission(workflow=workflow.value)
 
-    async def test_post_object_bad_json(self):
-        """Test that post JSON is badly formated."""
-        json_req = {
-            "centerName": "GEO",
-            "alias": "GSE10966",
-            "descriptor": {
-                "studyTitle": "Highly",
-                "studyType": "Other",
-                "studyAbstract": "abstract description for testing",
-            },
-        }
-        with self.patch_verify_authorization:
-            response = await self.client.post(
-                f"{API_PREFIX}/objects/study", params={"submission": "some id"}, data=json_req
-            )
-            reason = "JSON is not correctly formatted, err: Expecting value: line 1 column 1 (char 0)"
-            self.assertEqual(response.status, 400)
-            self.assertIn(reason, await response.text())
-
-    async def test_post_object_works_with_csv(self):
-        """Test that CSV file is parsed and submitted as json."""
-        files = [("sample", "EGAformat.csv")]
-        data = self.create_submission_data(files)
-        file_content = self.get_file_data("sample", "EGAformat.csv")
-        self.MockedCSVParser().parse.return_value = [{}, {}, {}]
-        with self.patch_verify_authorization:
-            response = await self.client.post(
-                f"{API_PREFIX}/objects/sample", params={"submission": "some id"}, data=data
-            )
-            json_resp = await response.json()
-            self.assertEqual(response.status, 201)
-            self.assertEqual(self.test_ega_string, json_resp[0]["accessionId"])
-            parse_calls = [
-                call(
-                    "sample",
-                    file_content,
-                )
-            ]
-            op_calls = [call("sample", {}), call("sample", {}), call("sample", {})]
-            self.MockedCSVParser().parse.assert_has_calls(parse_calls, any_order=True)
-            self.MockedOperator().create_metadata_object.assert_has_calls(op_calls, any_order=True)
-
-    async def test_post_objet_error_with_empty(self):
-        """Test multipart request post fails when no objects are parsed."""
-        files = [("sample", "empty.csv")]
-        data = self.create_submission_data(files)
-        with self.patch_verify_authorization:
-            response = await self.client.post(
-                f"{API_PREFIX}/objects/sample", params={"submission": "some id"}, data=data
-            )
-            json_resp = await response.json()
-            self.assertEqual(response.status, 400)
-            self.assertEqual(json_resp["detail"], "Request data seems empty.")
-            self.MockedCSVParser().parse.assert_called_once()
-
-    async def test_put_object_bad_json(self):
-        """Test that put JSON is badly formated."""
-        json_req = {
-            "centerName": "GEO",
-            "alias": "GSE10966",
-            "descriptor": {
-                "studyTitle": "Highly",
-                "studyType": "Other",
-                "studyAbstract": "abstract description for testing",
-            },
-        }
-        call = f"{API_PREFIX}/drafts/study/EGA123456"
-        with self.patch_verify_authorization:
-            response = await self.client.put(call, data=json_req)
-            reason = "JSON is not correctly formatted, err: Expecting value: line 1 column 1 (char 0)"
-            self.assertEqual(response.status, 400)
-            self.assertIn(reason, await response.text())
-
-    async def test_patch_object_bad_json(self):
-        """Test that patch JSON is badly formated."""
-        json_req = {"centerName": "GEO", "alias": "GSE10966"}
-        call = f"{API_PREFIX}/drafts/study/EGA123456"
-        with self.patch_verify_authorization:
-            response = await self.client.patch(call, data=json_req)
-            reason = "JSON is not correctly formatted, err: Expecting value: line 1 column 1 (char 0)"
-            self.assertEqual(response.status, 400)
-            self.assertIn(reason, await response.text())
-
-    async def test_submit_draft_works_with_json(self):
-        """Test that draft JSON submission is handled, operator is called."""
-        json_req = {
-            "centerName": "GEO",
-            "alias": "GSE10966",
-            "descriptor": {
-                "studyTitle": "Highly",
-                "studyType": "Other",
-                "studyAbstract": "abstract description for testing",
-            },
-        }
-        with self.patch_verify_authorization:
-            response = await self.client.post(
-                f"{API_PREFIX}/drafts/study", params={"submission": "some id"}, json=json_req
-            )
-            self.assertEqual(response.status, 201)
-            self.assertIn(self.test_ega_string, await response.text())
-            self.MockedOperator().create_metadata_object.assert_called_once()
-
-    async def test_put_draft_works_with_json(self):
-        """Test that draft JSON put method is handled, operator is called."""
-        json_req = {
-            "centerName": "GEO",
-            "alias": "GSE10966",
-            "descriptor": {
-                "studyTitle": "Highly",
-                "studyType": "Other",
-                "studyAbstract": "abstract description for testing",
-            },
-        }
-        call = f"{API_PREFIX}/drafts/study/EGA123456"
-        with (self.patch_verify_authorization,):
-            response = await self.client.put(call, json=json_req)
-            self.assertEqual(response.status, 200)
-            self.assertIn(self.test_ega_string, await response.text())
-            self.MockedOperator().replace_metadata_object.assert_called_once()
-
-    async def test_put_draft_works_with_xml(self):
-        """Test that put XML submisssion is handled, XMLObjectOperator is called."""
-        files = [("study", "SRP000539.xml")]
-        data = self.create_submission_data(files)
-        call = f"{API_PREFIX}/drafts/study/EGA123456"
-        with (self.patch_verify_authorization,):
-            response = await self.client.put(call, data=data)
-            self.assertEqual(response.status, 200)
-            self.assertIn(self.test_ega_string, await response.text())
-            self.MockedXMLOperator().replace_metadata_object.assert_called_once()
-
-    async def test_patch_draft_works_with_json(self):
-        """Test that draft JSON patch method is handled, operator is called."""
-        json_req = {"centerName": "GEO", "alias": "GSE10966"}
-        call = f"{API_PREFIX}/drafts/study/EGA123456"
-        with self.patch_verify_authorization:
-            response = await self.client.patch(call, json=json_req)
-            self.assertEqual(response.status, 200)
-            self.assertIn(self.test_ega_string, await response.text())
-            self.MockedOperator().update_metadata_object.assert_called_once()
-
-    async def test_patch_draft_raises_with_xml(self):
-        """Test that patch XML submisssion raises error."""
-        with self.patch_verify_authorization:
-            files = [("study", "SRP000539.xml")]
-            data = self.create_submission_data(files)
-            call = f"{API_PREFIX}/drafts/study/EGA123456"
-            response = await self.client.patch(call, data=data)
-            self.assertEqual(response.status, 415)
-
-    async def test_submit_object_fails_with_too_many_files(self):
-        """Test that sending two files to endpoint results failure."""
-        with self.patch_verify_authorization:
-            files = [("study", "SRP000539.xml"), ("study", "SRP000539_copy.xml")]
-            data = self.create_submission_data(files)
-            response = await self.client.post(
-                f"{API_PREFIX}/objects/study", params={"submission": "some id"}, data=data
-            )
-            reason = "Only one file can be sent to this endpoint at a time."
-            self.assertEqual(response.status, 400)
-            self.assertIn(reason, await response.text())
-
-    async def test_get_object(self):
-        """Test that accessionId returns correct JSON object."""
-        with self.patch_verify_authorization:
-            url = f"{API_PREFIX}/objects/study/{self.query_accessionId}"
-            response = await self.client.get(url)
-            self.assertEqual(response.status, 200)
-            self.assertEqual(response.content_type, "application/json")
-            self.assertEqual(self.metadata_json, await response.json())
-
-    async def test_get_draft_object(self):
-        """Test that draft accessionId returns correct JSON object."""
-        with self.patch_verify_authorization:
-            url = f"{API_PREFIX}/drafts/study/{self.query_accessionId}"
-            response = await self.client.get(url)
-            self.assertEqual(response.status, 200)
-            self.assertEqual(response.content_type, "application/json")
-            self.assertEqual(self.metadata_json, await response.json())
-
-    async def test_get_object_as_xml(self):
-        """Test that accessionId  with XML query returns XML object."""
-        url = f"{API_PREFIX}/objects/study/{self.query_accessionId}"
-        with self.patch_verify_authorization:
-            response = await self.client.get(f"{url}?format=xml")
-            self.assertEqual(response.status, 200)
-            self.assertEqual(response.content_type, "text/xml")
-            self.assertEqual(self.metadata_xml, await response.text())
-
-    async def test_delete_is_called(self):
-        """Test query method calls operator and returns status correctly."""
-        url = f"{API_PREFIX}/objects/study/EGA123456"
         with (
-            patch(
-                "metadata_backend.services.datacite_service_handler.DataciteServiceHandler.delete", return_value=None
-            ),
+            self.patch_verify_user_project,
             self.patch_verify_authorization,
         ):
-            response = await self.client.delete(url)
-            self.assertEqual(response.status, 204)
-            self.MockedOperator().delete_metadata_object.assert_called_once()
+            response = await self.client.post(
+                f"{API_PREFIX}/objects/{schema}",
+                params={"submission": submission_id},
+                data="invalid"
+            )
+            assert response.status == 400
+            assert "does not support" in await response.text()
 
-    async def test_operations_fail_for_wrong_schema_type(self):
-        """Test 404 error is raised if incorrect schema name is given."""
-        with self.patch_verify_authorization:
-            get_resp = await self.client.get(f"{API_PREFIX}/objects/bad_scehma_name/some_id")
-            self.assertEqual(get_resp.status, 404)
-            json_get_resp = await get_resp.json()
-            self.assertIn("Specified schema", json_get_resp["detail"])
+    async def test_post_bp_xml_rems(self):
+        """Test that creating BP REMS XML works."""
+        submission_id = await self.post_submission(workflow=SubmissionWorkflow.BP.value)
+        schema = "bprems"
+        xml_document = self.read_metadata_object(schema, "rems.xml")
 
-            post_rep = await self.client.post(f"{API_PREFIX}/objects/bad_scehma_name", params={"submission": "some id"})
-            self.assertEqual(post_rep.status, 404)
-            post_json_rep = await post_rep.json()
-            self.assertIn("Specified schema", post_json_rep["detail"])
+        with (
+            self.patch_verify_user_project,
+            self.patch_verify_authorization,
+        ):
+            # Post BP REMS.
+            response = await self.client.post(
+                f"{API_PREFIX}/objects/{schema}", params={"submission": submission_id}, data=xml_document
+            )
+            self.assertEqual(response.status, 201)
 
-            get_resp = await self.client.delete(f"{API_PREFIX}/objects/bad_scehma_name/some_id")
-            self.assertEqual(get_resp.status, 404)
-            json_get_resp = await get_resp.json()
-            self.assertIn("Specified schema", json_get_resp["detail"])
-
-            get_resp = await self.client.delete(f"{API_PREFIX}/drafts/bad_scehma_name/some_id")
-            self.assertEqual(get_resp.status, 404)
-            json_get_resp = await get_resp.json()
-            self.assertIn("Specified schema", json_get_resp["detail"])
-
-    async def test_operations_fail_for_submission_only_schemas(self):
-        """Test 400 error is raised if object cannot be accessed through /objects endpoints."""
-        with self.patch_verify_authorization:
-            get_resp = await self.client.get(f"{API_PREFIX}/objects/bprems/some_id")
-            self.assertEqual(get_resp.status, 400)
-            json_get_resp = await get_resp.json()
-            self.assertIn("'bprems' object is a submission-only", json_get_resp["detail"])
-
-            get_resp = await self.client.patch(f"{API_PREFIX}/objects/bprems/some_id")
-            self.assertEqual(get_resp.status, 400)
-            json_get_resp = await get_resp.json()
-            self.assertIn("'bprems' object is a submission-only", json_get_resp["detail"])
-
-            get_resp = await self.client.put(f"{API_PREFIX}/objects/bprems/some_id")
-            self.assertEqual(get_resp.status, 400)
-            json_get_resp = await get_resp.json()
-            self.assertIn("'bprems' object is a submission-only", json_get_resp["detail"])
-
-            get_resp = await self.client.delete(f"{API_PREFIX}/objects/bprems/some_id")
-            self.assertEqual(get_resp.status, 400)
-            json_get_resp = await get_resp.json()
-            self.assertIn("'bprems' object is a submission-only", json_get_resp["detail"])
+            # Verify that REMS was added to the submission.
+            response = await self.client.get(f"{API_PREFIX}/submissions/{submission_id}")
+            self.assertEqual(response.status, 200)
+            submission = await response.json()
+            rems = Rems(**submission["rems"])
+            assert rems.workflow_id == 1, "'workflowId' is not 1"
+            assert rems.organization_id == "CSC", "'organizationId' is not CSC"
+            assert rems.licenses == []
 
 
 class SubmissionHandlerTestCase(HandlersTestCase):
     """Submission API endpoint class test cases."""
 
-    async def setUpAsync(self):
-        """Configure default values for testing and other modules.
+    async def test_post_get_delete_submission(self):
+        """Test that submission post and get works."""
 
-        This patches used modules and sets default return values for their
-        methods.
-        """
-        await super().setUpAsync()
+        # Test valid submission.
 
-        class_submissionoperator = "metadata_backend.api.handlers.submission.SubmissionOperator"
-        self.patch_submissionoperator = patch(class_submissionoperator, **self.submissionoperator_config, spec=True)
-        self.MockedSubmissionOperator = self.patch_submissionoperator.start()
+        name = f"name_{uuid.uuid4()}"
+        description = f"description_{uuid.uuid4()}"
+        project_id = f"project_{uuid.uuid4()}"
+        workflow = "SDSX"
 
-        class_operator = "metadata_backend.api.handlers.submission.ObjectOperator"
-        self.patch_operator = patch(class_operator, **self.operator_config, spec=True)
-        self.MockedOperator = self.patch_operator.start()
+        # Post submission.
 
-        class_xmloperator = "metadata_backend.api.handlers.submission.XMLObjectOperator"
-        self.patch_xmloperator = patch(class_xmloperator, **self.xmloperator_config, spec=True)
-        self.MockedXMLOperator = self.patch_xmloperator.start()
+        submission_id = await self.post_submission(name=name,
+                                                   description=description,
+                                                   project_id=project_id,
+                                                   workflow=workflow)
 
-        class_fileoperator = "metadata_backend.api.handlers.submission.FileOperator"
-        self.patch_fileoperator = patch(class_fileoperator, **self.fileoperator_config, spec=True)
-        self.MockedFileOperator = self.patch_fileoperator.start()
+        # Get submission.
 
-    async def tearDownAsync(self):
-        """Cleanup mocked stuff."""
-        await super().tearDownAsync()
-        self.patch_submissionoperator.stop()
-        self.patch_operator.stop()
-        self.patch_xmloperator.stop()
-        self.patch_fileoperator.stop()
+        submission = await self.get_submission(submission_id)
 
-    async def test_submission_creation_works(self):
-        """Test that submission is created and submission ID returned."""
-        json_req = {"name": "test", "description": "test submission", "projectId": "1000", "workflow": "FEGA"}
-        self.MockedSubmissionOperator().query_submissions.return_value = ([], 0)
+        assert submission["name"] == name
+        assert submission["description"] == description
+        assert submission["projectId"] == project_id
+        assert submission["workflow"] == workflow
+
+        # Delete submission.
+
         with (
+            self.patch_verify_user_project,
             self.patch_verify_authorization,
-            self.patch_verify_user_project_success,
         ):
-            response = await self.client.post(f"{API_PREFIX}/submissions", json=json_req)
-            json_resp = await response.json()
-            self.MockedSubmissionOperator().create_submission.assert_called_once()
-            self.assertEqual(response.status, 201)
-            self.assertEqual(json_resp["submissionId"], self.submission_id)
+            response = await self.client.delete(f"{API_PREFIX}/submissions/{submission_id}")
+            self.assertEqual(response.status, 204)
 
-    async def test_submission_creation_with_missing_name_fails(self):
-        """Test that submission creation fails when missing name in request."""
-        json_req = {"description": "test submission", "projectId": "1000"}
-        with self.patch_verify_authorization:
-            response = await self.client.post(f"{API_PREFIX}/submissions", json=json_req)
-            json_resp = await response.json()
-            self.assertEqual(response.status, 400)
-            self.assertIn("'name' is a required property", json_resp["detail"])
+        # Get submission.
 
-    async def test_submission_creation_with_missing_project_fails(self):
-        """Test that submission creation fails when missing project in request."""
-        json_req = {"description": "test submission", "name": "name"}
-        with self.patch_verify_authorization:
-            response = await self.client.post(f"{API_PREFIX}/submissions", json=json_req)
-            json_resp = await response.json()
-            self.assertEqual(response.status, 400)
-            self.assertIn("'projectId' is a required property", json_resp["detail"])
+        with (
+            self.patch_verify_user_project,
+            self.patch_verify_authorization,
+        ):
+            response = await self.client.get(f"{API_PREFIX}/submissions/{submission_id}")
+            self.assertEqual(response.status, 404)
 
-    async def test_submission_creation_with_empty_body_fails(self):
+    async def test_post_submission_fails_with_missing_fields(self):
+        """Test that submission creation fails with missing fields."""
+
+        data = {
+            "name": f"name_{uuid.uuid4()}",
+            "description": f"description_{uuid.uuid4()}",
+            "projectId": f"project_{uuid.uuid4()}",
+            "workflow": "SDSX"
+        }
+
+        async def assert_missing_field(field: str):
+            _data = {k: v for k, v in data.items() if k != field}
+            with self.patch_verify_authorization:
+                response = await self.client.post(f"{API_PREFIX}/submissions", json=_data)
+                assert response.status == 400
+                result = await response.json()
+                assert f"'{field}' is a required property" in result["detail"]
+
+        await assert_missing_field("name")
+        await assert_missing_field("description")
+        await assert_missing_field("projectId")
+        await assert_missing_field("workflow")
+
+    async def test_post_submission_fails_with_empty_body(self):
         """Test that submission creation fails when no data in request."""
         with self.patch_verify_authorization:
             response = await self.client.post(f"{API_PREFIX}/submissions")
@@ -877,49 +990,243 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             self.assertEqual(response.status, 400)
             self.assertIn("JSON is not correctly formatted", json_resp["detail"])
 
-    async def test_submission_creation_with_duplicate_name_fails(self):
-        """Test that submission creation fails when duplicate name in request."""
-        json_req = {"name": "test", "description": "test submission", "projectId": "1000", "workflow": "FEGA"}
-        self.MockedSubmissionOperator().query_submissions.return_value = (self.test_submission, 1)
+    async def test_post_submission_fails_with_duplicate_name(self):
+        """Test that submission creation fails if the submission name already exists in the project."""
+        name = f"name_{uuid.uuid4()}"
+        project_id = f"project_{uuid.uuid4()}"
+
+        await self.post_submission(name=name, project_id=project_id)
+
+        data = {
+            "name": name,
+            "description": f"description_{uuid.uuid4()}",
+            "projectId": project_id,
+            "workflow": "SDSX"
+        }
+
         with (
-            self.patch_verify_user_project_success,
+            self.patch_verify_user_project,
             self.patch_verify_authorization,
         ):
-            response = await self.client.post(f"{API_PREFIX}/submissions", json=json_req)
+            response = await self.client.post(f"{API_PREFIX}/submissions", json=data)
             json_resp = await response.json()
             self.assertEqual(response.status, 400)
-            self.assertEqual("Submission with name 'test' already exists in project 1000", json_resp["detail"])
+            self.assertEqual(f"Submission with name '{name}' already exists in project {project_id}",
+                             json_resp["detail"])
 
-    async def test_get_submissions_with_1_submission(self):
-        """Test get_submissions() endpoint returns list with 1 submission."""
-        self.MockedSubmissionOperator().query_submissions.return_value = (self.test_submission, 1)
+    async def test_get_submissions(self):
+        """Test that get submissions works."""
+
+        name_1 = f"name_{uuid.uuid4()}"
+        name_2 = f"name_{uuid.uuid4()}"
+        project_id = f"project_{uuid.uuid4()}"
+        description = f"description_{uuid.uuid4()}"
+        workflow = "SDSX"
+
+        submission_id_1 = await self.post_submission(name=name_1, description=description, project_id=project_id,
+                                                     workflow=workflow)
+        submission_id_2 = await self.post_submission(name=name_2, description=description, project_id=project_id,
+                                                     workflow=workflow)
+
         with (
-            self.patch_verify_user_project_success,
+            self.patch_verify_user_project,
             self.patch_verify_authorization,
         ):
-            response = await self.client.get(f"{API_PREFIX}/submissions?projectId=1000")
-            self.MockedSubmissionOperator().query_submissions.assert_called_once()
+            response = await self.client.get(f"{API_PREFIX}/submissions?projectId={project_id}")
             self.assertEqual(response.status, 200)
-            result = {
-                "page": {
-                    "page": 1,
-                    "size": 5,
-                    "totalPages": 1,
-                    "totalSubmissions": 1,
-                },
-                "submissions": self.test_submission,
+            result = await response.json()
+
+            def _get_submission(submission_id: str) -> dict[str, Any] | None:
+                for submission in result["submissions"]:
+                    if submission['submissionId'] == submission_id:
+                        return submission
+
+                return None
+
+            assert result["page"] == {
+                "page": 1,
+                "size": 5,
+                "totalPages": 1,
+                "totalSubmissions": 2,
             }
-            self.assertEqual(await response.json(), result)
+            assert len(result["submissions"]) == 2
+            assert {
+                       'dateCreated': _get_submission(submission_id_1)['dateCreated'],
+                       'description': description,
+                       'lastModified': _get_submission(submission_id_1)['lastModified'],
+                       'name': name_1,
+                       'projectId': project_id,
+                       'published': False,
+                       'submissionId': submission_id_1,
+                       'text_name': " ".join(re.split("[\\W_]", name_1)),
+                       'workflow': workflow
+                   } in result["submissions"]
+            assert {
+                       'dateCreated': _get_submission(submission_id_2)['dateCreated'],
+                       'description': description,
+                       'lastModified': _get_submission(submission_id_2)['lastModified'],
+                       'name': name_2,
+                       'projectId': project_id,
+                       'published': False,
+                       'submissionId': submission_id_2,
+                       'text_name': " ".join(re.split("[\\W_]", name_2)),
+                       'workflow': workflow
+                   } in result["submissions"]
+
+    async def test_get_submissions_by_name(self):
+        """Test that get submissions by name works."""
+
+        name_1 = f"name_{uuid.uuid4()}"
+        name_2 = f"{uuid.uuid4()}"
+        name_3 = f"{uuid.uuid4()} name"
+        project_id = f"project_{uuid.uuid4()}"
+        description = f"description_{uuid.uuid4()}"
+        workflow = "SDSX"
+
+        submission_id_1 = await self.post_submission(name=name_1, description=description,
+                                                     project_id=project_id,
+                                                     workflow=workflow)
+        submission_id_2 = await self.post_submission(name=name_2, description=description,
+                                                     project_id=project_id,
+                                                     workflow=workflow)
+        submission_id_3 = await self.post_submission(name=name_3, description=description,
+                                                     project_id=project_id,
+                                                     workflow=workflow)
+
+        with (
+            self.patch_verify_user_project,
+            self.patch_verify_authorization,
+        ):
+            response = await self.client.get(f"{API_PREFIX}/submissions?projectId={project_id}&name=name")
+            self.assertEqual(response.status, 200)
+            result = await response.json()
+            assert len(result["submissions"]) == 2
+            assert submission_id_1 in [r["submissionId"] for r in result["submissions"]]
+            assert submission_id_3 in [r["submissionId"] for r in result["submissions"]]
+
+    async def test_get_submissions_by_created(self):
+        """Test that get submissions by created date."""
+
+        project_id = f"project_{uuid.uuid4()}"
+        submission_id = await self.post_submission(project_id=project_id)
+
+        def today_with_offset(days: int = 0) -> str:
+            """
+            Returns the current date plus or minus the given number of days
+            in the format 'YYYY-MM-DD'.
+            """
+            target_date = datetime.today() + timedelta(days=days)
+            return target_date.strftime("%Y-%m-%d")
+
+        with (
+            self.patch_verify_user_project,
+            self.patch_verify_authorization,
+        ):
+            async def get_submissions(created_start, created_end):
+                if created_start and created_end:
+                    response = await self.client.get(
+                        f"{API_PREFIX}/submissions?projectId={project_id}&date_created_start={created_start}&date_created_end={created_end}")
+                elif created_start:
+                    response = await self.client.get(
+                        f"{API_PREFIX}/submissions?projectId={project_id}&date_created_start={created_start}")
+                elif created_end:
+                    response = await self.client.get(
+                        f"{API_PREFIX}/submissions?projectId={project_id}&date_created_end={created_end}")
+                else:
+                    assert False
+
+                assert response.status == 200
+                return await response.json()
+
+            async def assert_included(created_start, created_end):
+                result = await get_submissions(created_start, created_end)
+                assert len(result["submissions"]) == 1
+                assert submission_id in [r["submissionId"] for r in result["submissions"]]
+
+            async def assert_not_included(created_start, created_end):
+                result = await get_submissions(created_start, created_end)
+                assert len(result["submissions"]) == 0
+
+            await assert_included(today_with_offset(-1), today_with_offset(1))
+            await assert_included(today_with_offset(0), today_with_offset(1))
+            await assert_included(today_with_offset(-1), today_with_offset(0))
+            await assert_included(today_with_offset(0), today_with_offset(0))
+            await assert_included(today_with_offset(-1), None)
+            await assert_included(today_with_offset(0), None)
+            await assert_included(None, today_with_offset(1))
+            await assert_included(None, today_with_offset(0))
+
+            await assert_not_included(today_with_offset(-1), today_with_offset(-1))
+            await assert_not_included(today_with_offset(1), today_with_offset(1))
+            await assert_not_included(today_with_offset(1), None)
+            await assert_not_included(None, today_with_offset(-1))
+
+    async def test_get_submissions_by_modified(self):
+        """Test that get submissions by modified date."""
+
+        project_id = f"project_{uuid.uuid4()}"
+        submission_id = await self.post_submission(project_id=project_id)
+
+        def today_with_offset(days: int = 0) -> str:
+            """
+            Returns the current date plus or minus the given number of days
+            in the format 'YYYY-MM-DD'.
+            """
+            target_date = datetime.today() + timedelta(days=days)
+            return target_date.strftime("%Y-%m-%d")
+
+        with (
+            self.patch_verify_user_project,
+            self.patch_verify_authorization,
+        ):
+            async def get_submissions(modified_start, modified_end):
+                if modified_start and modified_end:
+                    response = await self.client.get(
+                        f"{API_PREFIX}/submissions?projectId={project_id}&date_modified_start={modified_start}&date_modified_end={modified_end}")
+                elif modified_start:
+                    response = await self.client.get(
+                        f"{API_PREFIX}/submissions?projectId={project_id}&date_modified_start={modified_start}")
+                elif modified_end:
+                    response = await self.client.get(
+                        f"{API_PREFIX}/submissions?projectId={project_id}&date_modified_end={modified_end}")
+                else:
+                    assert False
+
+                assert response.status == 200
+                return await response.json()
+
+            async def assert_included(modified_start, modified_end):
+                result = await get_submissions(modified_start, modified_end)
+                assert len(result["submissions"]) == 1
+                assert submission_id in [r["submissionId"] for r in result["submissions"]]
+
+            async def assert_not_included(modified_start, modified_end):
+                result = await get_submissions(modified_start, modified_end)
+                assert len(result["submissions"]) == 0
+
+            await assert_included(today_with_offset(-1), today_with_offset(1))
+            await assert_included(today_with_offset(0), today_with_offset(1))
+            await assert_included(today_with_offset(-1), today_with_offset(0))
+            await assert_included(today_with_offset(0), today_with_offset(0))
+            await assert_included(today_with_offset(-1), None)
+            await assert_included(today_with_offset(0), None)
+            await assert_included(None, today_with_offset(1))
+            await assert_included(None, today_with_offset(0))
+
+            await assert_not_included(today_with_offset(-1), today_with_offset(-1))
+            await assert_not_included(today_with_offset(1), today_with_offset(1))
+            await assert_not_included(today_with_offset(1), None)
+            await assert_not_included(None, today_with_offset(-1))
 
     async def test_get_submissions_with_no_submissions(self):
-        """Test get_submissions() endpoint returns empty list."""
-        self.MockedSubmissionOperator().query_submissions.return_value = ([], 0)
+        """Test that get submissions works without project id."""
         with (
-            self.patch_verify_user_project_success,
+            self.patch_verify_user_project,
             self.patch_verify_authorization,
         ):
-            response = await self.client.get(f"{API_PREFIX}/submissions?projectId=1000")
-            self.MockedSubmissionOperator().query_submissions.assert_called_once()
+            project_id = f"project_{uuid.uuid4()}"
+
+            response = await self.client.get(f"{API_PREFIX}/submissions?projectId={project_id}")
             self.assertEqual(response.status, 200)
             result = {
                 "page": {
@@ -932,10 +1239,10 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             }
             self.assertEqual(await response.json(), result)
 
-    async def test_get_submissions_with_bad_params(self):
-        """Test get_submissions() with faulty pagination parameters."""
+    async def test_get_submissions_fails_with_invalid_parameters(self):
+        """Test that get submissions fails with invalid parameters."""
         with (
-            self.patch_verify_user_project_success,
+            self.patch_verify_user_project,
             self.patch_verify_authorization,
         ):
             response = await self.client.get(f"{API_PREFIX}/submissions?page=ayylmao&projectId=1000")
@@ -953,489 +1260,777 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             resp = await response.json()
             self.assertEqual(resp["detail"], "'published' parameter must be either 'true' or 'false'")
 
-    async def test_get_submission_works(self):
-        """Test submission is returned when correct submission id is given."""
-        with self.patch_verify_authorization:
-            response = await self.client.get(f"{API_PREFIX}/submissions/FOL12345678")
-            self.assertEqual(response.status, 200)
-            self.MockedSubmissionOperator().read_submission.assert_called_once()
-            json_resp = await response.json()
-            self.assertEqual(self.test_submission, json_resp)
+    async def test_patch_submission(self):
+        """Test that submission patch works with correct keys."""
+        name = f"name_{uuid.uuid4()}"
+        project_id = f"project_{uuid.uuid4()}"
+        description = f"description_{uuid.uuid4()}"
+        workflow = "SDSX"
 
-    async def test_update_submission_fails_with_wrong_key(self):
-        """Test that submission does not update when wrong keys are provided."""
-        data = [{"op": "add", "path": f"{API_PREFIX}/objects"}]
-        with self.patch_verify_authorization:
-            response = await self.client.patch(f"{API_PREFIX}/submissions/FOL12345678", json=data)
-            self.assertEqual(response.status, 400)
-            json_resp = await response.json()
-            reason = "Patch submission operation should be provided as a JSON object"
-            self.assertEqual(reason, json_resp["detail"])
+        submission_id = await self.post_submission(name=name, description=description, project_id=project_id,
+                                                   workflow=workflow)
 
-            data = {"doiInfo": {}}
-            response = await self.client.patch(f"{API_PREFIX}/submissions/FOL12345678", json=data)
-            self.assertEqual(response.status, 400)
-            json_resp = await response.json()
-            reason = "Patch submission operation only accept the fields 'name', or 'description'. Provided 'doiInfo'"
-            self.assertEqual(reason, json_resp["detail"])
+        # Update name.
 
-    async def test_update_submission_passes(self):
-        """Test that submission would update with correct keys."""
-        self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
-        data = {"name": "test2"}
-        with self.patch_verify_authorization:
-            response = await self.client.patch(f"{API_PREFIX}/submissions/FOL12345678", json=data)
-            self.MockedSubmissionOperator().update_submission.assert_called_once()
-            self.assertEqual(response.status, 200)
-            json_resp = await response.json()
-            self.assertEqual(json_resp["submissionId"], self.submission_id)
-
-    async def test_submission_deletion_is_called(self):
-        """Test that submission would be deleted."""
-        self.MockedSubmissionOperator().read_submission.return_value = self.test_submission
-        with self.patch_verify_authorization:
-            response = await self.client.delete(f"{API_PREFIX}/submissions/FOL12345678")
-            self.MockedSubmissionOperator().read_submission.assert_called_once()
-            self.MockedSubmissionOperator().delete_submission.assert_called_once()
-            self.assertEqual(response.status, 204)
-
-    async def test_patch_submission_doi_passes_and_returns_id(self):
-        """Test method for adding DOI to submission works."""
-        self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
-        data = ujson.load(open(self.TESTFILES_ROOT / "doi" / "test_doi.json"))
-
-        with self.patch_verify_authorization:
-            response = await self.client.patch(f"{API_PREFIX}/submissions/FOL12345678/doi", json=data)
-            self.assertEqual(response.status, 200)
-            json_resp = await response.json()
-            self.assertEqual(json_resp["submissionId"], self.submission_id)
-
-            response = await self.client.get(f"{API_PREFIX}/submissions/{self.submission_id}")
-            self.assertEqual(response.status, 200)
-            json_resp = await response.json()
-            self.assertIn("doiInfo", json_resp)
-
-    async def test_patch_linked_folder_passes(self):
-        """Test method for adding linked folder to submission works."""
-        self.MockedSubmissionOperator().check_submission_linked_folder.return_value = False
-        data = {"linkedFolder": "folderName"}
-        with self.patch_verify_authorization:
-            response = await self.client.patch(f"{API_PREFIX}/submissions/FOL12345678/folder", json=data)
-            self.assertEqual(response.status, 204)
-
-    async def test_patch_linked_folder_fails(self):
-        """Test method for adding linked folder fails if it already exists."""
-        self.MockedSubmissionOperator().check_submission_linked_folder.return_value = True
-        data = {"linkedFolder": "folderName"}
-        with self.patch_verify_authorization:
-            response = await self.client.patch(f"{API_PREFIX}/submissions/FOL12345678/folder", json=data)
-            self.assertEqual(response.status, 400)
-            self.assertIn("It already has a linked folder", await response.text())
-
-    async def test_patch_submission_rems_works(self):
-        """Test method for adding rems data to submission works."""
-        self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
-        data = ujson.load(open(self.TESTFILES_ROOT / "dac" / "dac_rems.json"))
+        new_name = f"name_{uuid.uuid4()}"
+        data = {"name": new_name}
         with (
-            patch(
-                "metadata_backend.services.rems_service_handler.RemsServiceHandler.validate_workflow_licenses",
-                return_value=True,
-            ),
+            self.patch_verify_user_project,
             self.patch_verify_authorization,
         ):
-            response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/rems", json=data)
+            response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}", json=data)
             self.assertEqual(response.status, 200)
-            json_resp = await response.json()
-            self.assertEqual(json_resp["submissionId"], self.submission_id)
 
-            response = await self.client.get(f"{API_PREFIX}/submissions/{self.submission_id}")
+        submission = await self.get_submission(submission_id)
+        assert submission["name"] == new_name
+        assert submission["description"] == description
+        assert submission["projectId"] == project_id
+        assert submission["workflow"] == workflow
+
+        # Update description.
+
+        new_description = f"description_{uuid.uuid4()}"
+        data = {"description": new_description}
+        with (
+            self.patch_verify_user_project,
+            self.patch_verify_authorization,
+        ):
+            response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}", json=data)
             self.assertEqual(response.status, 200)
-            json_resp = await response.json()
-            self.assertIn("rems", json_resp)
 
-    async def test_patch_submission_rems_fails_with_missing_fields(self):
-        """Test method for adding rems data to submission fails if required fields are missing."""
-        self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
-        data = {"workflowId": 1}
-        with self.patch_verify_authorization:
-            response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/rems", json=data)
-            self.assertEqual(response.status, 400)
-            self.assertIn("REMS DAC is missing one or more of the required fields", await response.text())
+        submission = await self.get_submission(submission_id)
+        assert submission["name"] == new_name
+        assert submission["description"] == new_description
+        assert submission["projectId"] == project_id
+        assert submission["workflow"] == workflow
 
-    async def test_patch_submission_rems_fails_with_wrong_value_type(self):
-        """Test method for adding rems data to submission fails if values have incorrect types."""
-        self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
-        data = {"workflowId": 1, "organizationId": 1, "licenses": [1]}
-        with self.patch_verify_authorization:
-            response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/rems", json=data)
-            self.assertEqual(response.status, 400)
-            self.assertIn("Organization ID '1' must be a string.", await response.text())
+    async def test_patch_doi_info(self):
+        """Test changing doi info in the submission."""
+        submission_id = await self.post_submission()
 
-    async def test_patch_submission_files_works(self):
-        """Test patch method for submission files works."""
-        self.MockedSubmissionOperator().read_submission.return_value = self.test_submission
-        self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
-        data = [{"accessionId": "file123", "version": 1}]
-        with self.patch_verify_authorization:
-            response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/files", json=data)
+        data = ujson.load(open(self.TESTFILES_ROOT / "doi" / "test_doi.json"))
+
+        with (
+            self.patch_verify_user_project,
+            self.patch_verify_authorization,
+        ):
+            response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/doi", json=data)
+            self.assertEqual(response.status, 200)
+
+        submission = await self.get_submission(submission_id)
+        assert data == submission["doiInfo"]
+
+    async def test_patch_linked_folder(self):
+        """Test changing linked folder in the submission."""
+        submission_id = await self.post_submission()
+        folder = f"folder_{uuid.uuid4()}"
+        data = {"linkedFolder": folder}
+
+        # Set linked folder for the first time works.
+        with (
+            self.patch_verify_user_project,
+            self.patch_verify_authorization,
+        ):
+            response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/folder", json=data)
             self.assertEqual(response.status, 204)
 
-        # Test the same file can be modified
-        data = [{**data[0], "status": "verified", "objectId": {"accessionId": "EGA111", "schema": "sample"}}]
-        with self.patch_verify_authorization:
-            response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/files", json=data)
+        submission = await self.get_submission(submission_id)
+        assert submission["linkedFolder"] == folder
+
+        # Change linked folder fails.
+        with (
+            self.patch_verify_user_project,
+            self.patch_verify_authorization,
+        ):
+            response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/folder", json=data)
+            self.assertEqual(response.status, 400)
+            self.assertIn("already has a linked folder", await response.text())
+
+        submission = await self.get_submission(submission_id)
+        assert submission["linkedFolder"] == folder
+
+    async def test_patch_rems(self):
+        """Test changing rems in the submission."""
+        submission_id = await self.post_submission()
+
+        # Set rems with the correct fields works.
+
+        data = {
+            "workflowId": 1,
+            "organizationId": "CSC",
+            "licenses": [1]
+        }
+
+        with (
+            self.patch_verify_user_project,
+            self.patch_verify_authorization,
+            self.patch_verify_rems_workflow_licence
+        ):
+            response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/rems", json=data)
+            self.assertEqual(response.status, 200)
+
+        submission = await self.get_submission(submission_id)
+        assert submission["rems"] == data
+
+        # Change rems with the correct fields works.
+
+        data = {
+            "workflowId": 2,
+            "organizationId": "CSC",
+            "licenses": [2]
+        }
+
+        with (
+            self.patch_verify_user_project,
+            self.patch_verify_authorization,
+            self.patch_verify_rems_workflow_licence
+        ):
+            response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/rems", json=data)
+            self.assertEqual(response.status, 200)
+
+        submission = await self.get_submission(submission_id)
+        assert submission["rems"] == data
+
+        # Change rems with missing fields fails.
+
+        data = {
+            "workflowId": 3,
+        }
+
+        with (
+            self.patch_verify_user_project,
+            self.patch_verify_authorization,
+            self.patch_verify_rems_workflow_licence
+        ):
+            response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/rems", json=data)
+            self.assertEqual(response.status, 400)
+            error = response.text()
+            self.assertIn("Field required", await response.text())
+
+        # Change rems with invalid types fails.
+
+        data = {
+            "workflowId": "invalid",
+            "organizationId": "CSC",
+            "licenses": [3]
+        }
+
+        with (
+            self.patch_verify_user_project,
+            self.patch_verify_authorization,
+            self.patch_verify_rems_workflow_licence
+        ):
+            response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/rems", json=data)
+            self.assertEqual(response.status, 400)
+            self.assertIn("Input should be a valid integer", await response.text())
+
+    async def test_patch_submission_get_delete_files(self):
+        """Test patch get delete submission files works."""
+        submission_id = await self.post_submission()
+
+        path_1 = f"path_{uuid.uuid4()}"
+        bytes_1 = 1024
+
+        async def add_file(path: str, bytes: int):
+            with patch("metadata_backend.api.handlers.submission.FileOperator.read_file",
+                       new_callable=AsyncMock) as _mock_read_file:
+                _mock_read_file.return_value = {"path": path, "bytes": bytes}
+                _data = [{"accessionId": str(uuid.uuid4()), "version": 1}]
+                _response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/files", json=_data)
+                self.assertEqual(_response.status, 204)
+
+        def assert_file(_file: File, path: str):
+            assert _file.file_id is not None
+            assert _file.path == path
+            assert _file.submission_id == submission_id
+
+        # Add one file.
+        with (
+            self.patch_verify_user_project,
+            self.patch_verify_authorization,
+        ):
+            await add_file(path_1, bytes_1)
+
+            response = await self.client.get(f"{API_PREFIX}/submissions/{submission_id}/files")
+            self.assertEqual(response.status, 200)
+            result = await response.json()
+
+            assert len(result) == 1
+            assert_file(File(**result[0]), path_1)
+
+            # Add the file again.
+            await add_file(path_1, bytes_1)
+
+            response = await self.client.get(f"{API_PREFIX}/submissions/{submission_id}/files")
+            self.assertEqual(response.status, 200)
+            result = await response.json()
+
+            assert len(result) == 1
+            assert_file(File(**result[0]), path_1)
+
+            path_2 = f"path_{uuid.uuid4()}"
+            bytes_2 = 2048
+
+            # Add second file.
+            await add_file(path_2, bytes_2)
+
+            response = await self.client.get(f"{API_PREFIX}/submissions/{submission_id}/files")
+            self.assertEqual(response.status, 200)
+            result = await response.json()
+
+            assert len(result) == 2
+            assert_file(File(**result[0]), path_1)
+            assert_file(File(**result[1]), path_2)
+
+            # Delete second file.
+            response = await self.client.delete(
+                f"{API_PREFIX}/submissions/{submission_id}/files/{File(**result[1]).file_id}")
             self.assertEqual(response.status, 204)
 
-    async def test_patch_submission_files_fails_with_bad_json(self):
-        """Test patch method for submission files fails with incorrectly formatted JSON."""
-        self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
+            response = await self.client.get(f"{API_PREFIX}/submissions/{submission_id}/files")
+            self.assertEqual(response.status, 200)
+            result = await response.json()
+
+            assert len(result) == 1
+            assert_file(File(**result[0]), path_1)
+
+    async def test_patch_submission_files_fails_with_invalid_json(self):
+        """Test patch submission files fails with incorrectly formatted JSON."""
+        submission_id = await self.post_submission()
+
         data = "[{'bad': 'json',}]"
-        with self.patch_verify_authorization:
-            response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/files", data=data)
+        with (
+            self.patch_verify_user_project,
+            self.patch_verify_authorization,
+        ):
+            response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/files", data=data)
             self.assertEqual(response.status, 400)
             json_resp = await response.json()
             self.assertIn("JSON is not correctly formatted", json_resp["detail"])
 
     async def test_patch_submission_files_fails_with_missing_fields(self):
         """Test patch method for submission files fails with missing fields."""
-        self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
+        submission_id = await self.post_submission()
+
         data = [{"accessionId": "file123"}]
-        with self.patch_verify_authorization:
-            response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/files", json=data)
+        with (
+            self.patch_verify_user_project,
+            self.patch_verify_authorization,
+        ):
+            response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/files", json=data)
             self.assertEqual(response.status, 400)
             json_resp = await response.json()
             self.assertIn("Each file must contain 'accessionId' and 'version'.", json_resp["detail"])
 
-        data = [{**data[0], "version": 1, "objectId": {"accessionId": "EGA111"}}]
-        with self.patch_verify_authorization:
-            response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/files", json=data)
-            self.assertEqual(response.status, 400)
-            json_resp = await response.json()
-            self.assertIn(
-                "The objectId value must contain object with only 'accessionId' and 'schema' keys.", json_resp["detail"]
-            )
-
-    async def test_patch_submission_files_fails_when_file_not_found(self):
-        """Test patch method for submission files fails when file is not part of the project."""
-        self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
-        error_reason = "File 'file123' (version: '1') was not found."
-        self.MockedFileOperator().read_file.side_effect = web.HTTPNotFound(reason=error_reason)
-        data = [{"accessionId": "file123", "version": 1}]
-        with self.patch_verify_authorization:
-            response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/files", json=data)
-            self.assertEqual(response.status, 404)
-            json_resp = await response.json()
-            self.assertIn(error_reason, json_resp["detail"])
-
-    async def test_patch_submission_files_fails_when_metadata_object_not_found(self):
-        """Test patch method for submission files fails when metadata object is not part of the submission."""
-        self.MockedSubmissionOperator().read_submission.return_value = self.test_submission
-        self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
-        data = [{"accessionId": "file123", "version": 1, "objectId": {"accessionId": "none", "schema": "sample"}}]
-        with self.patch_verify_authorization:
-            response = await self.client.patch(f"{API_PREFIX}/submissions/{self.submission_id}/files", json=data)
-            self.assertEqual(response.status, 400)
-            json_resp = await response.json()
-            self.assertIn(
-                "A sample object with accessionId 'none' does not exist in the submission's list of metadata objects.",
-                json_resp["detail"],
-            )
-
-
-class PublishSubmissionHandlerTestCase(HandlersTestCase):
-    """Publishing API endpoint class test cases."""
-
-    async def setUpAsync(self):
-        """Configure default values for testing and other modules.
-
-        This patches used modules and sets default return values for their
-        methods.
-        """
-        await super().setUpAsync()
-
-        self._publish_handler = "metadata_backend.api.handlers.publish.PublishSubmissionAPIHandler"
-
-        self._mock_prepare_doi = f"{self._publish_handler}._prepare_datacite_publication"
-
-        class_submissionoperator = "metadata_backend.api.handlers.publish.SubmissionOperator"
-        self.patch_submissionoperator = patch(class_submissionoperator, **self.submissionoperator_config, spec=True)
-        self.MockedSubmissionOperator = self.patch_submissionoperator.start()
-
-        class_fileoperator = "metadata_backend.api.handlers.publish.FileOperator"
-        self.patch_fileoperator = patch(class_fileoperator, **self.fileoperator_config, spec=True)
-        self.MockedFileOperator = self.patch_fileoperator.start()
-
-        class_operator = "metadata_backend.api.handlers.publish.ObjectOperator"
-        self.patch_operator = patch(class_operator, **self.operator_config, spec=True)
-        self.MockedOperator = self.patch_operator.start()
-
-        class_xmloperator = "metadata_backend.api.handlers.publish.XMLObjectOperator"
-        self.patch_xmloperator = patch(class_xmloperator, **self.xmloperator_config, spec=True)
-        self.MockedXMLOperator = self.patch_xmloperator.start()
-
-    async def tearDownAsync(self):
-        """Cleanup mocked stuff."""
-        await super().tearDownAsync()
-        self.patch_submissionoperator.stop()
-        self.patch_fileoperator.stop()
-        self.patch_operator.stop()
-        self.patch_xmloperator.stop()
-
-    async def test_submission_is_published(self):
-        """Test that submission would be published and DOI would be added."""
-        self.test_submission = {**self.test_submission, **{"rems": {}}}
-        self.MockedSubmissionOperator().update_submission.return_value = self.submission_id
+        data = [{"version": 1}]
         with (
-            patch(f"{self._publish_handler}.create_draft_doi", return_value=self.user_id),
-            patch(
-                self._mock_prepare_doi,
-                return_value=(
-                    {"id": "prefix/suffix-study", "data": {"attributes": {"url": "http://metax_id", "types": {}}}},
-                    [{"id": "prefix/suffix-dataset", "data": {"attributes": {"url": "http://metax_id", "types": {}}}}],
-                ),
-            ),
-            patch(f"{self._publish_handler}.create_metax_dataset", return_value=None),
+            self.patch_verify_user_project,
             self.patch_verify_authorization,
         ):
-            response = await self.client.patch(f"{API_PREFIX}/publish/FOL12345678")
+            response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/files", json=data)
+            self.assertEqual(response.status, 400)
             json_resp = await response.json()
-            self.assertEqual(response.status, 200)
-            self.assertEqual(json_resp["submissionId"], self.submission_id)
+            self.assertIn("Each file must contain 'accessionId' and 'version'.", json_resp["detail"])
 
+    class PublishSubmissionHandlerTestCase(HandlersTestCase):
+        """Publishing API endpoint class test cases."""
 
-class FilesHandlerTestCase(HandlersTestCase):
-    """Files API endpoint class test cases."""
+        @pytest.fixture(autouse=True)
+        def _inject_fixtures(self,
+                             submission_repository: SubmissionRepository,
+                             object_repository: ObjectRepository,
+                             file_repository: FileRepository):
+            self.submission_repository = submission_repository
+            self.object_repository = object_repository
+            self.file_repository = file_repository
 
-    async def setUpAsync(self):
-        """Configure default values for testing and other modules.
+        async def test_publish_submission_csc(self):
+            """Test publishing of CSC submission."""
 
-        This patches used modules and sets default return values for their
-        methods.
-        """
-        await super().setUpAsync()
+            user_id = "mock-userid"
 
-        class_fileoperator = "metadata_backend.api.handlers.files.FileOperator"
-        self.patch_fileoperator = patch(class_fileoperator, **self.fileoperator_config, spec=True)
-        self.MockedFileOperator = self.patch_fileoperator.start()
+            # DOI information.
+            doi_info = self.doi_info
 
-        self.mock_file_data = {
-            "userId": self.user_id,
-            "projectId": self.project_id,
-            "files": [
-                {
-                    "path": "s3:/bucket/files/mock",
-                    "name": "mock_file.c4gh",
-                    "bytes": 100,
-                    "encrypted_checksums": [{"str": "string"}],
-                    "unencrypted_checksums": [{"str": "string"}],
+            # RENS information.
+            rems = Rems(
+                workflow_id=1,
+                organization_id=f"organisation_{str(uuid.uuid4())}",
+                licenses=[1, 2]
+            )
+
+            # The submission contains one dataset metadata object.
+            dataset_schema = "dataset"
+            dataset_title = f"title_{str(uuid.uuid4())}"
+            dataset_description = f"description_{str(uuid.uuid4())}"
+
+            # The submission contains one file.
+            file_path = f"path_{str(uuid.uuid4())}"
+            file_bytes = 1024
+
+            # Mock data.
+            metax_url = "https://mock.com/"
+            metax_id = f"metax_{str(uuid.uuid4())}"
+            doi_part1 = f"doi_{str(uuid.uuid4())}"
+            doi_part2 = f"doi_{str(uuid.uuid4())}"
+            doi = f"{doi_part1}/{doi_part2}"
+            rems_resource_id = 1
+            rems_catalogue_id = f"catalogue_{str(uuid.uuid4())}"
+
+            # Create submission and files to allow the submission to be published.
+
+            # Create submission.
+            workflow = SubmissionWorkflow.SDS
+            workflow_config = get_workflow(workflow.value)
+            submission_entity = create_submission_entity(
+                workflow=workflow,
+                document={
+                    SUB_FIELD_DOI: doi_info,
+                    SUB_FIELD_REMS: rems.json_dump()
+                })
+            submission_id = await self.submission_repository.add_submission(submission_entity)
+
+            # Create metadata object.
+            object_entity = create_object_entity(
+                submission_id=submission_entity.submission_id,
+                schema=dataset_schema,
+                document={
+                    "title": dataset_title,
+                    "description": dataset_description
+                })
+            await self.object_repository.add_object(object_entity)
+
+            # Create file.
+            file_entity = FileEntity(
+                submission_id=submission_entity.submission_id,
+                object_id=object_entity.object_id,
+                path=file_path,
+                bytes=file_bytes)
+            await self.file_repository.add_file(file_entity)
+
+            # Publish submission.
+            #
+
+            pid_cls = "metadata_backend.services.pid_ms_handler.PIDServiceHandler"
+            datacite_cls = "metadata_backend.services.datacite_service_handler.DataciteServiceHandler"
+            metax_cls = "metadata_backend.services.metax_service_handler.MetaxServiceHandler"
+            rems_cls = "metadata_backend.services.rems_service_handler.RemsServiceHandler"
+
+            with (
+                self.patch_verify_user_project,
+                self.patch_verify_authorization,
+                # Datacite (csc)
+                patch(f"{pid_cls}.create_draft_doi_pid", new_callable=AsyncMock) as mock_pid_create_doi,
+                patch(f"{pid_cls}.publish", new_callable=AsyncMock) as mock_pid_publish,
+                # Datacite (datacite)
+                patch(f"{datacite_cls}.create_draft_doi_datacite", new_callable=AsyncMock) as mock_datacite_create_doi,
+                patch(f"{datacite_cls}.publish", new_callable=AsyncMock) as mock_datacite_publish,
+                # Metax
+                patch.dict(os.environ, {"METAX_DISCOVERY_URL": metax_url}),
+                patch(f"{metax_cls}.post_dataset_as_draft", new_callable=AsyncMock) as mock_metax_create,
+                patch(f"{metax_cls}.update_dataset_with_doi_info", new_callable=AsyncMock) as mock_metax_update_doi,
+                patch(f"{metax_cls}.update_draft_dataset_description",
+                      new_callable=AsyncMock) as mock_metax_update_descr,
+                patch(f"{metax_cls}.publish_dataset", new_callable=AsyncMock) as mock_metax_publish,
+                # REMS
+                patch(f"{rems_cls}.create_resource", new_callable=AsyncMock) as mock_rems_create_resource,
+                patch(f"{rems_cls}.create_catalogue_item", new_callable=AsyncMock) as mock_rems_create_catalogue_item,
+
+            ):
+                # Mock Datacite.
+                mock_pid_create_doi.return_value = doi
+                mock_datacite_create_doi.return_value = doi
+                # Mock Metax.
+                mock_metax_create.return_value = metax_id
+                # Mock Rems.
+                mock_rems_create_resource.return_value = rems_resource_id
+                mock_rems_create_catalogue_item.return_value = rems_catalogue_id
+
+                # Publish submission.
+                response = await self.client.patch(f"{API_PREFIX}/publish/{submission_entity.submission_id}")
+                data = await response.json()
+                assert response.status == 200
+                assert data == {"submissionId": submission_id}
+
+                # Assert Datacite.
+
+                datacite_data = {
+                    "id": doi,
+                    "type": "dois",
+                    "data": {
+                        "attributes": {
+                            "publisher": "CSC - IT Center for Science",
+                            "publicationYear": datetime.now().year,
+                            "event": "publish",
+                            "schemaVersion": "https://schema.datacite.org/meta/kernel-4",
+                            "doi": doi,
+                            "prefix": doi_part1,
+                            "suffix": doi_part2,
+                            "types": {
+                                "ris": "DATA",
+                                "bibtex": "misc",
+                                "citeproc": "dataset",
+                                "schemaOrg": "Dataset",
+                                "resourceTypeGeneral": "Dataset"
+                            },
+                            "url": f"{metax_url}{metax_id}",
+                            "identifiers": [
+                                {
+                                    "identifierType": "DOI",
+                                    "doi": doi
+                                }
+                            ],
+                            "titles": [
+                                {
+                                    "lang": None,
+                                    "title": dataset_title,
+                                    "titleType": None
+                                }
+                            ],
+                            "descriptions": [
+                                {
+                                    "lang": None,
+                                    "description": dataset_description,
+                                    "descriptionType": "Other"
+                                }
+                            ],
+                            "creators": [
+                                {
+                                    "givenName": "Test",
+                                    "familyName": "Creator",
+                                    "affiliation": [
+                                        {
+                                            "name": "affiliation place",
+                                            "schemeUri": "https://ror.org",
+                                            "affiliationIdentifier": "https://ror.org/test1",
+                                            "affiliationIdentifierScheme": "ROR"
+                                        }
+                                    ]
+                                }
+                            ],
+                            "subjects": [
+                                {
+                                    "subject": "999 - Other",
+                                    "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
+                                    "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
+                                    "valueUri": "http://www.yso.fi/onto/okm-tieteenala/ta999",
+                                    "classificationCode": "999"
+                                }
+                            ]
+                        }
+                    }
                 }
-            ],
-        }
 
-        self.mock_file_paths = ["s3:/bucket/files/mock", "s3:/bucket/files/mock2", "s3:/bucket/files/mock3"]
-        self.mock_single_file = {
-            "accessionId": self.projected_file_example["accessionId"],
-            "path": self.mock_file_data["files"][0]["path"],
-            "projectId": self.mock_file_data["projectId"],
-        }
+                if workflow_config.publish_config.datacite_config.service == "csc":
+                    mock_pid_create_doi.assert_awaited_once_with()
+                    mock_pid_publish.assert_awaited_once_with(datacite_data)
+                else:
+                    mock_datacite_create_doi.assert_awaited_once_with(dataset_schema)
+                    mock_datacite_publish.assert_awaited_once_with(datacite_data)
 
-    async def tearDownAsync(self):
-        """Cleanup mocked stuff."""
-        await super().tearDownAsync()
-        self.patch_fileoperator.stop()
+                # Assert Metax.
+                mock_metax_create.assert_awaited_once_with(
+                    user_id, doi, dataset_title, dataset_description
+                )
+                mock_metax_update_doi.assert_awaited_once_with(
+                    {
+                        # Remove keywords.
+                        **{k: v for k, v in doi_info.items() if k != "keywords"},
+                        # Update subjects.
+                        "subjects": [
+                            {
+                                **s,
+                                "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
+                                "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
+                                "valueUri": f"http://www.yso.fi/onto/okm-tieteenala/ta{s['subject'].split(' - ')[0]}",
+                                "classificationCode": s["subject"].split(" - ")[0],
+                            }
+                            for s in doi_info.get("subjects", [])
+                        ]},
+                    metax_id,
+                    file_bytes,
+                    related_dataset=None,
+                    related_study=None,
+                )
+                mock_metax_update_descr.assert_awaited_once_with(
+                    metax_id,
+                    f"{dataset_description}\n\nSD Apply's Application link: {RemsServiceHandler.application_url(rems_catalogue_id)}")
 
-    async def test_get_project_files(self) -> None:
-        """Test fetching files belonging to specific project."""
-        with (
-            self.patch_verify_user_project_failure,
-            self.patch_verify_authorization,
-        ):
-            # User is not part of project
-            response = await self.client.get(f"{API_PREFIX}/files")
-            self.assertEqual(response.status, 401)
+                mock_metax_publish.assert_awaited_once_with(metax_id, doi)
 
-        with (
-            self.patch_verify_user_project_success,
-            self.patch_verify_authorization,
-        ):
-            # Successful fetching of project-wise file list
-            self.MockedFileOperator().read_project_files.return_value = self.test_submission["files"]
-            response = await self.client.get(f"{API_PREFIX}/files")
-            self.assertEqual(response.status, 200)
-            json_resp = await response.json()
-            self.assertEqual(json_resp[0]["accessionId"], "file1")
+                # Assert Rems.
+                mock_rems_create_resource.assert_awaited_once_with(doi=doi, organization_id=rems.organization_id,
+                                                                   licenses=rems.licenses)
+                mock_rems_create_catalogue_item.assert_awaited_once_with(resource_id=rems_resource_id,
+                                                                         workflow_id=rems.workflow_id,
+                                                                         organization_id=rems.organization_id,
+                                                                         localizations={
+                                                                             "en":
+                                                                                 {
+                                                                                     "title": dataset_title,
+                                                                                     "infourl": f"{metax_url}{metax_id}"
+                                                                                 }
+                                                                         })
 
-    async def test_post_project_files_works(self) -> None:
-        """Test file post request handler."""
-        with (
-            self.patch_verify_user_project_success,
-            self.patch_verify_authorization,
-        ):
-            self.MockedFileOperator().create_file_or_version.return_value = "accession_id1", 1
-            response = await self.client.post(f"{API_PREFIX}/files", json=self.mock_file_data)
-            self.assertEqual(response.status, 201)
-            json_resp = await response.json()
-            self.assertEqual(json_resp, [["accession_id1", 1]])
+    class FilesHandlerTestCase(HandlersTestCase):
+        """Files API endpoint class test cases."""
 
-    async def test_post_project_files_fails(self) -> None:
-        """Test file post request handler for error instances."""
-        with (
-            self.patch_verify_user_project_failure,
-            self.patch_verify_authorization,
-        ):
-            # Requesting user is not part of the project
-            response = await self.client.post(f"{API_PREFIX}/files", json=self.mock_file_data)
-            self.assertEqual(response.status, 401)
+        async def setUpAsync(self):
+            """Configure default values for testing and other modules.
 
-        with (
-            self.patch_verify_user_project_success,
-            self.patch_verify_authorization,
-        ):
-            # Faulty request data
-            alt_data = self.mock_file_data
-            alt_data["files"] = "not a list"
-            response = await self.client.post(f"{API_PREFIX}/files", json=alt_data)
-            self.assertEqual(response.status, 400)
-            json_resp = await response.json()
-            self.assertEqual(json_resp["detail"], "Field `files` must be a list.")
+            This patches used modules and sets default return values for their
+            methods.
+            """
+            await super().setUpAsync()
 
-            # Lacking request data
-            alt_data = self.mock_file_data
-            alt_data["files"] = [{"name": "filename"}]
-            response = await self.client.post(f"{API_PREFIX}/files", json=alt_data)
-            self.assertEqual(response.status, 400)
-            json_resp = await response.json()
-            self.assertEqual(
-                json_resp["detail"],
-                "Fields `path`, `name`, `bytes`, `encrypted_checksums`, `unencrypted_checksums` are required.",
-            )
+            self.mock_file_data = {
+                "userId": self.user_id,
+                "projectId": self.project_id,
+                "files": [
+                    {
+                        "path": "s3:/bucket/files/mock",
+                        "name": "mock_file.c4gh",
+                        "bytes": 100,
+                        "encrypted_checksums": [{
+                            "type": "md5",
+                            "value": "7ac236b1a82dac89e7cf45d2b4812345"
+                        }],
+                        "unencrypted_checksums": [{
+                            "type": "md5",
+                            "value": "7ac236b1a82dac89e7cf45d2b4812345"
+                        }],
+                    }
+                ],
+            }
 
-    async def test_delete_project_files_works(self) -> None:
-        """Test deleting file request handler."""
-        with (
-            self.patch_verify_user_project_success,
-            self.patch_verify_authorization,
-        ):
-            url = f"{API_PREFIX}/files/{self.mock_single_file['projectId']}"
-            self.MockedFileOperator().check_file_exists.return_value = self.mock_single_file
-            response = await self.client.delete(url, json=self.mock_file_paths)
-            self.assertEqual(self.MockedFileOperator().flag_file_deleted.call_count, 3)
-            self.assertEqual(response.status, 204)
+            self.mock_file_paths = ["s3:/bucket/files/mock", "s3:/bucket/files/mock2", "s3:/bucket/files/mock3"]
+            self.mock_single_file = {
+                "accessionId": self.projected_file_example["accessionId"],
+                "path": self.mock_file_data["files"][0]["path"],
+                "projectId": self.mock_file_data["projectId"],
+            }
 
-    async def test_delete_project_files_not_in_database(self) -> None:
-        """Test deleting file request handler with error if file does not exist in database."""
-        with (
-            self.patch_verify_user_project_success,
-            self.patch_verify_authorization,
-        ):
-            url = f"{API_PREFIX}/files/{self.mock_single_file['projectId']}"
-            # File does not exist in database
-            self.MockedFileOperator().check_file_exists.return_value = None
-            await self.client.delete(url, json=self.mock_file_paths)
-            self.MockedFileOperator().flag_file_deleted.assert_not_called()
+        async def tearDownAsync(self):
+            """Cleanup mocked stuff."""
+            await super().tearDownAsync()
+            # self.patch_fileoperator.stop()
 
-    async def test_delete_project_files_not_valid(self) -> None:
-        """Test deleting file request handler with error if files in request are not valid."""
-        with (
-            self.patch_verify_user_project_success,
-            self.patch_verify_authorization,
-        ):
-            url = f"{API_PREFIX}/files/{self.mock_single_file['projectId']}"
-            # Invalid file as request payload
-            await self.client.delete(url, json=self.mock_single_file)
-            self.MockedFileOperator().check_file_exists.assert_not_called()
-            self.MockedFileOperator().flag_file_deleted.assert_not_called()
+        async def test_get_project_files(self) -> None:
+            """Test fetching files belonging to specific project."""
+            with (
+                self.patch_verify_user_project_failure,
+                self.patch_verify_authorization,
+            ):
+                # User is not part of project
+                response = await self.client.get(f"{API_PREFIX}/files")
+                self.assertEqual(response.status, 401)
 
+            with (
+                self.patch_verify_user_project,
+                self.patch_verify_authorization,
+            ):
+                with patch(
+                        "metadata_backend.api.handlers.files.FileOperator.read_project_files",
+                        new_callable=AsyncMock
+                ) as mock_read:
+                    # Successful fetching of project-wise file list
+                    mock_read.return_value = self.test_submission["files"]
+                    response = await self.client.get(f"{API_PREFIX}/files")
+                    self.assertEqual(response.status, 200)
+                    json_resp = await response.json()
+                    self.assertEqual(json_resp[0]["accessionId"], "file1")
 
-class ApiKeyHandlerTestCase(HandlersTestCase):
-    """API key handler test cases."""
+        async def test_post_project_files_works(self) -> None:
+            """Test file post request handler."""
+            with (
+                self.patch_verify_user_project,
+                self.patch_verify_authorization,
+            ):
+                with patch(
+                        "metadata_backend.api.handlers.files.FileOperator.create_file_or_version",
+                        new_callable=AsyncMock
+                ) as mock_create, patch(
+                    "metadata_backend.api.handlers.files.FileOperator._get_file_id_and_version",
+                    new_callable=AsyncMock
+                ) as mock_file:
+                    mock_create.return_value = "accession_id1", 1
+                    mock_file.return_value = {"accessionId": "accession_id1", "version": 1}
+                    response = await self.client.post(f"{API_PREFIX}/files", json=self.mock_file_data)
+                    self.assertEqual(response.status, 201)
+                    json_resp = await response.json()
+                    self.assertEqual(json_resp, [["accession_id1", 1]])
 
-    async def test_post_get_delete_api_key(self) -> None:
-        """Test API key creation, listing and revoking."""
+        async def test_post_project_files_fails(self) -> None:
+            """Test file post request handler for error instances."""
+            with (
+                self.patch_verify_user_project_failure,
+                self.patch_verify_authorization,
+            ):
+                # Requesting user is not part of the project
+                response = await self.client.post(f"{API_PREFIX}/files", json=self.mock_file_data)
+                self.assertEqual(response.status, 401)
 
-        with (
-            self.patch_verify_authorization,
-            self.patch_verify_user_project_success,
-        ):
-            key_id_1 = str(uuid.uuid4())
-            key_id_2 = str(uuid.uuid4())
+            with (
+                self.patch_verify_user_project,
+                self.patch_verify_authorization,
+            ):
+                # Faulty request data
+                alt_data = self.mock_file_data
+                alt_data["files"] = "not a list"
+                response = await self.client.post(f"{API_PREFIX}/files", json=alt_data)
+                self.assertEqual(response.status, 400)
+                json_resp = await response.json()
+                self.assertEqual(json_resp["detail"], "Field `files` must be a list.")
 
-            # Create first key.
-            response = await self.client.post(
-                f"{API_PREFIX}/api/keys", json=ApiKey(key_id=key_id_1).model_dump(mode="json")
-            )
-            self.assertEqual(response.status, 200)
+                # Lacking request data
+                alt_data = self.mock_file_data
+                alt_data["files"] = [{"name": "filename"}]
+                response = await self.client.post(f"{API_PREFIX}/files", json=alt_data)
+                self.assertEqual(response.status, 400)
+                json_resp = await response.json()
+                self.assertEqual(
+                    json_resp["detail"],
+                    "Fields `path`, `name`, `bytes`, `encrypted_checksums`, `unencrypted_checksums` are required.",
+                )
 
-            # Check first key exists.
-            response = await self.client.get(f"{API_PREFIX}/api/keys")
-            self.assertEqual(response.status, 200)
-            json = await response.json()
-            assert len(json) == 1
-            api_key_1 = ApiKey(**json[0])
-            self.assertEqual(api_key_1.key_id, key_id_1)
-            self.assertIsNotNone(api_key_1.created_at)
+        async def test_delete_project_files_works(self) -> None:
+            """Test deleting file request handler."""
+            with (
+                self.patch_verify_user_project,
+                self.patch_verify_authorization,
+            ):
+                with patch(
+                        "metadata_backend.api.handlers.files.FileOperator.check_file_exists",
+                        new_callable=AsyncMock
+                ) as mock_check, patch(
+                    "metadata_backend.api.handlers.files.FileOperator.flag_file_deleted",
+                    new_callable=AsyncMock
+                ) as mock_flag:
+                    mock_check.return_value = self.mock_single_file
 
-            # Create second key.
-            response = await self.client.post(
-                f"{API_PREFIX}/api/keys", json=ApiKey(key_id=key_id_2).model_dump(mode="json")
-            )
-            self.assertEqual(response.status, 200)
+                    url = f"{API_PREFIX}/files/{self.mock_single_file['projectId']}"
+                    response = await self.client.delete(url, json=self.mock_file_paths)
+                    assert mock_flag.call_count == 3
+                    self.assertEqual(response.status, 204)
 
-            # Check first and second key exist.
-            response = await self.client.get(f"{API_PREFIX}/api/keys")
-            self.assertEqual(response.status, 200)
-            json = await response.json()
-            assert len(json) == 2
+        async def test_delete_project_files_not_in_database(self) -> None:
+            """Test deleting file request handler with error if file does not exist in database."""
+            with (
+                self.patch_verify_user_project,
+                self.patch_verify_authorization,
+            ):
+                with patch(
+                        "metadata_backend.api.handlers.files.FileOperator.check_file_exists",
+                        new_callable=AsyncMock
+                ) as mock_check, patch(
+                    "metadata_backend.api.handlers.files.FileOperator.flag_file_deleted",
+                    new_callable=AsyncMock
+                ) as mock_flag:
+                    mock_check.return_value = None
 
-            key_ids = [ApiKey(**key).key_id for key in json]
-            assert key_id_1 in key_ids
-            assert key_id_2 in key_ids
-            self.assertIsNotNone(ApiKey(**json[0]).created_at)
-            self.assertIsNotNone(ApiKey(**json[1]).created_at)
+                    url = f"{API_PREFIX}/files/{self.mock_single_file['projectId']}"
+                    # File does not exist in database
+                    await self.client.delete(url, json=self.mock_file_paths)
+                    mock_flag.assert_not_called()
 
-            # Remove second key.
-            response = await self.client.delete(
-                f"{API_PREFIX}/api/keys", json=ApiKey(key_id=key_id_2).model_dump(mode="json")
-            )
-            self.assertEqual(response.status, 204)
+        async def test_delete_project_files_not_valid(self) -> None:
+            """Test deleting file request handler with error if files in request are not valid."""
+            with (
+                self.patch_verify_user_project,
+                self.patch_verify_authorization,
+            ):
+                with patch(
+                        "metadata_backend.api.handlers.files.FileOperator.check_file_exists",
+                        new_callable=AsyncMock
+                ) as mock_check, patch(
+                    "metadata_backend.api.handlers.files.FileOperator.flag_file_deleted",
+                    new_callable=AsyncMock
+                ) as mock_flag:
+                    url = f"{API_PREFIX}/files/{self.mock_single_file['projectId']}"
+                    # Invalid file as request payload
+                    await self.client.delete(url, json=self.mock_single_file)
+                    mock_check.assert_not_called()
+                    mock_flag.assert_not_called()
 
-            # Check first key exists.
-            response = await self.client.get(f"{API_PREFIX}/api/keys")
-            self.assertEqual(response.status, 200)
-            json = await response.json()
-            assert len(json) == 1
-            api_key_1 = ApiKey(**json[0])
-            self.assertEqual(api_key_1.key_id, key_id_1)
-            self.assertIsNotNone(api_key_1.created_at)
+    class ApiKeyHandlerTestCase(HandlersTestCase):
+        """API key handler test cases."""
 
+        async def test_post_get_delete_api_key(self) -> None:
+            """Test API key creation, listing and revoking."""
+            async with transaction(_session_factory, requires_new=True, rollback_new=True):
+                with (
+                    self.patch_verify_authorization,
+                    self.patch_verify_user_project,
+                ):
+                    key_id_1 = str(uuid.uuid4())
+                    key_id_2 = str(uuid.uuid4())
 
-class UserHandlerTestCase(HandlersTestCase):
-    """User handler test cases."""
+                    # Create first key.
+                    response = await self.client.post(
+                        f"{API_PREFIX}/api/keys", json=ApiKey(key_id=key_id_1).model_dump(mode="json")
+                    )
+                    self.assertEqual(response.status, 200)
 
-    async def test_get_user(self) -> None:
-        """Test getting user information."""
+                    # Check first key exists.
+                    response = await self.client.get(f"{API_PREFIX}/api/keys")
+                    self.assertEqual(response.status, 200)
+                    json = await response.json()
+                    assert key_id_1 in [ApiKey(**key).key_id for key in json]
 
-        project_id = "PRJ123"
+                    # Create second key.
+                    response = await self.client.post(
+                        f"{API_PREFIX}/api/keys", json=ApiKey(key_id=key_id_2).model_dump(mode="json")
+                    )
+                    self.assertEqual(response.status, 200)
 
-        with (
-            self.patch_verify_authorization,
-            patch.dict(
-                os.environ,
-                {"CSC_LDAP_HOST": "ldap://mockhost", "CSC_LDAP_USER": "mockuser", "CSC_LDAP_PASSWORD": "mockpassword"},
-            ),
-            patch("metadata_backend.api.services.ldap.Connection") as mock_connection,
-        ):
-            mock_conn_instance, mock_entry = MagicMock(), MagicMock()
-            mock_entry.entry_to_json.return_value = json.dumps(
-                {"dn": "ou=SP_SD-SUBMIT,ou=idm,dc=csc,dc=fi", "attributes": {"CSCPrjNum": [project_id]}}
-            )
-            mock_conn_instance.entries = [mock_entry]
-            mock_connection.return_value.__enter__.return_value = mock_conn_instance
+                    # Check first and second key exist.
+                    response = await self.client.get(f"{API_PREFIX}/api/keys")
+                    self.assertEqual(response.status, 200)
+                    json = await response.json()
+                    assert key_id_1 in [ApiKey(**key).key_id for key in json]
+                    assert key_id_2 in [ApiKey(**key).key_id for key in json]
 
-            response = await self.client.get(f"{API_PREFIX}/users")
-            self.assertEqual(response.status, 200)
+                    # Remove second key.
+                    response = await self.client.delete(
+                        f"{API_PREFIX}/api/keys", json=ApiKey(key_id=key_id_2).model_dump(mode="json")
+                    )
+                    self.assertEqual(response.status, 204)
 
-            user = User(**await response.json())
-            assert user.user_id == "mock-userid"
-            assert user.user_name == "mock-username"
-            assert user.projects == [Project(project_id=project_id)]
+                    # Check first key exists.
+                    response = await self.client.get(f"{API_PREFIX}/api/keys")
+                    self.assertEqual(response.status, 200)
+                    json = await response.json()
+                    assert key_id_1 in [ApiKey(**key).key_id for key in json]
+                    assert key_id_2 not in [ApiKey(**key).key_id for key in json]
+
+    class UserHandlerTestCase(HandlersTestCase):
+        """User handler test cases."""
+
+        async def test_get_user(self) -> None:
+            """Test getting user information."""
+
+            project_id = "PRJ123"
+
+            with (
+                self.patch_verify_authorization,
+                patch.dict(
+                    os.environ,
+                    {"CSC_LDAP_HOST": "ldap://mockhost", "CSC_LDAP_USER": "mockuser",
+                     "CSC_LDAP_PASSWORD": "mockpassword"},
+                ),
+                patch("metadata_backend.api.services.ldap.Connection") as mock_connection,
+            ):
+                mock_conn_instance, mock_entry = MagicMock(), MagicMock()
+                mock_entry.entry_to_json.return_value = json.dumps(
+                    {"dn": "ou=SP_SD-SUBMIT,ou=idm,dc=csc,dc=fi", "attributes": {"CSCPrjNum": [project_id]}}
+                )
+                mock_conn_instance.entries = [mock_entry]
+                mock_connection.return_value.__enter__.return_value = mock_conn_instance
+
+                response = await self.client.get(f"{API_PREFIX}/users")
+                self.assertEqual(response.status, 200)
+
+                user = User(**await response.json())
+                assert user.user_id == "mock-userid"
+                assert user.user_name == "mock-username"
+                assert user.projects == [Project(project_id=project_id)]

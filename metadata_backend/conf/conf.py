@@ -38,6 +38,7 @@ from typing import Any
 import ujson
 from motor.motor_asyncio import AsyncIOMotorClient
 
+from ..api.exceptions import NotFoundUserException
 from ..helpers.logger import LOG
 from ..helpers.parser import str_to_bool
 from ..helpers.workflow import Workflow
@@ -122,6 +123,18 @@ for workflow_path in path_to_workflows.iterdir():
         workflow = ujson.load(workflow_file)
         WORKFLOWS[workflow["name"]] = Workflow(workflow)
 
+
+def get_workflow(workflow_name: str) -> Workflow:
+    """Get workflow definition by name.
+
+    :param workflow_name: Name of the workflow
+    :returns: The workflow definition.
+    """
+    if workflow_name not in WORKFLOWS:
+        raise NotFoundUserException(f"Invalid workflow {workflow_name}.")
+    return WORKFLOWS[workflow_name]
+
+
 # 4) Set frontend folder to be inside metadata_backend modules root
 frontend_static_files = Path(__file__).parent.parent / "frontend"
 
@@ -205,30 +218,24 @@ admin_config = {
     "url": os.getenv("ADMIN_URL", "http://mockadmin:8004"),
 }
 
-discovery_config = {
-    "metax_discovery_url": os.getenv("METAX_DISCOVERY_URL", "https://etsin.fairdata.fi/dataset/"),
-    "beacon_discovery_url": os.getenv("BEACON_DISCOVERY_URL", "https://bp-demo.rahtiapp.fi/"),  # placeholder url
-}
+BP_REMS_SCHEMA_TYPE = "bprems"  # Metadata object itself is not stored.
 
-DATACITE_SCHEMAS = {"study", "dataset", "bpdataset"}
-METAX_SCHEMAS = {"study", "dataset"}
-SUBMISSION_ONLY_SCHEMAS = {"bprems"}
 BP_SCHEMA_TYPES = [
     "bpannotation",
     "bpdataset",
-    "bpfile",
     "bpimage",
     "bpobservation",
+    "bpobserver",
+    "bprems",
+    "bpsample",
+    "bpstaining",
     "bppolicy",
     "bpbiologicalBeing",
     "bpcase",
     "bpspecimen",
     "bpblock",
     "bpslide",
-    "bpstaining",
-    "bpobserver",
 ]
-BP_CENTER_ID = os.getenv("BP_CENTER_ID", "bb")
 
 TAXONOMY_NAME_DATA: dict[str, dict[Any, Any]] = {}
 # Load taxonomy name data into a single dict

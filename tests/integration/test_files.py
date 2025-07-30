@@ -3,17 +3,16 @@
 import logging
 import re
 
+from tests.integration.conftest import submission_factory
 from tests.integration.helpers import (
-    delete_project_files,
     find_project_file,
     generate_mock_file,
     get_project_files,
-    get_submission,
     patch_submission_files,
     post_project_files,
-    post_submission,
-    remove_submission_file,
     submissions_url,
+    get_submission_files,
+    delete_submission_file,
 )
 
 LOG = logging.getLogger(__name__)
@@ -125,22 +124,13 @@ class TestFiles:
         assert len(files) == 1
         assert not bp_file_id_pattern.match(files[0]["accessionId"]), "Normal file id did not have correct format"
 
-    async def test_delete_project_files(self, client_logged_in, user_id, project_id, database):
-        """Test that specific file is flagged as deleted and removed from current submissions (not published).
+    async def test_add_get_delete_submission_file(self, client_logged_in, submission_factory, user_id, project_id):
+        """Test adding, getting and deleting a file from submission.
 
         :param client_logged_in: HTTP client in which request call is made
-        :param user_id: User ID of the logged in user
-        :param project_id: Project ID of the logged in user
-        :param database: Database connection to use for queries
+        :param submission_factory: The factory that creates and deletes submissions
         """
-        # Create a new submission and check its creation succeeded
-        submission_data = {
-            "name": "Test submission",
-            "description": "Test submission with file to be deleted",
-            "projectId": project_id,
-            "workflow": "SDSX",
-        }
-        submission_id = await post_submission(client_logged_in, submission_data)
+        submission_id, _ = await submission_factory("SDSX")
 
         # Post 3 files
         mock_files = []
@@ -168,57 +158,33 @@ class TestFiles:
 
         # Add files to a submission
         await patch_submission_files(client_logged_in, files_info, submission_id)
-        submission_info = await get_submission(client_logged_in, submission_id)
-        assert len(submission_info["files"]) == 3
 
-        # Query created files in database. Verify that all 3 files are not flagged as deleted
-        for file in files_info:
-            db_file = await database["file"].find_one({"accessionId": file["accessionId"], "projectId": project_id})
-            assert db_file["flagDeleted"] is False
+        # Test that the submission has three files
+        submission_files = await get_submission_files(client_logged_in, submission_id)
+        assert len(submission_files) == 3
 
-        # Flag 2 files as deleted in DB and remove 2 files from current submission
-        await delete_project_files(client_logged_in, project_id, [files_info[0]["path"], files_info[1]["path"]])
+        # Delete two files from the submission
+        await delete_submission_file(client_logged_in, submission_id, submission_files[0]["fileId"])
+        await delete_submission_file(client_logged_in, submission_id, submission_files[1]["fileId"])
 
-        # Verify that 2 files were removed from current submission
-        submission_info = await get_submission(client_logged_in, submission_id)
-        assert len(submission_info["files"]) == 1
-
-        # Verify that 2 files are flagged as deleted and not shown anymore in the list of project files
-        project_files = await get_project_files(client_logged_in, project_id)
-        assert len(project_files) == 1
-        for index in range(2):
-            file_exists = await find_project_file(client_logged_in, project_id, files_info[index]["accessionId"])
-            assert file_exists is False
-
-        # Query flagged as deleted files in database. Verify that 2 files are flagged as deleted, 1 is kept as it is
-        for index, file in enumerate(files_info):
-            db_file_deleted = await database["file"].find_one(
-                {"accessionId": file["accessionId"], "projectId": project_id}
-            )
-            if index == 2:
-                assert db_file_deleted["flagDeleted"] is False
-            else:
-                assert db_file_deleted["flagDeleted"] is True
+        # Test that the submission has one file
+        submission_files = await get_submission_files(client_logged_in, submission_id)
+        assert len(submission_files) == 1
 
 
 class TestFileSubmissions:
     """Test file operations in submissions."""
 
-    async def test_updating_submission_files(self, client_logged_in, user_id, project_id):
+    async def test_add_delete_submission_files(self, client_logged_in, submission_factory, user_id, project_id):
         """Test that adding and updating files in a submission works.
 
         :param client_logged_in: HTTP client in which request call is made
+        :param submission_factory: The factory that creates and deletes submissions
         :param user_id: User ID of the logged in user
         :param project_id: Project ID of the logged in user
         """
-        # Create a new submission and check its creation succeeded
-        submission_data = {
-            "name": "Test submission",
-            "description": "Test submission with file updating",
-            "projectId": project_id,
-            "workflow": "Bigpicture",
-        }
-        submission_id = await post_submission(client_logged_in, submission_data)
+        submission_id, _ = await submission_factory("Bigpicture")
+
         async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
             LOG.debug("Checking that submission %s was created", submission_id)
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
@@ -237,69 +203,16 @@ class TestFileSubmissions:
         file_exists = await find_project_file(client_logged_in, project_id, file_id)
         assert file_exists is True
 
-        # Add file to a submission and verify
+        # Add file to a submission
         file_info = [{"accessionId": file_id, "version": created_files[0]["version"]}]
         await patch_submission_files(client_logged_in, file_info, submission_id)
-        submission_info = await get_submission(client_logged_in, submission_id)
-        assert submission_info["files"][0]["accessionId"] == file_info[0]["accessionId"]
-        assert submission_info["files"][0]["status"] == "added"
+        submission_files = await get_submission_files(client_logged_in, submission_id)
+        assert len(submission_files) == 1
 
-        # Update submission file status
-        updated_file_info = [{**file_info[0], "status": "ready"}]
-        await patch_submission_files(client_logged_in, updated_file_info, submission_id)
-
-        # Get submission
-        submission_info = await get_submission(client_logged_in, submission_id)
-        assert len(submission_info["files"]) == 1
-        assert submission_info["files"][0]["status"] == updated_file_info[0]["status"]
-
-    async def test_removing_submission_files(self, client_logged_in, user_id, project_id):
-        """Test that adding and removing files in a submission works.
-
-        :param client_logged_in: HTTP client in which request call is made
-        :param user_id: User ID of the logged in user
-        :param project_id: Project ID of the logged in user
-        """
-
-        # Create a new submission and check its creation succeeded
-        submission_data = {
-            "name": "Test submission",
-            "description": "Test submission with file removal",
-            "projectId": project_id,
-            "workflow": "FEGA",
-        }
-        submission_id = await post_submission(client_logged_in, submission_data)
-        async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
-            LOG.debug("Checking that submission %s was created", submission_id)
-            assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-
-        # Post files
-        file_data = {
-            "userId": user_id,
-            "projectId": project_id,
-            "files": [generate_mock_file("test_remove_file_1"), generate_mock_file("test_remove_file_2")],
-        }
-        created_files = await post_project_files(client_logged_in, file_data)
-        assert len(created_files) == 2
-
-        # Add files to submission
-        file_info = [
-            {"accessionId": created_files[0]["accessionId"], "version": created_files[0]["version"]},
-            {"accessionId": created_files[1]["accessionId"], "version": created_files[1]["version"]},
-        ]
-        await patch_submission_files(client_logged_in, file_info, submission_id)
-
-        # Verify that files were added
-        submission_info = await get_submission(client_logged_in, submission_id)
-        assert len(submission_info["files"]) == 2
-
-        # Remove a file from submission
-        await remove_submission_file(client_logged_in, submission_id, created_files[0]["accessionId"])
-
-        # Verify that file was removed
-        submission_info = await get_submission(client_logged_in, submission_id)
-        assert len(submission_info["files"]) == 1
-        assert submission_info["files"][0]["accessionId"] == created_files[1]["accessionId"]
+        # Delete file from submission
+        await delete_submission_file(client_logged_in, submission_id, submission_files[0]["fileId"])
+        submission_files = await get_submission_files(client_logged_in, submission_id)
+        assert len(submission_files) == 0
 
     async def test_creating_file_version(self, client_logged_in, user_id, project_id):
         """Test creating a file version.

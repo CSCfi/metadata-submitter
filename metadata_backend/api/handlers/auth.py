@@ -5,6 +5,7 @@ from aiohttp.web import Request, Response
 
 from ..auth import get_authorized_user_id
 from ..models import ApiKey
+from ..resources import get_access_service
 from ..services.auth import AccessService
 
 
@@ -25,7 +26,7 @@ async def post_api_key(req: Request) -> Response:
     # Create and store the new API key.
     data = await req.json()
 
-    access_service: AccessService = req.app["access_service"]
+    access_service: AccessService = get_access_service(req)
 
     api_key = await access_service.create_api_key(user_id, ApiKey(**data).key_id)
 
@@ -46,7 +47,7 @@ async def delete_api_key(req: Request) -> Response:
     # Remove and remove the API key.
     data = await req.json()
 
-    access_service: AccessService = req.app["access_service"]
+    access_service: AccessService = get_access_service(req)
 
     await access_service.revoke_api_key(user_id, ApiKey(**data).key_id)
 
@@ -62,7 +63,7 @@ async def get_api_keys(req: Request) -> Response:
     """
     user_id = get_authorized_user_id(req)
 
-    access_service: AccessService = req.app["access_service"]
+    access_service: AccessService = get_access_service(req)
 
     body = [k.model_dump(mode="json") for k in await access_service.list_api_keys(user_id)]
 

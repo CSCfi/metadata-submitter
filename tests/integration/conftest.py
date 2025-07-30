@@ -5,6 +5,7 @@ to share functionality of the `class` scoped fixtures.
 """
 
 import logging
+import uuid
 from typing import AsyncGenerator
 from urllib.parse import urlencode
 
@@ -17,9 +18,6 @@ from tests.integration.conf import (
     DATABASE,
     HOST,
     TLS,
-    admin_test_user,
-    admin_test_user_family,
-    admin_test_user_given,
     base_url,
     metax_url,
     mock_auth_url,
@@ -27,7 +25,7 @@ from tests.integration.conf import (
     other_test_user_family,
     other_test_user_given,
 )
-from tests.integration.helpers import delete_submission, get_mock_admin_token, post_submission
+from tests.integration.helpers import post_submission, delete_submission
 from tests.integration.mongo import Mongo
 
 LOG = logging.getLogger(__name__)
@@ -42,6 +40,35 @@ def pytest_addoption(parser):
         default=False,
         help="run tests without any cleanup",
     )
+
+# Submission factory
+
+@pytest.fixture
+async def submission_factory(client_logged_in: aiohttp.ClientSession, project_id: str):
+    default_project_id = project_id
+    submissions_ids = []
+
+    async def _create_submission(workflow: str, *,
+                                 name: str | None = None,
+                                 project_id: str | None = None):  # noqa
+        if name is None:
+            name = f"name_{uuid.uuid4()}"
+        submission = {
+            "name": name,
+            "description": f"test submission for {workflow} workflow",
+            "projectId": project_id or default_project_id,
+            "workflow": workflow,
+        }
+        submission_id = await post_submission(client_logged_in, submission)
+        submissions_ids.append(submission_id)
+        return submission_id, submission
+
+    yield _create_submission
+
+    for submission_id in submissions_ids:
+        await delete_submission(client_logged_in, submission_id,
+                                ignore_published_error=True,
+                                ignore_not_found_error=True)
 
 
 @pytest.fixture(name="client")
@@ -90,22 +117,6 @@ async def fixture_client_logged_in() -> AsyncGenerator[aiohttp.ClientSession]:
         yield client
 
 
-@pytest.fixture(name="admin_token")
-async def fixture_admin_token():
-    """Get JWT with admin user credentials used in ingest."""
-    async with aiohttp.ClientSession() as client:
-        params = {
-            "sub": admin_test_user,
-            "family": admin_test_user_family,
-            "given": admin_test_user_given,
-        }
-
-        await client.get(f"{mock_auth_url}/setmock?{urlencode(params)}")
-        admin_token = await get_mock_admin_token(client)
-
-        return admin_token
-
-
 @pytest.fixture(name="user_id")
 async def fixture_user_id() -> str:
     """Return the user id for the default authenticated user."""
@@ -122,58 +133,6 @@ async def fixture_project_id() -> str:
 async def fixture_project_id_2() -> str:
     """Return the second project id for the authenticated user."""
     return "2000"
-
-
-async def make_submission(client_logged_in: aiohttp.ClientSession, project_id: str, workflow: str):
-    """Create a submission to be reused across tests."""
-    submission = {
-        "name": f"{workflow} submission test",
-        "description": f"test submission for {workflow} workflow",
-        "projectId": project_id,
-        "workflow": workflow,
-    }
-    submission_id = await post_submission(client_logged_in, submission)
-
-    return submission_id
-
-
-@pytest.fixture(name="submission_fega")
-async def fixture_submission_fega(client_logged_in: aiohttp.ClientSession, project_id: str):
-    """Create a FEGA submission to be reused across tests that are grouped under the same scope."""
-    submission_id = await make_submission(client_logged_in, project_id, "FEGA")
-    yield submission_id
-
-    try:
-        await delete_submission(client_logged_in, submission_id)
-    except AssertionError:
-        # Published submissions can't be deleted
-        LOG.debug("Attempted to delete %r, which failed", submission_id)
-
-
-@pytest.fixture(name="submission_bigpicture")
-async def fixture_submission_bigpicture(client_logged_in: aiohttp.ClientSession, project_id: str):
-    """Create a Bigpicture submission to be reused across tests that are grouped under the same scope."""
-    submission_id = await make_submission(client_logged_in, project_id, "Bigpicture")
-    yield submission_id
-
-    try:
-        await delete_submission(client_logged_in, submission_id)
-    except AssertionError:
-        # Published submissions can't be deleted
-        LOG.debug("Attempted to delete %r, which failed", submission_id)
-
-
-@pytest.fixture(name="submission_sdsx")
-async def fixture_submission_sdsx(client_logged_in: aiohttp.ClientSession, project_id: str):
-    """Create a SDSX submission to be reused across tests that are grouped under the same scope."""
-    submission_id = await make_submission(client_logged_in, project_id, "SDSX")
-    yield submission_id
-
-    try:
-        await delete_submission(client_logged_in, submission_id)
-    except AssertionError:
-        # Published submissions can't be deleted
-        LOG.debug("Attempted to delete %r, which failed", submission_id)
 
 
 @pytest.fixture(name="mongo")

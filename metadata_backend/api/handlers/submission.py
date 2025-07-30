@@ -1,181 +1,182 @@
 """Handle HTTP methods for server."""
 
+import json
 import re
 from datetime import datetime
 from math import ceil
 from typing import Any
 
-import ujson
 from aiohttp import web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
 from ...helpers.logger import LOG
-from ...helpers.parser import str_to_bool
 from ...helpers.validator import JSONValidator
 from ..auth import get_authorized_user_id
+from ..models import File, Rems, SubmissionWorkflow
 from ..operators.file import FileOperator
-from ..operators.object import ObjectOperator
-from ..operators.object_xml import XMLObjectOperator
-from ..operators.submission import SubmissionOperator
-from ..services.project import ProjectService
+from ..resources import (
+    get_file_service,
+    get_mongo_client,
+    get_project_service,
+    get_registration_service,
+    get_submission_service,
+)
+from .common import to_json
 from .restapi import RESTAPIIntegrationHandler
 
 
 class SubmissionAPIHandler(RESTAPIIntegrationHandler):
     """API Handler for submissions."""
 
+    @staticmethod
+    async def check_submission_retrievable(req: Request, submission_id: str) -> None:
+        """
+        Check the that user is allowed to retrieve the submission.
+
+        :param req: The aiohttp request.
+        :param submission_id: The submission id.
+        """
+        submission_service = get_submission_service(req)
+        project_service = get_project_service(req)
+
+        # Check that submission exists.
+        await submission_service.check_submission(submission_id)
+
+        # Check that the user owns the submission.
+        user_id = get_authorized_user_id(req)
+        project_id = await submission_service.get_project_id(submission_id)
+        await project_service.verify_user_project(user_id, project_id)
+
+    @staticmethod
+    async def check_submission_modifiable(req: Request, submission_id: str) -> None:
+        """
+        Check the that user is allowed to modify the submission.
+
+        :param req: The aiohttp request.
+        :param submission_id: The submission id.
+        """
+        submission_service = get_submission_service(req)
+        project_service = get_project_service(req)
+
+        # Check that submission exists.
+        await submission_service.check_submission(submission_id)
+
+        # Check that the user owns the submission.
+        user_id = get_authorized_user_id(req)
+        project_id = await submission_service.get_project_id(submission_id)
+        await project_service.verify_user_project(user_id, project_id)
+
+        # Check that the submission has not been published.
+        await submission_service.check_not_published(submission_id)
+
     async def get_submissions(self, req: Request) -> Response:
-        """Get a set of submissions owned by the project with pagination values.
+        """Get submissions owned by the project with pagination values. Optionally filter by submission name.
 
         :param req: GET Request
-        :returns: JSON list of submissions available for the user
+        :returns: Submissions owned by the project.
         """
         user_id = get_authorized_user_id(req)
-
-        page = self._get_page_param(req, "page", 1)
-        per_page = self._get_page_param(req, "per_page", 5)
         project_id = self._get_param(req, "projectId")
-        sort = {"date": True, "score": False, "modified": False}
 
-        db_client = req.app["db_client"]
-        project_service: ProjectService = req.app["project_service"]
+        project_service = get_project_service(req)
+        submission_service = get_submission_service(req)
 
         # Check that user is affiliated with the project.
         await project_service.verify_user_project(user_id, project_id)
 
-        submission_query: dict[str, str | dict[str, str | bool | float]] = {"projectId": project_id}
-        # Check if only published or draft submissions are requested
-        if "published" in req.query:
-            pub_param = req.query.get("published", "").title()
-            if pub_param in {"True", "False"}:
-                submission_query["published"] = {"$eq": str_to_bool(pub_param)}
-            else:
-                reason = "'published' parameter must be either 'true' or 'false'"
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
+        page = self._get_page_param(req, "page", 1)
+        page_size = self._get_page_param(req, "per_page", 5)
 
-        if "name" in req.query:
-            name_param = req.query.get("name", "")
-            if name_param:
-                submission_query["$text"] = {"$search": name_param}
-            sort["score"] = True
-            sort["date"] = False
+        def param_to_bool(param_name: str) -> bool | None:
+            param_value = req.query.get(param_name)
+            if param_value:
+                if param_value.lower() not in {"true", "false"}:
+                    raise web.HTTPBadRequest(reason=f"'{param_name}' parameter must be either 'true' or 'false'")
+                return param_value.lower() == "true"
+            return None
 
-        format_incoming = "%Y-%m-%d"
-        format_query = "%Y-%m-%d %H:%M:%S"
-        if "date_created_start" in req.query or "date_created_end" in req.query:
-            date_param_start = req.query.get("date_created_start", "")
-            date_param_end = req.query.get("date_created_end", "")
+        def param_to_date(param_name: str) -> datetime | None:
+            param_value = req.query.get(param_name)
+            date_format = "%Y-%m-%d"
+            try:
+                return datetime.strptime(param_value, date_format) if param_value else None
+            except ValueError:
+                raise web.HTTPBadRequest(
+                    reason=f"'{param_name}' parameter must be formated as {date_format}"
+                ) from ValueError
 
-            if datetime.strptime(date_param_start, format_incoming) and datetime.strptime(
-                date_param_end, format_incoming
-            ):
-                query_start = datetime.strptime(date_param_start + " 00:00:00", format_query).timestamp()
-                query_end = datetime.strptime(date_param_end + " 23:59:59", format_query).timestamp()
-                submission_query["dateCreated"] = {"$gte": query_start, "$lte": query_end}
-            else:
-                reason = f"'date_created_start' and 'date_created_end' parameters must be formated as {format_incoming}"
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
-
-        if "date_modified_start" in req.query or "date_modified_end" in req.query:
-            date_param_start = req.query.get("date_modified_start", "")
-            date_param_end = req.query.get("date_modified_end", "")
-
-            if datetime.strptime(date_param_start, format_incoming) and datetime.strptime(
-                date_param_end, format_incoming
-            ):
-                query_start = datetime.strptime(date_param_start + " 00:00:00", format_query).timestamp()
-                query_end = datetime.strptime(date_param_end + " 23:59:59", format_query).timestamp()
-                submission_query["lastModified"] = {
-                    "$gte": query_start,
-                    "$lte": query_end,
-                }
-            else:
-                reason = (
-                    f"'date_modified_start' and 'date_modified_end' parameters must be formated as {format_incoming}"
-                )
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
-
-        if "name" in req.query and "date_created_start" in req.query:
-            sort["score"] = True
-            sort["date"] = True
-
-        if "name" in req.query and "date_modified_start" in req.query and "date_created_start" not in req.query:
-            sort["score"] = True
-            sort["modified"] = True
-            sort["date"] = False
-
-        submission_operator = SubmissionOperator(db_client)
-        submissions, total_submissions = await submission_operator.query_submissions(
-            submission_query, page, per_page, sort
+        submissions, total_submissions = await submission_service.get_submissions(
+            project_id,
+            name=req.query.get("name"),
+            is_published=param_to_bool("published"),
+            created_start=param_to_date("date_created_start"),
+            created_end=param_to_date("date_created_end"),
+            modified_start=param_to_date("date_modified_start"),
+            modified_end=param_to_date("date_modified_end"),
+            page=page,
+            page_size=page_size,
         )
 
-        result = ujson.dumps(
+        body = to_json(
             {
                 "page": {
                     "page": page,
-                    "size": per_page,
-                    "totalPages": ceil(total_submissions / per_page),
+                    "size": page_size,
+                    "totalPages": ceil(total_submissions / page_size),
                     "totalSubmissions": total_submissions,
                 },
                 "submissions": submissions,
-            },
-            escape_forward_slashes=False,
+            }
         )
 
         url = f"{req.scheme}://{req.host}{req.path}"
-        link_headers = self._header_links(url, page, per_page, total_submissions)
+        link_headers = self._pagination_header_links(url, page, page_size, total_submissions)
         LOG.debug("Pagination header links: %r", link_headers)
         LOG.info(
             "Querying for project: %r submissions resulted in %d submissions.",
             project_id,
             total_submissions,
         )
+
         return web.Response(
-            body=result,
+            body=body,
             status=200,
             headers=link_headers,
             content_type="application/json",
         )
 
     async def post_submission(self, req: Request) -> Response:
-        """Save submission object to database.
+        """Create new submission.
 
         :param req: POST request
         :returns: JSON response containing submission ID for created submission
         """
         user_id = get_authorized_user_id(req)
+        project_service = get_project_service(req)
+        submission_service = get_submission_service(req)
 
-        db_client = req.app["db_client"]
-        project_service: ProjectService = req.app["project_service"]
+        content = await self._json_data(req)
 
-        content = await self._get_data(req)
-
-        JSONValidator(content, "submission").validate
+        JSONValidator(content, "submission").validate()
 
         # Check that user is affiliated with the project.
         await project_service.verify_user_project(user_id, content["projectId"])
 
         # Check if the name of the submission is unique within the project
-        operator = SubmissionOperator(db_client)
-        existing_submission, _ = await operator.query_submissions(
-            {"projectId": content["projectId"], "name": content["name"]}, page_num=1, page_size=1
-        )
+        existing_submission = await submission_service.get_submission_by_name(content["projectId"], content["name"])
         if existing_submission:
             reason = f"Submission with name '{content['name']}' already exists in project {content['projectId']}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        submission = await operator.create_submission(content)
+        submission_id = await submission_service.add_submission(content)
 
-        body = ujson.dumps({"submissionId": submission}, escape_forward_slashes=False)
+        body = to_json({"submissionId": submission_id})
 
         url = f"{req.scheme}://{req.host}{req.path}"
-        location_headers = CIMultiDict(Location=f"{url}/{submission}")
-        LOG.info("POST new submission with ID: %r was successful.", submission)
+        location_headers = CIMultiDict(Location=f"{url}/{submission_id}")
+        LOG.info("POST new submission with ID: %r was successful.", submission_id)
         return web.Response(
             body=body,
             status=201,
@@ -191,62 +192,53 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         :returns: JSON response containing submission object
         """
         submission_id = req.match_info["submissionId"]
-        db_client = req.app["db_client"]
-        operator = SubmissionOperator(db_client)
+        submission_service = get_submission_service(req)
 
-        await operator.check_submission_exists(submission_id)
+        # Check that the submission can be retrieved by the user.
+        await self.check_submission_retrievable(req, submission_id)
 
-        await self._handle_check_ownership(req, "submission", submission_id)
-
-        submission = await operator.read_submission(submission_id)
+        submission = await submission_service.get_submission_by_id(submission_id)
 
         LOG.info("GET submission with ID: %r was successful.", submission_id)
         return web.Response(
-            body=ujson.dumps(submission, escape_forward_slashes=False),
+            body=to_json(submission),
             status=200,
             content_type="application/json",
         )
 
     async def patch_submission(self, req: Request) -> Response:
-        """Update info of a specific submission object based on its submission id.
+        """Update submission document.
 
-        Submission initially only allows the 'name' and 'description' values to be patched.
+        The DOI and REMS sub-documents can be replaced but the submission repository
+        prevents them from being removed.
+
+        The submission document can be updated by the user, however, some fields
+        can't be removed or changed. If the following fields are absent from the
+        updated document then the existing value in the current document is preserved:
+        name, description, doiInfo, rems, projectId, workflow, linkedFolder. Furthermore,
+        if the following fields are changed then the existing value in the current document
+        is preserved: projectId, workflow, linkedFolder.
 
         :param req: PATCH request
         :returns: JSON response containing submission ID for updated submission
         """
         submission_id = req.match_info["submissionId"]
-        db_client = req.app["db_client"]
+        submission_service = get_submission_service(req)
 
-        operator = SubmissionOperator(db_client)
-
-        # Check submission existence, ownership and published state
-        await operator.check_submission_exists(submission_id)
-        await self._handle_check_ownership(req, "submission", submission_id)
-        await operator.check_submission_published(submission_id, req.method)
+        # Check that the submission can be modified by the user.
+        await self.check_submission_modifiable(req, submission_id)
 
         # Check patch operations in request are valid
-        data = await self._get_data(req)
+        data = await self._json_data(req)
         if not isinstance(data, dict):
             reason = "Patch submission operation should be provided as a JSON object"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        patch_ops = []
-        for key, value in data.items():
-            if key not in {"name", "description"}:
-                reason = f"Patch submission operation only accept the fields 'name', or 'description'. Provided '{key}'"
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
-            patch_ops.append({"op": "replace", "path": f"/{key}", "value": value})
-        # we update the submission last modified date
-        _now = int(datetime.now().timestamp())
-        patch_ops.append({"op": "replace", "path": "/lastModified", "value": _now})
+        await submission_service.update_submission(submission_id, data)
 
-        upd_submission = await operator.update_submission(submission_id, patch_ops)
-
-        body = ujson.dumps({"submissionId": upd_submission}, escape_forward_slashes=False)
-        LOG.info("PATCH submission with ID: %r was successful.", upd_submission)
+        body = to_json({"submissionId": submission_id})
+        LOG.info("PATCH submission with ID: %r was successful.", submission_id)
         return web.Response(body=body, status=200, content_type="application/json")
 
     async def delete_submission(self, req: Request) -> web.HTTPNoContent:
@@ -257,55 +249,59 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         """
 
         submission_id = req.match_info["submissionId"]
-        db_client = req.app["db_client"]
-        operator = SubmissionOperator(db_client)
+        submission_service = get_submission_service(req)
 
-        # Check submission existence, ownership and published state
-        await operator.check_submission_exists(submission_id)
-        await self._handle_check_ownership(req, "submission", submission_id)
-        await operator.check_submission_published(submission_id, req.method)
+        # Check that the submission can be modified by the user.
+        await self.check_submission_modifiable(req, submission_id)
 
-        obj_ops = ObjectOperator(db_client)
-        xml_ops = XMLObjectOperator(db_client)
+        await submission_service.delete_submission(submission_id)  # Metadata objects and files are deleted as well.
 
-        submission = await operator.read_submission(submission_id)
-
-        for obj in submission["drafts"] + submission["metadataObjects"]:
-            await obj_ops.delete_metadata_object(obj["schema"], obj["accessionId"])
-            await xml_ops.delete_metadata_object(f"xml-{obj['schema']}", obj["accessionId"])
-
-        _submission_id = await operator.delete_submission(submission_id)
-
-        LOG.info("DELETE submission with ID: %r was successful.", _submission_id)
+        LOG.info("DELETE submission with ID: %r was successful.", submission_id)
         return web.HTTPNoContent()
 
-    async def patch_submission_doi_rems(self, req: Request) -> Response:
-        """Add or replace extra metadata (DOI and REMS info) of a submission.
+    async def patch_submission_doi(self, req: Request) -> Response:
+        """Add or replace DOI information.
 
-        :param req: PATCH request with metadata schema in the body
+        :param req: PATCH request with metadata in the body
         :returns: JSON response containing submission ID for updated submission
         """
         submission_id = req.match_info["submissionId"]
-        db_client = req.app["db_client"]
-        operator = SubmissionOperator(db_client)
+        submission_service = get_submission_service(req)
 
-        # Check submission existence, ownership and published state
-        await operator.check_submission_exists(submission_id)
-        await self._handle_check_ownership(req, "submission", submission_id)
-        await operator.check_submission_published(submission_id, req.method)
+        # Check that the submission can be modified by the user.
+        await self.check_submission_modifiable(req, submission_id)
 
-        data = await self._get_data(req)
+        data = await self._json_data(req)
+        await submission_service.update_doi_info(submission_id, data)
 
-        if req.path.endswith("doi"):
-            schema = "doiInfo"
-        elif req.path.endswith("rems"):
-            schema = "rems"
-            await self.check_rems_ok({"rems": data})
-        else:
-            raise web.HTTPNotFound(reason=f"'{req.path}' does not exist")
+        body = to_json({"submissionId": submission_id})
+        return web.Response(body=body, status=200, content_type="application/json")
 
-        upd_submission_id = await self.update_object_in_submission(operator, submission_id, schema, data)
-        body = ujson.dumps({"submissionId": upd_submission_id}, escape_forward_slashes=False)
+    async def patch_submission_rems(self, req: Request) -> Response:
+        """Add or replace REMS information.
+
+        REMS example:
+        {
+             "workflowId": 1, # DAC
+             "organizationId": "CSC",
+             "licenses": [1] # POLICY
+        }
+
+        :param req: PATCH request with metadata in the body
+        :returns: JSON response containing submission ID for updated submission
+        """
+        submission_id = req.match_info["submissionId"]
+        submission_service = get_submission_service(req)
+
+        # Check that the submission can be modified by the user.
+        await self.check_submission_modifiable(req, submission_id)
+
+        data = await self._json_data(req)
+        rems = Rems(**data)
+        await self.check_rems_ok(rems)
+        await submission_service.update_rems(submission_id, rems)
+
+        body = to_json({"submissionId": submission_id})
         return web.Response(body=body, status=200, content_type="application/json")
 
     async def patch_submission_files(self, req: Request) -> Response:
@@ -318,14 +314,14 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         :raises: HTTPBadRequest if there are issues with the JSON payload
         """
         submission_id = req.match_info["submissionId"]
-        db_client = req.app["db_client"]
-        submission_operator = SubmissionOperator(db_client)
+
+        file_service = get_file_service(req)
+
+        db_client = get_mongo_client(req)
         file_operator = FileOperator(db_client)
 
-        # Check submission existence, ownership, and published state
-        await submission_operator.check_submission_exists(submission_id)
-        await self._handle_check_ownership(req, "submission", submission_id)
-        await submission_operator.check_submission_published(submission_id, req.method)
+        # Check that the submission can be modified by the user.
+        await self.check_submission_modifiable(req, submission_id)
 
         try:
             data: list[dict[str, Any]] = await req.json()
@@ -340,50 +336,14 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        submission = await submission_operator.read_submission(submission_id)
-        current_files = {file["accessionId"]: file for file in submission.get("files", [])}
-
-        # Add/update new files with the current file list
+        # Add new files.
         for file in data:
-            # Ensure file exists in the project
-            await file_operator.read_file(file["accessionId"], file["version"])
-
-            # Check if objectId exists in the specified schema collection
-            if "objectId" in file:
-                object_id = file["objectId"]
-                required_keys = {"accessionId", "schema"}
-                if set(object_id.keys()) != required_keys:
-                    reason = "The objectId value must contain object with only 'accessionId' and 'schema' keys."
-                    LOG.error(reason)
-                    raise web.HTTPBadRequest(reason=reason)
-
-                schema = object_id["schema"]
-                accession_id = object_id["accessionId"]
-                if not any(
-                    obj["schema"] == schema and obj["accessionId"] == accession_id
-                    for obj in submission["metadataObjects"]
-                ):
-                    reason = (
-                        f"A {schema} object with accessionId '{accession_id}' does not exist in the submission's list "
-                        "of metadata objects."
-                    )
-                    LOG.error(reason)
-                    raise web.HTTPBadRequest(reason=reason)
-
-            if file["accessionId"] not in current_files:
-                file["status"] = file.get("status", "added")  # Default status to "added" if not provided
-            current_files[file["accessionId"]] = file
-
-        # Check validity of updated files list in submission
-        updated_files = list(current_files.values())
-        submission["files"] = updated_files
-        JSONValidator(submission, "submission").validate
-
-        # Update the submission in the database
-        await submission_operator.update_submission(
-            submission_id,
-            [{"op": "replace", "path": "/files", "value": updated_files}],
-        )
+            # Ensure file exists in the project.
+            file_info = await file_operator.read_file(file["accessionId"], file["version"])
+            path = file_info["path"]
+            if not await file_service.is_file_by_path(submission_id, path):
+                # Add file as it does not exist yet.
+                await file_service.add_file(File(submission_id=submission_id, path=path, bytes=file_info["bytes"]))
 
         LOG.info("PATCH files in submission with ID: %r was successful.", submission_id)
         return web.HTTPNoContent()
@@ -397,28 +357,22 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         :returns: HTTP No Content response
         """
         submission_id = req.match_info["submissionId"]
-        db_client = req.app["db_client"]
-        operator = SubmissionOperator(db_client)
-        data: dict[str, str] = await self._get_data(req)
+        submission_service = get_submission_service(req)
 
-        # Check submission existence, ownership and published state
-        await operator.check_submission_exists(submission_id)
-        await self._handle_check_ownership(req, "submission", submission_id)
-        await operator.check_submission_published(submission_id, req.method)
+        data: dict[str, str] = await self._json_data(req)
+
+        # Check that the submission can be modified by the user.
+        await self.check_submission_modifiable(req, submission_id)
 
         # Container name limitations in SD Connect
         pattern = re.compile(r"^[0-9a-zA-Z\.\-_]{3,}$")
 
+        folder = data["linkedFolder"]
         try:
-            if data["linkedFolder"] == "":
+            if folder == "":
                 pass
-            elif pattern.match(data["linkedFolder"]):
-                # Check if already linked
-                folder_exists = await operator.check_submission_linked_folder(submission_id)
-                if folder_exists:
-                    reason = f"Updating submission {submission_id} failed. It already has a linked folder."
-                    LOG.error(reason)
-                    raise web.HTTPBadRequest(reason=reason)
+            elif pattern.match(folder):
+                await submission_service.update_folder(submission_id, folder)  # Changing folder is not supported.
             else:
                 reason = "Provided an invalid linkedFolder."
                 LOG.error(reason)
@@ -428,33 +382,49 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason) from exc
 
-        update_op = [{"op": "replace", "path": "/linkedFolder", "value": data["linkedFolder"]}]
-        await operator.update_submission(submission_id, update_op)
         LOG.info("PUT a linked folder in submission with ID: %r was successful.", submission_id)
         return web.HTTPNoContent()
 
     async def get_submission_files(self, req: Request) -> Response:
-        """Get files from a submission with the version present in submission.
+        """Get files from a submission.
 
         :param req: GET request
         :returns: HTTP No Content response
         """
         submission_id = req.match_info["submissionId"]
-        db_client = req.app["db_client"]
-        submission_operator = SubmissionOperator(db_client)
 
-        # Check submission existence, ownership and published state
-        await submission_operator.check_submission_exists(submission_id)
-        await self._handle_check_ownership(req, "submission", submission_id)
-        await submission_operator.check_submission_published(submission_id, req.method)
+        file_service = get_file_service(req)
 
-        file_operator = FileOperator(db_client)
+        # Check that the submission can be retrieved by the user.
+        await self.check_submission_retrievable(req, submission_id)
 
-        files = await file_operator.read_submission_files(submission_id)
+        files = [file async for file in file_service.get_files(submission_id)]
 
         LOG.info("GET files for submission with ID: %r was successful.", submission_id)
         return web.Response(
-            body=ujson.dumps(files, escape_forward_slashes=False),
+            body=json.dumps([f.json_dump() for f in files]),
+            status=200,
+            content_type="application/json",
+        )
+
+    async def get_submission_registrations(self, req: Request) -> Response:
+        """Get registrations from a submission.
+
+        :param req: GET request
+        :returns: HTTP No Content response
+        """
+        submission_id = req.match_info["submissionId"]
+
+        registration_service = get_registration_service(req)
+
+        # Check that the submission can be retrieved by the user.
+        await self.check_submission_retrievable(req, submission_id)
+
+        registrations = await registration_service.get_registrations(submission_id)
+
+        LOG.info("GET files for submission with ID: %r was successful.", submission_id)
+        return web.Response(
+            body=json.dumps([r.json_dump() for r in registrations]),
             status=200,
             content_type="application/json",
         )
@@ -467,29 +437,23 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         :returns: HTTP No Content response
         """
         submission_id = req.match_info["submissionId"]
-        file_accession_id = req.match_info["fileId"]
-        db_client = req.app["db_client"]
-        submission_operator = SubmissionOperator(db_client)
+        file_id = req.match_info["fileId"]
 
-        # Check submission exists and is not already published
-        await submission_operator.check_submission_exists(submission_id)
-        await submission_operator.check_submission_published(submission_id, req.method)
+        file_service = get_file_service(req)
 
-        await self._handle_check_ownership(req, "submission", submission_id)
+        # Check that the submission can be modified by the user.
+        await self.check_submission_modifiable(req, submission_id)
 
-        file_operator = FileOperator(db_client)
-
-        file_in_submission = await file_operator.check_submission_has_file(submission_id, file_accession_id)
-
-        if not file_in_submission:
-            reason = f"File with accession id {file_accession_id} not found in submission {submission_id}"
+        if (await file_service.get_file_by_id(file_id)).submission_id != submission_id:
+            reason = f"File with accession id {file_id} not found in submission {submission_id}"
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
 
-        await file_operator.remove_file_submission(file_accession_id, submission_id=submission_id)
+        await file_service.delete_file_by_id(file_id)
+
         LOG.info(
             "Removing file: %r from submission with ID: %r was successful.",
-            file_accession_id,
+            file_id,
             submission_id,
         )
         return web.HTTPNoContent()
@@ -502,53 +466,41 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         user_id = get_authorized_user_id(req)
 
         submission_id = req.match_info["submissionId"]
-        db_client = req.app["db_client"]
-        submission_operator = SubmissionOperator(db_client)
-        file_operator = FileOperator(db_client)
 
-        # Check submission exists and is not already published
-        await submission_operator.check_submission_exists(submission_id)
-        await self._handle_check_ownership(req, "submission", submission_id)
-        await submission_operator.check_submission_published(submission_id, req.method)
+        submission_service = get_submission_service(req)
+        file_service = get_file_service(req)
 
-        # Get submission files
-        submission_files = await submission_operator.get_submission_field_list(submission_id, "files")
+        # Check that the submission can be modified by the user.
+        await self.check_submission_modifiable(req, submission_id)
+
+        workflow = await submission_service.get_workflow(submission_id)
+        if workflow == SubmissionWorkflow.SDS:
+            # Use submission id as the dataset id for CSC submissions.
+            dataset_id = submission_id
+        else:
+            raise NotImplementedError(f"Ingest is not implemented for {workflow} submissions.")
 
         polling_file_data = {}
-        for submission_file in submission_files:
-            file_accession_id = submission_file["accessionId"]
-            file = await file_operator.read_file(file_accession_id)
-            file_path = file["path"]
+        async for file in file_service.get_files(submission_id):
             # Trigger file ingestion
             await self.admin_handler.ingest_file(
                 req,
                 {
                     "user": user_id,
                     "submissionId": submission_id,
-                    "filepath": file_path,
-                    "accessionId": file_accession_id,
+                    "filepath": file.path,
+                    "accessionId": file.file_id,
                 },
             )
-            polling_file_data[file_path] = file_accession_id
+            polling_file_data[file.path] = file.file_id
 
         LOG.info("Polling for status 'verified' in submission with ID: %r", submission_id)
         await self.start_file_polling(
-            req, polling_file_data, file_operator, {"user": user_id, "submissionId": submission_id}, "verified"
+            req, polling_file_data, {"user": user_id, "submissionId": submission_id}, "verified"
         )
         LOG.info("Polling for status 'ready' in submission with ID: %r", submission_id)
-        await self.start_file_polling(
-            req, polling_file_data, file_operator, {"user": user_id, "submissionId": submission_id}, "ready"
-        )
+        await self.start_file_polling(req, polling_file_data, {"user": user_id, "submissionId": submission_id}, "ready")
 
-        ids = await submission_operator.get_collection_objects(submission_id, "dataset")
-        bp_ids = await submission_operator.get_collection_objects(submission_id, "bpdataset")
-        ids = ids + bp_ids
-
-        if len(ids) != 1:
-            reason = f"Submission {submission_id} has {len(ids)} datasets, required 1"
-            LOG.exception(reason)
-            raise web.HTTPInternalServerError(reason=reason)
-        dataset_id = ids[0]
         await self.admin_handler.create_dataset(
             req,
             {
@@ -557,6 +509,8 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
                 "datasetId": dataset_id,
             },
         )
+
+        await self.admin_handler.release_dataset(req, dataset_id)
 
         LOG.info("Ingesting files for submission with ID: %r was successful.", submission_id)
 

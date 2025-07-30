@@ -429,11 +429,11 @@ class XMLToJSONParser:
                     raise web.HTTPInternalServerError(reason=reason)
                 if _schema_type != "submission":
                     for obj in results:
-                        JSONValidator(obj, _schema_type).validate
+                        JSONValidator(obj, _schema_type).validate()
             else:
                 # Metadata set only contained one child element
                 if _schema_type != "submission":
-                    JSONValidator(result[obj_name], _schema_type).validate
+                    JSONValidator(result[obj_name], _schema_type).validate()
 
             return result[obj_name], xml_elements
 
@@ -441,7 +441,7 @@ class XMLToJSONParser:
             # If the object name is not found in the result, we assume the metadata content was a singular element
             # This structure is exclusive to the BP metadata since version 2.0.0
             if _schema_type != "submission":
-                JSONValidator(result, _schema_type).validate
+                JSONValidator(result, _schema_type).validate()
             return result, xml_elements
 
     @staticmethod
@@ -546,7 +546,8 @@ class XMLToJSONParser:
 
         return new_items
 
-    def assign_accession_to_xml_content(self, schema_type: str, xml: str, accessionId: str) -> str:
+    @staticmethod
+    def assign_accession_to_bp_xml(schema_type: str, xml: str, accessionId: str) -> str:
         """Add internal accession ID to BP related XML metadata object.
 
         We can assume that the method receives a valid XML metadata object according to the BP metadata schemas.
@@ -585,7 +586,7 @@ class XMLToJSONParser:
         modified_xml: str = ET.tostring(root, encoding="unicode")
 
         # Double check that altered xml content is still valid
-        schema = self._load_schema(schema_type)
+        schema = XMLToJSONParser._load_schema(schema_type)
         LOG.info("%r XML schema loaded.", schema_type)
         validator = XMLValidator(schema, modified_xml)
         if not validator.is_valid:
@@ -595,7 +596,8 @@ class XMLToJSONParser:
 
         return modified_xml
 
-    def get_accession_ids_from_xml_content(self, schema_type: str, xml: dict[str, Any] | str) -> list[str]:
+    @staticmethod
+    def get_accessions_from_bp_xml(schema_type: str, xml: str) -> list[str]:
         """Get accession IDs from BP related XML metadata objects.
 
         We can assume that the method receives valid XML metadata objects according to the BP metadata schemas.
@@ -686,7 +688,7 @@ class CSVToJSONParser:
             else:
                 _tmp["sampleData"] = {"gender": _tmp["gender"]}
             _tmp.pop("gender")
-            JSONValidator(_tmp, schema_type.lower()).validate
+            JSONValidator(_tmp, schema_type.lower()).validate()
             _parsed.append(_tmp)
 
         LOG.info("CSV was successfully converted to %d JSON object(s).", len(_parsed))

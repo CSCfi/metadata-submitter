@@ -55,10 +55,10 @@ test_fega_xml_files = [
 test_bigpicture_xml_files = [
     ("bpimage", "images_single.xml"),
     ("bpdataset", "dataset.xml"),
-    ("bpobservation", "observations.xml"),
-    ("bpannotation", "annotations.xml"),
+    ("bpobservation", "observation.xml"),
+    ("bpannotation", "annotation.xml"),
 ]
-test_json_files = [
+test_fega_json_files = [
     ("study", "SRP000539.json", "SRP000539.json"),
     ("sample", "SRS001433.json", "SRS001433.json"),
     ("dataset", "dataset.json", "dataset.json"),
@@ -101,8 +101,6 @@ files_url = f"{base_url}{API_PREFIX}/files"
 taxonomy_url = f"{base_url}{API_PREFIX}/taxonomy"
 admin_url = f"{os.getenv("ADMIN_URL", "http://localhost:8004")}"
 auth = aiohttp.BasicAuth(os.getenv("METAX_USER", "sd"), os.getenv("METAX_PASS", "test"))
-beacon_discovery_url = os.getenv("BEACON_DISCOVERY_URL", "https://bp-demo.rahtiapp.fi/")
-metax_discovery_url = os.getenv("METAX_DISCOVERY_URL", "https://etsin.fairdata.fi/dataset/")
 # to form direct contact to db with e.g. create_submission()
 DATABASE = os.getenv("MONGO_DATABASE", "default")
 AUTHDB = os.getenv("MONGO_AUTHDB", "admin")

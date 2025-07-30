@@ -26,13 +26,7 @@
         {
             "title": "Files",
             "required": true,
-            "schemas": [
-                {
-                    "name": "file",
-                    "required": true,
-                    "allowMultipleObjects": true
-                }
-            ]
+            "schemas": []
         },
         {
             "title": "Describe",
@@ -64,13 +58,9 @@
                 {
                     "name": "dataset",
                     "required": true,
-                    "allowMultipleObjects": true,
+                    "allowMultipleObjects": false,
                     "requires": [
                         "policy"
-                    ],
-                    "requires_or": [
-                        "run",
-                        "analysis"
                     ]
                 }
             ]
@@ -87,33 +77,26 @@
             ]
         }
     ],
-    "publish": [
-        {
-            "name": "datacite",
-            "endpoint": "datacite",
-            "service": "pid",
-            "requiredSchemas": [
-                "datacite"
+    "publish": {
+        "datacite": {
+            "service": "csc",
+            "schemas": [
+                "dataset",
+                "study"
             ]
         },
-        {
-            "name": "metax",
-            "endpoint": "metax",
-            "requires": [
-                "datacite"
+        "rems": {
+            "service": "csc",
+            "schemas": [
+                "dataset"
             ]
         },
-        {
-            "name": "rems",
-            "endpoint": "rems",
-            "requires": [
-                "datacite"
-            ],
-            "requiredSchemas": [
-                "dac",
-                "policy"
+        "discovery": {
+            "service": "metax",
+            "schemas": [
+                "dataset",
+                "study"
             ]
         }
-    ],
-    "discovery_service": "metax"
+    }
 }

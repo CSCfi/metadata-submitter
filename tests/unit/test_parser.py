@@ -193,7 +193,7 @@ class ParserTestCase(unittest.TestCase):
 
         Tests for some values that converted JSON should have.
         """
-        observation_xml = self.load_file_to_text("bpobservation", "observations.xml")
+        observation_xml = self.load_file_to_text("bpobservation", "observation.xml")
         observation_json, output_xml = self.xml_parser.parse("bpobservation", observation_xml)
         self.assertEqual("Observation_zxczxvxzc", observation_json["alias"])
         self.assertEqual("Observer_vbnvbnvbm", observation_json["observerRef"][0]["alias"])
@@ -228,7 +228,7 @@ class ParserTestCase(unittest.TestCase):
 
         Tests for some values that converted JSON should have.
         """
-        annotation_xml = self.load_file_to_text("bpannotation", "annotations.xml")
+        annotation_xml = self.load_file_to_text("bpannotation", "annotation.xml")
         annotation_json, output_xml = self.xml_parser.parse("bpannotation", annotation_xml)
         self.assertEqual("Annotation_12345", annotation_json["alias"])
         self.assertEqual("Image_12345", annotation_json["imageRef"]["alias"])
@@ -267,21 +267,21 @@ class ParserTestCase(unittest.TestCase):
             self.assertEqual(xml_list[2], "<SAMPLE_SET>\n    <BLOCK/>\n</SAMPLE_SET>")
             self.assertEqual(xml_list[3], "<SAMPLE_SET>\n    <SLIDE/>\n</SAMPLE_SET>")
 
-    def test_assign_accession_to_xml_content(self):
+    def test_assign_accession_to_bp_xml(self):
         """Test that accession ID can be added into BP related metadata XML."""
         bp_image_xml = self.load_file_to_text("bpimage", "images_single.xml")
-        mod_xml = self.xml_parser.assign_accession_to_xml_content("bpimage", bp_image_xml, "test123456")
+        mod_xml = self.xml_parser.assign_accession_to_bp_xml("bpimage", bp_image_xml, "test123456")
         self.assertIn('accession="test123456"', mod_xml)
 
         # Test that a non BP related xml content doesn't get the accession ID added in
         study_xml = self.load_file_to_text("study", "SRP000539.xml")
-        mod_xml = self.xml_parser.assign_accession_to_xml_content("study", study_xml, "test123456")
+        mod_xml = self.xml_parser.assign_accession_to_bp_xml("study", study_xml, "test123456")
         self.assertNotIn('accession="test123456"', mod_xml)
 
-    def test_get_accession_ids_from_xml_content(self):
+    def test_get_accessions_from_bp_xml(self):
         """Test that accession IDs can be extracted from BP object XML."""
         bpdataset_put_xml = self.load_file_to_text("bpdataset", "dataset_put.xml")
-        accession_ids = self.xml_parser.get_accession_ids_from_xml_content("bpdataset", bpdataset_put_xml)
+        accession_ids = self.xml_parser.get_accessions_from_bp_xml("bpdataset", bpdataset_put_xml)
         self.assertTrue(len(accession_ids) == 1)
         self.assertEqual(accession_ids[0], "bpdataset-id")
 

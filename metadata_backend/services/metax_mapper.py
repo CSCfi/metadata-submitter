@@ -4,8 +4,7 @@ from copy import deepcopy
 from datetime import datetime
 from typing import Any
 
-from metadata_backend.api.operators.file import FileOperator
-
+from ..api.models import Registration
 from ..conf.conf import METAX_REFERENCE_DATA
 from ..helpers.logger import LOG
 
@@ -226,19 +225,27 @@ class MetaDataMapper:
     """
 
     def __init__(
-        self, object_type: str, metax_data: dict[str, Any], data: dict[str, Any], file_op: FileOperator
+        self,
+        metax_data: dict[str, Any],
+        doi_info: dict[str, Any],
+        file_bytes: int,
+        *,
+        related_dataset: Registration | None = None,
+        related_study: Registration | None = None,
     ) -> None:
         """Set variables.
 
-        :param object_type: Schema name (dataset or study)
         :param metax_data: Metax research_dataset metadata
-        :param data: Dict containing datacite data
-        :param file_op: FileOperator for reading files from database
+        :param doi_info: The DOI info
+        :param file_bytes: The number of file bytes
+        :param related_dataset: A related dataset registration.
+        :param related_study: A related study registration.
         """
-        self.object_type = object_type
         self.research_dataset = metax_data
-        self.datacite_data = data
-        self.file_operator = file_op
+        self.doi_info = doi_info
+        self.research_dataset["total_remote_resources_byte_size"] = file_bytes
+        self.related_dataset = related_dataset
+        self.related_study = related_study
         self.affiliations: list[Any] = []
         self.identifier_types = METAX_REFERENCE_DATA["identifier_types"]
         self.languages = METAX_REFERENCE_DATA["languages"]
@@ -256,9 +263,8 @@ class MetaDataMapper:
 
         :returns: Research dataset
         """
-        LOG.info("Mapping datasite data to Metax metadata")
-        LOG.debug("Data incoming for mapping: %r.", self.datacite_data)
-        for key, value in self.datacite_data["doiInfo"].items():
+        LOG.info("Mapping DataCite data to Metax metadata: %r.", self.doi_info)
+        for key, value in self.doi_info.items():
             if key == "creators":
                 self._map_creators(value)
             if key == "keywords":
@@ -279,13 +285,10 @@ class MetaDataMapper:
             if key == "fundingReferences":
                 self._map_funding_references(value)
 
-        for key, value in self.datacite_data["extraInfo"].items():
-            if self.object_type == "study" and key == "datasetIdentifiers":
-                self._map_relations(value)
-            if self.object_type == "dataset" and key == "studyIdentifier":
-                self._map_is_output_of(value)
-
-        await self._map_file_bytes()
+        if self.related_study:
+            self._map_related_dataset(self.related_study)
+        if self.related_dataset:
+            self._map_related_study(self.related_dataset)
 
         return self.research_dataset
 
@@ -299,7 +302,8 @@ class MetaDataMapper:
         self.research_dataset["creator"] = []
         for creator in creators:
             metax_creator = deepcopy(self.person)
-            metax_creator["name"] = creator["name"]
+            metax_creator["name"] = str(creator["givenName"]).strip() + " " + str(creator["familyName"]).strip()
+
             # Metax schema accepts only one affiliation per creator
             # so we take first one
             if creator.get("affiliation", None):
@@ -326,12 +330,12 @@ class MetaDataMapper:
         LOG.info("Mapping contributors")
         LOG.debug(contributors)
         self.research_dataset["contributor"] = []
-        self.research_dataset["rights_holder"] = []
-        self.research_dataset["curator"] = []
 
         for contributor in contributors:
             metax_contributor = deepcopy(self.person)
-            metax_contributor["name"] = contributor["name"]
+            metax_contributor["name"] = (
+                str(contributor["givenName"]).strip() + " " + str(contributor["familyName"]).strip()
+            )
             # Metax schema accepts only one affiliation per contributor
             # so we take first one
             if contributor.get("affiliation", None):
@@ -350,18 +354,7 @@ class MetaDataMapper:
             else:
                 del metax_contributor["identifier"]
 
-            if contributor.get("contributorType", None):
-                if contributor["contributorType"] == "Data Curator":
-                    self.research_dataset["curator"].append(metax_contributor)
-                elif contributor["contributorType"] == "Rights Holder":
-                    self.research_dataset["rights_holder"].append(metax_contributor)
-                else:
-                    self.research_dataset["contributor"].append(metax_contributor)
-
-        if not self.research_dataset["rights_holder"]:
-            del self.research_dataset["rights_holder"]
-        if not self.research_dataset["curator"]:
-            del self.research_dataset["curator"]
+            self.research_dataset["contributor"].append(metax_contributor)
 
     def _map_dates(self, dates: list[Any]) -> None:
         """Map dates.
@@ -486,54 +479,39 @@ class MetaDataMapper:
 
             field_of_science.append(fos)
 
-    def _map_relations(self, datasets: list[Any]) -> None:
-        """Map datasets for study as a relation.
-
-        :param datasets: Datasets identifiers object
+    def _map_related_study(self, registration: Registration) -> None:
         """
-        LOG.info("Mapping datasets related to study")
-        LOG.debug(datasets)
+        Map related study.
 
-        relation = {
-            "entity": {
-                "identifier": "",
-                "type": {
-                    "in_scheme": "http://uri.suomi.fi/codelist/fairdata/resource_type",
-                    "identifier": "http://uri.suomi.fi/codelist/fairdata/resource_type/code/dataset",
-                    "pref_label": {"en": "Dataset", "fi": "Tutkimusaineisto", "und": "Tutkimusaineisto"},
+        :param registration: The registration information
+        """
+        self.research_dataset["relation"] = [
+            {
+                "entity": {
+                    "identifier": registration.datacite_url,
+                    "type": {
+                        "in_scheme": "http://uri.suomi.fi/codelist/fairdata/resource_type",
+                        "identifier": "http://uri.suomi.fi/codelist/fairdata/resource_type/code/dataset",
+                        "pref_label": {"en": "Dataset", "fi": "Tutkimusaineisto", "und": "Tutkimusaineisto"},
+                    },
                 },
-            },
-            "relation_type": {
-                "identifier": "http://purl.org/dc/terms/relation",
-                "pref_label": {"en": "Related dataset", "fi": "Liittyvä aineisto", "und": "Liittyvä aineisto"},
-            },
-        }
+                "relation_type": {
+                    "identifier": "http://purl.org/dc/terms/relation",
+                    "pref_label": {"en": "Related dataset", "fi": "Liittyvä aineisto", "und": "Liittyvä aineisto"},
+                },
+            }
+        ]
 
-        relations = self.research_dataset["relation"] = []
-
-        for dataset in datasets:
-            rel = deepcopy(relation)
-            rel["entity"]["identifier"] = dataset["url"]
-            relations.append(rel)
-
-    def _map_is_output_of(self, study: dict[str, Any]) -> None:
-        """Map study for datasets as a output of.
-
-        :param study: Study identifier object
+    def _map_related_dataset(self, registration: Registration) -> None:
         """
-        LOG.info("Mapping study for related datasets")
-        LOG.debug(study)
+        Map related dataset.
 
-        name = ""
-
-        for obj in self.datacite_data["metadataObjects"]:
-            if obj["schema"] == "study":
-                name = obj["tags"]["displayTitle"]
-
+        :param registration: The registration information
+        """
         self.research_dataset["is_output_of"] = [
             {
-                "name": {"en": name},
-                "identifier": study["url"],
+                "name": {"en": registration.title},
+                "identifier": registration.datacite_url,
                 "source_organization": self.affiliations,
             }
         ]
@@ -570,21 +548,6 @@ class MetaDataMapper:
                 raise SubjectNotFoundException from exc
 
             funding_references.append(funding)
-
-    async def _map_file_bytes(self) -> None:
-        """Map file bytes.
-
-        Function calculates the total size of files
-        """
-        LOG.info("Mapping file bytes")
-
-        self.research_dataset["total_remote_resources_byte_size"] = 0
-        for file in self.datacite_data.get("files", []):
-            LOG.debug(file)
-
-            file_data = await self.file_operator.read_file(file["accessionId"], file["version"])
-            if not file_data["flagDeleted"]:
-                self.research_dataset["total_remote_resources_byte_size"] += file_data["bytes"]
 
 
 class SubjectNotFoundException(Exception):

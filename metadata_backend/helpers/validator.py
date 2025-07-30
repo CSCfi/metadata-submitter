@@ -143,7 +143,6 @@ class JSONValidator:
         self.json_data = json_data
         self.schema_type = schema_type
 
-    @property
     def validate(self) -> None:
         """Check validation against JSON schema.
 
