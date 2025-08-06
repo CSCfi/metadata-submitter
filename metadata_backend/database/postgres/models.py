@@ -131,6 +131,9 @@ class SubmissionEntity(Base):
     folder: Mapped[str] = mapped_column(String(64), nullable=True)  # Could this be nullable?
     workflow: Mapped[SubmissionWorkflow] = mapped_column(string_enum(SubmissionWorkflow), nullable=False)
 
+    title: Mapped[str] = mapped_column(String, nullable=True)
+    description: Mapped[str] = mapped_column(Text, nullable=True)
+
     created: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True
     )
@@ -180,6 +183,7 @@ class ObjectEntity(Base):
     is_draft: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     title: Mapped[str] = mapped_column(String, nullable=True)
+    description: Mapped[str] = mapped_column(Text, nullable=True)
 
     document: Mapped[dict[str, Any]] = mapped_column(MutableDict.as_mutable(TypeJSON), nullable=True)
     xml_document: Mapped[str] = mapped_column(TypeXML, nullable=True)
@@ -274,7 +278,7 @@ class RegistrationEntity(Base):
     registration_id: Mapped[str] = mapped_column(String(128), primary_key=True, default=generate_default_accession)
     title: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
-    schema: Mapped[str] = mapped_column(String(256), nullable=False)
+    schema: Mapped[str] = mapped_column(String(256), nullable=True)
     doi: Mapped[str] = mapped_column(String(256), nullable=False, comment="Digital Object identifier")
     metax_id: Mapped[str] = mapped_column(String(256), nullable=True, comment="Metax identifier")
     datacite_url: Mapped[str] = mapped_column(String(1024), nullable=True, comment="Datacite discovery URL")
@@ -283,7 +287,7 @@ class RegistrationEntity(Base):
     rems_catalogue_id = mapped_column(String, nullable=True)
 
     submission_id: Mapped[str] = mapped_column(
-        String(128), ForeignKey("submissions.submission_id", ondelete="CASCADE"), nullable=True, index=True
+        String(128), ForeignKey("submissions.submission_id", ondelete="CASCADE"), nullable=False, index=True
     )
     object_id: Mapped[str] = mapped_column(
         String(128), ForeignKey("objects.object_id", ondelete="CASCADE"), nullable=True, index=True, unique=True

@@ -5,6 +5,7 @@
     "type": "object",
     "required": [
         "name",
+        "title",
         "description",
         "projectId",
         "workflow"
@@ -25,6 +26,10 @@
         "text_name": {
             "type": "string",
             "title": "Searchable Submission Name, used for indexing"
+        },
+        "title": {
+            "type": "string",
+            "title": "Submission Title"
         },
         "description": {
             "type": "string",

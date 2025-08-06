@@ -23,6 +23,7 @@ async def test_add_and_get_submission(session_factory: SessionFactory,
         project_id = f"project_{uuid.uuid4()}"
         folder = "test"
         workflow = SubmissionWorkflow.SDS
+        title = "test"
         description = "test"
         rems_organization_id = "1"
         rems_workflow_id = 2
@@ -46,6 +47,7 @@ async def test_add_and_get_submission(session_factory: SessionFactory,
             "lastModified": "test",
             "published": "test",
             # Should remain unchanged in the document
+            "title": title,
             "description": description,
         }
 
@@ -84,6 +86,7 @@ async def test_add_and_get_submission(session_factory: SessionFactory,
             "dateCreated": entity.created,
             "lastModified": entity.modified,
             "published": False,
+            "title": title,
             "description": description,
             "rems": {
                 "organizationId": rems_organization_id,

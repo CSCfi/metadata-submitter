@@ -24,6 +24,7 @@ async def test_add_object(session_factory: SessionFactory,
         object_id = f"id_{uuid.uuid4()}"
         name = f"name_{uuid.uuid4()}"
         title = "test"
+        description = "test"
         is_draft: bool = False
 
         assert await object_service.add_object(submission.submission_id,
@@ -33,6 +34,7 @@ async def test_add_object(session_factory: SessionFactory,
                                                object_id=object_id,
                                                name=name,
                                                title=title,
+                                               description=description,
                                                is_draft=is_draft) == object_id
 
         assert await object_service.is_object(object_id)
@@ -40,6 +42,7 @@ async def test_add_object(session_factory: SessionFactory,
         assert result.schema == schema
         assert result.object_id == object_id
         assert result.name == name
+        assert result.title == title
         assert result.document == document
         assert result.xml_document == xml_document
         assert result.title == title

@@ -2,13 +2,18 @@
 
 import os
 from datetime import date
-from typing import Any
+from typing import Any, Callable, Iterator, Tuple
 
 from aiohttp import web
 from aiohttp.web import Request, Response
 
 from ...conf.conf import doi_config, get_workflow
-from ...database.postgres.repositories.submission import SUB_FIELD_DOI, SUB_FIELD_REMS
+from ...database.postgres.repositories.submission import (
+    SUB_FIELD_DESCRIPTION,
+    SUB_FIELD_DOI,
+    SUB_FIELD_REMS,
+    SUB_FIELD_TITLE,
+)
 from ...database.postgres.services.registration import RegistrationService
 from ...helpers.logger import LOG
 from ...helpers.workflow import PublishServiceConfig
@@ -119,7 +124,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                     },
                 },
             }
-            data["data"]["attributes"]["titles"] = [({"lang": None, "title": title, "titleType": None},)]
+            data["data"]["attributes"]["titles"] = [{"lang": None, "title": title, "titleType": None}]
 
             # The study description may have been extracted from study abstract or description.
             # There is no practical difference between them.
@@ -248,19 +253,34 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         return data
 
-    async def create_draft_doi(self, datacite_config: PublishServiceConfig, schema: str) -> str:
-        """Create a draft DOI through Datacite directly or from CSC PID depending on workflow.
+    async def _register_draft_doi(self, datacite_config: PublishServiceConfig, draft_doi_prefix: str) -> str:
+        """Register a draft DOI through Datacite directly or through CSC PID.
 
         :param datacite_config: DataCite publish service configuration.
-        :param schema: The metadata object schema
+        :param draft_doi_prefix: The draft DOI prefix.
         :returns: The created DOI
         """
-        if datacite_config.service == DATACITE_SERVICE_DATACITE:
-            return await self.datacite_handler.create_draft_doi_datacite(schema)
-        if datacite_config.service == DATACITE_SERVICE_CSC:
-            return await self.pid_handler.create_draft_doi_pid()
+        try:
+            if datacite_config.service == DATACITE_SERVICE_DATACITE:
+                return await self.datacite_handler.create_draft_doi_datacite(draft_doi_prefix)
+            if datacite_config.service == DATACITE_SERVICE_CSC:
+                return await self.pid_handler.create_draft_doi_pid()
+        except Exception as ex:
+            raise SystemException("Failed to register DOI using DataCite. Please try again later.") from ex
 
         raise SystemException(f"Invalid DataCite service: '{datacite_config.service}'")
+
+    async def _register_metax_id(self, submission_id: str, user_id: str, registration: Registration) -> None:
+        try:
+            metax_id = await self.metax_handler.post_dataset_as_draft(
+                user_id, registration.doi, registration.title, registration.description
+            )
+            registration.metax_id = metax_id
+
+        except Exception as ex:
+            raise SystemException(
+                f"Failed to register Metax ID in submission '{submission_id}'. Please try again later."
+            ) from ex
 
     async def _prepare_datacite_publication(
         self, registrations: list[Registration], doi_info: dict[str, Any], discovery_config: PublishServiceConfig
@@ -336,43 +356,78 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
 
     async def _publish_datacite(
         self,
-        doi_info: dict[str, Any],
         registrations: list[Registration],
+        doi_info: dict[str, Any],
         registration_service: RegistrationService,
         datacite_config: PublishServiceConfig,
         discovery_config: PublishServiceConfig,
     ) -> None:
         """Publish to DataCite.
 
-        :param doi_info: The DOI Info
         :param registrations: The registrations
+        :param doi_info: The DOI Info
         :param registration_service: The registration service
         :param datacite_config: The datacite service configuration
         :param discovery_config: The discovery service configuration
         """
-        datacite_data = await self._prepare_datacite_publication(registrations, doi_info, discovery_config)
+        try:
+            datacite_data = await self._prepare_datacite_publication(registrations, doi_info, discovery_config)
 
-        def _get_registration_by_doi(doi_: str) -> Registration:
-            for registration_ in registrations:
-                if registration_.doi == doi_:
-                    return registration_
-            raise SystemException(f"Could not find registration with DOI: {doi_}")
+            def _get_registration_by_doi(doi_: str) -> Registration:
+                for registration_ in registrations:
+                    if registration_.doi == doi_:
+                        return registration_
+                raise SystemException(f"Could not find registration with DOI: {doi_}")
 
-        for data in datacite_data:
-            doi = data["id"]
-            datacite_url = data["data"]["attributes"]["url"]
-            registration = _get_registration_by_doi(doi)
-            if not registration.datacite_url:
-                if datacite_config.service == DATACITE_SERVICE_DATACITE:
-                    await self.datacite_handler.publish(data)
-                elif datacite_config.service == DATACITE_SERVICE_CSC:
-                    await self.pid_handler.publish(data)
-                else:
-                    raise SystemException(f"Unsupported datacite service: {datacite_config.service}")
+            for data in datacite_data:
+                doi = data["id"]
+                datacite_url = data["data"]["attributes"]["url"]
+                registration = _get_registration_by_doi(doi)
+                if not registration.datacite_url:
+                    if datacite_config.service == DATACITE_SERVICE_DATACITE:
+                        await self.datacite_handler.publish(data)
+                    elif datacite_config.service == DATACITE_SERVICE_CSC:
+                        await self.pid_handler.publish(data)
+                    else:
+                        raise SystemException(f"Unsupported datacite service: {datacite_config.service}")
 
-                await registration_service.update_datacite_url(
-                    registration.submission_id, datacite_url, object_id=registration.object_id
-                )
+                    await registration_service.update_datacite_url(
+                        registration.submission_id, datacite_url, object_id=registration.object_id
+                    )
+        except Exception as ex:
+            raise SystemException(
+                f"Failed to publish submission in DataCite. Please try again later: {str(ex)}"
+            ) from ex
+
+    async def _update_metax(
+        self,
+        registration: Registration,
+        doi_info: dict[str, Any],
+        file_bytes: int,
+        *,
+        related_dataset: Registration | None = None,
+        related_study: Registration | None = None,
+    ) -> None:
+        """Update information in Metax.
+
+        :param registration: The registration
+        :param doi_info: The DOI info
+        :param file_bytes: The number of file bytes
+        :param related_dataset: A related dataset registration
+        :param related_study: A related study registration
+        """
+        try:
+            await self.metax_handler.update_dataset_with_doi_info(
+                doi_info,
+                registration.metax_id,
+                file_bytes,
+                related_dataset=related_dataset,
+                related_study=related_study,
+            )
+        except Exception as ex:
+            raise SystemException(
+                f"Failed to update submission '{registration.submission_id}' in Metax. Please try again later."
+            ) from ex
 
     async def _publish_rems(
         self,
@@ -383,67 +438,89 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
     ) -> None:
         """Prepare dictionary with values to be published to REMS. Adds the metax id if available.
 
+        :param submission_id: The submission id
         :param rems: The rems data
         :param registration: The registration
         :param discovery_config: The discovery configuration
         :param registration_service: The registration service.
         """
-        data: dict[str, Any] = {
-            "accession_id": registration.object_id,
-            "schema": registration.schema_type,
-            "doi": registration.doi,
-            "description": registration.description,
-            "localizations": {
-                "en": {
-                    "title": registration.title,
-                    "infourl": self._make_discovery_url(registration, discovery_config),
-                }
-            },
-        }
-        if registration.metax_id:
-            data.update({"metaxIdentifier": registration.metax_id})
-
-        workflow_id = rems["workflowId"]
-        organization_id = rems["organizationId"]
-        licenses = rems["licenses"]
-
-        if not registration.rems_resource_id:
-            resource_id = await self.rems_handler.create_resource(
-                doi=registration.doi, organization_id=organization_id, licenses=licenses
-            )
-            await registration_service.update_rems_resource_id(
-                registration.submission_id, str(resource_id), object_id=registration.object_id
-            )
-            registration.rems_resource_id = str(resource_id)
-        else:
-            resource_id = int(registration.rems_resource_id)
-
-        if not registration.rems_catalogue_id:
-            catalogue_id = await self.rems_handler.create_catalogue_item(
-                resource_id=resource_id,
-                workflow_id=workflow_id,
-                organization_id=organization_id,
-                localizations=data["localizations"],
-            )
-            await registration_service.update_rems_catalogue_id(
-                registration.submission_id, catalogue_id, object_id=registration.object_id
-            )
-            registration.rems_catalogue_id = catalogue_id
-        else:
-            catalogue_id = registration.rems_catalogue_id
-
-        if not registration.rems_url:
-            rems_url = self.rems_handler.application_url(catalogue_id)
-
-            # Add rems URL to Metax description.
+        try:
+            data: dict[str, Any] = {
+                "accession_id": registration.object_id,
+                "schema": registration.schema_type,
+                "doi": registration.doi,
+                "description": registration.description,
+                "localizations": {
+                    "en": {
+                        "title": registration.title,
+                        "infourl": self._make_discovery_url(registration, discovery_config),
+                    }
+                },
+            }
             if registration.metax_id:
-                new_description = registration.description + f"\n\nSD Apply's Application link: {rems_url}"
-                await self.metax_handler.update_draft_dataset_description(registration.metax_id, new_description)
+                data.update({"metaxIdentifier": registration.metax_id})
 
-            await registration_service.update_rems_url(
-                registration.submission_id, rems_url, object_id=registration.object_id
-            )
-            registration.rems_url = rems_url
+            workflow_id = rems["workflowId"]
+            organization_id = rems["organizationId"]
+            licenses = rems["licenses"]
+
+            if not registration.rems_resource_id:
+                resource_id = await self.rems_handler.create_resource(
+                    doi=registration.doi, organization_id=organization_id, licenses=licenses
+                )
+                await registration_service.update_rems_resource_id(
+                    registration.submission_id, str(resource_id), object_id=registration.object_id
+                )
+                registration.rems_resource_id = str(resource_id)
+            else:
+                resource_id = int(registration.rems_resource_id)
+
+            if not registration.rems_catalogue_id:
+                catalogue_id = await self.rems_handler.create_catalogue_item(
+                    resource_id=resource_id,
+                    workflow_id=workflow_id,
+                    organization_id=organization_id,
+                    localizations=data["localizations"],
+                )
+                await registration_service.update_rems_catalogue_id(
+                    registration.submission_id, catalogue_id, object_id=registration.object_id
+                )
+                registration.rems_catalogue_id = catalogue_id
+            else:
+                catalogue_id = registration.rems_catalogue_id
+
+            if not registration.rems_url:
+                rems_url = self.rems_handler.application_url(catalogue_id)
+
+                # Add rems URL to Metax description.
+                if registration.metax_id:
+                    new_description = registration.description + f"\n\nSD Apply's Application link: {rems_url}"
+                    await self.metax_handler.update_draft_dataset_description(registration.metax_id, new_description)
+
+                await registration_service.update_rems_url(
+                    registration.submission_id, rems_url, object_id=registration.object_id
+                )
+                registration.rems_url = rems_url
+        except Exception as ex:
+            raise SystemException(
+                f"Failed to publish submission '{registration.submission_id}' to REMS. Please try again later."
+            ) from ex
+
+    async def _publish_metax(
+        self,
+        registration: Registration,
+    ) -> None:
+        """Publish to Metax.
+
+        :param submission_id: The submission id
+        :param registration: The registration
+        """
+        try:
+            await self.metax_handler.publish_dataset(registration.metax_id, registration.doi)
+        except Exception as ex:
+            raise SystemException(
+                f"Failed to publish submission '{registration.submission_id}' to Metax. Please try again later."
+            ) from ex
 
     async def publish_submission(self, req: Request) -> Response:
         """Publish submission by validating it and registering it to public discovery services.
@@ -519,121 +596,106 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         # are configured in the workflow. Registrations are created only if they have not been created
         # during a previous failed publish attempt.
 
-        # Register DOIs.
+        submission_registration: Registration | None = None
+        object_registrations: list[Registration] = []
 
-        registrations: list[Registration] = []
+        # Register DOI for submission.
 
-        try:
-            async for obj in object_service.repository.get_objects(submission_id):
-                if obj.schema in datacite_config.schemas:
-                    registration = await registration_service.get_registration_by_object_id(obj.object_id)
-                    if registration is None:
-                        doi = await self.create_draft_doi(datacite_config, obj.schema)
-                        registration = self._create_registration(
-                            submission_id, obj.object_id, obj.schema, obj.document, doi
-                        )
-                        await registration_service.add_registration(registration)
-                    registrations.append(registration)
-        except Exception as ex:
-            raise SystemException(
-                f"Failed to register DOI using DataCite in submission '{submission_id}'. Please try again later."
-            ) from ex
+        if datacite_config.submission:
+            submission_registration = await registration_service.get_registration_by_submission_id(submission_id)
+            if submission_registration is None:
+                doi = await self._register_draft_doi(datacite_config, "submission")
+                submission_registration = self._create_submission_registration(
+                    submission_id, submission[SUB_FIELD_TITLE], submission[SUB_FIELD_DESCRIPTION], doi
+                )
+                await registration_service.add_registration(submission_registration)
 
-        # Register Metax IDs. Required DOIs.
+        # Register DOI for metadata objects.
 
-        if discovery_config.service == DISCOVERY_SERVICE_METAX:
-            try:
-                for registration in registrations:
-                    if registration.schema_type in discovery_config.schemas:
-                        if not registration.metax_id:
-                            metax_id = await self.metax_handler.post_dataset_as_draft(
-                                user_id, registration.doi, registration.title, registration.description
-                            )
-                            await registration_service.update_metax_id(
-                                submission_id, metax_id, object_id=registration.object_id
-                            )
-                            registration.metax_id = metax_id
-            except Exception as ex:
-                raise SystemException(
-                    f"Failed to register Metax ID in submission '{submission_id}'. Please try again later."
-                ) from ex
+        async for obj in object_service.repository.get_objects(submission_id):
+            if obj.schema in datacite_config.schemas:
+                registration = await registration_service.get_registration_by_object_id(obj.object_id)
+                if registration is None:
+                    doi = await self._register_draft_doi(datacite_config, obj.schema)
+                    registration = self._create_object_registration(
+                        submission_id, obj.object_id, obj.schema, obj.document, doi
+                    )
+                object_registrations.append(registration)
+                await registration_service.add_registration(registration)
+
+        # All existing and new registration now exist. Create a function
+        # to return submission and metadata object registrations that are
+        # supported by a configuration and optionally filtered by
+        # the service name and a registration predicate.
+
+        def _filtered_registrations(
+            config_: PublishServiceConfig,
+            service_: str | None = None,
+            predicate_: Callable[[Registration], bool] | None = None,
+        ) -> Iterator[Registration]:
+            # Check that the configuration supports the requested service.
+            if service_ and config_.service != service_:
+                return
+            # Yield submission registration.
+            if config_.submission:
+                if submission_registration and (predicate_ is None or predicate_(submission_registration)):
+                    yield submission_registration
+            # Yield metadata object registrations.
+            for registration_ in object_registrations:
+                if registration_.schema_type in config_.schemas and (predicate_ is None or predicate_(registration_)):
+                    yield registration_
+
+        # Register Metax IDs. Required DOI.
+
+        # Register Metax ID for submission.
+        for registration in _filtered_registrations(
+            discovery_config, DISCOVERY_SERVICE_METAX, lambda r: r.metax_id is None
+        ):
+            await self._register_metax_id(submission_id, user_id, registration)
+            await registration_service.update_metax_id(
+                submission_id, registration.metax_id, object_id=registration.object_id
+            )
 
         # Publish to DataCite. Requires DOIs.
 
-        try:
-            await self._publish_datacite(
-                doi_info, registrations, registration_service, datacite_config, discovery_config
-            )
-        except Exception as ex:
-            raise SystemException(
-                f"Failed to publish submission '{submission_id}' in DataCite. Please try again later: {str(ex)}"
-            ) from ex
+        await self._publish_datacite(
+            list(_filtered_registrations(datacite_config)),
+            doi_info,
+            registration_service,
+            datacite_config,
+            discovery_config,
+        )
 
         file_bytes = await file_service.count_bytes(submission_id)
 
         # Update Metax with DOI information and file bytes.
 
-        def _get_related_registration(schema_: str) -> Registration | None:
-            """
-            Return the registration for a different metadata schema.
-
-            Assumes that only a single study and dataset registration is allowed.
-            """
-            for registration_ in registrations:
+        def _get_related_object_registration(schema_: str) -> Tuple[Registration | None, Registration | None]:
+            # Assumes that only a single study and dataset registration is allowed.
+            for registration_ in object_registrations:
                 if schema_ != registration_.schema_type:
-                    return registration_
-            return None
+                    if registration_.schema_type == "study":
+                        return None, registration_  # Related study registration.
+                    return registration_, None  # Related dataset registration.
+            return None, None
 
-        if discovery_config.service == DISCOVERY_SERVICE_METAX:
-            try:
-                for registration in registrations:
-                    # Get the related registration. Assumes that only a single study and
-                    # dataset registration is allowed.
-                    related_registration = _get_related_registration(registration.schema_type)
-                    if related_registration:
-                        related_dataset = related_registration if related_registration.schema_type != "study" else None
-                        related_study = related_registration if related_registration.schema_type == "study" else None
-                    else:
-                        related_dataset = None
-                        related_study = None
-                    await self.metax_handler.update_dataset_with_doi_info(
-                        doi_info,
-                        registration.metax_id,
-                        file_bytes,
-                        related_dataset=related_dataset,
-                        related_study=related_study,
-                    )
-            except Exception as ex:
-                raise SystemException(
-                    f"Failed to update submission '{submission_id}' in Metax. Please try again later."
-                ) from ex
+        for registration in _filtered_registrations(discovery_config, DISCOVERY_SERVICE_METAX):
+            related_dataset, related_study = None, None
+            if registration.schema_type is not None:
+                related_dataset, related_study = _get_related_object_registration(registration.schema_type)
+            await self._update_metax(
+                registration, doi_info, file_bytes, related_dataset=related_dataset, related_study=related_study
+            )
 
         # Publish to REMS and add REMS URL to Metax draft description.
 
-        if rems_config.service == REMS_SERVICE_CSC:
-            LOG.info("Publishing submission ID %r to REMS.", submission_id)
-            try:
-                for registration in registrations:
-                    if registration.schema_type in rems_config.schemas:
-                        LOG.info("Publishing submission ID %r %r to REMS.", submission_id, registration.schema_type)
-                        await self._publish_rems(rems_info, registration, discovery_config, registration_service)
-            except Exception as ex:
-                raise SystemException(
-                    f"Failed to publish submission '{submission_id}' to REMS. Please try again later."
-                ) from ex
-        else:
-            raise SystemException(f"Unsupported REMS service: {rems_config.service}")
+        for registration in _filtered_registrations(rems_config, REMS_SERVICE_CSC):
+            await self._publish_rems(rems_info, registration, discovery_config, registration_service)
 
         # Publish to Metax.
 
-        if discovery_config.service == DISCOVERY_SERVICE_METAX:
-            try:
-                for registration in registrations:
-                    await self.metax_handler.publish_dataset(registration.metax_id, registration.doi)
-            except Exception as ex:
-                raise SystemException(
-                    f"Failed to publish submission '{submission_id}' to Metax. Please try again later."
-                ) from ex
+        for registration in _filtered_registrations(discovery_config, DISCOVERY_SERVICE_METAX):
+            await self._publish_metax(registration)
 
         # Update submission status to published.
         await submission_service.publish(submission_id)
@@ -642,10 +704,27 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         return web.Response(body=to_json({"submissionId": submission_id}), status=200, content_type="application/json")
 
     @staticmethod
-    def _create_registration(
+    def _create_submission_registration(submission_id: str, title: str, description: str, doi: str) -> Registration:
+        """Create a registration for a metadata object.
+
+        :param submission_id: The submission id
+        :param title: The submission title
+        :param description: The submission description
+        :param doi: The DOI
+        :returns: The registration information
+        """
+        return Registration(
+            submission_id=submission_id,
+            title=title,
+            description=description,
+            doi=doi,
+        )
+
+    @staticmethod
+    def _create_object_registration(
         submission_id: str, object_id: str, schema: str, document: dict[str, Any], doi: str
     ) -> Registration:
-        """Create a registration with a title, description and DOI.
+        """Create a registration for a metadata object with a title, description and DOI.
 
         :param submission_id: the submission id
         :param object_id: the object id

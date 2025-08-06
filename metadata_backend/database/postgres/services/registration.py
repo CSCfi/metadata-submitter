@@ -128,7 +128,7 @@ class RegistrationService:
             )
         )
 
-    async def update_metax_id(self, submission_id: str, metax_id: str, *, object_id: str = None) -> str:
+    async def update_metax_id(self, submission_id: str, metax_id: str, *, object_id: str | None = None) -> str:
         """Update metax id.
 
         :param submission_id: the submission id

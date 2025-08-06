@@ -17,6 +17,8 @@ def create_submission_entity(
         project_id: str | None = None,
         folder: str | None = None,
         workflow: SubmissionWorkflow | None = SubmissionWorkflow.SDS,
+        title: str | None = None,
+        description: str | None = None,
         document: dict[str, Any] | None = None,
         is_published: bool = False,
         is_ingested: bool = False,
@@ -30,12 +32,18 @@ def create_submission_entity(
     if folder is None:
         folder = f"folder_{uuid.uuid4()}"
 
+    if title is None:
+        title = f"title_{uuid.uuid4()}"
+    if description is None:
+        description = f"description_{uuid.uuid4()}"
+
     if not document:
         document = {}
     document = {
         "projectId": project_id,
         "name": name,
-        "description": f"description_{uuid.uuid4()}",
+        "title": title,
+        "description": description,
         "workflow": workflow.value,
         **document
     }
@@ -47,6 +55,8 @@ def create_submission_entity(
         workflow=workflow,
         is_published=is_published,
         is_ingested=is_ingested,
+        title=title,
+        description=description,
         document=document,
         created=created,
         modified=modified,
