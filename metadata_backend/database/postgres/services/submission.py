@@ -20,6 +20,7 @@ from ..repositories.submission import (
     SUB_FIELD_PUBLISHED_DATE,
     SUB_FIELD_REMS,
     SUB_FIELD_SUBMISSION_ID,
+    SUB_FIELD_TITLE,
     SUB_FIELD_WORKFLOW,
     SubmissionRepository,
     SubmissionSort,
@@ -169,12 +170,16 @@ class SubmissionService:
                 raise UserException(  # pylint: disable=raise-missing-from
                     f"Invalid submission workflow: {workflow_str}"
                 )
+            title = _copy_str_field(new_document, SUB_FIELD_TITLE)
+            description = _copy_str_field(new_document, SUB_FIELD_DESCRIPTION)
 
             return SubmissionEntity(
                 name=name,
                 project_id=project_id,
                 folder=folder,
                 workflow=workflow,
+                title=title,
+                description=description,
                 document=new_document,
             )
 
@@ -183,12 +188,13 @@ class SubmissionService:
         # The submission document can be updated by the user, however, some fields
         # can't be removed or changed. If the following fields are absent from the
         # updated document then the existing value in the current document is preserved:
-        # name, description, doiInfo, rems, projectId, workflow, linkedFolder. Furthermore,
+        # name, title, description, doiInfo, rems, projectId, workflow, linkedFolder. Furthermore,
         # if the following fields are changed then the existing value in the current document
         # is preserved: projectId, workflow, linkedFolder.
 
         old_document = old_submission.document
         _preserve_mutable_field(new_document, old_document, SUB_FIELD_NAME)
+        _preserve_mutable_field(new_document, old_document, SUB_FIELD_TITLE)
         _preserve_mutable_field(new_document, old_document, SUB_FIELD_DESCRIPTION)
         _preserve_immutable_field(new_document, old_document, SUB_FIELD_PROJECT_ID)
         _preserve_immutable_field(new_document, old_document, SUB_FIELD_FOLDER)
@@ -196,7 +202,10 @@ class SubmissionService:
         _preserve_mutable_field(new_document, old_document, SUB_FIELD_DOI)
         _preserve_mutable_field(new_document, old_document, SUB_FIELD_REMS)
 
+        # Update mutable columns values.
         old_submission.name = _copy_str_field(new_document, SUB_FIELD_NAME)
+        old_submission.title = _copy_str_field(new_document, SUB_FIELD_TITLE)
+        old_submission.description = _copy_str_field(new_document, SUB_FIELD_DESCRIPTION)
         old_submission.folder = _copy_str_field(new_document, SUB_FIELD_FOLDER)
         old_submission.document = new_document
         return old_submission

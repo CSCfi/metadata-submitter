@@ -48,6 +48,9 @@ class ObjectService:
         document["accessionId"] = entity.object_id
         return document
 
+    # TODO(improve): Extract the metadata object's title and description before storing the
+    # metadata object. Once implemented, store the extracted title and description as part of
+    # this call. Currently, title and description extraction is deferred until the publish step.
     async def add_object(
         self,
         submission_id: str,
@@ -58,6 +61,7 @@ class ObjectService:
         object_id: str | None = None,
         name: str | None = None,
         title: str | None = None,
+        description: str | None = None,
         is_draft: bool | None = None,
     ) -> str:
         """Add a new metadata object to the database.
@@ -69,6 +73,7 @@ class ObjectService:
         :param object_id: metadata object id that overrides the default one
         :param name: the metadata object name
         :param title: metadata object title
+        :param description: metadata object description
         :param is_draft: If True, return draft documents.
                          If False, return finalized documents.
                          If None, return all documents.
@@ -83,6 +88,7 @@ class ObjectService:
             object_id=object_id,
             name=name,
             title=title,
+            description=description,
         )
 
         if object_id is not None:

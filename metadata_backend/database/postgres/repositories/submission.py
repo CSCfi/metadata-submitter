@@ -13,6 +13,7 @@ from ..repository import SessionFactory, transaction
 
 SUB_FIELD_SUBMISSION_ID = "submissionId"
 SUB_FIELD_NAME = "name"
+SUB_FIELD_TITLE = "title"
 SUB_FIELD_DESCRIPTION = "description"
 SUB_FIELD_PROJECT_ID = "projectId"
 SUB_FIELD_FOLDER = "linkedFolder"

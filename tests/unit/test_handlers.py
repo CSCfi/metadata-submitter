@@ -9,7 +9,7 @@ import pytest
 import uuid
 from pathlib import Path
 from typing import Any, Callable
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch, call
 from defusedxml import ElementTree
 import ujson
 from aiohttp import FormData, web
@@ -18,7 +18,7 @@ from aiohttp.web import Request
 
 from .database.postgres.helpers import create_submission_entity, create_object_entity
 from metadata_backend.api.handlers.restapi import RESTAPIHandler
-from metadata_backend.api.models import Project, User, File, Rems, Object, SubmissionWorkflow
+from metadata_backend.api.models import Project, User, File, Rems, Object, SubmissionWorkflow, Registration
 from metadata_backend.api.services.auth import ApiKey
 from metadata_backend.api.services.project import ProjectService
 from metadata_backend.conf.conf import API_PREFIX, get_workflow
@@ -317,6 +317,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
     async def post_submission(self,
                               name: str | None = None,
+                              title: str | None = None,
                               description: str | None = None,
                               project_id: str | None = None,
                               workflow: str = "SDSX",
@@ -325,6 +326,8 @@ class HandlersTestCase(AioHTTPTestCase):
 
         if name is None:
             name = f"name_{uuid.uuid4()}"
+        if title is None:
+            title = f"title_{uuid.uuid4()}"
         if description is None:
             description = f"description_{uuid.uuid4()}"
         if project_id is None:
@@ -336,6 +339,7 @@ class HandlersTestCase(AioHTTPTestCase):
         ):
             data = {
                 "name": name,
+                "title": title,
                 "description": description,
                 "projectId": project_id,
                 "workflow": workflow
@@ -422,6 +426,7 @@ class APIHandlerTestCase(HandlersTestCase):
             resp_json = await response.json()
             assert resp_json['$schema'] == 'https://json-schema.org/draft/2020-12/schema'
             assert resp_json['description'] == 'Submission that contains submitted metadata objects'
+
 
 class XMLSubmissionHandlerTestCase(HandlersTestCase):
     """Submission API endpoint class test cases."""
@@ -964,6 +969,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
 
         data = {
             "name": f"name_{uuid.uuid4()}",
+            "title": f"title_{uuid.uuid4()}",
             "description": f"description_{uuid.uuid4()}",
             "projectId": f"project_{uuid.uuid4()}",
             "workflow": "SDSX"
@@ -999,6 +1005,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
 
         data = {
             "name": name,
+            "title": f"title_{uuid.uuid4()}",
             "description": f"description_{uuid.uuid4()}",
             "projectId": project_id,
             "workflow": "SDSX"
@@ -1020,13 +1027,14 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         name_1 = f"name_{uuid.uuid4()}"
         name_2 = f"name_{uuid.uuid4()}"
         project_id = f"project_{uuid.uuid4()}"
+        title = f"title_{uuid.uuid4()}"
         description = f"description_{uuid.uuid4()}"
         workflow = "SDSX"
 
-        submission_id_1 = await self.post_submission(name=name_1, description=description, project_id=project_id,
-                                                     workflow=workflow)
-        submission_id_2 = await self.post_submission(name=name_2, description=description, project_id=project_id,
-                                                     workflow=workflow)
+        submission_id_1 = await self.post_submission(name=name_1, title=title, description=description,
+                                                     project_id=project_id, workflow=workflow)
+        submission_id_2 = await self.post_submission(name=name_2, title=title, description=description,
+                                                     project_id=project_id, workflow=workflow)
 
         with (
             self.patch_verify_user_project,
@@ -1052,6 +1060,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             assert len(result["submissions"]) == 2
             assert {
                        'dateCreated': _get_submission(submission_id_1)['dateCreated'],
+                       'title': title,
                        'description': description,
                        'lastModified': _get_submission(submission_id_1)['lastModified'],
                        'name': name_1,
@@ -1063,6 +1072,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
                    } in result["submissions"]
             assert {
                        'dateCreated': _get_submission(submission_id_2)['dateCreated'],
+                       'title': title,
                        'description': description,
                        'lastModified': _get_submission(submission_id_2)['lastModified'],
                        'name': name_2,
@@ -1532,505 +1542,1075 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             json_resp = await response.json()
             self.assertIn("Each file must contain 'accessionId' and 'version'.", json_resp["detail"])
 
-    class PublishSubmissionHandlerTestCase(HandlersTestCase):
-        """Publishing API endpoint class test cases."""
 
-        @pytest.fixture(autouse=True)
-        def _inject_fixtures(self,
-                             submission_repository: SubmissionRepository,
-                             object_repository: ObjectRepository,
-                             file_repository: FileRepository):
-            self.submission_repository = submission_repository
-            self.object_repository = object_repository
-            self.file_repository = file_repository
+class PublishSubmissionHandlerTestCase(HandlersTestCase):
+    """Publishing API endpoint class test cases."""
 
-        async def test_publish_submission_csc(self):
-            """Test publishing of CSC submission."""
+    @pytest.fixture(autouse=True)
+    def _inject_fixtures(self,
+                         submission_repository: SubmissionRepository,
+                         object_repository: ObjectRepository,
+                         file_repository: FileRepository):
+        self.submission_repository = submission_repository
+        self.object_repository = object_repository
+        self.file_repository = file_repository
 
-            user_id = "mock-userid"
+    async def test_publish_submission_csc(self):
+        """Test publishing of CSC submission."""
 
-            # DOI information.
-            doi_info = self.doi_info
+        user_id = "mock-userid"
 
-            # RENS information.
-            rems = Rems(
-                workflow_id=1,
-                organization_id=f"organisation_{str(uuid.uuid4())}",
-                licenses=[1, 2]
-            )
+        # DOI information.
+        doi_info = self.doi_info
 
-            # The submission contains one dataset metadata object.
-            dataset_schema = "dataset"
-            dataset_title = f"title_{str(uuid.uuid4())}"
-            dataset_description = f"description_{str(uuid.uuid4())}"
+        # RENS information.
+        rems = Rems(
+            workflow_id=1,
+            organization_id=f"organisation_{str(uuid.uuid4())}",
+            licenses=[1, 2]
+        )
 
-            # The submission contains one file.
-            file_path = f"path_{str(uuid.uuid4())}"
-            file_bytes = 1024
+        # The submission contains no metadata objects.
 
-            # Mock data.
-            metax_url = "https://mock.com/"
-            metax_id = f"metax_{str(uuid.uuid4())}"
-            doi_part1 = f"doi_{str(uuid.uuid4())}"
-            doi_part2 = f"doi_{str(uuid.uuid4())}"
-            doi = f"{doi_part1}/{doi_part2}"
-            rems_resource_id = 1
-            rems_catalogue_id = f"catalogue_{str(uuid.uuid4())}"
+        submission_title =  f"title_{str(uuid.uuid4())}"
+        submission_description =  f"description_{str(uuid.uuid4())}"
 
-            # Create submission and files to allow the submission to be published.
+        # The submission contains one file.
+        file_path = f"path_{str(uuid.uuid4())}"
+        file_bytes = 1024
 
-            # Create submission.
-            workflow = SubmissionWorkflow.SDS
-            workflow_config = get_workflow(workflow.value)
-            submission_entity = create_submission_entity(
-                workflow=workflow,
-                document={
-                    SUB_FIELD_DOI: doi_info,
-                    SUB_FIELD_REMS: rems.json_dump()
-                })
-            submission_id = await self.submission_repository.add_submission(submission_entity)
+        # Mock data.
+        metax_url = "https://mock.com/"
+        metax_id = f"metax_{str(uuid.uuid4())}"
+        doi_part1 = f"doi_{str(uuid.uuid4())}"
+        doi_part2 = f"doi_{str(uuid.uuid4())}"
+        doi = f"{doi_part1}/{doi_part2}"
+        rems_resource_id = 1
+        rems_catalogue_id = f"catalogue_{str(uuid.uuid4())}"
 
-            # Create metadata object.
-            object_entity = create_object_entity(
-                submission_id=submission_entity.submission_id,
-                schema=dataset_schema,
-                document={
-                    "title": dataset_title,
-                    "description": dataset_description
-                })
-            await self.object_repository.add_object(object_entity)
+        # Create submission and files to allow the submission to be published.
 
-            # Create file.
-            file_entity = FileEntity(
-                submission_id=submission_entity.submission_id,
-                object_id=object_entity.object_id,
-                path=file_path,
-                bytes=file_bytes)
-            await self.file_repository.add_file(file_entity)
+        # Create submission.
+        workflow = SubmissionWorkflow.SDS
+        workflow_config = get_workflow(workflow.value)
+        submission_entity = create_submission_entity(
+            workflow=workflow,
+            title=submission_title,
+            description=submission_description,
+            document={
+                SUB_FIELD_DOI: doi_info,
+                SUB_FIELD_REMS: rems.json_dump()
+            })
+        submission_id = await self.submission_repository.add_submission(submission_entity)
+
+        # Create file.
+        file_entity = FileEntity(
+            submission_id=submission_entity.submission_id,
+            path=file_path,
+            bytes=file_bytes)
+        await self.file_repository.add_file(file_entity)
+
+        # Publish submission.
+        #
+
+        pid_cls = "metadata_backend.services.pid_ms_handler.PIDServiceHandler"
+        datacite_cls = "metadata_backend.services.datacite_service_handler.DataciteServiceHandler"
+        metax_cls = "metadata_backend.services.metax_service_handler.MetaxServiceHandler"
+        rems_cls = "metadata_backend.services.rems_service_handler.RemsServiceHandler"
+
+        with (
+            self.patch_verify_user_project,
+            self.patch_verify_authorization,
+            # Datacite (csc)
+            patch(f"{pid_cls}.create_draft_doi_pid", new_callable=AsyncMock) as mock_pid_create_doi,
+            patch(f"{pid_cls}.publish", new_callable=AsyncMock) as mock_pid_publish,
+            # Datacite (datacite)
+            patch(f"{datacite_cls}.create_draft_doi_datacite", new_callable=AsyncMock) as mock_datacite_create_doi,
+            patch(f"{datacite_cls}.publish", new_callable=AsyncMock) as mock_datacite_publish,
+            # Metax
+            patch.dict(os.environ, {"METAX_DISCOVERY_URL": metax_url}),
+            patch(f"{metax_cls}.post_dataset_as_draft", new_callable=AsyncMock) as mock_metax_create,
+            patch(f"{metax_cls}.update_dataset_with_doi_info", new_callable=AsyncMock) as mock_metax_update_doi,
+            patch(f"{metax_cls}.update_draft_dataset_description",
+                  new_callable=AsyncMock) as mock_metax_update_descr,
+            patch(f"{metax_cls}.publish_dataset", new_callable=AsyncMock) as mock_metax_publish,
+            # REMS
+            patch(f"{rems_cls}.create_resource", new_callable=AsyncMock) as mock_rems_create_resource,
+            patch(f"{rems_cls}.create_catalogue_item", new_callable=AsyncMock) as mock_rems_create_catalogue_item,
+
+        ):
+            # Mock Datacite.
+            mock_pid_create_doi.return_value = doi
+            mock_datacite_create_doi.return_value = doi
+            # Mock Metax.
+            mock_metax_create.return_value = metax_id
+            # Mock Rems.
+            mock_rems_create_resource.return_value = rems_resource_id
+            mock_rems_create_catalogue_item.return_value = rems_catalogue_id
 
             # Publish submission.
-            #
+            response = await self.client.patch(f"{API_PREFIX}/publish/{submission_entity.submission_id}")
+            data = await response.json()
+            assert response.status == 200
+            assert data == {"submissionId": submission_id}
 
-            pid_cls = "metadata_backend.services.pid_ms_handler.PIDServiceHandler"
-            datacite_cls = "metadata_backend.services.datacite_service_handler.DataciteServiceHandler"
-            metax_cls = "metadata_backend.services.metax_service_handler.MetaxServiceHandler"
-            rems_cls = "metadata_backend.services.rems_service_handler.RemsServiceHandler"
+            # Assert Datacite.
 
-            with (
-                self.patch_verify_user_project,
-                self.patch_verify_authorization,
-                # Datacite (csc)
-                patch(f"{pid_cls}.create_draft_doi_pid", new_callable=AsyncMock) as mock_pid_create_doi,
-                patch(f"{pid_cls}.publish", new_callable=AsyncMock) as mock_pid_publish,
-                # Datacite (datacite)
-                patch(f"{datacite_cls}.create_draft_doi_datacite", new_callable=AsyncMock) as mock_datacite_create_doi,
-                patch(f"{datacite_cls}.publish", new_callable=AsyncMock) as mock_datacite_publish,
-                # Metax
-                patch.dict(os.environ, {"METAX_DISCOVERY_URL": metax_url}),
-                patch(f"{metax_cls}.post_dataset_as_draft", new_callable=AsyncMock) as mock_metax_create,
-                patch(f"{metax_cls}.update_dataset_with_doi_info", new_callable=AsyncMock) as mock_metax_update_doi,
-                patch(f"{metax_cls}.update_draft_dataset_description",
-                      new_callable=AsyncMock) as mock_metax_update_descr,
-                patch(f"{metax_cls}.publish_dataset", new_callable=AsyncMock) as mock_metax_publish,
-                # REMS
-                patch(f"{rems_cls}.create_resource", new_callable=AsyncMock) as mock_rems_create_resource,
-                patch(f"{rems_cls}.create_catalogue_item", new_callable=AsyncMock) as mock_rems_create_catalogue_item,
-
-            ):
-                # Mock Datacite.
-                mock_pid_create_doi.return_value = doi
-                mock_datacite_create_doi.return_value = doi
-                # Mock Metax.
-                mock_metax_create.return_value = metax_id
-                # Mock Rems.
-                mock_rems_create_resource.return_value = rems_resource_id
-                mock_rems_create_catalogue_item.return_value = rems_catalogue_id
-
-                # Publish submission.
-                response = await self.client.patch(f"{API_PREFIX}/publish/{submission_entity.submission_id}")
-                data = await response.json()
-                assert response.status == 200
-                assert data == {"submissionId": submission_id}
-
-                # Assert Datacite.
-
-                datacite_data = {
-                    "id": doi,
-                    "type": "dois",
-                    "data": {
-                        "attributes": {
-                            "publisher": "CSC - IT Center for Science",
-                            "publicationYear": datetime.now().year,
-                            "event": "publish",
-                            "schemaVersion": "https://schema.datacite.org/meta/kernel-4",
-                            "doi": doi,
-                            "prefix": doi_part1,
-                            "suffix": doi_part2,
-                            "types": {
-                                "ris": "DATA",
-                                "bibtex": "misc",
-                                "citeproc": "dataset",
-                                "schemaOrg": "Dataset",
-                                "resourceTypeGeneral": "Dataset"
-                            },
-                            "url": f"{metax_url}{metax_id}",
-                            "identifiers": [
-                                {
-                                    "identifierType": "DOI",
-                                    "doi": doi
-                                }
-                            ],
-                            "titles": [
-                                {
-                                    "lang": None,
-                                    "title": dataset_title,
-                                    "titleType": None
-                                }
-                            ],
-                            "descriptions": [
-                                {
-                                    "lang": None,
-                                    "description": dataset_description,
-                                    "descriptionType": "Other"
-                                }
-                            ],
-                            "creators": [
-                                {
-                                    "givenName": "Test",
-                                    "familyName": "Creator",
-                                    "affiliation": [
-                                        {
-                                            "name": "affiliation place",
-                                            "schemeUri": "https://ror.org",
-                                            "affiliationIdentifier": "https://ror.org/test1",
-                                            "affiliationIdentifierScheme": "ROR"
-                                        }
-                                    ]
-                                }
-                            ],
-                            "subjects": [
-                                {
-                                    "subject": "999 - Other",
-                                    "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
-                                    "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
-                                    "valueUri": "http://www.yso.fi/onto/okm-tieteenala/ta999",
-                                    "classificationCode": "999"
-                                }
-                            ]
-                        }
-                    }
-                }
-
-                if workflow_config.publish_config.datacite_config.service == "csc":
-                    mock_pid_create_doi.assert_awaited_once_with()
-                    mock_pid_publish.assert_awaited_once_with(datacite_data)
-                else:
-                    mock_datacite_create_doi.assert_awaited_once_with(dataset_schema)
-                    mock_datacite_publish.assert_awaited_once_with(datacite_data)
-
-                # Assert Metax.
-                mock_metax_create.assert_awaited_once_with(
-                    user_id, doi, dataset_title, dataset_description
-                )
-                mock_metax_update_doi.assert_awaited_once_with(
-                    {
-                        # Remove keywords.
-                        **{k: v for k, v in doi_info.items() if k != "keywords"},
-                        # Update subjects.
+            datacite_data = {
+                "id": doi,
+                "type": "dois",
+                "data": {
+                    "attributes": {
+                        "publisher": "CSC - IT Center for Science",
+                        "publicationYear": datetime.now().year,
+                        "event": "publish",
+                        "schemaVersion": "https://schema.datacite.org/meta/kernel-4",
+                        "doi": doi,
+                        "prefix": doi_part1,
+                        "suffix": doi_part2,
+                        "types": {
+                            "ris": "DATA",
+                            "bibtex": "misc",
+                            "citeproc": "dataset",
+                            "schemaOrg": "Dataset",
+                            "resourceTypeGeneral": "Dataset"
+                        },
+                        "url": f"{metax_url}{metax_id}",
+                        "identifiers": [
+                            {
+                                "identifierType": "DOI",
+                                "doi": doi
+                            }
+                        ],
+                        "titles": [
+                            {
+                                "lang": None,
+                                "title": submission_title,
+                                "titleType": None
+                            }
+                        ],
+                        "descriptions": [
+                            {
+                                "lang": None,
+                                "description": submission_description,
+                                "descriptionType": "Other"
+                            }
+                        ],
+                        "creators": [
+                            {
+                                "givenName": "Test",
+                                "familyName": "Creator",
+                                "affiliation": [
+                                    {
+                                        "name": "affiliation place",
+                                        "schemeUri": "https://ror.org",
+                                        "affiliationIdentifier": "https://ror.org/test1",
+                                        "affiliationIdentifierScheme": "ROR"
+                                    }
+                                ]
+                            }
+                        ],
                         "subjects": [
                             {
-                                **s,
+                                "subject": "999 - Other",
                                 "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
                                 "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
-                                "valueUri": f"http://www.yso.fi/onto/okm-tieteenala/ta{s['subject'].split(' - ')[0]}",
-                                "classificationCode": s["subject"].split(" - ")[0],
+                                "valueUri": "http://www.yso.fi/onto/okm-tieteenala/ta999",
+                                "classificationCode": "999"
                             }
-                            for s in doi_info.get("subjects", [])
-                        ]},
-                    metax_id,
-                    file_bytes,
-                    related_dataset=None,
-                    related_study=None,
-                )
-                mock_metax_update_descr.assert_awaited_once_with(
-                    metax_id,
-                    f"{dataset_description}\n\nSD Apply's Application link: {RemsServiceHandler.application_url(rems_catalogue_id)}")
-
-                mock_metax_publish.assert_awaited_once_with(metax_id, doi)
-
-                # Assert Rems.
-                mock_rems_create_resource.assert_awaited_once_with(doi=doi, organization_id=rems.organization_id,
-                                                                   licenses=rems.licenses)
-                mock_rems_create_catalogue_item.assert_awaited_once_with(resource_id=rems_resource_id,
-                                                                         workflow_id=rems.workflow_id,
-                                                                         organization_id=rems.organization_id,
-                                                                         localizations={
-                                                                             "en":
-                                                                                 {
-                                                                                     "title": dataset_title,
-                                                                                     "infourl": f"{metax_url}{metax_id}"
-                                                                                 }
-                                                                         })
-
-    class FilesHandlerTestCase(HandlersTestCase):
-        """Files API endpoint class test cases."""
-
-        async def setUpAsync(self):
-            """Configure default values for testing and other modules.
-
-            This patches used modules and sets default return values for their
-            methods.
-            """
-            await super().setUpAsync()
-
-            self.mock_file_data = {
-                "userId": self.user_id,
-                "projectId": self.project_id,
-                "files": [
-                    {
-                        "path": "s3:/bucket/files/mock",
-                        "name": "mock_file.c4gh",
-                        "bytes": 100,
-                        "encrypted_checksums": [{
-                            "type": "md5",
-                            "value": "7ac236b1a82dac89e7cf45d2b4812345"
-                        }],
-                        "unencrypted_checksums": [{
-                            "type": "md5",
-                            "value": "7ac236b1a82dac89e7cf45d2b4812345"
-                        }],
+                        ]
                     }
-                ],
+                }
             }
 
-            self.mock_file_paths = ["s3:/bucket/files/mock", "s3:/bucket/files/mock2", "s3:/bucket/files/mock3"]
-            self.mock_single_file = {
-                "accessionId": self.projected_file_example["accessionId"],
-                "path": self.mock_file_data["files"][0]["path"],
-                "projectId": self.mock_file_data["projectId"],
+            if workflow_config.publish_config.datacite_config.service == "csc":
+                mock_pid_create_doi.assert_awaited_once_with()
+                mock_pid_publish.assert_awaited_once_with(datacite_data)
+            else:
+                mock_datacite_create_doi.assert_awaited_once_with("submission")
+                mock_datacite_publish.assert_awaited_once_with(datacite_data)
+
+            # Assert Metax.
+            mock_metax_create.assert_awaited_once_with(
+                user_id, doi, submission_title, submission_description
+            )
+            mock_metax_update_doi.assert_awaited_once_with(
+                {
+                    # Remove keywords.
+                    **{k: v for k, v in doi_info.items() if k != "keywords"},
+                    # Update subjects.
+                    "subjects": [
+                        {
+                            **s,
+                            "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
+                            "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
+                            "valueUri": f"http://www.yso.fi/onto/okm-tieteenala/ta{s['subject'].split(' - ')[0]}",
+                            "classificationCode": s["subject"].split(" - ")[0],
+                        }
+                        for s in doi_info.get("subjects", [])
+                    ]},
+                metax_id,
+                file_bytes,
+                related_dataset=None,
+                related_study=None,
+            )
+            mock_metax_update_descr.assert_awaited_once_with(
+                metax_id,
+                f"{submission_description}\n\nSD Apply's Application link: {RemsServiceHandler.application_url(rems_catalogue_id)}")
+
+            mock_metax_publish.assert_awaited_once_with(metax_id, doi)
+
+            # Assert Rems.
+            mock_rems_create_resource.assert_awaited_once_with(doi=doi, organization_id=rems.organization_id,
+                                                               licenses=rems.licenses)
+            mock_rems_create_catalogue_item.assert_awaited_once_with(resource_id=rems_resource_id,
+                                                                     workflow_id=rems.workflow_id,
+                                                                     organization_id=rems.organization_id,
+                                                                     localizations={
+                                                                         "en":
+                                                                             {
+                                                                                 "title": submission_title,
+                                                                                 "infourl": f"{metax_url}{metax_id}"
+                                                                             }
+                                                                     })
+
+    async def test_publish_submission_fega(self):
+        """Test publishing of FEGA submission."""
+
+        user_id = "mock-userid"
+
+        # DOI information.
+        doi_info = self.doi_info
+
+        # RENS information.
+        rems = Rems(
+            workflow_id=1,
+            organization_id=f"organisation_{str(uuid.uuid4())}",
+            licenses=[1, 2]
+        )
+
+        # The submission contains one dataset metadata object.
+        dataset_schema = "dataset"
+        dataset_title = f"title_{str(uuid.uuid4())}"
+        dataset_description = f"description_{str(uuid.uuid4())}"
+
+        # The submission contains one study metadata object.
+        study_schema = "study"
+        study_title = f"title_{str(uuid.uuid4())}"
+        study_description = f"description_{str(uuid.uuid4())}"
+
+        # The submission contains one file.
+        file_path = f"path_{str(uuid.uuid4())}"
+        file_bytes = 1024
+
+        # Mock data.
+        metax_url = "https://mock.com/"
+        metax_id = f"metax_{str(uuid.uuid4())}"
+        doi_part1 = f"doi_{str(uuid.uuid4())}"
+        doi_part2 = f"doi_{str(uuid.uuid4())}"
+        doi = f"{doi_part1}/{doi_part2}"
+        rems_resource_id = 1
+        rems_catalogue_id = f"catalogue_{str(uuid.uuid4())}"
+
+        # Create submission and files to allow the submission to be published.
+
+        # Create submission.
+        workflow = SubmissionWorkflow.FEGA
+        workflow_config = get_workflow(workflow.value)
+        submission_entity = create_submission_entity(
+            workflow=workflow,
+            document={
+                SUB_FIELD_DOI: doi_info,
+                SUB_FIELD_REMS: rems.json_dump()
+            })
+        submission_id = await self.submission_repository.add_submission(submission_entity)
+
+        # Create metadata objects.
+
+        # Dataset.
+        dataset_entity = create_object_entity(
+            submission_id=submission_entity.submission_id,
+            schema=dataset_schema,
+            document={
+                "title": dataset_title,
+                "description": dataset_description
+            })
+        await self.object_repository.add_object(dataset_entity)
+
+        # DAC.
+        dac_entity = create_object_entity(
+            submission_id=submission_entity.submission_id,
+            schema="dac",
+            document={})
+        await self.object_repository.add_object(dac_entity)
+
+        # Policy.
+        policy_entity = create_object_entity(
+            submission_id=submission_entity.submission_id,
+            schema="policy",
+            document={})
+        await self.object_repository.add_object(policy_entity)
+
+        # Study.
+        study_entity = create_object_entity(
+            submission_id=submission_entity.submission_id,
+            schema=study_schema,
+            document={
+                "descriptor": {
+                    "studyTitle": study_title,
+                    "studyAbstract": study_description
+                }
+            })
+        await self.object_repository.add_object(study_entity)
+
+        # Create file.
+        file_entity = FileEntity(
+            submission_id=submission_entity.submission_id,
+            object_id=dataset_entity.object_id,
+            path=file_path,
+            bytes=file_bytes)
+        await self.file_repository.add_file(file_entity)
+
+        # Publish submission.
+        #
+
+        pid_cls = "metadata_backend.services.pid_ms_handler.PIDServiceHandler"
+        datacite_cls = "metadata_backend.services.datacite_service_handler.DataciteServiceHandler"
+        metax_cls = "metadata_backend.services.metax_service_handler.MetaxServiceHandler"
+        rems_cls = "metadata_backend.services.rems_service_handler.RemsServiceHandler"
+
+        with (
+            self.patch_verify_user_project,
+            self.patch_verify_authorization,
+            # Datacite (csc)
+            patch(f"{pid_cls}.create_draft_doi_pid", new_callable=AsyncMock) as mock_pid_create_doi,
+            patch(f"{pid_cls}.publish", new_callable=AsyncMock) as mock_pid_publish,
+            # Datacite (datacite)
+            patch(f"{datacite_cls}.create_draft_doi_datacite", new_callable=AsyncMock) as mock_datacite_create_doi,
+            patch(f"{datacite_cls}.publish", new_callable=AsyncMock) as mock_datacite_publish,
+            # Metax
+            patch.dict(os.environ, {"METAX_DISCOVERY_URL": metax_url}),
+            patch(f"{metax_cls}.post_dataset_as_draft", new_callable=AsyncMock) as mock_metax_create,
+            patch(f"{metax_cls}.update_dataset_with_doi_info", new_callable=AsyncMock) as mock_metax_update_doi,
+            patch(f"{metax_cls}.update_draft_dataset_description",
+                  new_callable=AsyncMock) as mock_metax_update_descr,
+            patch(f"{metax_cls}.publish_dataset", new_callable=AsyncMock) as mock_metax_publish,
+            # REMS
+            patch(f"{rems_cls}.create_resource", new_callable=AsyncMock) as mock_rems_create_resource,
+            patch(f"{rems_cls}.create_catalogue_item", new_callable=AsyncMock) as mock_rems_create_catalogue_item,
+
+        ):
+            # Mock Datacite.
+            mock_pid_create_doi.return_value = doi
+            mock_datacite_create_doi.return_value = doi
+            # Mock Metax.
+            mock_metax_create.return_value = metax_id
+            # Mock Rems.
+            mock_rems_create_resource.return_value = rems_resource_id
+            mock_rems_create_catalogue_item.return_value = rems_catalogue_id
+
+            # Publish submission.
+            response = await self.client.patch(f"{API_PREFIX}/publish/{submission_entity.submission_id}")
+            data = await response.json()
+            assert response.status == 200
+            assert data == {"submissionId": submission_id}
+
+            # Assert Datacite.
+
+            dataset_datacite_data = {
+                "id": doi,
+                "type": "dois",
+                "data": {
+                    "attributes": {
+                        "publisher": "CSC - IT Center for Science",
+                        "publicationYear": datetime.now().year,
+                        "event": "publish",
+                        "schemaVersion": "https://schema.datacite.org/meta/kernel-4",
+                        "doi": doi,
+                        "prefix": doi_part1,
+                        "suffix": doi_part2,
+                        "types": {
+                            "ris": "DATA",
+                            "bibtex": "misc",
+                            "citeproc": "dataset",
+                            "schemaOrg": "Dataset",
+                            "resourceTypeGeneral": "Dataset"
+                        },
+                        "url": f"{metax_url}{metax_id}",
+                        "identifiers": [
+                            {
+                                "identifierType": "DOI",
+                                "doi": doi
+                            }
+                        ],
+                        "titles": [
+                            {
+                                "lang": None,
+                                "title": dataset_title,
+                                "titleType": None
+                            }
+                        ],
+                        "descriptions": [
+                            {
+                                "lang": None,
+                                "description": dataset_description,
+                                "descriptionType": "Other"
+                            }
+                        ],
+                        "creators": [
+                            {
+                                "givenName": "Test",
+                                "familyName": "Creator",
+                                "affiliation": [
+                                    {
+                                        "name": "affiliation place",
+                                        "schemeUri": "https://ror.org",
+                                        "affiliationIdentifier": "https://ror.org/test1",
+                                        "affiliationIdentifierScheme": "ROR"
+                                    }
+                                ]
+                            }
+                        ],
+                        "subjects": [
+                            {
+                                "subject": "999 - Other",
+                                "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
+                                "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
+                                "valueUri": "http://www.yso.fi/onto/okm-tieteenala/ta999",
+                                "classificationCode": "999"
+                            }
+                        ],
+                        'relatedIdentifiers': [
+                            {
+                                'relationType': 'IsDescribedBy',
+                                'relatedIdentifier': doi,
+                                'resourceTypeGeneral': 'Collection',
+                                'relatedIdentifierType': 'DOI'
+                            }
+                        ],
+                    }
+                }
             }
 
-        async def tearDownAsync(self):
-            """Cleanup mocked stuff."""
-            await super().tearDownAsync()
-            # self.patch_fileoperator.stop()
+            study_datacite_data = {
+                "id": doi,
+                "type": "dois",
+                "data": {
+                    "attributes": {
+                        "publisher": "CSC - IT Center for Science",
+                        "publicationYear": datetime.now().year,
+                        "event": "publish",
+                        "schemaVersion": "https://schema.datacite.org/meta/kernel-4",
+                        "doi": doi,
+                        "prefix": doi_part1,
+                        "suffix": doi_part2,
+                        "types": {
+                            "bibtex": "misc",
+                            "citeproc": "collection",
+                            "schemaOrg": "Collection",
+                            "resourceTypeGeneral": "Collection"
+                        },
+                        "url": f"{metax_url}{metax_id}",
+                        "identifiers": [
+                            {
+                                "identifierType": "DOI",
+                                "doi": doi
+                            }
+                        ],
+                        "titles": [
+                            {
+                                "lang": None,
+                                "title": study_title,
+                                "titleType": None
+                            }
+                        ],
+                        "descriptions": [
+                            {
+                                "lang": None,
+                                "description": study_description,
+                                "descriptionType": "Other"
+                            }
+                        ],
+                        "creators": [
+                            {
+                                "givenName": "Test",
+                                "familyName": "Creator",
+                                "affiliation": [
+                                    {
+                                        "name": "affiliation place",
+                                        "schemeUri": "https://ror.org",
+                                        "affiliationIdentifier": "https://ror.org/test1",
+                                        "affiliationIdentifierScheme": "ROR"
+                                    }
+                                ]
+                            }
+                        ],
+                        "subjects": [
+                            {
+                                "subject": "999 - Other",
+                                "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
+                                "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
+                                "valueUri": "http://www.yso.fi/onto/okm-tieteenala/ta999",
+                                "classificationCode": "999"
+                            }
+                        ],
+                        'relatedIdentifiers': [
+                            {
+                                'relationType': 'Describes',
+                                'relatedIdentifier': doi,
+                                'resourceTypeGeneral': 'Dataset',
+                                'relatedIdentifierType': 'DOI'
+                            }
+                        ],
+                    }
+                }
+            }
 
-        async def test_get_project_files(self) -> None:
-            """Test fetching files belonging to specific project."""
-            with (
-                self.patch_verify_user_project_failure,
-                self.patch_verify_authorization,
-            ):
-                # User is not part of project
+            if workflow_config.publish_config.datacite_config.service == "csc":
+                assert mock_pid_create_doi.await_count == 2
+                assert mock_pid_publish.await_count == 2
+                assert call(dataset_datacite_data) in mock_pid_publish.await_args_list
+                assert call(study_datacite_data) in mock_pid_publish.await_args_list
+            else:
+                assert mock_datacite_create_doi.await_count == 2
+                assert call(dataset_schema) in mock_datacite_create_doi.await_args_list
+                assert call(study_schema) in mock_datacite_create_doi.await_args_list
+                assert mock_pid_publish.await_count == 2
+                assert call(dataset_datacite_data) in mock_datacite_publish.await_args_list
+                assert call(study_datacite_data) in mock_datacite_publish.await_args_list
+
+            # Assert Metax.
+            assert mock_metax_create.await_count == 2
+            assert call(user_id, doi, dataset_title, dataset_description) in mock_metax_create.await_args_list
+            assert call(user_id, doi, study_title, study_description) in mock_metax_create.await_args_list
+            assert mock_metax_update_doi.await_count == 2
+            # Dataset.
+            assert call(
+                {
+                    # Remove keywords.
+                    **{k: v for k, v in doi_info.items() if k != "keywords"},
+                    # Update subjects.
+                    "subjects": [
+                        {
+                            **s,
+                            "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
+                            "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
+                            "valueUri": f"http://www.yso.fi/onto/okm-tieteenala/ta{s['subject'].split(' - ')[0]}",
+                            "classificationCode": s["subject"].split(" - ")[0],
+                        }
+                        for s in doi_info.get("subjects", [])
+                    ]},
+                metax_id,
+                file_bytes,
+                related_dataset=None,
+                related_study=Registration(submission_id=submission_id, object_id=study_entity.object_id,
+                                           schema_type=study_schema, title=study_title, description=study_description,
+                                           doi=doi, metax_id=metax_id),
+            ) in mock_metax_update_doi.await_args_list
+            # Study.
+            assert call(
+                {
+                    # Remove keywords.
+                    **{k: v for k, v in doi_info.items() if k != "keywords"},
+                    # Update subjects.
+                    "subjects": [
+                        {
+                            **s,
+                            "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
+                            "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
+                            "valueUri": f"http://www.yso.fi/onto/okm-tieteenala/ta{s['subject'].split(' - ')[0]}",
+                            "classificationCode": s["subject"].split(" - ")[0],
+                        }
+                        for s in doi_info.get("subjects", [])
+                    ]},
+                metax_id,
+                file_bytes,
+                related_dataset=Registration(submission_id=submission_id,
+                                             object_id=dataset_entity.object_id,
+                                             schema_type=dataset_schema,
+                                             title=dataset_title,
+                                             description=dataset_description,
+                                             doi=doi,
+                                             metax_id=metax_id,
+                                             rems_url=f"http://mockrems:8003/application?items={rems_catalogue_id}",
+                                             rems_resource_id=str(rems_resource_id),
+                                             rems_catalogue_id=rems_catalogue_id),
+                related_study=None
+            ) in mock_metax_update_doi.await_args_list
+
+            mock_metax_update_descr.assert_awaited_once_with(
+                metax_id,
+                f"{dataset_description}\n\nSD Apply's Application link: {RemsServiceHandler.application_url(rems_catalogue_id)}")
+
+            assert mock_metax_publish.await_count == 2
+            assert call(metax_id, doi) in mock_metax_publish.await_args_list
+
+            # Assert Rems.
+            mock_rems_create_resource.assert_awaited_once_with(doi=doi, organization_id=rems.organization_id,
+                                                               licenses=rems.licenses)
+            mock_rems_create_catalogue_item.assert_awaited_once_with(resource_id=rems_resource_id,
+                                                                     workflow_id=rems.workflow_id,
+                                                                     organization_id=rems.organization_id,
+                                                                     localizations={
+                                                                         "en":
+                                                                             {
+                                                                                 "title": dataset_title,
+                                                                                 "infourl": f"{metax_url}{metax_id}"
+                                                                             }
+                                                                     })
+
+    async def test_publish_submission_bp(self):
+        """Test publishing of BP submission."""
+
+        # DOI information.
+        doi_info = self.doi_info
+
+        # RENS information.
+        rems = Rems(
+            workflow_id=1,
+            organization_id=f"organisation_{str(uuid.uuid4())}",
+            licenses=[1, 2]
+        )
+
+        # The submission contains one dataset metadata object.
+        dataset_schema = "bpdataset"
+        dataset_title = f"title_{str(uuid.uuid4())}"
+        dataset_description = f"description_{str(uuid.uuid4())}"
+
+        # The submission contains one file.
+        file_path = f"path_{str(uuid.uuid4())}"
+        file_bytes = 1024
+
+        # Mock data.
+        beacon_url = "https://mock.com/"
+        doi_part1 = f"doi_{str(uuid.uuid4())}"
+        doi_part2 = f"doi_{str(uuid.uuid4())}"
+        doi = f"{doi_part1}/{doi_part2}"
+        rems_resource_id = 1
+        rems_catalogue_id = f"catalogue_{str(uuid.uuid4())}"
+
+        # Create submission and files to allow the submission to be published.
+
+        # Create submission.
+        workflow = SubmissionWorkflow.BP
+        workflow_config = get_workflow(workflow.value)
+        submission_entity = create_submission_entity(
+            workflow=workflow,
+            document={
+                SUB_FIELD_DOI: doi_info,
+                SUB_FIELD_REMS: rems.json_dump()
+            })
+        submission_id = await self.submission_repository.add_submission(submission_entity)
+
+        # Create metadata object.
+        object_entity = create_object_entity(
+            submission_id=submission_entity.submission_id,
+            schema=dataset_schema,
+            document={
+                "title": dataset_title,
+                "description": dataset_description
+            })
+        await self.object_repository.add_object(object_entity)
+
+        # Create file.
+        file_entity = FileEntity(
+            submission_id=submission_entity.submission_id,
+            object_id=object_entity.object_id,
+            path=file_path,
+            bytes=file_bytes)
+        await self.file_repository.add_file(file_entity)
+
+        # Publish submission.
+        #
+
+        pid_cls = "metadata_backend.services.pid_ms_handler.PIDServiceHandler"
+        datacite_cls = "metadata_backend.services.datacite_service_handler.DataciteServiceHandler"
+        rems_cls = "metadata_backend.services.rems_service_handler.RemsServiceHandler"
+
+        with (
+            self.patch_verify_user_project,
+            self.patch_verify_authorization,
+            # Datacite (csc)
+            patch(f"{pid_cls}.create_draft_doi_pid", new_callable=AsyncMock) as mock_pid_create_doi,
+            patch(f"{pid_cls}.publish", new_callable=AsyncMock) as mock_pid_publish,
+            # Datacite (datacite)
+            patch(f"{datacite_cls}.create_draft_doi_datacite", new_callable=AsyncMock) as mock_datacite_create_doi,
+            patch(f"{datacite_cls}.publish", new_callable=AsyncMock) as mock_datacite_publish,
+            # Metax
+            patch.dict(os.environ, {"BEACON_DISCOVERY_URL": beacon_url}),
+            # REMS
+            patch(f"{rems_cls}.create_resource", new_callable=AsyncMock) as mock_rems_create_resource,
+            patch(f"{rems_cls}.create_catalogue_item", new_callable=AsyncMock) as mock_rems_create_catalogue_item,
+
+        ):
+            # Mock Datacite.
+            mock_pid_create_doi.return_value = doi
+            mock_datacite_create_doi.return_value = doi
+            # Mock Rems.
+            mock_rems_create_resource.return_value = rems_resource_id
+            mock_rems_create_catalogue_item.return_value = rems_catalogue_id
+
+            # Publish submission.
+            response = await self.client.patch(f"{API_PREFIX}/publish/{submission_entity.submission_id}")
+            data = await response.json()
+            assert response.status == 200
+            assert data == {"submissionId": submission_id}
+
+            # Assert Datacite.
+
+            datacite_data = {
+                "id": doi,
+                "type": "dois",
+                "data": {
+                    "attributes": {
+                        "publisher": "CSC - IT Center for Science",
+                        "publicationYear": datetime.now().year,
+                        "event": "publish",
+                        "schemaVersion": "https://schema.datacite.org/meta/kernel-4",
+                        "doi": doi,
+                        "prefix": doi_part1,
+                        "suffix": doi_part2,
+                        "types": {
+                            "ris": "DATA",
+                            "bibtex": "misc",
+                            "citeproc": "dataset",
+                            "schemaOrg": "Dataset",
+                            "resourceTypeGeneral": "Dataset"
+                        },
+                        "url": f"{beacon_url}{doi}",
+                        "identifiers": [
+                            {
+                                "identifierType": "DOI",
+                                "doi": doi
+                            }
+                        ],
+                        "titles": [
+                            {
+                                "lang": None,
+                                "title": dataset_title,
+                                "titleType": None
+                            }
+                        ],
+                        "descriptions": [
+                            {
+                                "lang": None,
+                                "description": dataset_description,
+                                "descriptionType": "Other"
+                            }
+                        ],
+                        "creators": [
+                            {
+                                "givenName": "Test",
+                                "familyName": "Creator",
+                                "affiliation": [
+                                    {
+                                        "name": "affiliation place",
+                                        "schemeUri": "https://ror.org",
+                                        "affiliationIdentifier": "https://ror.org/test1",
+                                        "affiliationIdentifierScheme": "ROR"
+                                    }
+                                ]
+                            }
+                        ],
+                        "subjects": [
+                            {
+                                "subject": "999 - Other",
+                                "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
+                                "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
+                                "valueUri": "http://www.yso.fi/onto/okm-tieteenala/ta999",
+                                "classificationCode": "999"
+                            }
+                        ]
+                    }
+                }
+            }
+
+            if workflow_config.publish_config.datacite_config.service == "csc":
+                mock_pid_create_doi.assert_awaited_once_with()
+                mock_pid_publish.assert_awaited_once_with(datacite_data)
+            else:
+                mock_datacite_create_doi.assert_awaited_once_with(dataset_schema)
+                mock_datacite_publish.assert_awaited_once_with(datacite_data)
+
+            # Assert Beacon.
+            # TODO(improve): BP beacon service not implement
+
+            # Assert Rems.
+            mock_rems_create_resource.assert_awaited_once_with(doi=doi, organization_id=rems.organization_id,
+                                                               licenses=rems.licenses)
+            mock_rems_create_catalogue_item.assert_awaited_once_with(resource_id=rems_resource_id,
+                                                                     workflow_id=rems.workflow_id,
+                                                                     organization_id=rems.organization_id,
+                                                                     localizations={
+                                                                         "en":
+                                                                             {
+                                                                                 "title": dataset_title,
+                                                                                 "infourl": f"{beacon_url}{doi}"
+                                                                             }
+                                                                     })
+
+
+class FilesHandlerTestCase(HandlersTestCase):
+    """Files API endpoint class test cases."""
+
+    async def setUpAsync(self):
+        """Configure default values for testing and other modules.
+
+        This patches used modules and sets default return values for their
+        methods.
+        """
+        await super().setUpAsync()
+
+        self.mock_file_data = {
+            "userId": self.user_id,
+            "projectId": self.project_id,
+            "files": [
+                {
+                    "path": "s3:/bucket/files/mock",
+                    "name": "mock_file.c4gh",
+                    "bytes": 100,
+                    "encrypted_checksums": [{
+                        "type": "md5",
+                        "value": "7ac236b1a82dac89e7cf45d2b4812345"
+                    }],
+                    "unencrypted_checksums": [{
+                        "type": "md5",
+                        "value": "7ac236b1a82dac89e7cf45d2b4812345"
+                    }],
+                }
+            ],
+        }
+
+        self.mock_file_paths = ["s3:/bucket/files/mock", "s3:/bucket/files/mock2", "s3:/bucket/files/mock3"]
+        self.mock_single_file = {
+            "accessionId": self.projected_file_example["accessionId"],
+            "path": self.mock_file_data["files"][0]["path"],
+            "projectId": self.mock_file_data["projectId"],
+        }
+
+    async def tearDownAsync(self):
+        """Cleanup mocked stuff."""
+        await super().tearDownAsync()
+        # self.patch_fileoperator.stop()
+
+    async def test_get_project_files(self) -> None:
+        """Test fetching files belonging to specific project."""
+        with (
+            self.patch_verify_user_project_failure,
+            self.patch_verify_authorization,
+        ):
+            # User is not part of project
+            response = await self.client.get(f"{API_PREFIX}/files")
+            self.assertEqual(response.status, 401)
+
+        with (
+            self.patch_verify_user_project,
+            self.patch_verify_authorization,
+        ):
+            with patch(
+                    "metadata_backend.api.handlers.files.FileOperator.read_project_files",
+                    new_callable=AsyncMock
+            ) as mock_read:
+                # Successful fetching of project-wise file list
+                mock_read.return_value = self.test_submission["files"]
                 response = await self.client.get(f"{API_PREFIX}/files")
-                self.assertEqual(response.status, 401)
+                self.assertEqual(response.status, 200)
+                json_resp = await response.json()
+                self.assertEqual(json_resp[0]["accessionId"], "file1")
 
-            with (
-                self.patch_verify_user_project,
-                self.patch_verify_authorization,
-            ):
-                with patch(
-                        "metadata_backend.api.handlers.files.FileOperator.read_project_files",
-                        new_callable=AsyncMock
-                ) as mock_read:
-                    # Successful fetching of project-wise file list
-                    mock_read.return_value = self.test_submission["files"]
-                    response = await self.client.get(f"{API_PREFIX}/files")
-                    self.assertEqual(response.status, 200)
-                    json_resp = await response.json()
-                    self.assertEqual(json_resp[0]["accessionId"], "file1")
-
-        async def test_post_project_files_works(self) -> None:
-            """Test file post request handler."""
-            with (
-                self.patch_verify_user_project,
-                self.patch_verify_authorization,
-            ):
-                with patch(
-                        "metadata_backend.api.handlers.files.FileOperator.create_file_or_version",
-                        new_callable=AsyncMock
-                ) as mock_create, patch(
-                    "metadata_backend.api.handlers.files.FileOperator._get_file_id_and_version",
+    async def test_post_project_files_works(self) -> None:
+        """Test file post request handler."""
+        with (
+            self.patch_verify_user_project,
+            self.patch_verify_authorization,
+        ):
+            with patch(
+                    "metadata_backend.api.handlers.files.FileOperator.create_file_or_version",
                     new_callable=AsyncMock
-                ) as mock_file:
-                    mock_create.return_value = "accession_id1", 1
-                    mock_file.return_value = {"accessionId": "accession_id1", "version": 1}
-                    response = await self.client.post(f"{API_PREFIX}/files", json=self.mock_file_data)
-                    self.assertEqual(response.status, 201)
-                    json_resp = await response.json()
-                    self.assertEqual(json_resp, [["accession_id1", 1]])
-
-        async def test_post_project_files_fails(self) -> None:
-            """Test file post request handler for error instances."""
-            with (
-                self.patch_verify_user_project_failure,
-                self.patch_verify_authorization,
-            ):
-                # Requesting user is not part of the project
+            ) as mock_create, patch(
+                "metadata_backend.api.handlers.files.FileOperator._get_file_id_and_version",
+                new_callable=AsyncMock
+            ) as mock_file:
+                mock_create.return_value = "accession_id1", 1
+                mock_file.return_value = {"accessionId": "accession_id1", "version": 1}
                 response = await self.client.post(f"{API_PREFIX}/files", json=self.mock_file_data)
-                self.assertEqual(response.status, 401)
-
-            with (
-                self.patch_verify_user_project,
-                self.patch_verify_authorization,
-            ):
-                # Faulty request data
-                alt_data = self.mock_file_data
-                alt_data["files"] = "not a list"
-                response = await self.client.post(f"{API_PREFIX}/files", json=alt_data)
-                self.assertEqual(response.status, 400)
+                self.assertEqual(response.status, 201)
                 json_resp = await response.json()
-                self.assertEqual(json_resp["detail"], "Field `files` must be a list.")
+                self.assertEqual(json_resp, [["accession_id1", 1]])
 
-                # Lacking request data
-                alt_data = self.mock_file_data
-                alt_data["files"] = [{"name": "filename"}]
-                response = await self.client.post(f"{API_PREFIX}/files", json=alt_data)
-                self.assertEqual(response.status, 400)
-                json_resp = await response.json()
-                self.assertEqual(
-                    json_resp["detail"],
-                    "Fields `path`, `name`, `bytes`, `encrypted_checksums`, `unencrypted_checksums` are required.",
+    async def test_post_project_files_fails(self) -> None:
+        """Test file post request handler for error instances."""
+        with (
+            self.patch_verify_user_project_failure,
+            self.patch_verify_authorization,
+        ):
+            # Requesting user is not part of the project
+            response = await self.client.post(f"{API_PREFIX}/files", json=self.mock_file_data)
+            self.assertEqual(response.status, 401)
+
+        with (
+            self.patch_verify_user_project,
+            self.patch_verify_authorization,
+        ):
+            # Faulty request data
+            alt_data = self.mock_file_data
+            alt_data["files"] = "not a list"
+            response = await self.client.post(f"{API_PREFIX}/files", json=alt_data)
+            self.assertEqual(response.status, 400)
+            json_resp = await response.json()
+            self.assertEqual(json_resp["detail"], "Field `files` must be a list.")
+
+            # Lacking request data
+            alt_data = self.mock_file_data
+            alt_data["files"] = [{"name": "filename"}]
+            response = await self.client.post(f"{API_PREFIX}/files", json=alt_data)
+            self.assertEqual(response.status, 400)
+            json_resp = await response.json()
+            self.assertEqual(
+                json_resp["detail"],
+                "Fields `path`, `name`, `bytes`, `encrypted_checksums`, `unencrypted_checksums` are required.",
+            )
+
+    async def test_delete_project_files_works(self) -> None:
+        """Test deleting file request handler."""
+        with (
+            self.patch_verify_user_project,
+            self.patch_verify_authorization,
+        ):
+            with patch(
+                    "metadata_backend.api.handlers.files.FileOperator.check_file_exists",
+                    new_callable=AsyncMock
+            ) as mock_check, patch(
+                "metadata_backend.api.handlers.files.FileOperator.flag_file_deleted",
+                new_callable=AsyncMock
+            ) as mock_flag:
+                mock_check.return_value = self.mock_single_file
+
+                url = f"{API_PREFIX}/files/{self.mock_single_file['projectId']}"
+                response = await self.client.delete(url, json=self.mock_file_paths)
+                assert mock_flag.call_count == 3
+                self.assertEqual(response.status, 204)
+
+    async def test_delete_project_files_not_in_database(self) -> None:
+        """Test deleting file request handler with error if file does not exist in database."""
+        with (
+            self.patch_verify_user_project,
+            self.patch_verify_authorization,
+        ):
+            with patch(
+                    "metadata_backend.api.handlers.files.FileOperator.check_file_exists",
+                    new_callable=AsyncMock
+            ) as mock_check, patch(
+                "metadata_backend.api.handlers.files.FileOperator.flag_file_deleted",
+                new_callable=AsyncMock
+            ) as mock_flag:
+                mock_check.return_value = None
+
+                url = f"{API_PREFIX}/files/{self.mock_single_file['projectId']}"
+                # File does not exist in database
+                await self.client.delete(url, json=self.mock_file_paths)
+                mock_flag.assert_not_called()
+
+    async def test_delete_project_files_not_valid(self) -> None:
+        """Test deleting file request handler with error if files in request are not valid."""
+        with (
+            self.patch_verify_user_project,
+            self.patch_verify_authorization,
+        ):
+            with patch(
+                    "metadata_backend.api.handlers.files.FileOperator.check_file_exists",
+                    new_callable=AsyncMock
+            ) as mock_check, patch(
+                "metadata_backend.api.handlers.files.FileOperator.flag_file_deleted",
+                new_callable=AsyncMock
+            ) as mock_flag:
+                url = f"{API_PREFIX}/files/{self.mock_single_file['projectId']}"
+                # Invalid file as request payload
+                await self.client.delete(url, json=self.mock_single_file)
+                mock_check.assert_not_called()
+                mock_flag.assert_not_called()
+
+
+class ApiKeyHandlerTestCase(HandlersTestCase):
+    """API key handler test cases."""
+
+    async def test_post_get_delete_api_key(self) -> None:
+        """Test API key creation, listing and revoking."""
+        async with transaction(_session_factory, requires_new=True, rollback_new=True):
+            with (
+                self.patch_verify_authorization,
+                self.patch_verify_user_project,
+            ):
+                key_id_1 = str(uuid.uuid4())
+                key_id_2 = str(uuid.uuid4())
+
+                # Create first key.
+                response = await self.client.post(
+                    f"{API_PREFIX}/api/keys", json=ApiKey(key_id=key_id_1).model_dump(mode="json")
                 )
-
-        async def test_delete_project_files_works(self) -> None:
-            """Test deleting file request handler."""
-            with (
-                self.patch_verify_user_project,
-                self.patch_verify_authorization,
-            ):
-                with patch(
-                        "metadata_backend.api.handlers.files.FileOperator.check_file_exists",
-                        new_callable=AsyncMock
-                ) as mock_check, patch(
-                    "metadata_backend.api.handlers.files.FileOperator.flag_file_deleted",
-                    new_callable=AsyncMock
-                ) as mock_flag:
-                    mock_check.return_value = self.mock_single_file
-
-                    url = f"{API_PREFIX}/files/{self.mock_single_file['projectId']}"
-                    response = await self.client.delete(url, json=self.mock_file_paths)
-                    assert mock_flag.call_count == 3
-                    self.assertEqual(response.status, 204)
-
-        async def test_delete_project_files_not_in_database(self) -> None:
-            """Test deleting file request handler with error if file does not exist in database."""
-            with (
-                self.patch_verify_user_project,
-                self.patch_verify_authorization,
-            ):
-                with patch(
-                        "metadata_backend.api.handlers.files.FileOperator.check_file_exists",
-                        new_callable=AsyncMock
-                ) as mock_check, patch(
-                    "metadata_backend.api.handlers.files.FileOperator.flag_file_deleted",
-                    new_callable=AsyncMock
-                ) as mock_flag:
-                    mock_check.return_value = None
-
-                    url = f"{API_PREFIX}/files/{self.mock_single_file['projectId']}"
-                    # File does not exist in database
-                    await self.client.delete(url, json=self.mock_file_paths)
-                    mock_flag.assert_not_called()
-
-        async def test_delete_project_files_not_valid(self) -> None:
-            """Test deleting file request handler with error if files in request are not valid."""
-            with (
-                self.patch_verify_user_project,
-                self.patch_verify_authorization,
-            ):
-                with patch(
-                        "metadata_backend.api.handlers.files.FileOperator.check_file_exists",
-                        new_callable=AsyncMock
-                ) as mock_check, patch(
-                    "metadata_backend.api.handlers.files.FileOperator.flag_file_deleted",
-                    new_callable=AsyncMock
-                ) as mock_flag:
-                    url = f"{API_PREFIX}/files/{self.mock_single_file['projectId']}"
-                    # Invalid file as request payload
-                    await self.client.delete(url, json=self.mock_single_file)
-                    mock_check.assert_not_called()
-                    mock_flag.assert_not_called()
-
-    class ApiKeyHandlerTestCase(HandlersTestCase):
-        """API key handler test cases."""
-
-        async def test_post_get_delete_api_key(self) -> None:
-            """Test API key creation, listing and revoking."""
-            async with transaction(_session_factory, requires_new=True, rollback_new=True):
-                with (
-                    self.patch_verify_authorization,
-                    self.patch_verify_user_project,
-                ):
-                    key_id_1 = str(uuid.uuid4())
-                    key_id_2 = str(uuid.uuid4())
-
-                    # Create first key.
-                    response = await self.client.post(
-                        f"{API_PREFIX}/api/keys", json=ApiKey(key_id=key_id_1).model_dump(mode="json")
-                    )
-                    self.assertEqual(response.status, 200)
-
-                    # Check first key exists.
-                    response = await self.client.get(f"{API_PREFIX}/api/keys")
-                    self.assertEqual(response.status, 200)
-                    json = await response.json()
-                    assert key_id_1 in [ApiKey(**key).key_id for key in json]
-
-                    # Create second key.
-                    response = await self.client.post(
-                        f"{API_PREFIX}/api/keys", json=ApiKey(key_id=key_id_2).model_dump(mode="json")
-                    )
-                    self.assertEqual(response.status, 200)
-
-                    # Check first and second key exist.
-                    response = await self.client.get(f"{API_PREFIX}/api/keys")
-                    self.assertEqual(response.status, 200)
-                    json = await response.json()
-                    assert key_id_1 in [ApiKey(**key).key_id for key in json]
-                    assert key_id_2 in [ApiKey(**key).key_id for key in json]
-
-                    # Remove second key.
-                    response = await self.client.delete(
-                        f"{API_PREFIX}/api/keys", json=ApiKey(key_id=key_id_2).model_dump(mode="json")
-                    )
-                    self.assertEqual(response.status, 204)
-
-                    # Check first key exists.
-                    response = await self.client.get(f"{API_PREFIX}/api/keys")
-                    self.assertEqual(response.status, 200)
-                    json = await response.json()
-                    assert key_id_1 in [ApiKey(**key).key_id for key in json]
-                    assert key_id_2 not in [ApiKey(**key).key_id for key in json]
-
-    class UserHandlerTestCase(HandlersTestCase):
-        """User handler test cases."""
-
-        async def test_get_user(self) -> None:
-            """Test getting user information."""
-
-            project_id = "PRJ123"
-
-            with (
-                self.patch_verify_authorization,
-                patch.dict(
-                    os.environ,
-                    {"CSC_LDAP_HOST": "ldap://mockhost", "CSC_LDAP_USER": "mockuser",
-                     "CSC_LDAP_PASSWORD": "mockpassword"},
-                ),
-                patch("metadata_backend.api.services.ldap.Connection") as mock_connection,
-            ):
-                mock_conn_instance, mock_entry = MagicMock(), MagicMock()
-                mock_entry.entry_to_json.return_value = json.dumps(
-                    {"dn": "ou=SP_SD-SUBMIT,ou=idm,dc=csc,dc=fi", "attributes": {"CSCPrjNum": [project_id]}}
-                )
-                mock_conn_instance.entries = [mock_entry]
-                mock_connection.return_value.__enter__.return_value = mock_conn_instance
-
-                response = await self.client.get(f"{API_PREFIX}/users")
                 self.assertEqual(response.status, 200)
 
-                user = User(**await response.json())
-                assert user.user_id == "mock-userid"
-                assert user.user_name == "mock-username"
-                assert user.projects == [Project(project_id=project_id)]
+                # Check first key exists.
+                response = await self.client.get(f"{API_PREFIX}/api/keys")
+                self.assertEqual(response.status, 200)
+                json = await response.json()
+                assert key_id_1 in [ApiKey(**key).key_id for key in json]
+
+                # Create second key.
+                response = await self.client.post(
+                    f"{API_PREFIX}/api/keys", json=ApiKey(key_id=key_id_2).model_dump(mode="json")
+                )
+                self.assertEqual(response.status, 200)
+
+                # Check first and second key exist.
+                response = await self.client.get(f"{API_PREFIX}/api/keys")
+                self.assertEqual(response.status, 200)
+                json = await response.json()
+                assert key_id_1 in [ApiKey(**key).key_id for key in json]
+                assert key_id_2 in [ApiKey(**key).key_id for key in json]
+
+                # Remove second key.
+                response = await self.client.delete(
+                    f"{API_PREFIX}/api/keys", json=ApiKey(key_id=key_id_2).model_dump(mode="json")
+                )
+                self.assertEqual(response.status, 204)
+
+                # Check first key exists.
+                response = await self.client.get(f"{API_PREFIX}/api/keys")
+                self.assertEqual(response.status, 200)
+                json = await response.json()
+                assert key_id_1 in [ApiKey(**key).key_id for key in json]
+                assert key_id_2 not in [ApiKey(**key).key_id for key in json]
+
+
+class UserHandlerTestCase(HandlersTestCase):
+    """User handler test cases."""
+
+    async def test_get_user(self) -> None:
+        """Test getting user information."""
+
+        project_id = "PRJ123"
+
+        with (
+            self.patch_verify_authorization,
+            patch.dict(
+                os.environ,
+                {"CSC_LDAP_HOST": "ldap://mockhost", "CSC_LDAP_USER": "mockuser",
+                 "CSC_LDAP_PASSWORD": "mockpassword"},
+            ),
+            patch("metadata_backend.api.services.ldap.Connection") as mock_connection,
+        ):
+            mock_conn_instance, mock_entry = MagicMock(), MagicMock()
+            mock_entry.entry_to_json.return_value = json.dumps(
+                {"dn": "ou=SP_SD-SUBMIT,ou=idm,dc=csc,dc=fi", "attributes": {"CSCPrjNum": [project_id]}}
+            )
+            mock_conn_instance.entries = [mock_entry]
+            mock_connection.return_value.__enter__.return_value = mock_conn_instance
+
+            response = await self.client.get(f"{API_PREFIX}/users")
+            self.assertEqual(response.status, 200)
+
+            user = User(**await response.json())
+            assert user.user_id == "mock-userid"
+            assert user.user_name == "mock-username"
+            assert user.projects == [Project(project_id=project_id)]

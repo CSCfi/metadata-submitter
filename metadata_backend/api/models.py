@@ -260,6 +260,7 @@ class Submission(JsonModel):
     submission_id: Optional[str] = Field(None, alias="submissionId")  # Stored only in a database column.
     name: str  # Stored also as a database column.
     text_name: Optional[str] = None  # Not stored.
+    title: str
     description: str
     workflow: str  # Stored also in a database column.
     date_created: Optional[int] = Field(None, alias="dateCreated")  # Stored only in a database column.

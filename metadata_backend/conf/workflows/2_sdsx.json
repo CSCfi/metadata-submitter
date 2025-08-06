@@ -8,17 +8,6 @@
             "schemas": []
         },
         {
-            "title": "Describe",
-            "required": true,
-            "schemas": [
-                {
-                    "name": "dataset",
-                    "required": true,
-                    "allowMultipleObjects": false
-                }
-            ]
-        },
-        {
             "title": "Datacite",
             "required": true,
             "schemas": [
@@ -33,21 +22,15 @@
     "publish": {
         "datacite": {
             "service": "csc",
-            "schemas": [
-                "dataset"
-            ]
+            "submission": true
         },
         "rems": {
             "service": "csc",
-            "schemas": [
-                "dataset"
-            ]
+            "submission": true
         },
         "discovery": {
             "service": "metax",
-            "schemas": [
-                "dataset"
-            ]
+            "submission": true
         }
     }
 }

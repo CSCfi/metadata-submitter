@@ -24,8 +24,8 @@ LOG.setLevel(logging.DEBUG)
 class TestMinimalPublication:
     """Test minimal publication with JSON submissions for FEGA and SDSX workflows, XML submissions for BP workflow."""
 
-    async def test_minimal_sdsx_json_publication(self, client_logged_in, submission_factory):
-        """Test minimal SDSX publication workflow with JSON submissions.
+    async def test_sdsx_publication(self, client_logged_in, submission_factory):
+        """Test SDSX publication.
 
         :param client_logged_in: HTTP client in which request call is made
         :param submission_factory: The factory that creates and deletes submissions
@@ -36,7 +36,6 @@ class TestMinimalPublication:
         await patch_submission_doi(client_logged_in, submission_id, doi_data_raw)
         rems_data = await get_request_data("dac", "dac_rems.json")
         await patch_submission_rems(client_logged_in, submission_id, rems_data)
-        await post_object(client_logged_in, "dataset", submission_id, "dataset.json")
         await publish_submission(client_logged_in, submission_id)
 
         async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
@@ -103,21 +102,16 @@ class TestPublication:
             assert dataset_registration.rems_catalogue_id is not None
             assert dataset_registration.rems_url is not None
 
-    async def test_sdsx_json_publication_rems(self, client_logged_in, submission_factory):
-        """Test SDSX publication workflow with JSON submissions to Metax and REMS.
+    async def test_sdsx_publication_rems(self, client_logged_in, submission_factory):
+        """Test SDSX publication to Metax and REMS.
 
         :param client_logged_in: HTTP client in which request call is made
         :param submission_factory: The factory that creates and deletes submissions
         """
         submission_id, _ = await submission_factory("SDSX")
 
-        objects = []
-
         rems_data = await get_request_data("dac", "dac_rems.json")
         await patch_submission_rems(client_logged_in, submission_id, rems_data)
-
-        dataset_id = await post_object(client_logged_in, "dataset", submission_id, "dataset.json")
-        objects.append(["dataset", dataset_id])
 
         doi_data_raw = await get_request_data("doi", "test_doi.json")
         await patch_submission_doi(client_logged_in, submission_id, doi_data_raw)

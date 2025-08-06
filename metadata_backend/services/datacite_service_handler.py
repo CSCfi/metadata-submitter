@@ -80,19 +80,19 @@ class DataciteServiceHandler(ServiceHandler):
 
         return " | ".join(error_messages)
 
-    async def create_draft_doi_datacite(self, schema: str | None = None) -> str:
-        """Create draft DOI for study or dataset directly with Datacite API.
+    async def create_draft_doi_datacite(self, draft_doi_prefix: str) -> str:
+        """Create draft DOI directly with Datacite API.
 
         The Draft DOI will be created on POST.
 
-        :param schema: Schema to be included in DOI (e.g. study, dataset, or bpdataset)
+        :param draft_doi_prefix: Draft DOI prefix.
         :raises: HTTPBadRequest if schema is invalid
         :raises: HTTPInternalServerError if we the Datacite DOI draft registration fails
         :returns: created DOI
         """
         suffix = uuid4().hex[:10]
         doi_suffix = f"{suffix[:4]}-{suffix[4:]}"
-        doi_suffix = f"{schema}." + doi_suffix
+        doi_suffix = f"{draft_doi_prefix}." + doi_suffix
 
         # this payload is sufficient to get a draft DOI
         doi_payload = {"data": {"type": "dois", "attributes": {"doi": f"{self.doi_prefix}/{doi_suffix}"}}}

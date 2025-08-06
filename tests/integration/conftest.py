@@ -55,6 +55,7 @@ async def submission_factory(client_logged_in: aiohttp.ClientSession, project_id
             name = f"name_{uuid.uuid4()}"
         submission = {
             "name": name,
+            "title": f"test submission for {workflow} workflow",
             "description": f"test submission for {workflow} workflow",
             "projectId": project_id or default_project_id,
             "workflow": workflow,

@@ -103,6 +103,9 @@
                                 "datacite"
                             ]
                         },
+                        "submission": {
+                            "type": "boolean"
+                        },
                         "schemas": {
                             "type": "array",
                             "items": {
@@ -119,6 +122,9 @@
                             "enum": [
                                 "csc"
                             ]
+                        },
+                        "submission": {
+                            "type": "boolean"
                         },
                         "schemas": {
                             "type": "array",
@@ -137,6 +143,9 @@
                                 "metax",
                                 "beacon"
                             ]
+                        },
+                        "submission": {
+                            "type": "boolean"
                         },
                         "schemas": {
                             "type": "array",

@@ -12,7 +12,8 @@ class PublishServiceConfig(BaseModel):
     """Service configuration."""
 
     service: str
-    schemas: list[str]
+    submission: bool = False
+    schemas: list[str] = Field(default_factory=list)
 
 
 class PublishConfig(BaseModel):
