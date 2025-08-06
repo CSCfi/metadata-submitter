@@ -9,6 +9,23 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- (users) /publish endpoint so that if it fails for any reason, the user is expected to call it again to re-try failed actions (#900)
+- (users) PATCH /submission endpoint so that any field can be safely changed instead of name and description only. The submission document can be updated by the user, however, some fields can't be removed or changed and existing values are preserved (#900)
+- (users) publish action requires that the submission has at least one file (#900)
+- LDAP is now used instead for getting list of user's projects (#891)
+- OIDC callback returns JWT token in secure cookie (#884)
+- Middleware authentication requires JWT cookie or API key (#884)
+- Renamed DISCOVERY_URL to METAX_DISCOVERY_URL and added BEACON_DISCOVERY_URL variable (#900)
+- 'publish' part of workflow.json schema includes, which schemas should be included in each step: datacite (pid or datacite), rems, or discovery (metax or beacon) (#900)
+- Study description is no longer a separate field from study abstract in DataCite data (#900)
+- JSONValidator 'validate' property complies with Python conventions (#900)
+- /submission endpoint now keeps state by writing external resource information (e.g. DOI or metax ID) into 'registrations' table after each external call (#900)
+- PublishAPIHandler handler and 'publish_submission' method are improved as it is clearer, which parameters are passed to them (#900)
+- Moved accessioning to its own service (api/services/accession.py) (#900)
+- refactored the API to fetch and store info with Postgres tables instead of MongoDB collections (#900)
+- submission title and description are now stored in submissions table columns.
+- refactored publish_submission function for better readability. E.g. added `_filtered_registrations` helper function and moved some registration code to new instance methods.
+- SDSX registration during publish now uses submission title, description and id instead of dataset title and description and id.
 - (users) Updated subjects and contributors in submission doiInfo schema to resemble Qvain
 - Secure header used in cookies is configurable with environment variable
 - Docker file uses base uv image instead of installing uv from script
@@ -30,6 +47,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- Metax 'creator' and 'contributors' mapping in MetaxMapper (#900)
+- /publish not calling DataCite publish for datasets (#900)
 - (users) Removed no longer used userId field from post_project_files payload validation error message. #883)
 - Filter accession IDs in `get_collection_objects()` to only match `collection`
 - (users) any user_id can be provided in post project files endpoint (#874)
@@ -37,6 +56,15 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- (users) New projects get endpoint to retrieve user's projects (#891)
+- (users) API key endpoints to add, list and remove API keys (#884)
+- (users) GET /submissions/{submissionId}/registrations endpoint to list external registrations (e.g. DOI or Metax ID) for the submission or its metadata objects (#900)
+- (users) Required field "title" to submission json payload, which is needed to register the submission to DataCite etc.
+- 'to_json' function that converts python dict to json and supports datetime conversion without microseconds (#900)
+- Pydantic models (api/models.py) for most API handling operations (#900)
+- 'JsonObjectService' and 'XmlObjectService' and moved some metadata object related functionality to those classes (#900)
+- 'submissions', 'objects', 'files' and 'registrations' Postgres tables, repositories and services for storing everything in Postgres, which was previously stored in a MongoDB instance (#900)
+- "submission" field in workflow.json under "publish" sections. This is used to indicate that the submission.json should be used, instead of a metadata object, to extract information for DataCite etc. registration. This also indicated that the registration information should be stored in the submissions table without an object id, as it is not associated with any metadata object.
 - Automatic version number updating CI job
 - FileService to check that submitter files exist and return their size.
 - env `POLLING_INTERVAL` so that `POLLING_INTERVAL` is configurable
@@ -56,6 +84,16 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Removed
 
+- (users) User related endpoints (#895)
+- (users) /submit XML endpoint (#910)
+- (users) Multi-part content type support from /objects and /drafts endpoints. Both JSON and XML are now given in the request body (#900)
+- (users) 'announce' endpoint as redundant (#900)
+- user and project MongoDB collection and all related code (#891, #895)
+- aiohttp session (#884)
+- 'files', 'metadataObjects', 'drafts' and 'extraInfo' keys from submission json object. Information is stored directly in Postgres tables instead (#900)
+- SUBMISSION_ONLY_SCHEMAS as all supported metadata objects are now real (#900)
+- Support for CSV files (#900)
+- Support for dataset metadata objects for SDSX workflow
 - (users) template related API endpoints and database layer functions as unnecessary functionality. This is not needed by programmatic submitters and not used by the interactive frontend (#885).
 - template related API endpoints and database layer functions to lower the total cost of ownership and get the product to production faster (#885).
 - Spellchecking in gitlab-ci.yml (#858)
