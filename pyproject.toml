@@ -22,7 +22,7 @@ classifiers = [
 ]
 
 dependencies = [
-    "aiohttp==3.12.13",
+    "aiohttp==3.12.14",
     "cryptography==45.0.5",
     "defusedxml==0.7.1",
     "gunicorn==23.0.0",
