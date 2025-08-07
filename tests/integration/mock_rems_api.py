@@ -23,19 +23,19 @@ forms = {
 }
 organizations = {
     "CSC": {
-        "short-name": {"en": "Another organization"},
-        "name": {"en": "Another organization"},
+        "short-name": {"en": "Organization 1"},
+        "name": {"en": "Mock Organization 1"},
         "handlers": ["user_id_2", "user_id_1"],
-        "workflows": [1],
+        "workflows": [1, 5],
         "licenses": [1, 3],
         "resources": {},
         "catalogue-items": {},
     },
-    "testorg": {
-        "short-name": {"en": "Test Organization"},
-        "name": {"en": "Test Organization"},
-        "workflows": [3],
-        "licenses": [2],
+    "org2": {
+        "short-name": {"en":"Organization 2"},
+        "name": {"en": "Mock Organization 2"},
+        "workflows": [2, 3, 4],
+        "licenses": [2, 4],
         "resources": {},
         "catalogue-items": {},
     },
@@ -43,7 +43,7 @@ organizations = {
 workflows = {
     1: {
         "id": 1,
-        "title": "another_org workflow 1",
+        "title": "Sensitive Data Access WF 1 (Org 1)",
         "organization": {
             "organization/id": "CSC",
             "organization/short-name": organizations["CSC"]["short-name"],
@@ -82,18 +82,93 @@ workflows = {
         "enabled": True,
         "archived": False,
     },
-    3: {
-        "id": 3,
-        "title": "Test Workflow",
+    2: {
+        "id": 2,
+        "title": "Sensitive Data Access WF1 (Org 2)",
         "organization": {
-            "organization/id": "testorg",
-            "organization/short-name": organizations["testorg"]["short-name"],
-            "organization/name": organizations["testorg"]["name"],
+            "organization/id": "org2",
+            "organization/short-name": organizations["org2"]["short-name"],
+            "organization/name": organizations["org2"]["name"],
         },
         "workflow": {
             "type": "workflow/default",
             "handlers": ["user_id_1"],
             "forms": [2],
+        },
+        "licenses": [
+            {
+                "license/id": 4,
+                "licensetype": "text",
+                "organization": {
+                    "organization/id": "org2",
+                    "organization/short-name": organizations["org2"]["short-name"],
+                    "organization/name": organizations["org2"]["name"],
+                },
+                "localizations": {
+                    "fi": {
+                        "title": "License 4 FIN",
+                        "textcontent": "Mock License 4 FIN",
+                        "attachment-id": None,
+                    },
+                    "en": {
+                        "title": "License 4 EN",
+                        "textcontent": "Mock License 4 EN",
+                        "attachment-id": None,
+                    },
+                },
+                "enabled": True,
+                "archived": False,
+            },
+        ],
+        "enabled": True,
+        "archived": False,
+    },
+    3: {
+        "id": 3,
+        "title": "Sensitive Data Access WF2 (Org 2)",
+        "organization": {
+            "organization/id": "org2",
+            "organization/short-name": organizations["org2"]["short-name"],
+            "organization/name": organizations["org2"]["name"],
+        },
+        "workflow": {
+            "type": "workflow/default",
+            "handlers": ["user_id_1"],
+            "forms": [2],
+        },
+        "licenses": [],
+        "enabled": True,
+        "archived": False,
+    },
+    4: {
+        "id": 4,
+        "title": "Sensitive Data Access WF3 (Org 2)",
+        "organization": {
+            "organization/id": "org2",
+            "organization/short-name": organizations["org2"]["short-name"],
+            "organization/name": organizations["org2"]["name"],
+        },
+        "workflow": {
+            "type": "workflow/default",
+            "handlers": ["user_id_1"],
+            "forms": [2],
+        },
+        "licenses": [],
+        "enabled": True,
+        "archived": False,
+    },
+    5: {
+        "id": 5,
+        "title": "Sensitive Data Access WF 2 (Org 1)",
+        "organization": {
+            "organization/id": "CSC",
+            "organization/short-name": organizations["CSC"]["short-name"],
+            "organization/name": organizations["CSC"]["name"],
+        },
+        "workflow": {
+            "type": "workflow/default",
+            "handlers": ["user_id_1", "user_id_2"],
+            "forms": [1],
         },
         "licenses": [],
         "enabled": True,
@@ -128,13 +203,11 @@ licenses = {
         "id": 2,
         "licensetype": "text",
         "organization": {
-            "organization/id": "testorg",
-            "organization/short-name": organizations["testorg"]["short-name"],
-            "organization/name": organizations["testorg"]["name"],
+            "organization/id": "org2",
+            "organization/short-name": organizations["org2"]["short-name"],
+            "organization/name": organizations["org2"]["name"],
         },
-        "localizations": {
-            "en": {"title": "Test License", "textcontent": "Everything is prohibited!", "attachment-id": None}
-        },
+        "localizations": {"en": {"title": "License 2", "textcontent": "Mock License 2", "attachment-id": None}},
         "enabled": True,
         "archived": False,
     },
@@ -148,13 +221,36 @@ licenses = {
         },
         "localizations": {
             "fi": {
-                "title": "Test License 2 FIN",
-                "textcontent": "This is Test License 2 FIN",
+                "title": "License 3 FIN",
+                "textcontent": "Mock License 3 FIN",
                 "attachment-id": None,
             },
             "en": {
-                "title": "Test License 2 EN",
-                "textcontent": "This is Test License 2 EN",
+                "title": "License 3 EN",
+                "textcontent": "Mock License 3 EN",
+                "attachment-id": None,
+            },
+        },
+        "enabled": True,
+        "archived": False,
+    },
+    4: {
+        "id": 4,
+        "licensetype": "text",
+        "organization": {
+            "organization/id": "org2",
+            "organization/short-name": organizations["org2"]["short-name"],
+            "organization/name": organizations["org2"]["name"],
+        },
+        "localizations": {
+            "fi": {
+                "title": "License 4 FIN",
+                "textcontent": "Mock License 4 FIN",
+                "attachment-id": None,
+            },
+            "en": {
+                "title": "License 4 EN",
+                "textcontent": "Mock License 4 EN",
                 "attachment-id": None,
             },
         },
