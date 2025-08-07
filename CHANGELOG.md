@@ -56,6 +56,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- Add more mock data to mock rems api for better frontend testing
 - (users) New projects get endpoint to retrieve user's projects (#891)
 - (users) API key endpoints to add, list and remove API keys (#884)
 - (users) GET /submissions/{submissionId}/registrations endpoint to list external registrations (e.g. DOI or Metax ID) for the submission or its metadata objects (#900)
