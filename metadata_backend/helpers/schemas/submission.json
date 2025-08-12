@@ -786,7 +786,7 @@
                 "alternateIdentifiers": {
                     "type": "array",
                     "title": "Alternate Identifiers",
-                    "description": "An identifier or identifiers other than the primary or related identifier applied to the resources being registered. EGA identifier(s) obtained, that can be used as an alternative to the current resources.",
+                    "description": "An identifier or identifiers other than the primary or related identifier applied to the datasets being published.",
                     "items": {
                         "type": "object",
                         "title": "Identifier(s) other than the primary identifier of the resources",
