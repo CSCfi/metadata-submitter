@@ -9,6 +9,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- (users) In SDSX submissions, publishing operation now automatically fetches a list of files from a designated folder in an object storage to be included in the submission
 - (users) /publish endpoint so that if it fails for any reason, the user is expected to call it again to re-try failed actions (#900)
 - (users) PATCH /submission endpoint so that any field can be safely changed instead of name and description only. The submission document can be updated by the user, however, some fields can't be removed or changed and existing values are preserved (#900)
 - (users) publish action requires that the submission has at least one file (#900)
@@ -56,6 +57,9 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- (users) Endpoints and functionality for fetching a list of files or folders from an object storage (e.g. via S3 API)
+- Use of adobe/S3Mock docker image for integration testing purposes
+- FileProviderService for handling requests to file provider APIs such as S3
 - Add more mock data to mock rems api for better frontend testing
 - (users) New projects get endpoint to retrieve user's projects (#891)
 - (users) API key endpoints to add, list and remove API keys (#884)
@@ -85,6 +89,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Removed
 
+- Endpoints relating to files metadata objects being stored and fetched from MongoDB collection that are now unnecessary
+- Use of MongoDB by the backend entirely
 - (users) User related endpoints (#895)
 - (users) /submit XML endpoint (#910)
 - (users) Multi-part content type support from /objects and /drafts endpoints. Both JSON and XML are now given in the request body (#900)
