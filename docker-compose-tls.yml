@@ -11,28 +11,22 @@ services:
     ports:
       - "5430:5430"
     depends_on:
-      - database
       - mockauth
       - mockdatacite
       - mockmetax
       - mockpid
       - mockldap
+      - mock-s3
     restart: on-failure
     environment:
-      - "MONGO_HOST=${MONGO_HOST}"
-      - "MONGO_SSL=${MONGO_SSL}"
-      - "MONGO_SSL_CA=${MONGO_SSL_CA}"
-      - "MONGO_SSL_CLIENT_CERT_KEY=${MONGO_SSL_CLIENT_CERT_KEY}"
       - "AAI_CLIENT_SECRET=${AAI_CLIENT_SECRET}"
       - "AAI_CLIENT_ID=${AAI_CLIENT_ID}"
       - "OIDC_URL=${OIDC_URL}"
       - "OIDC_URL_TEST=${OIDC_URL_TEST}"
-      - "OIDC_SECURE_COOKIE=${OIDC_SECURE_COOKIE}"  # Set to TRUE or remove for production use
+      - "OIDC_SECURE_COOKIE=${OIDC_SECURE_COOKIE}"
       - "BASE_URL=${BASE_URL}"
       - "REDIRECT_URL=${REDIRECT_URL}"
       - "LOG_LEVEL=${LOG_LEVEL}"
-      - "MONGO_DATABASE=${MONGO_DATABASE}"
-      - "MONGO_AUTHDB=${MONGO_AUTHDB}"
       - "DATACITE_API=${DATACITE_API}"
       - "DATACITE_PREFIX=${DATACITE_PREFIX}"
       - "DATACITE_USER=${DATACITE_USER}"
@@ -45,7 +39,6 @@ services:
       - "METAX_USER=${METAX_USER}"
       - "METAX_PASS=${METAX_PASS}"
       - "METAX_URL=${METAX_URL}"
-      - "REMS_ENABLED=${REMS_ENABLED}"
       - "REMS_USER_ID=${REMS_USER_ID}"
       - "REMS_KEY=${REMS_KEY}"
       - "REMS_URL=${REMS_URL}"
@@ -56,22 +49,10 @@ services:
       - "PG_DATABASE_URL=${PG_DATABASE_URL}"
       - "BP_CENTER_ID=${BP_CENTER_ID}"
       - "POLLING_INTERVAL=${POLLING_INTERVAL}"
-  database:
-    image: "mongo"
-    container_name: "metadata_submitter_database_dev"
-    command: "mongod --tlsMode=requireTLS --tlsCertificateKeyFile=/tls/combined2 --tlsCAFile=/tls/cacert"
-    restart: on-failure
-    environment:
-      - "MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}"
-      - "MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}"
-    volumes:
-      - data:/data/db
-      - ./config:/tls
-      - ./scripts/mongodb/init_mongo.js:/docker-entrypoint-initdb.d/init_mongo.js:ro
-    expose:
-      - 27017
-    ports:
-      - "27017:27017"
+      - "S3_ACCESS_KEY=${S3_ACCESS_KEY}"
+      - "S3_SECRET_KEY=${S3_SECRET_KEY}"
+      - "S3_REGION=${S3_REGION}"
+      - "S3_ENDPOINT=${S3_ENDPOINT}"
   mockauth:
     build:
       dockerfile: ./dockerfiles/Dockerfile-dev
@@ -174,5 +155,14 @@ services:
       - 389
     ports:
       - "389:389"
+  mock-s3:
+    image: adobe/s3mock:latest
+    hostname: s3mock
+    ports:
+      - 9090:9090
+    environment:
+      - debug=true
+      - COM_ADOBE_TESTING_S3MOCK_STORE_RETAIN_FILES_ON_EXIT=true
+      - COM_ADOBE_TESTING_S3MOCK_STORE_REGION=eu-north-1
 volumes:
   data:

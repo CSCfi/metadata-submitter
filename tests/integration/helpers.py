@@ -1,24 +1,26 @@
 """Helper functions for the integration tests."""
 
+import io
 import json
 import logging
+import os
 import re
 from urllib.parse import urlencode
 from uuid import uuid4
 
+import aioboto3
 import aiofiles
-import aiohttp
 import ujson
-from aiohttp import FormData
+from aiohttp import ClientSession
 
 from .conf import (
     admin_url,
-    announce_url,
     base_url,
     drafts_url,
-    files_url,
     metax_api,
     mock_auth_url,
+    mock_s3_region,
+    mock_s3_url,
     objects_url,
     publish_url,
     submissions_url,
@@ -113,9 +115,9 @@ async def post_object_data(sess, schema, submission_id, data) -> str | None:
     :returns: accessionId of created object
     """
     async with sess.post(
-            f"{objects_url}/{schema}",
-            params={"submission": submission_id},
-            data=data,
+        f"{objects_url}/{schema}",
+        params={"submission": submission_id},
+        data=data,
     ) as resp:
         response = await resp.json()
         LOG.debug(f"Adding new {schema} object")
@@ -137,9 +139,9 @@ async def post_multi_object(sess, schema, submission_id, filename) -> list[str]:
     """
     request_data = await get_request_data(schema, filename)
     async with sess.post(
-            f"{objects_url}/{schema}",
-            params={"submission": submission_id},
-            data=request_data,
+        f"{objects_url}/{schema}",
+        params={"submission": submission_id},
+        data=request_data,
     ) as resp:
         LOG.debug("Posting  %s objects from file %s", schema, filename)
         assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
@@ -169,9 +171,9 @@ async def post_draft(sess, schema, submission_id, filename):
     """
     request_data = await get_request_data(schema, filename)
     async with sess.post(
-            f"{drafts_url}/{schema}",
-            params={"submission": submission_id},
-            data=request_data,
+        f"{drafts_url}/{schema}",
+        params={"submission": submission_id},
+        data=request_data,
     ) as resp:
         LOG.debug("Adding new draft object to %s, via XML file %s", schema, filename)
         assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
@@ -306,17 +308,18 @@ async def publish_submission(sess, submission_id, *, no_files: bool = True):
     :param sess: HTTP session in which request call is made
     :param submission_id: id of the submission
     """
-    async with sess.patch(f"{publish_url}/{submission_id}?no_files=true") as resp:
+    async with sess.patch(f"{publish_url}/{submission_id}?no_files={str(no_files).lower()}") as resp:
         LOG.debug("Publishing submission %s", submission_id)
         result = await resp.json()
+        LOG.debug(result)
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}: {result}"
         assert result["submissionId"] == submission_id, "submission ID error"
         return result["submissionId"]
 
 
-async def delete_submission(sess, submission_id,
-                            ignore_published_error: bool = False,
-                            ignore_not_found_error: bool = False):
+async def delete_submission(
+    sess, submission_id, ignore_published_error: bool = False, ignore_not_found_error: bool = False
+):
     """Delete submission.
 
     :param sess: HTTP session in which request call is made
@@ -327,9 +330,11 @@ async def delete_submission(sess, submission_id,
     async with sess.delete(f"{submissions_url}/{submission_id}") as resp:
         LOG.debug("Deleting submission %s", submission_id)
         result = await resp.text()
-        assert resp.status == 204 or (
-                resp.status == 400 and ignore_published_error and "has been published" in result
-        ) or (resp.status == 404 and ignore_not_found_error)
+        assert (
+            resp.status == 204
+            or (resp.status == 400 and ignore_published_error and "has been published" in result)
+            or (resp.status == 404 and ignore_not_found_error)
+        )
 
 
 async def delete_published_submission(sess, submission_id, *, expected_status=405):
@@ -427,56 +432,6 @@ async def check_object_exists(sess, schema, accession_id, draft=False):
         await get_object(sess, schema, accession_id)
 
 
-async def post_project_files(sess, file_data, is_bigpicture=""):
-    """Post files within session, returns created file ids.
-
-    :param sess: HTTP session in which request call is made
-    :param file_data: new file data containing userId, projectId, file info
-    :param is_bigpicture: specify if the file belongs to Bigpicture
-    :returns: list of file ids of created files
-    """
-    params = {"is_bigpicture": is_bigpicture}
-    async with sess.post(files_url, data=ujson.dumps(file_data), params=params) as resp:
-        ans = await resp.json()
-        assert resp.status == 201, f"HTTP Status code error, got {resp.status}: {ans}"
-        return ans
-
-
-async def get_project_files(sess, project_id: str):
-    """Get files within session.
-
-    :param sess: HTTP session in which request call is made
-    :param project_id: project ID where the file belongs to
-    :returns: list of files
-    """
-    params = {"projectId": project_id}
-    async with sess.get(files_url, params=params) as resp:
-        ans = await resp.json()
-        assert resp.status == 200, f"HTTP Status code error, got {resp.status}: {ans}"
-        return ans
-
-
-async def find_project_file(sess, projectId, fileId):
-    """Check if file with the given id is in project files.
-
-    :param sess: HTTP session in which request call is made
-    :param projectId: id of project to find a file in
-    :param fileId: id of file to find
-    :returns: boolean
-    """
-    params = {"projectId": projectId}
-
-    async with sess.get(files_url, params=params) as resp:
-        ans = await resp.json()
-        assert resp.status == 200, f"HTTP Status code error {resp.status} {ans}"
-
-        for file in ans:
-            if file["accessionId"] == fileId:
-                return True
-
-        return False
-
-
 async def patch_submission_files(sess, file_data, submission_id):
     """Add or update files to an existing submission.
 
@@ -541,50 +496,38 @@ async def add_submission_linked_folder(sess, submission_id, name):
     url = f"{submissions_url}/{submission_id}/folder"
 
     async with sess.patch(
-            url,
-            data=ujson.dumps(data),
+        url,
+        data=ujson.dumps(data),
     ) as resp:
         assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
 
-async def remove_submission_file(sess, submission_id, file_id):
+async def remove_submission_file(sess, submission_id, file_path):
     """Remove file from an existing submission.
 
     :param sess: HTTP session in which request call is made
     :param submission_id: id of submission the file of which to remove
-    :param file_id: id of file to remove
+    :param file_path: path of file to remove
     """
-    url = f"{submissions_url}/{submission_id}/files/{file_id}"
+    url = f"{submissions_url}/{submission_id}/files/{file_path}"
 
     async with sess.delete(url) as resp:
         assert resp.status == 204, f"HTTP Status code error {resp.status}"
 
 
-def generate_mock_file(name: str):
+def generate_mock_file(filepath: str):
     """Generate mock file object for file POST testing.
 
     :param name: name for file
     :returns: file object
     """
     return {
-        "name": f"{name}.c4gh",
-        "path": f"s3:/bucket/mock_files/{name}.c4gh",
+        "filepath": filepath,
+        "status": "added",
         "bytes": 100,
         "encrypted_checksums": [{"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b4812345"}],
         "unencrypted_checksums": [{"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b4812345"}],
     }
-
-
-async def delete_project_files(sess, project_id, file_paths):
-    """Remove file from an existing submission.
-
-    :param sess: HTTP session in which request call is made
-    :param project_id: project ID where the file belongs to
-    :param file_paths: path of the file to be flagged as deleted
-    """
-    url = f"{files_url}/{project_id}"
-    async with sess.delete(url, data=ujson.dumps(file_paths)) as resp:
-        assert resp.status == 204, f"HTTP Status code error {resp.status}"
 
 
 async def search_taxonomy(sess, query: str, max_results: int = 10):
@@ -629,30 +572,15 @@ async def setup_files_for_ingestion(sess, dataset_id, submission_id, user_id, pr
     :param id_token: Token for authorizing admin user
     """
     # Create files and add files to submission
-    mock_file_1 = generate_mock_file("file10")
-    mock_file_2 = generate_mock_file("file20")
-
-    file_data = {
-        "userId": user_id,
-        "projectId": project_id,
-        "files": [mock_file_1, mock_file_2],
-    }
-
-    created_files = await post_project_files(sess, file_data)
-    submission_files = []
-    for file in created_files:
-        submission_files.append(
-            {
-                "accessionId": file["accessionId"],
-                "version": file["version"],
-                "objectId": {"accessionId": dataset_id, "schema": "bpdataset"},
-            }
-        )
+    submission_files = [
+        {**generate_mock_file("file10"), "objectId": {"accessionId": dataset_id, "schema": "bpdataset"}},
+        {**generate_mock_file("file20"), "objectId": {"accessionId": dataset_id, "schema": "bpdataset"}},
+    ]
     await patch_submission_files(sess, submission_files, submission_id)
 
-    async with aiohttp.ClientSession(headers={"Authorization": "Bearer " + id_token}) as admin_client:
-        await add_file_to_inbox(admin_client, mock_file_1["path"], user_id)
-        await add_file_to_inbox(admin_client, mock_file_2["path"], user_id)
+    async with ClientSession(headers={"Authorization": "Bearer " + id_token}) as admin_client:
+        await add_file_to_inbox(admin_client, submission_files[0]["filepath"], user_id)
+        await add_file_to_inbox(admin_client, submission_files[1]["filepath"], user_id)
 
 
 async def check_file_accession_ids(sess, files, username):
@@ -692,3 +620,106 @@ async def add_file_to_inbox(sess, filepath, username):
     file_data = {"user": username, "filepath": filepath}
     async with sess.post(f"{admin_url}/file/create", json=file_data) as resp:
         assert resp.status == 201, f"HTTP Status code error {resp.status}"
+
+
+async def add_file_to_folder(folder_name, object_key):
+    """Add a new object to a mock S3 bucket.
+
+    :param sess: HTTP session in which request call is made
+    :param folder_name: name of the folder
+    :param object_key: key for the object to be added
+    """
+    random_bytes = os.urandom(100)  # 100 bytes of random data
+    file_obj = io.BytesIO(random_bytes)
+    session = aioboto3.Session()
+    async with session.client(
+        "s3",
+        endpoint_url=mock_s3_url,
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
+        region_name=mock_s3_region,
+        use_ssl=False,
+    ) as s3:
+        await s3.upload_fileobj(file_obj, folder_name, object_key)
+
+
+async def delete_file_from_folder(folder_name, object_key):
+    """Delete an object from a mock S3 bucket.
+
+    :param folder_name: name of the folder
+    :param object_key: key for the object to be deleted
+    """
+    session = aioboto3.Session()
+    async with session.client(
+        "s3",
+        endpoint_url=mock_s3_url,
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
+        region_name=mock_s3_region,
+        use_ssl=False,
+    ) as s3:
+        await s3.delete_object(Bucket=folder_name, Key=object_key)
+
+
+async def add_folder(folder_name):
+    """Add a new folder (bucket) to a mock S3 service.
+
+    :param folder_name: name of the folder
+    """
+    session = aioboto3.Session()
+    async with session.client(
+        "s3",
+        endpoint_url=mock_s3_url,
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
+        region_name=mock_s3_region,
+        use_ssl=False,
+    ) as s3:
+        await s3.create_bucket(Bucket=folder_name)
+
+
+async def delete_folder(folder_name):
+    """Delete a folder (bucket) from a mock S3 service.
+
+    :param folder_name: name of the folder
+    """
+    session = aioboto3.Session()
+    async with session.client(
+        "s3",
+        endpoint_url=mock_s3_url,
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
+        region_name=mock_s3_region,
+        use_ssl=False,
+    ) as s3:
+        await s3.delete_bucket(Bucket=folder_name)
+
+
+async def list_folders():
+    """List all folders (buckets) in the mock S3 service."""
+    session = aioboto3.Session()
+    async with session.client(
+        "s3",
+        endpoint_url=mock_s3_url,
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
+        region_name=mock_s3_region,
+        use_ssl=False,
+    ) as s3:
+        buckets = await s3.list_buckets()
+        return [bucket["Name"] for bucket in buckets.get("Buckets", [])]
+
+
+async def list_files_in_folder(folder_name):
+    """List all files (objects) in a folder (bucket) in the mock S3 service."""
+    session = aioboto3.Session()
+    async with session.client(
+        "s3",
+        endpoint_url=mock_s3_url,
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
+        region_name=mock_s3_region,
+        use_ssl=False,
+    ) as s3:
+        objects = await s3.list_objects_v2(Bucket=folder_name)
+        return [obj["Key"] for obj in objects.get("Contents", [])]

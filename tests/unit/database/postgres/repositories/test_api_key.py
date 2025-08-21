@@ -1,9 +1,10 @@
-import pytest
 import uuid
+
+import pytest
 
 from metadata_backend.database.postgres.models import ApiKeyEntity
 from metadata_backend.database.postgres.repositories.api_key import ApiKeyRepository
-from metadata_backend.database.postgres.repository import transaction, SessionFactory
+from metadata_backend.database.postgres.repository import SessionFactory, transaction
 
 
 @pytest.fixture
@@ -20,13 +21,9 @@ async def test_add_and_get_api_key(session_factory: SessionFactory, repo: ApiKey
         api_key = f"key{str(uuid.uuid4())}"
         salt = f"salt{str(uuid.uuid4())}"
 
-        await repo.add_api_key(ApiKeyEntity(
-            key_id=key_id,
-            user_id=user_id,
-            user_key_id=user_key_id,
-            api_key=api_key,
-            salt=salt
-        ))
+        await repo.add_api_key(
+            ApiKeyEntity(key_id=key_id, user_id=user_id, user_key_id=user_key_id, api_key=api_key, salt=salt)
+        )
         result = await repo.get_api_key(key_id)
 
         assert result is not None
@@ -48,26 +45,18 @@ async def test_get_api_keys_masks_api_key(session_factory: SessionFactory, repo:
         user_key_id = f"user_key_id{str(uuid.uuid4())}"
         api_key = f"key{str(uuid.uuid4())}"
         salt = f"salt{str(uuid.uuid4())}"
-        await repo.add_api_key(ApiKeyEntity(
-            key_id=key_id,
-            user_id=user_id,
-            user_key_id=user_key_id,
-            api_key=api_key,
-            salt=salt
-        ))
+        await repo.add_api_key(
+            ApiKeyEntity(key_id=key_id, user_id=user_id, user_key_id=user_key_id, api_key=api_key, salt=salt)
+        )
 
         # Second key.
         key_id_2 = f"key_id{str(uuid.uuid4())}"
         user_key_id_2 = f"user_key_id{str(uuid.uuid4())}"
         api_key_2 = f"key{str(uuid.uuid4())}"
         salt_2 = f"salt{str(uuid.uuid4())}"
-        await repo.add_api_key(ApiKeyEntity(
-            key_id=key_id_2,
-            user_id=user_id,
-            user_key_id=user_key_id_2,
-            api_key=api_key_2,
-            salt=salt_2
-        ))
+        await repo.add_api_key(
+            ApiKeyEntity(key_id=key_id_2, user_id=user_id, user_key_id=user_key_id_2, api_key=api_key_2, salt=salt_2)
+        )
 
         results = await repo.get_api_keys(user_id)
         assert len(results) == 2
@@ -92,13 +81,9 @@ async def test_delete_api_key(session_factory: SessionFactory, repo: ApiKeyRepos
         api_key = f"key{str(uuid.uuid4())}"
         salt = f"salt{str(uuid.uuid4())}"
 
-        await repo.add_api_key(ApiKeyEntity(
-            key_id=key_id,
-            user_id=user_id,
-            user_key_id=user_key_id,
-            api_key=api_key,
-            salt=salt
-        ))
+        await repo.add_api_key(
+            ApiKeyEntity(key_id=key_id, user_id=user_id, user_key_id=user_key_id, api_key=api_key, salt=salt)
+        )
 
         result = await repo.get_api_key(key_id)
         assert result is not None

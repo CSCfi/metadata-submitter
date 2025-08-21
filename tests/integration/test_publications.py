@@ -8,9 +8,11 @@ from tests.integration.conf import (
     mock_pid_prefix,
     submissions_url,
 )
-from tests.integration.conftest import submission_factory
 from tests.integration.helpers import (
+    add_submission_linked_folder,
     get_request_data,
+    get_submission,
+    get_submission_files,
     patch_submission_doi,
     patch_submission_rems,
     post_object,
@@ -24,25 +26,38 @@ LOG.setLevel(logging.DEBUG)
 class TestMinimalPublication:
     """Test minimal publication with JSON submissions for FEGA and SDSX workflows, XML submissions for BP workflow."""
 
-    async def test_sdsx_publication(self, client_logged_in, submission_factory):
+    async def test_sdsx_publication(self, client_logged_in, submission_factory, s3_manager):
         """Test SDSX publication.
 
         :param client_logged_in: HTTP client in which request call is made
         :param submission_factory: The factory that creates and deletes submissions
         """
         submission_id, _ = await submission_factory("SDSX")
+        mock_folder = "folder1"
+        file_name = "test_object"
 
         doi_data_raw = await get_request_data("doi", "test_doi.json")
         await patch_submission_doi(client_logged_in, submission_id, doi_data_raw)
         rems_data = await get_request_data("dac", "dac_rems.json")
         await patch_submission_rems(client_logged_in, submission_id, rems_data)
-        await publish_submission(client_logged_in, submission_id)
 
-        async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
-            LOG.debug("Checking that submission %s was published", submission_id)
-            res = await resp.json()
-            assert res["submissionId"] == submission_id, "expected submission id does not match"
-            assert res["published"] is True, "submission is published, expected False"
+        await s3_manager.add_folder(mock_folder)
+        await s3_manager.add_file_to_folder(mock_folder, file_name)
+        await add_submission_linked_folder(client_logged_in, submission_id, mock_folder)
+
+        await publish_submission(client_logged_in, submission_id, no_files=False)
+
+        submission = await get_submission(client_logged_in, submission_id)
+        LOG.debug("Checking that submission %s was published", submission_id)
+        assert submission["submissionId"] == submission_id, "expected submission id does not match"
+        assert submission["published"] is True, "submission is published, expected False"
+
+        files = await get_submission_files(client_logged_in, submission_id)
+        LOG.debug("Checking that submission %s has a file after publication", submission_id)
+        assert len(files) == 1, "expected one file in the submission"
+        assert files[0]["submissionId"] == submission_id, "expected submission id does not match"
+        assert files[0]["path"] == f"S3://{mock_folder}/{file_name}", "expected file path does not match"
+
 
 class TestPublication:
     """Test publication to Metax and REMS."""
@@ -137,8 +152,7 @@ class TestPublication:
             assert registration.rems_catalogue_id is not None
             assert registration.rems_url is not None
 
-    async def test_full_bigpicture_xml_publication_rems(
-            self, client_logged_in, submission_factory):
+    async def test_full_bigpicture_xml_publication_rems(self, client_logged_in, submission_factory):
         """Test BP publication workflow with XML submissions to Metax and REMS.
 
         :param client_logged_in: HTTP client in which request call is made
@@ -174,7 +188,8 @@ class TestPublication:
             registration = Registration(**res[0])
             # Check DOI
             assert registration.doi.startswith(
-                datacite_prefix), "expected BP dataset DOI to be created directly with Datacite"
+                datacite_prefix
+            ), "expected BP dataset DOI to be created directly with Datacite"
             # Check that metax ID does not exist
             assert registration.metax_id is None
             # Check REMS

@@ -8,7 +8,7 @@
 
 @auth_email = mock_user@test.what
 
-@file_path = s3:/bucket/mock_files/file1.c4gh
+@file_path = s3://bucket/mock_files/file1.c4gh
 
 @user_id = {{user_data_req.response.body.user_id}}
 @user_name = {{user_data_req.response.body.user_name}}
@@ -16,8 +16,8 @@
 @submission_id = {{submission_id_req.response.body.submissionId}}
 @dataset_id = {{dataset_id_req.response.body.accessionId}}
 @image_id = {{image_id_req.response.body.$[0].accessionId}}
-@file_id = {{file_id_req.response.body.$[0].accessionId}}
 @admin_token = {{admin_token_req.response.body.id_token}}
+@file_path = {{file_path_req.response.body[0].filepath}}
 
 ### Get admin token
 # @name admin_token_req
@@ -35,10 +35,10 @@ GET {{api_url}}/aai
 ###
 GET {{api_url}}/logout
 
+
 ### Get user data
 # @name user_data_req
 GET {{api_url}}/v1/users
-
 
 
 ### Create submission
@@ -117,60 +117,8 @@ GET {{api_url}}/v1/objects/bpimage/{{image_id}}
 GET {{api_url}}/v1/objects/bpimage/{{image_id}}
     ?format=xml
 
-
-### Post files
-# @name file_id_req
-POST {{api_url}}/v1/files
-    ?is_bigpicture=true
-
-{
-    "userId": "{{user_id}}",
-    "projectId": "{{project_id}}",
-    "files": [
-        {
-            "name": "image",
-            "path": "{{file_path}}",
-            "bytes": 100,
-            "encrypted_checksums": [
-                {
-                    "type": "sha256",
-                    "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d61234567"
-                }
-            ],
-            "unencrypted_checksums": [
-                {
-                    "type": "sha256",
-                    "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d61234567"
-                }
-            ]
-        }
-    ]
-}
-
-### Get files
-GET {{api_url}}/v1/files
-    ?projectId={{project_id}}
-
-### Add file to submission
-PATCH {{api_url}}/v1/submissions/{{submission_id}}/files
-
-[
-    {
-        "accessionId": "{{file_id}}",
-        "version": 1,
-        "status": "ready",
-        "objectId": {
-            "accessionId": "{{image_id}}",
-            "schema": "bpimage"
-        }
-    }
-]
-
 ### Get submission
 GET {{api_url}}/v1/submissions/{{submission_id}}
-
-### Delete files
-DELETE {{api_url}}/v1/submissions/{{submission_id}}/files/{{file_id}}
 
 ### Begin ingestion
 POST {{api_url}}/v1/submissions/{{submission_id}}/ingest

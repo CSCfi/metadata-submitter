@@ -77,7 +77,7 @@ class RESTAPIHandler:
             raise web.HTTPBadRequest(reason=reason)
 
     @staticmethod
-    def _json_response(data: dict[str, Any] | list[dict[str, Any]]) -> Response:
+    def _json_response(data: dict[str, Any] | list[dict[str, Any]] | list[str]) -> Response:
         """Reusable json response, serializing data with ujson.
 
         :param data: Data to be serialized and made into HTTP 200 response

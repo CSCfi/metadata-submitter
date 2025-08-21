@@ -12,9 +12,9 @@ from metadata_backend.api.services.auth import (
     JWT_SECRET_ENV,
 )
 from metadata_backend.server import init
-from metadata_backend.api.resources import set_resource, ResourceType
 
 from .mockups import Mock_Request
+
 
 class AccessHandlerFailTestCase(AioHTTPTestCase):
     """API AccessHandler auth fails class test cases."""
@@ -133,8 +133,6 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
         db_client.__getitem__.return_value = db_database
         db_database.__getitem__.return_value = db_collection
 
-        set_resource(request.app, ResourceType.MONGO_CLIENT, db_client)
-
         with patch("idpyoidc.client.rp_handler.RPHandler.get_session_information", return_value=session):
             with patch("idpyoidc.client.rp_handler.RPHandler.finalize", return_value=finalize):
                 with patch.dict(os.environ, {JWT_SECRET_ENV: "mock_secret"}):
@@ -162,8 +160,6 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
         db_collection = AsyncMock()
         db_client.__getitem__.return_value = db_database
         db_database.__getitem__.return_value = db_collection
-
-        set_resource(request.app, ResourceType.MONGO_CLIENT, db_client)
 
         with patch("idpyoidc.client.rp_handler.RPHandler.get_session_information", return_value=session):
             with patch("idpyoidc.client.rp_handler.RPHandler.finalize", return_value=finalize):

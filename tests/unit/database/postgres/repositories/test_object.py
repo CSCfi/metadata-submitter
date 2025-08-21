@@ -3,30 +3,34 @@ import uuid
 
 import ulid
 
-from ..helpers import create_submission_entity
-from metadata_backend.database.postgres.models import ObjectEntity
 from metadata_backend.api.models import SubmissionWorkflow
+from metadata_backend.database.postgres.models import ObjectEntity
 from metadata_backend.database.postgres.repositories.object import ObjectRepository
 from metadata_backend.database.postgres.repositories.submission import SubmissionRepository
-from metadata_backend.database.postgres.repository import transaction, SessionFactory
+from metadata_backend.database.postgres.repository import SessionFactory, transaction
+
+from ..helpers import create_submission_entity
 
 
-async def test_add_get_delete_object(session_factory: SessionFactory, submission_repository: SubmissionRepository,
-                                     object_repository: ObjectRepository) -> None:
+async def test_add_get_delete_object(
+    session_factory: SessionFactory, submission_repository: SubmissionRepository, object_repository: ObjectRepository
+) -> None:
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         now = datetime.datetime.now(datetime.timezone.utc)
 
         submission_name = f"name_{uuid.uuid4()}"
         project_id = f"project_{uuid.uuid4()}"
 
-        submission = create_submission_entity(name=submission_name,
-                                              project_id=project_id,
-                                              folder="test",
-                                              workflow=SubmissionWorkflow.SDS,
-                                              created=now - datetime.timedelta(days=1),
-                                              modified=now - datetime.timedelta(days=1),
-                                              is_published=True,
-                                              is_ingested=True)
+        submission = create_submission_entity(
+            name=submission_name,
+            project_id=project_id,
+            folder="test",
+            workflow=SubmissionWorkflow.SDS,
+            created=now - datetime.timedelta(days=1),
+            modified=now - datetime.timedelta(days=1),
+            is_published=True,
+            is_ingested=True,
+        )
         submission_id = await submission_repository.add_submission(submission)
 
         name = f"name_{uuid.uuid4()}"
@@ -42,7 +46,7 @@ async def test_add_get_delete_object(session_factory: SessionFactory, submission
                 submission_id=submission_id,
                 title=title,
                 document=document,
-                xml_document=xml_document
+                xml_document=xml_document,
             )
             _object_id = await object_repository.add_object(_obj)
             assert isinstance(ulid.parse(_object_id), ulid.ULID)
@@ -71,7 +75,7 @@ async def test_add_get_delete_object(session_factory: SessionFactory, submission
         assert_object(await object_repository.get_object_by_id_or_name(submission_id, name))
 
         # Delete by id
-        assert (await object_repository.delete_object_by_id(object_id))
+        assert await object_repository.delete_object_by_id(object_id)
         assert (await object_repository.get_object_by_id(object_id)) is None
         assert (await object_repository.get_object_by_name(submission_id, name)) is None
         assert (await object_repository.get_object_by_id_or_name(submission_id, object_id)) is None
@@ -80,49 +84,53 @@ async def test_add_get_delete_object(session_factory: SessionFactory, submission
         # Delete by name
         obj, object_id = await _add_object()
         assert_object(await object_repository.get_object_by_id(object_id))
-        assert (await object_repository.delete_object_by_name(submission_id, name))
+        assert await object_repository.delete_object_by_name(submission_id, name)
         assert (await object_repository.get_object_by_id(object_id)) is None
 
         # Delete by id, name
         obj, object_id = await _add_object()
         assert_object(await object_repository.get_object_by_id(object_id))
-        assert (await object_repository.delete_object_by_id_or_name(submission_id, object_id))
+        assert await object_repository.delete_object_by_id_or_name(submission_id, object_id)
         assert (await object_repository.get_object_by_id(object_id)) is None
         obj, object_id = await _add_object()
         assert_object(await object_repository.get_object_by_id(object_id))
-        assert (await object_repository.delete_object_by_id_or_name(submission_id, name))
+        assert await object_repository.delete_object_by_id_or_name(submission_id, name)
         assert (await object_repository.get_object_by_id(object_id)) is None
 
 
-async def test_get_and_count_objects(session_factory: SessionFactory, submission_repository: SubmissionRepository,
-                                     object_repository: ObjectRepository) -> None:
+async def test_get_and_count_objects(
+    session_factory: SessionFactory, submission_repository: SubmissionRepository, object_repository: ObjectRepository
+) -> None:
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         now = datetime.datetime.now(datetime.timezone.utc)
 
         first_submission_name = f"name_{uuid.uuid4()}"
         first_project_id = f"project_{uuid.uuid4()}"
 
-        first_submission = create_submission_entity(name=first_submission_name,
-                                                    project_id=first_project_id,
-                                                    folder="test",
-                                                    workflow=SubmissionWorkflow.SDS,
-                                                    created=now - datetime.timedelta(days=1),
-                                                    modified=now - datetime.timedelta(days=1),
-                                                    is_published=True,
-                                                    is_ingested=True)
+        first_submission = create_submission_entity(
+            name=first_submission_name,
+            project_id=first_project_id,
+            folder="test",
+            workflow=SubmissionWorkflow.SDS,
+            created=now - datetime.timedelta(days=1),
+            modified=now - datetime.timedelta(days=1),
+            is_published=True,
+            is_ingested=True,
+        )
 
         second_submission_name = f"name_{uuid.uuid4()}"
         second_project_id = f"project_{uuid.uuid4()}"
 
-        second_submission = create_submission_entity(name=second_submission_name,
-                                                     project_id=second_project_id,
-                                                     folder="test",
-                                                     workflow=SubmissionWorkflow.SDS,
-                                                     created=now - datetime.timedelta(days=1),
-                                                     modified=now - datetime.timedelta(days=1),
-                                                     is_published=True,
-                                                     is_ingested=True,
-                                                     )
+        second_submission = create_submission_entity(
+            name=second_submission_name,
+            project_id=second_project_id,
+            folder="test",
+            workflow=SubmissionWorkflow.SDS,
+            created=now - datetime.timedelta(days=1),
+            modified=now - datetime.timedelta(days=1),
+            is_published=True,
+            is_ingested=True,
+        )
 
         first_submission_id = await submission_repository.add_submission(first_submission)
         second_submission_id = await submission_repository.add_submission(second_submission)
@@ -137,7 +145,7 @@ async def test_get_and_count_objects(session_factory: SessionFactory, submission
             submission_id=first_submission_id,
             document=first_document,
             xml_document="<test/>",
-            is_draft=True
+            is_draft=True,
         )
 
         second_object_name = f"name_{uuid.uuid4()}"
@@ -149,7 +157,7 @@ async def test_get_and_count_objects(session_factory: SessionFactory, submission
             schema=second_schema,
             submission_id=first_submission_id,
             document=second_document,
-            is_draft=False
+            is_draft=False,
         )
 
         third_object_name = f"name_{uuid.uuid4()}"
@@ -161,7 +169,7 @@ async def test_get_and_count_objects(session_factory: SessionFactory, submission
             schema=third_schema,
             submission_id=second_submission_id,
             document=third_document,
-            is_draft=False
+            is_draft=False,
         )
 
         first_object_id = await object_repository.add_object(first_object)
@@ -186,36 +194,30 @@ async def test_get_and_count_objects(session_factory: SessionFactory, submission
 
         # Test submission id and object type.
 
-        results = [obj async for obj in object_repository.get_objects(
-            submission_id=first_submission_id,
-            schema=first_schema
-        )]
+        results = [
+            obj async for obj in object_repository.get_objects(submission_id=first_submission_id, schema=first_schema)
+        ]
         assert len(results) == 1
         assert await object_repository.count_objects(first_submission_id, first_schema) == 1
         assert results[0].object_id == first_object_id
 
-        results = [obj async for obj in object_repository.get_objects(
-            submission_id=first_submission_id,
-            schema=second_schema
-        )]
+        results = [
+            obj async for obj in object_repository.get_objects(submission_id=first_submission_id, schema=second_schema)
+        ]
         assert len(results) == 1
         assert await object_repository.count_objects(first_submission_id, second_schema) == 1
         assert results[0].object_id == second_object_id
 
         # Test submission id and draft.
 
-        results = [obj async for obj in object_repository.get_objects(
-            submission_id=first_submission_id,
-            is_draft=True
-        )]
+        results = [obj async for obj in object_repository.get_objects(submission_id=first_submission_id, is_draft=True)]
         assert len(results) == 1
         assert await object_repository.count_objects(first_submission_id, is_draft=True) == 1
         assert results[0].object_id == first_object_id
 
-        results = [obj async for obj in object_repository.get_objects(
-            submission_id=first_submission_id,
-            is_draft=False
-        )]
+        results = [
+            obj async for obj in object_repository.get_objects(submission_id=first_submission_id, is_draft=False)
+        ]
         assert len(results) == 1
         assert await object_repository.count_objects(first_submission_id, is_draft=False) == 1
         assert results[0].object_id == second_object_id

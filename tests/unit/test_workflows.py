@@ -8,7 +8,7 @@ import ujson
 from metadata_backend.conf.conf import API_PREFIX, WORKFLOWS, schema_types
 from metadata_backend.helpers.schema_loader import JSONSchemaLoader
 from metadata_backend.helpers.validator import JSONValidator
-from metadata_backend.helpers.workflow import Workflow, PublishServiceConfig
+from metadata_backend.helpers.workflow import PublishServiceConfig, Workflow
 from tests.unit.test_handlers import HandlersTestCase
 
 

@@ -13,10 +13,10 @@ from metadata_backend.api.services.auth import (
     JWT_ALGORITHM,
     JWT_ISSUER,
     JWT_SECRET_ENV,
-    AccessService
+    AccessService,
 )
-from metadata_backend.database.postgres.repository import create_engine, create_session_factory, transaction
 from metadata_backend.database.postgres.repositories.api_key import ApiKeyRepository
+from metadata_backend.database.postgres.repository import create_engine, create_session_factory, transaction
 
 
 class JwtConfig(BaseModel):
@@ -48,9 +48,7 @@ async def service() -> AccessService:
 
 
 def test_create_jwt_token_contains_required_claims(jwt_config) -> None:
-    token = AccessService.create_jwt_token(jwt_config.user_id,
-                                           jwt_config.user_name,
-                                           jwt_config.expiration)
+    token = AccessService.create_jwt_token(jwt_config.user_id, jwt_config.user_name, jwt_config.expiration)
     decoded = jwt.decode(token, jwt_config.jwt_secret, algorithms=[JWT_ALGORITHM], issuer=JWT_ISSUER)
 
     assert decoded["sub"] == jwt_config.user_id
@@ -61,9 +59,7 @@ def test_create_jwt_token_contains_required_claims(jwt_config) -> None:
 
 
 def test_read_jwt_token_returns_user_id(jwt_config) -> None:
-    token = AccessService.create_jwt_token(jwt_config.user_id,
-                                           jwt_config.user_name,
-                                           jwt_config.expiration)
+    token = AccessService.create_jwt_token(jwt_config.user_id, jwt_config.user_name, jwt_config.expiration)
     user_id, user_name = AccessService.validate_jwt_token(token)
     assert user_id == jwt_config.user_id
     assert user_name == jwt_config.user_name
@@ -72,15 +68,11 @@ def test_read_jwt_token_returns_user_id(jwt_config) -> None:
 def test_create_jwt_token_missing_secret_raises(jwt_config) -> None:
     os.environ.pop(JWT_SECRET_ENV, None)
     with pytest.raises(RuntimeError):
-        AccessService.create_jwt_token(jwt_config.user_id,
-                                       jwt_config.user_name,
-                                       jwt_config.expiration)
+        AccessService.create_jwt_token(jwt_config.user_id, jwt_config.user_name, jwt_config.expiration)
 
 
 def test_read_jwt_token_missing_secret_raises(jwt_config) -> None:
-    token = AccessService.create_jwt_token(jwt_config.user_id,
-                                           jwt_config.user_name,
-                                           jwt_config.expiration)
+    token = AccessService.create_jwt_token(jwt_config.user_id, jwt_config.user_name, jwt_config.expiration)
     os.environ.pop(JWT_SECRET_ENV, None)
     with pytest.raises(RuntimeError):
         AccessService.validate_jwt_token(token)
@@ -93,24 +85,15 @@ def test_read_invalid_jwt_token_raises(jwt_config) -> None:
 
 
 def test_read_expired_jwt_token_raises(jwt_config) -> None:
-    expired_token = AccessService.create_jwt_token(jwt_config.user_id,
-                                                   jwt_config.user_name,
-                                                   timedelta(seconds=-1))
+    expired_token = AccessService.create_jwt_token(jwt_config.user_id, jwt_config.user_name, timedelta(seconds=-1))
     with pytest.raises(jwt.ExpiredSignatureError):
         AccessService.validate_jwt_token(expired_token)
 
 
 def test_read_wrong_issuer_jwt_token_raises(jwt_config, session_factory) -> None:
-    token = AccessService.create_jwt_token(jwt_config.user_id,
-                                           jwt_config.user_name,
-                                           jwt_config.expiration)
+    token = AccessService.create_jwt_token(jwt_config.user_id, jwt_config.user_name, jwt_config.expiration)
     with pytest.raises(jwt.InvalidIssuerError):
-        jwt.decode(
-            token,
-            os.getenv(JWT_SECRET_ENV),
-            algorithms=["HS256"],
-            issuer="invalid"
-        )
+        jwt.decode(token, os.getenv(JWT_SECRET_ENV), algorithms=["HS256"], issuer="invalid")
 
 
 async def test_hash_api_key(jwt_config, service, session_factory) -> None:

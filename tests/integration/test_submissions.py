@@ -5,22 +5,21 @@ import logging
 
 from metadata_backend.api.models import Object
 from tests.integration.conf import drafts_url, objects_url, publish_url
-from tests.integration.conftest import submission_factory
 from tests.integration.helpers import (
     add_submission_linked_folder,
     delete_object,
     delete_submission,
     get_draft,
     get_object,
+    get_request_data,
     get_submission,
     patch_submission_doi,
     patch_submission_rems,
     post_draft,
     post_object,
+    post_object_data,
     publish_submission,
     submissions_url,
-    post_object_data,
-    get_request_data,
 )
 
 LOG = logging.getLogger(__name__)
@@ -92,8 +91,10 @@ class TestSubmissionOperations:
         async with client_logged_in.post(f"{submissions_url}", data=json.dumps(submission_data)) as resp:
             ans = await resp.json()
             assert resp.status == 400, f"HTTP Status code error {resp.status} {ans}"
-            assert ans[
-                       "detail"] == f"Submission with name '{submission_data["name"]}' already exists in project {project_id}"
+            assert (
+                ans["detail"]
+                == f"Submission with name '{submission_data["name"]}' already exists in project {project_id}"
+            )
 
         # Create draft from test XML file and patch the draft into the newly created submission
         accession_id = await post_draft(client_logged_in, "sample", submission_id, "SRS001433.xml")
@@ -147,12 +148,12 @@ class TestSubmissionOperations:
 
         # Check that submission info and its objects cannot be updated and that publishing it again fails
         async with client_logged_in.patch(
-                f"{submissions_url}/{submission_id}", data=json.dumps({"name": "new_name"})
+            f"{submissions_url}/{submission_id}", data=json.dumps({"name": "new_name"})
         ) as resp:
             LOG.debug("Trying to update submission values")
             assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
         async with client_logged_in.patch(
-                f"{objects_url}/sample/{accession_id}", params={"submission": submission_id}, json={}
+            f"{objects_url}/sample/{accession_id}", params={"submission": submission_id}, json={}
         ) as resp:
             LOG.debug("Trying to update submission objects")
             assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
@@ -163,7 +164,7 @@ class TestSubmissionOperations:
         # Check submission objects cannot be replaced
         sample = await get_request_data("sample", "SRS001433.xml")
         async with client_logged_in.put(
-                f"{objects_url}/sample/{accession_id}", params={"submission": submission_id}, data=sample
+            f"{objects_url}/sample/{accession_id}", params={"submission": submission_id}, data=sample
         ) as resp:
             LOG.debug("Trying to replace submission objects")
             assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
@@ -179,16 +180,13 @@ class TestSubmissionOperations:
         async with client_logged_in.post(f"{drafts_url}/run", params={"submission": submission_id}, data=run) as resp:
             LOG.debug("Trying to add draft object to already published submission")
             assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
-        async with client_logged_in.post(
-                f"{objects_url}/run", params={"submission": submission_id}, data=run
-        ) as resp:
+        async with client_logged_in.post(f"{objects_url}/run", params={"submission": submission_id}, data=run) as resp:
             LOG.debug("Trying to add object to already published submission")
             assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
 
         # Attempt deleting submission
         async with client_logged_in.delete(f"{submissions_url}/{submission_id}") as resp:
             assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
-
 
     async def test_crud_submissions_works_no_publish(self, client_logged_in, submission_factory):
         """Test submissions REST API POST, GET, PATCH, PUBLISH and DELETE reqs.
@@ -258,13 +256,13 @@ class TestSubmissionOperations:
         # Test that an incomplete DOI object fails to patch into the submission
         put_bad_doi = {"identifier": {}}
         async with client_logged_in.patch(
-                f"{submissions_url}/{submission_id}/doi", data=json.dumps(put_bad_doi)
+            f"{submissions_url}/{submission_id}/doi", data=json.dumps(put_bad_doi)
         ) as resp:
             LOG.debug("Tried updating submission %s", submission_id)
             assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
             res = await resp.json()
             assert (
-                    res["detail"] == "Provided input does not seem correct for field: 'doiInfo'"
+                res["detail"] == "Provided input does not seem correct for field: 'doiInfo'"
             ), "expected error mismatch"
 
         # Check the existing DOI info is not altered
@@ -329,11 +327,11 @@ class TestSubmissionOperations:
         # error case: REMS's licenses do not include DAC's linked license
         put_bad_rems = {"workflowId": 1, "organizationId": "CSC", "licenses": [2, 3]}
         async with client_logged_in.patch(
-                f"{submissions_url}/{submission_id}/rems", data=json.dumps(put_bad_rems)
+            f"{submissions_url}/{submission_id}/rems", data=json.dumps(put_bad_rems)
         ) as resp:
             LOG.debug("Tried updating submission %s", submission_id)
             assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
             res = await resp.json()
             assert (
-                    res["detail"] == "Rems error: Linked license '1' doesn't exist in licenses '[2, 3]'"
+                res["detail"] == "Rems error: Linked license '1' doesn't exist in licenses '[2, 3]'"
             ), "expected error mismatch"

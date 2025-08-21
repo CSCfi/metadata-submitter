@@ -69,7 +69,6 @@ test_fega_json_files = [
 test_schemas = [
     ("submission", 200),
     ("study", 200),
-    # ("project", 200),
     ("sample", 200),
     ("experiment", 200),
     ("run", 200),
@@ -97,15 +96,12 @@ metax_api = f"{metax_url}/rest/v2/datasets"
 datacite_url = f"{os.getenv("DATACITE_API", "http://localhost:8001")}"
 datacite_prefix = f"{os.getenv("DATACITE_PREFIX", "10.xxxx")}"
 mock_pid_prefix = "10.80869"
-files_url = f"{base_url}{API_PREFIX}/files"
 taxonomy_url = f"{base_url}{API_PREFIX}/taxonomy"
 admin_url = f"{os.getenv("ADMIN_URL", "http://localhost:8004")}"
 auth = aiohttp.BasicAuth(os.getenv("METAX_USER", "sd"), os.getenv("METAX_PASS", "test"))
-# to form direct contact to db with e.g. create_submission()
-DATABASE = os.getenv("MONGO_DATABASE", "default")
-AUTHDB = os.getenv("MONGO_AUTHDB", "admin")
-HOST = os.getenv("MONGO_HOST", "localhost:27017")
-TLS = str_to_bool(os.getenv("MONGO_SSL", "False"))
+mock_s3_url = f"{os.getenv("S3_ENDPOINT", "http://localhost:9090")}"
+mock_s3_region = f"{os.getenv("S3_REGION", "eu-north-1")}"
+files_url = f"{base_url}{API_PREFIX}/projects"
 
 user_id = "current"
 test_user_given = "Given"

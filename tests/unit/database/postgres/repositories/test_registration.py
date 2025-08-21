@@ -4,15 +4,17 @@ from metadata_backend.database.postgres.models import RegistrationEntity
 from metadata_backend.database.postgres.repositories.object import ObjectRepository
 from metadata_backend.database.postgres.repositories.registration import RegistrationRepository
 from metadata_backend.database.postgres.repositories.submission import SubmissionRepository
-from metadata_backend.database.postgres.repository import transaction, SessionFactory
-from tests.unit.database.postgres.helpers import create_submission_entity, create_object_entity
+from metadata_backend.database.postgres.repository import SessionFactory, transaction
+from tests.unit.database.postgres.helpers import create_object_entity, create_submission_entity
 
 
-async def test_add_get_registration(session_factory: SessionFactory,
-                                    submission_repository: SubmissionRepository,
-                                    object_repository: ObjectRepository,
-                                    registration_repository: RegistrationRepository) -> None:
-    async with (transaction(session_factory, requires_new=True, rollback_new=True)):
+async def test_add_get_registration(
+    session_factory: SessionFactory,
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    registration_repository: RegistrationRepository,
+) -> None:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
         obj = create_object_entity(submission.submission_id)
@@ -77,7 +79,7 @@ async def test_add_get_registration(session_factory: SessionFactory,
             datacite_url=object_datacite_url,
             rems_url=object_rems_url,
             rems_resource_id=object_rems_resource_id,
-            rems_catalogue_id=object_rems_catalogue_id
+            rems_catalogue_id=object_rems_catalogue_id,
         )
 
         object_registration_id = await registration_repository.add_registration(object_registration)
@@ -108,7 +110,7 @@ async def test_add_get_registration(session_factory: SessionFactory,
             datacite_url=submission_datacite_url,
             rems_url=submission_rems_url,
             rems_resource_id=submission_rems_resource_id,
-            rems_catalogue_id=submission_rems_catalogue_id
+            rems_catalogue_id=submission_rems_catalogue_id,
         )
 
         submission_registration_id = await registration_repository.add_registration(submission_registration)
@@ -118,7 +120,8 @@ async def test_add_get_registration(session_factory: SessionFactory,
 
         # Select the submission registration by submission id
         assert_submission_registration(
-            await registration_repository.get_registration_by_submission_id(submission.submission_id))
+            await registration_repository.get_registration_by_submission_id(submission.submission_id)
+        )
 
         # Select the object registration by registration id
         assert_object_registration(await registration_repository.get_registration_by_id(object_registration_id))

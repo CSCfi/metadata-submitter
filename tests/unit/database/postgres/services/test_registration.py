@@ -1,18 +1,22 @@
 """Test RegistrationService."""
+
 import uuid
 
 from metadata_backend.api.models import Registration
 from metadata_backend.database.postgres.repositories.object import ObjectRepository
 from metadata_backend.database.postgres.repositories.submission import SubmissionRepository
+from metadata_backend.database.postgres.repository import SessionFactory, transaction
 from metadata_backend.database.postgres.services.registration import RegistrationService
-from metadata_backend.database.postgres.repository import transaction, SessionFactory
-from ..helpers import create_submission_entity, create_object_entity
+
+from ..helpers import create_object_entity, create_submission_entity
 
 
-async def test_add_and_get_registration(session_factory: SessionFactory,
-                                        submission_repository: SubmissionRepository,
-                                        object_repository: ObjectRepository,
-                                        registration_service: RegistrationService):
+async def test_add_and_get_registration(
+    session_factory: SessionFactory,
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    registration_service: RegistrationService,
+):
     async with transaction(session_factory, requires_new=True, rollback_new=True):
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
@@ -42,7 +46,7 @@ async def test_add_and_get_registration(session_factory: SessionFactory,
             datacite_url=datacite_url,
             rems_url=rems_url,
             rems_resource_id=rems_resource_id,
-            rems_catalogue_id=rems_catalogue_id
+            rems_catalogue_id=rems_catalogue_id,
         )
 
         registration_id = await registration_service.add_registration(registration)
@@ -74,7 +78,7 @@ async def test_add_and_get_registration(session_factory: SessionFactory,
             datacite_url=datacite_url,
             rems_url=rems_url,
             rems_resource_id=rems_resource_id,
-            rems_catalogue_id=rems_catalogue_id
+            rems_catalogue_id=rems_catalogue_id,
         )
 
         registration_id = await registration_service.add_registration(registration)
@@ -83,10 +87,12 @@ async def test_add_and_get_registration(session_factory: SessionFactory,
         assert registration == await registration_service.get_registration_by_submission_id(submission.submission_id)
 
 
-async def test_update_registration(session_factory: SessionFactory,
-                                   submission_repository: SubmissionRepository,
-                                   object_repository: ObjectRepository,
-                                   registration_service: RegistrationService):
+async def test_update_registration(
+    session_factory: SessionFactory,
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    registration_service: RegistrationService,
+):
     async with transaction(session_factory, requires_new=True, rollback_new=True):
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
@@ -109,84 +115,101 @@ async def test_update_registration(session_factory: SessionFactory,
 
         # Object
 
-        object_registration_id = await registration_service.add_registration(Registration(
-            submission_id=submission.submission_id,
-            object_id=obj.object_id,
-            schema_type="test",
-            title="test",
-            description="test",
-            doi=object_doi))
+        object_registration_id = await registration_service.add_registration(
+            Registration(
+                submission_id=submission.submission_id,
+                object_id=obj.object_id,
+                schema_type="test",
+                title="test",
+                description="test",
+                doi=object_doi,
+            )
+        )
 
         # metax id
-        assert object_registration_id == await registration_service.update_metax_id(submission.submission_id,
-                                                                                    object_metax_id,
-                                                                                    object_id=obj.object_id)
+        assert object_registration_id == await registration_service.update_metax_id(
+            submission.submission_id, object_metax_id, object_id=obj.object_id
+        )
         assert (await registration_service.get_registration_by_id(object_registration_id)).metax_id == object_metax_id
 
         # datacite
-        assert object_registration_id == await registration_service.update_datacite_url(submission.submission_id,
-                                                                                        object_datacite_url,
-                                                                                        object_id=obj.object_id)
-        assert (await registration_service.get_registration_by_id(
-            object_registration_id)).datacite_url == object_datacite_url
+        assert object_registration_id == await registration_service.update_datacite_url(
+            submission.submission_id, object_datacite_url, object_id=obj.object_id
+        )
+        assert (
+            await registration_service.get_registration_by_id(object_registration_id)
+        ).datacite_url == object_datacite_url
 
         # rems url
-        assert object_registration_id == await registration_service.update_rems_url(submission.submission_id,
-                                                                                    object_rems_url,
-                                                                                    object_id=obj.object_id)
+        assert object_registration_id == await registration_service.update_rems_url(
+            submission.submission_id, object_rems_url, object_id=obj.object_id
+        )
         assert (await registration_service.get_registration_by_id(object_registration_id)).rems_url == object_rems_url
 
         # rems resource id
-        assert object_registration_id == await registration_service.update_rems_resource_id(submission.submission_id,
-                                                                                            object_rems_resource_id,
-                                                                                            object_id=obj.object_id)
-        assert (await registration_service.get_registration_by_id(
-            object_registration_id)).rems_resource_id == object_rems_resource_id
+        assert object_registration_id == await registration_service.update_rems_resource_id(
+            submission.submission_id, object_rems_resource_id, object_id=obj.object_id
+        )
+        assert (
+            await registration_service.get_registration_by_id(object_registration_id)
+        ).rems_resource_id == object_rems_resource_id
 
         # rems catalogue id
-        assert object_registration_id == await registration_service.update_rems_catalogue_id(submission.submission_id,
-                                                                                             object_rems_catalogue_id,
-                                                                                             object_id=obj.object_id)
-        assert (await registration_service.get_registration_by_id(
-            object_registration_id)).rems_catalogue_id == object_rems_catalogue_id
+        assert object_registration_id == await registration_service.update_rems_catalogue_id(
+            submission.submission_id, object_rems_catalogue_id, object_id=obj.object_id
+        )
+        assert (
+            await registration_service.get_registration_by_id(object_registration_id)
+        ).rems_catalogue_id == object_rems_catalogue_id
 
         # Submission
 
-        submission_registration_id = await registration_service.add_registration(Registration(
-            submission_id=submission.submission_id,
-            schema_type="test",
-            title="test",
-            description="test",
-            doi=submission_doi))
+        submission_registration_id = await registration_service.add_registration(
+            Registration(
+                submission_id=submission.submission_id,
+                schema_type="test",
+                title="test",
+                description="test",
+                doi=submission_doi,
+            )
+        )
 
         # metax id
-        assert submission_registration_id == await registration_service.update_metax_id(submission.submission_id,
-                                                                                        submission_metax_id)
-        assert (await registration_service.get_registration_by_id(
-            submission_registration_id)).metax_id == submission_metax_id
+        assert submission_registration_id == await registration_service.update_metax_id(
+            submission.submission_id, submission_metax_id
+        )
+        assert (
+            await registration_service.get_registration_by_id(submission_registration_id)
+        ).metax_id == submission_metax_id
 
         # datacite
-        assert submission_registration_id == await registration_service.update_datacite_url(submission.submission_id,
-                                                                                            submission_datacite_url)
-        assert (await registration_service.get_registration_by_id(
-            submission_registration_id)).datacite_url == submission_datacite_url
+        assert submission_registration_id == await registration_service.update_datacite_url(
+            submission.submission_id, submission_datacite_url
+        )
+        assert (
+            await registration_service.get_registration_by_id(submission_registration_id)
+        ).datacite_url == submission_datacite_url
 
         # rems url
-        assert submission_registration_id == await registration_service.update_rems_url(submission.submission_id,
-                                                                                        submission_rems_url)
-        assert (await registration_service.get_registration_by_id(
-            submission_registration_id)).rems_url == submission_rems_url
+        assert submission_registration_id == await registration_service.update_rems_url(
+            submission.submission_id, submission_rems_url
+        )
+        assert (
+            await registration_service.get_registration_by_id(submission_registration_id)
+        ).rems_url == submission_rems_url
 
         # rems resource id
         assert submission_registration_id == await registration_service.update_rems_resource_id(
-            submission.submission_id,
-            submission_rems_resource_id)
-        assert (await registration_service.get_registration_by_id(
-            submission_registration_id)).rems_resource_id == submission_rems_resource_id
+            submission.submission_id, submission_rems_resource_id
+        )
+        assert (
+            await registration_service.get_registration_by_id(submission_registration_id)
+        ).rems_resource_id == submission_rems_resource_id
 
         # rems catalogue id
         assert submission_registration_id == await registration_service.update_rems_catalogue_id(
-            submission.submission_id,
-            submission_rems_catalogue_id)
-        assert (await registration_service.get_registration_by_id(
-            submission_registration_id)).rems_catalogue_id == submission_rems_catalogue_id
+            submission.submission_id, submission_rems_catalogue_id
+        )
+        assert (
+            await registration_service.get_registration_by_id(submission_registration_id)
+        ).rems_catalogue_id == submission_rems_catalogue_id

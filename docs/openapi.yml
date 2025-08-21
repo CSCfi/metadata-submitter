@@ -2,7 +2,7 @@ openapi: 3.1.1
 info:
   description: |-
     This is a definition of CSC Metadata Submitter API.
-  version: 2025.7.0
+  version: 2025.4.0
   title: SD Submit API
   license:
     name: MIT License
@@ -14,8 +14,6 @@ tags:
     description: Endpoints used for data retrieval
   - name: Manage
     description: Endpoints used for managing data
-  - name: File
-    description: Endpoints used for managing file information
   - name: Taxonomy
     description: Built-in API for autocompleting taxonomy names/ids in the UI
 paths:
@@ -738,6 +736,89 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
+  /v1/projects/{projectId}/folders:
+    get:
+      tags:
+        - Query
+      summary: List all folders in a specific project
+      parameters:
+        - name: projectId
+          in: path
+          description: ID of the project.
+          schema:
+            type: string
+          required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
+  /v1/projects/{projectId}/folders/{folder}/files:
+    get:
+      tags:
+        - Query
+      summary: List all files in a specific folder of a project
+      parameters:
+        - name: projectId
+          in: path
+          description: ID of the project.
+          schema:
+            type: string
+          required: true
+        - name: folder
+          in: path
+          description: Name of the folder.
+          schema:
+            type: string
+          required: true
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                description: List of files in the folder
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/400BadRequest"
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/401Unauthorized"
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/403Forbidden"
   /v1/rems:
     get:
       tags:
@@ -1272,86 +1353,6 @@ paths:
             application/json:
               schema:
                 type: array
-                items:
-                  $ref: "#/components/schemas/File"
-        400:
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/400BadRequest"
-        401:
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/401Unauthorized"
-        403:
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/403Forbidden"
-    patch:
-      tags:
-        - Submission
-      summary: Add or update files for the submission with a specified submission ID
-      parameters:
-        - name: submissionId
-          in: path
-          description: ID of the object submission.
-          schema:
-            type: string
-          required: true
-      requestBody:
-        content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/SubmissionFile"
-      responses:
-        204:
-          description: No Content
-        400:
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/400BadRequest"
-        401:
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/401Unauthorized"
-        403:
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/403Forbidden"
-  /v1/submissions/{submissionId}/files/{fileId}:
-    delete:
-      tags:
-        - Manage
-      summary: Remove file from a submission
-      parameters:
-        - name: submissionId
-          in: path
-          description: ID of the object submission.
-          schema:
-            type: string
-          required: true
-        - name: fileId
-          in: path
-          description: ID of the object submission.
-          schema:
-            type: string
-          required: true
-      responses:
-        204:
-          description: No Content
         400:
           description: Bad Request
           content:
@@ -1680,137 +1681,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
-  /v1/files:
-    get:
-      tags:
-        - File
-      summary: Get files for a project
-      parameters:
-        - name: projectId
-          in: query
-          description: Project ID to get files for
-          schema:
-            type: string
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/File"
-        400:
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/400BadRequest"
-        401:
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/401Unauthorized"
-        403:
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/403Forbidden"
-    post:
-      tags:
-        - File
-      summary: Post files for a project
-      parameters:
-        - name: is_bigpicture
-          in: query
-          description: specify if the files belong to Bigpicture project
-          schema:
-            type: boolean
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/PostFiles"
-      responses:
-        201:
-          description: Created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/FilesPosted"
-        400:
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/400BadRequest"
-        401:
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/401Unauthorized"
-        403:
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/403Forbidden"
-        404:
-          description: Not Found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/404NotFound"
-  /v1/files/{projectId}:
-    delete:
-      tags:
-        - File
-      summary: Flag files as deleted in a project and remove files from unpublished submissions
-      parameters:
-        - name: projectId
-          in: path
-          description: Project ID of files to be deleted.
-          schema:
-            type: string
-          required: true
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: array
-              description: Array of file paths.
-              items:
-                type: string
-      responses:
-        204:
-          description: No Content
-        400:
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/400BadRequest"
-        401:
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/401Unauthorized"
-        403:
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/403Forbidden"
-        404:
-          description: Not Found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/404NotFound"
   /v1/taxonomy:
     get:
       tags:
@@ -3190,26 +3060,6 @@ components:
           value:
             type: string
             title: Checksum value
-    File:
-      type: object
-      description: Describes a file that can be attached to a submission
-      properties:
-        name:
-          type: string
-          title: File name
-        path:
-          type: string
-          title: File path, including file name
-        project:
-          type: string
-          title: Project ID this file belongs to
-        bytes:
-          type: integer
-          title: File size in bytes
-        encrypted_checksums:
-          $ref: "#/components/schemas/Checksum"
-        unencrypted_checksums:
-          $ref: "#/components/schemas/Checksum"
     SubmissionFile:
       type: object
       description: Describes a submission file information that can be attached to a submission
@@ -3251,52 +3101,6 @@ components:
           type: string
           title: Common name or genbank common name (if available)
           example: red fir
-    PostFiles:
-      type: object
-      description: Shows POST v1/files request payload
-      properties:
-        projectId:
-          type: string
-          title: Project Id
-          example: f76bb94d726940bbb723c010ca5775c5
-        files:
-          type: array
-          items:
-            $ref: "#/components/schemas/PostFile"
-    PostFile:
-      type: object
-      description: Describes file information needed for file post request
-      properties:
-        name:
-          type: string
-          title: File name
-          example: filename.c4gh
-        path:
-          type: string
-          title: File path, including file name
-          example: s3:/bucket/files/filename.c4gh
-        bytes:
-          type: integer
-          title: File size in bytes
-          example: 100
-        encrypted_checksums:
-          $ref: "#/components/schemas/Checksum"
-        unencrypted_checksums:
-          $ref: "#/components/schemas/Checksum"
-    FilesPosted:
-      type: array
-      description: Information of posted files return
-      items:
-        type: object
-        properties:
-          accessionId:
-            type: string
-            title: Accession id for file
-            example: 5c4a1969e24a4bc5962eac8c2c5348ed
-          version:
-            type: integer
-            title: Version of the file
-            example: 1
     FilesForIngestion:
       type: object
       description: File's information for ingestion
@@ -3304,7 +3108,7 @@ components:
         path:
           type: string
           title: File path
-          example: s3:/bucket/files/filename.c4gh
+          example: s3://folder/files/filename.c4gh
         accessionId:
           type: string
           title: Accession id for file

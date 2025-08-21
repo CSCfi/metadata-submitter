@@ -4,13 +4,13 @@ from collections.abc import AsyncGenerator
 
 import pytest
 
-from metadata_backend.database.postgres.services.file import FileService, UnknownFileException
 from metadata_backend.database.postgres.models import IngestStatus
-from metadata_backend.database.postgres.repository import transaction, SessionFactory
 from metadata_backend.database.postgres.repositories.file import FileRepository
 from metadata_backend.database.postgres.repositories.object import ObjectRepository
 from metadata_backend.database.postgres.repositories.submission import SubmissionRepository
-from tests.unit.database.postgres.helpers import create_submission_entity, create_object_entity, create_file
+from metadata_backend.database.postgres.repository import SessionFactory, transaction
+from metadata_backend.database.postgres.services.file import FileService, UnknownFileException
+from tests.unit.database.postgres.helpers import create_file, create_object_entity, create_submission_entity
 
 
 @pytest.fixture()
@@ -37,11 +37,12 @@ async def service(file_repository: FileRepository) -> AsyncGenerator[FileService
     yield service
 
 
-async def test_is_file(session_factory: SessionFactory,
-                       submission_repository: SubmissionRepository,
-                       object_repository: ObjectRepository,
-                       file_repository: FileRepository,
-                       service: FileService):
+async def test_is_file(
+    session_factory: SessionFactory,
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    service: FileService,
+):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
@@ -55,11 +56,12 @@ async def test_is_file(session_factory: SessionFactory,
         assert not await service.is_file(file_id, submission_id="other")
 
 
-async def test_get_file(session_factory: SessionFactory,
-                        submission_repository: SubmissionRepository,
-                        object_repository: ObjectRepository,
-                        file_repository: FileRepository,
-                        service: FileService):
+async def test_get_file(
+    session_factory: SessionFactory,
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    service: FileService,
+):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
@@ -76,11 +78,12 @@ async def test_get_file(session_factory: SessionFactory,
         assert sorted(file.json_dump().items()) == sorted(result.json_dump().items())
 
 
-async def test_get_files(session_factory: SessionFactory,
-                         submission_repository: SubmissionRepository,
-                         object_repository: ObjectRepository,
-                         file_repository: FileRepository,
-                         service: FileService):
+async def test_get_files(
+    session_factory: SessionFactory,
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    service: FileService,
+):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
@@ -99,25 +102,28 @@ async def test_get_files(session_factory: SessionFactory,
         assert sorted(f.json_dump().items() for f in files) == sorted(r.json_dump().items() for r in results)
 
         # Get files using initial ingest status.
-        results = [file async for file in
-                   service.get_files(submission.submission_id, ingest_statuses=[IngestStatus.ADDED])]
+        results = [
+            file async for file in service.get_files(submission.submission_id, ingest_statuses=[IngestStatus.ADDED])
+        ]
 
         # Assert files.
         assert sorted(f.json_dump().items() for f in files) == sorted(r.json_dump().items() for r in results)
 
         # Get files using other ingest status.
-        results = [file async for file in
-                   service.get_files(submission.submission_id, ingest_statuses=[IngestStatus.FAILED])]
+        results = [
+            file async for file in service.get_files(submission.submission_id, ingest_statuses=[IngestStatus.FAILED])
+        ]
 
         # Assert files.
         assert len(results) == 0
 
 
-async def test_count_files(session_factory: SessionFactory,
-                           submission_repository: SubmissionRepository,
-                           object_repository: ObjectRepository,
-                           file_repository: FileRepository,
-                           service: FileService):
+async def test_count_files(
+    session_factory: SessionFactory,
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    service: FileService,
+):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
@@ -135,11 +141,12 @@ async def test_count_files(session_factory: SessionFactory,
         assert await service.count_files(submission.submission_id, ingest_statuses=[IngestStatus.FAILED]) == 0
 
 
-async def test_count_bytes(session_factory: SessionFactory,
-                           submission_repository: SubmissionRepository,
-                           object_repository: ObjectRepository,
-                           file_repository: FileRepository,
-                           service: FileService):
+async def test_count_bytes(
+    session_factory: SessionFactory,
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    service: FileService,
+):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
@@ -157,12 +164,14 @@ async def test_count_bytes(session_factory: SessionFactory,
         assert await service.count_bytes(submission.submission_id) == 3 * file_bytes
 
 
-async def test_update_ingest_status(session_factory: SessionFactory,
-                                    submission_repository: SubmissionRepository,
-                                    object_repository: ObjectRepository,
-                                    file_repository: FileRepository,
-                                    service: FileService):
-    async with (transaction(session_factory, requires_new=True, rollback_new=True) as session):
+async def test_update_ingest_status(
+    session_factory: SessionFactory,
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    file_repository: FileRepository,
+    service: FileService,
+):
+    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
         obj = create_object_entity(submission.submission_id)
@@ -179,12 +188,13 @@ async def test_update_ingest_status(session_factory: SessionFactory,
             await service.update_ingest_status("unknown", ingest_status=IngestStatus.FAILED)
 
 
-async def test_delete_file_by_id(session_factory: SessionFactory,
-                                 submission_repository: SubmissionRepository,
-                                 object_repository: ObjectRepository,
-                                 file_repository: FileRepository,
-                                 service: FileService):
-    async with (transaction(session_factory, requires_new=True, rollback_new=True) as session):
+async def test_delete_file_by_id(
+    session_factory: SessionFactory,
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    service: FileService,
+):
+    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
         obj = create_object_entity(submission.submission_id)
@@ -201,12 +211,13 @@ async def test_delete_file_by_id(session_factory: SessionFactory,
             await service.delete_file_by_id(file_id)
 
 
-async def test_delete_file_by_path(session_factory: SessionFactory,
-                                   submission_repository: SubmissionRepository,
-                                   object_repository: ObjectRepository,
-                                   file_repository: FileRepository,
-                                   service: FileService):
-    async with (transaction(session_factory, requires_new=True, rollback_new=True) as session):
+async def test_delete_file_by_path(
+    session_factory: SessionFactory,
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    service: FileService,
+):
+    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
         obj = create_object_entity(submission.submission_id)

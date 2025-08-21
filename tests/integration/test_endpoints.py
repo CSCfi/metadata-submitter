@@ -21,7 +21,7 @@ class TestPublicEndpoints:
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
             res = await resp.json()
             assert res["status"] == "Ok"
-            assert res["services"]["database"]["status"] == "Ok"
+            assert res["services"]["aai"]["status"] == "Ok"
 
 
 class TestOtherApiEndpoints:

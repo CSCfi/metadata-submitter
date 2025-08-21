@@ -4,13 +4,13 @@ from enum import Enum
 from typing import Any, cast
 
 from aiohttp.web import Application, Request
-from motor.motor_asyncio import AsyncIOMotorClient
 
 from ..database.postgres.services.file import FileService
 from ..database.postgres.services.object import ObjectService
 from ..database.postgres.services.registration import RegistrationService
 from ..database.postgres.services.submission import SubmissionService
 from .services.auth import AccessService
+from .services.file import FileProviderService
 from .services.object import JsonObjectService, XmlObjectService
 from .services.project import ProjectService
 
@@ -18,7 +18,6 @@ from .services.project import ProjectService
 class ResourceType(Enum):
     """Resource types for the application context."""
 
-    MONGO_CLIENT = "mongo_client"
     PROJECT_SERVICE = "project_service"
     ACCESS_SERVICE = "access_service"
     SUBMISSION_SERVICE = "submission_service"
@@ -27,6 +26,7 @@ class ResourceType(Enum):
     REGISTRATION_SERVICE = "registration_service"
     JSON_OBJECT_SERVICE = "json_object_service"
     XML_OBJECT_SERVICE = "xml_object_service"
+    FILE_PROVIDER_SERVICE = "file_provider_service"
 
 
 def set_resource(app: Application, resource_type: ResourceType, resource: Any) -> None:  # noqa: ANN401
@@ -39,19 +39,6 @@ def set_resource(app: Application, resource_type: ResourceType, resource: Any) -
         resource: the resource.
     """
     app[resource_type.value] = resource
-
-
-def get_mongo_client(req: Request) -> AsyncIOMotorClient:  # type: ignore[type-arg]
-    """
-    Retrieve the MongoDB client from the application.
-
-    Args:
-        req: The incoming HTTP request containing the application context.
-
-    Returns:
-        AsyncIOMotorClient: The MongoDB client attached to the application.
-    """
-    return cast(AsyncIOMotorClient, req.app[ResourceType.MONGO_CLIENT.value])  # type: ignore[type-arg]
 
 
 def get_access_service(req: Request) -> AccessService:
@@ -156,3 +143,16 @@ def get_xml_object_service(req: Request) -> XmlObjectService:
         XmlObjectService: The XmlObjectService attached to the application.
     """
     return cast(XmlObjectService, req.app[ResourceType.XML_OBJECT_SERVICE.value])
+
+
+def get_file_provider_service(req: Request) -> FileProviderService:
+    """
+    Retrieve the FileProviderService from the application.
+
+    Args:
+        req: The incoming HTTP request containing the application context.
+
+    Returns:
+        FileProviderService: The FileProviderService attached to the application.
+    """
+    return cast(FileProviderService, req.app[ResourceType.FILE_PROVIDER_SERVICE.value])

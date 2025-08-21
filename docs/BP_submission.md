@@ -13,12 +13,6 @@ instructions on how to execute them via the command line.
 
 ### Further context
 
-SD Submit service utilizes an instance of MongoDB as its database. As a
-result of this, all information is mainly stored as JSON documents and
-thus, HTTP requests primarily respond with some JSON content. Despite this,
-XML content is also stored and XML content can be fetched via this API
-(shown below).
-
 There are many tools for convenient creation of HTTP requests to a web
 service e.g. [Postman](https://www.postman.com/) or [REST Client Extension
 for Visual Studio Code](https://github.com/Huachao/vscode-restclient),
@@ -219,7 +213,7 @@ sending a JSON blob, which should minimally look like this
     "files": [
         {
             "name": "file_name",
-            "path": "s3:/path/to/file_name",
+            "path": "s3://path/to/file_name",
             "bytes": 100,
             "encrypted_checksums": [
                 {

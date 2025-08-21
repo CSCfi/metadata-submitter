@@ -4,7 +4,6 @@ import json
 import re
 from datetime import datetime
 from math import ceil
-from typing import Any
 
 from aiohttp import web
 from aiohttp.web import Request, Response
@@ -13,11 +12,9 @@ from multidict import CIMultiDict
 from ...helpers.logger import LOG
 from ...helpers.validator import JSONValidator
 from ..auth import get_authorized_user_id
-from ..models import File, Rems, SubmissionWorkflow
-from ..operators.file import FileOperator
+from ..models import Rems, SubmissionWorkflow
 from ..resources import (
     get_file_service,
-    get_mongo_client,
     get_project_service,
     get_registration_service,
     get_submission_service,
@@ -304,50 +301,6 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         body = to_json({"submissionId": submission_id})
         return web.Response(body=body, status=200, content_type="application/json")
 
-    async def patch_submission_files(self, req: Request) -> Response:
-        """Patch files in a submission.
-
-        Adds new files to the submission or updates existing ones.
-
-        :param req: PATCH request with metadata schema in the body
-        :returns: HTTP No Content response
-        :raises: HTTPBadRequest if there are issues with the JSON payload
-        """
-        submission_id = req.match_info["submissionId"]
-
-        file_service = get_file_service(req)
-
-        db_client = get_mongo_client(req)
-        file_operator = FileOperator(db_client)
-
-        # Check that the submission can be modified by the user.
-        await self.check_submission_modifiable(req, submission_id)
-
-        try:
-            data: list[dict[str, Any]] = await req.json()
-        except Exception as e:
-            reason = f"JSON is not correctly formatted, err: {e}"
-            LOG.exception(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        # Validate incoming data
-        if not all("accessionId" in file and "version" in file for file in data):
-            reason = "Each file must contain 'accessionId' and 'version'."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        # Add new files.
-        for file in data:
-            # Ensure file exists in the project.
-            file_info = await file_operator.read_file(file["accessionId"], file["version"])
-            path = file_info["path"]
-            if not await file_service.is_file_by_path(submission_id, path):
-                # Add file as it does not exist yet.
-                await file_service.add_file(File(submission_id=submission_id, path=path, bytes=file_info["bytes"]))
-
-        LOG.info("PATCH files in submission with ID: %r was successful.", submission_id)
-        return web.HTTPNoContent()
-
     async def patch_submission_linked_folder(self, req: Request) -> Response:
         """Add or remove a linked folder name to a submission.
 
@@ -429,35 +382,6 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
             content_type="application/json",
         )
 
-    async def delete_submission_files(self, req: Request) -> Response:
-        """Remove a file from a submission.
-
-        :param req: DELETE request
-        :raises HTTP Not Found if file not associated with submission
-        :returns: HTTP No Content response
-        """
-        submission_id = req.match_info["submissionId"]
-        file_id = req.match_info["fileId"]
-
-        file_service = get_file_service(req)
-
-        # Check that the submission can be modified by the user.
-        await self.check_submission_modifiable(req, submission_id)
-
-        if (await file_service.get_file_by_id(file_id)).submission_id != submission_id:
-            reason = f"File with accession id {file_id} not found in submission {submission_id}"
-            LOG.error(reason)
-            raise web.HTTPNotFound(reason=reason)
-
-        await file_service.delete_file_by_id(file_id)
-
-        LOG.info(
-            "Removing file: %r from submission with ID: %r was successful.",
-            file_id,
-            submission_id,
-        )
-        return web.HTTPNoContent()
-
     async def post_data_ingestion(self, req: Request) -> web.HTTPNoContent:
         """Start the data ingestion.
 
@@ -481,6 +405,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
             raise NotImplementedError(f"Ingest is not implemented for {workflow} submissions.")
 
         polling_file_data = {}
+        file_ids = []
         async for file in file_service.get_files(submission_id):
             # Trigger file ingestion
             await self.admin_handler.ingest_file(
@@ -493,6 +418,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
                 },
             )
             polling_file_data[file.path] = file.file_id
+            file_ids.append(file.file_id)
 
         LOG.info("Polling for status 'verified' in submission with ID: %r", submission_id)
         await self.start_file_polling(
@@ -505,7 +431,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
             req,
             {
                 "user": user_id,
-                "fileIds": list(polling_file_data.values()),
+                "fileIds": file_ids,
                 "datasetId": dataset_id,
             },
         )

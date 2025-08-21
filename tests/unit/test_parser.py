@@ -5,9 +5,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 from aiohttp import web
-from pymongo import UpdateOne
 
-from metadata_backend.helpers.parser import CSVToJSONParser, XMLToJSONParser, jsonpatch_mongo
+from metadata_backend.helpers.parser import CSVToJSONParser, XMLToJSONParser
 
 
 class ParserTestCase(unittest.TestCase):
@@ -315,32 +314,3 @@ class ParserTestCase(unittest.TestCase):
             self.csv_parser.parse("sample", "")
         with self.assertRaises(web.HTTPBadRequest):
             self.csv_parser.parse("sample", "id,title,description\n")
-
-    def test_json_patch_mongo_conversion(self):
-        """Test JSON patch to mongo query conversion."""
-        json_patch = [
-            {
-                "op": "add",
-                "path": "/metadataObjects/-",
-                "value": {"accessionId": "id", "schema": "study", "tags": {"submissionType": "XML"}},
-            },
-            {"op": "add", "path": "/drafts", "value": []},
-            {"op": "replace", "path": "/published", "value": True},
-        ]
-        expected_mongo = [
-            UpdateOne(
-                {"accessionId": "id"},
-                {
-                    "$addToSet": {
-                        "metadataObjects": {
-                            "$each": [{"accessionId": "id", "schema": "study", "tags": {"submissionType": "XML"}}]
-                        }
-                    }
-                },
-            ),
-            UpdateOne({"accessionId": "id"}, {"$set": {"drafts": []}}),
-            UpdateOne({"accessionId": "id"}, {"$set": {"published": True}}),
-        ]
-
-        result = jsonpatch_mongo({"accessionId": "id"}, json_patch)
-        self.assertEqual(result, expected_mongo)

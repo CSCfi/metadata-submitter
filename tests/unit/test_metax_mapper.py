@@ -3,9 +3,8 @@
 import json
 from pathlib import Path
 from unittest import IsolatedAsyncioTestCase
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
-from metadata_backend.api.operators.file import FileOperator
 from metadata_backend.services.metax_mapper import MetaDataMapper, SubjectNotFoundException
 
 
@@ -71,20 +70,3 @@ class MetaDataMapperTestCase(IsolatedAsyncioTestCase):
         ]
         with self.assertRaises(SubjectNotFoundException):
             mapper._map_field_of_science(bad_subjects)
-
-    async def test_map_file_bytes(self):
-        """Test that the total size of files is calculated correctly."""
-        mapper = MetaDataMapper({}, {}, self.bytes)
-        file_operator = FileOperator(self.client)
-        file_operator.db_service.do_aggregate = AsyncMock(side_effect=_read_file_side_effect)
-        self.assertEqual(self.bytes, mapper.research_dataset["total_remote_resources_byte_size"])
-
-
-def _read_file_side_effect(*args):
-    match args[1][0]["$match"]["accessionId"]:
-        case "672":
-            return [{"bytes": 3476, "flagDeleted": False}]
-        case "781":
-            return [{"bytes": 964, "flagDeleted": False}]
-        case "268":
-            return [{"bytes": 1623, "flagDeleted": True}]

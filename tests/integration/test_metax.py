@@ -6,7 +6,6 @@ from typing import Any
 
 from metadata_backend.api.models import Registration
 from tests.integration.conf import auth, metax_api, submissions_url
-from tests.integration.conftest import submission_factory
 from tests.integration.helpers import (
     get_request_data,
     patch_submission_doi,
@@ -58,8 +57,9 @@ async def test_metax_research_dataset_fega_xml(client_logged_in, submission_fact
             async with client_logged_in.get(f"{metax_api}/{registration.metax_id}", auth=auth) as metax_resp:
                 assert metax_resp.status == 200, f"HTTP Status code error, got {metax_resp.status}"
                 metax = await metax_resp.json()
-                await assert_metax(metax, registration.schema_type, registration.title, registration.description,
-                                   registration.doi)
+                await assert_metax(
+                    metax, registration.schema_type, registration.title, registration.description, registration.doi
+                )
 
 
 async def test_metax_research_dataset_fega_json(client_logged_in, submission_factory):
@@ -101,8 +101,9 @@ async def test_metax_research_dataset_fega_json(client_logged_in, submission_fac
             async with client_logged_in.get(f"{metax_api}/{registration.metax_id}", auth=auth) as metax_resp:
                 assert metax_resp.status == 200, f"HTTP Status code error, got {metax_resp.status}"
                 metax = await metax_resp.json()
-                await assert_metax(metax, registration.schema_type, registration.title, registration.description,
-                                   registration.doi)
+                await assert_metax(
+                    metax, registration.schema_type, registration.title, registration.description, registration.doi
+                )
 
 
 async def assert_metax(metax: dict[str, Any], schema: str, title: str, description: str, doi: str):
@@ -117,8 +118,8 @@ async def assert_metax(metax: dict[str, Any], schema: str, title: str, descripti
     assert actual_rd["description"]["en"].split("\n\n")[0] == description
     assert actual_rd["creator"] == expected_rd["creator"]
     assert (
-            actual_rd["access_rights"]["access_type"]["identifier"]
-            == expected_rd["access_rights"]["access_type"]["identifier"]
+        actual_rd["access_rights"]["access_type"]["identifier"]
+        == expected_rd["access_rights"]["access_type"]["identifier"]
     )
     assert actual_rd["contributor"] == expected_rd["contributor"]
     assert actual_rd["issued"] == expected_rd["issued"]

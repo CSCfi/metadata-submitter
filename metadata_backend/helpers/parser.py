@@ -10,7 +10,6 @@ from xml.etree.ElementTree import Element  # nosec B405
 import defusedxml.ElementTree as ET
 from aiohttp import web
 from defusedxml import minidom
-from pymongo import UpdateOne
 from xmlschema import ElementData, XMLSchema, XMLSchemaConverter, XMLSchemaException, XsdElement, XsdType, aliases
 
 from .logger import LOG
@@ -693,45 +692,6 @@ class CSVToJSONParser:
 
         LOG.info("CSV was successfully converted to %d JSON object(s).", len(_parsed))
         return _parsed
-
-
-def jsonpatch_mongo(identifier: dict[str, Any], json_patch: list[dict[str, Any]]) -> list[Any]:
-    """Convert JSONpatch object to mongo query.
-
-    :param identifier: object database ID
-    :param json_patch: array with JSON patch actions
-    :returns: dictionary of mongodb actions
-    """
-    queries: list[Any] = []
-    for op in json_patch:
-        if op["op"] == "add":
-            if op["path"].endswith("/-"):
-                queries.append(
-                    UpdateOne(
-                        identifier,
-                        {
-                            "$addToSet": {
-                                op["path"][1:-2].replace("/", "."): {
-                                    "$each": op["value"] if isinstance(op["value"], list) else [op["value"]]
-                                },
-                            },
-                        },
-                    )
-                )
-            else:
-                queries.append(
-                    UpdateOne(
-                        identifier,
-                        {"$set": {op["path"][1:].replace("/", "."): op["value"]}},
-                    )
-                )
-        elif op["op"] == "replace":
-            path = op["path"][1:-2] if op["path"].endswith("/-") else op["path"][1:].replace("/", ".")
-            if op.get("match", None):
-                identifier.update(op["match"])
-            queries.append(UpdateOne(identifier, {"$set": {path: op["value"]}}))
-
-    return queries
 
 
 def str_to_bool(val: str) -> bool:

@@ -8,8 +8,8 @@ from metadata_backend.database.postgres.models import FileEntity, IngestStatus
 from metadata_backend.database.postgres.repositories.file import FileRepository
 from metadata_backend.database.postgres.repositories.object import ObjectRepository
 from metadata_backend.database.postgres.repositories.submission import SubmissionRepository
-from metadata_backend.database.postgres.repository import transaction, SessionFactory
-from tests.unit.database.postgres.helpers import create_submission_entity, create_object_entity
+from metadata_backend.database.postgres.repository import SessionFactory, transaction
+from tests.unit.database.postgres.helpers import create_object_entity, create_submission_entity
 
 
 async def add_submission(submission_repository: SubmissionRepository) -> str:
@@ -25,10 +25,12 @@ async def add_object(submission_id: str, object_repository: ObjectRepository) ->
     return await object_repository.add_object(obj)
 
 
-async def test_add_get_delete_file(session_factory: SessionFactory,
-                                   file_repository: FileRepository,
-                                   object_repository: ObjectRepository,
-                                   submission_repository: SubmissionRepository) -> None:
+async def test_add_get_delete_file(
+    session_factory: SessionFactory,
+    file_repository: FileRepository,
+    object_repository: ObjectRepository,
+    submission_repository: SubmissionRepository,
+) -> None:
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission_id = await add_submission(submission_repository)
         object_id = await add_object(submission_id, object_repository)
@@ -76,7 +78,7 @@ async def test_add_get_delete_file(session_factory: SessionFactory,
         assert_file(await file_repository.get_file_by_id(file_id))
         assert_file(await file_repository.get_file_by_path(submission_id, path))
 
-        assert (await file_repository.delete_file_by_id(file_id))
+        assert await file_repository.delete_file_by_id(file_id)
         assert (await file_repository.get_file_by_id(file_id)) is None
         assert (await file_repository.get_file_by_path(submission_id, path)) is None
 
@@ -88,15 +90,17 @@ async def test_add_get_delete_file(session_factory: SessionFactory,
         assert_file(await file_repository.get_file_by_id(file_id))
         assert_file(await file_repository.get_file_by_path(submission_id, path))
 
-        assert (await file_repository.delete_file_by_path(submission_id, path))
+        assert await file_repository.delete_file_by_path(submission_id, path)
         assert (await file_repository.get_file_by_id(file_id)) is None
         assert (await file_repository.get_file_by_path(submission_id, path)) is None
 
 
-async def test_get_and_count_files_and_bytes(session_factory: SessionFactory,
-                                             file_repository: FileRepository,
-                                             object_repository: ObjectRepository,
-                                             submission_repository: SubmissionRepository) -> None:
+async def test_get_and_count_files_and_bytes(
+    session_factory: SessionFactory,
+    file_repository: FileRepository,
+    object_repository: ObjectRepository,
+    submission_repository: SubmissionRepository,
+) -> None:
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission_id = await add_submission(submission_repository)
         object_id = await add_object(submission_id, object_repository)
@@ -118,7 +122,7 @@ async def test_get_and_count_files_and_bytes(session_factory: SessionFactory,
             unencrypted_checksum_type=unencrypted_checksum_type,
             encrypted_checksum_type=encrypted_checksum_type,
             path=path_1,
-            ingest_status=IngestStatus.ADDED
+            ingest_status=IngestStatus.ADDED,
         )
 
         path_2 = f"path_{uuid.uuid4()}"
@@ -132,7 +136,7 @@ async def test_get_and_count_files_and_bytes(session_factory: SessionFactory,
             unencrypted_checksum_type=unencrypted_checksum_type,
             encrypted_checksum_type=encrypted_checksum_type,
             path=path_2,
-            ingest_status=IngestStatus.FAILED
+            ingest_status=IngestStatus.FAILED,
         )
 
         file_id_1 = await file_repository.add_file(file_entity_1)
@@ -146,11 +150,17 @@ async def test_get_and_count_files_and_bytes(session_factory: SessionFactory,
 
         assert files[0].file_id == file_id_1
 
-        files = [file async for file in file_repository.get_files(submission_id, ingest_statuses=[IngestStatus.ADDED,
-                                                                                                  IngestStatus.FAILED])]
+        files = [
+            file
+            async for file in file_repository.get_files(
+                submission_id, ingest_statuses=[IngestStatus.ADDED, IngestStatus.FAILED]
+            )
+        ]
         assert len(files) == 2
-        assert await file_repository.count_files(submission_id, ingest_statuses=[IngestStatus.ADDED,
-                                                                                 IngestStatus.FAILED]) == 2
+        assert (
+            await file_repository.count_files(submission_id, ingest_statuses=[IngestStatus.ADDED, IngestStatus.FAILED])
+            == 2
+        )
         assert {file_id_1, file_id_2} == {files[0].file_id, files[1].file_id}
 
         # Bytes
@@ -158,10 +168,12 @@ async def test_get_and_count_files_and_bytes(session_factory: SessionFactory,
         assert await file_repository.count_bytes(submission_id) == bytes_1 + bytes_2
 
 
-async def test_update_ingest_status(session_factory: SessionFactory,
-                                    file_repository: FileRepository,
-                                    object_repository: ObjectRepository,
-                                    submission_repository: SubmissionRepository) -> None:
+async def test_update_ingest_status(
+    session_factory: SessionFactory,
+    file_repository: FileRepository,
+    object_repository: ObjectRepository,
+    submission_repository: SubmissionRepository,
+) -> None:
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission_id = await add_submission(submission_repository)
         object_id = await add_object(submission_id, object_repository)
@@ -181,7 +193,7 @@ async def test_update_ingest_status(session_factory: SessionFactory,
             unencrypted_checksum_type=unencrypted_checksum_type,
             encrypted_checksum_type=encrypted_checksum_type,
             path=path,
-            ingest_status=IngestStatus.ADDED
+            ingest_status=IngestStatus.ADDED,
         )
 
         file_id = await file_repository.add_file(file_entity)

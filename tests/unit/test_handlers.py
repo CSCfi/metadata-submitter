@@ -3,34 +3,39 @@
 import json
 import os
 import re
-from datetime import datetime, timedelta
-
-import pytest
 import uuid
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable
-from unittest.mock import AsyncMock, MagicMock, patch, call
-from defusedxml import ElementTree
+from unittest.mock import AsyncMock, MagicMock, call, patch
+
+import pytest
 import ujson
 from aiohttp import FormData, web
 from aiohttp.test_utils import AioHTTPTestCase, make_mocked_coro
 from aiohttp.web import Request
+from defusedxml import ElementTree
 
-from .database.postgres.helpers import create_submission_entity, create_object_entity
 from metadata_backend.api.handlers.restapi import RESTAPIHandler
-from metadata_backend.api.models import Project, User, File, Rems, Object, SubmissionWorkflow, Registration
+from metadata_backend.api.models import Object, Project, Registration, Rems, SubmissionWorkflow, User
 from metadata_backend.api.services.auth import ApiKey
+from metadata_backend.api.services.file import FileProviderService
 from metadata_backend.api.services.project import ProjectService
 from metadata_backend.conf.conf import API_PREFIX, get_workflow
 from metadata_backend.database.postgres.models import FileEntity
 from metadata_backend.database.postgres.repositories.file import FileRepository
 from metadata_backend.database.postgres.repositories.object import ObjectRepository
-from metadata_backend.database.postgres.repositories.submission import SubmissionRepository, SUB_FIELD_REMS, \
-    SUB_FIELD_DOI
+from metadata_backend.database.postgres.repositories.submission import (
+    SUB_FIELD_DOI,
+    SUB_FIELD_REMS,
+    SubmissionRepository,
+)
 from metadata_backend.database.postgres.repository import transaction
 from metadata_backend.server import init
 from metadata_backend.services.rems_service_handler import RemsServiceHandler
+
 from .conftest import _session_factory
+from .database.postgres.helpers import create_object_entity, create_submission_entity
 
 
 class HandlersTestCase(AioHTTPTestCase):
@@ -73,7 +78,7 @@ class HandlersTestCase(AioHTTPTestCase):
         # Mock REMS license verification.
         self.patch_verify_rems_workflow_licence = patch(
             "metadata_backend.services.rems_service_handler.RemsServiceHandler.validate_workflow_licenses",
-            return_value=True
+            return_value=True,
         )
 
         await self.client.start_server()
@@ -134,10 +139,8 @@ class HandlersTestCase(AioHTTPTestCase):
             "name": "tester",
         }
         self.projected_file_example = {
-            "accessionId": "file1",
-            "name": "file1",
-            "path": "bucketname/file1",
-            "project": "project1",
+            "filepath": "bucketname/file1",
+            "status": "added",
             "encrypted_checksums": [
                 {"type": "sha256", "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d6"},
                 {"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b48"},
@@ -146,6 +149,10 @@ class HandlersTestCase(AioHTTPTestCase):
                 {"type": "sha256", "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d6"},
                 {"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b48"},
             ],
+            "objectId": {
+                "accessionId": "EGA123456",
+                "schema": "run",
+            },
         }
         self._draft_doi_data = {
             "identifier": {
@@ -158,31 +165,6 @@ class HandlersTestCase(AioHTTPTestCase):
                 "schemaOrg": "Collection",
                 "resourceTypeGeneral": "Collection",
             },
-        }
-
-        self.operator_config = {
-            "read_metadata_object.side_effect": self.fake_operator_read_metadata_object,
-            "create_metadata_object.side_effect": self.fake_operator_create_metadata_object,
-            "delete_metadata_object.side_effect": self.fake_operator_delete_metadata_object,
-            "update_metadata_object.side_effect": self.fake_operator_update_metadata_object,
-            "replace_metadata_object.side_effect": self.fake_operator_replace_metadata_object,
-        }
-        self.xmloperator_config = {
-            "read_metadata_object.side_effect": self.fake_xmloperator_read_metadata_object,
-            "create_metadata_object.side_effect": self.fake_xmloperator_create_metadata_object,
-            "replace_metadata_object.side_effect": self.fake_xmloperator_replace_metadata_object,
-            "delete_metadata_object.side_effect": self.fake_operator_delete_metadata_object,
-        }
-        self.submissionoperator_config = {
-            "create_submission.side_effect": self.fake_submissionoperator_create_submission,
-            "read_submission.side_effect": self.fake_submissionoperator_read_submission,
-            "delete_submission.side_effect": self.fake_submissionoperator_delete_submission,
-            "check_object_in_submission.side_effect": self.fake_submissionoperator_check_object,
-            "get_submission_field_str.side_effect": self.fake_get_submission_field_str,
-        }
-        self.useroperator_config = {
-            "create_user.side_effect": self.fake_useroperator_create_user,
-            "read_user.side_effect": self.fake_useroperator_read_user,
         }
 
         RESTAPIHandler.check_ownership = make_mocked_coro(True)
@@ -239,58 +221,6 @@ class HandlersTestCase(AioHTTPTestCase):
             _reader = csv_file.read()
         return _reader
 
-    async def fake_operator_read_metadata_object(self, schema_type, accession_id):
-        """Fake read operation to return mocked JSON."""
-        return (self.metadata_json, "application/json")
-
-    async def fake_xmloperator_read_metadata_object(self, schema_type, accession_id):
-        """Fake read operation to return mocked xml."""
-        return (self.metadata_xml, "text/xml")
-
-    async def fake_xmloperator_create_metadata_object(self, schema_type, content):
-        """Fake create operation to return mocked accessionId."""
-        return [{"accessionId": self.test_ega_string}]
-
-    async def fake_xmloperator_replace_metadata_object(self, schema_type, accession_id, content):
-        """Fake replace operation to return mocked accessionId."""
-        return {"accessionId": self.test_ega_string}
-
-    async def fake_operator_create_metadata_object(self, schema_type, content):
-        """Fake create operation to return mocked accessionId."""
-        return {"accessionId": self.test_ega_string}
-
-    async def fake_operator_update_metadata_object(self, schema_type, accession_id, content):
-        """Fake update operation to return mocked accessionId."""
-        return self.test_ega_string
-
-    async def fake_operator_replace_metadata_object(self, schema_type, accession_id, content):
-        """Fake replace operation to return mocked accessionId."""
-        return {"accessionId": self.test_ega_string}
-
-    async def fake_operator_delete_metadata_object(self, schema_type, accession_id):
-        """Fake delete operation to await successful operation indicator."""
-        return True
-
-    async def fake_operator_create_datacite_info(self, schema_type, accession_id, data):
-        """Fake update operation to await successful operation indicator."""
-        return True
-
-    async def fake_submissionoperator_create_submission(self, content):
-        """Fake create operation to return mocked submissionId."""
-        return self.submission_id
-
-    async def fake_submissionoperator_read_submission(self, submission_id):
-        """Fake read operation to return mocked submission."""
-        return self.test_submission
-
-    async def fake_submissionoperator_delete_submission(self, submission_id):
-        """Fake delete submission to await nothing."""
-        return None
-
-    async def fake_submissionoperator_check_object(self, schema_type, accession_id):
-        """Fake check object in submission."""
-        return self.submission_id, False
-
     async def fake_get_submission_field_str(self, submission_id, field):
         """Fake get submission field."""
         if field == "workflow":
@@ -298,14 +228,6 @@ class HandlersTestCase(AioHTTPTestCase):
         elif field == "projectId":
             return self.project_id
         return ""
-
-    async def fake_useroperator_create_user(self, content):
-        """Fake user operation to return mocked userId."""
-        return self.user_id
-
-    async def fake_useroperator_read_user(self, user_id):
-        """Fake read operation to return mocked user."""
-        return self.test_user
 
     async def fake_read_submission_files(self, submission_id, status_list):
         """Fake read submission files."""
@@ -315,13 +237,14 @@ class HandlersTestCase(AioHTTPTestCase):
         """Fake check submission files."""
         return True, []
 
-    async def post_submission(self,
-                              name: str | None = None,
-                              title: str | None = None,
-                              description: str | None = None,
-                              project_id: str | None = None,
-                              workflow: str = "SDSX",
-                              ) -> str:
+    async def post_submission(
+        self,
+        name: str | None = None,
+        title: str | None = None,
+        description: str | None = None,
+        project_id: str | None = None,
+        workflow: str = "SDSX",
+    ) -> str:
         """Post a submission."""
 
         if name is None:
@@ -342,7 +265,7 @@ class HandlersTestCase(AioHTTPTestCase):
                 "title": title,
                 "description": description,
                 "projectId": project_id,
-                "workflow": workflow
+                "workflow": workflow,
             }
             response = await self.client.post(f"{API_PREFIX}/submissions", json=data)
             response.raise_for_status()
@@ -424,8 +347,8 @@ class APIHandlerTestCase(HandlersTestCase):
             response = await self.client.get(f"{API_PREFIX}/schemas/submission")
             self.assertEqual(response.status, 200)
             resp_json = await response.json()
-            assert resp_json['$schema'] == 'https://json-schema.org/draft/2020-12/schema'
-            assert resp_json['description'] == 'Submission that contains submitted metadata objects'
+            assert resp_json["$schema"] == "https://json-schema.org/draft/2020-12/schema"
+            assert resp_json["description"] == "Submission that contains submitted metadata objects"
 
 
 class XMLSubmissionHandlerTestCase(HandlersTestCase):
@@ -587,9 +510,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
                     # Create metadata object with content type auto-detection.
 
                     response = await self.client.post(
-                        f"{API_PREFIX}/objects/{schema}",
-                        params={"submission": submission_id},
-                        data=xml_document
+                        f"{API_PREFIX}/objects/{schema}", params={"submission": submission_id}, data=xml_document
                     )
                     assert response.status == 201
                     result = await response.json()
@@ -603,7 +524,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
                     response = await self.client.get(
                         f"{API_PREFIX}/objects/{schema}/{accession_id}",
                         headers={"Content-Type": "application/xml"},
-                        data=xml_document
+                        data=xml_document,
                     )
                     assert response.status == 200
                     self.assert_xml(xml_document, await response.text(), accession_xpath)
@@ -627,12 +548,11 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
                     # Read metadata object ids.
 
-                    response = await self.client.get(
-                        f"{API_PREFIX}/objects/{schema}?submission={submission_id}"
-                    )
+                    response = await self.client.get(f"{API_PREFIX}/objects/{schema}?submission={submission_id}")
                     assert response.status == 200
                     assert Object(object_id=accession_id, submission_id=submission_id, schema_type=schema) == Object(
-                        **(await response.json())[0])
+                        **(await response.json())[0]
+                    )
 
                     # Update metadata object (put) without content type auto-detection.
 
@@ -642,7 +562,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
                     response = await self.client.put(
                         f"{API_PREFIX}/objects/{schema}/{accession_id}",
                         headers={"Content-Type": "application/xml"},
-                        data=xml_document
+                        data=xml_document,
                     )
                     assert response.status == 200
                     result = await response.json()
@@ -663,8 +583,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
                     xml_document = self.change_xml_attribute(xml_document, *alias_xpath, alias)
 
                     response = await self.client.patch(
-                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
-                        data=xml_document
+                        f"{API_PREFIX}/objects/{schema}/{accession_id}", data=xml_document
                     )
                     assert response.status == 200
                     result = await response.json()
@@ -698,7 +617,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
         bp_files = [
             ("bpannotation", "annotation.json"),
-            ("bpobserver", "observer.json")
+            ("bpobserver", "observer.json"),
             # TODO(improve): test all BP JSON files
         ]
 
@@ -735,9 +654,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
                     # Create metadata object with content type auto-detection.
 
                     response = await self.client.post(
-                        f"{API_PREFIX}/objects/{schema}",
-                        params={"submission": submission_id},
-                        data=json_document
+                        f"{API_PREFIX}/objects/{schema}", params={"submission": submission_id}, data=json_document
                     )
                     assert response.status == 201
                     result = await response.json()
@@ -767,12 +684,11 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
                     # Read metadata object ids.
 
-                    response = await self.client.get(
-                        f"{API_PREFIX}/objects/{schema}?submission={submission_id}"
-                    )
+                    response = await self.client.get(f"{API_PREFIX}/objects/{schema}?submission={submission_id}")
                     assert response.status == 200
                     assert Object(object_id=accession_id, submission_id=submission_id, schema_type=schema) == Object(
-                        **(await response.json())[0])
+                        **(await response.json())[0]
+                    )
 
                     # Update metadata object (put) without content type auto-detection.
 
@@ -782,7 +698,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
                     response = await self.client.put(
                         f"{API_PREFIX}/objects/{schema}/{accession_id}",
                         headers={"Content-Type": "application/json"},
-                        data=json_document
+                        data=json_document,
                     )
                     assert response.status == 200
                     result = await response.json()
@@ -803,8 +719,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
                     json_document = update_json_field(json_document, alias, alias_callback)
 
                     response = await self.client.patch(
-                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
-                        data=json_document
+                        f"{API_PREFIX}/objects/{schema}/{accession_id}", data=json_document
                     )
                     assert response.status == 200
                     result = await response.json()
@@ -845,9 +760,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
             self.patch_verify_authorization,
         ):
             response = await self.client.post(
-                f"{API_PREFIX}/objects/{schema}",
-                params={"submission": submission_id},
-                data="invalid"
+                f"{API_PREFIX}/objects/{schema}", params={"submission": submission_id}, data="invalid"
             )
             assert response.status == 400
             assert "Invalid JSON payload" in await response.text()
@@ -867,7 +780,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
                 f"{API_PREFIX}/objects/{schema}",
                 params={"submission": submission_id},
                 headers={"Content-Type": "application/xml"},
-                data="invalid"
+                data="invalid",
             )
             assert response.status == 400
             assert "not valid" in await response.text()
@@ -884,9 +797,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
             self.patch_verify_authorization,
         ):
             response = await self.client.post(
-                f"{API_PREFIX}/objects/{schema}",
-                params={"submission": submission_id},
-                data="invalid"
+                f"{API_PREFIX}/objects/{schema}", params={"submission": submission_id}, data="invalid"
             )
             assert response.status == 400
             assert "does not support" in await response.text()
@@ -932,10 +843,9 @@ class SubmissionHandlerTestCase(HandlersTestCase):
 
         # Post submission.
 
-        submission_id = await self.post_submission(name=name,
-                                                   description=description,
-                                                   project_id=project_id,
-                                                   workflow=workflow)
+        submission_id = await self.post_submission(
+            name=name, description=description, project_id=project_id, workflow=workflow
+        )
 
         # Get submission.
 
@@ -972,7 +882,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             "title": f"title_{uuid.uuid4()}",
             "description": f"description_{uuid.uuid4()}",
             "projectId": f"project_{uuid.uuid4()}",
-            "workflow": "SDSX"
+            "workflow": "SDSX",
         }
 
         async def assert_missing_field(field: str):
@@ -1008,7 +918,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             "title": f"title_{uuid.uuid4()}",
             "description": f"description_{uuid.uuid4()}",
             "projectId": project_id,
-            "workflow": "SDSX"
+            "workflow": "SDSX",
         }
 
         with (
@@ -1018,8 +928,9 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             response = await self.client.post(f"{API_PREFIX}/submissions", json=data)
             json_resp = await response.json()
             self.assertEqual(response.status, 400)
-            self.assertEqual(f"Submission with name '{name}' already exists in project {project_id}",
-                             json_resp["detail"])
+            self.assertEqual(
+                f"Submission with name '{name}' already exists in project {project_id}", json_resp["detail"]
+            )
 
     async def test_get_submissions(self):
         """Test that get submissions works."""
@@ -1031,10 +942,12 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         description = f"description_{uuid.uuid4()}"
         workflow = "SDSX"
 
-        submission_id_1 = await self.post_submission(name=name_1, title=title, description=description,
-                                                     project_id=project_id, workflow=workflow)
-        submission_id_2 = await self.post_submission(name=name_2, title=title, description=description,
-                                                     project_id=project_id, workflow=workflow)
+        submission_id_1 = await self.post_submission(
+            name=name_1, title=title, description=description, project_id=project_id, workflow=workflow
+        )
+        submission_id_2 = await self.post_submission(
+            name=name_2, title=title, description=description, project_id=project_id, workflow=workflow
+        )
 
         with (
             self.patch_verify_user_project,
@@ -1046,7 +959,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
 
             def _get_submission(submission_id: str) -> dict[str, Any] | None:
                 for submission in result["submissions"]:
-                    if submission['submissionId'] == submission_id:
+                    if submission["submissionId"] == submission_id:
                         return submission
 
                 return None
@@ -1059,29 +972,29 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             }
             assert len(result["submissions"]) == 2
             assert {
-                       'dateCreated': _get_submission(submission_id_1)['dateCreated'],
-                       'title': title,
-                       'description': description,
-                       'lastModified': _get_submission(submission_id_1)['lastModified'],
-                       'name': name_1,
-                       'projectId': project_id,
-                       'published': False,
-                       'submissionId': submission_id_1,
-                       'text_name': " ".join(re.split("[\\W_]", name_1)),
-                       'workflow': workflow
-                   } in result["submissions"]
+                "dateCreated": _get_submission(submission_id_1)["dateCreated"],
+                "title": title,
+                "description": description,
+                "lastModified": _get_submission(submission_id_1)["lastModified"],
+                "name": name_1,
+                "projectId": project_id,
+                "published": False,
+                "submissionId": submission_id_1,
+                "text_name": " ".join(re.split("[\\W_]", name_1)),
+                "workflow": workflow,
+            } in result["submissions"]
             assert {
-                       'dateCreated': _get_submission(submission_id_2)['dateCreated'],
-                       'title': title,
-                       'description': description,
-                       'lastModified': _get_submission(submission_id_2)['lastModified'],
-                       'name': name_2,
-                       'projectId': project_id,
-                       'published': False,
-                       'submissionId': submission_id_2,
-                       'text_name': " ".join(re.split("[\\W_]", name_2)),
-                       'workflow': workflow
-                   } in result["submissions"]
+                "dateCreated": _get_submission(submission_id_2)["dateCreated"],
+                "title": title,
+                "description": description,
+                "lastModified": _get_submission(submission_id_2)["lastModified"],
+                "name": name_2,
+                "projectId": project_id,
+                "published": False,
+                "submissionId": submission_id_2,
+                "text_name": " ".join(re.split("[\\W_]", name_2)),
+                "workflow": workflow,
+            } in result["submissions"]
 
     async def test_get_submissions_by_name(self):
         """Test that get submissions by name works."""
@@ -1093,15 +1006,15 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         description = f"description_{uuid.uuid4()}"
         workflow = "SDSX"
 
-        submission_id_1 = await self.post_submission(name=name_1, description=description,
-                                                     project_id=project_id,
-                                                     workflow=workflow)
-        submission_id_2 = await self.post_submission(name=name_2, description=description,
-                                                     project_id=project_id,
-                                                     workflow=workflow)
-        submission_id_3 = await self.post_submission(name=name_3, description=description,
-                                                     project_id=project_id,
-                                                     workflow=workflow)
+        submission_id_1 = await self.post_submission(
+            name=name_1, description=description, project_id=project_id, workflow=workflow
+        )
+        submission_id_2 = await self.post_submission(
+            name=name_2, description=description, project_id=project_id, workflow=workflow
+        )
+        submission_id_3 = await self.post_submission(
+            name=name_3, description=description, project_id=project_id, workflow=workflow
+        )
 
         with (
             self.patch_verify_user_project,
@@ -1132,16 +1045,20 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             self.patch_verify_user_project,
             self.patch_verify_authorization,
         ):
+
             async def get_submissions(created_start, created_end):
                 if created_start and created_end:
                     response = await self.client.get(
-                        f"{API_PREFIX}/submissions?projectId={project_id}&date_created_start={created_start}&date_created_end={created_end}")
+                        f"{API_PREFIX}/submissions?projectId={project_id}&date_created_start={created_start}&date_created_end={created_end}"
+                    )
                 elif created_start:
                     response = await self.client.get(
-                        f"{API_PREFIX}/submissions?projectId={project_id}&date_created_start={created_start}")
+                        f"{API_PREFIX}/submissions?projectId={project_id}&date_created_start={created_start}"
+                    )
                 elif created_end:
                     response = await self.client.get(
-                        f"{API_PREFIX}/submissions?projectId={project_id}&date_created_end={created_end}")
+                        f"{API_PREFIX}/submissions?projectId={project_id}&date_created_end={created_end}"
+                    )
                 else:
                     assert False
 
@@ -1189,16 +1106,20 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             self.patch_verify_user_project,
             self.patch_verify_authorization,
         ):
+
             async def get_submissions(modified_start, modified_end):
                 if modified_start and modified_end:
                     response = await self.client.get(
-                        f"{API_PREFIX}/submissions?projectId={project_id}&date_modified_start={modified_start}&date_modified_end={modified_end}")
+                        f"{API_PREFIX}/submissions?projectId={project_id}&date_modified_start={modified_start}&date_modified_end={modified_end}"
+                    )
                 elif modified_start:
                     response = await self.client.get(
-                        f"{API_PREFIX}/submissions?projectId={project_id}&date_modified_start={modified_start}")
+                        f"{API_PREFIX}/submissions?projectId={project_id}&date_modified_start={modified_start}"
+                    )
                 elif modified_end:
                     response = await self.client.get(
-                        f"{API_PREFIX}/submissions?projectId={project_id}&date_modified_end={modified_end}")
+                        f"{API_PREFIX}/submissions?projectId={project_id}&date_modified_end={modified_end}"
+                    )
                 else:
                     assert False
 
@@ -1277,8 +1198,9 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         description = f"description_{uuid.uuid4()}"
         workflow = "SDSX"
 
-        submission_id = await self.post_submission(name=name, description=description, project_id=project_id,
-                                                   workflow=workflow)
+        submission_id = await self.post_submission(
+            name=name, description=description, project_id=project_id, workflow=workflow
+        )
 
         # Update name.
 
@@ -1365,17 +1287,9 @@ class SubmissionHandlerTestCase(HandlersTestCase):
 
         # Set rems with the correct fields works.
 
-        data = {
-            "workflowId": 1,
-            "organizationId": "CSC",
-            "licenses": [1]
-        }
+        data = {"workflowId": 1, "organizationId": "CSC", "licenses": [1]}
 
-        with (
-            self.patch_verify_user_project,
-            self.patch_verify_authorization,
-            self.patch_verify_rems_workflow_licence
-        ):
+        with self.patch_verify_user_project, self.patch_verify_authorization, self.patch_verify_rems_workflow_licence:
             response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/rems", json=data)
             self.assertEqual(response.status, 200)
 
@@ -1384,17 +1298,9 @@ class SubmissionHandlerTestCase(HandlersTestCase):
 
         # Change rems with the correct fields works.
 
-        data = {
-            "workflowId": 2,
-            "organizationId": "CSC",
-            "licenses": [2]
-        }
+        data = {"workflowId": 2, "organizationId": "CSC", "licenses": [2]}
 
-        with (
-            self.patch_verify_user_project,
-            self.patch_verify_authorization,
-            self.patch_verify_rems_workflow_licence
-        ):
+        with self.patch_verify_user_project, self.patch_verify_authorization, self.patch_verify_rems_workflow_licence:
             response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/rems", json=data)
             self.assertEqual(response.status, 200)
 
@@ -1407,11 +1313,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             "workflowId": 3,
         }
 
-        with (
-            self.patch_verify_user_project,
-            self.patch_verify_authorization,
-            self.patch_verify_rems_workflow_licence
-        ):
+        with self.patch_verify_user_project, self.patch_verify_authorization, self.patch_verify_rems_workflow_licence:
             response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/rems", json=data)
             self.assertEqual(response.status, 400)
             error = response.text()
@@ -1419,138 +1321,24 @@ class SubmissionHandlerTestCase(HandlersTestCase):
 
         # Change rems with invalid types fails.
 
-        data = {
-            "workflowId": "invalid",
-            "organizationId": "CSC",
-            "licenses": [3]
-        }
+        data = {"workflowId": "invalid", "organizationId": "CSC", "licenses": [3]}
 
-        with (
-            self.patch_verify_user_project,
-            self.patch_verify_authorization,
-            self.patch_verify_rems_workflow_licence
-        ):
+        with self.patch_verify_user_project, self.patch_verify_authorization, self.patch_verify_rems_workflow_licence:
             response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/rems", json=data)
             self.assertEqual(response.status, 400)
             self.assertIn("Input should be a valid integer", await response.text())
-
-    async def test_patch_submission_get_delete_files(self):
-        """Test patch get delete submission files works."""
-        submission_id = await self.post_submission()
-
-        path_1 = f"path_{uuid.uuid4()}"
-        bytes_1 = 1024
-
-        async def add_file(path: str, bytes: int):
-            with patch("metadata_backend.api.handlers.submission.FileOperator.read_file",
-                       new_callable=AsyncMock) as _mock_read_file:
-                _mock_read_file.return_value = {"path": path, "bytes": bytes}
-                _data = [{"accessionId": str(uuid.uuid4()), "version": 1}]
-                _response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/files", json=_data)
-                self.assertEqual(_response.status, 204)
-
-        def assert_file(_file: File, path: str):
-            assert _file.file_id is not None
-            assert _file.path == path
-            assert _file.submission_id == submission_id
-
-        # Add one file.
-        with (
-            self.patch_verify_user_project,
-            self.patch_verify_authorization,
-        ):
-            await add_file(path_1, bytes_1)
-
-            response = await self.client.get(f"{API_PREFIX}/submissions/{submission_id}/files")
-            self.assertEqual(response.status, 200)
-            result = await response.json()
-
-            assert len(result) == 1
-            assert_file(File(**result[0]), path_1)
-
-            # Add the file again.
-            await add_file(path_1, bytes_1)
-
-            response = await self.client.get(f"{API_PREFIX}/submissions/{submission_id}/files")
-            self.assertEqual(response.status, 200)
-            result = await response.json()
-
-            assert len(result) == 1
-            assert_file(File(**result[0]), path_1)
-
-            path_2 = f"path_{uuid.uuid4()}"
-            bytes_2 = 2048
-
-            # Add second file.
-            await add_file(path_2, bytes_2)
-
-            response = await self.client.get(f"{API_PREFIX}/submissions/{submission_id}/files")
-            self.assertEqual(response.status, 200)
-            result = await response.json()
-
-            assert len(result) == 2
-            assert_file(File(**result[0]), path_1)
-            assert_file(File(**result[1]), path_2)
-
-            # Delete second file.
-            response = await self.client.delete(
-                f"{API_PREFIX}/submissions/{submission_id}/files/{File(**result[1]).file_id}")
-            self.assertEqual(response.status, 204)
-
-            response = await self.client.get(f"{API_PREFIX}/submissions/{submission_id}/files")
-            self.assertEqual(response.status, 200)
-            result = await response.json()
-
-            assert len(result) == 1
-            assert_file(File(**result[0]), path_1)
-
-    async def test_patch_submission_files_fails_with_invalid_json(self):
-        """Test patch submission files fails with incorrectly formatted JSON."""
-        submission_id = await self.post_submission()
-
-        data = "[{'bad': 'json',}]"
-        with (
-            self.patch_verify_user_project,
-            self.patch_verify_authorization,
-        ):
-            response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/files", data=data)
-            self.assertEqual(response.status, 400)
-            json_resp = await response.json()
-            self.assertIn("JSON is not correctly formatted", json_resp["detail"])
-
-    async def test_patch_submission_files_fails_with_missing_fields(self):
-        """Test patch method for submission files fails with missing fields."""
-        submission_id = await self.post_submission()
-
-        data = [{"accessionId": "file123"}]
-        with (
-            self.patch_verify_user_project,
-            self.patch_verify_authorization,
-        ):
-            response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/files", json=data)
-            self.assertEqual(response.status, 400)
-            json_resp = await response.json()
-            self.assertIn("Each file must contain 'accessionId' and 'version'.", json_resp["detail"])
-
-        data = [{"version": 1}]
-        with (
-            self.patch_verify_user_project,
-            self.patch_verify_authorization,
-        ):
-            response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/files", json=data)
-            self.assertEqual(response.status, 400)
-            json_resp = await response.json()
-            self.assertIn("Each file must contain 'accessionId' and 'version'.", json_resp["detail"])
 
 
 class PublishSubmissionHandlerTestCase(HandlersTestCase):
     """Publishing API endpoint class test cases."""
 
     @pytest.fixture(autouse=True)
-    def _inject_fixtures(self,
-                         submission_repository: SubmissionRepository,
-                         object_repository: ObjectRepository,
-                         file_repository: FileRepository):
+    def _inject_fixtures(
+        self,
+        submission_repository: SubmissionRepository,
+        object_repository: ObjectRepository,
+        file_repository: FileRepository,
+    ):
         self.submission_repository = submission_repository
         self.object_repository = object_repository
         self.file_repository = file_repository
@@ -1563,17 +1351,13 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         # DOI information.
         doi_info = self.doi_info
 
-        # RENS information.
-        rems = Rems(
-            workflow_id=1,
-            organization_id=f"organisation_{str(uuid.uuid4())}",
-            licenses=[1, 2]
-        )
+        # REMS information.
+        rems = Rems(workflow_id=1, organization_id=f"organisation_{str(uuid.uuid4())}", licenses=[1, 2])
 
         # The submission contains no metadata objects.
 
-        submission_title =  f"title_{str(uuid.uuid4())}"
-        submission_description =  f"description_{str(uuid.uuid4())}"
+        submission_title = f"title_{str(uuid.uuid4())}"
+        submission_description = f"description_{str(uuid.uuid4())}"
 
         # The submission contains one file.
         file_path = f"path_{str(uuid.uuid4())}"
@@ -1597,17 +1381,12 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             workflow=workflow,
             title=submission_title,
             description=submission_description,
-            document={
-                SUB_FIELD_DOI: doi_info,
-                SUB_FIELD_REMS: rems.json_dump()
-            })
+            document={SUB_FIELD_DOI: doi_info, SUB_FIELD_REMS: rems.json_dump()},
+        )
         submission_id = await self.submission_repository.add_submission(submission_entity)
 
         # Create file.
-        file_entity = FileEntity(
-            submission_id=submission_entity.submission_id,
-            path=file_path,
-            bytes=file_bytes)
+        file_entity = FileEntity(submission_id=submission_entity.submission_id, path=file_path, bytes=file_bytes)
         await self.file_repository.add_file(file_entity)
 
         # Publish submission.
@@ -1617,10 +1396,13 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         datacite_cls = "metadata_backend.services.datacite_service_handler.DataciteServiceHandler"
         metax_cls = "metadata_backend.services.metax_service_handler.MetaxServiceHandler"
         rems_cls = "metadata_backend.services.rems_service_handler.RemsServiceHandler"
+        file_provider_cls = "metadata_backend.api.services.file.FileProviderService"
 
         with (
             self.patch_verify_user_project,
             self.patch_verify_authorization,
+            # File provider
+            patch(f"{file_provider_cls}.list_files_in_folder", new_callable=AsyncMock) as mock_file_provider,
             # Datacite (csc)
             patch(f"{pid_cls}.create_draft_doi_pid", new_callable=AsyncMock) as mock_pid_create_doi,
             patch(f"{pid_cls}.publish", new_callable=AsyncMock) as mock_pid_publish,
@@ -1631,14 +1413,16 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             patch.dict(os.environ, {"METAX_DISCOVERY_URL": metax_url}),
             patch(f"{metax_cls}.post_dataset_as_draft", new_callable=AsyncMock) as mock_metax_create,
             patch(f"{metax_cls}.update_dataset_with_doi_info", new_callable=AsyncMock) as mock_metax_update_doi,
-            patch(f"{metax_cls}.update_draft_dataset_description",
-                  new_callable=AsyncMock) as mock_metax_update_descr,
+            patch(f"{metax_cls}.update_draft_dataset_description", new_callable=AsyncMock) as mock_metax_update_descr,
             patch(f"{metax_cls}.publish_dataset", new_callable=AsyncMock) as mock_metax_publish,
             # REMS
             patch(f"{rems_cls}.create_resource", new_callable=AsyncMock) as mock_rems_create_resource,
             patch(f"{rems_cls}.create_catalogue_item", new_callable=AsyncMock) as mock_rems_create_catalogue_item,
-
         ):
+            # Mock file provider.
+            mock_file_provider.return_value = FileProviderService.Files(
+                [FileProviderService.File(path=file_path, bytes=file_bytes)]
+            )
             # Mock Datacite.
             mock_pid_create_doi.return_value = doi
             mock_datacite_create_doi.return_value = doi
@@ -1673,28 +1457,13 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                             "bibtex": "misc",
                             "citeproc": "dataset",
                             "schemaOrg": "Dataset",
-                            "resourceTypeGeneral": "Dataset"
+                            "resourceTypeGeneral": "Dataset",
                         },
                         "url": f"{metax_url}{metax_id}",
-                        "identifiers": [
-                            {
-                                "identifierType": "DOI",
-                                "doi": doi
-                            }
-                        ],
-                        "titles": [
-                            {
-                                "lang": None,
-                                "title": submission_title,
-                                "titleType": None
-                            }
-                        ],
+                        "identifiers": [{"identifierType": "DOI", "doi": doi}],
+                        "titles": [{"lang": None, "title": submission_title, "titleType": None}],
                         "descriptions": [
-                            {
-                                "lang": None,
-                                "description": submission_description,
-                                "descriptionType": "Other"
-                            }
+                            {"lang": None, "description": submission_description, "descriptionType": "Other"}
                         ],
                         "creators": [
                             {
@@ -1705,9 +1474,9 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                                         "name": "affiliation place",
                                         "schemeUri": "https://ror.org",
                                         "affiliationIdentifier": "https://ror.org/test1",
-                                        "affiliationIdentifierScheme": "ROR"
+                                        "affiliationIdentifierScheme": "ROR",
                                     }
-                                ]
+                                ],
                             }
                         ],
                         "subjects": [
@@ -1716,11 +1485,11 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                                 "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
                                 "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
                                 "valueUri": "http://www.yso.fi/onto/okm-tieteenala/ta999",
-                                "classificationCode": "999"
+                                "classificationCode": "999",
                             }
-                        ]
+                        ],
                     }
-                }
+                },
             }
 
             if workflow_config.publish_config.datacite_config.service == "csc":
@@ -1731,9 +1500,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                 mock_datacite_publish.assert_awaited_once_with(datacite_data)
 
             # Assert Metax.
-            mock_metax_create.assert_awaited_once_with(
-                user_id, doi, submission_title, submission_description
-            )
+            mock_metax_create.assert_awaited_once_with(user_id, doi, submission_title, submission_description)
             mock_metax_update_doi.assert_awaited_once_with(
                 {
                     # Remove keywords.
@@ -1748,7 +1515,8 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                             "classificationCode": s["subject"].split(" - ")[0],
                         }
                         for s in doi_info.get("subjects", [])
-                    ]},
+                    ],
+                },
                 metax_id,
                 file_bytes,
                 related_dataset=None,
@@ -1756,23 +1524,21 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             )
             mock_metax_update_descr.assert_awaited_once_with(
                 metax_id,
-                f"{submission_description}\n\nSD Apply's Application link: {RemsServiceHandler.application_url(rems_catalogue_id)}")
+                f"{submission_description}\n\nSD Apply's Application link: {RemsServiceHandler.application_url(rems_catalogue_id)}",
+            )
 
             mock_metax_publish.assert_awaited_once_with(metax_id, doi)
 
             # Assert Rems.
-            mock_rems_create_resource.assert_awaited_once_with(doi=doi, organization_id=rems.organization_id,
-                                                               licenses=rems.licenses)
-            mock_rems_create_catalogue_item.assert_awaited_once_with(resource_id=rems_resource_id,
-                                                                     workflow_id=rems.workflow_id,
-                                                                     organization_id=rems.organization_id,
-                                                                     localizations={
-                                                                         "en":
-                                                                             {
-                                                                                 "title": submission_title,
-                                                                                 "infourl": f"{metax_url}{metax_id}"
-                                                                             }
-                                                                     })
+            mock_rems_create_resource.assert_awaited_once_with(
+                doi=doi, organization_id=rems.organization_id, licenses=rems.licenses
+            )
+            mock_rems_create_catalogue_item.assert_awaited_once_with(
+                resource_id=rems_resource_id,
+                workflow_id=rems.workflow_id,
+                organization_id=rems.organization_id,
+                localizations={"en": {"title": submission_title, "infourl": f"{metax_url}{metax_id}"}},
+            )
 
     async def test_publish_submission_fega(self):
         """Test publishing of FEGA submission."""
@@ -1783,11 +1549,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         doi_info = self.doi_info
 
         # RENS information.
-        rems = Rems(
-            workflow_id=1,
-            organization_id=f"organisation_{str(uuid.uuid4())}",
-            licenses=[1, 2]
-        )
+        rems = Rems(workflow_id=1, organization_id=f"organisation_{str(uuid.uuid4())}", licenses=[1, 2])
 
         # The submission contains one dataset metadata object.
         dataset_schema = "dataset"
@@ -1818,11 +1580,8 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         workflow = SubmissionWorkflow.FEGA
         workflow_config = get_workflow(workflow.value)
         submission_entity = create_submission_entity(
-            workflow=workflow,
-            document={
-                SUB_FIELD_DOI: doi_info,
-                SUB_FIELD_REMS: rems.json_dump()
-            })
+            workflow=workflow, document={SUB_FIELD_DOI: doi_info, SUB_FIELD_REMS: rems.json_dump()}
+        )
         submission_id = await self.submission_repository.add_submission(submission_entity)
 
         # Create metadata objects.
@@ -1831,36 +1590,26 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         dataset_entity = create_object_entity(
             submission_id=submission_entity.submission_id,
             schema=dataset_schema,
-            document={
-                "title": dataset_title,
-                "description": dataset_description
-            })
+            document={"title": dataset_title, "description": dataset_description},
+        )
         await self.object_repository.add_object(dataset_entity)
 
         # DAC.
-        dac_entity = create_object_entity(
-            submission_id=submission_entity.submission_id,
-            schema="dac",
-            document={})
+        dac_entity = create_object_entity(submission_id=submission_entity.submission_id, schema="dac", document={})
         await self.object_repository.add_object(dac_entity)
 
         # Policy.
         policy_entity = create_object_entity(
-            submission_id=submission_entity.submission_id,
-            schema="policy",
-            document={})
+            submission_id=submission_entity.submission_id, schema="policy", document={}
+        )
         await self.object_repository.add_object(policy_entity)
 
         # Study.
         study_entity = create_object_entity(
             submission_id=submission_entity.submission_id,
             schema=study_schema,
-            document={
-                "descriptor": {
-                    "studyTitle": study_title,
-                    "studyAbstract": study_description
-                }
-            })
+            document={"descriptor": {"studyTitle": study_title, "studyAbstract": study_description}},
+        )
         await self.object_repository.add_object(study_entity)
 
         # Create file.
@@ -1868,7 +1617,8 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             submission_id=submission_entity.submission_id,
             object_id=dataset_entity.object_id,
             path=file_path,
-            bytes=file_bytes)
+            bytes=file_bytes,
+        )
         await self.file_repository.add_file(file_entity)
 
         # Publish submission.
@@ -1892,13 +1642,11 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             patch.dict(os.environ, {"METAX_DISCOVERY_URL": metax_url}),
             patch(f"{metax_cls}.post_dataset_as_draft", new_callable=AsyncMock) as mock_metax_create,
             patch(f"{metax_cls}.update_dataset_with_doi_info", new_callable=AsyncMock) as mock_metax_update_doi,
-            patch(f"{metax_cls}.update_draft_dataset_description",
-                  new_callable=AsyncMock) as mock_metax_update_descr,
+            patch(f"{metax_cls}.update_draft_dataset_description", new_callable=AsyncMock) as mock_metax_update_descr,
             patch(f"{metax_cls}.publish_dataset", new_callable=AsyncMock) as mock_metax_publish,
             # REMS
             patch(f"{rems_cls}.create_resource", new_callable=AsyncMock) as mock_rems_create_resource,
             patch(f"{rems_cls}.create_catalogue_item", new_callable=AsyncMock) as mock_rems_create_catalogue_item,
-
         ):
             # Mock Datacite.
             mock_pid_create_doi.return_value = doi
@@ -1934,28 +1682,13 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                             "bibtex": "misc",
                             "citeproc": "dataset",
                             "schemaOrg": "Dataset",
-                            "resourceTypeGeneral": "Dataset"
+                            "resourceTypeGeneral": "Dataset",
                         },
                         "url": f"{metax_url}{metax_id}",
-                        "identifiers": [
-                            {
-                                "identifierType": "DOI",
-                                "doi": doi
-                            }
-                        ],
-                        "titles": [
-                            {
-                                "lang": None,
-                                "title": dataset_title,
-                                "titleType": None
-                            }
-                        ],
+                        "identifiers": [{"identifierType": "DOI", "doi": doi}],
+                        "titles": [{"lang": None, "title": dataset_title, "titleType": None}],
                         "descriptions": [
-                            {
-                                "lang": None,
-                                "description": dataset_description,
-                                "descriptionType": "Other"
-                            }
+                            {"lang": None, "description": dataset_description, "descriptionType": "Other"}
                         ],
                         "creators": [
                             {
@@ -1966,9 +1699,9 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                                         "name": "affiliation place",
                                         "schemeUri": "https://ror.org",
                                         "affiliationIdentifier": "https://ror.org/test1",
-                                        "affiliationIdentifierScheme": "ROR"
+                                        "affiliationIdentifierScheme": "ROR",
                                     }
-                                ]
+                                ],
                             }
                         ],
                         "subjects": [
@@ -1977,19 +1710,19 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                                 "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
                                 "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
                                 "valueUri": "http://www.yso.fi/onto/okm-tieteenala/ta999",
-                                "classificationCode": "999"
+                                "classificationCode": "999",
                             }
                         ],
-                        'relatedIdentifiers': [
+                        "relatedIdentifiers": [
                             {
-                                'relationType': 'IsDescribedBy',
-                                'relatedIdentifier': doi,
-                                'resourceTypeGeneral': 'Collection',
-                                'relatedIdentifierType': 'DOI'
+                                "relationType": "IsDescribedBy",
+                                "relatedIdentifier": doi,
+                                "resourceTypeGeneral": "Collection",
+                                "relatedIdentifierType": "DOI",
                             }
                         ],
                     }
-                }
+                },
             }
 
             study_datacite_data = {
@@ -2008,29 +1741,12 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                             "bibtex": "misc",
                             "citeproc": "collection",
                             "schemaOrg": "Collection",
-                            "resourceTypeGeneral": "Collection"
+                            "resourceTypeGeneral": "Collection",
                         },
                         "url": f"{metax_url}{metax_id}",
-                        "identifiers": [
-                            {
-                                "identifierType": "DOI",
-                                "doi": doi
-                            }
-                        ],
-                        "titles": [
-                            {
-                                "lang": None,
-                                "title": study_title,
-                                "titleType": None
-                            }
-                        ],
-                        "descriptions": [
-                            {
-                                "lang": None,
-                                "description": study_description,
-                                "descriptionType": "Other"
-                            }
-                        ],
+                        "identifiers": [{"identifierType": "DOI", "doi": doi}],
+                        "titles": [{"lang": None, "title": study_title, "titleType": None}],
+                        "descriptions": [{"lang": None, "description": study_description, "descriptionType": "Other"}],
                         "creators": [
                             {
                                 "givenName": "Test",
@@ -2040,9 +1756,9 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                                         "name": "affiliation place",
                                         "schemeUri": "https://ror.org",
                                         "affiliationIdentifier": "https://ror.org/test1",
-                                        "affiliationIdentifierScheme": "ROR"
+                                        "affiliationIdentifierScheme": "ROR",
                                     }
-                                ]
+                                ],
                             }
                         ],
                         "subjects": [
@@ -2051,19 +1767,19 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                                 "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
                                 "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
                                 "valueUri": "http://www.yso.fi/onto/okm-tieteenala/ta999",
-                                "classificationCode": "999"
+                                "classificationCode": "999",
                             }
                         ],
-                        'relatedIdentifiers': [
+                        "relatedIdentifiers": [
                             {
-                                'relationType': 'Describes',
-                                'relatedIdentifier': doi,
-                                'resourceTypeGeneral': 'Dataset',
-                                'relatedIdentifierType': 'DOI'
+                                "relationType": "Describes",
+                                "relatedIdentifier": doi,
+                                "resourceTypeGeneral": "Dataset",
+                                "relatedIdentifierType": "DOI",
                             }
                         ],
                     }
-                }
+                },
             }
 
             if workflow_config.publish_config.datacite_config.service == "csc":
@@ -2085,79 +1801,93 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             assert call(user_id, doi, study_title, study_description) in mock_metax_create.await_args_list
             assert mock_metax_update_doi.await_count == 2
             # Dataset.
-            assert call(
-                {
-                    # Remove keywords.
-                    **{k: v for k, v in doi_info.items() if k != "keywords"},
-                    # Update subjects.
-                    "subjects": [
-                        {
-                            **s,
-                            "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
-                            "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
-                            "valueUri": f"http://www.yso.fi/onto/okm-tieteenala/ta{s['subject'].split(' - ')[0]}",
-                            "classificationCode": s["subject"].split(" - ")[0],
-                        }
-                        for s in doi_info.get("subjects", [])
-                    ]},
-                metax_id,
-                file_bytes,
-                related_dataset=None,
-                related_study=Registration(submission_id=submission_id, object_id=study_entity.object_id,
-                                           schema_type=study_schema, title=study_title, description=study_description,
-                                           doi=doi, metax_id=metax_id),
-            ) in mock_metax_update_doi.await_args_list
+            assert (
+                call(
+                    {
+                        # Remove keywords.
+                        **{k: v for k, v in doi_info.items() if k != "keywords"},
+                        # Update subjects.
+                        "subjects": [
+                            {
+                                **s,
+                                "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
+                                "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
+                                "valueUri": f"http://www.yso.fi/onto/okm-tieteenala/ta{s['subject'].split(' - ')[0]}",
+                                "classificationCode": s["subject"].split(" - ")[0],
+                            }
+                            for s in doi_info.get("subjects", [])
+                        ],
+                    },
+                    metax_id,
+                    file_bytes,
+                    related_dataset=None,
+                    related_study=Registration(
+                        submission_id=submission_id,
+                        object_id=study_entity.object_id,
+                        schema_type=study_schema,
+                        title=study_title,
+                        description=study_description,
+                        doi=doi,
+                        metax_id=metax_id,
+                    ),
+                )
+                in mock_metax_update_doi.await_args_list
+            )
             # Study.
-            assert call(
-                {
-                    # Remove keywords.
-                    **{k: v for k, v in doi_info.items() if k != "keywords"},
-                    # Update subjects.
-                    "subjects": [
-                        {
-                            **s,
-                            "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
-                            "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
-                            "valueUri": f"http://www.yso.fi/onto/okm-tieteenala/ta{s['subject'].split(' - ')[0]}",
-                            "classificationCode": s["subject"].split(" - ")[0],
-                        }
-                        for s in doi_info.get("subjects", [])
-                    ]},
-                metax_id,
-                file_bytes,
-                related_dataset=Registration(submission_id=submission_id,
-                                             object_id=dataset_entity.object_id,
-                                             schema_type=dataset_schema,
-                                             title=dataset_title,
-                                             description=dataset_description,
-                                             doi=doi,
-                                             metax_id=metax_id,
-                                             rems_url=f"http://mockrems:8003/application?items={rems_catalogue_id}",
-                                             rems_resource_id=str(rems_resource_id),
-                                             rems_catalogue_id=rems_catalogue_id),
-                related_study=None
-            ) in mock_metax_update_doi.await_args_list
+            assert (
+                call(
+                    {
+                        # Remove keywords.
+                        **{k: v for k, v in doi_info.items() if k != "keywords"},
+                        # Update subjects.
+                        "subjects": [
+                            {
+                                **s,
+                                "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
+                                "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
+                                "valueUri": f"http://www.yso.fi/onto/okm-tieteenala/ta{s['subject'].split(' - ')[0]}",
+                                "classificationCode": s["subject"].split(" - ")[0],
+                            }
+                            for s in doi_info.get("subjects", [])
+                        ],
+                    },
+                    metax_id,
+                    file_bytes,
+                    related_dataset=Registration(
+                        submission_id=submission_id,
+                        object_id=dataset_entity.object_id,
+                        schema_type=dataset_schema,
+                        title=dataset_title,
+                        description=dataset_description,
+                        doi=doi,
+                        metax_id=metax_id,
+                        rems_url=f"http://mockrems:8003/application?items={rems_catalogue_id}",
+                        rems_resource_id=str(rems_resource_id),
+                        rems_catalogue_id=rems_catalogue_id,
+                    ),
+                    related_study=None,
+                )
+                in mock_metax_update_doi.await_args_list
+            )
 
             mock_metax_update_descr.assert_awaited_once_with(
                 metax_id,
-                f"{dataset_description}\n\nSD Apply's Application link: {RemsServiceHandler.application_url(rems_catalogue_id)}")
+                f"{dataset_description}\n\nSD Apply's Application link: {RemsServiceHandler.application_url(rems_catalogue_id)}",
+            )
 
             assert mock_metax_publish.await_count == 2
             assert call(metax_id, doi) in mock_metax_publish.await_args_list
 
             # Assert Rems.
-            mock_rems_create_resource.assert_awaited_once_with(doi=doi, organization_id=rems.organization_id,
-                                                               licenses=rems.licenses)
-            mock_rems_create_catalogue_item.assert_awaited_once_with(resource_id=rems_resource_id,
-                                                                     workflow_id=rems.workflow_id,
-                                                                     organization_id=rems.organization_id,
-                                                                     localizations={
-                                                                         "en":
-                                                                             {
-                                                                                 "title": dataset_title,
-                                                                                 "infourl": f"{metax_url}{metax_id}"
-                                                                             }
-                                                                     })
+            mock_rems_create_resource.assert_awaited_once_with(
+                doi=doi, organization_id=rems.organization_id, licenses=rems.licenses
+            )
+            mock_rems_create_catalogue_item.assert_awaited_once_with(
+                resource_id=rems_resource_id,
+                workflow_id=rems.workflow_id,
+                organization_id=rems.organization_id,
+                localizations={"en": {"title": dataset_title, "infourl": f"{metax_url}{metax_id}"}},
+            )
 
     async def test_publish_submission_bp(self):
         """Test publishing of BP submission."""
@@ -2166,11 +1896,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         doi_info = self.doi_info
 
         # RENS information.
-        rems = Rems(
-            workflow_id=1,
-            organization_id=f"organisation_{str(uuid.uuid4())}",
-            licenses=[1, 2]
-        )
+        rems = Rems(workflow_id=1, organization_id=f"organisation_{str(uuid.uuid4())}", licenses=[1, 2])
 
         # The submission contains one dataset metadata object.
         dataset_schema = "bpdataset"
@@ -2195,21 +1921,16 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         workflow = SubmissionWorkflow.BP
         workflow_config = get_workflow(workflow.value)
         submission_entity = create_submission_entity(
-            workflow=workflow,
-            document={
-                SUB_FIELD_DOI: doi_info,
-                SUB_FIELD_REMS: rems.json_dump()
-            })
+            workflow=workflow, document={SUB_FIELD_DOI: doi_info, SUB_FIELD_REMS: rems.json_dump()}
+        )
         submission_id = await self.submission_repository.add_submission(submission_entity)
 
         # Create metadata object.
         object_entity = create_object_entity(
             submission_id=submission_entity.submission_id,
             schema=dataset_schema,
-            document={
-                "title": dataset_title,
-                "description": dataset_description
-            })
+            document={"title": dataset_title, "description": dataset_description},
+        )
         await self.object_repository.add_object(object_entity)
 
         # Create file.
@@ -2217,7 +1938,8 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             submission_id=submission_entity.submission_id,
             object_id=object_entity.object_id,
             path=file_path,
-            bytes=file_bytes)
+            bytes=file_bytes,
+        )
         await self.file_repository.add_file(file_entity)
 
         # Publish submission.
@@ -2241,7 +1963,6 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             # REMS
             patch(f"{rems_cls}.create_resource", new_callable=AsyncMock) as mock_rems_create_resource,
             patch(f"{rems_cls}.create_catalogue_item", new_callable=AsyncMock) as mock_rems_create_catalogue_item,
-
         ):
             # Mock Datacite.
             mock_pid_create_doi.return_value = doi
@@ -2275,28 +1996,13 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                             "bibtex": "misc",
                             "citeproc": "dataset",
                             "schemaOrg": "Dataset",
-                            "resourceTypeGeneral": "Dataset"
+                            "resourceTypeGeneral": "Dataset",
                         },
                         "url": f"{beacon_url}{doi}",
-                        "identifiers": [
-                            {
-                                "identifierType": "DOI",
-                                "doi": doi
-                            }
-                        ],
-                        "titles": [
-                            {
-                                "lang": None,
-                                "title": dataset_title,
-                                "titleType": None
-                            }
-                        ],
+                        "identifiers": [{"identifierType": "DOI", "doi": doi}],
+                        "titles": [{"lang": None, "title": dataset_title, "titleType": None}],
                         "descriptions": [
-                            {
-                                "lang": None,
-                                "description": dataset_description,
-                                "descriptionType": "Other"
-                            }
+                            {"lang": None, "description": dataset_description, "descriptionType": "Other"}
                         ],
                         "creators": [
                             {
@@ -2307,9 +2013,9 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                                         "name": "affiliation place",
                                         "schemeUri": "https://ror.org",
                                         "affiliationIdentifier": "https://ror.org/test1",
-                                        "affiliationIdentifierScheme": "ROR"
+                                        "affiliationIdentifierScheme": "ROR",
                                     }
-                                ]
+                                ],
                             }
                         ],
                         "subjects": [
@@ -2318,11 +2024,11 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                                 "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
                                 "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
                                 "valueUri": "http://www.yso.fi/onto/okm-tieteenala/ta999",
-                                "classificationCode": "999"
+                                "classificationCode": "999",
                             }
-                        ]
+                        ],
                     }
-                }
+                },
             }
 
             if workflow_config.publish_config.datacite_config.service == "csc":
@@ -2336,199 +2042,15 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             # TODO(improve): BP beacon service not implement
 
             # Assert Rems.
-            mock_rems_create_resource.assert_awaited_once_with(doi=doi, organization_id=rems.organization_id,
-                                                               licenses=rems.licenses)
-            mock_rems_create_catalogue_item.assert_awaited_once_with(resource_id=rems_resource_id,
-                                                                     workflow_id=rems.workflow_id,
-                                                                     organization_id=rems.organization_id,
-                                                                     localizations={
-                                                                         "en":
-                                                                             {
-                                                                                 "title": dataset_title,
-                                                                                 "infourl": f"{beacon_url}{doi}"
-                                                                             }
-                                                                     })
-
-
-class FilesHandlerTestCase(HandlersTestCase):
-    """Files API endpoint class test cases."""
-
-    async def setUpAsync(self):
-        """Configure default values for testing and other modules.
-
-        This patches used modules and sets default return values for their
-        methods.
-        """
-        await super().setUpAsync()
-
-        self.mock_file_data = {
-            "userId": self.user_id,
-            "projectId": self.project_id,
-            "files": [
-                {
-                    "path": "s3:/bucket/files/mock",
-                    "name": "mock_file.c4gh",
-                    "bytes": 100,
-                    "encrypted_checksums": [{
-                        "type": "md5",
-                        "value": "7ac236b1a82dac89e7cf45d2b4812345"
-                    }],
-                    "unencrypted_checksums": [{
-                        "type": "md5",
-                        "value": "7ac236b1a82dac89e7cf45d2b4812345"
-                    }],
-                }
-            ],
-        }
-
-        self.mock_file_paths = ["s3:/bucket/files/mock", "s3:/bucket/files/mock2", "s3:/bucket/files/mock3"]
-        self.mock_single_file = {
-            "accessionId": self.projected_file_example["accessionId"],
-            "path": self.mock_file_data["files"][0]["path"],
-            "projectId": self.mock_file_data["projectId"],
-        }
-
-    async def tearDownAsync(self):
-        """Cleanup mocked stuff."""
-        await super().tearDownAsync()
-        # self.patch_fileoperator.stop()
-
-    async def test_get_project_files(self) -> None:
-        """Test fetching files belonging to specific project."""
-        with (
-            self.patch_verify_user_project_failure,
-            self.patch_verify_authorization,
-        ):
-            # User is not part of project
-            response = await self.client.get(f"{API_PREFIX}/files")
-            self.assertEqual(response.status, 401)
-
-        with (
-            self.patch_verify_user_project,
-            self.patch_verify_authorization,
-        ):
-            with patch(
-                    "metadata_backend.api.handlers.files.FileOperator.read_project_files",
-                    new_callable=AsyncMock
-            ) as mock_read:
-                # Successful fetching of project-wise file list
-                mock_read.return_value = self.test_submission["files"]
-                response = await self.client.get(f"{API_PREFIX}/files")
-                self.assertEqual(response.status, 200)
-                json_resp = await response.json()
-                self.assertEqual(json_resp[0]["accessionId"], "file1")
-
-    async def test_post_project_files_works(self) -> None:
-        """Test file post request handler."""
-        with (
-            self.patch_verify_user_project,
-            self.patch_verify_authorization,
-        ):
-            with patch(
-                    "metadata_backend.api.handlers.files.FileOperator.create_file_or_version",
-                    new_callable=AsyncMock
-            ) as mock_create, patch(
-                "metadata_backend.api.handlers.files.FileOperator._get_file_id_and_version",
-                new_callable=AsyncMock
-            ) as mock_file:
-                mock_create.return_value = "accession_id1", 1
-                mock_file.return_value = {"accessionId": "accession_id1", "version": 1}
-                response = await self.client.post(f"{API_PREFIX}/files", json=self.mock_file_data)
-                self.assertEqual(response.status, 201)
-                json_resp = await response.json()
-                self.assertEqual(json_resp, [["accession_id1", 1]])
-
-    async def test_post_project_files_fails(self) -> None:
-        """Test file post request handler for error instances."""
-        with (
-            self.patch_verify_user_project_failure,
-            self.patch_verify_authorization,
-        ):
-            # Requesting user is not part of the project
-            response = await self.client.post(f"{API_PREFIX}/files", json=self.mock_file_data)
-            self.assertEqual(response.status, 401)
-
-        with (
-            self.patch_verify_user_project,
-            self.patch_verify_authorization,
-        ):
-            # Faulty request data
-            alt_data = self.mock_file_data
-            alt_data["files"] = "not a list"
-            response = await self.client.post(f"{API_PREFIX}/files", json=alt_data)
-            self.assertEqual(response.status, 400)
-            json_resp = await response.json()
-            self.assertEqual(json_resp["detail"], "Field `files` must be a list.")
-
-            # Lacking request data
-            alt_data = self.mock_file_data
-            alt_data["files"] = [{"name": "filename"}]
-            response = await self.client.post(f"{API_PREFIX}/files", json=alt_data)
-            self.assertEqual(response.status, 400)
-            json_resp = await response.json()
-            self.assertEqual(
-                json_resp["detail"],
-                "Fields `path`, `name`, `bytes`, `encrypted_checksums`, `unencrypted_checksums` are required.",
+            mock_rems_create_resource.assert_awaited_once_with(
+                doi=doi, organization_id=rems.organization_id, licenses=rems.licenses
             )
-
-    async def test_delete_project_files_works(self) -> None:
-        """Test deleting file request handler."""
-        with (
-            self.patch_verify_user_project,
-            self.patch_verify_authorization,
-        ):
-            with patch(
-                    "metadata_backend.api.handlers.files.FileOperator.check_file_exists",
-                    new_callable=AsyncMock
-            ) as mock_check, patch(
-                "metadata_backend.api.handlers.files.FileOperator.flag_file_deleted",
-                new_callable=AsyncMock
-            ) as mock_flag:
-                mock_check.return_value = self.mock_single_file
-
-                url = f"{API_PREFIX}/files/{self.mock_single_file['projectId']}"
-                response = await self.client.delete(url, json=self.mock_file_paths)
-                assert mock_flag.call_count == 3
-                self.assertEqual(response.status, 204)
-
-    async def test_delete_project_files_not_in_database(self) -> None:
-        """Test deleting file request handler with error if file does not exist in database."""
-        with (
-            self.patch_verify_user_project,
-            self.patch_verify_authorization,
-        ):
-            with patch(
-                    "metadata_backend.api.handlers.files.FileOperator.check_file_exists",
-                    new_callable=AsyncMock
-            ) as mock_check, patch(
-                "metadata_backend.api.handlers.files.FileOperator.flag_file_deleted",
-                new_callable=AsyncMock
-            ) as mock_flag:
-                mock_check.return_value = None
-
-                url = f"{API_PREFIX}/files/{self.mock_single_file['projectId']}"
-                # File does not exist in database
-                await self.client.delete(url, json=self.mock_file_paths)
-                mock_flag.assert_not_called()
-
-    async def test_delete_project_files_not_valid(self) -> None:
-        """Test deleting file request handler with error if files in request are not valid."""
-        with (
-            self.patch_verify_user_project,
-            self.patch_verify_authorization,
-        ):
-            with patch(
-                    "metadata_backend.api.handlers.files.FileOperator.check_file_exists",
-                    new_callable=AsyncMock
-            ) as mock_check, patch(
-                "metadata_backend.api.handlers.files.FileOperator.flag_file_deleted",
-                new_callable=AsyncMock
-            ) as mock_flag:
-                url = f"{API_PREFIX}/files/{self.mock_single_file['projectId']}"
-                # Invalid file as request payload
-                await self.client.delete(url, json=self.mock_single_file)
-                mock_check.assert_not_called()
-                mock_flag.assert_not_called()
+            mock_rems_create_catalogue_item.assert_awaited_once_with(
+                resource_id=rems_resource_id,
+                workflow_id=rems.workflow_id,
+                organization_id=rems.organization_id,
+                localizations={"en": {"title": dataset_title, "infourl": f"{beacon_url}{doi}"}},
+            )
 
 
 class ApiKeyHandlerTestCase(HandlersTestCase):
@@ -2595,8 +2117,7 @@ class UserHandlerTestCase(HandlersTestCase):
             self.patch_verify_authorization,
             patch.dict(
                 os.environ,
-                {"CSC_LDAP_HOST": "ldap://mockhost", "CSC_LDAP_USER": "mockuser",
-                 "CSC_LDAP_PASSWORD": "mockpassword"},
+                {"CSC_LDAP_HOST": "ldap://mockhost", "CSC_LDAP_USER": "mockuser", "CSC_LDAP_PASSWORD": "mockpassword"},
             ),
             patch("metadata_backend.api.services.ldap.Connection") as mock_connection,
         ):
@@ -2614,3 +2135,51 @@ class UserHandlerTestCase(HandlersTestCase):
             assert user.user_id == "mock-userid"
             assert user.user_name == "mock-username"
             assert user.projects == [Project(project_id=project_id)]
+
+
+class FilesAPIHandlerTestCase(HandlersTestCase):
+    """Files API handler test cases."""
+
+    async def test_get_project_folders(self) -> None:
+        """Test getting project folders."""
+
+        project_id = "PRJ123"
+
+        with (
+            self.patch_verify_authorization,
+            self.patch_verify_user_project,
+            patch(
+                "metadata_backend.api.services.file.FileProviderService.list_folders",
+                return_value=["folder1", "folder2"],
+            ),
+        ):
+            response = await self.client.get(f"{API_PREFIX}/projects/{project_id}/folders")
+            self.assertEqual(response.status, 200)
+
+            folders = await response.json()
+            assert len(folders) == 2
+            assert "folder1" and "folder2" in folders
+
+    async def test_get_files_in_folder(self) -> None:
+        """Test getting files in a folder."""
+
+        project_id = "PRJ123"
+        folder_name = "folder1"
+        file1 = FileProviderService.File(path="S3://folder1/file1.txt", bytes=100)
+        file2 = FileProviderService.File(path="S3://folder1/file2.txt", bytes=101)
+
+        with (
+            self.patch_verify_authorization,
+            self.patch_verify_user_project,
+            patch(
+                "metadata_backend.api.services.file.FileProviderService.list_files_in_folder",
+                return_value=FileProviderService.Files([file1, file2]),
+            ),
+        ):
+            response = await self.client.get(f"{API_PREFIX}/projects/{project_id}/folders/{folder_name}/files")
+            self.assertEqual(response.status, 200)
+
+            files = await response.json()
+            assert len(files) == 2
+            assert files[1]["path"] == "S3://folder1/file2.txt"
+            assert files[1]["bytes"] == 101

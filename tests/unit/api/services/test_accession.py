@@ -1,7 +1,8 @@
-import re
-import pytest
 import os
+import re
 from unittest.mock import patch
+
+import pytest
 
 from metadata_backend.api.services.accession import generate_bp_accession, generate_default_accession
 

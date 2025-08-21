@@ -19,8 +19,14 @@ from ...helpers.logger import LOG
 from ...helpers.workflow import PublishServiceConfig
 from ..auth import get_authorized_user_id
 from ..exceptions import SystemException, UserException
-from ..models import Registration
-from ..resources import get_file_service, get_object_service, get_registration_service, get_submission_service
+from ..models import File, Registration, SubmissionWorkflow
+from ..resources import (
+    get_file_provider_service,
+    get_file_service,
+    get_object_service,
+    get_registration_service,
+    get_submission_service,
+)
 from ..services.object import JsonObjectService
 from .common import to_json
 from .restapi import RESTAPIIntegrationHandler
@@ -544,6 +550,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         object_service = get_object_service(req)
         file_service = get_file_service(req)
         registration_service = get_registration_service(req)
+        file_provider_service = get_file_provider_service(req)
 
         # Check that the user can modify this submission.
         await SubmissionAPIHandler.check_submission_modifiable(req, submission_id)
@@ -569,8 +576,25 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
             if (await object_service.count_objects(submission_id, schema)) == 0:
                 raise UserException(f"Submission '{submission_id}' does not contain any '{schema}' objects.")
 
-        # Check that the submission has at least one file.
         if not no_files:
+            # Add all files in linked folder to the submission.
+            folder = await submission_service.get_folder(submission_id)
+            if workflow == SubmissionWorkflow.SDS:
+                files = await file_provider_service.list_files_in_folder(folder)
+                for file in files.root:
+                    # Check that we have not added the file already.
+                    # For now, accept that file bytes might have changed and some files
+                    # might have been removed if a call to this endpoint has failed before.
+                    if not await file_service.is_file_by_path(submission_id, file.path):
+                        await file_service.add_file(
+                            File(
+                                submission_id=submission_id,
+                                path=file.path,
+                                bytes=file.bytes,
+                            )
+                        )
+
+            # Check that the submission has at least one file.
             if await file_service.count_files(submission_id) == 0:
                 raise UserException(f"Submission '{submission_id}' does not have any data files.")
 

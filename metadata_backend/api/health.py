@@ -1,16 +1,11 @@
 """Handle health check endpoint."""
 
-import time
-
 import ujson
 from aiohttp import web
 from aiohttp.web import Request, Response
-from motor.motor_asyncio import AsyncIOMotorClient
-from pymongo.errors import ConnectionFailure
 
 from metadata_backend.api.auth import AAIServiceHandler
 
-from ..conf.conf import url
 from ..helpers.logger import LOG
 from ..services.admin_service_handler import AdminServiceHandler
 from ..services.datacite_service_handler import DataciteServiceHandler
@@ -44,15 +39,8 @@ class HealthHandler:
 
         :returns: JSON response containing health statuses
         """
-        db_client = await self.create_test_db_client()
         services: dict[str, dict[str, str]] = {}
         full_status: dict[str, dict[str, dict[str, str]] | str] = {}
-        _conn_db = await self.try_db_connection(db_client)
-        # Determine database load status
-        if _conn_db:
-            services["database"] = {"status": "Ok"} if _conn_db < 1000 else {"status": "Degraded"}
-        else:
-            services["database"] = {"status": "Down"}
 
         # Determine the status of loaded services
 
@@ -81,28 +69,3 @@ class HealthHandler:
         return web.Response(
             body=ujson.dumps(full_status, escape_forward_slashes=False), status=200, content_type="application/json"
         )
-
-    async def create_test_db_client(self) -> AsyncIOMotorClient:  # type: ignore
-        """Initialize a new database client to test Mongo connection.
-
-        :returns: Coroutine-based Motor client for Mongo operations
-        """
-        new_client = AsyncIOMotorClient(url, connectTimeoutMS=4000, serverSelectionTimeoutMS=4000)  # type: ignore
-        LOG.debug("Initialised a new DB client as a test")
-        return new_client
-
-    async def try_db_connection(self, db_client: AsyncIOMotorClient) -> None | float:  # type: ignore
-        """Check the connection to database.
-
-        :param db_client: Motor client used for database connections
-        :returns: Connection time or None if connection fails
-        """
-        try:
-            start = time.time()
-            await db_client.server_info()
-            LOG.debug("Connection to db succeeded.")
-            perf_time = time.time() - start
-            return perf_time
-        except ConnectionFailure:
-            LOG.exception("Connection to db failed.")
-            return None

@@ -1,138 +1,52 @@
 """Handle HTTP methods for server."""
 
-import ujson
 from aiohttp import web
+from aiohttp.web import Request, StreamResponse
 
 from ...helpers.logger import LOG
 from ..auth import get_authorized_user_id
-from ..operators.file import File, FileOperator
-from ..resources import get_mongo_client, get_project_service
+from ..resources import get_file_provider_service, get_project_service
 from .restapi import RESTAPIHandler
 
 
 class FilesAPIHandler(RESTAPIHandler):
     """API Handler for managing a project's files metadata."""
 
-    async def get_project_files(self, request: web.Request) -> web.StreamResponse:
-        """Get files belonging to a project.
+    async def get_project_folders(self, request: Request) -> StreamResponse:
+        """List all folders in a specific project.
+
+        :param request: GET request
+        :returns: JSON response containing list of folders
+        """
+        project_id = request.match_info["projectId"]
+        project_service = get_project_service(request)
+        file_service = get_file_provider_service(request)
+
+        # Check that user is affiliated with the project.
+        user_id = get_authorized_user_id(request)
+        await project_service.verify_user_project(user_id, project_id)
+
+        # TO DO: sort out project level differentiation for folders in S3
+        folders = await file_service.list_folders()
+        LOG.info("Retrieved %d folders for project %s.", len(folders), project_id)
+        return self._json_response(folders)
+
+    async def get_files_in_folder(self, request: Request) -> StreamResponse:
+        """List all files in a specific folder from the file provider service.
 
         :param request: GET request
         :returns: JSON response containing submission ID for updated submission
         """
-        user_id = get_authorized_user_id(request)
-
-        project_id = self._get_param(request, name="projectId")
-        db_client = get_mongo_client(request)
-        project_service = get_project_service(request)
-
-        # Check that user is affiliated with the project.
-        await project_service.verify_user_project(user_id, project_id)
-
-        file_op = FileOperator(db_client)
-        return self._json_response(await file_op.read_project_files(project_id))
-
-    async def post_project_files(self, request: web.Request) -> web.Response:
-        """Handle files post request.
-
-        :param request: POST request
-        :raises: HTTP Bad Request if response body format is invalid
-        :raises: HTTP Unauthorized if user not affiliated with project
-        :returns: JSON response containing a list of file IDs of created files
-        """
-        user_id = get_authorized_user_id(request)
-
-        db_client = get_mongo_client(request)
-        project_service = get_project_service(request)
-
-        data = await self._json_data(request)
-        is_bigpicture = request.query.get("is_bigpicture", "").strip().lower() == "true"
-
-        try:
-            project_id = data["projectId"]
-            if isinstance(data["files"], list):
-                files = data["files"]
-            else:
-                raise TypeError
-        except (KeyError, TypeError) as exc:
-            reason = (
-                "Fields `projectId`, `files` are required."
-                if isinstance(exc, KeyError)
-                else "Field `files` must be a list."
-            )
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        # Check that user is affiliated with the project.
-        await project_service.verify_user_project(user_id, project_id)
-
-        # Form file objects and validate against schema before creation
-        file_op = FileOperator(db_client)
-        validated_file_objects = []
-
-        try:
-            for file in files:
-                new_file = File(
-                    file["name"],
-                    file["path"],
-                    project_id,
-                    file["bytes"],
-                    file["encrypted_checksums"],
-                    file["unencrypted_checksums"],
-                )
-                file_object = await file_op.form_validated_file_object(new_file, is_bigpicture)
-                validated_file_objects.append(file_object)
-        except KeyError as file_key_error:
-            reason = "Fields `path`, `name`, `bytes`, `encrypted_checksums`, `unencrypted_checksums` are required."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason) from file_key_error
-
-        # Create files
-        created_files = []
-
-        for file in validated_file_objects:
-            id_and_v = await file_op.create_file_or_version(file)
-            created_files.append(id_and_v)
-
-        return web.Response(body=ujson.dumps(created_files), status=201, content_type="application/json")
-
-    async def delete_project_files(self, request: web.Request) -> web.Response:
-        """Remove a file from a project.
-
-        :param request: DELETE request
-        :raises: HTTP Bad Request if response body format is invalid
-        :raises: HTTP Unauthorized if user not affiliated with project
-        :returns: HTTP No Content response
-        """
-        user_id = get_authorized_user_id(request)
-
         project_id = request.match_info["projectId"]
-
+        folder = request.match_info["folder"]
         project_service = get_project_service(request)
+        file_service = get_file_provider_service(request)
 
         # Check that user is affiliated with the project.
+        user_id = get_authorized_user_id(request)
         await project_service.verify_user_project(user_id, project_id)
 
-        data = await self._json_data(request)
-
-        if not isinstance(data, list):
-            reason = "Deleting files must be passed as a list of file paths."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        # Check file exists in database
-        file_operator = FileOperator(get_mongo_client(request))
-        for file_path in data:
-            if not isinstance(file_path, str):
-                reason = "File path must be a string"
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
-            file = await file_operator.check_file_exists(project_id, file_path)
-            if file is not None:
-                await file_operator.flag_file_deleted(file)
-
-        LOG.info(
-            "DELETE files in project %s with file paths: %s was successful.",
-            project_id,
-            "\n".join(file_path for file_path in data),
-        )
-        return web.HTTPNoContent()
+        # TO DO: sort out project level differentiation for files in S3
+        files = await file_service.list_files_in_folder(folder)
+        LOG.info("Retrieved %d files in folder %s.", len(files.root), folder)
+        return web.json_response(files.model_dump(mode="json"))
