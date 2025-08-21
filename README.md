@@ -8,18 +8,22 @@
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 [![linting: pylint](https://img.shields.io/badge/linting-pylint-yellowgreen)](https://github.com/PyCQA/pylint)
 
-Metadata submission API, which handles programmatic submissions of EGA metadata, Bigpicture metadata and SDSX (generic) metadata models. Metadata can be submitted either via XML files or via web form submissions. The submitted and processed metadata as well as other user and project data is stored in a MongoDB instance as queryable JSON documents.
+SD Submit API to support submissions of sensitive data. A submission consists of a
+generic submission JSON document, associated data files, and workflow specific metadata
+objects. The submissions are stored in a PostgreSQL relational database. The file processing
+is done using NeIC SRA ingest pipelines. The submission is registered to workflow specific
+services including DataCite, Metax, and REMS.
 
-Graphical UI implementation for web form submissions is implemented separately here: [metadata-submitter-frontend](https://github.com/CSCfi/metadata-submitter-frontend).
+SD Submit UI frontend is implemented here: [metadata-submitter-frontend](https://github.com/CSCfi/metadata-submitter-frontend).
 
-SD Submit API also communicates with the following external services via their respective API:
+SD Submit API uses the following external services via their respective API:
 - SD Connect ([source code](https://github.com/CSCfi/swift-browser-ui))
 - Imaging Beacon ([source code](https://github.com/CSCfi/imaging-beacon))
 - NeIC Sensitive Data Archive ([docs](https://neic-sda.readthedocs.io/en/latest/))
 - REMS ([source code](https://github.com/CSCfi/rems))
 - Metax ([docs](https://metax.fairdata.fi/docs/))
 - DataCite ([docs](https://support.datacite.org/))
-  - Additionally a separate PID microservice for DOI handling
+- CSC PID
 
 ```mermaid
 flowchart LR
@@ -103,15 +107,6 @@ Launch both server and database with Docker by running: `docker compose up --bui
 
 Server can then be found from `http://localhost:5430`.
 
-> **If you are developing on macOS,** you will also need to reconfigure the `database` service in `docker-compose.yml` file to the following:
-
-```yml
-  database:
-    image: "arm64v8/mongo"
-    platform: linux/arm64/v8
-    ...
-```
-
 > **If you also need to initiate the graphical UI for developing the API**, check out [metadata-submitter-frontend](https://github.com/CSCfi/metadata-submitter-frontend/) repository and follow its development instructions. You will then also need to set the `REDIRECT_URL` environment variable to the UI address (e.g. add `REDIRECT_URL=http://localhost:3000` into the `.env` file) and relaunch the development environment as specified above.
 
 Alternatively, there is a more convenient method for developing the SD Submit API via a _**Python virtual environment using a Procfile**_, which is described here below.
@@ -152,8 +147,6 @@ uv run honcho start
 
 The development server should now be accessible at `localhost:5430`.
 If it doesn't work right away, check your settings in `.env` and restart the servers manually if you make changes to `.env` file.
-
-> **Note:** This approach uses Docker to run MongoDB. You can comment it out in the `Procfile` if you don't want to use Docker.
 
 ### OpenAPI Specification docs with Swagger
 

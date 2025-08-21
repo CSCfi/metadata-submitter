@@ -6,7 +6,7 @@ Metadata Submitter Backend
 .. note:: Requirements:
 
   - Python 3.12+
-  - MongoDB
+  - Postgres
 
 
 Environment Setup
@@ -18,23 +18,7 @@ the table below.
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
 | ENV                            | Default                       | Description                                                                       | Mandatory |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``MONGO_HOST``                 | ``localhost:27017``           | MongoDB server hostname, with port specified if needed.                           | Yes       |
-+--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``MONGO_AUTHDB``               | ``-``                         | MongoDB authentication database.                                                  | Yes       |
-+--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``MONGO_DATABASE``             | ``default``                   | MongoDB default database, will be used as authentication database if              | No        |
-|                                |                               | ``MONGO_AUTHDB`` is not set.                                                      |           |
-+--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``MONGO_USERNAME``             | ``admin``                     | Admin username for MongoDB.                                                       | Yes       |
-+--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``MONGO_PASSWORD``             | ``admin``                     | Admin password for MongoDB.                                                       | Yes       |
-+--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``MONGO_SSL``                  | ``-``                         | Set to True to enable MongoDB TLS connection url.                                 | No        |
-+--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``MONGO_SSL_CA``               | ``-``                         | Path to CA file, required if ``MONGO_SSL`` enabled.                               | No        |
-+--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
-| ``MONGO_SSL_CLIENT_CERT_KEY``  | ``-``                         | Path to contains client's TLS/SSL X.509 combined cert and key,                    |  No       |
-|                                |                               | required if ``MONGO_SSL`` enabled.                                                |           |
+| ``PG_DATABASE_URL``            |                               | Connection URL for the PostgreSQL database.                                       | Yes       |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
 | ``AAI_CLIENT_SECRET``          | ``public```                   | OIDC client secret.                                                               | Yes       |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
@@ -73,12 +57,6 @@ the table below.
 |                                |                               | for more information.                                                             |           |
 +--------------------------------+-------------------------------+-----------------------------------------------------------------------------------+-----------+
 
-
-.. note:: If just ``MONGO_DATABASE`` is specified it will authenticate the user against it.
-          If just ``MONGO_AUTHDB`` is specified it will authenticate the user against it.
-          If both ``MONGO_DATABASE`` and ``MONGO_AUTHDB`` are specified, the client will attempt to authenticate the specified user to the MONGO_AUTHDB database.
-          If both ``MONGO_DATABASE`` and ``MONGO_AUTHDB`` are unspecified, the client will attempt to authenticate the specified user to the admin database.
-
 Install and run
 ---------------
 
@@ -88,14 +66,6 @@ For installing ``metadata-submitter`` backend do the following:
 
     $ git clone https://github.com/CSCfi/metadata-submitter
     $ pip install .
-
-.. hint:: Before running the application have MongoDB running.
-
-    MongoDB Server expects to find MongoDB instance running, specified with following environmental variables:
-
-    - ``MONGO_INITDB_ROOT_USERNAME`` (username for admin user to mongodb instance)
-    - ``MONGO_INITDB_ROOT_PASSWORD`` (password for admin user to mongodb instance)
-    - ``MONGO_HOST`` (host and port for MongoDB instance, e.g. `localhost:27017`)
 
 To run the backend from command line set the environment variables required and use:
 

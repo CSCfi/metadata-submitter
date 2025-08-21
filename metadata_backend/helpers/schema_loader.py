@@ -98,7 +98,7 @@ class JSONSchemaLoader(SchemaLoader):
         """Find schema which is used to match JSON files against.
 
         :param schema_type: Schema type to be searched for
-        :returns: JSONSchema able to validate XML against defined schema type
+        :returns: JSONSchema able to validate JSON against defined schema type
         :raises SchemaNotFoundException: If searched schema doesn't exist
         """
         file = self._identify_file(schema_type)

@@ -1,34 +1,18 @@
 """Python-based app configurations.
 
-1) Database configurations
-You need to specify the necessary environment variables for connecting to
-MongoDB.
-Currently in use:
-
-- ``MONGO_USERNAME`` - Username for mongodb
-- ``MONGO_PASSWORD`` - Password for mongodb
-- ``MONGO_HOST`` - MongoDB server hostname, with port specified
-
-Admin access is needed in order to create new databases during runtime.
-Default values are the same that are used in docker-compose file
-found from root directory.
-
-MongoDB client should be shared across the whole application. Since aiohttp
-discourages usage of singletons, recommended way is to initialize database
-when setting up server and store db to application instance in server.py
-module.
-
-2) Metadata schema types
-Schema types (such as ``"submission"``, ``"study"``, ``"sample"``) are needed in
+1) Metadata schema types
+Schema types (e.g. ``"submission"``, ``"study"``, ``"sample"``) are needed in
 different parts of the application.
 
-3) MongoDB query mappings
-Mappings are needed to turn incoming REST api queries into mongodb queries.
-Change these if database structure changes.
-
-4) Frontend static files folder
+2) Frontend static files folder
 Production version gets frontend SPA from this folder, after it has been built
 and inserted here in projects Dockerfile.
+
+3) AAI server
+AAI server is needed to authenticate users and get their user ID.
+
+4) External service integration
+External services are queried from the application, e.g. Datacite for DOIs.
 """
 
 import os
@@ -36,81 +20,14 @@ from pathlib import Path
 from typing import Any
 
 import ujson
-from motor.motor_asyncio import AsyncIOMotorClient
 
 from ..api.exceptions import NotFoundUserException
-from ..helpers.logger import LOG
-from ..helpers.parser import str_to_bool
 from ..helpers.workflow import Workflow
 from .taxonomy_files.taxonomy_conf import TAXONOMY_NAME_FILE
 
-# 1) Set up database client and custom timeouts for specific parameters.
-# Set custom timeouts and other parameters here so they can be imported to
-# other modules if needed.
-
-# If just MONGO_DATABASE is specified it will authenticate the user against it.
-# If just MONGO_AUTHDB is specified it will authenticate the user against it.
-# If both MONGO_DATABASE and MONGO_AUTHDB are specified,
-# the client will attempt to authenticate the specified user to the MONGO_AUTHDB database.
-# If both MONGO_DATABASE and MONGO_AUTHDB are unspecified,
-# the client will attempt to authenticate the specified user to the admin database.
-
-
-def set_conf() -> tuple[str, str]:
-    """Set config based on env vars."""
-    mongo_user = os.getenv("MONGO_USERNAME", "admin")
-    mongo_password = os.getenv("MONGO_PASSWORD", "admin")
-    mongo_host = os.getenv("MONGO_HOST", "localhost:27017")
-    mongo_db = os.getenv("MONGO_DATABASE", "")
-    _base = f"mongodb://{mongo_user}:{mongo_password}@{mongo_host}/{mongo_db}"
-    if str_to_bool(os.getenv("MONGO_SSL", "False")):
-        _ca = os.getenv("MONGO_SSL_CA", None)
-        # Instead of using ssl_certfile and ssl_keyfile to specify
-        # the certificate and private key files respectively, use tlsCertificateKeyFile
-        # https://motor.readthedocs.io/en/stable/migrate-to-motor-3.html?highlight=ssl_certfile#renamed-uri-options
-        _combined_cert_key = os.getenv("MONGO_SSL_CLIENT_CERT_KEY", None)
-        if bool(os.getenv("MONGO_AUTHDB")) and _ca and _combined_cert_key:
-            tls = f"?tls=true&tlsCAFile={_ca}&tlsCertificateKeyFile={_combined_cert_key}"
-            _authdb = str(os.getenv("MONGO_AUTHDB"))
-            auth = f"&authSource={_authdb}"
-            mongo_uri = f"{_base}{tls}{auth}"
-        else:
-            tls = f"?tls=true&tlsCAFile={_ca}&tlsCertificateKeyFile={_combined_cert_key}"
-            mongo_uri = f"{_base}{tls}"
-    elif bool(os.getenv("MONGO_AUTHDB")):
-        _authdb = str(os.getenv("MONGO_AUTHDB"))
-        auth = f"?authSource={_authdb}"
-        mongo_uri = f"{_base}{auth}"
-    else:
-        mongo_uri = _base
-
-    if os.getenv("MONGO_DATABASE", "") == "":
-        mongo_db = "default"
-
-    return mongo_uri, mongo_db
-
-
-url, mongo_database = set_conf()
-
-
-LOG.debug("mongodb connection string is: %s", url)
-
-serverTimeout = 15000
-connectTimeout = 15000
-
 API_PREFIX = "/v1"
 
-
-def create_db_client() -> AsyncIOMotorClient:  # type: ignore
-    """Initialize database client for AioHTTP App.
-
-    :returns: Coroutine-based Motor client for Mongo operations
-    """
-    LOG.debug("initialised DB client")
-    return AsyncIOMotorClient(url, connectTimeoutMS=connectTimeout, serverSelectionTimeoutMS=serverTimeout)
-
-
-# 2) Load schema types, descriptions and workflows from json
+# 1) Load schema types, descriptions and workflows from json
 path_to_schema_file = Path(__file__).parent / "schemas.json"
 with open(path_to_schema_file, "rb") as schema_file:
     schema_types = ujson.load(schema_file)
@@ -135,14 +52,14 @@ def get_workflow(workflow_name: str) -> Workflow:
     return WORKFLOWS[workflow_name]
 
 
-# 4) Set frontend folder to be inside metadata_backend modules root
+# 2) Set frontend folder to be inside metadata_backend modules root
 frontend_static_files = Path(__file__).parent.parent / "frontend"
 
-# 4.1) Path to swagger HTML file
+# 2.1) Path to swagger HTML file
 swagger_static_path = Path(__file__).parent.parent / "swagger" / "index.html"
 
 
-# 5) Set up configurations for AAI server
+# 3) Set up configurations for AAI server
 
 aai_config = {
     "client_id": os.getenv("AAI_CLIENT_ID", "public"),
@@ -160,7 +77,7 @@ aai_config = {
 }
 
 
-# 6) Setup integration config
+# 4) Set up external service integration config
 
 doi_config = {
     "publisher": "CSC - IT Center for Science",

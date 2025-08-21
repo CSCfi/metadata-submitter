@@ -32,7 +32,7 @@ organizations = {
         "catalogue-items": {},
     },
     "org2": {
-        "short-name": {"en":"Organization 2"},
+        "short-name": {"en": "Organization 2"},
         "name": {"en": "Mock Organization 2"},
         "workflows": [2, 3, 4],
         "licenses": [2, 4],

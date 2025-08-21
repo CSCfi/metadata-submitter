@@ -4,17 +4,17 @@ import defusedxml.ElementTree as ET
 
 from metadata_backend.api.models import Registration
 from tests.integration.conf import datacite_prefix, datacite_url
-from tests.integration.conftest import submission_factory
 from tests.integration.helpers import (
-    get_request_data,
     get_object,
+    get_request_data,
     get_xml_object,
     patch_submission_doi,
     post_object,
-    put_object,
     publish_submission,
+    put_object,
     submissions_url,
 )
+
 
 class TestBigpicture:
     """Tests with Bigpicture schemas."""

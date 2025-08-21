@@ -1,7 +1,7 @@
 """Unit test configuration."""
+
 import asyncio
 import atexit
-
 import os
 import tempfile
 from typing import AsyncGenerator
@@ -16,10 +16,11 @@ from metadata_backend.database.postgres.repositories.registration import Registr
 from metadata_backend.database.postgres.repositories.submission import SubmissionRepository
 from metadata_backend.database.postgres.repository import (
     PG_DATABASE_URL_ENV,
-    get_sqllite_db_url,
     SessionFactory,
     create_engine,
-    create_session_factory)
+    create_session_factory,
+    get_sqllite_db_url,
+)
 from metadata_backend.database.postgres.services.file import FileService
 from metadata_backend.database.postgres.services.object import ObjectService
 from metadata_backend.database.postgres.services.registration import RegistrationService
@@ -32,16 +33,16 @@ _object_repository: ObjectRepository | None = None
 _file_repository: FileRepository | None = None
 _registration_repository: RegistrationRepository | None = None
 
+# set required S3 env vars for all tests
+os.environ.setdefault("S3_ACCESS_KEY", "test")
+os.environ.setdefault("S3_SECRET_KEY", "test")
+os.environ.setdefault("S3_REGION", "eu-north-1")
+os.environ.setdefault("S3_ENDPOINT", "http://localhost:9090")
+
 
 async def _session_start():
     # Create SQLAlchemy engine and session factory.
-    global \
-        _engine, \
-        _session_factory, \
-        _submission_repository, \
-        _object_repository, \
-        _file_repository, \
-        _registration_repository
+    global _engine, _session_factory, _submission_repository, _object_repository, _file_repository, _registration_repository
 
     _temp_sqlite_file = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
     atexit.register(lambda: os.remove(_temp_sqlite_file.name))
@@ -76,12 +77,14 @@ async def session_factory() -> AsyncGenerator[SessionFactory, None]:
 
 # Environmental variables
 
-@pytest.fixture(autouse=True, scope='session')
+
+@pytest.fixture(autouse=True, scope="session")
 def env():
-    os.environ[BP_CENTER_ID_ENV] = 'bb'
+    os.environ[BP_CENTER_ID_ENV] = "bb"
 
 
 # Repositories
+
 
 @pytest.fixture
 def submission_repository() -> SubmissionRepository:
@@ -104,6 +107,7 @@ def registration_repository() -> RegistrationRepository:
 
 
 # Services
+
 
 @pytest.fixture
 def submission_service() -> SubmissionService:

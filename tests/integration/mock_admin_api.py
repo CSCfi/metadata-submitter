@@ -28,17 +28,17 @@ admins = ["admin_user@test.what"]
 files_in_inbox = {
     "mock_user@test.what": [
         {
-            "inboxPath": "s3:/bucket/mock_files/file1.c4gh",
+            "inboxPath": "s3://bucket/mock_files/file1.c4gh",
             "fileStatus": "uploaded",
             "createAt": datetime.now().isoformat(),
         },
         {
-            "inboxPath": "s3:/bucket/mock_files/file2.c4gh",
+            "inboxPath": "s3://bucket/mock_files/file2.c4gh",
             "fileStatus": "uploaded",
             "createAt": datetime.now().isoformat(),
         },
         {
-            "inboxPath": "s3:/bucket/mock_files/file3.c4gh",
+            "inboxPath": "s3://bucket/mock_files/file3.c4gh",
             "fileStatus": "uploaded",
             "createAt": datetime.now().isoformat(),
         },

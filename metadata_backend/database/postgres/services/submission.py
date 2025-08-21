@@ -409,6 +409,18 @@ class SubmissionService:
             return Rems.model_validate(submission.document[SUB_FIELD_REMS])
         return None
 
+    async def get_folder(self, submission_id: str) -> str | None:
+        """Get the name of the folder for linked to the submission.
+
+        :param submission_id: the submission id
+        :returns: The folder name
+        """
+        submission = await self.repository.get_submission_by_id(submission_id)
+        if submission is None:
+            raise UnknownSubmissionUserException(submission_id)
+
+        return submission.folder
+
     async def update_submission(self, submission_id: str, document: dict[str, Any]) -> None:
         """Update the submission document.
 

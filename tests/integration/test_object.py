@@ -6,7 +6,6 @@ from typing import Any
 import defusedxml.ElementTree as ET
 
 from tests.integration.conf import objects_url, test_bigpicture_xml_files, test_fega_xml_files
-from tests.integration.conftest import submission_factory
 from tests.integration.helpers import (
     check_object_exists,
     delete_object,
@@ -31,7 +30,7 @@ class TestObjects:
 
         :param client_logged_in: HTTP client user
         :param submission_factory: The factory that creates and deletes submissions
-         """
+        """
         fega_submission_id, _ = await submission_factory("FEGA")
         bp_submission_id, _ = await submission_factory("Bigpicture")
 
@@ -78,10 +77,7 @@ class TestObjects:
 
         async def assert_metadata_objects(_accession_ids, _schema):
             for _accession_id in _accession_ids:
-                metadata_objects.append({
-                    "schema": _schema,
-                    "id": _accession_id
-                })
+                metadata_objects.append({"schema": _schema, "id": _accession_id})
                 async with client_logged_in.get(f"{objects_url}/{_schema}/{_accession_id}") as resp:
                     LOG.debug("Checking that %s JSON is in %s", _accession_id, _schema)
                     assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
@@ -143,6 +139,7 @@ class TestObjects:
             async with client_logged_in.get(f"{objects_url}/{_schema}/{_id}?format=xml") as resp:
                 LOG.debug("Checking that XML object %s was deleted", _id)
                 assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
+
 
 class TestObjectsJsonXml:
     """Test creating objects with XML and CSV files."""

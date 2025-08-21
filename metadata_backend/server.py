@@ -6,14 +6,6 @@ from typing import Any, Optional
 import uvloop
 from aiohttp import web
 
-from metadata_backend.api.services.object import JsonObjectService, XmlObjectService
-from metadata_backend.database.postgres.repositories.api_key import ApiKeyRepository
-from metadata_backend.database.postgres.repositories.file import FileRepository
-from metadata_backend.database.postgres.repositories.object import ObjectRepository
-from metadata_backend.database.postgres.repositories.registration import RegistrationRepository
-from metadata_backend.database.postgres.repositories.submission import SubmissionRepository
-from metadata_backend.database.postgres.services.registration import RegistrationService
-
 from .api.auth import AAIServiceHandler, AccessHandler
 from .api.handlers import auth as APIKeyHandler
 from .api.handlers import user as UserHandler
@@ -29,14 +21,19 @@ from .api.health import HealthHandler
 from .api.middlewares import authorization, http_error_handler
 from .api.resources import ResourceType, set_resource
 from .api.services.auth import AccessService
+from .api.services.file import S3FileProviderService
+from .api.services.object import JsonObjectService, XmlObjectService
 from .api.services.project import CscLdapProjectService
-from .conf.conf import API_PREFIX, aai_config, create_db_client, frontend_static_files, swagger_static_path
-from .database.postgres.repository import (
-    create_engine,
-    create_session_factory,
-)
+from .conf.conf import API_PREFIX, aai_config, frontend_static_files, swagger_static_path
+from .database.postgres.repositories.api_key import ApiKeyRepository
+from .database.postgres.repositories.file import FileRepository
+from .database.postgres.repositories.object import ObjectRepository
+from .database.postgres.repositories.registration import RegistrationRepository
+from .database.postgres.repositories.submission import SubmissionRepository
+from .database.postgres.repository import create_engine, create_session_factory
 from .database.postgres.services.file import FileService
 from .database.postgres.services.object import ObjectService
+from .database.postgres.services.registration import RegistrationService
 from .database.postgres.services.submission import SubmissionService
 from .helpers.logger import LOG
 from .services.admin_service_handler import AdminServiceHandler
@@ -87,8 +84,8 @@ async def init(
     object_service = ObjectService(ObjectRepository(session_factory))
     json_object_service = JsonObjectService(submission_service, object_service)
     xml_object_service = XmlObjectService(submission_service, object_service, json_object_service)
+    file_provider_service = S3FileProviderService()
 
-    _set_resource(ResourceType.MONGO_CLIENT, create_db_client())
     _set_resource(ResourceType.ACCESS_SERVICE, AccessService(api_key_repository))
     _set_resource(ResourceType.PROJECT_SERVICE, CscLdapProjectService())
     _set_resource(ResourceType.SUBMISSION_SERVICE, submission_service)
@@ -97,6 +94,7 @@ async def init(
     _set_resource(ResourceType.REGISTRATION_SERVICE, RegistrationService(RegistrationRepository(session_factory)))
     _set_resource(ResourceType.JSON_OBJECT_SERVICE, json_object_service)
     _set_resource(ResourceType.XML_OBJECT_SERVICE, xml_object_service)
+    _set_resource(ResourceType.FILE_PROVIDER_SERVICE, file_provider_service)
 
     # Initialize handlers.
     #
@@ -183,10 +181,8 @@ async def init(
         web.patch("/submissions/{submissionId}/doi", _submission.patch_submission_doi),
         web.patch("/submissions/{submissionId}/rems", _submission.patch_submission_rems),
         web.patch("/submissions/{submissionId}/folder", _submission.patch_submission_linked_folder),
-        web.patch("/submissions/{submissionId}/files", _submission.patch_submission_files),
         web.patch("/submissions/{submissionId}", _submission.patch_submission),
         web.delete("/submissions/{submissionId}", _submission.delete_submission),
-        web.delete("/submissions/{submissionId}/files/{fileId}", _submission.delete_submission_files),
         web.post("/submissions/{submissionId}/ingest", _submission.post_data_ingestion),
         # user operations
         web.get("/users", UserHandler.get_user),
@@ -198,10 +194,9 @@ async def init(
         web.get("/api/keys", APIKeyHandler.get_api_keys),
         # validate
         web.post("/validate", _xml_submission.validate),
-        # File operations
-        web.get("/files", _file.get_project_files),
-        web.post("/files", _file.post_project_files),
-        web.delete("/files/{projectId}", _file.delete_project_files),
+        # file operations
+        web.get("/projects/{projectId}/folders", _file.get_project_folders),
+        web.get("/projects/{projectId}/folders/{folder}/files", _file.get_files_in_folder),
     ]
     _rems = RemsAPIHandler(
         metax_handler=metax_handler,

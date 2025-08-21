@@ -1,9 +1,7 @@
 """Test API middlewares."""
 
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-from aiohttp import FormData
 from aiohttp.test_utils import AioHTTPTestCase
 
 from metadata_backend.conf.conf import API_PREFIX

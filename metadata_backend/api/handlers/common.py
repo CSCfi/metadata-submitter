@@ -16,7 +16,7 @@ from ...helpers.logger import LOG
 from ...helpers.parser import CSVToJSONParser
 
 
-def to_json(data: dict[str, Any] | list[dict[str, Any]]) -> str:
+def to_json(data: dict[str, Any] | list[dict[str, Any]] | list[str]) -> str:
     """
     Convert dict to JSON. Supports datatime without microseconds.
 

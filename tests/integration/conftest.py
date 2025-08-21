@@ -14,10 +14,6 @@ import pytest
 from yarl import URL
 
 from tests.integration.conf import (
-    AUTHDB,
-    DATABASE,
-    HOST,
-    TLS,
     base_url,
     metax_url,
     mock_auth_url,
@@ -25,8 +21,16 @@ from tests.integration.conf import (
     other_test_user_family,
     other_test_user_given,
 )
-from tests.integration.helpers import post_submission, delete_submission
-from tests.integration.mongo import Mongo
+from tests.integration.helpers import (
+    add_file_to_folder,
+    add_folder,
+    delete_file_from_folder,
+    delete_folder,
+    delete_submission,
+    post_submission,
+    list_folders,
+    list_files_in_folder,
+)
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
@@ -41,16 +45,16 @@ def pytest_addoption(parser):
         help="run tests without any cleanup",
     )
 
+
 # Submission factory
+
 
 @pytest.fixture
 async def submission_factory(client_logged_in: aiohttp.ClientSession, project_id: str):
     default_project_id = project_id
     submissions_ids = []
 
-    async def _create_submission(workflow: str, *,
-                                 name: str | None = None,
-                                 project_id: str | None = None):  # noqa
+    async def _create_submission(workflow: str, *, name: str | None = None, project_id: str | None = None):  # noqa
         if name is None:
             name = f"name_{uuid.uuid4()}"
         submission = {
@@ -67,9 +71,9 @@ async def submission_factory(client_logged_in: aiohttp.ClientSession, project_id
     yield _create_submission
 
     for submission_id in submissions_ids:
-        await delete_submission(client_logged_in, submission_id,
-                                ignore_published_error=True,
-                                ignore_not_found_error=True)
+        await delete_submission(
+            client_logged_in, submission_id, ignore_published_error=True, ignore_not_found_error=True
+        )
 
 
 @pytest.fixture(name="client")
@@ -136,40 +140,64 @@ async def fixture_project_id_2() -> str:
     return "2000"
 
 
-@pytest.fixture(name="mongo")
-async def fixture_mongo(request):
-    """Initialize the db, and create a client."""
-    if TLS:
-        _params = "?tls=true&tlsCAFile=./config/cacert&tlsCertificateKeyFile=./config/combined"
-        url = f"mongodb://{AUTHDB}:{AUTHDB}@{HOST}/{DATABASE}{_params}&authSource=admin"
-    else:
-        url = f"mongodb://{AUTHDB}:{AUTHDB}@{HOST}/{DATABASE}?authSource=admin"
-
-    mongo = Mongo(url)
-    await mongo.recreate_db()
-
-    yield mongo
-
-    if not request.config.getoption("--nocleanup"):
-        await mongo.drop_db()
-
-
-@pytest.fixture(name="database")
-def fixture_database(mongo):
-    """Database client."""
-    return mongo.db
-
-
-@pytest.fixture(name="recreate_db", autouse=True)
-async def fixture_recreate_db(request, mongo):
-    """Recreate the schema after each scoped test."""
-    if not request.config.getoption("--nocleanup"):
-        await mongo.recreate_db()
-
-
 @pytest.fixture(name="clear_cache", autouse=True)
 async def fixture_clear_cache(client):
     """Clear mock metax cache before and after each scoped test."""
     await client.post(f"{metax_url}/purge")
     yield
     await client.post(f"{metax_url}/purge")
+
+
+@pytest.fixture
+async def s3_manager():
+    """Fixture to track and cleanup mock S3 folders/files before and after each test."""
+    # Ensure mock S3 instance is empty before test
+    folders_to_delete = await list_folders()
+    for folder_name in folders_to_delete:
+        try:
+            files_in_folder = await list_files_in_folder(folder_name)
+            for file_name in files_in_folder:
+                try:
+                    await delete_file_from_folder(folder_name, file_name)
+                except Exception:
+                    pass
+            await delete_folder(folder_name)
+        except Exception:
+            pass
+
+    folders = set()
+    files = []
+
+    class S3Manager:
+        async def add_folder(self, folder_name):
+            await add_folder(folder_name)
+            folders.add(folder_name)
+
+        async def add_file_to_folder(self, folder_name, file_name):
+            await add_file_to_folder(folder_name, file_name)
+            files.append((folder_name, file_name))
+            folders.add(folder_name)
+
+        async def delete_file_from_folder(self, folder_name, file_name):
+            await delete_file_from_folder(folder_name, file_name)
+            if (folder_name, file_name) in files:
+                files.remove((folder_name, file_name))
+
+        async def delete_folder(self, folder_name):
+            await delete_folder(folder_name)
+            folders.discard(folder_name)
+
+    manager = S3Manager()
+    yield manager
+
+    # Teardown: remove files and then folders
+    for folder_name, file_name in files:
+        try:
+            await delete_file_from_folder(folder_name, file_name)
+        except Exception:
+            pass
+    for folder_name in folders:
+        try:
+            await delete_folder(folder_name)
+        except Exception:
+            pass

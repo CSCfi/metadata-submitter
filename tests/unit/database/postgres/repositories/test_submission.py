@@ -3,15 +3,17 @@ import uuid
 
 import ulid
 
-from ..helpers import create_submission_entity
-from metadata_backend.database.postgres.models import SubmissionEntity
 from metadata_backend.api.models import SubmissionWorkflow
+from metadata_backend.database.postgres.models import SubmissionEntity
 from metadata_backend.database.postgres.repositories.submission import SubmissionRepository
-from metadata_backend.database.postgres.repository import transaction, SessionFactory
+from metadata_backend.database.postgres.repository import SessionFactory, transaction
+
+from ..helpers import create_submission_entity
 
 
-async def test_add_get_delete_submission(session_factory: SessionFactory,
-                                         submission_repository: SubmissionRepository) -> None:
+async def test_add_get_delete_submission(
+    session_factory: SessionFactory, submission_repository: SubmissionRepository
+) -> None:
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         name = f"name_{uuid.uuid4()}"
         project_id = f"project_{uuid.uuid4()}"
@@ -55,26 +57,27 @@ async def test_add_get_delete_submission(session_factory: SessionFactory,
         assert_submission(await submission_repository.get_submission_by_id_or_name(project_id, name))
 
         # Delete by id
-        assert (await submission_repository.delete_submission_by_id(submission_id))
+        assert await submission_repository.delete_submission_by_id(submission_id)
         assert (await submission_repository.get_submission_by_id(submission_id)) is None
         assert (await submission_repository.get_submission_by_name(project_id, name)) is None
 
         # Delete by name
         submission, submission_id = await _add_submission()
-        assert (await submission_repository.delete_submission_by_name(project_id, name))
+        assert await submission_repository.delete_submission_by_name(project_id, name)
         assert (await submission_repository.get_submission_by_id(submission_id)) is None
 
         # Delete by id, name
         submission, submission_id = await _add_submission()
-        assert (await submission_repository.delete_submission_by_id_or_name(project_id, submission_id))
+        assert await submission_repository.delete_submission_by_id_or_name(project_id, submission_id)
         assert (await submission_repository.get_submission_by_id(submission_id)) is None
         submission, submission_id = await _add_submission()
-        assert (await submission_repository.delete_submission_by_id_or_name(project_id, name))
+        assert await submission_repository.delete_submission_by_id_or_name(project_id, name)
         assert (await submission_repository.get_submission_by_id(submission_id)) is None
 
 
-async def test_submitted_ingested_date(session_factory: SessionFactory,
-                                       submission_repository: SubmissionRepository) -> None:
+async def test_submitted_ingested_date(
+    session_factory: SessionFactory, submission_repository: SubmissionRepository
+) -> None:
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         name = f"name_{uuid.uuid4()}"
         project_id = f"project_{uuid.uuid4()}"
@@ -174,16 +177,12 @@ async def test_get_submissions(session_factory: SessionFactory, submission_repos
 
         # Test project id and is_published.
 
-        results, total = await submission_repository.get_submissions(
-            project_id=first_project_id,
-            is_published=False
-        )
+        results, total = await submission_repository.get_submissions(project_id=first_project_id, is_published=False)
         assert len(results) == 0
         assert total == 0
 
         results, total = await submission_repository.get_submissions(
-            project_id=second_and_third_project_id,
-            is_published=False
+            project_id=second_and_third_project_id, is_published=False
         )
         assert len(results) == 2
         assert total == 2
@@ -191,16 +190,12 @@ async def test_get_submissions(session_factory: SessionFactory, submission_repos
 
         # Test project id and is_ingested.
 
-        results, total = await submission_repository.get_submissions(
-            project_id=first_project_id,
-            is_ingested=False
-        )
+        results, total = await submission_repository.get_submissions(project_id=first_project_id, is_ingested=False)
         assert len(results) == 0
         assert total == 0
 
         results, total = await submission_repository.get_submissions(
-            project_id=second_and_third_project_id,
-            is_ingested=False
+            project_id=second_and_third_project_id, is_ingested=False
         )
         assert len(results) == 1
         assert total == 1
