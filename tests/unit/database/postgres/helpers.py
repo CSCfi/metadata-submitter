@@ -71,7 +71,6 @@ def create_object_entity(
     title: str | None = None,
     document: dict[str, Any] | None = None,
     xml_document: str | None = None,
-    is_draft: bool = False,
 ) -> ObjectEntity:
     if name is None:
         name = f"name_{uuid.uuid4()}"
@@ -91,7 +90,6 @@ def create_object_entity(
         title=title,
         document=document,
         xml_document=xml_document,
-        is_draft=is_draft,
     )
 
 

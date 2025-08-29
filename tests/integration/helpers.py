@@ -16,7 +16,6 @@ from aiohttp import ClientSession
 from .conf import (
     admin_url,
     base_url,
-    drafts_url,
     metax_api,
     mock_auth_url,
     mock_s3_region,
@@ -159,62 +158,6 @@ async def delete_object(sess, schema, accession_id):
         LOG.debug("Deleting object %s from %s", accession_id, schema)
         assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
-
-async def post_draft(sess, schema, submission_id, filename):
-    """Post one draft XML or JSON metadata object within session, returns accessionId.
-
-    :param sess: HTTP session in which request call is made
-    :param schema: name of the schema (submission) used for testing
-    :param submission_id: submission object belongs to
-    :param filename: name of the file used for testing.
-    :returns: accessionId of created draft
-    """
-    request_data = await get_request_data(schema, filename)
-    async with sess.post(
-        f"{drafts_url}/{schema}",
-        params={"submission": submission_id},
-        data=request_data,
-    ) as resp:
-        LOG.debug("Adding new draft object to %s, via XML file %s", schema, filename)
-        assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
-        response = await resp.json()
-        return (response[0] if isinstance(response, list) else response)["accessionId"]
-
-
-async def get_draft(sess, schema, draft_id, expected_status=200):
-    """Get and return a drafted metadata object.
-
-    :param sess: HTTP session in which request call is made
-    :param schema: name of the schema (submission) used for testing
-    :param draft_id: id of the draft
-    :param expected_status: HTTP status to expect for
-    :returns: data of a draft
-    """
-    async with sess.get(f"{drafts_url}/{schema}/{draft_id}") as resp:
-        LOG.debug("Checking that %s draft exists", draft_id)
-        assert resp.status == expected_status, f"HTTP Status code error, got {resp.status}"
-        ans = await resp.json()
-        return json.dumps(ans)
-
-
-async def put_draft(sess, schema, draft_id, update_filename):
-    """Put one metadata object within session, returns accessionId.
-
-    :param sess: HTTP session in which request call is made
-    :param schema: name of the schema (submission) used for testing
-    :param draft_id: id of the draft
-    :param update_filename: name of the file used to use for updating data.
-    :returns: accession id of updated draft
-    """
-    request_data = await get_request_data(schema, update_filename)
-    async with sess.put(f"{drafts_url}/{schema}/{draft_id}", data=request_data) as resp:
-        LOG.debug("Replace draft object in %s", schema)
-        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-        ans_put = await resp.json()
-        assert ans_put["accessionId"] == draft_id, "accession ID error"
-        return ans_put["accessionId"]
-
-
 async def put_object(sess, schema, accession_id, update_filename):
     """Put one JSON or XML metadata object within session.
 
@@ -242,36 +185,6 @@ async def patch_object(sess, schema, accession_id, update_filename):
     async with sess.patch(f"{objects_url}/{schema}/{accession_id}", data=request_data) as resp:
         LOG.debug("Patch %s metadata object", schema)
         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-
-
-async def patch_draft(sess, schema, draft_id, update_filename):
-    """Patch one metadata object within session, return accessionId.
-
-    :param sess: HTTP session in which request call is made
-    :param schema: name of the schema (submission) used for testing
-    :param draft_id: id of the draft
-    :param update_filename: name of the file used to use for updating data.
-    :returns: accession id of updated draft
-    """
-    request_data = await get_request_data(schema, update_filename)
-    async with sess.patch(f"{drafts_url}/{schema}/{draft_id}", data=request_data) as resp:
-        LOG.debug("Update draft object in %s", schema)
-        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-        ans_put = await resp.json()
-        assert ans_put["accessionId"] == draft_id, "accession ID error"
-        return ans_put["accessionId"]
-
-
-async def delete_draft(sess, schema, draft_id):
-    """Delete metadata object within session.
-
-    :param sess: HTTP session in which request call is made
-    :param schema: name of the schema (submission) used for testing
-    :param draft_id: id of the draft
-    """
-    async with sess.delete(f"{drafts_url}/{schema}/{draft_id}") as resp:
-        LOG.debug("Deleting draft object %s from %s", draft_id, schema)
-        assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
 
 async def post_submission(sess, data):

@@ -560,9 +560,6 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         workflow_config = get_workflow(workflow.value)
         workflow_config.validate()
 
-        # Delete draft metadata objects from the submission.
-        await object_service.delete_drafts(submission_id)
-
         # TODO(improve): validate links between metadata objects.
         # TODO(improve): inject accession numbers to metadata references.
 

@@ -180,7 +180,6 @@ class ObjectEntity(Base):
     submission_id: Mapped[str] = mapped_column(
         String(128), ForeignKey("submissions.submission_id", ondelete="CASCADE"), nullable=False, index=True
     )
-    is_draft: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     title: Mapped[str] = mapped_column(String, nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=True)
