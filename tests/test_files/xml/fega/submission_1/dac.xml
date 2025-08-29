@@ -1,0 +1,8 @@
+<DAC_SET>
+    <DAC alias="1">
+        <TITLE>test</TITLE>
+        <CONTACTS>
+            <CONTACT organisation="test" name="test" email="test@test.com"/>
+        </CONTACTS>
+    </DAC>
+</DAC_SET>

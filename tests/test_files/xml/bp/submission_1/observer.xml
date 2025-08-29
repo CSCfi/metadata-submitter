@@ -1,0 +1,11 @@
+<OBSERVER_SET>
+    <OBSERVER alias="1">
+        <OBSERVER_TYPE>Human</OBSERVER_TYPE>
+        <ATTRIBUTES>
+            <STRING_ATTRIBUTE>
+                <TAG>test</TAG>
+                <VALUE>test</VALUE>
+            </STRING_ATTRIBUTE>
+        </ATTRIBUTES>
+    </OBSERVER>
+</OBSERVER_SET>

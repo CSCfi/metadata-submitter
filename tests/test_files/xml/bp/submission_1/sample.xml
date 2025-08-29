@@ -1,0 +1,48 @@
+<SAMPLE_SET>
+    <BIOLOGICAL_BEING alias="1">
+        <ATTRIBUTES>
+            <STRING_ATTRIBUTE>
+                <TAG>test</TAG>
+                <VALUE>test</VALUE>
+            </STRING_ATTRIBUTE>
+        </ATTRIBUTES>
+    </BIOLOGICAL_BEING>
+    <CASE alias="1">
+        <BIOLOGICAL_BEING_REF alias="1"/>
+        <ATTRIBUTES>
+            <STRING_ATTRIBUTE>
+                <TAG>test</TAG>
+                <VALUE>test</VALUE>
+            </STRING_ATTRIBUTE>
+        </ATTRIBUTES>
+    </CASE>
+    <SPECIMEN alias="1">
+        <EXTRACTED_FROM_REF alias="1"/>
+        <PART_OF_CASE_REF alias="1"/>
+        <ATTRIBUTES>
+            <STRING_ATTRIBUTE>
+                <TAG>test</TAG>
+                <VALUE>test</VALUE>
+            </STRING_ATTRIBUTE>
+        </ATTRIBUTES>
+    </SPECIMEN>
+    <BLOCK alias="1">
+        <SAMPLED_FROM_REF alias="1"/>
+        <ATTRIBUTES>
+            <STRING_ATTRIBUTE>
+                <TAG>test</TAG>
+                <VALUE>test</VALUE>
+            </STRING_ATTRIBUTE>
+        </ATTRIBUTES>
+    </BLOCK>
+    <SLIDE alias="1">
+        <CREATED_FROM_REF alias="1"/>
+        <STAINING_INFORMATION_REF alias="1"/>
+        <ATTRIBUTES>
+            <STRING_ATTRIBUTE>
+                <TAG>test</TAG>
+                <VALUE>test</VALUE>
+            </STRING_ATTRIBUTE>
+        </ATTRIBUTES>
+    </SLIDE>
+</SAMPLE_SET>

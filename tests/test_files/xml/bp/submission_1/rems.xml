@@ -1,0 +1,13 @@
+<REMS_SET>
+    <REMS alias="1">
+        <WORKFLOW_ID>test</WORKFLOW_ID>
+        <ORGANISATION_ID>test</ORGANISATION_ID>
+        <DATASET_REF alias="1"/>
+        <ATTRIBUTES>
+            <STRING_ATTRIBUTE>
+                <TAG>test</TAG>
+                <VALUE>test</VALUE>
+            </STRING_ATTRIBUTE>
+        </ATTRIBUTES>
+    </REMS>
+</REMS_SET>

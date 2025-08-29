@@ -1,0 +1,24 @@
+<EXPERIMENT_SET>
+    <EXPERIMENT alias="1">
+        <TITLE>test</TITLE>
+        <STUDY_REF refname="1"/>
+        <DESIGN>
+            <DESIGN_DESCRIPTION>test</DESIGN_DESCRIPTION>
+            <SAMPLE_DESCRIPTOR refname="1"/>
+            <LIBRARY_DESCRIPTOR>
+                <LIBRARY_NAME>test</LIBRARY_NAME>
+                <LIBRARY_STRATEGY>WGS</LIBRARY_STRATEGY>
+                <LIBRARY_SOURCE>GENOMIC</LIBRARY_SOURCE>
+                <LIBRARY_SELECTION>RANDOM</LIBRARY_SELECTION>
+                <LIBRARY_LAYOUT>
+                    <SINGLE/>
+                </LIBRARY_LAYOUT>
+            </LIBRARY_DESCRIPTOR>
+        </DESIGN>
+        <PLATFORM>
+            <ABI_SOLID>
+                <INSTRUMENT_MODEL>AB SOLiD System</INSTRUMENT_MODEL>
+            </ABI_SOLID>
+        </PLATFORM>
+    </EXPERIMENT>
+</EXPERIMENT_SET>
