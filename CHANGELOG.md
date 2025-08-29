@@ -57,6 +57,10 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- XmlFileDocumentsProcessor uses fsspec to support other file systems in addition to the unix filesystem.
+- New XML processor uses a fast C based XML Schema validator.
+- configured the XML processor for BP and FEGA.
+- Configurable XML processor to validate XML schemas, and to inject ids given names.
 - (users) Endpoints and functionality for fetching a list of files or folders from an object storage (e.g. via S3 API)
 - Use of adobe/S3Mock docker image for integration testing purposes
 - FileProviderService for handling requests to file provider APIs such as S3
