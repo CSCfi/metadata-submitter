@@ -89,6 +89,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Removed
 
+- (users) Metadata objects drafts.
 - Endpoints relating to files metadata objects being stored and fetched from MongoDB collection that are now unnecessary
 - Use of MongoDB by the backend entirely
 - (users) User related endpoints (#895)
