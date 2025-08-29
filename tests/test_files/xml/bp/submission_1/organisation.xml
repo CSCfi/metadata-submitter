@@ -1,0 +1,14 @@
+<ORGANISATION_SET>
+    <ORGANISATION alias="1">
+        <NAME>test</NAME>
+        <PIC_CODE>1</PIC_CODE>
+        <DATAMANAGER_PERUN_GROUP>test</DATAMANAGER_PERUN_GROUP>
+        <DATASET_REF alias="1"/>
+        <ATTRIBUTES>
+            <STRING_ATTRIBUTE>
+                <TAG>test</TAG>
+                <VALUE>test</VALUE>
+            </STRING_ATTRIBUTE>
+        </ATTRIBUTES>
+    </ORGANISATION>
+</ORGANISATION_SET>

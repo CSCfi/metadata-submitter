@@ -1,0 +1,7 @@
+<POLICY_SET>
+    <POLICY alias="1">
+        <TITLE>test</TITLE>
+        <DAC_REF refname="1"/>
+        <POLICY_TEXT>test</POLICY_TEXT>
+    </POLICY>
+</POLICY_SET>

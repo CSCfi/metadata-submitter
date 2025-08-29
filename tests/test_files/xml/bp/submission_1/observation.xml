@@ -1,0 +1,35 @@
+<OBSERVATION_SET>
+    <OBSERVATION alias="1">
+        <ANNOTATION_REF alias="1"/>
+        <OBSERVER_REF alias="1"/>
+        <STATEMENT>
+            <STATEMENT_TYPE>Diagnosis</STATEMENT_TYPE>
+            <STATEMENT_STATUS>Summary</STATEMENT_STATUS>
+            <CODE_ATTRIBUTES>
+                <CODE_ATTRIBUTE>
+                    <TAG>test</TAG>
+                    <VALUE>
+                        <CODE>test</CODE>
+                        <SCHEME>test</SCHEME>
+                        <MEANING>test</MEANING>
+                        <SCHEME_VERSION>1.0</SCHEME_VERSION>
+                    </VALUE>
+                </CODE_ATTRIBUTE>
+            </CODE_ATTRIBUTES>
+            <CUSTOM_ATTRIBUTES>
+                <STRING_ATTRIBUTE>
+                    <TAG>test</TAG>
+                    <VALUE>test</VALUE>
+                </STRING_ATTRIBUTE>
+            </CUSTOM_ATTRIBUTES>
+            <FREETEXT>test</FREETEXT>
+            <ATTRIBUTES xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/>
+        </STATEMENT>
+        <ATTRIBUTES>
+            <STRING_ATTRIBUTE>
+                <TAG>test</TAG>
+                <VALUE>test</VALUE>
+            </STRING_ATTRIBUTE>
+        </ATTRIBUTES>
+    </OBSERVATION>
+</OBSERVATION_SET>

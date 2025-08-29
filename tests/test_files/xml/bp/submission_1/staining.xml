@@ -1,0 +1,16 @@
+<STAINING_SET>
+    <STAINING alias="1">
+        <PROCEDURE_INFORMATION>
+            <STRING_ATTRIBUTE>
+                <TAG>test</TAG>
+                <VALUE>test</VALUE>
+            </STRING_ATTRIBUTE>
+        </PROCEDURE_INFORMATION>
+        <ATTRIBUTES>
+            <STRING_ATTRIBUTE>
+                <TAG>test</TAG>
+                <VALUE>test</VALUE>
+            </STRING_ATTRIBUTE>
+        </ATTRIBUTES>
+    </STAINING>
+</STAINING_SET>

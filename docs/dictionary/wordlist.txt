@@ -29,6 +29,7 @@ cdisc
 certreqs
 chamorro
 cli
+cls
 covid
 cp
 cpg
@@ -71,6 +72,8 @@ fi
 fk
 flx
 followingly
+fs
+fsspec
 fula
 ganda
 gcs
@@ -239,6 +242,8 @@ wkt
 wolof
 wsiimage
 wxs
+xpath
+xpaths
 xsd
 yliopisto
 yliopiston
