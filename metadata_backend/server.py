@@ -166,12 +166,6 @@ async def init(
         web.put("/objects/{schema}/{accessionId}", _object.put_or_patch_object),
         web.patch("/objects/{schema}/{accessionId}", _object.put_or_patch_object),
         web.delete("/objects/{schema}/{accessionId}", _object.delete_object),
-        # draft objects operations
-        web.post("/drafts/{schema}", _object.post_object),
-        web.get("/drafts/{schema}/{accessionId}", _object.get_object),
-        web.put("/drafts/{schema}/{accessionId}", _object.put_or_patch_object),
-        web.patch("/drafts/{schema}/{accessionId}", _object.put_or_patch_object),
-        web.delete("/drafts/{schema}/{accessionId}", _object.delete_object),
         # submissions operations
         web.get("/submissions", _submission.get_submissions),
         web.post("/submissions", _submission.post_submission),

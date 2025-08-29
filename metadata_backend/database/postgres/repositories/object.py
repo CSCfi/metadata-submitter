@@ -83,16 +83,13 @@ class ObjectRepository:
 
         return entity
 
-    async def get_objects(
-        self, submission_id: str, schema: str | None = None, *, is_draft: bool | None = None
-    ) -> AsyncIterator[ObjectEntity]:
+    async def get_objects(self, submission_id: str, schema: str | None = None) -> AsyncIterator[ObjectEntity]:
         """
         Get metadata object entities associated with the given submission.
 
         Args:
             submission_id: the submission id.
             schema: filter by object schema.
-            is_draft: filter by is draft.
 
         Returns:
             An asynchronous iterator of metadata object entities.
@@ -102,8 +99,6 @@ class ObjectRepository:
         filters = [ObjectEntity.submission_id == submission_id]
         if schema is not None:
             filters.append(ObjectEntity.schema == schema)
-        if is_draft is not None:
-            filters.append(ObjectEntity.is_draft == is_draft)
 
         # Select objects.
 
@@ -114,16 +109,13 @@ class ObjectRepository:
             for row in result.scalars():
                 yield row
 
-    async def count_objects(
-        self, submission_id: str, schema: str | None = None, *, is_draft: bool | None = None
-    ) -> int:
+    async def count_objects(self, submission_id: str, schema: str | None = None) -> int:
         """
         Count metadata object entities associated with the given submission.
 
         Args:
             submission_id: the submission id.
             schema: filter by object type.
-            is_draft: filter by is draft.
 
         Returns:
             The number of matching metadata object entities.
@@ -133,8 +125,6 @@ class ObjectRepository:
         filters = [ObjectEntity.submission_id == submission_id]
         if schema is not None:
             filters.append(ObjectEntity.schema == schema)
-        if is_draft is not None:
-            filters.append(ObjectEntity.is_draft == is_draft)
 
         stmt = select(func.count()).select_from(ObjectEntity).where(and_(*filters))  # pylint: disable=not-callable
 
@@ -210,13 +200,3 @@ class ObjectRepository:
             deleted = await self.delete_object_by_name(submission_id, object_id)
 
         return deleted
-
-    async def delete_drafts(self, submission_id: str) -> None:
-        """Delete draft metadata objects.
-
-        Args:
-            submission_id: the submission id
-        """
-        async with transaction(self._session_factory):
-            async for obj in self.get_objects(submission_id, is_draft=True):
-                await self.delete_object_by_id(obj.object_id)

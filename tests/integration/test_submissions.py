@@ -4,18 +4,16 @@ import json
 import logging
 
 from metadata_backend.api.models import Object
-from tests.integration.conf import drafts_url, objects_url, publish_url
+from tests.integration.conf import objects_url, publish_url
 from tests.integration.helpers import (
     add_submission_linked_folder,
     delete_object,
     delete_submission,
-    get_draft,
     get_object,
     get_request_data,
     get_submission,
     patch_submission_doi,
     patch_submission_rems,
-    post_draft,
     post_object,
     post_object_data,
     publish_submission,
@@ -96,8 +94,8 @@ class TestSubmissionOperations:
                 == f"Submission with name '{submission_data["name"]}' already exists in project {project_id}"
             )
 
-        # Create draft from test XML file and patch the draft into the newly created submission
-        accession_id = await post_draft(client_logged_in, "sample", submission_id, "SRS001433.xml")
+        # Add XML object
+        accession_id = await post_object(client_logged_in, "sample", submission_id, "SRS001433.xml")
         async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
             LOG.debug("Checking that submission %s was patched", submission_id)
             res = await resp.json()
@@ -105,12 +103,6 @@ class TestSubmissionOperations:
             assert res["name"] == submission_data["name"], "expected submission name does not match"
             assert res["description"] == submission_data["description"], "submission description content mismatch"
             assert res["published"] is False, "submission is published, expected False"
-
-        # Get the draft from the collection within this client and post it to objects collection
-        draft_data = await get_draft(client_logged_in, "sample", accession_id)
-        new_accession_id = await post_object_data(client_logged_in, "sample", submission_id, draft_data)
-        assert new_accession_id != accession_id, "draft id does not match expected"
-        accession_id = new_accession_id
 
         async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
             LOG.debug("Checking that submission %s was patched", submission_id)
@@ -175,11 +167,8 @@ class TestSubmissionOperations:
             LOG.debug("Trying to replace submission rems")
             assert resp.status == 400, f"HTTP Status code error {resp.status} {ans}"
 
-        # Check new drafts or objects cannot be added under published submission
+        # Check that objects cannot be added under published submission
         run = await get_request_data("run", "ERR000076.json")
-        async with client_logged_in.post(f"{drafts_url}/run", params={"submission": submission_id}, data=run) as resp:
-            LOG.debug("Trying to add draft object to already published submission")
-            assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
         async with client_logged_in.post(f"{objects_url}/run", params={"submission": submission_id}, data=run) as resp:
             LOG.debug("Trying to add object to already published submission")
             assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
@@ -200,8 +189,8 @@ class TestSubmissionOperations:
             LOG.debug("Checking that submission %s was created", submission_id)
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
-        # Create draft from test XML file and patch the draft into the newly created submission
-        draft_id = await post_draft(client_logged_in, "sample", submission_id, "SRS001433.xml")
+        # Add XML object.
+        object_id = await post_object(client_logged_in, "sample", submission_id, "SRS001433.xml")
         async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
             LOG.debug("Checking that submission %s was patched", submission_id)
             res = await resp.json()
@@ -209,11 +198,6 @@ class TestSubmissionOperations:
             assert res["name"] == submission_data["name"], "expected submission name does not match"
             assert res["description"] == submission_data["description"], "submission description content mismatch"
             assert res["published"] is False, "submission is published, expected False"
-
-        # Get the draft from the collection within this client and post it to objects collection
-        draft = await get_draft(client_logged_in, "sample", draft_id)
-        new_accession_id = await post_object_data(client_logged_in, "sample", submission_id, draft)
-        assert new_accession_id != draft_id, "draft id does not match expected"
 
         async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
             LOG.debug("Checking that submission %s was patched", submission_id)

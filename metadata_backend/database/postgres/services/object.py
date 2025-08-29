@@ -48,9 +48,6 @@ class ObjectService:
         document["accessionId"] = entity.object_id
         return document
 
-    # TODO(improve): Extract the metadata object's title and description before storing the
-    # metadata object. Once implemented, store the extracted title and description as part of
-    # this call. Currently, title and description extraction is deferred until the publish step.
     async def add_object(
         self,
         submission_id: str,
@@ -62,7 +59,6 @@ class ObjectService:
         name: str | None = None,
         title: str | None = None,
         description: str | None = None,
-        is_draft: bool | None = None,
     ) -> str:
         """Add a new metadata object to the database.
 
@@ -74,9 +70,6 @@ class ObjectService:
         :param name: the metadata object name
         :param title: metadata object title
         :param description: metadata object description
-        :param is_draft: If True, return draft documents.
-                         If False, return finalized documents.
-                         If None, return all documents.
         :returns: the metadata object id
         """
 
@@ -93,8 +86,6 @@ class ObjectService:
 
         if object_id is not None:
             obj.object_id = object_id
-        if is_draft is not None:
-            obj.is_draft = is_draft
 
         return await self.repository.add_object(obj)
 
@@ -135,36 +126,30 @@ class ObjectService:
             if obj.submission_id != submission_id:
                 raise UnknownObjectException(object_id)
 
-    async def count_objects(
-        self, submission_id: str, schema: str | None = None, *, is_draft: bool | None = None
-    ) -> int:
+    async def count_objects(self, submission_id: str, schema: str | None = None) -> int:
         """
         Count metadata object entities associated with the given submission.
 
         Args:
             submission_id: the submission id.
             schema: filter by object type.
-            is_draft: filter by is draft.
 
         Returns:
             The number of matching metadata object entities.
         """
 
-        return await self.repository.count_objects(submission_id, schema, is_draft=is_draft)
+        return await self.repository.count_objects(submission_id, schema)
 
-    async def get_objects(self, submission_id: str, schema: str, *, is_draft: bool | None = None) -> list[Object]:
+    async def get_objects(self, submission_id: str, schema: str) -> list[Object]:
         """
         Retrieve metadata objects associated with the given submission.
 
         :param submission_id: The submission id.
         :param schema: The metadata object type.
-        :param is_draft: If True, return draft documents.
-                         If False, return finalized documents.
-                         If None, return all documents.
         :return: The metadata objects.
         """
         objects = []
-        async for obj in self.repository.get_objects(submission_id, schema, is_draft=is_draft):
+        async for obj in self.repository.get_objects(submission_id, schema):
             objects.append(Object(object_id=obj.object_id, submission_id=obj.submission_id, schema_type=obj.schema))
         return objects
 
@@ -181,21 +166,16 @@ class ObjectService:
 
         return self.convert_from_entity(obj)
 
-    async def get_documents(
-        self, submission_id: str, schema: str, *, is_draft: bool | None = None
-    ) -> AsyncIterator[dict[str, Any]]:
+    async def get_documents(self, submission_id: str, schema: str) -> AsyncIterator[dict[str, Any]]:
         """
         Retrieve metadata object JSON documents associated with the given submission.
 
         :param submission_id: The submission id.
         :param schema: The metadata object type.
-        :param is_draft: If True, return draft documents.
-                         If False, return finalized documents.
-                         If None, return all documents.
         :return: An asynchronous iterator of dictionaries representing the metadata object JSON documents.
         """
         async with transaction(self.repository._session_factory):
-            async for obj in self.repository.get_objects(submission_id, schema, is_draft=is_draft):
+            async for obj in self.repository.get_objects(submission_id, schema):
                 yield self.convert_from_entity(obj)
 
     async def get_xml_document(self, object_id: str) -> str:
@@ -211,20 +191,15 @@ class ObjectService:
 
         return obj.xml_document
 
-    async def get_xml_documents(
-        self, submission_id: str, schema: str, *, is_draft: bool | None = None
-    ) -> AsyncIterator[str]:
+    async def get_xml_documents(self, submission_id: str, schema: str) -> AsyncIterator[str]:
         """
         Retrieve metadata object XML documents associated with the given submission.
 
         :param submission_id: The submission id.
         :param schema: The metadata object type.
-        :param is_draft: If True, return draft documents.
-                         If False, return finalized documents.
-                         If None, return all documents.
         :return: An asynchronous iterator of dictionaries representing the metadata object XML documents.
         """
-        async for obj in self.repository.get_objects(submission_id, schema, is_draft=is_draft):
+        async for obj in self.repository.get_objects(submission_id, schema):
             yield obj.xml_document
 
     async def get_submission_id(self, object_id: str) -> str:
@@ -292,10 +267,3 @@ class ObjectService:
         """
         if not await self.repository.delete_object_by_id(object_id):
             raise UnknownObjectException(object_id)
-
-    async def delete_drafts(self, submission_id: str) -> None:
-        """Delete draft metadata objects.
-
-        :param submission_id: the submission id
-        """
-        await self.repository.delete_drafts(submission_id)

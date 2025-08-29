@@ -5,7 +5,7 @@ import json
 from aiohttp import web
 from aiohttp.web import Request, Response
 
-from ...conf.conf import API_PREFIX, get_workflow
+from ...conf.conf import get_workflow
 from ...helpers.logger import LOG
 from ..exceptions import UserException
 from ..resources import get_json_object_service, get_object_service, get_submission_service, get_xml_object_service
@@ -132,7 +132,6 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         """Save metadata object to database.
 
         For JSON request body we validate it is consistent with the associated JSON schema.
-        For CSV upload we allow it for a select number objects, currently: ``sample``.
 
         :param req: POST request
         :returns: JSON response containing accessionId for submitted object
@@ -141,7 +140,6 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         submission_id = req.query.get("submission", "")
         if not submission_id:
             raise web.HTTPBadRequest(reason="Missing required query parameter: submission")
-        validate = not req.path.startswith(f"{API_PREFIX}/drafts")
 
         json_object_service = get_json_object_service(req)
         xml_object_service = get_xml_object_service(req)
@@ -155,14 +153,14 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         content_type, data = await ObjectAPIHandler._process_save_metadata_object_request(req)
 
         if content_type == "application/xml":
-            documents = await xml_object_service.add_metadata_objects(submission_id, schema_type, data, validate)
+            documents = await xml_object_service.add_metadata_objects(submission_id, schema_type, data)
         else:
             try:
                 json_data = json.loads(data)
             except Exception as ex:
                 raise web.HTTPBadRequest(reason=f"Invalid JSON payload: str{ex}")
 
-            documents = await json_object_service.add_metadata_objects(submission_id, schema_type, json_data, validate)
+            documents = await json_object_service.add_metadata_objects(submission_id, schema_type, json_data)
 
         return web.Response(
             body=to_json(documents),
@@ -211,7 +209,6 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         """
         schema_type = req.match_info["schema"]
         accession_id = req.match_info["accessionId"]
-        validate = not req.path.startswith(f"{API_PREFIX}/drafts")
 
         object_service = get_object_service(req)
         json_object_service = get_json_object_service(req)
@@ -227,16 +224,14 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         content_type, data = await ObjectAPIHandler._process_save_metadata_object_request(req)
 
         if content_type == "application/xml":
-            await xml_object_service.update_metadata_object(submission_id, accession_id, schema_type, data, validate)
+            await xml_object_service.update_metadata_object(submission_id, accession_id, schema_type, data)
         else:
             try:
                 json_data = json.loads(data)
             except Exception as ex:
                 raise web.HTTPBadRequest(reason=f"Invalid JSON payload: str{ex}")
 
-            await json_object_service.update_metadata_object(
-                submission_id, accession_id, schema_type, json_data, validate
-            )
+            await json_object_service.update_metadata_object(submission_id, accession_id, schema_type, json_data)
 
         LOG.info("PUT object with accession ID: %r with schema type %r was successful.", accession_id, schema_type)
         return web.Response(body=to_json({"accessionId": accession_id}), status=200, content_type="application/json")

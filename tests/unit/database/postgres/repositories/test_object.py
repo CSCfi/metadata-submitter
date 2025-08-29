@@ -62,7 +62,6 @@ async def test_add_get_delete_object(
             assert entity.title == title
             assert entity.document == document
             assert entity.xml_document == xml_document
-            assert not entity.is_draft
 
         # Select the object by ID
         assert_object(await object_repository.get_object_by_id(object_id))
@@ -145,7 +144,6 @@ async def test_get_and_count_objects(
             submission_id=first_submission_id,
             document=first_document,
             xml_document="<test/>",
-            is_draft=True,
         )
 
         second_object_name = f"name_{uuid.uuid4()}"
@@ -157,7 +155,6 @@ async def test_get_and_count_objects(
             schema=second_schema,
             submission_id=first_submission_id,
             document=second_document,
-            is_draft=False,
         )
 
         third_object_name = f"name_{uuid.uuid4()}"
@@ -169,7 +166,6 @@ async def test_get_and_count_objects(
             schema=third_schema,
             submission_id=second_submission_id,
             document=third_document,
-            is_draft=False,
         )
 
         first_object_id = await object_repository.add_object(first_object)
@@ -192,7 +188,7 @@ async def test_get_and_count_objects(
         assert await object_repository.count_objects(submission_id=second_submission_id) == 1
         assert results[0].object_id == third_object_id
 
-        # Test submission id and object type.
+        # Test submission id and schema type.
 
         results = [
             obj async for obj in object_repository.get_objects(submission_id=first_submission_id, schema=first_schema)
@@ -206,18 +202,4 @@ async def test_get_and_count_objects(
         ]
         assert len(results) == 1
         assert await object_repository.count_objects(first_submission_id, second_schema) == 1
-        assert results[0].object_id == second_object_id
-
-        # Test submission id and draft.
-
-        results = [obj async for obj in object_repository.get_objects(submission_id=first_submission_id, is_draft=True)]
-        assert len(results) == 1
-        assert await object_repository.count_objects(first_submission_id, is_draft=True) == 1
-        assert results[0].object_id == first_object_id
-
-        results = [
-            obj async for obj in object_repository.get_objects(submission_id=first_submission_id, is_draft=False)
-        ]
-        assert len(results) == 1
-        assert await object_repository.count_objects(first_submission_id, is_draft=False) == 1
         assert results[0].object_id == second_object_id

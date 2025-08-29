@@ -30,7 +30,6 @@ class JsonObjectService:
         submission_id: str,
         schema: str,
         data: dict[str, Any] | list[dict[str, Any]],
-        validate: bool,
     ) -> list[dict[str, Any]]:
         """Add one or more metadata JSON objects to database.
 
@@ -39,7 +38,6 @@ class JsonObjectService:
         :param submission_id: The submission id.
         :param schema: The metadata schema.
         :param data: The metadata document.
-        :param validate: If true then validate the document.
         :returns: Formatted metadata JSON documents.
         """
 
@@ -50,10 +48,9 @@ class JsonObjectService:
         else:
             raise SystemException("Invalid metadata object format.")
 
-        if validate:
-            # Validate documents
-            for document in documents:
-                JSONValidator(document, schema).validate()
+        # Validate documents
+        for document in documents:
+            JSONValidator(document, schema).validate()
 
         workflow = await self._submission_service.get_workflow(submission_id)
         workflow_config = get_workflow(workflow.value)
@@ -83,7 +80,6 @@ class JsonObjectService:
         accession_id: str,
         schema: str,
         data: dict[str, Any],
-        validate: bool,
     ) -> dict[str, Any]:
         """Update metadata JSON documents in database.
 
@@ -93,7 +89,6 @@ class JsonObjectService:
         :param accession_id: The accession id.
         :param schema: The metadata schema.
         :param data: The metadata document.
-        :param validate: If true then validate the document.
         :returns: Formatted metadata JSON documents.
         """
 
@@ -106,9 +101,8 @@ class JsonObjectService:
             # BP REMS JSON is not stored.
             await self._process_bp_rems_metadata_object(submission_id, data)
 
-        if validate:
-            # Validate document.
-            JSONValidator(data, schema).validate()
+        # Validate document.
+        JSONValidator(data, schema).validate()
 
         data["accessionId"] = accession_id
 
@@ -189,7 +183,6 @@ class XmlObjectService:
         submission_id: str,
         schema: str,
         data: str,
-        validate: bool,
     ) -> list[dict[str, Any]]:
         """Add one or more XML metadata documents to database. Creates an equivalent XML document.
 
@@ -198,7 +191,6 @@ class XmlObjectService:
         :param submission_id: The submission id.
         :param schema: The metadata schema.
         :param data: The metadata document.
-        :param validate: If true then validate the document.
         :returns: Formatted metadata JSON documents.
         """
 
@@ -210,9 +202,7 @@ class XmlObjectService:
 
         added_documents = []
         for i, document in enumerate(documents):
-            added_document = (
-                await self._json_object_service.add_metadata_objects(submission_id, schema, document, validate)
-            )[0]
+            added_document = (await self._json_object_service.add_metadata_objects(submission_id, schema, document))[0]
 
             if schema == BP_REMS_SCHEMA_TYPE:
                 # BP REMS XML is not stored.
@@ -235,7 +225,6 @@ class XmlObjectService:
         accession_id: str,
         schema: str,
         data: str,
-        validate: bool,
     ) -> dict[str, Any]:
         """Update XML metadata document in database. Updates an equivalent JSON document.
 
@@ -245,7 +234,6 @@ class XmlObjectService:
         :param accession_id: The accession id.
         :param schema: The metadata schema.
         :param data: The metadata documents.
-        :param validate: If true then validate the document.
         :returns: Formatted metadata JSON documents.
         """
 
@@ -273,7 +261,7 @@ class XmlObjectService:
 
         # Update JSON document.
         added_document = await self._json_object_service.update_metadata_object(
-            submission_id, accession_id, schema, document, validate
+            submission_id, accession_id, schema, document
         )
 
         # Update XML document.
