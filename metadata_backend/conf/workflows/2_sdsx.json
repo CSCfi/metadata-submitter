@@ -1,24 +1,7 @@
 {
     "name": "SDSX",
     "description": "",
-    "steps": [
-        {
-            "title": "Files",
-            "required": true,
-            "schemas": []
-        },
-        {
-            "title": "Datacite",
-            "required": true,
-            "schemas": [
-                {
-                    "name": "datacite",
-                    "required": false,
-                    "allowMultipleObjects": false
-                }
-            ]
-        }
-    ],
+    "steps": [],
     "publish": {
         "datacite": {
             "service": "csc",

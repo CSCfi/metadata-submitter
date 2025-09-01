@@ -24,11 +24,6 @@
             ]
         },
         {
-            "title": "Files",
-            "required": true,
-            "schemas": []
-        },
-        {
             "title": "Describe",
             "required": true,
             "schemas": [
@@ -62,17 +57,6 @@
                     "requires": [
                         "policy"
                     ]
-                }
-            ]
-        },
-        {
-            "title": "Datacite",
-            "required": false,
-            "schemas": [
-                {
-                    "name": "datacite",
-                    "required": false,
-                    "allowMultipleObjects": false
                 }
             ]
         }
