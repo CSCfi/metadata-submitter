@@ -22,11 +22,6 @@
             ]
         },
         {
-            "title": "Files",
-            "required": true,
-            "schemas": []
-        },
-        {
             "title": "Describe",
             "required": true,
             "schemas": [
@@ -64,17 +59,6 @@
                     "name": "bpannotation",
                     "required": false,
                     "allowMultipleObjects": true
-                }
-            ]
-        },
-        {
-            "title": "Datacite",
-            "required": false,
-            "schemas": [
-                {
-                    "name": "datacite",
-                    "required": false,
-                    "allowMultipleObjects": false
                 }
             ]
         }
