@@ -11,10 +11,10 @@ from ....api.exceptions import NotFoundUserException, UserException
 from ....api.models import Rems, SubmissionWorkflow
 from ..models import SubmissionEntity
 from ..repositories.submission import (
+    SUB_FIELD_BUCKET,
     SUB_FIELD_CREATED_DATE,
     SUB_FIELD_DESCRIPTION,
     SUB_FIELD_DOI,
-    SUB_FIELD_FOLDER,
     SUB_FIELD_MODIFIED_DATE,
     SUB_FIELD_NAME,
     SUB_FIELD_PROJECT_ID,
@@ -164,7 +164,7 @@ class SubmissionService:
             # Create new submission.
             name = _copy_str_field(new_document, SUB_FIELD_NAME, mandatory=True)
             project_id = _copy_str_field(new_document, SUB_FIELD_PROJECT_ID, mandatory=True)
-            folder = _copy_str_field(new_document, SUB_FIELD_FOLDER)
+            bucket = _copy_str_field(new_document, SUB_FIELD_BUCKET)
             workflow_str = _copy_str_field(new_document, SUB_FIELD_WORKFLOW, mandatory=True)
             try:
                 workflow = SubmissionWorkflow(workflow_str)
@@ -178,7 +178,7 @@ class SubmissionService:
             return SubmissionEntity(
                 name=name,
                 project_id=project_id,
-                folder=folder,
+                bucket=bucket,
                 workflow=workflow,
                 title=title,
                 description=description,
@@ -190,16 +190,16 @@ class SubmissionService:
         # The submission document can be updated by the user, however, some fields
         # can't be removed or changed. If the following fields are absent from the
         # updated document then the existing value in the current document is preserved:
-        # name, title, description, doiInfo, rems, projectId, workflow, linkedFolder. Furthermore,
+        # name, title, description, doiInfo, rems, projectId, workflow, bucket. Furthermore,
         # if the following fields are changed then the existing value in the current document
-        # is preserved: projectId, workflow, linkedFolder.
+        # is preserved: projectId, workflow, bucket.
 
         old_document = old_submission.document
         _preserve_mutable_field(new_document, old_document, SUB_FIELD_NAME)
         _preserve_mutable_field(new_document, old_document, SUB_FIELD_TITLE)
         _preserve_mutable_field(new_document, old_document, SUB_FIELD_DESCRIPTION)
         _preserve_immutable_field(new_document, old_document, SUB_FIELD_PROJECT_ID)
-        _preserve_immutable_field(new_document, old_document, SUB_FIELD_FOLDER)
+        _preserve_immutable_field(new_document, old_document, SUB_FIELD_BUCKET)
         _preserve_immutable_field(new_document, old_document, SUB_FIELD_WORKFLOW)
         _preserve_mutable_field(new_document, old_document, SUB_FIELD_DOI)
         _preserve_mutable_field(new_document, old_document, SUB_FIELD_REMS)
@@ -208,7 +208,7 @@ class SubmissionService:
         old_submission.name = _copy_str_field(new_document, SUB_FIELD_NAME)
         old_submission.title = _copy_str_field(new_document, SUB_FIELD_TITLE)
         old_submission.description = _copy_str_field(new_document, SUB_FIELD_DESCRIPTION)
-        old_submission.folder = _copy_str_field(new_document, SUB_FIELD_FOLDER)
+        old_submission.bucket = _copy_str_field(new_document, SUB_FIELD_BUCKET)
         old_submission.document = new_document
         return old_submission
 
@@ -233,8 +233,8 @@ class SubmissionService:
         document["text_name"] = to_jsonable_python(" ".join(re.split("[\\W_]", entity.name)))
         document[SUB_FIELD_WORKFLOW] = to_jsonable_python(entity.workflow.value)
         document[SUB_FIELD_PUBLISHED] = to_jsonable_python(entity.is_published)
-        if entity.folder is not None:
-            document[SUB_FIELD_FOLDER] = to_jsonable_python(entity.folder)
+        if entity.bucket is not None:
+            document[SUB_FIELD_BUCKET] = to_jsonable_python(entity.bucket)
         if entity.created is not None:
             document[SUB_FIELD_CREATED_DATE] = to_jsonable_python(entity.created)
         if entity.modified is not None:
@@ -452,17 +452,17 @@ class SubmissionService:
             return Rems.model_validate(submission.document[SUB_FIELD_REMS])
         return None
 
-    async def get_folder(self, submission_id: str) -> str | None:
-        """Get the name of the folder for linked to the submission.
+    async def get_bucket(self, submission_id: str) -> str | None:
+        """Get the name of the bucket linked to the submission.
 
         :param submission_id: the submission id
-        :returns: The folder name
+        :returns: The bucket name
         """
         submission = await self.repository.get_submission_by_id(submission_id)
         if submission is None:
             raise UnknownSubmissionUserException(submission_id)
 
-        return submission.folder
+        return submission.bucket
 
     async def update_submission(self, submission_id: str, document: dict[str, Any]) -> None:
         """Update the submission document.
@@ -470,9 +470,9 @@ class SubmissionService:
         The submission document can be updated by the user, however, some fields
         can't be removed or changed. If the following fields are absent from the
         updated document then the existing value in the current document is preserved:
-        name, description, doiInfo, rems, projectId, workflow, linkedFolder. Furthermore,
+        name, description, doiInfo, rems, projectId, workflow, bucket. Furthermore,
         if the following fields are changed then the existing value in the current document
-        is preserved: projectId, workflow, linkedFolder.
+        is preserved: projectId, workflow, bucket.
 
         :param submission_id: the submission id
         :param document: the new submission document
@@ -510,17 +510,17 @@ class SubmissionService:
         if await self.repository.update_submission(submission_id, update_callback) is None:
             raise UnknownSubmissionUserException(submission_id)
 
-    async def update_folder(self, submission_id: str, folder: str) -> None:
-        """Update submission folder.
+    async def update_bucket(self, submission_id: str, bucket: str) -> None:
+        """Update submission bucket.
 
         :param submission_id: the submission id
-        :param folder: new folder
+        :param bucket: new bucket
         """
 
         def update_callback(submission: SubmissionEntity) -> None:
-            if submission.folder is not None:
-                raise SubmissionUserException(f"Submission '{submission_id}' already has a linked folder.")
-            submission.folder = folder
+            if submission.bucket is not None:
+                raise SubmissionUserException(f"Submission '{submission_id}' already has a linked bucket.")
+            submission.bucket = bucket
 
         if await self.repository.update_submission(submission_id, update_callback) is None:
             raise UnknownSubmissionUserException(submission_id)

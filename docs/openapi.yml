@@ -248,11 +248,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/404NotFound"
-  /v1/projects/{projectId}/folders:
+  /v1/projects/{projectId}/buckets:
     get:
       tags:
         - Query
-      summary: List all folders in a specific project
+      summary: List all buckets in a specific project
       parameters:
         - name: projectId
           in: path
@@ -287,11 +287,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
-  /v1/projects/{projectId}/folders/{folder}/files:
+  /v1/projects/{projectId}/buckets/{bucket}/files:
     get:
       tags:
         - Query
-      summary: List all files in a specific folder of a project
+      summary: List all files in a specific bucket of a project
       parameters:
         - name: projectId
           in: path
@@ -299,9 +299,9 @@ paths:
           schema:
             type: string
           required: true
-        - name: folder
+        - name: bucket
           in: path
-          description: Name of the folder.
+          description: Name of the bucket.
           schema:
             type: string
           required: true
@@ -311,8 +311,10 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                description: List of files in the folder
+                type: array
+                items:
+                  type: object
+                description: List of files in the bucket
         400:
           description: Bad Request
           content:
@@ -847,11 +849,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
-  /v1/submissions/{submissionId}/folder:
+  /v1/submissions/{submissionId}/bucket:
     patch:
       tags:
         - Submission
-      summary: Update linked folder name associated with a submission
+      summary: Update linked bucket name associated with a submission
       parameters:
         - name: submissionId
           in: path
@@ -864,12 +866,12 @@ paths:
           application/json:
             schema:
               type: object
-              description: JSON object containing a new linkedFolder.
+              description: JSON object containing a new bucket.
               properties:
-                linkedFolder:
+                bucket:
                   type: string
-                  description: Name of the linked folder.
-                  example: "folderName"
+                  description: Name of the linked bucket.
+                  example: "bucketName"
       responses:
         204:
           description: No Content
@@ -2584,7 +2586,7 @@ components:
         path:
           type: string
           title: File path
-          example: s3://folder/files/filename.c4gh
+          example: S3://bucket-name/files/filename.c4gh
         accessionId:
           type: string
           title: Accession id for file

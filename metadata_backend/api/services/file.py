@@ -28,20 +28,20 @@ class FileProviderService(ABC):
     class Files(RootModel[list[File]]):
         """Model for a list of file metadata."""
 
-    async def verify_user_file(self, folder: str, file: str) -> int | None:
+    async def verify_user_file(self, bucket: str, file: str) -> int | None:
         """
-        Verify that the file exists in the specified folder and return its size.
+        Verify that the file exists in the specified bucket and return its size.
 
         Args:
-            folder: The name of the folder.
-            file: The file path in the folder.
+            bucket: The name of the bucket.
+            file: The file path in the bucket.
 
         Returns:
             The file size in bytes if the file exists, otherwise None.
         """
-        size = await self._verify_user_file(folder, file)
+        size = await self._verify_user_file(bucket, file)
         if size is None:
-            reason = f"File '{file}' does not exist in '{folder}'."
+            reason = f"File '{file}' does not exist in '{bucket}'."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         if size == 0:
@@ -50,66 +50,66 @@ class FileProviderService(ABC):
             raise web.HTTPBadRequest(reason=reason)
         return size
 
-    async def list_folders(self) -> list[str]:
+    async def list_buckets(self) -> list[str]:
         """
-        List all available folders.
+        List all available buckets.
 
         Returns:
-            A list of folders found.
+            A list of buckets found.
         """
-        folders = await self._list_folders()
-        if not folders:
-            reason = "No folders found."
+        buckets = await self._list_buckets()
+        if not buckets:
+            reason = "No buckets found."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
-        return folders
+        return buckets
 
-    async def list_files_in_folder(self, folder: str) -> Files:
+    async def list_files_in_bucket(self, bucket: str) -> Files:
         """
-        List files in the specified folder.
+        List files in the specified bucket.
 
         Args:
-            folder: The name of the folder.
+            bucket: The name of the bucket.
 
         Returns:
             A list of files (objects) found.
         """
-        files = await self._list_files_in_folder(folder)
+        files = await self._list_files_in_bucket(bucket)
         if not files.root:
-            reason = f"No files found in '{folder}'."
+            reason = f"No files found in '{bucket}'."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
         return files
 
     @abstractmethod
-    async def _verify_user_file(self, folder: str, file: str) -> int | None:
+    async def _verify_user_file(self, bucket: str, file: str) -> int | None:
         """
-        Verify that the file exists in the specified folder and return its size.
+        Verify that the file exists in the specified bucket and return its size.
 
         Args:
-            folder: The name of the folder.
-            file: The file path in the folder.
+            bucket: The name of the bucket.
+            file: The file path in the bucket.
 
         Returns:
             The file size in bytes if the file exists, otherwise None.
         """
 
     @abstractmethod
-    async def _list_folders(self) -> list[str]:
+    async def _list_buckets(self) -> list[str]:
         """
-        List all available folders.
+        List all available buckets.
 
         Returns:
-            A list of folder names.
+            A list of bucket names.
         """
 
     @abstractmethod
-    async def _list_files_in_folder(self, folder: str) -> Files:
+    async def _list_files_in_bucket(self, bucket: str) -> Files:
         """
-        List all files in the specified folder.
+        List all files in the specified bucket.
 
         Args:
-            folder: The name of the folder.
+            bucket: The name of the bucket.
 
         Returns:
             A list of files (objects) found.
@@ -140,12 +140,12 @@ class S3FileProviderService(FileProviderService):
             region_name=region,
         )
 
-    async def _verify_user_file(self, folder: str, file: str) -> int | None:
+    async def _verify_user_file(self, bucket: str, file: str) -> int | None:
         """
         Verify that the file exists in the specified S3 bucket and return its size.
 
         Args:
-            folder: The name of the S3 bucket.
+            bucket: The name of the S3 bucket.
             file: The file path in the bucket.
 
         Returns:
@@ -154,7 +154,7 @@ class S3FileProviderService(FileProviderService):
         async with self._session.client("s3", endpoint_url=self.endpoint, use_ssl=False) as s3:
             try:
                 resp = await s3.head_object(
-                    Bucket=folder,
+                    Bucket=bucket,
                     Key=file,
                 )
                 return int(resp["ContentLength"])
@@ -163,7 +163,7 @@ class S3FileProviderService(FileProviderService):
                     return None
                 raise e
 
-    async def _list_folders(self) -> list[str]:
+    async def _list_buckets(self) -> list[str]:
         """
         List all available S3 buckets.
 
@@ -180,21 +180,21 @@ class S3FileProviderService(FileProviderService):
                     return []
                 raise e
 
-    async def _list_files_in_folder(self, folder: str) -> FileProviderService.Files:
+    async def _list_files_in_bucket(self, bucket: str) -> FileProviderService.Files:
         """
         List all files in the specified S3 bucket.
 
         Args:
-            folder: The name of the S3 bucket.
+            bucket: The name of the S3 bucket.
 
         Returns:
             A list of files found.
         """
         async with self._session.client("s3", endpoint_url=self.endpoint, use_ssl=False) as s3:
             try:
-                response = await s3.list_objects_v2(Bucket=folder)
+                response = await s3.list_objects_v2(Bucket=bucket)
                 contents = response.get("Contents", [])
-                files = [self.File(path=f"S3://{folder}/{obj['Key']}", bytes=int(obj["Size"])) for obj in contents]
+                files = [self.File(path=f"S3://{bucket}/{obj['Key']}", bytes=int(obj["Size"])) for obj in contents]
                 return self.Files(files)
             except botocore.exceptions.ClientError as e:
                 if e.response["ResponseMetadata"]["HTTPStatusCode"] == 404:

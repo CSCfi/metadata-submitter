@@ -87,7 +87,7 @@ async def test_verify_user_file_exists(s3_endpoint):
 
 
 @pytest.mark.asyncio
-async def test_list_folders_and_files(s3_endpoint):
+async def test_list_buckets_and_files(s3_endpoint):
     service = S3FileProviderService()
     session = service._session
 
@@ -96,25 +96,25 @@ async def test_list_folders_and_files(s3_endpoint):
     content = b"test"
 
     async with session.client("s3", endpoint_url=s3_endpoint) as s3:
-        # No folders yet
+        # No buckets yet
         with pytest.raises(web.HTTPBadRequest):
-            await service.list_folders()
+            await service.list_buckets()
 
         # Create bucket
         await s3.create_bucket(Bucket=bucket)
 
-        # Now list_folders should return one folder
-        folders = await service.list_folders()
-        assert folders[0] == bucket
+        # Now list_buckets should return one bucket
+        buckets = await service.list_buckets()
+        assert buckets[0] == bucket
 
-        # No files in folder yet
+        # No files in bucket yet
         with pytest.raises(web.HTTPBadRequest):
-            await service.list_files_in_folder(bucket)
+            await service.list_files_in_bucket(bucket)
 
         # Add a file
         await s3.put_object(Bucket=bucket, Key=file, Body=content)
 
-        # Now list_files_in_folder should return the file
-        files = await service.list_files_in_folder(bucket)
+        # Now list_files_in_bucket should return the file
+        files = await service.list_files_in_bucket(bucket)
         assert files.root[0].path == f"S3://{bucket}/{file}"
         assert files.root[0].bytes == len(content)

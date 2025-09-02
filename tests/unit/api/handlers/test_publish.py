@@ -97,7 +97,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             self.patch_verify_user_project,
             self.patch_verify_authorization,
             # File provider
-            patch(f"{file_provider_cls}.list_files_in_folder", new_callable=AsyncMock) as mock_file_provider,
+            patch(f"{file_provider_cls}.list_files_in_bucket", new_callable=AsyncMock) as mock_file_provider,
             # Datacite (csc)
             patch(f"{pid_cls}.create_draft_doi_pid", new_callable=AsyncMock) as mock_pid_create_doi,
             patch(f"{pid_cls}.publish", new_callable=AsyncMock) as mock_pid_publish,

@@ -128,7 +128,7 @@ class SubmissionEntity(Base):
     submission_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     name: Mapped[str] = mapped_column(String, nullable=False)  # User provided name for the submission
     project_id: Mapped[str] = mapped_column(String, nullable=False)
-    folder: Mapped[str] = mapped_column(String(64), nullable=True)  # Could this be nullable?
+    bucket: Mapped[str] = mapped_column(String(64), nullable=True)  # Could this be nullable?
     workflow: Mapped[SubmissionWorkflow] = mapped_column(string_enum(SubmissionWorkflow), nullable=False)
 
     title: Mapped[str] = mapped_column(String, nullable=True)

@@ -15,7 +15,7 @@ def create_submission_entity(
     *,
     name: str | None = None,
     project_id: str | None = None,
-    folder: str | None = None,
+    bucket: str | None = None,
     workflow: SubmissionWorkflow | None = SubmissionWorkflow.SDS,
     title: str | None = None,
     description: str | None = None,
@@ -29,8 +29,8 @@ def create_submission_entity(
         name = f"name_{uuid.uuid4()}"
     if project_id is None:
         project_id = f"project_{uuid.uuid4()}"
-    if folder is None:
-        folder = f"folder_{uuid.uuid4()}"
+    if bucket is None:
+        bucket = f"bucket_{uuid.uuid4()}"
 
     if title is None:
         title = f"title_{uuid.uuid4()}"
@@ -51,7 +51,7 @@ def create_submission_entity(
     return SubmissionEntity(
         name=name,
         project_id=project_id,
-        folder=folder,
+        bucket=bucket,
         workflow=workflow,
         is_published=is_published,
         is_ingested=is_ingested,
