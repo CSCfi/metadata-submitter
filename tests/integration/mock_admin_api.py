@@ -8,7 +8,6 @@ import re
 import time
 from datetime import datetime
 from os import getenv
-from typing import List
 
 from aiohttp import ClientSession, client_exceptions, web
 from authlib.jose import jwt
@@ -69,7 +68,7 @@ class DatasetModel(BaseModel):
     """Model for validating request json when creating dataset."""
 
     dataset_id: str = Field(min_length=2, pattern=r"^\S+$")
-    accession_ids: List[str]
+    accession_ids: list[str]
 
     @field_validator("accession_ids")
     def check_names(cls, accession_ids):

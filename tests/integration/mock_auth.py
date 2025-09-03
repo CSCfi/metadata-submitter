@@ -4,7 +4,6 @@ import logging
 import urllib
 from os import getenv
 from time import time
-from typing import Tuple
 
 from aiohttp import web
 from authlib.jose import RSAKey, jwt
@@ -16,7 +15,7 @@ LOG = logging.getLogger("server")
 LOG.setLevel(getenv("LOG_LEVEL", "INFO"))
 
 
-def generate_token() -> Tuple:
+def generate_token() -> tuple:
     """Generate RSA Key pair to be used to sign token and the JWT Token itself."""
     key = RSAKey.generate_key(is_private=True)
     # we set no `exp` and other claims as they are optional in a real scenario these should be set
