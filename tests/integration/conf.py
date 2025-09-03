@@ -11,28 +11,6 @@ DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 logging.basicConfig(format=FORMAT, datefmt=DATE_FORMAT)
 
 
-def str_to_bool(val: str) -> bool:
-    """Convert string to tool, because distutils.util is a deprecated module in python 3.12 ."""
-    val = val.lower()
-    if val in {
-        "y",
-        "yes",
-        "yep",
-        "yup",
-        "t",
-        "true",
-        "on",
-        "enable",
-        "enabled",
-        "1",
-    }:
-        return True
-    if val in {"n", "no", "f", "false", "off", "disable", "disabled", "0"}:
-        return False
-
-    raise ValueError(f"Invalid truth value {val}")
-
-
 testfiles_root = Path(__file__).parent.parent / "test_files"
 test_fega_xml_files = [
     ("study", "SRP000539.xml"),

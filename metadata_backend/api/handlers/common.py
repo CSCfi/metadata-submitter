@@ -1,8 +1,6 @@
 """Functions shared between handlers."""
 
-import csv
 import json
-import string
 from datetime import datetime
 from typing import Any
 
@@ -13,7 +11,6 @@ from xmlschema import XMLResource
 
 from ...conf.conf import schema_types
 from ...helpers.logger import LOG
-from ...helpers.parser import CSVToJSONParser
 
 
 def to_json(data: dict[str, Any] | list[dict[str, Any]] | list[str]) -> str:
@@ -30,8 +27,8 @@ def to_json(data: dict[str, Any] | list[dict[str, Any]] | list[str]) -> str:
 
 async def multipart_content(
     req: Request, extract_one: bool = False, expect_xml: bool = False
-) -> tuple[list[tuple[Any, str, str]], str]:
-    """Get content(s) and schema type(s) of a multipart request (from either csv or xml format).
+) -> list[tuple[Any, str, str]]:
+    """Get content(s) and schema type(s) of a multipart request.
 
     Note: for multiple files support check: https://docs.aiohttp.org/en/stable/multipart.html#hacking-multipart
 
@@ -42,7 +39,6 @@ async def multipart_content(
     :returns: content and schema type for each uploaded file and file type of the upload
     """
     xml_files: list[tuple[str, str, str]] = []
-    csv_files: list[tuple[dict[str, Any], str, str]] = []
     try:
         reader = await req.multipart()
     except AssertionError as exc:
@@ -63,31 +59,31 @@ async def multipart_content(
         if not part:
             break
         filename = part.filename if part.filename else ""
-        if extract_one and (xml_files or csv_files):
+        if extract_one and xml_files:
             reason = "Only one file can be sent to this endpoint at a time."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
         # we check the multipart request header to see file type
         # or we expect XML file directly
-        # additionally we check that the content is XML or CSV to be accurate
         if expect_xml or part.headers[hdrs.CONTENT_TYPE] == "text/xml":
             content, schema_type = await _extract_upload(part)
             _check_xml(content)
             xml_files.append((content, schema_type, filename))
-        elif part.headers[hdrs.CONTENT_TYPE] == "text/csv":
-            content, schema_type = await _extract_upload(part)
-            _check_csv(content)
-            csv_content = CSVToJSONParser().parse(schema_type, content)
-            for row in csv_content:
-                csv_files.append((row, schema_type, filename))
         else:
-            reason = "Submitted file was not proper XML nor CSV."
+            reason = "Submitted file was not proper XML."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
     # Return extracted content
-    return _get_content_with_type(xml_files, csv_files)
+    if xml_files:
+        # Files are sorted to specific order by their schema priorities
+        # (e.g. submission should be processed before study).
+        return sorted(xml_files, key=lambda x: schema_types[x[1]]["priority"])
+
+    reason = "Request data seems empty."
+    LOG.error(reason)
+    raise web.HTTPBadRequest(reason=reason)
 
 
 async def _extract_upload(part: BodyPartReader) -> tuple[str, str]:
@@ -113,27 +109,6 @@ async def _extract_upload(part: BodyPartReader) -> tuple[str, str]:
     return xml_content, schema_type
 
 
-def _check_csv(content: str) -> bool:
-    """Check if content is in CSV format.
-
-    :param content: Text of file content
-    :raises: HTTPBadRequest if both CSV validation fails
-    :returns: true if file is CSV
-    """
-    try:
-        # Check for non-printable characters which should not be in CSV files
-        if not all(c in string.printable or c.isprintable() for c in content):
-            raise csv.Error
-        csv.Sniffer().sniff(content)
-        # No errors indicates validity of CSV
-        LOG.info("Valid CSV content was extracted.")
-        return True
-    except csv.Error:
-        reason = "Submitted file was not proper formatted as CSV."
-        LOG.exception(reason)
-        return False
-
-
 def _check_xml(content: str) -> bool:
     """Check if content is in XML format.
 
@@ -149,29 +124,3 @@ def _check_xml(content: str) -> bool:
         reason = f"Submitted file was not proper XML, err: {err}"
         LOG.exception(reason)
         return False
-
-
-def _get_content_with_type(
-    xml_files: list[tuple[str, str, str]], csv_files: list[tuple[dict[str, Any], str, str]]
-) -> tuple[list[tuple[Any, str, str]], str]:
-    """Return either list of XML or CSV files with the file type info.
-
-    :param xml_files: List of xml contents with schema types
-    :param csv_files: List of csv contents with schema types
-    :raises: HTTPBadRequest if both lists are populated or empty
-    :returns: List of xml or csv files with string stating which file type
-    """
-    if xml_files and csv_files:
-        reason = "Request contained both xml and csv file types. Only one file type can be processed in this endpoint."
-        LOG.error(reason)
-        raise web.HTTPBadRequest(reason=reason)
-    if xml_files:
-        # Files are sorted to specific order by their schema priorities
-        # (e.g. submission should be processed before study).
-        return sorted(xml_files, key=lambda x: schema_types[x[1]]["priority"]), "xml"
-    if csv_files:
-        return csv_files, "csv"
-
-    reason = "Request data seems empty."
-    LOG.error(reason)
-    raise web.HTTPBadRequest(reason=reason)

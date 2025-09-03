@@ -174,30 +174,13 @@ class HandlersTestCase(AioHTTPTestCase):
         for schema, filename in files:
             schema_path = "study" if schema == "fake" else schema
             path_to_file = self.TESTFILES_ROOT / schema_path / filename
-            # Differentiate between xml and csv
-            if filename[-3:] == "xml":
-                data.add_field(
-                    schema.upper(),
-                    open(path_to_file.as_posix(), "r"),
-                    filename=path_to_file.name,
-                    content_type="text/xml",
-                )
-            elif filename[-3:] == "csv":
-                # files = {schema.upper(): open(path_to_file.as_posix(), "r")}
-                data.add_field(
-                    schema.upper(),
-                    open(path_to_file.as_posix(), "r"),
-                    filename=path_to_file.name,
-                    content_type="text/csv",
-                )
+            data.add_field(
+                schema.upper(),
+                open(path_to_file.as_posix(), "r"),
+                filename=path_to_file.name,
+                content_type="text/xml",
+            )
         return data
-
-    def get_file_data(self, schema, filename):
-        """Read file contents as plain text."""
-        path_to_file = self.TESTFILES_ROOT / schema / filename
-        with open(path_to_file.as_posix(), mode="r") as csv_file:
-            _reader = csv_file.read()
-        return _reader
 
     async def fake_get_submission_field_str(self, submission_id, field):
         """Fake get submission field."""

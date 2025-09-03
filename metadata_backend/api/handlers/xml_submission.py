@@ -21,7 +21,7 @@ class XMLSubmissionAPIHandler(ObjectAPIHandler):
         :param req: Multipart POST request with submission.xml and files
         :returns: JSON response indicating if validation was successful or not
         """
-        files, _ = await multipart_content(req, extract_one=True, expect_xml=True)
+        files = await multipart_content(req, extract_one=True, expect_xml=True)
         xml_content, schema_type, _ = files[0]
         validator = await self._perform_validation(schema_type, xml_content)
         return web.Response(

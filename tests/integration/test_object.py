@@ -142,7 +142,7 @@ class TestObjects:
 
 
 class TestObjectsJsonXml:
-    """Test creating objects with XML and CSV files."""
+    """Test creating objects with XML files."""
 
     async def test_put_objects(self, client_logged_in, submission_factory):
         """Test PUT reqs.
