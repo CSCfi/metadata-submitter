@@ -11,7 +11,7 @@ from metadata_backend.services.metax_mapper import MetaDataMapper, SubjectNotFou
 class MetaDataMapperTestCase(IsolatedAsyncioTestCase):
     """MetaDataMapper Test Cases."""
 
-    TESTFILES_ROOT = Path(__file__).parent.parent / "test_files"
+    TESTFILES_ROOT = Path(__file__).parent.parent.parent / "test_files"
 
     def setUp(self):
         """Configure variables for tests."""
