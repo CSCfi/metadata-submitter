@@ -9,7 +9,7 @@ from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
 from aiohttp.web import Request, Response
 from idpyoidc.client.rp_handler import RPHandler
 from idpyoidc.exception import OidcMsgError
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from yarl import URL
 
 from ..conf.conf import aai_config
@@ -24,10 +24,7 @@ class Authorization(BaseModel):
     user_id: str
     user_name: str
 
-    class Config:
-        """Authorization token configuration."""
-
-        extra = "ignore"  # Ignore any extra fields in the payload
+    model_config = ConfigDict(extra="ignore")  # Ignore any extra fields in the payload
 
 
 def get_authorized_user_id(req: Request) -> str:

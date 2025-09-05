@@ -4,8 +4,7 @@ import enum
 from datetime import datetime
 from typing import Any, ClassVar, Optional
 
-from pydantic import BaseModel, Field
-from pydantic.config import ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class SubmissionWorkflow(enum.Enum):

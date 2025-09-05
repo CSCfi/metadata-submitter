@@ -27,9 +27,9 @@ from tests.integration.helpers import (
     delete_file_from_folder,
     delete_folder,
     delete_submission,
-    post_submission,
-    list_folders,
     list_files_in_folder,
+    list_folders,
+    post_submission,
 )
 
 LOG = logging.getLogger(__name__)

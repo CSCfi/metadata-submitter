@@ -11,10 +11,10 @@ from tests.unit.database.postgres.helpers import create_object_entity, create_su
 
 
 async def test_add_object(
-        session_factory: SessionFactory,
-        submission_repository: SubmissionRepository,
-        object_repository: ObjectRepository,
-        object_service: ObjectService,
+    session_factory: SessionFactory,
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    object_service: ObjectService,
 ):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
@@ -29,17 +29,17 @@ async def test_add_object(
         description = "test"
 
         assert (
-                await object_service.add_object(
-                    submission.submission_id,
-                    schema,
-                    document=document,
-                    xml_document=xml_document,
-                    object_id=object_id,
-                    name=name,
-                    title=title,
-                    description=description,
-                )
-                == object_id
+            await object_service.add_object(
+                submission.submission_id,
+                schema,
+                document=document,
+                xml_document=xml_document,
+                object_id=object_id,
+                name=name,
+                title=title,
+                description=description,
+            )
+            == object_id
         )
 
         assert await object_service.is_object(object_id)
@@ -54,10 +54,10 @@ async def test_add_object(
 
 
 async def test_is_object(
-        session_factory: SessionFactory,
-        submission_repository: SubmissionRepository,
-        object_repository: ObjectRepository,
-        object_service: ObjectService,
+    session_factory: SessionFactory,
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    object_service: ObjectService,
 ):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
@@ -72,10 +72,10 @@ async def test_is_object(
 
 
 async def test_get_document(
-        session_factory: SessionFactory,
-        submission_repository: SubmissionRepository,
-        object_repository: ObjectRepository,
-        object_service: ObjectService,
+    session_factory: SessionFactory,
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    object_service: ObjectService,
 ):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
@@ -89,10 +89,10 @@ async def test_get_document(
 
 
 async def test_get_objects(
-        session_factory: SessionFactory,
-        submission_repository: SubmissionRepository,
-        object_repository: ObjectRepository,
-        object_service: ObjectService,
+    session_factory: SessionFactory,
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    object_service: ObjectService,
 ):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
@@ -116,10 +116,10 @@ async def test_get_objects(
 
 
 async def test_get_documents(
-        session_factory: SessionFactory,
-        submission_repository: SubmissionRepository,
-        object_repository: ObjectRepository,
-        object_service: ObjectService,
+    session_factory: SessionFactory,
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    object_service: ObjectService,
 ):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
@@ -133,12 +133,9 @@ async def test_get_documents(
             await object_repository.add_object(obj)
 
         # Get documents.
-        documents = [
-            document async for document in object_service.get_documents(submission.submission_id, schema)
-        ]
+        documents = [document async for document in object_service.get_documents(submission.submission_id, schema)]
         xml_documents = [
-            document
-            async for document in object_service.get_xml_documents(submission.submission_id, schema)
+            document async for document in object_service.get_xml_documents(submission.submission_id, schema)
         ]
 
         # Assert documents.
@@ -147,10 +144,10 @@ async def test_get_documents(
 
 
 async def test_count_objects(
-        session_factory: SessionFactory,
-        submission_repository: SubmissionRepository,
-        object_repository: ObjectRepository,
-        object_service: ObjectService,
+    session_factory: SessionFactory,
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    object_service: ObjectService,
 ):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
@@ -167,10 +164,10 @@ async def test_count_objects(
 
 
 async def test_update_object(
-        session_factory: SessionFactory,
-        submission_repository: SubmissionRepository,
-        object_repository: ObjectRepository,
-        object_service: ObjectService,
+    session_factory: SessionFactory,
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    object_service: ObjectService,
 ):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
@@ -190,10 +187,10 @@ async def test_update_object(
 
 
 async def test_delete_object(
-        session_factory: SessionFactory,
-        submission_repository: SubmissionRepository,
-        object_repository: ObjectRepository,
-        object_service: ObjectService,
+    session_factory: SessionFactory,
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    object_service: ObjectService,
 ):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()

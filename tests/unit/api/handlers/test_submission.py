@@ -496,7 +496,6 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         with self.patch_verify_user_project, self.patch_verify_authorization, self.patch_verify_rems_workflow_licence:
             response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/rems", json=data)
             self.assertEqual(response.status, 400)
-            error = response.text()
             self.assertIn("Field required", await response.text())
 
         # Change rems with invalid types fails.

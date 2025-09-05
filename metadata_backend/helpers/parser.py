@@ -575,7 +575,7 @@ class XMLToJSONParser:
                 root.set("accession", accessionId)
                 break
             elem = root.find(elem_name)
-            if elem:
+            if elem is not None:
                 LOG.debug("New accession attribute set at %s", elem)
                 elem.set("accession", accessionId)
                 break
