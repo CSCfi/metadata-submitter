@@ -43,6 +43,17 @@ class FilesAPIHandlerTestCase(HandlersTestCase):
             self.patch_verify_authorization,
             self.patch_verify_user_project,
             patch(
+                "metadata_backend.api.services.file.S3AllasFileProviderService._verify_bucket_policy",
+                return_value=False,
+            ),
+        ):
+            response = await self.client.get(f"{API_PREFIX}/projects/{project_id}/buckets/{bucket_name}/files")
+            self.assertEqual(response.status, 400)
+
+        with (
+            self.patch_verify_authorization,
+            self.patch_verify_user_project,
+            patch(
                 "metadata_backend.api.services.file.FileProviderService.list_files_in_bucket",
                 return_value=FileProviderService.Files([file1, file2]),
             ),
@@ -54,3 +65,48 @@ class FilesAPIHandlerTestCase(HandlersTestCase):
             assert len(files) == 2
             assert files[1]["path"] == "S3://bucket1/file2.txt"
             assert files[1]["bytes"] == 101
+
+    async def test_grant_access_to_bucket(self) -> None:
+        """Test granting access to a bucket."""
+
+        project_id = "PRJ123"
+        bucket_name = "bucket1"
+
+        with (
+            self.patch_verify_authorization,
+            self.patch_verify_user_project,
+            patch(
+                "metadata_backend.api.services.file.FileProviderService.update_bucket_policy",
+                return_value=None,
+            ),
+        ):
+            response = await self.client.put(f"{API_PREFIX}/projects/{project_id}/buckets/{bucket_name}")
+            self.assertEqual(response.status, 200)
+
+    async def test_check_bucket_access(self) -> None:
+        """Test checking access to a bucket."""
+
+        project_id = "PRJ123"
+        bucket_name = "bucket1"
+
+        with (
+            self.patch_verify_authorization,
+            self.patch_verify_user_project,
+            patch(
+                "metadata_backend.api.services.file.FileProviderService.verify_bucket_policy",
+                return_value=True,
+            ),
+        ):
+            response = await self.client.head(f"{API_PREFIX}/projects/{project_id}/buckets/{bucket_name}")
+            self.assertEqual(response.status, 200)
+
+        with (
+            self.patch_verify_authorization,
+            self.patch_verify_user_project,
+            patch(
+                "metadata_backend.api.services.file.FileProviderService.verify_bucket_policy",
+                return_value=False,
+            ),
+        ):
+            response = await self.client.head(f"{API_PREFIX}/projects/{project_id}/buckets/{bucket_name}")
+            self.assertEqual(response.status, 400)

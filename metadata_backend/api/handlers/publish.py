@@ -12,6 +12,7 @@ from ...conf.conf import doi_config, get_workflow
 from ...database.postgres.repositories.submission import (
     SUB_FIELD_DESCRIPTION,
     SUB_FIELD_DOI,
+    SUB_FIELD_PROJECT_ID,
     SUB_FIELD_REMS,
     SUB_FIELD_TITLE,
 )
@@ -579,11 +580,14 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
             if (await object_service.count_objects(submission_id, schema)) == 0:
                 raise UserException(f"Submission '{submission_id}' does not contain any '{schema}' objects.")
 
+        submission = await submission_service.get_submission_by_id(submission_id)
+        project_id = submission.get(SUB_FIELD_PROJECT_ID)
+
         if not no_files:
             # Add all files in linked bucket to the submission.
             bucket = await submission_service.get_bucket(submission_id)
             if workflow == SubmissionWorkflow.SDS:
-                files = await file_provider_service.list_files_in_bucket(bucket)
+                files = await file_provider_service.list_files_in_bucket(bucket, project_id)
                 for file in files.root:
                     # Check that we have not added the file already.
                     # For now, accept that file bytes might have changed and some files
@@ -602,7 +606,6 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
             if await file_service.count_files(submission_id) == 0:
                 raise UserException(f"Submission '{submission_id}' does not have any data files.")
 
-        submission = await submission_service.get_submission_by_id(submission_id)
         doi_info = submission.get(SUB_FIELD_DOI)
         rems_info = submission.get(SUB_FIELD_REMS)
 

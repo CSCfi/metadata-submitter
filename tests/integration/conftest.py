@@ -17,6 +17,7 @@ from tests.integration.conf import (
     base_url,
     metax_url,
     mock_auth_url,
+    mock_s3_url,
     other_test_user,
     other_test_user_family,
     other_test_user_given,
@@ -24,12 +25,9 @@ from tests.integration.conf import (
 from tests.integration.helpers import (
     add_bucket,
     add_file_to_bucket,
-    delete_bucket,
-    delete_file_from_bucket,
     delete_submission,
-    list_buckets,
-    list_files_in_bucket,
     post_submission,
+    set_bucket_policy,
 )
 
 LOG = logging.getLogger(__name__)
@@ -150,54 +148,25 @@ async def fixture_clear_cache(client):
 
 @pytest.fixture
 async def s3_manager():
-    """Fixture to track and cleanup mock S3 buckets/files before and after each test."""
-    # Ensure mock S3 instance is empty before test
-    buckets_to_delete = await list_buckets()
-    for bucket_name in buckets_to_delete:
-        try:
-            files_in_bucket = await list_files_in_bucket(bucket_name)
-            for file_name in files_in_bucket:
-                try:
-                    await delete_file_from_bucket(bucket_name, file_name)
-                except Exception:
-                    pass
-            await delete_bucket(bucket_name)
-        except Exception:
-            pass
+    """Fixture to provide S3 management helpers for tests."""
 
-    buckets = set()
-    files = []
+    # Reset mock S3 before test
+    async with aiohttp.ClientSession() as session:
+        await session.post(f"{mock_s3_url}/moto-api/reset")
 
     class S3Manager:
         async def add_bucket(self, bucket_name):
             await add_bucket(bucket_name)
-            buckets.add(bucket_name)
 
         async def add_file_to_bucket(self, bucket_name, file_name):
             await add_file_to_bucket(bucket_name, file_name)
-            files.append((bucket_name, file_name))
-            buckets.add(bucket_name)
 
-        async def delete_file_from_bucket(self, bucket_name, file_name):
-            await delete_file_from_bucket(bucket_name, file_name)
-            if (bucket_name, file_name) in files:
-                files.remove((bucket_name, file_name))
-
-        async def delete_bucket(self, bucket_name):
-            await delete_bucket(bucket_name)
-            buckets.discard(bucket_name)
+        async def set_bucket_policy(self, bucket_name, project_id):
+            await set_bucket_policy(bucket_name, project_id)
 
     manager = S3Manager()
     yield manager
 
-    # Teardown: remove files and then buckets
-    for bucket_name, file_name in files:
-        try:
-            await delete_file_from_bucket(bucket_name, file_name)
-        except Exception:
-            pass
-    for bucket_name in buckets:
-        try:
-            await delete_bucket(bucket_name)
-        except Exception:
-            pass
+    # Reset mock S3 after test
+    async with aiohttp.ClientSession() as session:
+        await session.post(f"{mock_s3_url}/moto-api/reset")

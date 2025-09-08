@@ -515,3 +515,35 @@ async def list_files_in_bucket(bucket_name):
     ) as s3:
         objects = await s3.list_objects_v2(Bucket=bucket_name)
         return [obj["Key"] for obj in objects.get("Contents", [])]
+
+
+async def set_bucket_policy(bucket_name, project_id):
+    """Set the bucket policy for a specific bucket."""
+    session = aioboto3.Session()
+    async with session.client(
+        "s3",
+        endpoint_url=mock_s3_url,
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
+        region_name=mock_s3_region,
+        use_ssl=False,
+    ) as s3:
+        await s3.put_bucket_policy(
+            Bucket=bucket_name,
+            Policy=json.dumps(
+                {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Sid": "GrantSDSubmitReadAccess",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "AWS": f"arn:aws:iam::${project_id}:root",
+                            },
+                            "Action": ["s3:GetObject", "s3:ListBucket", "s3:GetBucketPolicy"],
+                            "Resource": f"arn:aws:s3:::{bucket_name}/*",
+                        },
+                    ],
+                },
+            ),
+        )
