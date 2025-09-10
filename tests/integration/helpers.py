@@ -158,6 +158,7 @@ async def delete_object(sess, schema, accession_id):
         LOG.debug("Deleting object %s from %s", accession_id, schema)
         assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
+
 async def put_object(sess, schema, accession_id, update_filename):
     """Put one JSON or XML metadata object within session.
 

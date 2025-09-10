@@ -14,7 +14,7 @@ from lxml.etree import _LogEntry  # noqa
 from lxml.etree import QName
 from lxml.etree import _Element as Element  # noqa
 from lxml.etree import _ElementTree as ElementTree
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 XML_SCHEMA_DIR = Path(__file__).parent.parent.parent / "helpers" / "schemas"
 XML_ROOT_PATTERN = re.compile(r"^/[A-Za-z_][\w.-]*$")
@@ -119,10 +119,7 @@ class XmlIdentifierPaths(BaseModel):
 class XmlReferenceIdentifierPaths(BaseModel):
     """Xml metadata object reference name and id XPaths."""
 
-    class Config:
-        """Pydantic configuration."""
-
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     schema_type: str  # The schema type having the reference.
     ref_schema_type: str  # The schema type being referenced.
@@ -167,10 +164,7 @@ class XmlObjectIdentifier(BaseModel):
 class XmlObjectConfig(BaseModel):
     """Xml metadata object schema and identifier configuration."""
 
-    class Config:
-        """Pydantic configuration."""
-
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     # Directory containing XML Schema files. If specified, XML documents will be validated
     # against the corresponding schema. The schema type should match the XML schema file

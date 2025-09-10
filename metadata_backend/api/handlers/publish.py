@@ -2,7 +2,7 @@
 
 import os
 from datetime import date
-from typing import Any, Callable, Iterator, Tuple
+from typing import Any, Callable, Iterator
 
 from aiohttp import web
 from aiohttp.web import Request, Response
@@ -691,7 +691,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         # Update Metax with DOI information and file bytes.
 
-        def _get_related_object_registration(schema_: str) -> Tuple[Registration | None, Registration | None]:
+        def _get_related_object_registration(schema_: str) -> tuple[Registration | None, Registration | None]:
             # Assumes that only a single study and dataset registration is allowed.
             for registration_ in object_registrations:
                 if schema_ != registration_.schema_type:

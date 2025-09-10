@@ -196,7 +196,7 @@ async def test_is_and_check_not_published(
         await submission_service.check_not_published(submission.submission_id)
 
         submission.is_published = True
-        session.flush()
+        await session.flush()
         assert await submission_service.is_published(submission.submission_id)
         with pytest.raises(PublishedSubmissionUserException):
             await submission_service.check_not_published(submission.submission_id)

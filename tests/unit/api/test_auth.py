@@ -13,7 +13,7 @@ from metadata_backend.api.services.auth import (
 )
 from metadata_backend.server import init
 
-from .mockups import Mock_Request
+from ..mockups import Mock_Request
 
 
 class AccessHandlerFailTestCase(AioHTTPTestCase):

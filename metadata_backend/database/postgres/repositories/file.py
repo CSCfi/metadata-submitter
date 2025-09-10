@@ -86,7 +86,10 @@ class FileRepository:
             filters = [FileEntity.ingest_status == ingest_status for ingest_status in ingest_statuses]
 
         # Select objects.
-        stmt = select(FileEntity).where(FileEntity.submission_id == submission_id, or_(*filters))
+        if filters:
+            stmt = select(FileEntity).where(FileEntity.submission_id == submission_id, or_(*filters))
+        else:
+            stmt = select(FileEntity).where(FileEntity.submission_id == submission_id)
 
         async with transaction(self._session_factory) as session:
             result = await session.execute(stmt)
@@ -109,9 +112,12 @@ class FileRepository:
         if ingest_statuses is not None:
             filters = [FileEntity.ingest_status == ingest_status for ingest_status in ingest_statuses]
 
-        stmt = select(func.count()).where(  # pylint: disable=not-callable
-            FileEntity.submission_id == submission_id, or_(*filters)
-        )
+        if filters:
+            stmt = select(func.count()).where(  # pylint: disable=not-callable
+                FileEntity.submission_id == submission_id, or_(*filters)
+            )
+        else:
+            stmt = select(func.count()).where(FileEntity.submission_id == submission_id)  # pylint: disable=not-callable
 
         async with transaction(self._session_factory) as session:
             result = await session.execute(stmt)

@@ -2,10 +2,9 @@
 
 import enum
 from datetime import datetime
-from typing import Any, ClassVar, List, Optional
+from typing import Any, ClassVar, Optional
 
-from pydantic import BaseModel, Field
-from pydantic.config import ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class SubmissionWorkflow(enum.Enum):
@@ -105,7 +104,7 @@ class Rems(JsonModel):
 
     workflow_id: int = Field(..., alias="workflowId")
     organization_id: str = Field(..., alias="organizationId")
-    licenses: List[int]
+    licenses: list[int]
 
 
 # Doi information stored in submission.json.
@@ -139,8 +138,8 @@ class Contributor(JsonModel):
 
     given_name: str = Field(..., alias="givenName")
     family_name: str = Field(..., alias="familyName")
-    affiliation: List[AffiliationIdentifier]
-    name_identifiers: Optional[List[NameIdentifier]] = Field(None, alias="nameIdentifiers")
+    affiliation: list[AffiliationIdentifier]
+    name_identifiers: Optional[list[NameIdentifier]] = Field(None, alias="nameIdentifiers")
 
 
 class Subject(JsonModel):
@@ -194,7 +193,7 @@ class GeoLocation(JsonModel):
     geo_location_place: Optional[str] = Field(None, alias="geoLocationPlace")
     geo_location_point: Optional[GeoLocationPoint] = Field(None, alias="geoLocationPoint")
     geo_location_box: Optional[GeoLocationBox] = Field(None, alias="geoLocationBox")
-    geo_location_polygon: Optional[List[GeoLocationPolygonItem]] = Field(None, alias="geoLocationPolygon")
+    geo_location_polygon: Optional[list[GeoLocationPolygonItem]] = Field(None, alias="geoLocationPolygon")
 
 
 class RelatedIdentifier(JsonModel):
@@ -230,19 +229,19 @@ class FundingReference(JsonModel):
 class DoiInfo(JsonModel):
     """DOI information."""
 
-    creators: List[Creator]
-    contributors: Optional[List[Contributor]] = Field(None)
-    subjects: List[Subject] = Field(None)
+    creators: list[Creator]
+    contributors: Optional[list[Contributor]] = Field(None)
+    subjects: list[Subject] = Field(None)
     keywords: str
-    dates: Optional[List[DoiDate]] = Field(None)
-    descriptions: Optional[List[DoiDescription]] = Field(None)
-    geo_locations: Optional[List[GeoLocation]] = Field(None, alias="geoLocations")
+    dates: Optional[list[DoiDate]] = Field(None)
+    descriptions: Optional[list[DoiDescription]] = Field(None)
+    geo_locations: Optional[list[GeoLocation]] = Field(None, alias="geoLocations")
     language: Optional[str] = None
-    related_identifiers: Optional[List[RelatedIdentifier]] = Field(None, alias="relatedIdentifiers")
-    alternate_identifiers: Optional[List[AlternateIdentifier]] = Field(None, alias="alternateIdentifiers")
-    sizes: Optional[List[str]] = None
-    formats: Optional[List[str]] = None
-    funding_references: Optional[List[FundingReference]] = Field(None, alias="fundingReferences")
+    related_identifiers: Optional[list[RelatedIdentifier]] = Field(None, alias="relatedIdentifiers")
+    alternate_identifiers: Optional[list[AlternateIdentifier]] = Field(None, alias="alternateIdentifiers")
+    sizes: Optional[list[str]] = None
+    formats: Optional[list[str]] = None
+    funding_references: Optional[list[FundingReference]] = Field(None, alias="fundingReferences")
 
 
 # Submission

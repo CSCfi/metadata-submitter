@@ -3,7 +3,7 @@
 from enum import Enum
 from typing import Any, cast
 
-from aiohttp.web import Application, Request
+from aiohttp.web import AppKey, Application, Request
 
 from ..database.postgres.services.file import FileService
 from ..database.postgres.services.object import ObjectService
@@ -29,6 +29,21 @@ class ResourceType(Enum):
     FILE_PROVIDER_SERVICE = "file_provider_service"
 
 
+# Map ResourceType to AppKey instances according to:
+# https://docs.aiohttp.org/en/stable/web_advanced.html#application-s-config
+APP_KEYS: dict[ResourceType, AppKey[Any]] = {
+    ResourceType.PROJECT_SERVICE: AppKey("project_service"),
+    ResourceType.ACCESS_SERVICE: AppKey("access_service"),
+    ResourceType.SUBMISSION_SERVICE: AppKey("submission_service"),
+    ResourceType.OBJECT_SERVICE: AppKey("object_service"),
+    ResourceType.FILE_SERVICE: AppKey("file_service"),
+    ResourceType.REGISTRATION_SERVICE: AppKey("registration_service"),
+    ResourceType.JSON_OBJECT_SERVICE: AppKey("json_object_service"),
+    ResourceType.XML_OBJECT_SERVICE: AppKey("xml_object_service"),
+    ResourceType.FILE_PROVIDER_SERVICE: AppKey("file_provider_service"),
+}
+
+
 def set_resource(app: Application, resource_type: ResourceType, resource: Any) -> None:  # noqa: ANN401
     """
     Attach the resource to the application.
@@ -38,7 +53,7 @@ def set_resource(app: Application, resource_type: ResourceType, resource: Any) -
         resource_type: the resource type.
         resource: the resource.
     """
-    app[resource_type.value] = resource
+    app[APP_KEYS[resource_type]] = resource
 
 
 def get_access_service(req: Request) -> AccessService:
@@ -51,7 +66,7 @@ def get_access_service(req: Request) -> AccessService:
     Returns:
         AccessService: The AccessService attached to the application.
     """
-    return cast(AccessService, req.app[ResourceType.ACCESS_SERVICE.value])
+    return cast(AccessService, req.app[APP_KEYS[ResourceType.ACCESS_SERVICE]])
 
 
 def get_project_service(req: Request) -> ProjectService:
@@ -64,7 +79,7 @@ def get_project_service(req: Request) -> ProjectService:
     Returns:
         ProjectService: The ProjectService attached to the application.
     """
-    return cast(ProjectService, req.app[ResourceType.PROJECT_SERVICE.value])
+    return cast(ProjectService, req.app[APP_KEYS[ResourceType.PROJECT_SERVICE]])
 
 
 def get_submission_service(req: Request) -> SubmissionService:
@@ -77,7 +92,7 @@ def get_submission_service(req: Request) -> SubmissionService:
     Returns:
         SubmissionService: The Postgres SubmissionService attached to the application.
     """
-    return cast(SubmissionService, req.app[ResourceType.SUBMISSION_SERVICE.value])
+    return cast(SubmissionService, req.app[APP_KEYS[ResourceType.SUBMISSION_SERVICE]])
 
 
 def get_object_service(req: Request) -> ObjectService:
@@ -90,7 +105,7 @@ def get_object_service(req: Request) -> ObjectService:
     Returns:
         ObjectService: The Postgres ObjectService attached to the application.
     """
-    return cast(ObjectService, req.app[ResourceType.OBJECT_SERVICE.value])
+    return cast(ObjectService, req.app[APP_KEYS[ResourceType.OBJECT_SERVICE]])
 
 
 def get_file_service(req: Request) -> FileService:
@@ -103,7 +118,7 @@ def get_file_service(req: Request) -> FileService:
     Returns:
         FileService: The Postgres FileService attached to the application.
     """
-    return cast(FileService, req.app[ResourceType.FILE_SERVICE.value])
+    return cast(FileService, req.app[APP_KEYS[ResourceType.FILE_SERVICE]])
 
 
 def get_registration_service(req: Request) -> RegistrationService:
@@ -116,7 +131,7 @@ def get_registration_service(req: Request) -> RegistrationService:
     Returns:
         RegistrationService: The Postgres RegistrationService attached to the application.
     """
-    return cast(RegistrationService, req.app[ResourceType.REGISTRATION_SERVICE.value])
+    return cast(RegistrationService, req.app[APP_KEYS[ResourceType.REGISTRATION_SERVICE]])
 
 
 def get_json_object_service(req: Request) -> JsonObjectService:
@@ -129,7 +144,7 @@ def get_json_object_service(req: Request) -> JsonObjectService:
     Returns:
         ObjectService: The JsonObjectService attached to the application.
     """
-    return cast(JsonObjectService, req.app[ResourceType.JSON_OBJECT_SERVICE.value])
+    return cast(JsonObjectService, req.app[APP_KEYS[ResourceType.JSON_OBJECT_SERVICE]])
 
 
 def get_xml_object_service(req: Request) -> XmlObjectService:
@@ -142,7 +157,7 @@ def get_xml_object_service(req: Request) -> XmlObjectService:
     Returns:
         XmlObjectService: The XmlObjectService attached to the application.
     """
-    return cast(XmlObjectService, req.app[ResourceType.XML_OBJECT_SERVICE.value])
+    return cast(XmlObjectService, req.app[APP_KEYS[ResourceType.XML_OBJECT_SERVICE]])
 
 
 def get_file_provider_service(req: Request) -> FileProviderService:
@@ -155,4 +170,4 @@ def get_file_provider_service(req: Request) -> FileProviderService:
     Returns:
         FileProviderService: The FileProviderService attached to the application.
     """
-    return cast(FileProviderService, req.app[ResourceType.FILE_PROVIDER_SERVICE.value])
+    return cast(FileProviderService, req.app[APP_KEYS[ResourceType.FILE_PROVIDER_SERVICE]])

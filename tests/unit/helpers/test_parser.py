@@ -6,21 +6,20 @@ from unittest.mock import patch
 
 from aiohttp import web
 
-from metadata_backend.helpers.parser import CSVToJSONParser, XMLToJSONParser
+from metadata_backend.helpers.parser import XMLToJSONParser
 
 
 class ParserTestCase(unittest.TestCase):
     """Parser Test Cases."""
 
-    TESTFILES_ROOT = Path(__file__).parent.parent / "test_files"
+    TESTFILES_ROOT = Path(__file__).parent.parent.parent / "test_files"
 
     def setUp(self):
         """Configure variables for tests."""
         self.xml_parser = XMLToJSONParser()
-        self.csv_parser = CSVToJSONParser()
 
     def load_file_to_text(self, submission, filename):
-        """Load XML or CSV as a string from given file."""
+        """Load XML as a string from given file."""
         path_to_xml_file = self.TESTFILES_ROOT / submission / filename
         return path_to_xml_file.read_text()
 
@@ -294,23 +293,3 @@ class ParserTestCase(unittest.TestCase):
         study_xml = self.load_file_to_text("study", "SRP000539_invalid.xml")
         with self.assertRaises(web.HTTPBadRequest):
             self.xml_parser.parse("study", study_xml)
-
-    def test_csv_sample_is_parsed(self):
-        """Test that a CSV sample is parsed and validated."""
-        sample_csv = self.load_file_to_text("sample", "EGAformat.csv")
-        result = self.csv_parser.parse("sample", sample_csv)
-        self.assertEqual(len(result), 3)
-        self.assertEqual("test sample", result[0]["title"])
-        self.assertEqual({"taxonId": 9606}, result[0]["sampleName"])
-
-    def test_csv_parse_with_wrong_schema(self):
-        """Test 400 is raised with wrong schema type."""
-        with self.assertRaises(web.HTTPBadRequest):
-            self.csv_parser.parse("wrong", "id,title\n,\n")
-
-    def test_empty_csv_raises_error(self):
-        """Test 400 is raised with an empty or an incomplete CSV input."""
-        with self.assertRaises(web.HTTPBadRequest):
-            self.csv_parser.parse("sample", "")
-        with self.assertRaises(web.HTTPBadRequest):
-            self.csv_parser.parse("sample", "id,title,description\n")

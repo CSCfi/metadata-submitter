@@ -1,9 +1,7 @@
-"""Tool to parse XML and CSV files to JSON."""
+"""Tool to parse XML files to JSON."""
 
-import csv
 import os
 import re
-from io import StringIO
 from typing import Any, Optional, Type
 from xml.etree.ElementTree import Element  # nosec B405
 
@@ -577,7 +575,7 @@ class XMLToJSONParser:
                 root.set("accession", accessionId)
                 break
             elem = root.find(elem_name)
-            if elem:
+            if elem is not None:
                 LOG.debug("New accession attribute set at %s", elem)
                 elem.set("accession", accessionId)
                 break
@@ -625,92 +623,3 @@ class XMLToJSONParser:
         # Return list without empty items
         accession_ids = [id for id in accession_ids if id]
         return accession_ids
-
-
-class CSVToJSONParser:
-    """Methods to parse and convert data from CSV files to JSON format."""
-
-    def parse(self, schema_type: str, content: str) -> list[dict[str, Any]]:
-        """Parse a CSV file, convert it to JSON and validate against JSON schema.
-
-        :param schema_type: Schema type of the file to be parsed
-        :param content: CSV content to be parsed
-        :returns: CSV parsed to JSON
-        :raises: HTTPBadRequest if error was raised during parsing or validation
-        """
-        csv_reader = csv.DictReader(StringIO(content), delimiter=",", quoting=csv.QUOTE_NONE)
-
-        _sample_list = {
-            "title",
-            "alias",
-            "description",
-            "subjectId",
-            "bioSampleId",
-            "caseOrControl",
-            "gender",
-            "organismPart",
-            "cellLine",
-            "region",
-            "phenotype",
-        }
-
-        if (
-            csv_reader.fieldnames
-            and schema_type == "sample"
-            and all(elem in _sample_list for elem in csv_reader.fieldnames)
-        ):
-            LOG.debug("sample CSV file has the correct header")
-        else:
-            reason = f"{schema_type} does not contain the correct header fields: {_sample_list}"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        rows = list(csv_reader)
-
-        if not rows:
-            reason = "CSV file appears to be incomplete. No rows of data were parsed."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-        _parsed = []
-        for row in rows:
-            LOG.debug("current row: %s", row)
-            _tmp: dict[str, Any] = row
-            # This is required to pass validation against current sample schema
-            if schema_type == "sample" and "sampleName" not in row:
-                # Without TaxonID provided we assume the sample relates to
-                # Homo Sapiens which has default TaxonID of 9606
-                _tmp["sampleName"] = {"taxonId": 9606}
-            # if gender exists we will format it accordingly
-            if not bool(_tmp["gender"]):
-                _tmp["sampleData"] = {"gender": "unknown"}
-            else:
-                _tmp["sampleData"] = {"gender": _tmp["gender"]}
-            _tmp.pop("gender")
-            JSONValidator(_tmp, schema_type.lower()).validate()
-            _parsed.append(_tmp)
-
-        LOG.info("CSV was successfully converted to %d JSON object(s).", len(_parsed))
-        return _parsed
-
-
-def str_to_bool(val: str) -> bool:
-    """Convert string to tool, because distutils.util is a deprecated module in python 3.12 ."""
-    val = val.lower()
-    if val in {
-        "y",
-        "yes",
-        "yep",
-        "yup",
-        "t",
-        "true",
-        "on",
-        "enable",
-        "enabled",
-        "1",
-    }:
-        return True
-    if val in {"n", "no", "f", "false", "off", "disable", "disabled", "0"}:
-        return False
-
-    raise ValueError(f"Invalid truth value {val}")
