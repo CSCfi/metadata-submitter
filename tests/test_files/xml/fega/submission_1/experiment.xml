@@ -1,6 +1,6 @@
 <EXPERIMENT_SET>
     <EXPERIMENT alias="1">
-        <TITLE>test</TITLE>
+        <TITLE>test_title</TITLE>
         <STUDY_REF refname="1"/>
         <DESIGN>
             <DESIGN_DESCRIPTION>test</DESIGN_DESCRIPTION>

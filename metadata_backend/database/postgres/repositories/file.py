@@ -4,6 +4,9 @@ from typing import AsyncIterator, Callable, Sequence
 
 from sqlalchemy import delete, func, or_, select
 
+from metadata_backend.api.models import SubmissionWorkflow
+from metadata_backend.api.services.accession import generate_file_accession
+
 from ..models import FileEntity, IngestStatus
 from ..repository import SessionFactory, transaction
 
@@ -20,17 +23,21 @@ class FileRepository:
         """
         self._session_factory = session_factory
 
-    async def add_file(self, entity: FileEntity) -> str:
+    async def add_file(self, entity: FileEntity, workflow: SubmissionWorkflow) -> str:
         """
         Add a new metadata file entity to the database.
 
         Args:
             entity: The file entity.
-
+            workflow: the submission workflow.
         Returns:
             The file id used as the primary key value.
         """
         async with transaction(self._session_factory) as session:
+            # Generate accession.
+            if entity.file_id is None:
+                entity.file_id = generate_file_accession(workflow)
+
             session.add(entity)
             await session.flush()
             return entity.file_id

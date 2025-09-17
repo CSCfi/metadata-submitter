@@ -3,6 +3,7 @@
 import re
 import uuid
 from datetime import UTC, datetime, timedelta
+from pydantic_core import to_jsonable_python
 from unittest.mock import AsyncMock, patch
 from zoneinfo import ZoneInfo
 
@@ -21,7 +22,8 @@ from tests.unit.database.postgres.helpers import create_submission_entity
 
 
 async def test_add_and_get_submission(
-    session_factory: SessionFactory, submission_repository: SubmissionRepository, submission_service: SubmissionService
+        session_factory: SessionFactory, submission_repository: SubmissionRepository,
+        submission_service: SubmissionService
 ):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         name = f"name_{uuid.uuid4()}"
@@ -82,27 +84,28 @@ async def test_add_and_get_submission(
         }
 
         assert await submission_service.get_submission_by_id(submission_id) == {
-            "name": name,
-            "text_name": " ".join(re.split("[\\W_]", name)),
-            "projectId": project_id,
-            "workflow": workflow.value,
-            "linkedFolder": folder,
-            "submissionId": submission_id,
-            "dateCreated": entity.created,
-            "lastModified": entity.modified,
-            "published": False,
-            "title": title,
-            "description": description,
+            "name": to_jsonable_python(name),
+            "text_name": to_jsonable_python(" ".join(re.split("[\\W_]", name))),
+            "projectId": to_jsonable_python(project_id),
+            "workflow": to_jsonable_python(workflow.value),
+            "linkedFolder": to_jsonable_python(folder),
+            "submissionId": to_jsonable_python(submission_id),
+            "dateCreated": to_jsonable_python(entity.created),
+            "lastModified": to_jsonable_python(entity.modified),
+            "published": to_jsonable_python(False),
+            "title": to_jsonable_python(title),
+            "description": to_jsonable_python(description),
             "rems": {
-                "organizationId": rems_organization_id,
-                "workflowId": rems_workflow_id,
-                "licenses": rems_licence_ids,
+                "organizationId": to_jsonable_python(rems_organization_id),
+                "workflowId": to_jsonable_python(rems_workflow_id),
+                "licenses": to_jsonable_python(rems_licence_ids),
             },
         }
 
 
 async def test_get_submissions(
-    session_factory: SessionFactory, submission_repository: SubmissionRepository, submission_service: SubmissionService
+        session_factory: SessionFactory, submission_repository: SubmissionRepository,
+        submission_service: SubmissionService
 ):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         project_id = f"project_{uuid.uuid4()}"
@@ -128,9 +131,9 @@ async def test_get_submissions(
         page_size = 10
 
         with patch.object(
-            submission_service.repository,
-            "get_submissions",
-            new_callable=lambda: AsyncMock(wraps=submission_service.repository.get_submissions),
+                submission_service.repository,
+                "get_submissions",
+                new_callable=lambda: AsyncMock(wraps=submission_service.repository.get_submissions),
         ) as spy:
             documents, cnt = await submission_service.get_submissions(
                 project_id,
@@ -174,20 +177,22 @@ async def test_get_submissions(
 
 
 async def test_is_and_check_submission(
-    session_factory: SessionFactory, submission_repository: SubmissionRepository, submission_service: SubmissionService
+        session_factory: SessionFactory, submission_repository: SubmissionRepository,
+        submission_service: SubmissionService
 ):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
-        assert not await submission_service.is_submission(submission.submission_id)
+        assert not await submission_service.is_submission_by_id(submission.submission_id)
         with pytest.raises(UnknownSubmissionUserException):
-            await submission_service.check_submission(submission.submission_id)
+            await submission_service.check_submission_by_id(submission.submission_id)
         await submission_repository.add_submission(submission)
-        assert await submission_service.is_submission(submission.submission_id)
-        assert await submission_service.check_submission(submission.submission_id) is None
+        assert await submission_service.is_submission_by_id(submission.submission_id)
+        assert await submission_service.check_submission_by_id(submission.submission_id) is None
 
 
 async def test_is_and_check_not_published(
-    session_factory: SessionFactory, submission_repository: SubmissionRepository, submission_service: SubmissionService
+        session_factory: SessionFactory, submission_repository: SubmissionRepository,
+        submission_service: SubmissionService
 ):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity(is_published=False)
@@ -203,7 +208,8 @@ async def test_is_and_check_not_published(
 
 
 async def test_get_project_id(
-    session_factory: SessionFactory, submission_repository: SubmissionRepository, submission_service: SubmissionService
+        session_factory: SessionFactory, submission_repository: SubmissionRepository,
+        submission_service: SubmissionService
 ):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
@@ -212,7 +218,8 @@ async def test_get_project_id(
 
 
 async def test_get_workflow(
-    session_factory: SessionFactory, submission_repository: SubmissionRepository, submission_service: SubmissionService
+        session_factory: SessionFactory, submission_repository: SubmissionRepository,
+        submission_service: SubmissionService
 ):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
@@ -221,7 +228,8 @@ async def test_get_workflow(
 
 
 async def test_get_folder(
-    session_factory: SessionFactory, submission_repository: SubmissionRepository, submission_service: SubmissionService
+        session_factory: SessionFactory, submission_repository: SubmissionRepository,
+        submission_service: SubmissionService
 ):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
@@ -230,7 +238,8 @@ async def test_get_folder(
 
 
 async def test_update_submission(
-    session_factory: SessionFactory, submission_repository: SubmissionRepository, submission_service: SubmissionService
+        session_factory: SessionFactory, submission_repository: SubmissionRepository,
+        submission_service: SubmissionService
 ):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
@@ -246,8 +255,8 @@ async def test_update_submission(
         description = f"description_{uuid.uuid4()}"
         await submission_service.update_description(submission.submission_id, description)
         assert (await submission_repository.get_submission_by_id(submission.submission_id)).document[
-            "description"
-        ] == description
+                   "description"
+               ] == description
 
         # folder
         folder = f"folder_{uuid.uuid4()}"
@@ -327,12 +336,13 @@ async def test_update_submission(
 
 
 async def test_delete_submission(
-    session_factory: SessionFactory, submission_repository: SubmissionRepository, submission_service: SubmissionService
+        session_factory: SessionFactory, submission_repository: SubmissionRepository,
+        submission_service: SubmissionService
 ):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
-        assert await submission_service.is_submission(submission.submission_id)
+        assert await submission_service.is_submission_by_id(submission.submission_id)
 
         await submission_service.delete_submission(submission.submission_id)
-        assert not await submission_service.is_submission(submission.submission_id)
+        assert not await submission_service.is_submission_by_id(submission.submission_id)

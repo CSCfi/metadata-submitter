@@ -13,6 +13,7 @@ import aiofiles
 import ujson
 from aiohttp import ClientSession
 
+from metadata_backend.api.models import Submission, SubmissionWorkflow
 from .conf import (
     admin_url,
     base_url,
@@ -24,7 +25,7 @@ from .conf import (
     publish_url,
     submissions_url,
     taxonomy_url,
-    testfiles_root,
+    testfiles_root, API_PREFIX,
 )
 
 LOG = logging.getLogger(__name__)
@@ -60,132 +61,40 @@ async def get_request_data(schema, filename) -> str:
         return await f.read()
 
 
-async def get_object(sess, schema, accession_id):
-    """Get one metadata object within session, returns object's data.
-
-    :param sess: HTTP session in which request call is made
-    :param schema: name of the schema (submission) used for testing
-    :param accession_id: object to fetch
-    :returns: data of an object
+async def submit_bp(sess, project_id: str) -> Submission:
     """
-    async with sess.get(f"{objects_url}/{schema}/{accession_id}") as resp:
-        LOG.debug("Getting object from %s with %s", schema, accession_id)
-        data = await resp.json()
-        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-        return data
+    Create a default BP submission and return the submission document.
 
-
-async def get_xml_object(sess, schema, accession_id):
-    """Get the XML content of one metadata object.
-
-    :param sess: HTTP session in which request call is made
-    :param schema: name of the schema (submission) used for testing
-    :param accession_id: object to fetch
-    :returns: data of an object
+    :return: The submission document.
     """
-    async with sess.get(f"{objects_url}/{schema}/{accession_id}?format=xml") as resp:
-        LOG.debug("Getting xml object from %s with %s", schema, accession_id)
-        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-        data = await resp.text()
-        return data
 
+    submission_dir = testfiles_root / "xml" / "bp" / "submission_1"
+    workflow = SubmissionWorkflow.BP.value
+    files = [
+        "dataset.xml",
+        "policy.xml",
+        "image.xml",
+        "annotation.xml",
+        "observation.xml",
+        "observer.xml",
+        "sample.xml",
+        "staining.xml",
+        "landing_page.xml",
+        "rems.xml",
+        "organisation.xml",
+    ]
 
-async def post_object(sess, schema, submission_id, filename) -> str | None:
-    """Post one XML or JSON metadata object within session, returns accessionId.
+    # Read XML files.
+    data = {}
+    for file in files:
+        data[file] = (submission_dir / file).open("rb")
 
-    :param sess: HTTP session in which request call is made
-    :param schema: name of the schema (submission) used for testing
-    :param submission_id: submission object belongs to
-    :param filename: name of the file used for testing.
-    :returns: accessionId of created object
-    """
-    LOG.debug(f"Adding new {schema} object from file {filename}")
-    data = await get_request_data(schema, filename)
-    return await post_object_data(sess, schema, submission_id, data)
-
-
-async def post_object_data(sess, schema, submission_id, data) -> str | None:
-    """Post one XML or JSON metadata object within session, returns accessionId.
-
-    :param sess: HTTP session in which request call is made
-    :param schema: name of the schema (submission) used for testing
-    :param submission_id: submission object belongs to
-    :param data: the metadata object data
-    :returns: accessionId of created object
-    """
     async with sess.post(
-        f"{objects_url}/{schema}",
-        params={"submission": submission_id},
-        data=data,
-    ) as resp:
-        response = await resp.json()
-        LOG.debug(f"Adding new {schema} object")
-        assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
-
-        if schema == "bprems":
-            return None
-        return (response[0] if isinstance(response, list) else response)["accessionId"]
-
-
-async def post_multi_object(sess, schema, submission_id, filename) -> list[str]:
-    """Post multiple metadata objects. Returns list of object accessions.
-
-    :param sess: HTTP session in which request call is made
-    :param schema: name of the schema (submission) used for testing
-    :param submission_id: submission object belongs to
-    :param filename: name of the file used for testing.
-    :returns: response data after created objects
-    """
-    request_data = await get_request_data(schema, filename)
-    async with sess.post(
-        f"{objects_url}/{schema}",
-        params={"submission": submission_id},
-        data=request_data,
-    ) as resp:
-        LOG.debug("Posting  %s objects from file %s", schema, filename)
-        assert resp.status == 201, f"HTTP Status code error, got {resp.status}"
-        return [r["accessionId"] for r in await resp.json()]
-
-
-async def delete_object(sess, schema, accession_id):
-    """Delete metadata object within session.
-
-    :param sess: HTTP session in which request call is made
-    :param schema: name of the schema (submission) used for testing
-    :param accession_id: id of the object
-    """
-    async with sess.delete(f"{objects_url}/{schema}/{accession_id}") as resp:
-        LOG.debug("Deleting object %s from %s", accession_id, schema)
-        assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
-
-
-async def put_object(sess, schema, accession_id, update_filename):
-    """Put one JSON or XML metadata object within session.
-
-    :param sess: HTTP session in which request call is made
-    :param schema: name of the schema (submission) used for testing
-    :param accession_id: id of the object
-    :param update_filename: name of the file used to use for updating data.
-    """
-    request_data = await get_request_data(schema, update_filename)
-    async with sess.put(f"{objects_url}/{schema}/{accession_id}", data=request_data) as resp:
-        LOG.debug("Put %s metadata object", schema)
-        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
-
-
-async def patch_object(sess, schema, accession_id, update_filename):
-    """Patch one JSON or XML metadata object within session.
-
-    :param sess: HTTP session in which request call is made
-    :param schema: name of the schema (submission) used for testing
-    :param accession_id: id of the object
-    :param update_filename: name of the file used to use for updating data.
-    :returns: accession id of updated object
-    """
-    request_data = await get_request_data(schema, update_filename)
-    async with sess.patch(f"{objects_url}/{schema}/{accession_id}", data=request_data) as resp:
-        LOG.debug("Patch %s metadata object", schema)
-        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+            f"{base_url}{API_PREFIX}/workflows/{workflow}/projects/{project_id}/submissions",
+            data=data) as response:
+        assert response.status == 200
+        submission = Submission.model_validate(await response.json())
+        return submission
 
 
 async def post_submission(sess, data):
@@ -232,7 +141,7 @@ async def publish_submission(sess, submission_id, *, no_files: bool = True):
 
 
 async def delete_submission(
-    sess, submission_id, ignore_published_error: bool = False, ignore_not_found_error: bool = False
+        sess, submission_id, ignore_published_error: bool = False, ignore_not_found_error: bool = False
 ):
     """Delete submission.
 
@@ -245,9 +154,9 @@ async def delete_submission(
         LOG.debug("Deleting submission %s", submission_id)
         result = await resp.text()
         assert (
-            resp.status == 204
-            or (resp.status == 400 and ignore_published_error and "has been published" in result)
-            or (resp.status == 404 and ignore_not_found_error)
+                resp.status == 204
+                or (resp.status == 400 and ignore_published_error and "has been published" in result)
+                or (resp.status == 404 and ignore_not_found_error)
         )
 
 
@@ -277,7 +186,7 @@ async def patch_submission_doi(sess, submission_id, data):
         return ans["submissionId"]
 
 
-async def patch_submission_rems(sess, submission_id, data):
+async def patch_submission_rems(sess, submission_id, data: str):
     """Patch REMS (DAC) into submission within session, returns submissionId.
 
     :param sess: HTTP session in which request call is made
@@ -311,39 +220,6 @@ async def create_submission(database, data):
 
     except Exception as e:
         LOG.exception("Submission creation failed due to %s", str(e))
-
-
-async def delete_objects_metax_id(sess, database, collection, accession_id, metax_id):
-    """Remove study or dataset metax ID from database and mocked Metax service.
-
-    :param sess: HTTP session in which request call is made
-    :param database: database client to perform db operations
-    :param collection: Collection of the object to be manipulated
-    :param accession_id: Accession id of the object to be manipulated
-    :param metax_id: ID of metax dataset to be deleted
-    """
-    try:
-        await database[collection].find_one_and_update({"accessionId": accession_id}, {"$set": {"metaxIdentifier": ""}})
-    except Exception as e:
-        LOG.exception("Object update failed due to %s", str(e))
-    try:
-        await sess.delete(f"{metax_api}/{metax_id}")
-    except Exception as e:
-        LOG.exception("Object deletion from mocked Metax failed due to %s", str(e))
-
-
-async def check_object_exists(sess, schema, accession_id, draft=False):
-    """Check that the metadata object is added to submission.
-
-    :param sess: HTTP session in which request call is made
-    :param schema: name of the schema (submission) used for testing
-    :param accession_id: accession ID of metadata object
-    :param draft: indication of object draft status, default False
-    """
-    if draft:
-        await get_draft(sess, schema, accession_id)
-    else:
-        await get_object(sess, schema, accession_id)
 
 
 async def patch_submission_files(sess, file_data, submission_id):
@@ -410,8 +286,8 @@ async def add_submission_linked_folder(sess, submission_id, name):
     url = f"{submissions_url}/{submission_id}/folder"
 
     async with sess.patch(
-        url,
-        data=ujson.dumps(data),
+            url,
+            data=ujson.dumps(data),
     ) as resp:
         assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
@@ -547,12 +423,12 @@ async def add_file_to_folder(folder_name, object_key):
     file_obj = io.BytesIO(random_bytes)
     session = aioboto3.Session()
     async with session.client(
-        "s3",
-        endpoint_url=mock_s3_url,
-        aws_access_key_id="test",
-        aws_secret_access_key="test",
-        region_name=mock_s3_region,
-        use_ssl=False,
+            "s3",
+            endpoint_url=mock_s3_url,
+            aws_access_key_id="test",
+            aws_secret_access_key="test",
+            region_name=mock_s3_region,
+            use_ssl=False,
     ) as s3:
         await s3.upload_fileobj(file_obj, folder_name, object_key)
 
@@ -565,12 +441,12 @@ async def delete_file_from_folder(folder_name, object_key):
     """
     session = aioboto3.Session()
     async with session.client(
-        "s3",
-        endpoint_url=mock_s3_url,
-        aws_access_key_id="test",
-        aws_secret_access_key="test",
-        region_name=mock_s3_region,
-        use_ssl=False,
+            "s3",
+            endpoint_url=mock_s3_url,
+            aws_access_key_id="test",
+            aws_secret_access_key="test",
+            region_name=mock_s3_region,
+            use_ssl=False,
     ) as s3:
         await s3.delete_object(Bucket=folder_name, Key=object_key)
 
@@ -582,12 +458,12 @@ async def add_folder(folder_name):
     """
     session = aioboto3.Session()
     async with session.client(
-        "s3",
-        endpoint_url=mock_s3_url,
-        aws_access_key_id="test",
-        aws_secret_access_key="test",
-        region_name=mock_s3_region,
-        use_ssl=False,
+            "s3",
+            endpoint_url=mock_s3_url,
+            aws_access_key_id="test",
+            aws_secret_access_key="test",
+            region_name=mock_s3_region,
+            use_ssl=False,
     ) as s3:
         await s3.create_bucket(Bucket=folder_name)
 
@@ -599,12 +475,12 @@ async def delete_folder(folder_name):
     """
     session = aioboto3.Session()
     async with session.client(
-        "s3",
-        endpoint_url=mock_s3_url,
-        aws_access_key_id="test",
-        aws_secret_access_key="test",
-        region_name=mock_s3_region,
-        use_ssl=False,
+            "s3",
+            endpoint_url=mock_s3_url,
+            aws_access_key_id="test",
+            aws_secret_access_key="test",
+            region_name=mock_s3_region,
+            use_ssl=False,
     ) as s3:
         await s3.delete_bucket(Bucket=folder_name)
 
@@ -613,12 +489,12 @@ async def list_folders():
     """List all folders (buckets) in the mock S3 service."""
     session = aioboto3.Session()
     async with session.client(
-        "s3",
-        endpoint_url=mock_s3_url,
-        aws_access_key_id="test",
-        aws_secret_access_key="test",
-        region_name=mock_s3_region,
-        use_ssl=False,
+            "s3",
+            endpoint_url=mock_s3_url,
+            aws_access_key_id="test",
+            aws_secret_access_key="test",
+            region_name=mock_s3_region,
+            use_ssl=False,
     ) as s3:
         buckets = await s3.list_buckets()
         return [bucket["Name"] for bucket in buckets.get("Buckets", [])]
@@ -628,12 +504,12 @@ async def list_files_in_folder(folder_name):
     """List all files (objects) in a folder (bucket) in the mock S3 service."""
     session = aioboto3.Session()
     async with session.client(
-        "s3",
-        endpoint_url=mock_s3_url,
-        aws_access_key_id="test",
-        aws_secret_access_key="test",
-        region_name=mock_s3_region,
-        use_ssl=False,
+            "s3",
+            endpoint_url=mock_s3_url,
+            aws_access_key_id="test",
+            aws_secret_access_key="test",
+            region_name=mock_s3_region,
+            use_ssl=False,
     ) as s3:
         objects = await s3.list_objects_v2(Bucket=folder_name)
         return [obj["Key"] for obj in objects.get("Contents", [])]

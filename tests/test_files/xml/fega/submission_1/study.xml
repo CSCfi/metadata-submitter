@@ -1,8 +1,9 @@
 <STUDY_SET>
     <STUDY alias="1">
         <DESCRIPTOR>
-            <STUDY_TITLE>test</STUDY_TITLE>
+            <STUDY_TITLE>test_title</STUDY_TITLE>
             <STUDY_TYPE existing_study_type="Other"/>
+            <STUDY_DESCRIPTION>test_description</STUDY_DESCRIPTION>
         </DESCRIPTOR>
     </STUDY>
 </STUDY_SET>

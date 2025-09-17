@@ -16,13 +16,11 @@ from .api.handlers.rems_proxy import RemsAPIHandler
 from .api.handlers.restapi import RESTAPIHandler
 from .api.handlers.static import StaticHandler, html_handler_factory
 from .api.handlers.submission import SubmissionAPIHandler
-from .api.handlers.xml_submission import XMLSubmissionAPIHandler
 from .api.health import HealthHandler
 from .api.middlewares import authorization, http_error_handler
 from .api.resources import ResourceType, set_resource
 from .api.services.auth import AccessService
 from .api.services.file import S3FileProviderService
-from .api.services.object import JsonObjectService, XmlObjectService
 from .api.services.project import CscLdapProjectService
 from .conf.conf import API_PREFIX, aai_config, frontend_static_files, swagger_static_path
 from .database.postgres.repositories.api_key import ApiKeyRepository
@@ -82,8 +80,6 @@ async def init(
 
     submission_service = SubmissionService(SubmissionRepository(session_factory))
     object_service = ObjectService(ObjectRepository(session_factory))
-    json_object_service = JsonObjectService(submission_service, object_service)
-    xml_object_service = XmlObjectService(submission_service, object_service, json_object_service)
     file_provider_service = S3FileProviderService()
 
     _set_resource(ResourceType.ACCESS_SERVICE, AccessService(api_key_repository))
@@ -92,9 +88,8 @@ async def init(
     _set_resource(ResourceType.OBJECT_SERVICE, object_service)
     _set_resource(ResourceType.FILE_SERVICE, FileService(FileRepository(session_factory)))
     _set_resource(ResourceType.REGISTRATION_SERVICE, RegistrationService(RegistrationRepository(session_factory)))
-    _set_resource(ResourceType.JSON_OBJECT_SERVICE, json_object_service)
-    _set_resource(ResourceType.XML_OBJECT_SERVICE, xml_object_service)
     _set_resource(ResourceType.FILE_PROVIDER_SERVICE, file_provider_service)
+    _set_resource(ResourceType.SESSION_FACTORY, session_factory)
 
     # Initialize handlers.
     #
@@ -144,29 +139,20 @@ async def init(
         admin_handler=admin_handler,
         pid_handler=pid_handler,
     )
-    _xml_submission = XMLSubmissionAPIHandler(
-        metax_handler=metax_handler,
-        datacite_handler=datacite_handler,
-        rems_handler=rems_handler,
-        admin_handler=admin_handler,
-        pid_handler=pid_handler,
-    )
     _file = FilesAPIHandler()
+
     api_routes = [
-        # retrieve workflows
+        # Workflow requests.
         web.get("/workflows", _common_api_handler.get_workflows),
         web.get("/workflows/{workflow}", _common_api_handler.get_workflow_request),
-        # retrieve schema and information about it
+        # Schema requests.
         web.get("/schemas", _common_api_handler.get_schema_types),
         web.get("/schemas/{schema}", _common_api_handler.get_json_schema),
-        # metadata objects operations
-        web.post("/objects/{schema}", _object.post_object),
-        web.get("/objects/{schema}", _object.get_objects),
-        web.get("/objects/{schema}/{accessionId}", _object.get_object),
-        web.put("/objects/{schema}/{accessionId}", _object.put_or_patch_object),
-        web.patch("/objects/{schema}/{accessionId}", _object.put_or_patch_object),
-        web.delete("/objects/{schema}/{accessionId}", _object.delete_object),
-        # submissions operations
+        # Metadata object requests.
+        web.post("/workflows/{workflow}/projects/{projectId}/submissions", _object.post_submission),
+        web.get("/submissions/{submissionId}/objects", _object.list_objects),
+        web.get("/submissions/{submissionId}/objects/docs", _object.get_objects),
+        # Submission object requests.
         web.get("/submissions", _submission.get_submissions),
         web.post("/submissions", _submission.post_submission),
         web.get("/submissions/{submissionId}", _submission.get_submission),
@@ -178,17 +164,16 @@ async def init(
         web.patch("/submissions/{submissionId}", _submission.patch_submission),
         web.delete("/submissions/{submissionId}", _submission.delete_submission),
         web.post("/submissions/{submissionId}/ingest", _submission.post_data_ingestion),
-        # user operations
+        # User requests.
         web.get("/users", UserHandler.get_user),
-        # publish submission
+        # Publish request.
+        # TODO(Improve): change to "/submissions/{submissionId}/publish"
         web.patch("/publish/{submissionId}", _publish_submission.publish_submission),
-        # api key operations
+        # Api key requests.
         web.post("/api/keys", APIKeyHandler.post_api_key),
         web.delete("/api/keys", APIKeyHandler.delete_api_key),
         web.get("/api/keys", APIKeyHandler.get_api_keys),
-        # validate
-        web.post("/validate", _xml_submission.validate),
-        # file operations
+        # File requests.
         web.get("/projects/{projectId}/folders", _file.get_project_folders),
         web.get("/projects/{projectId}/folders/{folder}/files", _file.get_files_in_folder),
     ]

@@ -1,6 +1,6 @@
 <RUN_SET>
     <RUN alias="1">
-        <TITLE>Run</TITLE>
+        <TITLE>test_title</TITLE>
         <EXPERIMENT_REF refname="1"/>
         <DATA_BLOCK>
             <FILES>

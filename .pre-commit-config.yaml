@@ -35,7 +35,6 @@ repos:
       - --no-sort-keys
     - id: check-yaml
     - id: check-xml
-      exclude: tests/test_files/study/SRP000539_invalid[0-9]?.xml
 
   - repo: https://github.com/python-openapi/openapi-spec-validator
     rev: 0.7.1

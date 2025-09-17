@@ -1,6 +1,7 @@
 """API models."""
 
 import enum
+import json
 from datetime import datetime
 from typing import Any, ClassVar, Optional
 
@@ -20,7 +21,7 @@ class JsonModel(BaseModel):
 
     model_config: ClassVar[ConfigDict] = {"populate_by_name": True}
 
-    def json_dump(self) -> dict[str, Any]:
+    def to_json_dict(self) -> dict[str, Any]:
         """
         Serialize the model to a dictionary for JSON using camel case and excluding None fields.
 
@@ -31,6 +32,14 @@ class JsonModel(BaseModel):
             by_alias=True,
             exclude_none=True,
         )
+
+    def to_json_str(self) -> str:
+        """
+        Serialize the model to a JSON string using camel case and excluding None fields.
+
+        :return: A string representation of the model for JSON.
+        """
+        return json.dumps(self.to_json_dict())
 
 
 class ApiKey(BaseModel):
@@ -57,9 +66,20 @@ class Project(BaseModel):
 class Object(JsonModel):
     """A metadata object."""
 
+    name: str
     object_id: str = Field(..., alias="objectId")
+    object_type: str = Field(..., alias="objectType")
     submission_id: str = Field(..., alias="submissionId")
-    schema_type: str = Field(..., alias="schema")
+    title: str | None = None
+    description: str | None = None
+    created: datetime | None = None
+    modified: datetime | None = None
+
+
+class Objects(JsonModel):
+    """List of metadata objects."""
+
+    objects: list[Object]
 
 
 class ChecksumType(enum.Enum):
@@ -88,7 +108,7 @@ class Registration(JsonModel):
 
     submission_id: str = Field(None, alias="submissionId")
     object_id: Optional[str] = Field(None, alias="objectId")
-    schema_type: Optional[str] = Field(None, alias="schema")
+    object_type: Optional[str] = Field(None, alias="object_type")
     title: str
     description: str
     doi: str
@@ -262,9 +282,9 @@ class Submission(JsonModel):
     title: str
     description: str
     workflow: str  # Stored also in a database column.
-    date_created: Optional[int] = Field(None, alias="dateCreated")  # Stored only in a database column.
-    date_published: Optional[int] = Field(None, alias="datePublished")  # Stored only in a database column.
-    last_modified: Optional[int] = Field(None, alias="lastModified")  # Stored only in a database column.
+    date_created: Optional[datetime] = Field(None, alias="dateCreated")  # Stored only in a database column.
+    date_published: Optional[datetime] = Field(None, alias="datePublished")  # Stored only in a database column.
+    last_modified: Optional[datetime] = Field(None, alias="lastModified")  # Stored only in a database column.
     published: Optional[bool] = None  # Stored only in a database column.
     doi_info: Optional[DoiInfo] = Field(None, alias="doiInfo")
     rems: Optional[Rems] = None

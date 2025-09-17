@@ -1,6 +1,6 @@
 <ORGANISATION_SET>
     <ORGANISATION alias="1">
-        <NAME>test</NAME>
+        <NAME>test_name</NAME>
         <PIC_CODE>1</PIC_CODE>
         <DATAMANAGER_PERUN_GROUP>test</DATAMANAGER_PERUN_GROUP>
         <DATASET_REF alias="1"/>

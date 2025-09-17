@@ -1,10 +1,10 @@
 """Service for metadata objects."""
 
 import copy
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, Sequence
 
 from ....api.exceptions import NotFoundUserException
-from ....api.models import Object
+from ....api.models import Object, SubmissionWorkflow
 from ..models import ObjectEntity
 from ..repositories.object import ObjectRepository
 from ..repository import transaction
@@ -51,7 +51,8 @@ class ObjectService:
     async def add_object(
         self,
         submission_id: str,
-        schema: str,
+        object_type: str,
+        workflow: SubmissionWorkflow,
         *,
         document: dict[str, Any] | None = None,
         xml_document: str | None = None,
@@ -63,7 +64,8 @@ class ObjectService:
         """Add a new metadata object to the database.
 
         :param submission_id: the submission id
-        :param schema: the metadata object type
+        :param object_type: the metadata object type
+        :param workflow: the submission workflow
         :param document: the object metadata JSON document
         :param xml_document: the object metadata XML document
         :param object_id: metadata object id that overrides the default one
@@ -75,7 +77,7 @@ class ObjectService:
 
         obj = ObjectEntity(
             submission_id=submission_id,
-            schema=schema,
+            object_type=object_type,
             document=document,
             xml_document=xml_document,
             object_id=object_id,
@@ -87,7 +89,7 @@ class ObjectService:
         if object_id is not None:
             obj.object_id = object_id
 
-        return await self.repository.add_object(obj)
+        return await self.repository.add_object(obj, workflow)
 
     async def is_object(self, object_id: str, *, submission_id: str | None = None) -> bool:
         """Check if the metadata object exists.
@@ -126,31 +128,62 @@ class ObjectService:
             if obj.submission_id != submission_id:
                 raise UnknownObjectException(object_id)
 
-    async def count_objects(self, submission_id: str, schema: str | None = None) -> int:
+    async def count_objects(self, submission_id: str, object_type: str | None = None) -> int:
         """
         Count metadata object entities associated with the given submission.
 
         Args:
             submission_id: the submission id.
-            schema: filter by object type.
+            object_type: filter by object type.
 
         Returns:
             The number of matching metadata object entities.
         """
 
-        return await self.repository.count_objects(submission_id, schema)
+        return await self.repository.count_objects(submission_id, object_type)
 
-    async def get_objects(self, submission_id: str, schema: str) -> list[Object]:
+    async def get_objects(
+        self,
+        submission_id: str,
+        object_type: str | Sequence[str] | None = None,
+        *,
+        object_id: str | None = None,
+        name: str | None = None,
+    ) -> list[Object]:
         """
         Retrieve metadata objects associated with the given submission.
 
         :param submission_id: The submission id.
-        :param schema: The metadata object type.
+        :param object_type: The metadata object type(s).
+        :param object_id: Optional object id.
+        :param name: Optional object name.
+
         :return: The metadata objects.
         """
+
+        def _object(entity_: ObjectEntity) -> Object:
+            return Object(
+                name=entity_.name,
+                object_id=entity_.object_id,
+                submission_id=entity_.submission_id,
+                object_type=entity_.object_type,
+                title=entity_.title,
+                description=entity_.description,
+                created=entity_.created,
+                modified=entity_.modified,
+            )
+
         objects = []
-        async for obj in self.repository.get_objects(submission_id, schema):
-            objects.append(Object(object_id=obj.object_id, submission_id=obj.submission_id, schema_type=obj.schema))
+
+        # Search by object type(s) and optional object id.
+        async for entity in self.repository.get_objects(submission_id, object_type, object_id=object_id):
+            objects.append(_object(entity))
+
+        if not objects and name is not None:
+            # Search by object type(s) and optional object name.
+            async for entity in self.repository.get_objects(submission_id, object_type, name=name):
+                objects.append(_object(entity))
+
         return objects
 
     async def get_document(self, object_id: str) -> dict[str, Any]:
@@ -166,16 +199,18 @@ class ObjectService:
 
         return self.convert_from_entity(obj)
 
-    async def get_documents(self, submission_id: str, schema: str) -> AsyncIterator[dict[str, Any]]:
+    async def get_documents(
+        self, submission_id: str, object_type: str | Sequence[str] | None = None
+    ) -> AsyncIterator[dict[str, Any]]:
         """
         Retrieve metadata object JSON documents associated with the given submission.
 
         :param submission_id: The submission id.
-        :param schema: The metadata object type.
+        :param object_type: The metadata object type(s).
         :return: An asynchronous iterator of dictionaries representing the metadata object JSON documents.
         """
         async with transaction(self.repository._session_factory):
-            async for obj in self.repository.get_objects(submission_id, schema):
+            async for obj in self.repository.get_objects(submission_id, object_type):
                 yield self.convert_from_entity(obj)
 
     async def get_xml_document(self, object_id: str) -> str:
@@ -191,15 +226,17 @@ class ObjectService:
 
         return obj.xml_document
 
-    async def get_xml_documents(self, submission_id: str, schema: str) -> AsyncIterator[str]:
+    async def get_xml_documents(
+        self, submission_id: str, object_type: str | Sequence[str] | None = None
+    ) -> AsyncIterator[str]:
         """
         Retrieve metadata object XML documents associated with the given submission.
 
         :param submission_id: The submission id.
-        :param schema: The metadata object type.
+        :param object_type: The metadata object type(s).
         :return: An asynchronous iterator of dictionaries representing the metadata object XML documents.
         """
-        async for obj in self.repository.get_objects(submission_id, schema):
+        async for obj in self.repository.get_objects(submission_id, object_type):
             yield obj.xml_document
 
     async def get_submission_id(self, object_id: str) -> str:
@@ -218,7 +255,7 @@ class ObjectService:
 
         return obj.submission_id
 
-    async def get_schema(self, object_id: str) -> str:
+    async def get_object_type(self, object_id: str) -> str:
         """
         Get the object type the metadata object.
 
@@ -232,7 +269,7 @@ class ObjectService:
         if obj is None:
             raise UnknownObjectException(object_id)
 
-        return obj.schema
+        return obj.object_type
 
     async def update_document(self, object_id: str, document: dict[str, Any]) -> None:
         """Update metadata object JSON document.

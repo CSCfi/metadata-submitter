@@ -1,8 +1,11 @@
 """Repository for the objects table."""
 
-from typing import AsyncIterator, Callable
+from typing import AsyncIterator, Callable, Sequence
 
-from sqlalchemy import and_, delete, func, select
+from sqlalchemy import and_, case, delete, func, select
+
+from metadata_backend.api.models import SubmissionWorkflow
+from metadata_backend.api.services.accession import generate_accession
 
 from ..models import ObjectEntity
 from ..repository import SessionFactory, transaction
@@ -20,17 +23,22 @@ class ObjectRepository:
         """
         self._session_factory = session_factory
 
-    async def add_object(self, entity: ObjectEntity) -> str:
+    async def add_object(self, entity: ObjectEntity, workflow: SubmissionWorkflow) -> str:
         """
         Add a new metadata object entity to the database.
 
         Args:
             entity: The metadata object entity.
+            workflow: The submission workflow.
 
         Returns:
             The object id used as the primary key value.
         """
         async with transaction(self._session_factory) as session:
+            # Generate accession.
+            if entity.object_id is None:
+                entity.object_id = generate_accession(workflow, entity.object_type)
+
             session.add(entity)
             await session.flush()
             return entity.object_id
@@ -83,39 +91,65 @@ class ObjectRepository:
 
         return entity
 
-    async def get_objects(self, submission_id: str, schema: str | None = None) -> AsyncIterator[ObjectEntity]:
+    async def get_objects(
+        self,
+        submission_id: str,
+        object_type: str | Sequence[str] | None = None,
+        *,
+        object_id: str | None = None,
+        name: str | None = None,
+    ) -> AsyncIterator[ObjectEntity]:
         """
         Get metadata object entities associated with the given submission.
 
+        The objects are ordered by object type(s) in the given order and by created date.
+
         Args:
             submission_id: the submission id.
-            schema: filter by object schema.
+            object_type: filter by object type(s).
+            object_id: Object id.
+            name: Object name.
 
         Returns:
-            An asynchronous iterator of metadata object entities.
+            An asynchronous iterator of ordered metadata object entities.
         """
 
-        # Apply filters.
         filters = [ObjectEntity.submission_id == submission_id]
-        if schema is not None:
-            filters.append(ObjectEntity.schema == schema)
+        if object_id is not None:
+            filters.append(ObjectEntity.object_id == object_id)
+        elif name is not None:
+            filters.append(ObjectEntity.name == name)
 
-        # Select objects.
+        order_by = None
+        if object_type is not None:
+            if isinstance(object_type, str):
+                filters.append(ObjectEntity.object_type == object_type)
+            else:
+                filters.append(ObjectEntity.object_type.in_(object_type))
+                order_by = case(
+                    {val: idx for idx, val in enumerate(object_type)},
+                    value=ObjectEntity.object_type,
+                )
 
         stmt = select(ObjectEntity).where(and_(*filters))
+
+        if order_by is not None:
+            stmt = stmt.order_by(order_by, ObjectEntity.created.asc())
+        else:
+            stmt = stmt.order_by(ObjectEntity.created.asc())
 
         async with transaction(self._session_factory) as session:
             result = await session.execute(stmt)
             for row in result.scalars():
                 yield row
 
-    async def count_objects(self, submission_id: str, schema: str | None = None) -> int:
+    async def count_objects(self, submission_id: str, object_type: str | None = None) -> int:
         """
         Count metadata object entities associated with the given submission.
 
         Args:
             submission_id: the submission id.
-            schema: filter by object type.
+            object_type: filter by object type.
 
         Returns:
             The number of matching metadata object entities.
@@ -123,8 +157,8 @@ class ObjectRepository:
 
         # Apply filters.
         filters = [ObjectEntity.submission_id == submission_id]
-        if schema is not None:
-            filters.append(ObjectEntity.schema == schema)
+        if object_type is not None:
+            filters.append(ObjectEntity.object_type == object_type)
 
         stmt = select(func.count()).select_from(ObjectEntity).where(and_(*filters))  # pylint: disable=not-callable
 

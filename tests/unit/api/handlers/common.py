@@ -61,18 +61,7 @@ class HandlersTestCase(AioHTTPTestCase):
 
         await self.client.start_server()
 
-        self.test_ega_string = "EGA123456"
-        self.query_accessionId = ("EDAG3991701442770179",)
-        self.metadata_json = {
-            "attributes": {"centerName": "GEO", "alias": "GSE10966", "accession": "SRP000539"},
-            "accessionId": "EDAG3991701442770179",
-        }
-        path_to_xml_file = self.TESTFILES_ROOT / "study" / "SRP000539.xml"
-        self.metadata_xml = path_to_xml_file.read_text()
-        self.accession_id = "EGA123456"
-        self.submission_id = "FOL12345678"
         self.project_id = "1001"
-        self.workflow = "FEGA"
         self.doi_info = {
             "creators": [
                 {
@@ -91,58 +80,10 @@ class HandlersTestCase(AioHTTPTestCase):
             "subjects": [{"subject": "999 - Other"}],
             "keywords": "test,keyword",
         }
-        self.test_submission = {
-            "projectId": self.project_id,
-            "submissionId": self.submission_id,
-            "name": "mock submission",
-            "description": "test mock submission",
-            "workflow": self.workflow,
-            "published": False,
-            "metadataObjects": [
-                {"accessionId": "EDAG3991701442770179", "schema": "study"},
-                {"accessionId": "EGA111", "schema": "sample"},
-                {"accessionId": "EGA112", "schema": "dac"},
-                {"accessionId": "EGA113", "schema": "policy"},
-                {"accessionId": "EGA114", "schema": "run"},
-                {"accessionId": "EGA115", "schema": "dataset"},
-            ],
-            "drafts": [],
-            "linkedFolder": "",
-            "doiInfo": self.doi_info,
-            "files": [{"accessionId": "file1", "version": 1, "status": "added"}],
-        }
         self.user_id = "USR12345678"
         self.test_user = {
             "userId": self.user_id,
             "name": "tester",
-        }
-        self.projected_file_example = {
-            "filepath": "bucketname/file1",
-            "status": "added",
-            "encrypted_checksums": [
-                {"type": "sha256", "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d6"},
-                {"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b48"},
-            ],
-            "unencrypted_checksums": [
-                {"type": "sha256", "value": "82E4e60e73db2e06A00a079788F7d71f75b61a4b75f28c4c9427036d6"},
-                {"type": "md5", "value": "7Ac236b1a82dac89e7cf45d2b48"},
-            ],
-            "objectId": {
-                "accessionId": "EGA123456",
-                "schema": "run",
-            },
-        }
-        self._draft_doi_data = {
-            "identifier": {
-                "identifierType": "DOI",
-                "doi": "https://doi.org/10.xxxx/yyyyy",
-            },
-            "types": {
-                "bibtex": "misc",
-                "citeproc": "collection",
-                "schemaOrg": "Collection",
-                "resourceTypeGeneral": "Collection",
-            },
         }
 
         RESTAPIHandler.check_ownership = make_mocked_coro(True)
@@ -161,42 +102,6 @@ class HandlersTestCase(AioHTTPTestCase):
     async def tearDownAsync(self):
         """Cleanup mocked stuff."""
         await self.client.close()
-
-    def read_metadata_object(self, schema: str, file_name: str) -> str:
-        """Read metadata object from file."""
-        file_path = self.TESTFILES_ROOT / schema / file_name
-        with open(file_path.as_posix(), "r", encoding="utf-8") as f:
-            return f.read()
-
-    def create_submission_data(self, files):
-        """Create request data from pairs of schemas and filenames."""
-        data = FormData()
-        for schema, filename in files:
-            schema_path = "study" if schema == "fake" else schema
-            path_to_file = self.TESTFILES_ROOT / schema_path / filename
-            data.add_field(
-                schema.upper(),
-                open(path_to_file.as_posix(), "r"),
-                filename=path_to_file.name,
-                content_type="text/xml",
-            )
-        return data
-
-    async def fake_get_submission_field_str(self, submission_id, field):
-        """Fake get submission field."""
-        if field == "workflow":
-            return "FEGA"
-        elif field == "projectId":
-            return self.project_id
-        return ""
-
-    async def fake_read_submission_files(self, submission_id, status_list):
-        """Fake read submission files."""
-        return [self.projected_file_example]
-
-    async def fake_check_submission_files(self, submission_id):
-        """Fake check submission files."""
-        return True, []
 
     async def post_submission(
         self,

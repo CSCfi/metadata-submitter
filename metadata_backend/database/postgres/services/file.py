@@ -3,7 +3,7 @@
 from typing import AsyncIterator, Sequence
 
 from ....api.exceptions import NotFoundUserException
-from ....api.models import File
+from ....api.models import File, SubmissionWorkflow
 from ..models import FileEntity, IngestStatus
 from ..repositories.file import FileRepository
 
@@ -71,13 +71,14 @@ class FileService:
             encrypted_checksum_type=entity.encrypted_checksum_type,
         )
 
-    async def add_file(self, file: File) -> str:
+    async def add_file(self, file: File, workflow: SubmissionWorkflow) -> str:
         """Add a new submission file.
 
         :param file: the submission file
+        :param workflow: the submission workflow
         :returns: the automatically assigned file id
         """
-        return await self.__repository.add_file(self.convert_to_entity(file))
+        return await self.__repository.add_file(self.convert_to_entity(file), workflow)
 
     async def is_file(self, file_id: str, *, submission_id: str | None = None) -> bool:
         """Check if the file exists.

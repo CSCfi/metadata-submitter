@@ -1,8 +1,8 @@
 <DATASET_SET>
     <DATASET alias="1">
-        <TITLE>test</TITLE>
-        <SHORT_NAME>test</SHORT_NAME>
-        <DESCRIPTION>test</DESCRIPTION>
+        <TITLE>test_title</TITLE>
+        <SHORT_NAME>test_short_name</SHORT_NAME>
+        <DESCRIPTION>test_description</DESCRIPTION>
         <VERSION>1</VERSION>
         <METADATA_STANDARD>2.0.0</METADATA_STANDARD>
         <IMAGE_REF alias="1"/>

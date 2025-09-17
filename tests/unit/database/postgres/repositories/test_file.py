@@ -3,7 +3,7 @@ import uuid
 
 import ulid
 
-from metadata_backend.api.models import ChecksumType
+from metadata_backend.api.models import ChecksumType, SubmissionWorkflow
 from metadata_backend.database.postgres.models import FileEntity, IngestStatus
 from metadata_backend.database.postgres.repositories.file import FileRepository
 from metadata_backend.database.postgres.repositories.object import ObjectRepository
@@ -11,6 +11,7 @@ from metadata_backend.database.postgres.repositories.submission import Submissio
 from metadata_backend.database.postgres.repository import SessionFactory, transaction
 from tests.unit.database.postgres.helpers import create_object_entity, create_submission_entity
 
+workflow = SubmissionWorkflow.SDS
 
 async def add_submission(submission_repository: SubmissionRepository) -> str:
     submission = create_submission_entity()
@@ -22,7 +23,7 @@ async def add_submission(submission_repository: SubmissionRepository) -> str:
 
 async def add_object(submission_id: str, object_repository: ObjectRepository) -> str:
     obj = create_object_entity(submission_id)
-    return await object_repository.add_object(obj)
+    return await object_repository.add_object(obj, workflow)
 
 
 async def test_add_get_delete_file(
@@ -56,7 +57,7 @@ async def test_add_get_delete_file(
         file_entity = create_file()
 
         # Add file entity.
-        file_id = await file_repository.add_file(file_entity)
+        file_id = await file_repository.add_file(file_entity, workflow)
         assert isinstance(ulid.parse(file_id), ulid.ULID)
 
         # Assert file entity.
@@ -84,7 +85,7 @@ async def test_add_get_delete_file(
 
         # Create file entity.
         file_entity = create_file()
-        file_id = await file_repository.add_file(file_entity)
+        file_id = await file_repository.add_file(file_entity, workflow)
 
         # Test delete by submission id and file path.
         assert_file(await file_repository.get_file_by_id(file_id))
@@ -139,8 +140,8 @@ async def test_get_and_count_files_and_bytes(
             ingest_status=IngestStatus.FAILED,
         )
 
-        file_id_1 = await file_repository.add_file(file_entity_1)
-        file_id_2 = await file_repository.add_file(file_entity_2)
+        file_id_1 = await file_repository.add_file(file_entity_1, workflow)
+        file_id_2 = await file_repository.add_file(file_entity_2, workflow)
 
         # Files
 
@@ -196,7 +197,7 @@ async def test_update_ingest_status(
             ingest_status=IngestStatus.ADDED,
         )
 
-        file_id = await file_repository.add_file(file_entity)
+        file_id = await file_repository.add_file(file_entity, workflow)
 
         assert (await file_repository.get_file_by_id(file_id)).ingest_status == IngestStatus.ADDED
 

@@ -33,22 +33,31 @@ class ErrorMiddlewareTestCase(AioHTTPTestCase):
 
         await self.client.start_server()
 
-    async def test_bad_request_returns_json_response(self):
-        """Test that the middleware returns bad requests (400) in JSON with problem details."""
+    async def test_not_found_problem_response(self):
+        """Test that the middleware returns not found with problem JSON."""
         with self.patch_verify_authorization:
-            response = await self.client.post(f"{API_PREFIX}/objects/dataset", json={})
-            self.assertEqual(response.status, 400)
-            self.assertEqual(response.content_type, "application/problem+json")
-            resp_dict = await response.json()
-            self.assertEqual("Bad Request", resp_dict["title"])
-            self.assertIn("Missing required query parameter: submission", resp_dict["detail"])
-            self.assertEqual(f"{API_PREFIX}/objects/dataset", resp_dict["instance"])
+            # Test submission not found.
+            response = await self.client.get(f"{API_PREFIX}/submissions/invalid", json={})
+            data = await response.json()
+            assert response.status == 404
+            assert response.content_type == "application/problem+json"
+            assert data["title"] == "Not Found"
+            assert data["detail"] == "Submission 'invalid' not found."
+            assert data["instance"] == "/v1/submissions/invalid"
 
-    async def test_bad_url_returns_json_response(self):
-        """Test that the middleware returns bad URL requests as not found (404) in JSON with problem details."""
-        with self.patch_verify_authorization:
+            # Test URL not found.
             response = await self.client.get(f"{API_PREFIX}/bad_url")
-            self.assertEqual(response.status, 404)
-            self.assertEqual(response.content_type, "application/problem+json")
-            resp_dict = await response.json()
-            self.assertEqual("Not Found", resp_dict["title"])
+            data = await response.json()
+            assert response.status == 404
+            assert response.content_type == "application/problem+json"
+            assert data["title"] == "Not Found"
+
+    async def test_bad_request_problem_response(self):
+        """Test that the middleware returns bad request with problem JSON."""
+        with self.patch_verify_authorization:
+            # Test invalid submission.json.
+            response = await self.client.post(f"{API_PREFIX}/submissions", json={})
+            data = await response.json()
+            assert response.status == 400
+            assert response.content_type == "application/problem+json"
+            assert data["title"] == "Bad Request"

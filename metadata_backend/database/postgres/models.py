@@ -125,7 +125,7 @@ class SubmissionEntity(Base):
 
     __tablename__ = "submissions"
 
-    submission_id: Mapped[str] = mapped_column(String(128), primary_key=True, default=generate_default_accession)
+    submission_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     name: Mapped[str] = mapped_column(String, nullable=False)  # User provided name for the submission
     project_id: Mapped[str] = mapped_column(String, nullable=False)
     folder: Mapped[str] = mapped_column(String(64), nullable=True)  # Could this be nullable?
@@ -174,9 +174,9 @@ class ObjectEntity(Base):
 
     __tablename__ = "objects"
 
-    object_id: Mapped[str] = mapped_column(String(128), primary_key=True, default=generate_default_accession)
+    object_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     name: Mapped[str] = mapped_column(String, nullable=True)  # User provided name for the object
-    schema: Mapped[str] = mapped_column(String, nullable=False)
+    object_type: Mapped[str] = mapped_column(String, nullable=False)
     submission_id: Mapped[str] = mapped_column(
         String(128), ForeignKey("submissions.submission_id", ondelete="CASCADE"), nullable=False, index=True
     )
@@ -226,7 +226,7 @@ class FileEntity(Base):
     __tablename__ = "files"
     __table_args__ = (UniqueConstraint("submission_id", "path"),)
 
-    file_id: Mapped[str] = mapped_column(String(128), primary_key=True, default=generate_default_accession)
+    file_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     submission_id: Mapped[str] = mapped_column(
         String(128), ForeignKey("submissions.submission_id", ondelete="CASCADE"), nullable=False, index=True
     )
@@ -277,7 +277,7 @@ class RegistrationEntity(Base):
     registration_id: Mapped[str] = mapped_column(String(128), primary_key=True, default=generate_default_accession)
     title: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
-    schema: Mapped[str] = mapped_column(String(256), nullable=True)
+    object_type: Mapped[str] = mapped_column(String(256), nullable=True)
     doi: Mapped[str] = mapped_column(String(256), nullable=False, comment="Digital Object identifier")
     metax_id: Mapped[str] = mapped_column(String(256), nullable=True, comment="Metax identifier")
     datacite_url: Mapped[str] = mapped_column(String(1024), nullable=True, comment="Datacite discovery URL")
