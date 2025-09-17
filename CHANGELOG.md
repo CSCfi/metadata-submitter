@@ -9,6 +9,10 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- (users) object_type rather than schema_type is now saved in Postgres and generally used instead of the schema_type e.g. in accessioning.
+- (users) UserErrors exception to return a list of errors in RFC 7807 format.
+- (users) removed /validate endpoint for XML validation.
+- (users) removed /objects endpoints.
 - (users) In SDSX submissions, publishing operation now automatically fetches a list of files from a designated folder in an object storage to be included in the submission
 - (users) /publish endpoint so that if it fails for any reason, the user is expected to call it again to re-try failed actions (#900)
 - (users) PATCH /submission endpoint so that any field can be safely changed instead of name and description only. The submission document can be updated by the user, however, some fields can't be removed or changed and existing values are preserved (#900)
@@ -48,6 +52,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- (users) changed ints to datetimes in submission model for date fields.
+- (users) submission.json serialization in Postgres submission service.
 - Metax 'creator' and 'contributors' mapping in MetaxMapper (#900)
 - /publish not calling DataCite publish for datasets (#900)
 - (users) Removed no longer used userId field from post_project_files payload validation error message. #883)
@@ -57,6 +63,16 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- (users) more accessioning unit tests.
+- (users) New XML POST endpoint stores the submitted BP XML metadata objects in the Postgres database.
+- (users) New POST endpoint generates the submission.json from submitted BP XMLs (except datacite information). - Added: New XML POST endpoint stores the generated submission.json in the Postgres database.
+- (users) New POST endpoint injects BP accessions in the XML metadata objects including references.
+- (users) New POST endpoint validates the minimum and maximum number of expected BP metadata objects within non-complementary datasets.
+- (users) New POST endpoint validates that BP XML references point to existing metadata objects in non-complementary datasets.
+- (users) New POST endpoint identifies BP XML objects and validates them against their BP XML Schemas.
+- (users) GET /submissions/{submissionId}/objects/docs endpoint to get metadata  documents in submission. Only supported for BP.
+- (users) GET /submissions/{submissionId}/objects endpoint to list metadata objects in submission.
+- (users) POST /workflows/{workflow}/projects/{projectId}/submissions multipart/form-data endpoint for making submissions with metadata. Only supported for BP.
 - XmlFileDocumentsProcessor uses fsspec to support other file systems in addition to the unix filesystem.
 - New XML processor uses a fast C based XML Schema validator.
 - configured the XML processor for BP and FEGA.
