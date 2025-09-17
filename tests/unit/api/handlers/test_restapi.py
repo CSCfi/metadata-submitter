@@ -19,7 +19,6 @@ class RESTAPIHandlerTestCase(HandlersTestCase):
 
     for workflow_name in {"valid"}:
         with open(WORKFLOWS_DIR / f"{workflow_name}.json", "rb") as workflow_file:
-
             workflows[workflow_name] = Workflow(ujson.load(workflow_file))
 
     valid_workflow = workflows["valid"]
@@ -74,11 +73,9 @@ class RESTAPIHandlerTestCase(HandlersTestCase):
         """Test API endpoint for study schema types."""
         with self.patch_verify_authorization:
             response = await self.client.get(f"{API_PREFIX}/schemas/project")
-            self.assertEqual(response.status, 400)
             resp_json = await response.json()
-            self.assertEqual(
-                resp_json["detail"], "The provided schema type could not be found. Occurred for JSON schema: 'project'."
-            )
+            self.assertEqual(response.status, 400)
+            assert str(resp_json["detail"]).startswith(f"Could not find schema 'project.json'.")
 
     async def test_get_schema_submission(self):
         """Test API endpoint for submission schema type."""

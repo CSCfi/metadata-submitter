@@ -1,6 +1,7 @@
 """Handle HTTP methods for server."""
 
 import os
+import traceback
 from datetime import date
 from typing import Any, Callable, Iterator
 
@@ -27,7 +28,6 @@ from ..resources import (
     get_registration_service,
     get_submission_service,
 )
-from ..services.object import JsonObjectService
 from .common import to_json
 from .restapi import RESTAPIIntegrationHandler
 from .submission import SubmissionAPIHandler
@@ -327,7 +327,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
             study_doi = None
             dataset_doi = None
             for registration in registrations:
-                if registration.schema_type == "study":
+                if registration.object_type == "study":
                     study_doi = registration.doi
                 else:
                     dataset_doi = registration.doi
@@ -335,7 +335,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
             # Create DataCite data for study.
             for registration in registrations:
                 discovery_url = self._make_discovery_url(registration, discovery_config)
-                if registration.schema_type == "study":
+                if registration.object_type == "study":
                     data = self._prepare_datacite_study(
                         registration.doi,
                         registration.title,
@@ -453,7 +453,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         try:
             data: dict[str, Any] = {
                 "accession_id": registration.object_id,
-                "schema": registration.schema_type,
+                "schema": registration.object_type,
                 "doi": registration.doi,
                 "description": registration.description,
                 "localizations": {
@@ -508,6 +508,12 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                 )
                 registration.rems_url = rems_url
         except Exception as ex:
+            LOG.error(
+                "Failed to publish submission %s to REMS. Original error: %s\nTraceback:\n%s",
+                registration.submission_id,
+                ex,
+                traceback.format_exc(),
+            )
             raise SystemException(
                 f"Failed to publish submission '{registration.submission_id}' to REMS. Please try again later."
             ) from ex
@@ -588,7 +594,8 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                                 submission_id=submission_id,
                                 path=file.path,
                                 bytes=file.bytes,
-                            )
+                            ),
+                            workflow,
                         )
 
             # Check that the submission has at least one file.
@@ -634,12 +641,12 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         # Register DOI for metadata objects.
 
         async for obj in object_service.repository.get_objects(submission_id):
-            if obj.schema in datacite_config.schemas:
+            if obj.object_type in datacite_config.schemas:
                 registration = await registration_service.get_registration_by_object_id(obj.object_id)
                 if registration is None:
-                    doi = await self._register_draft_doi(datacite_config, obj.schema)
+                    doi = await self._register_draft_doi(datacite_config, obj.object_type)
                     registration = self._create_object_registration(
-                        submission_id, obj.object_id, obj.schema, obj.document, doi
+                        submission_id, obj.object_id, obj.object_type, obj.title, obj.description, doi
                     )
                 object_registrations.append(registration)
                 await registration_service.add_registration(registration)
@@ -663,7 +670,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                     yield submission_registration
             # Yield metadata object registrations.
             for registration_ in object_registrations:
-                if registration_.schema_type in config_.schemas and (predicate_ is None or predicate_(registration_)):
+                if registration_.object_type in config_.schemas and (predicate_ is None or predicate_(registration_)):
                     yield registration_
 
         # Register Metax IDs. Required DOI.
@@ -694,16 +701,16 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         def _get_related_object_registration(schema_: str) -> tuple[Registration | None, Registration | None]:
             # Assumes that only a single study and dataset registration is allowed.
             for registration_ in object_registrations:
-                if schema_ != registration_.schema_type:
-                    if registration_.schema_type == "study":
+                if schema_ != registration_.object_type:
+                    if registration_.object_type == "study":
                         return None, registration_  # Related study registration.
                     return registration_, None  # Related dataset registration.
             return None, None
 
         for registration in _filtered_registrations(discovery_config, DISCOVERY_SERVICE_METAX):
             related_dataset, related_study = None, None
-            if registration.schema_type is not None:
-                related_dataset, related_study = _get_related_object_registration(registration.schema_type)
+            if registration.object_type is not None:
+                related_dataset, related_study = _get_related_object_registration(registration.object_type)
             await self._update_metax(
                 registration, doi_info, file_bytes, related_dataset=related_dataset, related_study=related_study
             )
@@ -743,22 +750,27 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
 
     @staticmethod
     def _create_object_registration(
-        submission_id: str, object_id: str, schema: str, document: dict[str, Any], doi: str
+        submission_id: str,
+        object_id: str,
+        object_type: str,
+        title: str,
+        description: str,
+        doi: str,
     ) -> Registration:
         """Create a registration for a metadata object with a title, description and DOI.
 
         :param submission_id: the submission id
         :param object_id: the object id
-        :param schema: the metadata object schema
-        :param document: the metadata object JSON document
+        :param object_type: the object type
+        :param title: the object title
+        :param description: the object description
         :param doi: the generated DOI
         :returns: The registration information
         """
-        title, description = JsonObjectService.get_metadata_title_and_description(schema, document)
         return Registration(
             submission_id=submission_id,
             object_id=object_id,
-            schema=schema,
+            object_type=object_type,
             title=title,
             description=description,
             doi=doi,

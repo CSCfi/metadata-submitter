@@ -1,12 +1,13 @@
 """Smoke test publications."""
-
+import json
 import logging
+from typing import Any
 
-from metadata_backend.api.models import Registration
+from metadata_backend.api.models import Registration, Rems
 from tests.integration.conf import (
     datacite_prefix,
     mock_pid_prefix,
-    submissions_url,
+    submissions_url, metax_api, auth,
 )
 from tests.integration.helpers import (
     add_submission_linked_folder,
@@ -15,8 +16,7 @@ from tests.integration.helpers import (
     get_submission_files,
     patch_submission_doi,
     patch_submission_rems,
-    post_object,
-    publish_submission,
+    publish_submission, submit_bp,
 )
 
 LOG = logging.getLogger(__name__)
@@ -62,63 +62,8 @@ class TestMinimalPublication:
 class TestPublication:
     """Test publication to Metax and REMS."""
 
-    async def test_fega_json_publication_rems(self, client_logged_in, submission_factory):
-        """Test FEGA publication workflow with JSON submissions to Metax and REMS.
-
-        :param client_logged_in: HTTP client in which request call is made
-        :param submission_factory: The factory that creates and deletes submissions
-        """
-        submission_id, _ = await submission_factory("FEGA")
-
-        objects = []
-        study_id = await post_object(client_logged_in, "study", submission_id, "SRP000539.json")
-        objects.append(["study", study_id])
-
-        await post_object(client_logged_in, "dac", submission_id, "dac.json")
-        await post_object(client_logged_in, "policy", submission_id, "policy.json")
-        await post_object(client_logged_in, "sample", submission_id, "SRS001433.json")
-        await post_object(client_logged_in, "experiment", submission_id, "ERX000119.json")
-        await post_object(client_logged_in, "analysis", submission_id, "ERZ266973.json")
-        await post_object(client_logged_in, "run", submission_id, "ERR000076.json")
-
-        dataset_id = await post_object(client_logged_in, "dataset", submission_id, "dataset.json")
-        objects.append(["dataset", dataset_id])
-
-        doi_data_raw = await get_request_data("doi", "test_doi.json")
-        await patch_submission_doi(client_logged_in, submission_id, doi_data_raw)
-
-        rems_data = await get_request_data("dac", "dac_rems.json")
-        await patch_submission_rems(client_logged_in, submission_id, rems_data)
-
-        await publish_submission(client_logged_in, submission_id)
-
-        async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
-            LOG.debug(f"Checking that submission {submission_id} was published")
-            res = await resp.json()
-            assert res["submissionId"] == submission_id, "expected submission id does not match"
-            assert res["published"] is True, "submission is published, expected False"
-
-        async with client_logged_in.get(f"{submissions_url}/{submission_id}/registrations") as resp:
-            assert resp.status == 200
-            res = await resp.json()
-            study_registration = Registration(**[r for r in res if r["schema"] == "study"][0])
-            dataset_registration = Registration(**[r for r in res if r["schema"] == "dataset"][0])
-            # Check DOI
-            assert study_registration.doi.startswith(mock_pid_prefix)
-            assert dataset_registration.doi.startswith(mock_pid_prefix)
-            # Check that metax ID exists
-            assert study_registration.metax_id is not None
-            assert dataset_registration.metax_id is not None
-            # Check REMS
-            assert study_registration.rems_resource_id is None
-            assert study_registration.rems_catalogue_id is None
-            assert study_registration.rems_url is None
-            assert dataset_registration.rems_resource_id is not None
-            assert dataset_registration.rems_catalogue_id is not None
-            assert dataset_registration.rems_url is not None
-
-    async def test_sdsx_publication_rems(self, client_logged_in, submission_factory):
-        """Test SDSX publication to Metax and REMS.
+    async def test_sdsx_publication(self, client_logged_in, submission_factory):
+        """Test SDSX publication.
 
         :param client_logged_in: HTTP client in which request call is made
         :param submission_factory: The factory that creates and deletes submissions
@@ -152,27 +97,30 @@ class TestPublication:
             assert registration.rems_catalogue_id is not None
             assert registration.rems_url is not None
 
-    async def test_full_bigpicture_xml_publication_rems(self, client_logged_in, submission_factory):
-        """Test BP publication workflow with XML submissions to Metax and REMS.
+        # Check Metax mock service.
+        async with client_logged_in.get(f"{metax_api}/{registration.metax_id}", auth=auth) as metax_resp:
+            metax = await metax_resp.json()
+            assert metax_resp.status == 200, f"HTTP Status code error, got {metax_resp.status}"
+            await assert_metax(
+                metax, registration.object_type, registration.title, registration.description, registration.doi
+            )
+
+    async def test_bigpicture_publication(self, client_logged_in, project_id):
+        """Test BP publication.
 
         :param client_logged_in: HTTP client in which request call is made
-        :param submission_factory: The factory that creates and deletes submissions
+        :param project_id: The project id.
         """
-        submission_id, _ = await submission_factory("Bigpicture")
+        submission = await submit_bp(client_logged_in, project_id)
+        submission_id = submission.submission_id
 
-        await post_object(client_logged_in, "bpsample", submission_id, "samples.xml")
-        await post_object(client_logged_in, "bpimage", submission_id, "images_single.xml")
-        await post_object(client_logged_in, "bpdataset", submission_id, "dataset.xml")
-        await post_object(client_logged_in, "bpobservation", submission_id, "observation.xml")
-        await post_object(client_logged_in, "bpstaining", submission_id, "stainings.xml")
-        await post_object(client_logged_in, "bpobserver", submission_id, "observers.xml")
-        await post_object(client_logged_in, "bpannotation", submission_id, "annotation.xml")
-
-        # TO_DO: Use datacite.xml instead json file
+        # TODO(improve): Use datacite.xml instead of submission.json.
         doi_data_raw = await get_request_data("doi", "test_doi.json")
         await patch_submission_doi(client_logged_in, submission_id, doi_data_raw)
 
-        await post_object(client_logged_in, "bprems", submission_id, "rems.xml")
+        # Change REMS information extracted from BP REMS XML and stored in submission.json.
+        await patch_submission_rems(client_logged_in, submission_id,
+                                    Rems(workflow_id=1, organization_id="CSC", licenses=[1]).to_json_str())
 
         await publish_submission(client_logged_in, submission_id)
 
@@ -196,3 +144,34 @@ class TestPublication:
             assert registration.rems_resource_id is not None
             assert registration.rems_catalogue_id is not None
             assert registration.rems_url is not None
+
+
+async def assert_metax(metax: dict[str, Any], schema: str, title: str, description: str, doi: str):
+    expected_rd = json.loads(await get_request_data("metax", "research_dataset.json"))
+    actual_rd = metax["research_dataset"]
+
+    # title = res["title"] if schema == "dataset" else res["descriptor"]["studyTitle"]
+    # description = res["description"] if schema == "dataset" else res["descriptor"]["studyAbstract"]
+
+    assert actual_rd["preferred_identifier"] == doi
+    assert actual_rd["title"]["en"] == title
+    assert actual_rd["description"]["en"].split("\n\n")[0] == description
+    assert actual_rd["creator"] == expected_rd["creator"]
+    assert (
+            actual_rd["access_rights"]["access_type"]["identifier"]
+            == expected_rd["access_rights"]["access_type"]["identifier"]
+    )
+    assert actual_rd["contributor"] == expected_rd["contributor"]
+    assert actual_rd["issued"] == expected_rd["issued"]
+    assert actual_rd["modified"] == expected_rd["modified"]
+    assert actual_rd["other_identifier"][0]["notation"] == expected_rd["other_identifier"][0]["notation"]
+    assert actual_rd["publisher"] == expected_rd["publisher"]
+    assert actual_rd["spatial"] == expected_rd["spatial"]
+    assert actual_rd["temporal"] == expected_rd["temporal"]
+    assert actual_rd["language"] == expected_rd["language"]
+    assert actual_rd["field_of_science"] == expected_rd["field_of_science"]
+
+    if schema == "study":
+        assert "relation" in actual_rd
+    if schema == "dataset":
+        assert "is_output_of" in actual_rd

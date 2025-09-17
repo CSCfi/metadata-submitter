@@ -1,7 +1,7 @@
 <REMS_SET>
     <REMS alias="1">
-        <WORKFLOW_ID>test</WORKFLOW_ID>
-        <ORGANISATION_ID>test</ORGANISATION_ID>
+        <WORKFLOW_ID>11</WORKFLOW_ID>
+        <ORGANISATION_ID>12</ORGANISATION_ID>
         <DATASET_REF alias="1"/>
         <ATTRIBUTES>
             <STRING_ATTRIBUTE>

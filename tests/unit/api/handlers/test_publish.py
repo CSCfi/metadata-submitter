@@ -29,10 +29,10 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
 
     @pytest.fixture(autouse=True)
     def _inject_fixtures(
-        self,
-        submission_repository: SubmissionRepository,
-        object_repository: ObjectRepository,
-        file_repository: FileRepository,
+            self,
+            submission_repository: SubmissionRepository,
+            object_repository: ObjectRepository,
+            file_repository: FileRepository,
     ):
         self.submission_repository = submission_repository
         self.object_repository = object_repository
@@ -76,13 +76,13 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             workflow=workflow,
             title=submission_title,
             description=submission_description,
-            document={SUB_FIELD_DOI: doi_info, SUB_FIELD_REMS: rems.json_dump()},
+            document={SUB_FIELD_DOI: doi_info, SUB_FIELD_REMS: rems.to_json_dict()},
         )
         submission_id = await self.submission_repository.add_submission(submission_entity)
 
         # Create file.
         file_entity = FileEntity(submission_id=submission_entity.submission_id, path=file_path, bytes=file_bytes)
-        await self.file_repository.add_file(file_entity)
+        await self.file_repository.add_file(file_entity, workflow)
 
         # Publish submission.
         #
@@ -247,12 +247,12 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         rems = Rems(workflow_id=1, organization_id=f"organisation_{str(uuid.uuid4())}", licenses=[1, 2])
 
         # The submission contains one dataset metadata object.
-        dataset_schema = "dataset"
+        dataset_object_type = "dataset"
         dataset_title = f"title_{str(uuid.uuid4())}"
         dataset_description = f"description_{str(uuid.uuid4())}"
 
         # The submission contains one study metadata object.
-        study_schema = "study"
+        study_object_type = "study"
         study_title = f"title_{str(uuid.uuid4())}"
         study_description = f"description_{str(uuid.uuid4())}"
 
@@ -275,7 +275,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         workflow = SubmissionWorkflow.FEGA
         workflow_config = get_workflow(workflow.value)
         submission_entity = create_submission_entity(
-            workflow=workflow, document={SUB_FIELD_DOI: doi_info, SUB_FIELD_REMS: rems.json_dump()}
+            workflow=workflow, document={SUB_FIELD_DOI: doi_info, SUB_FIELD_REMS: rems.to_json_dict()}
         )
         submission_id = await self.submission_repository.add_submission(submission_entity)
 
@@ -284,28 +284,32 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         # Dataset.
         dataset_entity = create_object_entity(
             submission_id=submission_entity.submission_id,
-            schema=dataset_schema,
-            document={"title": dataset_title, "description": dataset_description},
+            object_type=dataset_object_type,
+            document={"test": "test"},
+            title=dataset_title,
+            description=dataset_description
         )
-        await self.object_repository.add_object(dataset_entity)
+        await self.object_repository.add_object(dataset_entity, workflow)
 
         # DAC.
-        dac_entity = create_object_entity(submission_id=submission_entity.submission_id, schema="dac", document={})
-        await self.object_repository.add_object(dac_entity)
+        dac_entity = create_object_entity(submission_id=submission_entity.submission_id, object_type="dac", document={})
+        await self.object_repository.add_object(dac_entity, workflow)
 
         # Policy.
         policy_entity = create_object_entity(
-            submission_id=submission_entity.submission_id, schema="policy", document={}
+            submission_id=submission_entity.submission_id, object_type="policy", document={}
         )
-        await self.object_repository.add_object(policy_entity)
+        await self.object_repository.add_object(policy_entity, workflow)
 
         # Study.
         study_entity = create_object_entity(
             submission_id=submission_entity.submission_id,
-            schema=study_schema,
-            document={"descriptor": {"studyTitle": study_title, "studyAbstract": study_description}},
+            object_type=study_object_type,
+            document={},
+            title=study_title,
+            description=study_description
         )
-        await self.object_repository.add_object(study_entity)
+        await self.object_repository.add_object(study_entity, workflow)
 
         # Create file.
         file_entity = FileEntity(
@@ -314,7 +318,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             path=file_path,
             bytes=file_bytes,
         )
-        await self.file_repository.add_file(file_entity)
+        await self.file_repository.add_file(file_entity, workflow)
 
         # Publish submission.
         #
@@ -484,8 +488,8 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                 assert call(study_datacite_data) in mock_pid_publish.await_args_list
             else:
                 assert mock_datacite_create_doi.await_count == 2
-                assert call(dataset_schema) in mock_datacite_create_doi.await_args_list
-                assert call(study_schema) in mock_datacite_create_doi.await_args_list
+                assert call(dataset_object_type) in mock_datacite_create_doi.await_args_list
+                assert call(study_object_type) in mock_datacite_create_doi.await_args_list
                 assert mock_pid_publish.await_count == 2
                 assert call(dataset_datacite_data) in mock_datacite_publish.await_args_list
                 assert call(study_datacite_data) in mock_datacite_publish.await_args_list
@@ -497,72 +501,72 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             assert mock_metax_update_doi.await_count == 2
             # Dataset.
             assert (
-                call(
-                    {
-                        # Remove keywords.
-                        **{k: v for k, v in doi_info.items() if k != "keywords"},
-                        # Update subjects.
-                        "subjects": [
-                            {
-                                **s,
-                                "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
-                                "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
-                                "valueUri": f"http://www.yso.fi/onto/okm-tieteenala/ta{s['subject'].split(' - ')[0]}",
-                                "classificationCode": s["subject"].split(" - ")[0],
-                            }
-                            for s in doi_info.get("subjects", [])
-                        ],
-                    },
-                    metax_id,
-                    file_bytes,
-                    related_dataset=None,
-                    related_study=Registration(
-                        submission_id=submission_id,
-                        object_id=study_entity.object_id,
-                        schema_type=study_schema,
-                        title=study_title,
-                        description=study_description,
-                        doi=doi,
-                        metax_id=metax_id,
-                    ),
-                )
-                in mock_metax_update_doi.await_args_list
+                    call(
+                        {
+                            # Remove keywords.
+                            **{k: v for k, v in doi_info.items() if k != "keywords"},
+                            # Update subjects.
+                            "subjects": [
+                                {
+                                    **s,
+                                    "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
+                                    "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
+                                    "valueUri": f"http://www.yso.fi/onto/okm-tieteenala/ta{s['subject'].split(' - ')[0]}",
+                                    "classificationCode": s["subject"].split(" - ")[0],
+                                }
+                                for s in doi_info.get("subjects", [])
+                            ],
+                        },
+                        metax_id,
+                        file_bytes,
+                        related_dataset=None,
+                        related_study=Registration(
+                            submission_id=submission_id,
+                            object_id=study_entity.object_id,
+                            object_type=study_object_type,
+                            title=study_title,
+                            description=study_description,
+                            doi=doi,
+                            metax_id=metax_id,
+                        ),
+                    )
+                    in mock_metax_update_doi.await_args_list
             )
             # Study.
             assert (
-                call(
-                    {
-                        # Remove keywords.
-                        **{k: v for k, v in doi_info.items() if k != "keywords"},
-                        # Update subjects.
-                        "subjects": [
-                            {
-                                **s,
-                                "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
-                                "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
-                                "valueUri": f"http://www.yso.fi/onto/okm-tieteenala/ta{s['subject'].split(' - ')[0]}",
-                                "classificationCode": s["subject"].split(" - ")[0],
-                            }
-                            for s in doi_info.get("subjects", [])
-                        ],
-                    },
-                    metax_id,
-                    file_bytes,
-                    related_dataset=Registration(
-                        submission_id=submission_id,
-                        object_id=dataset_entity.object_id,
-                        schema_type=dataset_schema,
-                        title=dataset_title,
-                        description=dataset_description,
-                        doi=doi,
-                        metax_id=metax_id,
-                        rems_url=f"http://mockrems:8003/application?items={rems_catalogue_id}",
-                        rems_resource_id=str(rems_resource_id),
-                        rems_catalogue_id=rems_catalogue_id,
-                    ),
-                    related_study=None,
-                )
-                in mock_metax_update_doi.await_args_list
+                    call(
+                        {
+                            # Remove keywords.
+                            **{k: v for k, v in doi_info.items() if k != "keywords"},
+                            # Update subjects.
+                            "subjects": [
+                                {
+                                    **s,
+                                    "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
+                                    "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
+                                    "valueUri": f"http://www.yso.fi/onto/okm-tieteenala/ta{s['subject'].split(' - ')[0]}",
+                                    "classificationCode": s["subject"].split(" - ")[0],
+                                }
+                                for s in doi_info.get("subjects", [])
+                            ],
+                        },
+                        metax_id,
+                        file_bytes,
+                        related_dataset=Registration(
+                            submission_id=submission_id,
+                            object_id=dataset_entity.object_id,
+                            object_type=dataset_object_type,
+                            title=dataset_title,
+                            description=dataset_description,
+                            doi=doi,
+                            metax_id=metax_id,
+                            rems_url=f"http://mockrems:8003/application?items={rems_catalogue_id}",
+                            rems_resource_id=str(rems_resource_id),
+                            rems_catalogue_id=rems_catalogue_id,
+                        ),
+                        related_study=None,
+                    )
+                    in mock_metax_update_doi.await_args_list
             )
 
             mock_metax_update_descr.assert_awaited_once_with(
@@ -594,7 +598,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         rems = Rems(workflow_id=1, organization_id=f"organisation_{str(uuid.uuid4())}", licenses=[1, 2])
 
         # The submission contains one dataset metadata object.
-        dataset_schema = "bpdataset"
+        dataset_object_type = "dataset"
         dataset_title = f"title_{str(uuid.uuid4())}"
         dataset_description = f"description_{str(uuid.uuid4())}"
 
@@ -616,17 +620,19 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         workflow = SubmissionWorkflow.BP
         workflow_config = get_workflow(workflow.value)
         submission_entity = create_submission_entity(
-            workflow=workflow, document={SUB_FIELD_DOI: doi_info, SUB_FIELD_REMS: rems.json_dump()}
+            workflow=workflow, document={SUB_FIELD_DOI: doi_info, SUB_FIELD_REMS: rems.to_json_dict()}
         )
         submission_id = await self.submission_repository.add_submission(submission_entity)
 
         # Create metadata object.
         object_entity = create_object_entity(
             submission_id=submission_entity.submission_id,
-            schema=dataset_schema,
-            document={"title": dataset_title, "description": dataset_description},
+            object_type=dataset_object_type,
+            document={},
+            title=dataset_title,
+            description=dataset_description
         )
-        await self.object_repository.add_object(object_entity)
+        await self.object_repository.add_object(object_entity, workflow)
 
         # Create file.
         file_entity = FileEntity(
@@ -635,7 +641,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             path=file_path,
             bytes=file_bytes,
         )
-        await self.file_repository.add_file(file_entity)
+        await self.file_repository.add_file(file_entity, workflow)
 
         # Publish submission.
         #
@@ -730,7 +736,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                 mock_pid_create_doi.assert_awaited_once_with()
                 mock_pid_publish.assert_awaited_once_with(datacite_data)
             else:
-                mock_datacite_create_doi.assert_awaited_once_with(dataset_schema)
+                mock_datacite_create_doi.assert_awaited_once_with(dataset_object_type)
                 mock_datacite_publish.assert_awaited_once_with(datacite_data)
 
             # Assert Beacon.

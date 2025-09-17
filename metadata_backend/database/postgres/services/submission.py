@@ -5,6 +5,8 @@ import re
 from datetime import datetime
 from typing import Any, cast
 
+from pydantic_core import to_jsonable_python
+
 from ....api.exceptions import NotFoundUserException, UserException
 from ....api.models import Rems, SubmissionWorkflow
 from ..models import SubmissionEntity
@@ -225,30 +227,33 @@ class SubmissionService:
         # Make a deepcopy to prevent SQLAlchemy from tracking changes to the document.
         document = copy.deepcopy(entity.document)
 
-        document[SUB_FIELD_SUBMISSION_ID] = entity.submission_id
-        document[SUB_FIELD_PROJECT_ID] = entity.project_id
-        document[SUB_FIELD_NAME] = entity.name
-        document["text_name"] = " ".join(re.split("[\\W_]", entity.name))
-        document[SUB_FIELD_WORKFLOW] = entity.workflow.value
-        document[SUB_FIELD_PUBLISHED] = entity.is_published
+        document[SUB_FIELD_SUBMISSION_ID] = to_jsonable_python(entity.submission_id)
+        document[SUB_FIELD_PROJECT_ID] = to_jsonable_python(entity.project_id)
+        document[SUB_FIELD_NAME] = to_jsonable_python(entity.name)
+        document["text_name"] = to_jsonable_python(" ".join(re.split("[\\W_]", entity.name)))
+        document[SUB_FIELD_WORKFLOW] = to_jsonable_python(entity.workflow.value)
+        document[SUB_FIELD_PUBLISHED] = to_jsonable_python(entity.is_published)
         if entity.folder is not None:
-            document[SUB_FIELD_FOLDER] = entity.folder
+            document[SUB_FIELD_FOLDER] = to_jsonable_python(entity.folder)
         if entity.created is not None:
-            document[SUB_FIELD_CREATED_DATE] = entity.created
+            document[SUB_FIELD_CREATED_DATE] = to_jsonable_python(entity.created)
         if entity.modified is not None:
-            document[SUB_FIELD_MODIFIED_DATE] = entity.modified
+            document[SUB_FIELD_MODIFIED_DATE] = to_jsonable_python(entity.modified)
         if entity.published is not None:
-            document[SUB_FIELD_PUBLISHED_DATE] = entity.published
+            document[SUB_FIELD_PUBLISHED_DATE] = to_jsonable_python(entity.published)
 
         return document
 
-    async def add_submission(self, submission: dict[str, Any]) -> str:
+    async def add_submission(self, submission: dict[str, Any], *, submission_id: str | None = None) -> str:
         """Add a new submission to the database.
 
         :param submission: the submission
+        :param submission_id: submission id that overrides the default one
         :returns: the automatically assigned submission id
         """
-        return await self.repository.add_submission(self.convert_to_entity(submission))
+        entity = self.convert_to_entity(submission)
+        entity.submission_id = submission_id
+        return await self.repository.add_submission(entity)
 
     async def get_submission_by_id(self, submission_id: str) -> dict[str, Any] | None:
         """Get the submission using submission id.
@@ -318,7 +323,7 @@ class SubmissionService:
 
         return [self.convert_from_entity(submission) for submission in submissions], cnt
 
-    async def is_submission(self, submission_id: str) -> bool:
+    async def is_submission_by_id(self, submission_id: str) -> bool:
         """Check if the submission exists.
 
         :param submission_id: the submission id
@@ -327,13 +332,51 @@ class SubmissionService:
         submission = await self.repository.get_submission_by_id(submission_id)
         return submission is not None
 
-    async def check_submission(self, submission_id: str) -> None:
+    async def check_submission_by_id(self, submission_id: str) -> None:
         """Raise an exception if the submission does not exist.
 
         :param submission_id: the submission id
         """
-        if not await self.is_submission(submission_id):
+        if not await self.is_submission_by_id(submission_id):
             raise UnknownSubmissionUserException(submission_id)
+
+    async def is_submission_by_name(self, project_id: str, name: str) -> bool:
+        """Check if the submission exists.
+
+        :param project_id: the project id
+        :param name: the submission name
+        :returns: True if the submission exists
+        """
+        submission = await self.repository.get_submission_by_name(project_id, name)
+        return submission is not None
+
+    async def check_submission_by_name(self, project_id: str, name: str) -> str:
+        """Raise an exception if the submission does not exist.
+
+        :param project_id: the project id
+        :param name: the submission name
+        :returns: The submission id
+        """
+        submission = await self.repository.get_submission_by_name(project_id, name)
+        if not submission:
+            raise UnknownSubmissionUserException(name)
+        return submission.submission_id
+
+    async def check_submission_by_id_or_name(self, project_id: str, submission_id_or_name: str) -> str:
+        """Raise an exception if the submission does not exist.
+
+        :param project_id: the project id
+        :param submission_id_or_name: the submission id or submission name
+        :returns: submission id if the submission exists
+        """
+        if await self.is_submission_by_id(submission_id_or_name):
+            return submission_id_or_name
+
+        submission = await self.repository.get_submission_by_name(project_id, submission_id_or_name)
+        if submission:
+            return submission.submission_id
+
+        raise UnknownSubmissionUserException(submission_id_or_name)
 
     async def is_published(self, submission_id: str) -> bool:
         """Check if the submission has been published.
@@ -503,7 +546,7 @@ class SubmissionService:
         """
 
         def update_callback(submission: SubmissionEntity) -> None:
-            submission.document[SUB_FIELD_REMS] = rems.json_dump()
+            submission.document[SUB_FIELD_REMS] = rems.to_json_dict()
 
         if await self.repository.update_submission(submission_id, update_callback) is None:
             raise UnknownSubmissionUserException(submission_id)

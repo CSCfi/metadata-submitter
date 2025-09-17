@@ -67,19 +67,19 @@
         "datacite": {
             "service": "datacite",
             "schemas": [
-                "bpdataset"
+                "dataset"
             ]
         },
         "rems": {
             "service": "csc",
             "schemas": [
-                "bpdataset"
+                "dataset"
             ]
         },
         "discovery": {
             "service": "beacon",
             "schemas": [
-                "bpdataset"
+                "dataset"
             ]
         }
     }

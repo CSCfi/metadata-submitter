@@ -1,6 +1,7 @@
 <DATASETS>
     <DATASET alias="1">
-        <TITLE>test</TITLE>
+        <TITLE>test_title</TITLE>
+        <DESCRIPTION>test_description</DESCRIPTION>
         <RUN_REF refname="1"/>
         <ANALYSIS_REF refname="1"/>
         <POLICY_REF refname="1"/>

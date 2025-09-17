@@ -2,7 +2,7 @@
 
 import uuid
 
-from metadata_backend.api.models import Registration
+from metadata_backend.api.models import Registration, SubmissionWorkflow
 from metadata_backend.database.postgres.repositories.object import ObjectRepository
 from metadata_backend.database.postgres.repositories.submission import SubmissionRepository
 from metadata_backend.database.postgres.repository import SessionFactory, transaction
@@ -10,6 +10,7 @@ from metadata_backend.database.postgres.services.registration import Registratio
 
 from ..helpers import create_object_entity, create_submission_entity
 
+workflow = SubmissionWorkflow.SDS
 
 async def test_add_and_get_registration(
     session_factory: SessionFactory,
@@ -21,11 +22,11 @@ async def test_add_and_get_registration(
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
         obj = create_object_entity(submission.submission_id)
-        await object_repository.add_object(obj)
+        await object_repository.add_object(obj, workflow)
 
         # Object
 
-        schema = f"schema_{uuid.uuid4()}"
+        object_type = f"type_{uuid.uuid4()}"
         title = f"title_{uuid.uuid4()}"
         description = f"description_{uuid.uuid4()}"
         doi = f"doi_{uuid.uuid4()}"
@@ -38,7 +39,7 @@ async def test_add_and_get_registration(
         registration = Registration(
             submission_id=submission.submission_id,
             object_id=obj.object_id,
-            schema_type=schema,
+            object_type=object_type,
             title=title,
             description=description,
             doi=doi,
@@ -58,7 +59,7 @@ async def test_add_and_get_registration(
 
         # Submission
 
-        schema = f"schema_{uuid.uuid4()}"
+        object_type = f"schema_{uuid.uuid4()}"
         title = f"title_{uuid.uuid4()}"
         description = f"description_{uuid.uuid4()}"
         doi = f"doi_{uuid.uuid4()}"
@@ -70,7 +71,6 @@ async def test_add_and_get_registration(
 
         registration = Registration(
             submission_id=submission.submission_id,
-            schema_type=schema,
             title=title,
             description=description,
             doi=doi,
@@ -97,7 +97,7 @@ async def test_update_registration(
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
         obj = create_object_entity(submission.submission_id)
-        await object_repository.add_object(obj)
+        await object_repository.add_object(obj, workflow)
 
         object_doi = f"doi_{uuid.uuid4()}"
         object_metax_id = f"metax_{uuid.uuid4()}"
@@ -119,7 +119,7 @@ async def test_update_registration(
             Registration(
                 submission_id=submission.submission_id,
                 object_id=obj.object_id,
-                schema_type="test",
+                object_type="test",
                 title="test",
                 description="test",
                 doi=object_doi,
@@ -167,7 +167,7 @@ async def test_update_registration(
         submission_registration_id = await registration_service.add_registration(
             Registration(
                 submission_id=submission.submission_id,
-                schema_type="test",
+                object_type="test",
                 title="test",
                 description="test",
                 doi=submission_doi,

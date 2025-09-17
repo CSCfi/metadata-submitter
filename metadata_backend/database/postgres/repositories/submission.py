@@ -6,6 +6,7 @@ from typing import Callable, Sequence
 
 from sqlalchemy import and_, delete, func, select
 
+from metadata_backend.api.services.accession import generate_submission_accession
 from metadata_backend.helpers.validator import JSONValidator
 
 from ..models import SubmissionEntity
@@ -58,6 +59,10 @@ class SubmissionRepository:
         async with transaction(self._session_factory) as session:
             # Validate submission document before storing it.
             JSONValidator(entity.document, "submission").validate()
+
+            # Generate accession.
+            if entity.submission_id is None:
+                entity.submission_id = generate_submission_accession(entity.workflow)
 
             session.add(entity)
             await session.flush()

@@ -1,5 +1,6 @@
 import uuid
 
+from metadata_backend.api.models import SubmissionWorkflow
 from metadata_backend.database.postgres.models import RegistrationEntity
 from metadata_backend.database.postgres.repositories.object import ObjectRepository
 from metadata_backend.database.postgres.repositories.registration import RegistrationRepository
@@ -7,6 +8,7 @@ from metadata_backend.database.postgres.repositories.submission import Submissio
 from metadata_backend.database.postgres.repository import SessionFactory, transaction
 from tests.unit.database.postgres.helpers import create_object_entity, create_submission_entity
 
+workflow = SubmissionWorkflow.SDS
 
 async def test_add_get_registration(
     session_factory: SessionFactory,
@@ -18,9 +20,9 @@ async def test_add_get_registration(
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
         obj = create_object_entity(submission.submission_id)
-        await object_repository.add_object(obj)
+        await object_repository.add_object(obj, workflow)
 
-        object_schema = f"schema_{uuid.uuid4()}"
+        object_object_type = f"type_{uuid.uuid4()}"
         object_title = f"title_{uuid.uuid4()}"
         object_description = f"description_{uuid.uuid4()}"
         object_doi = f"doi_{uuid.uuid4()}"
@@ -30,7 +32,7 @@ async def test_add_get_registration(
         object_rems_resource_id = f"rems_resource_{uuid.uuid4()}"
         object_rems_catalogue_id = f"rems_catalogue_{uuid.uuid4()}"
 
-        submission_schema = f"schema_{uuid.uuid4()}"
+        submission_object_type = f"type_{uuid.uuid4()}"
         submission_title = f"title_{uuid.uuid4()}"
         submission_description = f"description_{uuid.uuid4()}"
         submission_doi = f"doi_{uuid.uuid4()}"
@@ -44,7 +46,7 @@ async def test_add_get_registration(
             assert entity is not None
             assert entity.submission_id == submission.submission_id
             assert entity.object_id == obj.object_id
-            assert entity.schema == object_schema
+            assert entity.object_type == object_object_type
             assert entity.title == object_title
             assert entity.description == object_description
             assert entity.doi == object_doi
@@ -59,7 +61,7 @@ async def test_add_get_registration(
             assert entity.submission_id == submission.submission_id
             assert entity.object_id is None
             assert entity.doi == submission_doi
-            assert entity.schema == submission_schema
+            assert entity.object_type == submission_object_type
             assert entity.title == submission_title
             assert entity.description == submission_description
             assert entity.metax_id == submission_metax_id
@@ -71,7 +73,7 @@ async def test_add_get_registration(
         object_registration = RegistrationEntity(
             submission_id=submission.submission_id,
             object_id=obj.object_id,
-            schema=object_schema,
+            object_type=object_object_type,
             title=object_title,
             description=object_description,
             doi=object_doi,
@@ -102,7 +104,7 @@ async def test_add_get_registration(
 
         submission_registration = RegistrationEntity(
             submission_id=submission.submission_id,
-            schema=submission_schema,
+            object_type=submission_object_type,
             title=submission_title,
             description=submission_description,
             doi=submission_doi,

@@ -1,10 +1,10 @@
 <SAMPLE_SET>
     <SAMPLE alias="1">
-        <TITLE>test</TITLE>
+        <TITLE>test_title</TITLE>
         <SAMPLE_NAME>
             <TAXON_ID>9606</TAXON_ID>
             <SCIENTIFIC_NAME>Homo sapiens</SCIENTIFIC_NAME>
         </SAMPLE_NAME>
-        <DESCRIPTION>test</DESCRIPTION>
+        <DESCRIPTION>test_description</DESCRIPTION>
     </SAMPLE>
 </SAMPLE_SET>

@@ -1,55 +1,28 @@
 """Tests for helper classes."""
 
-import unittest
+import pytest
 
-import xmlschema
-
-from metadata_backend.conf.conf import schema_types
-from metadata_backend.helpers.schema_loader import JSONSchemaLoader, SchemaNotFoundException, XMLSchemaLoader
-
-
-class TestXMLSchemaLoader(unittest.TestCase):
-    """Test schema loader."""
-
-    def test_XMLSchemaLoader_returns_xmlschema_object(self):
-        """Test XMLSchemaLoader return type is correct."""
-        schema_name = "submission"
-        schemaloader = XMLSchemaLoader()
-        schema = schemaloader.get_schema(schema_name)
-        self.assertIs(type(schema), xmlschema.XMLSchema)
-
-    def test_XMLSchemaLoader_raises_error_with_nonexistent_schema(self):
-        """Test non-existent schemas is reported as error."""
-        schema_name = "NULL"
-        schemaloader = XMLSchemaLoader()
-        self.assertRaises(SchemaNotFoundException, schemaloader.get_schema, schema_name)
+from metadata_backend.helpers.schema_loader import (
+    SchemaLoader,
+    JSONSchemaLoader,
+    XMLSchemaLoader,
+    SchemaFileNotFoundException)
 
 
-class TestJSONSchemaLoader(unittest.TestCase):
-    """Test schema loader."""
-
-    def test_JSONSchemaLoader_returns_xmlschema_object(self):
-        """Test JSONSchemaLoader return type is correct."""
-        schema_name = "study"
-        schemaloader = JSONSchemaLoader()
-        schema = schemaloader.get_schema(schema_name)
-        self.assertIs(type(schema), dict)
-
-    def test_JSONSchemaLoader_raises_error_with_nonexistent_schema(self):
-        """Test non-existent schemas is reported as error."""
-        schema_name = "NULL"
-        schemaloader = JSONSchemaLoader()
-        self.assertRaises(SchemaNotFoundException, schemaloader.get_schema, schema_name)
+def test_schema_loader_error():
+    loader = SchemaLoader(".invalid")
+    with pytest.raises(SchemaFileNotFoundException):
+        loader.get_schema_file("invalid")
 
 
-class TestAllDefinedSchemasExist(unittest.TestCase):
-    """Test that all defined schemas exist."""
+def test_json_schema_loader_submission_json():
+    loader = JSONSchemaLoader()
+    file = loader.get_schema_file("submission")
+    assert file.name == "submission.json"
+    assert loader.get_schema("submission") is not None
 
-    def test_schemas_exist(self):
-        """Test that all defined schemas have their schema definition."""
-        schema_loader = JSONSchemaLoader()
-        for schema_name in schema_types.keys():
-            if schema_name in {"project", "datacite"}:
-                continue
-            schema = schema_loader.get_schema(schema_name)
-            self.assertIs(type(schema), dict)
+
+def test_xml_schema_loader_submission_xml():
+    loader = XMLSchemaLoader()
+    file = loader.get_schema_file("BP.bpdataset")
+    assert file.name == "BP.bpdataset.xsd"

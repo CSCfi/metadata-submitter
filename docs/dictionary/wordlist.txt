@@ -242,6 +242,7 @@ wkt
 wolof
 wsiimage
 wxs
+xmls
 xpath
 xpaths
 xsd

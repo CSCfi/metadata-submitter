@@ -13,7 +13,7 @@ class PublishServiceConfig(BaseModel):
 
     service: str
     submission: bool = False
-    schemas: list[str] = Field(default_factory=list)
+    schemas: list[str] = Field(default_factory=list)  # Metadata object types.
 
 
 class PublishConfig(BaseModel):

@@ -43,7 +43,7 @@ class RegistrationService:
         return Registration(
             submission_id=entity.submission_id,
             object_id=entity.object_id,
-            schema_type=entity.schema,
+            object_type=entity.object_type,
             title=entity.title,
             description=entity.description,
             doi=entity.doi,
@@ -116,7 +116,7 @@ class RegistrationService:
             RegistrationEntity(
                 submission_id=registration.submission_id,
                 object_id=registration.object_id,
-                schema=registration.schema_type,
+                object_type=registration.object_type,
                 title=registration.title,
                 description=registration.description,
                 doi=registration.doi,

@@ -5,13 +5,13 @@ from typing import Any, cast
 
 from aiohttp.web import AppKey, Application, Request
 
+from ..database.postgres.repository import SessionFactory
 from ..database.postgres.services.file import FileService
 from ..database.postgres.services.object import ObjectService
 from ..database.postgres.services.registration import RegistrationService
 from ..database.postgres.services.submission import SubmissionService
 from .services.auth import AccessService
 from .services.file import FileProviderService
-from .services.object import JsonObjectService, XmlObjectService
 from .services.project import ProjectService
 
 
@@ -24,9 +24,8 @@ class ResourceType(Enum):
     OBJECT_SERVICE = "object_service"
     FILE_SERVICE = "file_service"
     REGISTRATION_SERVICE = "registration_service"
-    JSON_OBJECT_SERVICE = "json_object_service"
-    XML_OBJECT_SERVICE = "xml_object_service"
     FILE_PROVIDER_SERVICE = "file_provider_service"
+    SESSION_FACTORY = "session_factory"
 
 
 # Map ResourceType to AppKey instances according to:
@@ -38,9 +37,8 @@ APP_KEYS: dict[ResourceType, AppKey[Any]] = {
     ResourceType.OBJECT_SERVICE: AppKey("object_service"),
     ResourceType.FILE_SERVICE: AppKey("file_service"),
     ResourceType.REGISTRATION_SERVICE: AppKey("registration_service"),
-    ResourceType.JSON_OBJECT_SERVICE: AppKey("json_object_service"),
-    ResourceType.XML_OBJECT_SERVICE: AppKey("xml_object_service"),
     ResourceType.FILE_PROVIDER_SERVICE: AppKey("file_provider_service"),
+    ResourceType.SESSION_FACTORY: AppKey("session_factory"),
 }
 
 
@@ -134,32 +132,6 @@ def get_registration_service(req: Request) -> RegistrationService:
     return cast(RegistrationService, req.app[APP_KEYS[ResourceType.REGISTRATION_SERVICE]])
 
 
-def get_json_object_service(req: Request) -> JsonObjectService:
-    """
-    Retrieve the JSonObjectService from the application.
-
-    Args:
-        req: The incoming HTTP request containing the application context.
-
-    Returns:
-        ObjectService: The JsonObjectService attached to the application.
-    """
-    return cast(JsonObjectService, req.app[APP_KEYS[ResourceType.JSON_OBJECT_SERVICE]])
-
-
-def get_xml_object_service(req: Request) -> XmlObjectService:
-    """
-    Retrieve the XmlObjectService from the application.
-
-    Args:
-        req: The incoming HTTP request containing the application context.
-
-    Returns:
-        XmlObjectService: The XmlObjectService attached to the application.
-    """
-    return cast(XmlObjectService, req.app[APP_KEYS[ResourceType.XML_OBJECT_SERVICE]])
-
-
 def get_file_provider_service(req: Request) -> FileProviderService:
     """
     Retrieve the FileProviderService from the application.
@@ -171,3 +143,16 @@ def get_file_provider_service(req: Request) -> FileProviderService:
         FileProviderService: The FileProviderService attached to the application.
     """
     return cast(FileProviderService, req.app[APP_KEYS[ResourceType.FILE_PROVIDER_SERVICE]])
+
+
+def get_session_factory(req: Request) -> SessionFactory:
+    """
+    Retrieve the SQLAlchemy session factory.
+
+    Args:
+        req: The incoming HTTP request containing the application context.
+
+    Returns:
+        SessionFactory: The SQLAlchemy session factory.
+    """
+    return cast(SessionFactory, req.app[APP_KEYS[ResourceType.SESSION_FACTORY]])

@@ -1,6 +1,6 @@
 <DAC_SET>
     <DAC alias="1">
-        <TITLE>test</TITLE>
+        <TITLE>test_title</TITLE>
         <CONTACTS>
             <CONTACT organisation="test" name="test" email="test@test.com"/>
         </CONTACTS>

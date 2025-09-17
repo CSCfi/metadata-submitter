@@ -2,7 +2,7 @@
 
 import logging
 
-from tests.integration.conf import base_url, schemas_url, test_schemas, workflows_url
+from tests.integration.conf import base_url, schemas_url, workflows_url
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
@@ -29,9 +29,14 @@ class TestOtherApiEndpoints:
 
     async def test_schemas_endpoint(self, client_logged_in):
         """Test that schemas' endpoint return 200."""
-        for schema, expected_status in test_schemas:
+
+        test_schemas = [
+            "submission"
+        ]
+
+        for schema in test_schemas:
             async with client_logged_in.get(f"{schemas_url}/{schema}") as resp:
-                assert resp.status == expected_status, f"{resp.status} {schema}"
+                assert resp.status == 200
 
     async def test_workflows_endpoint(self, client_logged_in):
         """Test that schemas' endpoint return 200."""

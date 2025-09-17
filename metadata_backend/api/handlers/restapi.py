@@ -12,7 +12,7 @@ from multidict import CIMultiDict
 from ...conf.conf import POLLING_INTERVAL, WORKFLOWS, get_workflow, schema_types
 from ...database.postgres.models import IngestStatus
 from ...helpers.logger import LOG
-from ...helpers.schema_loader import JSONSchemaLoader, SchemaNotFoundException
+from ...helpers.schema_loader import JSONSchemaLoader, SchemaFileNotFoundException
 from ...services.admin_service_handler import AdminServiceHandler
 from ...services.datacite_service_handler import DataciteServiceHandler
 from ...services.metax_service_handler import MetaxServiceHandler
@@ -119,7 +119,7 @@ class RESTAPIHandler:
             LOG.info("%s JSON schema loaded.", schema_type)
             return self._json_response(schema)
 
-        except SchemaNotFoundException as error:
+        except SchemaFileNotFoundException as error:
             reason = f"{error} Occurred for JSON schema: '{schema_type}'."
             LOG.exception(reason)
             raise web.HTTPBadRequest(reason=reason)

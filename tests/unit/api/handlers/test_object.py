@@ -1,13 +1,32 @@
 """Test API endpoints from ObjectAPIHandler."""
 
-import json
-import uuid
-from typing import Callable
-
-from defusedxml import ElementTree
-
-from metadata_backend.api.models import Object, Rems, SubmissionWorkflow
+from metadata_backend.api.models import SubmissionWorkflow, Submission, Objects
 from metadata_backend.conf.conf import API_PREFIX
+from metadata_backend.api.processors.xml.processors import (
+    XmlProcessor,
+    XmlObjectProcessor,
+    XmlDocumentProcessor
+)
+from metadata_backend.api.processors.xml.configs import (
+    BP_FULL_SUBMISSION_XML_OBJECT_CONFIG,
+    BP_SAMPLE_SET_PATH,
+    BP_ANNOTATION_OBJECT_TYPE,
+    BP_DATASET_OBJECT_TYPE,
+    BP_IMAGE_OBJECT_TYPE,
+    BP_LANDING_PAGE_OBJECT_TYPE,
+    BP_OBSERVATION_OBJECT_TYPE,
+    BP_OBSERVER_OBJECT_TYPE,
+    BP_ORGANISATION_OBJECT_TYPE,
+    BP_POLICY_OBJECT_TYPE,
+    BP_REMS_OBJECT_TYPE,
+    BP_SAMPLE_BIOLOGICAL_BEING_OBJECT_TYPE,
+    BP_SAMPLE_SLIDE_OBJECT_TYPE,
+    BP_SAMPLE_SPECIMEN_OBJECT_TYPE,
+    BP_SAMPLE_BLOCK_OBJECT_TYPE,
+    BP_SAMPLE_CASE_OBJECT_TYPE,
+    BP_STAINING_OBJECT_TYPE,
+    BP_SUBMISSION_OBJECT_TYPE)
+from metadata_backend.api.services.accession import generate_bp_accession_prefix
 
 from .common import HandlersTestCase
 
@@ -15,387 +34,190 @@ from .common import HandlersTestCase
 class ObjectHandlerTestCase(HandlersTestCase):
     """Object API endpoint class test cases."""
 
-    @staticmethod
-    def assert_xml(expected: str, actual: str, remove_attr_xpath: tuple[str, str] | None = None) -> None:
-        def clean_xml(xml_str):
-            root = ElementTree.fromstring(xml_str)
+    async def test_submission_bp(self):
+        """Test BP submission."""
 
-            # Remove xmlns* attributes
-            for elem in root.iter():
-                elem.attrib = {k: v for k, v in elem.attrib.items() if not k.startswith("xmlns")}
+        submission_dir = self.TESTFILES_ROOT / "xml" / "bp" / "submission_1"
+        workflow = SubmissionWorkflow.BP.value
+        project_id = self.project_id
+        object_name = "1"
+        xml_config = BP_FULL_SUBMISSION_XML_OBJECT_CONFIG
 
-            # Remove specific attribute at a given XPath
-            if remove_attr_xpath:
-                xpath, attr_name = remove_attr_xpath
-                for target in root.findall(xpath):
-                    if attr_name in target.attrib:
-                        del target.attrib[attr_name]
-
-            return root
-
-        cleaned_expected = ElementTree.tostring(clean_xml(expected))
-        cleaned_actual = ElementTree.tostring(clean_xml(actual))
-
-        assert cleaned_expected == cleaned_actual
-
-    @staticmethod
-    def change_xml_attribute(xml: str, xpath: str, attribute: str, new_value: str) -> str:
-        root = ElementTree.fromstring(xml)
-        for elem in root.findall(xpath):
-            if attribute in elem.attrib:
-                elem.attrib[attribute] = new_value
-        return ElementTree.tostring(root, encoding="unicode")
-
-    async def test_post_get_delete_xml_object(self):
-        """Test that creating, modifying and deleting XML metadata object works."""
-
-        bp_files = [
-            ("bpannotation", "annotation.xml", (".//ANNOTATION", "alias"), (".//ANNOTATION", "accession")),
-            ("bpobservation", "observation.xml", (".//OBSERVATION", "alias"), (".//OBSERVATION", "accession")),
-            # TODO(improve): test all BP XML files
+        files = [
+            "dataset.xml",
+            "policy.xml",
+            "image.xml",
+            "annotation.xml",
+            "observation.xml",
+            "observer.xml",
+            "sample.xml",
+            "staining.xml",
+            "landing_page.xml",
+            "rems.xml",
+            "organisation.xml",
         ]
 
-        fega_files = [
-            ("policy", "policy.xml", (".//POLICY", "alias"), (".//POLICY", "accession")),
-            # TODO(improve): test all FEGA XML files
-        ]
+        sample_object_types = (
+            BP_SAMPLE_BIOLOGICAL_BEING_OBJECT_TYPE,
+            BP_SAMPLE_SLIDE_OBJECT_TYPE,
+            BP_SAMPLE_SPECIMEN_OBJECT_TYPE,
+            BP_SAMPLE_BLOCK_OBJECT_TYPE,
+            BP_SAMPLE_CASE_OBJECT_TYPE,
+        )
+        object_types = (BP_ANNOTATION_OBJECT_TYPE,
+                        BP_DATASET_OBJECT_TYPE,
+                        BP_IMAGE_OBJECT_TYPE,
+                        BP_LANDING_PAGE_OBJECT_TYPE,
+                        BP_OBSERVATION_OBJECT_TYPE,
+                        BP_OBSERVER_OBJECT_TYPE,
+                        BP_ORGANISATION_OBJECT_TYPE,
+                        BP_POLICY_OBJECT_TYPE,
+                        BP_REMS_OBJECT_TYPE,
+                        *sample_object_types,
+                        BP_STAINING_OBJECT_TYPE)
+
+        # Read XML files.
+        data = {}
+        for file in files:
+            data[file] = (submission_dir / file).open("rb")
+
+        with self.patch_verify_user_project, self.patch_verify_authorization:
+            # Test create submission.
+            #
+            response = await self.client.post(f"{API_PREFIX}/workflows/{workflow}/projects/{project_id}/submissions",
+                                              data=data)
+            assert response.status == 200
+            submission = Submission.model_validate(await response.json())
+
+            # Assert submission document.
+            submission_name = "test_short_name"
+            submission_id = submission.submission_id
+            assert submission.name == submission_name
+            assert submission.title == "test_title"
+            assert submission.description == "test_description"
+            assert submission_id.startswith(generate_bp_accession_prefix(BP_SUBMISSION_OBJECT_TYPE))
+
+            async def _assert_object_xml(response_, object_type_: str) -> None:
+                """Assert that the XML document contains a single XML metadata object."""
+                assert response_.status == 200
+
+                xml_ = await response_.read()
+                doc_processor_ = XmlDocumentProcessor(xml_config, XmlProcessor.parse_xml(xml_))
+
+                # Assert set element.
+                XmlObjectProcessor._get_xml_element(
+                    xml_config.get_set_path(object_type=object_type_), doc_processor_.xml)
+
+                # Assert the object root element.
+                assert len(doc_processor_.xml_processors) == 1
+                processor_ = doc_processor_.xml_processors[0]
+                assert processor_.object_type == object_type_
+                XmlObjectProcessor._get_xml_element(processor_.root_path, processor_.xml)
+
+                # Assert object name and object id.
+                assert processor_.get_xml_object_identifier().name == object_name
+                object_id_ = object_id_by_type_and_name[object_type_][object_name]
+                assert processor_.get_xml_object_identifier().id == object_id_
+
+            async def _assert_sample_xmls(response_) -> None:
+                """Assert that the XML document contains all sample XML metadata objects."""
+                assert response_.status == 200
+
+                xml_ = await response_.read()
+                doc_processor_ = XmlDocumentProcessor(xml_config, XmlProcessor.parse_xml(xml_))
+
+                # Assert set element.
+                XmlObjectProcessor._get_xml_element(BP_SAMPLE_SET_PATH, doc_processor_.xml)
+
+                # Assert the object root element.
+                assert len(doc_processor_.xml_processors) == 5
+                for processor_ in doc_processor_.xml_processors:
+                    assert processor_.object_type in sample_object_types
+                    assert XmlObjectProcessor._get_xml_element(processor_.root_path, processor_.xml)
+
+                # Assert object name and object id.
+                for processor_ in doc_processor_.xml_processors:
+                    assert processor_.get_xml_object_identifier().name == object_name
+                    object_id_ = object_id_by_type_and_name[processor_.object_type][object_name]
+                    assert processor_.get_xml_object_identifier().id == object_id_
+
+            # Test get submission document.
+            #
 
-        workflow_files = {
-            SubmissionWorkflow.BP: bp_files,
-            SubmissionWorkflow.FEGA: fega_files,
-        }
-
-        for workflow in {SubmissionWorkflow.BP, SubmissionWorkflow.FEGA}:
-            submission_id = await self.post_submission(workflow=workflow.value)
-
-            files = workflow_files[workflow]
-
-            with (
-                self.patch_verify_user_project,
-                self.patch_verify_authorization,
-            ):
-                for schema, file_name, alias_xpath, accession_xpath in files:
-                    xml_document = self.read_metadata_object(schema, file_name)
-
-                    alias = f"alias-{uuid.uuid4()}"
-                    xml_document = self.change_xml_attribute(xml_document, *alias_xpath, alias)
-
-                    # Create metadata object with content type auto-detection.
-
-                    response = await self.client.post(
-                        f"{API_PREFIX}/objects/{schema}", params={"submission": submission_id}, data=xml_document
-                    )
-                    assert response.status == 201
-                    result = await response.json()
-                    assert result[0]["alias"] == alias
-                    assert "accessionId" in result[0]
-
-                    accession_id = result[0]["accessionId"]
-
-                    # Read metadata object as xml.
-
-                    response = await self.client.get(
-                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
-                        headers={"Content-Type": "application/xml"},
-                        data=xml_document,
-                    )
-                    assert response.status == 200
-                    self.assert_xml(xml_document, await response.text(), accession_xpath)
-
-                    # Read metadata object as json.
-
-                    response = await self.client.get(
-                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
-                        headers={"Content-Type": "application/json"},
-                    )
-                    assert response.status == 200
-                    assert (await response.json())["accessionId"] == accession_id
-
-                    # Read metadata object as json (default content type).
-
-                    response = await self.client.get(
-                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
-                    )
-                    assert response.status == 200
-                    assert (await response.json())["accessionId"] == accession_id
-
-                    # Read metadata object ids.
-
-                    response = await self.client.get(f"{API_PREFIX}/objects/{schema}?submission={submission_id}")
-                    assert response.status == 200
-                    assert Object(object_id=accession_id, submission_id=submission_id, schema_type=schema) == Object(
-                        **(await response.json())[0]
-                    )
-
-                    # Update metadata object (put) without content type auto-detection.
-
-                    alias = f"alias-{uuid.uuid4()}"  # Changing alias as its updated is allowed.
-                    xml_document = self.change_xml_attribute(xml_document, *alias_xpath, alias)
-
-                    response = await self.client.put(
-                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
-                        headers={"Content-Type": "application/xml"},
-                        data=xml_document,
-                    )
-                    assert response.status == 200
-                    result = await response.json()
-                    assert result["accessionId"] == accession_id
-
-                    # Read metadata object as xml.
-
-                    response = await self.client.get(
-                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
-                        headers={"Content-Type": "application/xml"},
-                    )
-                    assert response.status == 200
-                    self.assert_xml(xml_document, await response.text(), accession_xpath)
-
-                    # Update metadata object (patch) with content type auto-detection.
-
-                    alias = f"alias-{uuid.uuid4()}"  # Changing alias as its updated is allowed.
-                    xml_document = self.change_xml_attribute(xml_document, *alias_xpath, alias)
-
-                    response = await self.client.patch(
-                        f"{API_PREFIX}/objects/{schema}/{accession_id}", data=xml_document
-                    )
-                    assert response.status == 200
-                    result = await response.json()
-                    assert result["accessionId"] == accession_id
-
-                    # Read metadata object as xml.
-
-                    response = await self.client.get(
-                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
-                        headers={"Content-Type": "application/xml"},
-                    )
-                    assert response.status == 200
-                    self.assert_xml(xml_document, await response.text(), accession_xpath)
-
-                    # Delete metadata object
-
-                    response = await self.client.delete(
-                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
-                    )
-                    assert response.status == 204
-
-                    # Read metadata object.
-
-                    response = await self.client.get(
-                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
-                    )
-                    assert response.status == 404
-
-    async def test_post_get_delete_json_object(self):
-        """Test that creating, modifying and deleting JSON metadata object works."""
-
-        bp_files = [
-            ("bpannotation", "annotation.json"),
-            ("bpobserver", "observer.json"),
-            # TODO(improve): test all BP JSON files
-        ]
-
-        fega_files = [
-            ("dataset", "dataset.json"),
-            # TODO(improve): test all FEGA JSON files
-        ]
-
-        workflow_files = {
-            SubmissionWorkflow.BP: bp_files,
-            SubmissionWorkflow.FEGA: fega_files,
-        }
-
-        alias_callback = lambda d, val: {**d, "alias": val}
-
-        def update_json_field(json_str: str, val: str, update_callback: Callable[[dict, str], dict]) -> str:
-            return json.dumps(update_callback(json.loads(json_str), val))
-
-        for workflow in {SubmissionWorkflow.BP, SubmissionWorkflow.FEGA}:
-            submission_id = await self.post_submission(workflow=workflow.value)
-
-            files = workflow_files[workflow]
-
-            with (
-                self.patch_verify_user_project,
-                self.patch_verify_authorization,
-            ):
-                for schema, file_name in files:
-                    json_document = self.read_metadata_object(schema, file_name)
-
-                    alias = f"alias-{uuid.uuid4()}"
-                    json_document = update_json_field(json_document, alias, alias_callback)
-
-                    # Create metadata object with content type auto-detection.
-
-                    response = await self.client.post(
-                        f"{API_PREFIX}/objects/{schema}", params={"submission": submission_id}, data=json_document
-                    )
-                    assert response.status == 201
-                    result = await response.json()
-                    assert result[0]["alias"] == alias
-                    assert "accessionId" in result[0]
-
-                    accession_id = result[0]["accessionId"]
-
-                    # Read metadata object as json.
-
-                    response = await self.client.get(
-                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
-                        headers={"Content-Type": "application/json"},
-                    )
-                    assert response.status == 200
-                    result = await response.json()
-                    assert {**json.loads(json_document), "accessionId": accession_id} == result
-
-                    # Read metadata object as json (default content type).
-
-                    response = await self.client.get(
-                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
-                    )
-                    assert response.status == 200
-                    result = await response.json()
-                    assert {**json.loads(json_document), "accessionId": accession_id} == result
-
-                    # Read metadata object ids.
-
-                    response = await self.client.get(f"{API_PREFIX}/objects/{schema}?submission={submission_id}")
-                    assert response.status == 200
-                    assert Object(object_id=accession_id, submission_id=submission_id, schema_type=schema) == Object(
-                        **(await response.json())[0]
-                    )
-
-                    # Update metadata object (put) without content type auto-detection.
-
-                    alias = f"alias-{uuid.uuid4()}"  # Changing alias as its update is allowed.
-                    json_document = update_json_field(json_document, alias, alias_callback)
-
-                    response = await self.client.put(
-                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
-                        headers={"Content-Type": "application/json"},
-                        data=json_document,
-                    )
-                    assert response.status == 200
-                    result = await response.json()
-                    assert result["accessionId"] == accession_id
-
-                    # Read metadata object as json.
-
-                    response = await self.client.get(
-                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
-                    )
-                    assert response.status == 200
-                    result = await response.json()
-                    assert {**json.loads(json_document), "accessionId": accession_id} == result
-
-                    # Update metadata object (patch) with content type auto-detection.
-
-                    alias = f"alias-{uuid.uuid4()}"  # Changing alias as its update is allowed.
-                    json_document = update_json_field(json_document, alias, alias_callback)
-
-                    response = await self.client.patch(
-                        f"{API_PREFIX}/objects/{schema}/{accession_id}", data=json_document
-                    )
-                    assert response.status == 200
-                    result = await response.json()
-                    assert result["accessionId"] == accession_id
-
-                    # Read metadata object as json.
-
-                    response = await self.client.get(
-                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
-                    )
-                    assert response.status == 200
-                    result = await response.json()
-                    assert {**json.loads(json_document), "accessionId": accession_id} == result
-
-                    # Delete metadata object
-
-                    response = await self.client.delete(
-                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
-                    )
-                    assert response.status == 204
-
-                    # Read metadata object.
-
-                    response = await self.client.get(
-                        f"{API_PREFIX}/objects/{schema}/{accession_id}",
-                    )
-                    assert response.status == 404
-
-    async def test_post_invalid_json_object(self):
-        """Test posting invalid JSON metadata object."""
-
-        workflow = SubmissionWorkflow.FEGA
-        schema = "dataset"
-        submission_id = await self.post_submission(workflow=workflow.value)
-
-        with (
-            self.patch_verify_user_project,
-            self.patch_verify_authorization,
-        ):
-            response = await self.client.post(
-                f"{API_PREFIX}/objects/{schema}", params={"submission": submission_id}, data="invalid"
-            )
-            assert response.status == 400
-            assert "Invalid JSON payload" in await response.text()
-
-    async def test_post_invalid_xml_object(self):
-        """Test posting invalid XML metadata object."""
-
-        workflow = SubmissionWorkflow.FEGA
-        schema = "dataset"
-        submission_id = await self.post_submission(workflow=workflow.value)
-
-        with (
-            self.patch_verify_user_project,
-            self.patch_verify_authorization,
-        ):
-            response = await self.client.post(
-                f"{API_PREFIX}/objects/{schema}",
-                params={"submission": submission_id},
-                headers={"Content-Type": "application/xml"},
-                data="invalid",
-            )
-            assert response.status == 400
-            assert "not valid" in await response.text()
-
-    async def test_post_invalid_schema(self):
-        """Test posting invalid metadata object schema."""
-
-        workflow = SubmissionWorkflow.BP
-        schema = "invalid"
-        submission_id = await self.post_submission(workflow=workflow.value)
-
-        with (
-            self.patch_verify_user_project,
-            self.patch_verify_authorization,
-        ):
-            response = await self.client.post(
-                f"{API_PREFIX}/objects/{schema}", params={"submission": submission_id}, data="invalid"
-            )
-            assert response.status == 400
-            assert "does not support" in await response.text()
-
-    async def test_post_bp_xml_rems(self):
-        """Test that creating BP REMS XML works."""
-        submission_id = await self.post_submission(workflow=SubmissionWorkflow.BP.value)
-        schema = "bprems"
-        xml_document = self.read_metadata_object(schema, "rems.xml")
-
-        with (
-            self.patch_verify_user_project,
-            self.patch_verify_authorization,
-        ):
-            # Post BP REMS.
-            response = await self.client.post(
-                f"{API_PREFIX}/objects/{schema}", params={"submission": submission_id}, data=xml_document
-            )
-            self.assertEqual(response.status, 201)
-
-            # Verify that REMS was added to the submission.
             response = await self.client.get(f"{API_PREFIX}/submissions/{submission_id}")
-            self.assertEqual(response.status, 200)
-            submission = await response.json()
-            rems = Rems(**submission["rems"])
-            assert rems.workflow_id == 1, "'workflowId' is not 1"
-            assert rems.organization_id == "CSC", "'organizationId' is not CSC"
-            assert rems.licenses == []
+            assert response.status == 200
+            data = await response.json()
+            assert submission == Submission.model_validate(data)
+
+            # Retrieve both by submission id and submission name.
+            for submission_id_or_name in (submission_id, submission_name):
+                is_submission_name = submission_id_or_name == submission_name
+
+                # Test list metadata objects.
+                #
+                if is_submission_name:
+                    objects_url = f"{API_PREFIX}/submissions/{submission_id_or_name}/objects?projectId={project_id}"
+                else:
+                    objects_url = f"{API_PREFIX}/submissions/{submission_id_or_name}/objects"
+                response = await self.client.get(objects_url)
+                assert response.status == 200
+                objects = Objects.model_validate(await response.json()).objects
+                object_id_by_type_and_name = {o.object_type: {o.name: o.object_id} for o in objects}
+
+                # Assert metadata object names and ids.
+                for o in objects:
+                    assert o.name == "1"
+                    assert o.object_id.startswith(generate_bp_accession_prefix(o.object_type))
+
+                # Assert metadata object types.
+                for object_type in object_types:
+                    assert 1 == sum(1 for o in objects if o.object_type == object_type)
+
+                for object_type in object_types:
+                    object_id = object_id_by_type_and_name[object_type][object_name]
+                    schema_type = xml_config.get_schema_type(object_type)
+
+                    # Test get metadata documents by object type and object name.
+                    #
+                    if is_submission_name:
+                        docs_url = f"{API_PREFIX}/submissions/{submission_id_or_name}/objects/docs?projectId={project_id}&"
+                    else:
+                        docs_url = f"{API_PREFIX}/submissions/{submission_id_or_name}/objects/docs?"
+
+                    response = await self.client.get(
+                        f"{docs_url}objectType={object_type}&objectName={object_name}")
+                    await _assert_object_xml(response, object_type)
+
+                    # Test get metadata documents by object type and object id.
+                    #
+                    response = await self.client.get(
+                        f"{docs_url}objectType={object_type}&objectId={object_id}")
+                    await _assert_object_xml(response, object_type)
+
+                    # Test get metadata documents by schema type and object name.
+                    #
+                    response = await self.client.get(
+                        f"{docs_url}schemaType={schema_type}&objectName={object_name}")
+                    if object_type in sample_object_types:
+                        await _assert_sample_xmls(response)
+                    else:
+                        await _assert_object_xml(response, object_type)
+
+                    # Test get metadata documents by schema type and object id.
+                    #
+                    response = await self.client.get(
+                        f"{docs_url}schemaType={schema_type}&objectId={object_id}")
+                    await _assert_object_xml(response, object_type)
+
+                    # Test get metadata documents by object type.
+                    #
+                    response = await self.client.get(f"{docs_url}objectType={object_type}")
+                    await _assert_object_xml(response, object_type)
+
+                    # Test get metadata documents by schema type.
+                    #
+                    response = await self.client.get(f"{docs_url}schemaType={schema_type}")
+                    if object_type in sample_object_types:
+                        await _assert_sample_xmls(response)
+                    else:
+                        await _assert_object_xml(response, object_type)

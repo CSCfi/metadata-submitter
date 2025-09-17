@@ -10,7 +10,7 @@ from pydantic import ValidationError
 from yarl import URL
 
 from ..helpers.logger import LOG
-from .exceptions import NotFoundUserException, SystemException, UserException
+from .exceptions import NotFoundUserException, SystemException, UserErrors, UserException
 from .resources import get_access_service
 from .services.auth import AccessService
 
@@ -43,7 +43,6 @@ async def http_error_handler(req: web.Request, handler: Handler) -> web.StreamRe
         LOG.exception(HTTP_ERROR_MESSAGE, req.method, req.path, error.status)
         problem = _json_problem(error, req.url)
         LOG.debug("Response payload is %r", problem)
-
         if error.status in {400, 401, 403, 404, 405, 415, 422, 502, 504}:
             error.content_type = c_type
             error.text = problem
@@ -52,8 +51,7 @@ async def http_error_handler(req: web.Request, handler: Handler) -> web.StreamRe
         raise web.HTTPInternalServerError(text=problem, content_type=c_type)
     except NotFoundUserException as e:
         not_found_exception = web.HTTPNotFound(reason=e.message, content_type=c_type)
-        problem = _json_problem(not_found_exception, req.url)
-        not_found_exception.text = problem
+        not_found_exception.text = _json_problem(not_found_exception, req.url)
         raise not_found_exception from e
     except UserException as e:
         user_exception = web.HTTPBadRequest(reason=e.message, content_type=c_type)
@@ -62,24 +60,24 @@ async def http_error_handler(req: web.Request, handler: Handler) -> web.StreamRe
         raise user_exception from e
     except SystemException as e:
         system_exception = web.HTTPInternalServerError(reason=e.message, content_type=c_type)
-        problem = _json_problem(system_exception, req.url)
-        system_exception.text = problem
+        system_exception.text = _json_problem(system_exception, req.url)
         raise system_exception from e
-    except ValidationError as exc:
-        LOG.exception("Pydantic validation error")
-        reason = "; ".join(f"{err['loc']}: {err['msg']}" for err in exc.errors())
+    except UserErrors as e:
+        validation_exception = web.HTTPBadRequest(reason="User error", content_type=c_type)
+        validation_exception.text = _json_problem(validation_exception, req.url, errors=e.messages)
+        raise validation_exception from e
+    except ValidationError as e:
+        reason = "; ".join(f"{err['loc']}: {err['msg']}" for err in e.errors())
         validation_exception = web.HTTPBadRequest(reason=reason, content_type=c_type)
-        problem = _json_problem(validation_exception, req.url)
-        validation_exception.text = problem
-        raise validation_exception from exc
+        validation_exception.text = _json_problem(validation_exception, req.url)
+        raise validation_exception from e
     except Exception as exc:
         # We don't expect any other errors, so we log it and return a nice message instead of letting server crash
         LOG.exception("HTTP %r request to %r raised an unexpected exception. This IS a bug.", req.method, req.path)
         exception = web.HTTPInternalServerError(
             reason=f"Server ran into an unexpected error: {str(exc)}", content_type=c_type
         )
-        problem = _json_problem(exception, req.url)
-        exception.text = problem
+        exception.text = _json_problem(exception, req.url)
         raise exception from exc
 
 
@@ -158,7 +156,9 @@ async def authorization(req: web.Request, handler: Handler) -> web.StreamRespons
     return await handler(req)
 
 
-def _json_problem(exception: web.HTTPError, url: URL, _type: str = "about:blank") -> str:
+def _json_problem(
+    exception: web.HTTPError, url: URL, _type: str = "about:blank", errors: list[str] | None = None
+) -> str:
     """Convert an HTTP exception into a problem detailed JSON object.
 
     The problem details are in accordance with RFC 7807.
@@ -176,7 +176,7 @@ def _json_problem(exception: web.HTTPError, url: URL, _type: str = "about:blank"
         "title": HTTPStatus(exception.status).phrase,
         "detail": exception.reason,
         "status": exception.status,
-        "instance": url.path,  # optional
+        "instance": url.path,
     }
     # we require the additional members to be sent as dict
     # so that we can easily append them to pre-formatted response
@@ -185,6 +185,9 @@ def _json_problem(exception: web.HTTPError, url: URL, _type: str = "about:blank"
         # response, with additional members
         # typecasting necessary for mypy
         _problem.update(ujson.loads(str(exception.text)))
+
+    if errors:
+        _problem["errors"] = errors
 
     body = ujson.dumps(
         _problem,

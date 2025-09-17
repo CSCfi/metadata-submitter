@@ -1,4 +1,4 @@
-"""Handle HTTP methods for server."""
+"""HTTP handler for submission related requests."""
 
 import json
 import re
@@ -12,6 +12,7 @@ from multidict import CIMultiDict
 from ...helpers.logger import LOG
 from ...helpers.validator import JSONValidator
 from ..auth import get_authorized_user_id
+from ..exceptions import UserException
 from ..models import Rems, SubmissionWorkflow
 from ..resources import (
     get_file_service,
@@ -27,45 +28,84 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
     """API Handler for submissions."""
 
     @staticmethod
-    async def check_submission_retrievable(req: Request, submission_id: str) -> None:
+    async def check_submission_retrievable(
+        req: Request,
+        submission_id: str,
+        *,
+        workflow: SubmissionWorkflow | None = None,
+        project_id: str | None = None,
+        search_name: bool = False,
+    ) -> str:
         """
         Check the that user is allowed to retrieve the submission.
 
         :param req: The aiohttp request.
         :param submission_id: The submission id.
+        :param workflow: Optional workflow.
+        :param project_id: Optional project id.
+        :param search_name: Search also by submission name. Requires project id.
+        :returns: The submission id.
         """
         submission_service = get_submission_service(req)
         project_service = get_project_service(req)
 
         # Check that submission exists.
-        await submission_service.check_submission(submission_id)
+        if search_name and project_id is not None:
+            submission_id = await submission_service.check_submission_by_id_or_name(project_id, submission_id)
+        else:
+            await submission_service.check_submission_by_id(submission_id)
 
         # Check that the user owns the submission.
         user_id = get_authorized_user_id(req)
-        project_id = await submission_service.get_project_id(submission_id)
-        await project_service.verify_user_project(user_id, project_id)
+        actual_project_id = await submission_service.get_project_id(submission_id)
+        await project_service.verify_user_project(user_id, actual_project_id)
+
+        if workflow:
+            # Check that the workflow matches.
+            actual_workflow = await submission_service.get_workflow(submission_id)
+            if workflow != actual_workflow:
+                raise UserException(f"Submission belongs to a different workflow: {actual_workflow}")
+
+        if project_id:
+            # Check that the project matches.
+            if project_id != actual_project_id:
+                raise UserException(f"Submission belongs to a different project: '{actual_project_id}")
+
+        return submission_id
 
     @staticmethod
-    async def check_submission_modifiable(req: Request, submission_id: str) -> None:
+    async def check_submission_modifiable(
+        req: Request,
+        submission_id: str,
+        *,
+        workflow: SubmissionWorkflow | None = None,
+        project_id: str | None = None,
+        search_name: bool = False,
+    ) -> str:
         """
         Check the that user is allowed to modify the submission.
 
         :param req: The aiohttp request.
         :param submission_id: The submission id.
+        :param workflow: Optional workflow.
+        :param project_id: Optional project id.
+        :param search_name: Search also by submission name. Requires project id.
+        :returns: The submission id.
         """
+        submission_id = await SubmissionAPIHandler.check_submission_retrievable(
+            req,
+            submission_id,
+            workflow=workflow,
+            project_id=project_id,
+            search_name=search_name,
+        )
+
         submission_service = get_submission_service(req)
-        project_service = get_project_service(req)
-
-        # Check that submission exists.
-        await submission_service.check_submission(submission_id)
-
-        # Check that the user owns the submission.
-        user_id = get_authorized_user_id(req)
-        project_id = await submission_service.get_project_id(submission_id)
-        await project_service.verify_user_project(user_id, project_id)
 
         # Check that the submission has not been published.
         await submission_service.check_not_published(submission_id)
+
+        return submission_id
 
     async def get_submissions(self, req: Request) -> Response:
         """Get submissions owned by the project with pagination values. Optionally filter by submission name.
@@ -160,8 +200,11 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         # Check that user is affiliated with the project.
         await project_service.verify_user_project(user_id, content["projectId"])
 
+        # Get submission name.
+        name = content["name"]
+
         # Check if the name of the submission is unique within the project
-        existing_submission = await submission_service.get_submission_by_name(content["projectId"], content["name"])
+        existing_submission = await submission_service.get_submission_by_name(content["projectId"], name)
         if existing_submission:
             reason = f"Submission with name '{content['name']}' already exists in project {content['projectId']}"
             LOG.error(reason)
@@ -169,16 +212,13 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         submission_id = await submission_service.add_submission(content)
 
-        body = to_json({"submissionId": submission_id})
-
         url = f"{req.scheme}://{req.host}{req.path}"
         location_headers = CIMultiDict(Location=f"{url}/{submission_id}")
         LOG.info("POST new submission with ID: %r was successful.", submission_id)
-        return web.Response(
-            body=body,
+        return web.json_response(
+            {"submissionId": submission_id},
             status=201,
             headers=location_headers,
-            content_type="application/json",
         )
 
     async def get_submission(self, req: Request) -> Response:
@@ -355,7 +395,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         LOG.info("GET files for submission with ID: %r was successful.", submission_id)
         return web.Response(
-            body=json.dumps([f.json_dump() for f in files]),
+            body=json.dumps([f.to_json_dict() for f in files]),
             status=200,
             content_type="application/json",
         )
@@ -377,7 +417,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         LOG.info("GET files for submission with ID: %r was successful.", submission_id)
         return web.Response(
-            body=json.dumps([r.json_dump() for r in registrations]),
+            body=json.dumps([r.to_json_dict() for r in registrations]),
             status=200,
             content_type="application/json",
         )

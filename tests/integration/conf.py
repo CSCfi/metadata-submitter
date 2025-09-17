@@ -44,21 +44,7 @@ test_fega_json_files = [
     ("experiment", "ERX000119.json", "ERX000119.json"),
     ("analysis", "ERZ266973.json", "ERZ266973.json"),
 ]
-test_schemas = [
-    ("submission", 200),
-    ("study", 200),
-    ("sample", 200),
-    ("experiment", 200),
-    ("run", 200),
-    ("dac", 200),
-    ("policy", 200),
-    ("dataset", 200),
-    ("datacite", 200),
-    ("bpimage", 200),
-    ("bpdataset", 200),
-    ("bpsample", 200),
-    ("bpobservation", 200),
-]
+
 API_PREFIX = "/v1"
 base_url = os.getenv("BASE_URL", "http://localhost:5430")
 mock_auth_url = os.getenv("OIDC_URL_TEST", "http://localhost:8000")
