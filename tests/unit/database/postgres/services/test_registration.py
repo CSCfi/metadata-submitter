@@ -12,6 +12,7 @@ from ..helpers import create_object_entity, create_submission_entity
 
 workflow = SubmissionWorkflow.SDS
 
+
 async def test_add_and_get_registration(
     session_factory: SessionFactory,
     submission_repository: SubmissionRepository,

@@ -1,13 +1,16 @@
 """Smoke test publications."""
+
 import json
 import logging
 from typing import Any
 
 from metadata_backend.api.models import Registration, Rems
 from tests.integration.conf import (
+    auth,
     datacite_prefix,
+    metax_api,
     mock_pid_prefix,
-    submissions_url, metax_api, auth,
+    submissions_url,
 )
 from tests.integration.helpers import (
     add_submission_linked_folder,
@@ -16,7 +19,8 @@ from tests.integration.helpers import (
     get_submission_files,
     patch_submission_doi,
     patch_submission_rems,
-    publish_submission, submit_bp,
+    publish_submission,
+    submit_bp,
 )
 
 LOG = logging.getLogger(__name__)
@@ -119,8 +123,9 @@ class TestPublication:
         await patch_submission_doi(client_logged_in, submission_id, doi_data_raw)
 
         # Change REMS information extracted from BP REMS XML and stored in submission.json.
-        await patch_submission_rems(client_logged_in, submission_id,
-                                    Rems(workflow_id=1, organization_id="CSC", licenses=[1]).to_json_str())
+        await patch_submission_rems(
+            client_logged_in, submission_id, Rems(workflow_id=1, organization_id="CSC", licenses=[1]).to_json_str()
+        )
 
         await publish_submission(client_logged_in, submission_id)
 
@@ -158,8 +163,8 @@ async def assert_metax(metax: dict[str, Any], schema: str, title: str, descripti
     assert actual_rd["description"]["en"].split("\n\n")[0] == description
     assert actual_rd["creator"] == expected_rd["creator"]
     assert (
-            actual_rd["access_rights"]["access_type"]["identifier"]
-            == expected_rd["access_rights"]["access_type"]["identifier"]
+        actual_rd["access_rights"]["access_type"]["identifier"]
+        == expected_rd["access_rights"]["access_type"]["identifier"]
     )
     assert actual_rd["contributor"] == expected_rd["contributor"]
     assert actual_rd["issued"] == expected_rd["issued"]

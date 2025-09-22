@@ -29,10 +29,10 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
 
     @pytest.fixture(autouse=True)
     def _inject_fixtures(
-            self,
-            submission_repository: SubmissionRepository,
-            object_repository: ObjectRepository,
-            file_repository: FileRepository,
+        self,
+        submission_repository: SubmissionRepository,
+        object_repository: ObjectRepository,
+        file_repository: FileRepository,
     ):
         self.submission_repository = submission_repository
         self.object_repository = object_repository
@@ -287,7 +287,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             object_type=dataset_object_type,
             document={"test": "test"},
             title=dataset_title,
-            description=dataset_description
+            description=dataset_description,
         )
         await self.object_repository.add_object(dataset_entity, workflow)
 
@@ -307,7 +307,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             object_type=study_object_type,
             document={},
             title=study_title,
-            description=study_description
+            description=study_description,
         )
         await self.object_repository.add_object(study_entity, workflow)
 
@@ -501,72 +501,72 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             assert mock_metax_update_doi.await_count == 2
             # Dataset.
             assert (
-                    call(
-                        {
-                            # Remove keywords.
-                            **{k: v for k, v in doi_info.items() if k != "keywords"},
-                            # Update subjects.
-                            "subjects": [
-                                {
-                                    **s,
-                                    "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
-                                    "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
-                                    "valueUri": f"http://www.yso.fi/onto/okm-tieteenala/ta{s['subject'].split(' - ')[0]}",
-                                    "classificationCode": s["subject"].split(" - ")[0],
-                                }
-                                for s in doi_info.get("subjects", [])
-                            ],
-                        },
-                        metax_id,
-                        file_bytes,
-                        related_dataset=None,
-                        related_study=Registration(
-                            submission_id=submission_id,
-                            object_id=study_entity.object_id,
-                            object_type=study_object_type,
-                            title=study_title,
-                            description=study_description,
-                            doi=doi,
-                            metax_id=metax_id,
-                        ),
-                    )
-                    in mock_metax_update_doi.await_args_list
+                call(
+                    {
+                        # Remove keywords.
+                        **{k: v for k, v in doi_info.items() if k != "keywords"},
+                        # Update subjects.
+                        "subjects": [
+                            {
+                                **s,
+                                "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
+                                "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
+                                "valueUri": f"http://www.yso.fi/onto/okm-tieteenala/ta{s['subject'].split(' - ')[0]}",
+                                "classificationCode": s["subject"].split(" - ")[0],
+                            }
+                            for s in doi_info.get("subjects", [])
+                        ],
+                    },
+                    metax_id,
+                    file_bytes,
+                    related_dataset=None,
+                    related_study=Registration(
+                        submission_id=submission_id,
+                        object_id=study_entity.object_id,
+                        object_type=study_object_type,
+                        title=study_title,
+                        description=study_description,
+                        doi=doi,
+                        metax_id=metax_id,
+                    ),
+                )
+                in mock_metax_update_doi.await_args_list
             )
             # Study.
             assert (
-                    call(
-                        {
-                            # Remove keywords.
-                            **{k: v for k, v in doi_info.items() if k != "keywords"},
-                            # Update subjects.
-                            "subjects": [
-                                {
-                                    **s,
-                                    "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
-                                    "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
-                                    "valueUri": f"http://www.yso.fi/onto/okm-tieteenala/ta{s['subject'].split(' - ')[0]}",
-                                    "classificationCode": s["subject"].split(" - ")[0],
-                                }
-                                for s in doi_info.get("subjects", [])
-                            ],
-                        },
-                        metax_id,
-                        file_bytes,
-                        related_dataset=Registration(
-                            submission_id=submission_id,
-                            object_id=dataset_entity.object_id,
-                            object_type=dataset_object_type,
-                            title=dataset_title,
-                            description=dataset_description,
-                            doi=doi,
-                            metax_id=metax_id,
-                            rems_url=f"http://mockrems:8003/application?items={rems_catalogue_id}",
-                            rems_resource_id=str(rems_resource_id),
-                            rems_catalogue_id=rems_catalogue_id,
-                        ),
-                        related_study=None,
-                    )
-                    in mock_metax_update_doi.await_args_list
+                call(
+                    {
+                        # Remove keywords.
+                        **{k: v for k, v in doi_info.items() if k != "keywords"},
+                        # Update subjects.
+                        "subjects": [
+                            {
+                                **s,
+                                "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
+                                "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
+                                "valueUri": f"http://www.yso.fi/onto/okm-tieteenala/ta{s['subject'].split(' - ')[0]}",
+                                "classificationCode": s["subject"].split(" - ")[0],
+                            }
+                            for s in doi_info.get("subjects", [])
+                        ],
+                    },
+                    metax_id,
+                    file_bytes,
+                    related_dataset=Registration(
+                        submission_id=submission_id,
+                        object_id=dataset_entity.object_id,
+                        object_type=dataset_object_type,
+                        title=dataset_title,
+                        description=dataset_description,
+                        doi=doi,
+                        metax_id=metax_id,
+                        rems_url=f"http://mockrems:8003/application?items={rems_catalogue_id}",
+                        rems_resource_id=str(rems_resource_id),
+                        rems_catalogue_id=rems_catalogue_id,
+                    ),
+                    related_study=None,
+                )
+                in mock_metax_update_doi.await_args_list
             )
 
             mock_metax_update_descr.assert_awaited_once_with(
@@ -630,7 +630,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             object_type=dataset_object_type,
             document={},
             title=dataset_title,
-            description=dataset_description
+            description=dataset_description,
         )
         await self.object_repository.add_object(object_entity, workflow)
 

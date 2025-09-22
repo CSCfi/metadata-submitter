@@ -10,6 +10,7 @@ from tests.unit.database.postgres.helpers import create_object_entity, create_su
 
 workflow = SubmissionWorkflow.SDS
 
+
 async def test_add_get_registration(
     session_factory: SessionFactory,
     submission_repository: SubmissionRepository,

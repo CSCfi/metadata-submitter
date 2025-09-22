@@ -1,17 +1,10 @@
 """Test API endpoints from ObjectAPIHandler."""
 
-from metadata_backend.api.models import SubmissionWorkflow, Submission, Objects
-from metadata_backend.conf.conf import API_PREFIX
-from metadata_backend.api.processors.xml.processors import (
-    XmlProcessor,
-    XmlObjectProcessor,
-    XmlDocumentProcessor
-)
+from metadata_backend.api.models import Objects, Submission, SubmissionWorkflow
 from metadata_backend.api.processors.xml.configs import (
-    BP_FULL_SUBMISSION_XML_OBJECT_CONFIG,
-    BP_SAMPLE_SET_PATH,
     BP_ANNOTATION_OBJECT_TYPE,
     BP_DATASET_OBJECT_TYPE,
+    BP_FULL_SUBMISSION_XML_OBJECT_CONFIG,
     BP_IMAGE_OBJECT_TYPE,
     BP_LANDING_PAGE_OBJECT_TYPE,
     BP_OBSERVATION_OBJECT_TYPE,
@@ -20,13 +13,17 @@ from metadata_backend.api.processors.xml.configs import (
     BP_POLICY_OBJECT_TYPE,
     BP_REMS_OBJECT_TYPE,
     BP_SAMPLE_BIOLOGICAL_BEING_OBJECT_TYPE,
-    BP_SAMPLE_SLIDE_OBJECT_TYPE,
-    BP_SAMPLE_SPECIMEN_OBJECT_TYPE,
     BP_SAMPLE_BLOCK_OBJECT_TYPE,
     BP_SAMPLE_CASE_OBJECT_TYPE,
+    BP_SAMPLE_SET_PATH,
+    BP_SAMPLE_SLIDE_OBJECT_TYPE,
+    BP_SAMPLE_SPECIMEN_OBJECT_TYPE,
     BP_STAINING_OBJECT_TYPE,
-    BP_SUBMISSION_OBJECT_TYPE)
+    BP_SUBMISSION_OBJECT_TYPE,
+)
+from metadata_backend.api.processors.xml.processors import XmlDocumentProcessor, XmlObjectProcessor, XmlProcessor
 from metadata_backend.api.services.accession import generate_bp_accession_prefix
+from metadata_backend.conf.conf import API_PREFIX
 
 from .common import HandlersTestCase
 
@@ -64,17 +61,19 @@ class ObjectHandlerTestCase(HandlersTestCase):
             BP_SAMPLE_BLOCK_OBJECT_TYPE,
             BP_SAMPLE_CASE_OBJECT_TYPE,
         )
-        object_types = (BP_ANNOTATION_OBJECT_TYPE,
-                        BP_DATASET_OBJECT_TYPE,
-                        BP_IMAGE_OBJECT_TYPE,
-                        BP_LANDING_PAGE_OBJECT_TYPE,
-                        BP_OBSERVATION_OBJECT_TYPE,
-                        BP_OBSERVER_OBJECT_TYPE,
-                        BP_ORGANISATION_OBJECT_TYPE,
-                        BP_POLICY_OBJECT_TYPE,
-                        BP_REMS_OBJECT_TYPE,
-                        *sample_object_types,
-                        BP_STAINING_OBJECT_TYPE)
+        object_types = (
+            BP_ANNOTATION_OBJECT_TYPE,
+            BP_DATASET_OBJECT_TYPE,
+            BP_IMAGE_OBJECT_TYPE,
+            BP_LANDING_PAGE_OBJECT_TYPE,
+            BP_OBSERVATION_OBJECT_TYPE,
+            BP_OBSERVER_OBJECT_TYPE,
+            BP_ORGANISATION_OBJECT_TYPE,
+            BP_POLICY_OBJECT_TYPE,
+            BP_REMS_OBJECT_TYPE,
+            *sample_object_types,
+            BP_STAINING_OBJECT_TYPE,
+        )
 
         # Read XML files.
         data = {}
@@ -84,8 +83,9 @@ class ObjectHandlerTestCase(HandlersTestCase):
         with self.patch_verify_user_project, self.patch_verify_authorization:
             # Test create submission.
             #
-            response = await self.client.post(f"{API_PREFIX}/workflows/{workflow}/projects/{project_id}/submissions",
-                                              data=data)
+            response = await self.client.post(
+                f"{API_PREFIX}/workflows/{workflow}/projects/{project_id}/submissions", data=data
+            )
             assert response.status == 200
             submission = Submission.model_validate(await response.json())
 
@@ -106,7 +106,8 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
                 # Assert set element.
                 XmlObjectProcessor._get_xml_element(
-                    xml_config.get_set_path(object_type=object_type_), doc_processor_.xml)
+                    xml_config.get_set_path(object_type=object_type_), doc_processor_.xml
+                )
 
                 # Assert the object root element.
                 assert len(doc_processor_.xml_processors) == 1
@@ -180,24 +181,23 @@ class ObjectHandlerTestCase(HandlersTestCase):
                     # Test get metadata documents by object type and object name.
                     #
                     if is_submission_name:
-                        docs_url = f"{API_PREFIX}/submissions/{submission_id_or_name}/objects/docs?projectId={project_id}&"
+                        docs_url = (
+                            f"{API_PREFIX}/submissions/{submission_id_or_name}/objects/docs?projectId={project_id}&"
+                        )
                     else:
                         docs_url = f"{API_PREFIX}/submissions/{submission_id_or_name}/objects/docs?"
 
-                    response = await self.client.get(
-                        f"{docs_url}objectType={object_type}&objectName={object_name}")
+                    response = await self.client.get(f"{docs_url}objectType={object_type}&objectName={object_name}")
                     await _assert_object_xml(response, object_type)
 
                     # Test get metadata documents by object type and object id.
                     #
-                    response = await self.client.get(
-                        f"{docs_url}objectType={object_type}&objectId={object_id}")
+                    response = await self.client.get(f"{docs_url}objectType={object_type}&objectId={object_id}")
                     await _assert_object_xml(response, object_type)
 
                     # Test get metadata documents by schema type and object name.
                     #
-                    response = await self.client.get(
-                        f"{docs_url}schemaType={schema_type}&objectName={object_name}")
+                    response = await self.client.get(f"{docs_url}schemaType={schema_type}&objectName={object_name}")
                     if object_type in sample_object_types:
                         await _assert_sample_xmls(response)
                     else:
@@ -205,8 +205,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
                     # Test get metadata documents by schema type and object id.
                     #
-                    response = await self.client.get(
-                        f"{docs_url}schemaType={schema_type}&objectId={object_id}")
+                    response = await self.client.get(f"{docs_url}schemaType={schema_type}&objectId={object_id}")
                     await _assert_object_xml(response, object_type)
 
                     # Test get metadata documents by object type.

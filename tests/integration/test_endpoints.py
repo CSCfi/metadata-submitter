@@ -30,9 +30,7 @@ class TestOtherApiEndpoints:
     async def test_schemas_endpoint(self, client_logged_in):
         """Test that schemas' endpoint return 200."""
 
-        test_schemas = [
-            "submission"
-        ]
+        test_schemas = ["submission"]
 
         for schema in test_schemas:
             async with client_logged_in.get(f"{schemas_url}/{schema}") as resp:
