@@ -7,24 +7,23 @@ from typing import Any
 from metadata_backend.api.models import ChecksumType, File, SubmissionWorkflow
 from metadata_backend.database.postgres.models import ObjectEntity, SubmissionEntity
 
-
 # Create entities used in Postgres repositories.
 #
 
 
 def create_submission_entity(
-        *,
-        name: str | None = None,
-        project_id: str | None = None,
-        folder: str | None = None,
-        workflow: SubmissionWorkflow | None = SubmissionWorkflow.SDS,
-        title: str | None = None,
-        description: str | None = None,
-        document: dict[str, Any] | None = None,
-        is_published: bool = False,
-        is_ingested: bool = False,
-        created: datetime | None = None,
-        modified: datetime | None = None,
+    *,
+    name: str | None = None,
+    project_id: str | None = None,
+    folder: str | None = None,
+    workflow: SubmissionWorkflow | None = SubmissionWorkflow.SDS,
+    title: str | None = None,
+    description: str | None = None,
+    document: dict[str, Any] | None = None,
+    is_published: bool = False,
+    is_ingested: bool = False,
+    created: datetime | None = None,
+    modified: datetime | None = None,
 ) -> SubmissionEntity:
     if name is None:
         name = f"name_{uuid.uuid4()}"
@@ -65,14 +64,14 @@ def create_submission_entity(
 
 
 def create_object_entity(
-        submission_id: str,
-        *,
-        name: str | None = None,
-        object_type: str | None = None,
-        title: str | None = None,
-        description: str | None = None,
-        document: dict[str, Any] | None = None,
-        xml_document: str | None = None,
+    submission_id: str,
+    *,
+    name: str | None = None,
+    object_type: str | None = None,
+    title: str | None = None,
+    description: str | None = None,
+    document: dict[str, Any] | None = None,
+    xml_document: str | None = None,
 ) -> ObjectEntity:
     if name is None:
         name = f"name_{uuid.uuid4()}"
@@ -103,15 +102,15 @@ def create_object_entity(
 
 
 def create_file(
-        submission_id: str,
-        object_id: str,
-        *,
-        path: str | None = None,
-        bytes: int = 1,
-        unencrypted_checksum: str | None = None,
-        unencrypted_checksum_type: ChecksumType | None = ChecksumType.MD5,
-        encrypted_checksum: str | None = None,
-        encrypted_checksum_type: ChecksumType | None = ChecksumType.MD5,
+    submission_id: str,
+    object_id: str,
+    *,
+    path: str | None = None,
+    bytes: int = 1,
+    unencrypted_checksum: str | None = None,
+    unencrypted_checksum_type: ChecksumType | None = ChecksumType.MD5,
+    encrypted_checksum: str | None = None,
+    encrypted_checksum_type: ChecksumType | None = ChecksumType.MD5,
 ) -> File:
     if path is None:
         path = f"file{uuid.uuid4()}"

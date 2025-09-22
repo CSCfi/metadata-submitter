@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "metadata_backend"
 readme = "README.md"
 requires-python = ">=3.13"
-license = {text = "MIT License"}
+license = { text = "MIT License" }
 authors = [
     { name = "CSC Developers" },
 ]
@@ -56,8 +56,6 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    # pylint
-    "pylint==3.3.8",
     # mypy
     "mypy>=1.15.0",
     "types-requests==2.32.4.20250809",
@@ -65,6 +63,8 @@ dev = [
     "types-python-dateutil>=2.9.0.20241206",
     # black
     "black==25.1.0",
+    # ruff
+    "ruff==0.13.0",
     # pytest
     "pytest==8.4.1",
     "pytest-asyncio==1.1.0",
@@ -86,7 +86,7 @@ target-version = ['py313']
 atomic = true
 profile = "black"
 line_length = 120
-py_version=313
+py_version = 313
 
 [project.scripts]
 metadata_submitter = "metadata_backend.server:main"
@@ -96,19 +96,17 @@ Source = "https://github.com/CSCfi/metadata_submitter"
 
 [project.optional-dependencies]
 verify = [
-    # flake
-    "flake8>=7.2.0",
-    "flake8-annotations>=3.1.1",
-    "flake8-docstrings>=1.7.0",
     # isort
     "isort>=6.0.1",
-    # pylint
-    "pylint==3.3.8",
     # mypy
     "mypy>=1.15.0",
+    "types-requests==2.32.4.20250809",
+    "types-ujson==5.10.0.20250822",
     "types-python-dateutil>=2.9.0.20241206",
     # black
-    "black>=25.1.0",
+    "black==25.1.0",
+    # ruff
+    "ruff==0.13.0",
     # bandit
     "bandit>=1.8.3",
     # vulture

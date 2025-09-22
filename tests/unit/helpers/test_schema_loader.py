@@ -3,10 +3,11 @@
 import pytest
 
 from metadata_backend.helpers.schema_loader import (
-    SchemaLoader,
     JSONSchemaLoader,
+    SchemaFileNotFoundException,
+    SchemaLoader,
     XMLSchemaLoader,
-    SchemaFileNotFoundException)
+)
 
 
 def test_schema_loader_error():

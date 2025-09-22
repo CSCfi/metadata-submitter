@@ -13,6 +13,7 @@ from tests.unit.database.postgres.helpers import create_object_entity, create_su
 
 workflow = SubmissionWorkflow.SDS
 
+
 async def add_submission(submission_repository: SubmissionRepository) -> str:
     submission = create_submission_entity()
     now = datetime.datetime.now(datetime.timezone.utc)

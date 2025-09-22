@@ -156,29 +156,29 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             }
             assert len(result["submissions"]) == 2
             assert {
-                       "dateCreated": _get_submission(submission_id_1)["dateCreated"],
-                       "title": title,
-                       "description": description,
-                       "lastModified": _get_submission(submission_id_1)["lastModified"],
-                       "name": name_1,
-                       "projectId": project_id,
-                       "published": False,
-                       "submissionId": submission_id_1,
-                       "text_name": " ".join(re.split("[\\W_]", name_1)),
-                       "workflow": workflow,
-                   } in result["submissions"]
+                "dateCreated": _get_submission(submission_id_1)["dateCreated"],
+                "title": title,
+                "description": description,
+                "lastModified": _get_submission(submission_id_1)["lastModified"],
+                "name": name_1,
+                "projectId": project_id,
+                "published": False,
+                "submissionId": submission_id_1,
+                "text_name": " ".join(re.split("[\\W_]", name_1)),
+                "workflow": workflow,
+            } in result["submissions"]
             assert {
-                       "dateCreated": _get_submission(submission_id_2)["dateCreated"],
-                       "title": title,
-                       "description": description,
-                       "lastModified": _get_submission(submission_id_2)["lastModified"],
-                       "name": name_2,
-                       "projectId": project_id,
-                       "published": False,
-                       "submissionId": submission_id_2,
-                       "text_name": " ".join(re.split("[\\W_]", name_2)),
-                       "workflow": workflow,
-                   } in result["submissions"]
+                "dateCreated": _get_submission(submission_id_2)["dateCreated"],
+                "title": title,
+                "description": description,
+                "lastModified": _get_submission(submission_id_2)["lastModified"],
+                "name": name_2,
+                "projectId": project_id,
+                "published": False,
+                "submissionId": submission_id_2,
+                "text_name": " ".join(re.split("[\\W_]", name_2)),
+                "workflow": workflow,
+            } in result["submissions"]
 
     async def test_get_submissions_by_name(self):
         """Test that get submissions by name works."""

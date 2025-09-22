@@ -15,8 +15,7 @@ workflow = SubmissionWorkflow.SDS
 
 
 async def test_add_get_delete_object(
-        session_factory: SessionFactory, submission_repository: SubmissionRepository,
-        object_repository: ObjectRepository
+    session_factory: SessionFactory, submission_repository: SubmissionRepository, object_repository: ObjectRepository
 ) -> None:
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         now = datetime.datetime.now(datetime.timezone.utc)
@@ -101,8 +100,7 @@ async def test_add_get_delete_object(
 
 
 async def test_get_and_count_objects(
-        session_factory: SessionFactory, submission_repository: SubmissionRepository,
-        object_repository: ObjectRepository
+    session_factory: SessionFactory, submission_repository: SubmissionRepository, object_repository: ObjectRepository
 ) -> None:
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         now = datetime.datetime.now(datetime.timezone.utc)
@@ -195,16 +193,20 @@ async def test_get_and_count_objects(
         # Test submission id and object type.
 
         results = [
-            obj async for obj in object_repository.get_objects(submission_id=first_submission_id,
-                                                               object_type=first_object_type)
+            obj
+            async for obj in object_repository.get_objects(
+                submission_id=first_submission_id, object_type=first_object_type
+            )
         ]
         assert len(results) == 1
         assert await object_repository.count_objects(first_submission_id, first_object_type) == 1
         assert results[0].object_id == first_object_id
 
         results = [
-            obj async for obj in object_repository.get_objects(submission_id=first_submission_id,
-                                                               object_type=second_object_type)
+            obj
+            async for obj in object_repository.get_objects(
+                submission_id=first_submission_id, object_type=second_object_type
+            )
         ]
         assert len(results) == 1
         assert await object_repository.count_objects(first_submission_id, second_object_type) == 1

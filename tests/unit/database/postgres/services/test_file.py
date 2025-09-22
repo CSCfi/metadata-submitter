@@ -15,6 +15,7 @@ from tests.unit.database.postgres.helpers import create_file, create_object_enti
 
 workflow = SubmissionWorkflow.SDS
 
+
 @pytest.fixture()
 async def submission_repository(session_factory: SessionFactory) -> AsyncGenerator[SubmissionRepository, None]:
     repository = SubmissionRepository(session_factory)
@@ -40,10 +41,10 @@ async def service(file_repository: FileRepository) -> AsyncGenerator[FileService
 
 
 async def test_is_file(
-        session_factory: SessionFactory,
-        submission_repository: SubmissionRepository,
-        object_repository: ObjectRepository,
-        service: FileService,
+    session_factory: SessionFactory,
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    service: FileService,
 ):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
@@ -59,10 +60,10 @@ async def test_is_file(
 
 
 async def test_get_file(
-        session_factory: SessionFactory,
-        submission_repository: SubmissionRepository,
-        object_repository: ObjectRepository,
-        service: FileService,
+    session_factory: SessionFactory,
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    service: FileService,
 ):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
@@ -81,10 +82,10 @@ async def test_get_file(
 
 
 async def test_get_files(
-        session_factory: SessionFactory,
-        submission_repository: SubmissionRepository,
-        object_repository: ObjectRepository,
-        service: FileService,
+    session_factory: SessionFactory,
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    service: FileService,
 ):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
@@ -121,10 +122,10 @@ async def test_get_files(
 
 
 async def test_count_files(
-        session_factory: SessionFactory,
-        submission_repository: SubmissionRepository,
-        object_repository: ObjectRepository,
-        service: FileService,
+    session_factory: SessionFactory,
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    service: FileService,
 ):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
@@ -144,10 +145,10 @@ async def test_count_files(
 
 
 async def test_count_bytes(
-        session_factory: SessionFactory,
-        submission_repository: SubmissionRepository,
-        object_repository: ObjectRepository,
-        service: FileService,
+    session_factory: SessionFactory,
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    service: FileService,
 ):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
@@ -167,11 +168,11 @@ async def test_count_bytes(
 
 
 async def test_update_ingest_status(
-        session_factory: SessionFactory,
-        submission_repository: SubmissionRepository,
-        object_repository: ObjectRepository,
-        file_repository: FileRepository,
-        service: FileService,
+    session_factory: SessionFactory,
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    file_repository: FileRepository,
+    service: FileService,
 ):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
@@ -191,10 +192,10 @@ async def test_update_ingest_status(
 
 
 async def test_delete_file_by_id(
-        session_factory: SessionFactory,
-        submission_repository: SubmissionRepository,
-        object_repository: ObjectRepository,
-        service: FileService,
+    session_factory: SessionFactory,
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    service: FileService,
 ):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
@@ -214,10 +215,10 @@ async def test_delete_file_by_id(
 
 
 async def test_delete_file_by_path(
-        session_factory: SessionFactory,
-        submission_repository: SubmissionRepository,
-        object_repository: ObjectRepository,
-        service: FileService,
+    session_factory: SessionFactory,
+    submission_repository: SubmissionRepository,
+    object_repository: ObjectRepository,
+    service: FileService,
 ):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()

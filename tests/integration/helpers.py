@@ -14,7 +14,9 @@ import ujson
 from aiohttp import ClientSession
 
 from metadata_backend.api.models import Submission, SubmissionWorkflow
+
 from .conf import (
+    API_PREFIX,
     admin_url,
     base_url,
     metax_api,
@@ -25,7 +27,7 @@ from .conf import (
     publish_url,
     submissions_url,
     taxonomy_url,
-    testfiles_root, API_PREFIX,
+    testfiles_root,
 )
 
 LOG = logging.getLogger(__name__)
@@ -90,8 +92,8 @@ async def submit_bp(sess, project_id: str) -> Submission:
         data[file] = (submission_dir / file).open("rb")
 
     async with sess.post(
-            f"{base_url}{API_PREFIX}/workflows/{workflow}/projects/{project_id}/submissions",
-            data=data) as response:
+        f"{base_url}{API_PREFIX}/workflows/{workflow}/projects/{project_id}/submissions", data=data
+    ) as response:
         assert response.status == 200
         submission = Submission.model_validate(await response.json())
         return submission
@@ -141,7 +143,7 @@ async def publish_submission(sess, submission_id, *, no_files: bool = True):
 
 
 async def delete_submission(
-        sess, submission_id, ignore_published_error: bool = False, ignore_not_found_error: bool = False
+    sess, submission_id, ignore_published_error: bool = False, ignore_not_found_error: bool = False
 ):
     """Delete submission.
 
@@ -154,9 +156,9 @@ async def delete_submission(
         LOG.debug("Deleting submission %s", submission_id)
         result = await resp.text()
         assert (
-                resp.status == 204
-                or (resp.status == 400 and ignore_published_error and "has been published" in result)
-                or (resp.status == 404 and ignore_not_found_error)
+            resp.status == 204
+            or (resp.status == 400 and ignore_published_error and "has been published" in result)
+            or (resp.status == 404 and ignore_not_found_error)
         )
 
 
@@ -286,8 +288,8 @@ async def add_submission_linked_folder(sess, submission_id, name):
     url = f"{submissions_url}/{submission_id}/folder"
 
     async with sess.patch(
-            url,
-            data=ujson.dumps(data),
+        url,
+        data=ujson.dumps(data),
     ) as resp:
         assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
@@ -423,12 +425,12 @@ async def add_file_to_folder(folder_name, object_key):
     file_obj = io.BytesIO(random_bytes)
     session = aioboto3.Session()
     async with session.client(
-            "s3",
-            endpoint_url=mock_s3_url,
-            aws_access_key_id="test",
-            aws_secret_access_key="test",
-            region_name=mock_s3_region,
-            use_ssl=False,
+        "s3",
+        endpoint_url=mock_s3_url,
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
+        region_name=mock_s3_region,
+        use_ssl=False,
     ) as s3:
         await s3.upload_fileobj(file_obj, folder_name, object_key)
 
@@ -441,12 +443,12 @@ async def delete_file_from_folder(folder_name, object_key):
     """
     session = aioboto3.Session()
     async with session.client(
-            "s3",
-            endpoint_url=mock_s3_url,
-            aws_access_key_id="test",
-            aws_secret_access_key="test",
-            region_name=mock_s3_region,
-            use_ssl=False,
+        "s3",
+        endpoint_url=mock_s3_url,
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
+        region_name=mock_s3_region,
+        use_ssl=False,
     ) as s3:
         await s3.delete_object(Bucket=folder_name, Key=object_key)
 
@@ -458,12 +460,12 @@ async def add_folder(folder_name):
     """
     session = aioboto3.Session()
     async with session.client(
-            "s3",
-            endpoint_url=mock_s3_url,
-            aws_access_key_id="test",
-            aws_secret_access_key="test",
-            region_name=mock_s3_region,
-            use_ssl=False,
+        "s3",
+        endpoint_url=mock_s3_url,
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
+        region_name=mock_s3_region,
+        use_ssl=False,
     ) as s3:
         await s3.create_bucket(Bucket=folder_name)
 
@@ -475,12 +477,12 @@ async def delete_folder(folder_name):
     """
     session = aioboto3.Session()
     async with session.client(
-            "s3",
-            endpoint_url=mock_s3_url,
-            aws_access_key_id="test",
-            aws_secret_access_key="test",
-            region_name=mock_s3_region,
-            use_ssl=False,
+        "s3",
+        endpoint_url=mock_s3_url,
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
+        region_name=mock_s3_region,
+        use_ssl=False,
     ) as s3:
         await s3.delete_bucket(Bucket=folder_name)
 
@@ -489,12 +491,12 @@ async def list_folders():
     """List all folders (buckets) in the mock S3 service."""
     session = aioboto3.Session()
     async with session.client(
-            "s3",
-            endpoint_url=mock_s3_url,
-            aws_access_key_id="test",
-            aws_secret_access_key="test",
-            region_name=mock_s3_region,
-            use_ssl=False,
+        "s3",
+        endpoint_url=mock_s3_url,
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
+        region_name=mock_s3_region,
+        use_ssl=False,
     ) as s3:
         buckets = await s3.list_buckets()
         return [bucket["Name"] for bucket in buckets.get("Buckets", [])]
@@ -504,12 +506,12 @@ async def list_files_in_folder(folder_name):
     """List all files (objects) in a folder (bucket) in the mock S3 service."""
     session = aioboto3.Session()
     async with session.client(
-            "s3",
-            endpoint_url=mock_s3_url,
-            aws_access_key_id="test",
-            aws_secret_access_key="test",
-            region_name=mock_s3_region,
-            use_ssl=False,
+        "s3",
+        endpoint_url=mock_s3_url,
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
+        region_name=mock_s3_region,
+        use_ssl=False,
     ) as s3:
         objects = await s3.list_objects_v2(Bucket=folder_name)
         return [obj["Key"] for obj in objects.get("Contents", [])]

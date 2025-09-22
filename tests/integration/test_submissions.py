@@ -67,8 +67,8 @@ class TestSubmissionOperations:
             ans = await resp.json()
             assert resp.status == 400, f"HTTP Status code error {resp.status} {ans}"
             assert (
-                    ans["detail"]
-                    == f"Submission with name '{submission_data["name"]}' already exists in project {project_id}"
+                ans["detail"]
+                == f"Submission with name '{submission_data["name"]}' already exists in project {project_id}"
             )
 
         # Test get submission
@@ -101,7 +101,7 @@ class TestSubmissionOperations:
 
         # Check that published submission can't be changed.
         async with client_logged_in.patch(
-                f"{submissions_url}/{submission_id}", data=json.dumps({"name": "new_name"})
+            f"{submissions_url}/{submission_id}", data=json.dumps({"name": "new_name"})
         ) as resp:
             LOG.debug("Trying to update submission values")
             assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
@@ -144,13 +144,13 @@ class TestSubmissionOperations:
         # Test that an incomplete DOI object fails to patch into the submission
         put_bad_doi = {"identifier": {}}
         async with client_logged_in.patch(
-                f"{submissions_url}/{submission_id}/doi", data=json.dumps(put_bad_doi)
+            f"{submissions_url}/{submission_id}/doi", data=json.dumps(put_bad_doi)
         ) as resp:
             LOG.debug("Tried updating submission %s", submission_id)
             assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
             res = await resp.json()
             assert (
-                    res["detail"] == "Provided input does not seem correct for field: 'doiInfo'"
+                res["detail"] == "Provided input does not seem correct for field: 'doiInfo'"
             ), "expected error mismatch"
 
         # Check the existing DOI info is not altered
@@ -215,11 +215,11 @@ class TestSubmissionOperations:
         # error case: REMS's licenses do not include DAC's linked license
         put_bad_rems = {"workflowId": 1, "organizationId": "CSC", "licenses": [2, 3]}
         async with client_logged_in.patch(
-                f"{submissions_url}/{submission_id}/rems", data=json.dumps(put_bad_rems)
+            f"{submissions_url}/{submission_id}/rems", data=json.dumps(put_bad_rems)
         ) as resp:
             LOG.debug("Tried updating submission %s", submission_id)
             assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
             res = await resp.json()
             assert (
-                    res["detail"] == "Rems error: Linked license '1' doesn't exist in licenses '[2, 3]'"
+                res["detail"] == "Rems error: Linked license '1' doesn't exist in licenses '[2, 3]'"
             ), "expected error mismatch"
