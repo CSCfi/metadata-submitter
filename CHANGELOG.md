@@ -63,6 +63,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- ruff linter to make linting faster and less rigorous (to require less developer effort to pass)
 - (users) more accessioning unit tests.
 - (users) New XML POST endpoint stores the submitted BP XML metadata objects in the Postgres database.
 - (users) New POST endpoint generates the submission.json from submitted BP XMLs (except datacite information). - Added: New XML POST endpoint stores the generated submission.json in the Postgres database.
@@ -109,6 +110,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Removed
 
+- spell checking
+- pylint and flake linters
 - Removed Files and Datacite steps from workflow schemas
 - (users) Metadata objects drafts.
 - Endpoints relating to files metadata objects being stored and fetched from MongoDB collection that are now unnecessary
