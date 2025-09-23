@@ -9,6 +9,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- (users) Data folders are now referred to as buckets. This affects the endpoints previously dealing with "folders" incl. `PATCH /submissions/{submissionId}/folder` -> `PATCH /submissions/{submissionId}/bucket`
+- Everything previously referred to as "folders" regarding data is now referred to as "buckets"
 - (users) object_type rather than schema_type is now saved in Postgres and generally used instead of the schema_type e.g. in accessioning.
 - (users) UserErrors exception to return a list of errors in RFC 7807 format.
 - (users) removed /validate endpoint for XML validation.
