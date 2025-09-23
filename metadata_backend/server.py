@@ -160,7 +160,7 @@ async def init(
         web.get("/submissions/{submissionId}/registrations", _submission.get_submission_registrations),
         web.patch("/submissions/{submissionId}/doi", _submission.patch_submission_doi),
         web.patch("/submissions/{submissionId}/rems", _submission.patch_submission_rems),
-        web.patch("/submissions/{submissionId}/folder", _submission.patch_submission_linked_folder),
+        web.patch("/submissions/{submissionId}/bucket", _submission.patch_submission_linked_bucket),
         web.patch("/submissions/{submissionId}", _submission.patch_submission),
         web.delete("/submissions/{submissionId}", _submission.delete_submission),
         web.post("/submissions/{submissionId}/ingest", _submission.post_data_ingestion),
@@ -174,8 +174,8 @@ async def init(
         web.delete("/api/keys", APIKeyHandler.delete_api_key),
         web.get("/api/keys", APIKeyHandler.get_api_keys),
         # File requests.
-        web.get("/projects/{projectId}/folders", _file.get_project_folders),
-        web.get("/projects/{projectId}/folders/{folder}/files", _file.get_files_in_folder),
+        web.get("/projects/{projectId}/buckets", _file.get_project_buckets),
+        web.get("/projects/{projectId}/buckets/{bucket}/files", _file.get_files_in_bucket),
     ]
     _rems = RemsAPIHandler(
         metax_handler=metax_handler,

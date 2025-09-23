@@ -277,15 +277,15 @@ async def get_submission(sess, submission_id):
         return ans
 
 
-async def add_submission_linked_folder(sess, submission_id, name):
-    """Add a linked folder name to a submission.
+async def add_submission_linked_bucket(sess, submission_id, name):
+    """Add a linked bucket name to a submission.
 
     :param sess: HTTP session in which request call is made
     :param submission_id: id of submission to add path to
-    :param name: linked folder name string
+    :param name: bucket name string
     """
-    data = {"linkedFolder": name}
-    url = f"{submissions_url}/{submission_id}/folder"
+    data = {"bucket": name}
+    url = f"{submissions_url}/{submission_id}/bucket"
 
     async with sess.patch(
         url,
@@ -414,11 +414,11 @@ async def add_file_to_inbox(sess, filepath, username):
         assert resp.status == 201, f"HTTP Status code error {resp.status}"
 
 
-async def add_file_to_folder(folder_name, object_key):
+async def add_file_to_bucket(bucket_name, object_key):
     """Add a new object to a mock S3 bucket.
 
     :param sess: HTTP session in which request call is made
-    :param folder_name: name of the folder
+    :param bucket_name: name of the bucket
     :param object_key: key for the object to be added
     """
     random_bytes = os.urandom(100)  # 100 bytes of random data
@@ -432,13 +432,13 @@ async def add_file_to_folder(folder_name, object_key):
         region_name=mock_s3_region,
         use_ssl=False,
     ) as s3:
-        await s3.upload_fileobj(file_obj, folder_name, object_key)
+        await s3.upload_fileobj(file_obj, bucket_name, object_key)
 
 
-async def delete_file_from_folder(folder_name, object_key):
+async def delete_file_from_bucket(bucket_name, object_key):
     """Delete an object from a mock S3 bucket.
 
-    :param folder_name: name of the folder
+    :param bucket_name: name of the bucket
     :param object_key: key for the object to be deleted
     """
     session = aioboto3.Session()
@@ -450,13 +450,13 @@ async def delete_file_from_folder(folder_name, object_key):
         region_name=mock_s3_region,
         use_ssl=False,
     ) as s3:
-        await s3.delete_object(Bucket=folder_name, Key=object_key)
+        await s3.delete_object(Bucket=bucket_name, Key=object_key)
 
 
-async def add_folder(folder_name):
-    """Add a new folder (bucket) to a mock S3 service.
+async def add_bucket(bucket_name):
+    """Add a new bucket to a mock S3 service.
 
-    :param folder_name: name of the folder
+    :param bucket_name: name of the bucket
     """
     session = aioboto3.Session()
     async with session.client(
@@ -467,13 +467,13 @@ async def add_folder(folder_name):
         region_name=mock_s3_region,
         use_ssl=False,
     ) as s3:
-        await s3.create_bucket(Bucket=folder_name)
+        await s3.create_bucket(Bucket=bucket_name)
 
 
-async def delete_folder(folder_name):
-    """Delete a folder (bucket) from a mock S3 service.
+async def delete_bucket(bucket_name):
+    """Delete a bucket from a mock S3 service.
 
-    :param folder_name: name of the folder
+    :param bucket_name: name of the bucket
     """
     session = aioboto3.Session()
     async with session.client(
@@ -484,11 +484,11 @@ async def delete_folder(folder_name):
         region_name=mock_s3_region,
         use_ssl=False,
     ) as s3:
-        await s3.delete_bucket(Bucket=folder_name)
+        await s3.delete_bucket(Bucket=bucket_name)
 
 
-async def list_folders():
-    """List all folders (buckets) in the mock S3 service."""
+async def list_buckets():
+    """List all buckets in the mock S3 service."""
     session = aioboto3.Session()
     async with session.client(
         "s3",
@@ -502,8 +502,8 @@ async def list_folders():
         return [bucket["Name"] for bucket in buckets.get("Buckets", [])]
 
 
-async def list_files_in_folder(folder_name):
-    """List all files (objects) in a folder (bucket) in the mock S3 service."""
+async def list_files_in_bucket(bucket_name):
+    """List all files (objects) in a bucket in the mock S3 service."""
     session = aioboto3.Session()
     async with session.client(
         "s3",
@@ -513,5 +513,5 @@ async def list_files_in_folder(folder_name):
         region_name=mock_s3_region,
         use_ssl=False,
     ) as s3:
-        objects = await s3.list_objects_v2(Bucket=folder_name)
+        objects = await s3.list_objects_v2(Bucket=bucket_name)
         return [obj["Key"] for obj in objects.get("Contents", [])]

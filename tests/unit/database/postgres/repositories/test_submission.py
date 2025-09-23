@@ -22,7 +22,7 @@ async def test_add_get_delete_submission(
             _submission = create_submission_entity(
                 name=name,
                 project_id=project_id,
-                folder="test",
+                bucket="test",
                 workflow=SubmissionWorkflow.SDS,
             )
 
@@ -36,7 +36,7 @@ async def test_add_get_delete_submission(
             assert entity is not None
             assert entity.name == name
             assert entity.project_id == project_id
-            assert entity.folder == "test"
+            assert entity.bucket == "test"
             assert entity.workflow == SubmissionWorkflow.SDS
             assert entity.document == submission.document
 
@@ -85,7 +85,7 @@ async def test_submitted_ingested_date(
         submission = create_submission_entity(
             name=name,
             project_id=project_id,
-            folder="test",
+            bucket="test",
             workflow=SubmissionWorkflow.SDS,
         )
 
@@ -116,7 +116,7 @@ async def test_get_submissions(session_factory: SessionFactory, submission_repos
         first_submission = create_submission_entity(
             name=first_submission_name,
             project_id=first_project_id,
-            folder="test",
+            bucket="test",
             workflow=SubmissionWorkflow.SDS,
             created=now - datetime.timedelta(days=1),
             modified=now - datetime.timedelta(days=1),
@@ -130,7 +130,7 @@ async def test_get_submissions(session_factory: SessionFactory, submission_repos
         second_submission = create_submission_entity(
             name=second_submission_name,
             project_id=second_and_third_project_id,
-            folder="test",
+            bucket="test",
             workflow=SubmissionWorkflow.SDS,
             created=now - datetime.timedelta(days=2),
             modified=now - datetime.timedelta(days=2),
@@ -143,7 +143,7 @@ async def test_get_submissions(session_factory: SessionFactory, submission_repos
         third_submission = create_submission_entity(
             name=third_submission_name,
             project_id=second_and_third_project_id,
-            folder="test",
+            bucket="test",
             workflow=SubmissionWorkflow.SDS,
             created=now - datetime.timedelta(days=3),
             modified=now - datetime.timedelta(days=3),

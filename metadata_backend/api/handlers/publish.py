@@ -580,10 +580,10 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                 raise UserException(f"Submission '{submission_id}' does not contain any '{schema}' objects.")
 
         if not no_files:
-            # Add all files in linked folder to the submission.
-            folder = await submission_service.get_folder(submission_id)
+            # Add all files in linked bucket to the submission.
+            bucket = await submission_service.get_bucket(submission_id)
             if workflow == SubmissionWorkflow.SDS:
-                files = await file_provider_service.list_files_in_folder(folder)
+                files = await file_provider_service.list_files_in_bucket(bucket)
                 for file in files.root:
                     # Check that we have not added the file already.
                     # For now, accept that file bytes might have changed and some files

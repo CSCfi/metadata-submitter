@@ -959,9 +959,9 @@
                 }
             }
         },
-        "linkedFolder": {
+        "bucket": {
             "type": "string",
-            "title": "Name of a folder linked to a submission"
+            "title": "Name of a bucket linked to a submission"
         }
     },
     "additionalProperties": false

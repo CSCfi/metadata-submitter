@@ -13,7 +13,7 @@ from tests.integration.conf import (
     submissions_url,
 )
 from tests.integration.helpers import (
-    add_submission_linked_folder,
+    add_submission_linked_bucket,
     get_request_data,
     get_submission,
     get_submission_files,
@@ -37,7 +37,7 @@ class TestMinimalPublication:
         :param submission_factory: The factory that creates and deletes submissions
         """
         submission_id, _ = await submission_factory("SDSX")
-        mock_folder = "folder1"
+        mock_bucket = "bucket1"
         file_name = "test_object"
 
         doi_data_raw = await get_request_data("doi", "test_doi.json")
@@ -45,9 +45,9 @@ class TestMinimalPublication:
         rems_data = await get_request_data("dac", "dac_rems.json")
         await patch_submission_rems(client_logged_in, submission_id, rems_data)
 
-        await s3_manager.add_folder(mock_folder)
-        await s3_manager.add_file_to_folder(mock_folder, file_name)
-        await add_submission_linked_folder(client_logged_in, submission_id, mock_folder)
+        await s3_manager.add_bucket(mock_bucket)
+        await s3_manager.add_file_to_bucket(mock_bucket, file_name)
+        await add_submission_linked_bucket(client_logged_in, submission_id, mock_bucket)
 
         await publish_submission(client_logged_in, submission_id, no_files=False)
 
@@ -60,7 +60,7 @@ class TestMinimalPublication:
         LOG.debug("Checking that submission %s has a file after publication", submission_id)
         assert len(files) == 1, "expected one file in the submission"
         assert files[0]["submissionId"] == submission_id, "expected submission id does not match"
-        assert files[0]["path"] == f"S3://{mock_folder}/{file_name}", "expected file path does not match"
+        assert files[0]["path"] == f"S3://{mock_bucket}/{file_name}", "expected file path does not match"
 
 
 class TestPublication:

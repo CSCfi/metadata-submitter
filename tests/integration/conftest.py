@@ -22,13 +22,13 @@ from tests.integration.conf import (
     other_test_user_given,
 )
 from tests.integration.helpers import (
-    add_file_to_folder,
-    add_folder,
-    delete_file_from_folder,
-    delete_folder,
+    add_bucket,
+    add_file_to_bucket,
+    delete_bucket,
+    delete_file_from_bucket,
     delete_submission,
-    list_files_in_folder,
-    list_folders,
+    list_buckets,
+    list_files_in_bucket,
     post_submission,
 )
 
@@ -150,54 +150,54 @@ async def fixture_clear_cache(client):
 
 @pytest.fixture
 async def s3_manager():
-    """Fixture to track and cleanup mock S3 folders/files before and after each test."""
+    """Fixture to track and cleanup mock S3 buckets/files before and after each test."""
     # Ensure mock S3 instance is empty before test
-    folders_to_delete = await list_folders()
-    for folder_name in folders_to_delete:
+    buckets_to_delete = await list_buckets()
+    for bucket_name in buckets_to_delete:
         try:
-            files_in_folder = await list_files_in_folder(folder_name)
-            for file_name in files_in_folder:
+            files_in_bucket = await list_files_in_bucket(bucket_name)
+            for file_name in files_in_bucket:
                 try:
-                    await delete_file_from_folder(folder_name, file_name)
+                    await delete_file_from_bucket(bucket_name, file_name)
                 except Exception:
                     pass
-            await delete_folder(folder_name)
+            await delete_bucket(bucket_name)
         except Exception:
             pass
 
-    folders = set()
+    buckets = set()
     files = []
 
     class S3Manager:
-        async def add_folder(self, folder_name):
-            await add_folder(folder_name)
-            folders.add(folder_name)
+        async def add_bucket(self, bucket_name):
+            await add_bucket(bucket_name)
+            buckets.add(bucket_name)
 
-        async def add_file_to_folder(self, folder_name, file_name):
-            await add_file_to_folder(folder_name, file_name)
-            files.append((folder_name, file_name))
-            folders.add(folder_name)
+        async def add_file_to_bucket(self, bucket_name, file_name):
+            await add_file_to_bucket(bucket_name, file_name)
+            files.append((bucket_name, file_name))
+            buckets.add(bucket_name)
 
-        async def delete_file_from_folder(self, folder_name, file_name):
-            await delete_file_from_folder(folder_name, file_name)
-            if (folder_name, file_name) in files:
-                files.remove((folder_name, file_name))
+        async def delete_file_from_bucket(self, bucket_name, file_name):
+            await delete_file_from_bucket(bucket_name, file_name)
+            if (bucket_name, file_name) in files:
+                files.remove((bucket_name, file_name))
 
-        async def delete_folder(self, folder_name):
-            await delete_folder(folder_name)
-            folders.discard(folder_name)
+        async def delete_bucket(self, bucket_name):
+            await delete_bucket(bucket_name)
+            buckets.discard(bucket_name)
 
     manager = S3Manager()
     yield manager
 
-    # Teardown: remove files and then folders
-    for folder_name, file_name in files:
+    # Teardown: remove files and then buckets
+    for bucket_name, file_name in files:
         try:
-            await delete_file_from_folder(folder_name, file_name)
+            await delete_file_from_bucket(bucket_name, file_name)
         except Exception:
             pass
-    for folder_name in folders:
+    for bucket_name in buckets:
         try:
-            await delete_folder(folder_name)
+            await delete_bucket(bucket_name)
         except Exception:
             pass

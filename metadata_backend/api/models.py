@@ -288,4 +288,4 @@ class Submission(JsonModel):
     published: Optional[bool] = None  # Stored only in a database column.
     doi_info: Optional[DoiInfo] = Field(None, alias="doiInfo")
     rems: Optional[Rems] = None
-    linked_folder: Optional[str] = Field(None, alias="linkedFolder")  # Stored only in a database column.
+    bucket: Optional[str] = Field(None, alias="bucket")  # Stored only in a database column.

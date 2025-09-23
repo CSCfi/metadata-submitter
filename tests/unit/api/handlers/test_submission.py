@@ -432,34 +432,34 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         submission = await self.get_submission(submission_id)
         assert data == submission["doiInfo"]
 
-    async def test_patch_linked_folder(self):
-        """Test changing linked folder in the submission."""
+    async def test_patch_linked_bucket(self):
+        """Test changing linked bucket in the submission."""
         submission_id = await self.post_submission()
-        folder = f"folder_{uuid.uuid4()}"
-        data = {"linkedFolder": folder}
+        bucket = f"bucket_{uuid.uuid4()}"
+        data = {"bucket": bucket}
 
-        # Set linked folder for the first time works.
+        # Set linked bucket for the first time works.
         with (
             self.patch_verify_user_project,
             self.patch_verify_authorization,
         ):
-            response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/folder", json=data)
+            response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/bucket", json=data)
             self.assertEqual(response.status, 204)
 
         submission = await self.get_submission(submission_id)
-        assert submission["linkedFolder"] == folder
+        assert submission["bucket"] == bucket
 
-        # Change linked folder fails.
+        # Change linked bucket fails.
         with (
             self.patch_verify_user_project,
             self.patch_verify_authorization,
         ):
-            response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/folder", json=data)
+            response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/bucket", json=data)
             self.assertEqual(response.status, 400)
-            self.assertIn("already has a linked folder", await response.text())
+            self.assertIn("already has a linked bucket", await response.text())
 
         submission = await self.get_submission(submission_id)
-        assert submission["linkedFolder"] == folder
+        assert submission["bucket"] == bucket
 
     async def test_patch_rems(self):
         """Test changing rems in the submission."""

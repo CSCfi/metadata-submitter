@@ -1099,7 +1099,7 @@ class XmlFileDocumentsProcessor(XmlDocumentsProcessor):
         Process one or more XML files.
 
         :param config: Configuration object for XML processing.
-        :param path: Path to the folder with XML files.
+        :param path: Path to the bucket with XML files.
         :param whitelist: If provided, only these XML files are read.
             Otherwise, all `.xml` files are read recursively.
             Assumes that relative paths are used.

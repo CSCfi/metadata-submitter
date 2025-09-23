@@ -252,9 +252,9 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         The submission document can be updated by the user, however, some fields
         can't be removed or changed. If the following fields are absent from the
         updated document then the existing value in the current document is preserved:
-        name, description, doiInfo, rems, projectId, workflow, linkedFolder. Furthermore,
+        name, description, doiInfo, rems, projectId, workflow, bucket. Furthermore,
         if the following fields are changed then the existing value in the current document
-        is preserved: projectId, workflow, linkedFolder.
+        is preserved: projectId, workflow, bucket.
 
         :param req: PATCH request
         :returns: JSON response containing submission ID for updated submission
@@ -341,12 +341,12 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         body = to_json({"submissionId": submission_id})
         return web.Response(body=body, status=200, content_type="application/json")
 
-    async def patch_submission_linked_folder(self, req: Request) -> Response:
-        """Add or remove a linked folder name to a submission.
+    async def patch_submission_linked_bucket(self, req: Request) -> Response:
+        """Add or remove a linked bucket name to a submission.
 
         :param req: PATCH request with metadata schema in the body
-        :raises: HTTP Bad Request if submission already has a linked folder
-        or request has missing / invalid linkedFolder
+        :raises: HTTP Bad Request if submission already has a bucket
+        or request has missing / invalid bucket
         :returns: HTTP No Content response
         """
         submission_id = req.match_info["submissionId"]
@@ -360,22 +360,22 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         # Container name limitations in SD Connect
         pattern = re.compile(r"^[0-9a-zA-Z\.\-_]{3,}$")
 
-        folder = data["linkedFolder"]
+        bucket = data["bucket"]
         try:
-            if folder == "":
+            if bucket == "":
                 pass
-            elif pattern.match(folder):
-                await submission_service.update_folder(submission_id, folder)  # Changing folder is not supported.
+            elif pattern.match(bucket):
+                await submission_service.update_bucket(submission_id, bucket)  # Changing bucket is not supported.
             else:
-                reason = "Provided an invalid linkedFolder."
+                reason = "Provided an invalid bucket."
                 LOG.error(reason)
                 raise web.HTTPBadRequest(reason=reason)
         except (KeyError, TypeError) as exc:
-            reason = "A linkedFolder string is required."
+            reason = "A bucket string is required."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason) from exc
 
-        LOG.info("PUT a linked folder in submission with ID: %r was successful.", submission_id)
+        LOG.info("PATCH a linked bucket in submission with ID: %r was successful.", submission_id)
         return web.HTTPNoContent()
 
     async def get_submission_files(self, req: Request) -> Response:

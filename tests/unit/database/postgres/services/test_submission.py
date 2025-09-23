@@ -27,7 +27,7 @@ async def test_add_and_get_submission(
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         name = f"name_{uuid.uuid4()}"
         project_id = f"project_{uuid.uuid4()}"
-        folder = "test"
+        bucket = "test"
         workflow = SubmissionWorkflow.SDS
         title = "test"
         description = "test"
@@ -40,7 +40,7 @@ async def test_add_and_get_submission(
             "name": name,
             "projectId": project_id,
             "workflow": workflow.value,
-            "linkedFolder": folder,
+            "bucket": bucket,
             "rems": {
                 "organizationId": rems_organization_id,
                 "workflowId": rems_workflow_id,
@@ -69,7 +69,7 @@ async def test_add_and_get_submission(
         assert entity.name == name
         assert entity.project_id == project_id
         assert entity.workflow == workflow
-        assert entity.folder == folder
+        assert entity.bucket == bucket
         assert entity.created is not None
         assert_recent(entity.created)
         assert entity.modified is not None
@@ -87,7 +87,7 @@ async def test_add_and_get_submission(
             "text_name": to_jsonable_python(" ".join(re.split("[\\W_]", name))),
             "projectId": to_jsonable_python(project_id),
             "workflow": to_jsonable_python(workflow.value),
-            "linkedFolder": to_jsonable_python(folder),
+            "bucket": to_jsonable_python(bucket),
             "submissionId": to_jsonable_python(submission_id),
             "dateCreated": to_jsonable_python(entity.created),
             "lastModified": to_jsonable_python(entity.modified),
@@ -221,13 +221,13 @@ async def test_get_workflow(
         assert await submission_service.get_workflow(submission.submission_id) == submission.workflow
 
 
-async def test_get_folder(
+async def test_get_bucket(
     session_factory: SessionFactory, submission_repository: SubmissionRepository, submission_service: SubmissionService
 ):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
-        assert await submission_service.get_folder(submission.submission_id) == submission.folder
+        assert await submission_service.get_bucket(submission.submission_id) == submission.bucket
 
 
 async def test_update_submission(
@@ -235,7 +235,7 @@ async def test_update_submission(
 ):
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
-        submission.folder = None
+        submission.bucket = None
         await submission_repository.add_submission(submission)
 
         # name
@@ -250,12 +250,12 @@ async def test_update_submission(
             "description"
         ] == description
 
-        # folder
-        folder = f"folder_{uuid.uuid4()}"
-        await submission_service.update_folder(submission.submission_id, folder)
-        assert (await submission_repository.get_submission_by_id(submission.submission_id)).folder == folder
+        # bucket
+        bucket = f"bucket_{uuid.uuid4()}"
+        await submission_service.update_bucket(submission.submission_id, bucket)
+        assert (await submission_repository.get_submission_by_id(submission.submission_id)).bucket == bucket
         with pytest.raises(SubmissionUserException):
-            await submission_service.update_folder(submission.submission_id, folder)
+            await submission_service.update_bucket(submission.submission_id, bucket)
 
         # doi info
         doi_info = {
@@ -291,7 +291,7 @@ async def test_update_submission(
         document = await submission_service.get_submission_by_id(submission.submission_id)
         document["workflow"] = f"workflow_{uuid.uuid4()}"
         document["projectId"] = f"project_{uuid.uuid4()}"
-        document["linkedFolder"] = f"folder_{uuid.uuid4()}"
+        document["bucket"] = f"bucket_{uuid.uuid4()}"
         await submission_service.update_submission(submission.submission_id, document)
         actual = {
             k: v
@@ -307,7 +307,7 @@ async def test_update_submission(
         document.pop("description", None)
         document.pop("projectId", None)
         document.pop("workflow", None)
-        document.pop("linkedFolder", None)
+        document.pop("bucket", None)
         document.pop("rems", None)
         document.pop("doiInfo", None)
         await submission_service.update_submission(submission.submission_id, document)

@@ -26,7 +26,7 @@ async def test_add_get_delete_object(
         submission = create_submission_entity(
             name=submission_name,
             project_id=project_id,
-            folder="test",
+            bucket="test",
             workflow=workflow,
             created=now - datetime.timedelta(days=1),
             modified=now - datetime.timedelta(days=1),
@@ -111,7 +111,7 @@ async def test_get_and_count_objects(
         first_submission = create_submission_entity(
             name=first_submission_name,
             project_id=first_project_id,
-            folder="test",
+            bucket="test",
             workflow=workflow,
             created=now - datetime.timedelta(days=1),
             modified=now - datetime.timedelta(days=1),
@@ -125,7 +125,7 @@ async def test_get_and_count_objects(
         second_submission = create_submission_entity(
             name=second_submission_name,
             project_id=second_project_id,
-            folder="test",
+            bucket="test",
             workflow=workflow,
             created=now - datetime.timedelta(days=1),
             modified=now - datetime.timedelta(days=1),

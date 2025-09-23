@@ -5,7 +5,7 @@ import logging
 
 from tests.integration.conf import publish_url
 from tests.integration.helpers import (
-    add_submission_linked_folder,
+    add_submission_linked_bucket,
     delete_submission,
     get_request_data,
     get_submission,
@@ -165,8 +165,8 @@ class TestSubmissionOperations:
             LOG.debug("Checking that submission %s was deleted", submission_id)
             assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
 
-    async def test_sdsx_folder(self, client_logged_in, submission_factory):
-        """Test that a folder name can be linked to a submission.
+    async def test_sdsx_bucket(self, client_logged_in, submission_factory):
+        """Test that a bucket name can be linked to a submission.
 
         :param client_logged_in: HTTP client in which request call is made
         :param submission_factory: The factory that creates and deletes submissions
@@ -178,12 +178,12 @@ class TestSubmissionOperations:
             assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
         submission = await get_submission(client_logged_in, submission_id)
-        assert "linkedFolder" not in submission
+        assert "bucket" not in submission
 
-        folder = "test"
-        await add_submission_linked_folder(client_logged_in, submission_id, folder)
+        bucket = "test"
+        await add_submission_linked_bucket(client_logged_in, submission_id, bucket)
         submission = await get_submission(client_logged_in, submission_id)
-        assert submission["linkedFolder"] == folder
+        assert submission["bucket"] == bucket
 
     async def test_sdsx_rems(self, client_logged_in, submission_factory):
         """Test that correct REMS info can be added to submission and invalid REMS info will raise error.
