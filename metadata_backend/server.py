@@ -20,7 +20,7 @@ from .api.health import HealthHandler
 from .api.middlewares import authorization, http_error_handler
 from .api.resources import ResourceType, set_resource
 from .api.services.auth import AccessService
-from .api.services.file import S3FileProviderService
+from .api.services.file import S3AllasFileProviderService
 from .api.services.project import CscLdapProjectService
 from .conf.conf import API_PREFIX, aai_config, frontend_static_files, swagger_static_path
 from .database.postgres.repositories.api_key import ApiKeyRepository
@@ -80,7 +80,7 @@ async def init(
 
     submission_service = SubmissionService(SubmissionRepository(session_factory))
     object_service = ObjectService(ObjectRepository(session_factory))
-    file_provider_service = S3FileProviderService()
+    file_provider_service = S3AllasFileProviderService()
 
     _set_resource(ResourceType.ACCESS_SERVICE, AccessService(api_key_repository))
     _set_resource(ResourceType.PROJECT_SERVICE, CscLdapProjectService())
@@ -176,6 +176,8 @@ async def init(
         # File requests.
         web.get("/projects/{projectId}/buckets", _file.get_project_buckets),
         web.get("/projects/{projectId}/buckets/{bucket}/files", _file.get_files_in_bucket),
+        web.put("/projects/{projectId}/buckets/{bucket}", _file.grant_access_to_bucket),
+        web.head("/projects/{projectId}/buckets/{bucket}", _file.check_bucket_access),
     ]
     _rems = RemsAPIHandler(
         metax_handler=metax_handler,

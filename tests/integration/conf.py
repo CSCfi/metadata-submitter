@@ -62,8 +62,8 @@ mock_pid_prefix = "10.80869"
 taxonomy_url = f"{base_url}{API_PREFIX}/taxonomy"
 admin_url = f"{os.getenv("ADMIN_URL", "http://localhost:8004")}"
 auth = aiohttp.BasicAuth(os.getenv("METAX_USER", "sd"), os.getenv("METAX_PASS", "test"))
-mock_s3_url = f"{os.getenv("S3_ENDPOINT", "http://localhost:9090")}"
-mock_s3_region = f"{os.getenv("S3_REGION", "eu-north-1")}"
+mock_s3_url = f"{os.getenv("S3_ENDPOINT", "http://localhost:8006")}"
+mock_s3_region = f"{os.getenv("S3_REGION", "us-east-1")}"
 files_url = f"{base_url}{API_PREFIX}/projects"
 
 user_id = "current"

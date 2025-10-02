@@ -30,7 +30,7 @@ LOG.setLevel(logging.DEBUG)
 class TestMinimalPublication:
     """Test minimal publication with JSON submissions for FEGA and SDSX workflows, XML submissions for BP workflow."""
 
-    async def test_sdsx_publication(self, client_logged_in, submission_factory, s3_manager):
+    async def test_sdsx_publication(self, client_logged_in, submission_factory, s3_manager, project_id):
         """Test SDSX publication.
 
         :param client_logged_in: HTTP client in which request call is made
@@ -46,6 +46,7 @@ class TestMinimalPublication:
         await patch_submission_rems(client_logged_in, submission_id, rems_data)
 
         await s3_manager.add_bucket(mock_bucket)
+        await s3_manager.set_bucket_policy(mock_bucket, project_id)
         await s3_manager.add_file_to_bucket(mock_bucket, file_name)
         await add_submission_linked_bucket(client_logged_in, submission_id, mock_bucket)
 

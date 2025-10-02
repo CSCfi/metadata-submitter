@@ -36,8 +36,8 @@ _registration_repository: RegistrationRepository | None = None
 # set required S3 env vars for all tests
 os.environ.setdefault("S3_ACCESS_KEY", "test")
 os.environ.setdefault("S3_SECRET_KEY", "test")
-os.environ.setdefault("S3_REGION", "eu-north-1")
-os.environ.setdefault("S3_ENDPOINT", "http://localhost:9090")
+os.environ.setdefault("S3_REGION", "us-east-1")
+os.environ.setdefault("S3_ENDPOINT", "http://localhost")
 
 
 async def _session_start():
