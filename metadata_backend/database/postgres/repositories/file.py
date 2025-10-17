@@ -2,7 +2,7 @@
 
 from typing import AsyncIterator, Callable, Sequence
 
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import and_, delete, func, or_, select
 
 from metadata_backend.api.models import SubmissionWorkflow
 from metadata_backend.api.services.accession import generate_file_accession
@@ -74,13 +74,13 @@ class FileRepository:
             return result.scalar_one_or_none()
 
     async def get_files(
-        self, submission_id: str, *, ingest_statuses: Sequence[IngestStatus] | None = None
+        self, *, submission_id: str | None = None, ingest_statuses: Sequence[IngestStatus] | None = None
     ) -> AsyncIterator[FileEntity]:
         """
         Get file entities associated with the submission..
 
         Args:
-            submission_id: the submission id.
+            submission_id: filter by submission id.
             ingest_statuses: filter by ingest statuses.
 
         Returns:
@@ -89,14 +89,15 @@ class FileRepository:
 
         # Apply filters.
         filters = []
-        if ingest_statuses is not None:
-            filters = [FileEntity.ingest_status == ingest_status for ingest_status in ingest_statuses]
+        if submission_id is not None:
+            filters.append(FileEntity.submission_id == submission_id)
 
-        # Select objects.
-        if filters:
-            stmt = select(FileEntity).where(FileEntity.submission_id == submission_id, or_(*filters))
-        else:
-            stmt = select(FileEntity).where(FileEntity.submission_id == submission_id)
+        if ingest_statuses is not None and len(ingest_statuses) > 0:
+            status_filter = or_(*[FileEntity.ingest_status == ingest_status for ingest_status in ingest_statuses])
+            filters.append(status_filter)
+
+        # Select files.
+        stmt = select(FileEntity).where(and_(*filters))
 
         async with transaction(self._session_factory) as session:
             result = await session.execute(stmt)
@@ -115,16 +116,17 @@ class FileRepository:
             The count of matching file entities.
         """
 
+        # Apply filters.
         filters = []
-        if ingest_statuses is not None:
-            filters = [FileEntity.ingest_status == ingest_status for ingest_status in ingest_statuses]
+        if submission_id is not None:
+            filters.append(FileEntity.submission_id == submission_id)
 
-        if filters:
-            stmt = select(func.count()).where(  # pylint: disable=not-callable
-                FileEntity.submission_id == submission_id, or_(*filters)
-            )
-        else:
-            stmt = select(func.count()).where(FileEntity.submission_id == submission_id)  # pylint: disable=not-callable
+        if ingest_statuses is not None and len(ingest_statuses) > 0:
+            status_filter = or_(*[FileEntity.ingest_status == ingest_status for ingest_status in ingest_statuses])
+            filters.append(status_filter)
+
+        # Select files.
+        stmt = select(func.count()).where(and_(*filters))
 
         async with transaction(self._session_factory) as session:
             result = await session.execute(stmt)

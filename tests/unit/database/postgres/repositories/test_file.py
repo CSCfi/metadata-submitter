@@ -73,7 +73,7 @@ async def test_add_get_delete_file(
             assert entity.unencrypted_checksum_type == unencrypted_checksum_type
             assert entity.encrypted_checksum_type == encrypted_checksum_type
             assert entity.path == path
-            assert entity.ingest_status == IngestStatus.ADDED
+            assert entity.ingest_status == IngestStatus.SUBMITTED
             assert entity.ingest_error is None
 
         # Test delete by file id.
@@ -124,7 +124,7 @@ async def test_get_and_count_files_and_bytes(
             unencrypted_checksum_type=unencrypted_checksum_type,
             encrypted_checksum_type=encrypted_checksum_type,
             path=path_1,
-            ingest_status=IngestStatus.ADDED,
+            ingest_status=IngestStatus.SUBMITTED,
         )
 
         path_2 = f"path_{uuid.uuid4()}"
@@ -138,7 +138,7 @@ async def test_get_and_count_files_and_bytes(
             unencrypted_checksum_type=unencrypted_checksum_type,
             encrypted_checksum_type=encrypted_checksum_type,
             path=path_2,
-            ingest_status=IngestStatus.FAILED,
+            ingest_status=IngestStatus.ERROR,
         )
 
         file_id_1 = await file_repository.add_file(file_entity_1, workflow)
@@ -146,21 +146,28 @@ async def test_get_and_count_files_and_bytes(
 
         # Files
 
-        files = [file async for file in file_repository.get_files(submission_id, ingest_statuses=[IngestStatus.ADDED])]
+        files = [
+            file
+            async for file in file_repository.get_files(
+                submission_id=submission_id, ingest_statuses=[IngestStatus.SUBMITTED]
+            )
+        ]
         assert len(files) == 1
-        assert await file_repository.count_files(submission_id, ingest_statuses=[IngestStatus.ADDED]) == 1
+        assert await file_repository.count_files(submission_id, ingest_statuses=[IngestStatus.SUBMITTED]) == 1
 
         assert files[0].file_id == file_id_1
 
         files = [
             file
             async for file in file_repository.get_files(
-                submission_id, ingest_statuses=[IngestStatus.ADDED, IngestStatus.FAILED]
+                submission_id=submission_id, ingest_statuses=[IngestStatus.SUBMITTED, IngestStatus.ERROR]
             )
         ]
         assert len(files) == 2
         assert (
-            await file_repository.count_files(submission_id, ingest_statuses=[IngestStatus.ADDED, IngestStatus.FAILED])
+            await file_repository.count_files(
+                submission_id, ingest_statuses=[IngestStatus.SUBMITTED, IngestStatus.ERROR]
+            )
             == 2
         )
         assert {file_id_1, file_id_2} == {files[0].file_id, files[1].file_id}
@@ -195,16 +202,16 @@ async def test_update_ingest_status(
             unencrypted_checksum_type=unencrypted_checksum_type,
             encrypted_checksum_type=encrypted_checksum_type,
             path=path,
-            ingest_status=IngestStatus.ADDED,
+            ingest_status=IngestStatus.SUBMITTED,
         )
 
         file_id = await file_repository.add_file(file_entity, workflow)
 
-        assert (await file_repository.get_file_by_id(file_id)).ingest_status == IngestStatus.ADDED
+        assert (await file_repository.get_file_by_id(file_id)).ingest_status == IngestStatus.SUBMITTED
 
         def update_callback(file: FileEntity) -> None:
-            file.ingest_status = IngestStatus.COMPLETED
+            file.ingest_status = IngestStatus.READY
 
         await file_repository.update_file(file_id, update_callback)
 
-        assert (await file_repository.get_file_by_id(file_id)).ingest_status == IngestStatus.COMPLETED
+        assert (await file_repository.get_file_by_id(file_id)).ingest_status == IngestStatus.READY

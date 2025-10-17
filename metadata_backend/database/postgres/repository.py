@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from typing import AsyncIterator, TypeVar
 
+from sqlalchemy import create_mock_engine
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 
 from .models import Base
@@ -43,8 +44,36 @@ async def create_engine(db_url: str | None = None) -> AsyncEngine:
         raise ValueError(f"Missing PostgreSQL environmental variable: {PG_DATABASE_URL_ENV}")
 
     engine = create_async_engine(db_url, echo=True)
+
     await _create_schema(engine)
     return engine
+
+
+def save_schema(db_url: str = "postgresql+psycopg2://") -> None:
+    """
+    Save the SQL to create the schema.
+
+    Args:
+        db_url: The database URL.
+    """
+
+    sqls: list[str] = []
+
+    # https://docs.sqlalchemy.org/en/20/core/engines.html#sqlalchemy.create_mock_engine
+    def _compile_sql(_expr, _, *__, **___):  # type: ignore
+        sql = str(_expr.compile(dialect=engine.dialect))
+        print(sql)
+        sqls.append(sql)
+
+    engine = create_mock_engine(db_url, _compile_sql)
+    Base.metadata.create_all(engine, checkfirst=False)
+
+    schema_dir = os.path.join(os.path.dirname(__file__), "schema")
+    os.makedirs(schema_dir, exist_ok=True)
+
+    output_file = os.path.join(schema_dir, "create.sql")
+    with open(output_file, "w", encoding="utf-8") as f:
+        f.write("\n".join(sqls))
 
 
 def get_postgres_db_url(host: str, port: int, user: str, password: str, database: str) -> str:
@@ -117,3 +146,8 @@ async def transaction(
                     await session.rollback()
         finally:
             _session_context.reset(token)
+
+
+# python -m metadata_backend.database.postgres.repository
+if __name__ == "__main__":
+    save_schema()
