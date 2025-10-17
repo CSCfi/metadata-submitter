@@ -9,6 +9,13 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- using server side functionality to set all default and update values. Fallbacks exist for SQLLite.
+- added database check constraints for enumerations.
+- file postgres service and repository ingest status update to be able to update ingest error and error type.
+- file postgres service and repository file retrieval to make submission_id optional. Needed later if we want to process files over all submissions rather than one submission at a time.
+- update files.ingest_status in NeIC SDA ingest only when the status is verified, ready, or error. Other NeIC statuses are not saved in SD Submit Postgres.
+- minor changes to NeIC SDA ingest to use the IngestStatus enumeration
+- For simplify changed IngestStatus enumeration to be the same as in NeIC SDA pipeline.
 - Previously used mock S3 docker image to a docker image from motoserver that supports handling bucket policies
 - Bucket listing and file listing methods now check bucket policies first and do not return buckets/files that do not have the correct bucket policy assigned
 - (users) Data folders are now referred to as buckets. This affects the endpoints previously dealing with "folders" incl. `PATCH /submissions/{submissionId}/folder` -> `PATCH /submissions/{submissionId}/bucket`
@@ -67,6 +74,11 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- schema generation code.
+- files.created and modified columns.
+- files.ingest_error_count column.
+- files.ingest_error_type column with values: user_error, transient_error, permanent_error
+- schema creation, dropping and granting SQL.
 - (users) Endpoint for a user to check whether a bucket can be accessed in SD Submit in a specific project
 - (users) Endpoint for a user to grant SD Submit API read access to buckets in an S3 instance
 - Functionality to add and read bucket policies of S3 buckets
