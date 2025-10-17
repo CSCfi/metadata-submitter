@@ -9,6 +9,7 @@ from aiohttp import web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
+from ...database.postgres.models import IngestStatus
 from ...helpers.logger import LOG
 from ...helpers.validator import JSONValidator
 from ..auth import get_authorized_user_id
@@ -391,7 +392,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         # Check that the submission can be retrieved by the user.
         await self.check_submission_retrievable(req, submission_id)
 
-        files = [file async for file in file_service.get_files(submission_id)]
+        files = [file async for file in file_service.get_files(submission_id=submission_id)]
 
         LOG.info("GET files for submission with ID: %r was successful.", submission_id)
         return web.Response(
@@ -446,7 +447,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         polling_file_data = {}
         file_ids = []
-        async for file in file_service.get_files(submission_id):
+        async for file in file_service.get_files(submission_id=submission_id):
             # Trigger file ingestion
             await self.admin_handler.ingest_file(
                 req,
@@ -462,10 +463,12 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         LOG.info("Polling for status 'verified' in submission with ID: %r", submission_id)
         await self.start_file_polling(
-            req, polling_file_data, {"user": user_id, "submissionId": submission_id}, "verified"
+            req, polling_file_data, {"user": user_id, "submissionId": submission_id}, IngestStatus.VERIFIED
         )
         LOG.info("Polling for status 'ready' in submission with ID: %r", submission_id)
-        await self.start_file_polling(req, polling_file_data, {"user": user_id, "submissionId": submission_id}, "ready")
+        await self.start_file_polling(
+            req, polling_file_data, {"user": user_id, "submissionId": submission_id}, IngestStatus.READY
+        )
 
         await self.admin_handler.create_dataset(
             req,

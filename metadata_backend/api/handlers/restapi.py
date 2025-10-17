@@ -194,13 +194,15 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
         """
         await self.rems_handler.validate_workflow_licenses(rems.organization_id, rems.workflow_id, rems.licenses)
 
-    async def start_file_polling(self, req: Request, files: dict[str, str], data: dict[str, str], status: str) -> None:
+    async def start_file_polling(
+        self, req: Request, files: dict[str, str], data: dict[str, str], ingest_status: IngestStatus
+    ) -> None:
         """Regularly poll files to see if they have required status.
 
         :param req: HTTP request
         :param files: List of files to be polled
         :param data: Includes 'user' and 'submissionId'
-        :param status: The expected file status that is polled
+        :param ingest_status: The expected file ingestion status
         """
         status_found = {f: False for f in files.keys()}
 
@@ -215,12 +217,14 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
                     raise web.HTTPBadRequest(reason=reason)
 
                 inbox_path = inbox_file["inboxPath"]
+
                 if not status_found.get(inbox_path, True):
-                    if inbox_file["fileStatus"] == status:
+                    if inbox_file["fileStatus"] == ingest_status.value:
+                        # The file status is the expected file status.
                         status_found[inbox_path] = True
                         file_id = files[inbox_path]
-                        await file_service.update_ingest_status(file_id, IngestStatus(status))
-                        if status == "verified":
+                        await file_service.update_ingest_status(file_id, ingest_status)
+                        if ingest_status == IngestStatus.VERIFIED:
                             await self.admin_handler.post_accession_id(
                                 req,
                                 {
@@ -229,7 +233,10 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
                                     "accessionId": file_id,
                                 },
                             )
-                    elif inbox_file["fileStatus"] == "error":
+                    elif inbox_file["fileStatus"] == IngestStatus.ERROR.value:
+                        # The file status is ERROR.
+                        file_id = files[inbox_path]
+                        await file_service.update_ingest_status(file_id, IngestStatus.ERROR)
                         reason = f"File {inbox_path} in submission {data['submissionId']} has status 'error'"
                         LOG.exception(reason)
                         raise web.HTTPInternalServerError(reason=reason)
@@ -239,5 +246,7 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
                 break
 
             num_waiting = sum((not x for x in status_found.values()))
-            LOG.debug("%d files were not yet %s for submission %s", num_waiting, status, data["submissionId"])
+            LOG.debug(
+                "%d files were not yet %s for submission %s", num_waiting, ingest_status.value, data["submissionId"]
+            )
             await sleep(POLLING_INTERVAL)

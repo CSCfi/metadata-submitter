@@ -99,14 +99,17 @@ async def test_get_files(
             file.file_id = await service.add_file(file, workflow)
 
         # Get files.
-        results = [file async for file in service.get_files(submission.submission_id)]
+        results = [file async for file in service.get_files(submission_id=submission.submission_id)]
 
         # Assert files.
         assert sorted(f.to_json_dict().items() for f in files) == sorted(r.to_json_dict().items() for r in results)
 
         # Get files using initial ingest status.
         results = [
-            file async for file in service.get_files(submission.submission_id, ingest_statuses=[IngestStatus.ADDED])
+            file
+            async for file in service.get_files(
+                submission_id=submission.submission_id, ingest_statuses=[IngestStatus.SUBMITTED]
+            )
         ]
 
         # Assert files.
@@ -114,7 +117,10 @@ async def test_get_files(
 
         # Get files using other ingest status.
         results = [
-            file async for file in service.get_files(submission.submission_id, ingest_statuses=[IngestStatus.FAILED])
+            file
+            async for file in service.get_files(
+                submission_id=submission.submission_id, ingest_statuses=[IngestStatus.ERROR]
+            )
         ]
 
         # Assert files.
@@ -140,8 +146,8 @@ async def test_count_files(
 
         # Assert file count.
         assert await service.count_files(submission.submission_id) == 3
-        assert await service.count_files(submission.submission_id, ingest_statuses=[IngestStatus.ADDED]) == 3
-        assert await service.count_files(submission.submission_id, ingest_statuses=[IngestStatus.FAILED]) == 0
+        assert await service.count_files(submission.submission_id, ingest_statuses=[IngestStatus.SUBMITTED]) == 3
+        assert await service.count_files(submission.submission_id, ingest_statuses=[IngestStatus.ERROR]) == 0
 
 
 async def test_count_bytes(
@@ -183,12 +189,12 @@ async def test_update_ingest_status(
         file = create_file(submission.submission_id, obj.object_id)
         file_id = await service.add_file(file, workflow)
 
-        assert (await file_repository.get_file_by_id(file_id)).ingest_status == IngestStatus.ADDED
-        await service.update_ingest_status(file_id, ingest_status=IngestStatus.FAILED)
-        assert (await file_repository.get_file_by_id(file_id)).ingest_status == IngestStatus.FAILED
+        assert (await file_repository.get_file_by_id(file_id)).ingest_status == IngestStatus.SUBMITTED
+        await service.update_ingest_status(file_id, ingest_status=IngestStatus.ERROR)
+        assert (await file_repository.get_file_by_id(file_id)).ingest_status == IngestStatus.ERROR
 
         with pytest.raises(UnknownFileException):
-            await service.update_ingest_status("unknown", ingest_status=IngestStatus.FAILED)
+            await service.update_ingest_status("unknown", ingest_status=IngestStatus.ERROR)
 
 
 async def test_delete_file_by_id(

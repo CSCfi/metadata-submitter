@@ -4,7 +4,7 @@ from typing import AsyncIterator, Sequence
 
 from ....api.exceptions import NotFoundUserException
 from ....api.models import File, SubmissionWorkflow
-from ..models import FileEntity, IngestStatus
+from ..models import FileEntity, IngestErrorType, IngestStatus
 from ..repositories.file import FileRepository
 
 
@@ -147,19 +147,19 @@ class FileService:
         return self.convert_from_entity(file)
 
     async def get_files(
-        self, submission_id: str, *, ingest_statuses: Sequence[IngestStatus] | None = None
+        self, *, submission_id: str | None = None, ingest_statuses: Sequence[IngestStatus] | None = None
     ) -> AsyncIterator[File]:
         """
         Get files associated with the submission.
 
         Args:
-            submission_id: the submission id.
+            submission_id: filter by submission id.
             ingest_statuses: filter by ingest statuses.
 
         Returns:
             Asynchronous interator of files.
         """
-        async for obj in self.__repository.get_files(submission_id, ingest_statuses=ingest_statuses):
+        async for obj in self.__repository.get_files(submission_id=submission_id, ingest_statuses=ingest_statuses):
             yield self.convert_from_entity(obj)
 
     async def count_files(self, submission_id: str, *, ingest_statuses: Sequence[IngestStatus] | None = None) -> int:
@@ -179,15 +179,31 @@ class FileService:
         """
         return await self.__repository.count_bytes(submission_id)
 
-    async def update_ingest_status(self, file_id: str, ingest_status: IngestStatus) -> None:
+    async def update_ingest_status(
+        self,
+        file_id: str,
+        ingest_status: IngestStatus,
+        *,
+        ingest_error: str | None = None,
+        ingest_error_type: IngestErrorType | None = None,
+    ) -> None:
         """Update file ingest status.
 
         :param file_id: the file id
-        :param ingest_status: new file ingest status
+        :param ingest_status: The file ingest status.
+        :param ingest_error: The ingest error.
+        :param ingest_error_type: The ingest error type.
         """
 
         def update_callback(file: FileEntity) -> None:
             file.ingest_status = ingest_status
+            file.ingest_error = ingest_error
+            file.ingest_error_type = ingest_error_type
+            if file.ingest_error is not None:
+                if file.ingest_error_count is None:
+                    file.ingest_error_count = 1
+                else:
+                    file.ingest_error_count = file.ingest_error_count + 1
 
         if await self.__repository.update_file(file_id, update_callback) is None:
             raise UnknownFileException(file_id)

@@ -9,6 +9,7 @@ from typing import Any, Callable, Optional, Type
 from sqlalchemy import (
     JSON,
     Boolean,
+    CheckConstraint,
     DateTime,
     Dialect,
     Enum,
@@ -19,6 +20,9 @@ from sqlalchemy import (
     TypeDecorator,
     UniqueConstraint,
     event,
+    false,
+    func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.mutable import MutableDict
@@ -116,7 +120,10 @@ class ApiKeyEntity(Base):
     api_key: Mapped[str] = mapped_column(String, nullable=False)  # Hashed API key.
     salt: Mapped[str] = mapped_column(String, nullable=False)  # Salt used to hash the API Key.
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+        DateTime(timezone=True),
+        server_default=func.now(),
+        default=lambda: datetime.now(timezone.utc),  # For SQLLite
+        nullable=False,
     )
 
 
@@ -124,6 +131,12 @@ class SubmissionEntity(Base):
     """Table for submissions."""
 
     __tablename__ = "submissions"
+    __table_args__ = (
+        CheckConstraint(
+            f"workflow IN ({', '.join(repr(e.value) for e in SubmissionWorkflow)})",
+            name="ck_workflow",
+        ),
+    )
 
     submission_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     name: Mapped[str] = mapped_column(String, nullable=False)  # User provided name for the submission
@@ -135,18 +148,24 @@ class SubmissionEntity(Base):
     description: Mapped[str] = mapped_column(Text, nullable=True)
 
     created: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        default=lambda: datetime.now(timezone.utc),  # For SQLLite
+        index=True,
     )
     modified: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+        default=lambda: datetime.now(timezone.utc),  # For SQLLite
+        server_onupdate=func.now(),
+        onupdate=lambda: datetime.now(timezone.utc),  # For SQLLite
         index=True,
     )
 
-    is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
-    is_ingested: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
+    is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false(), index=True)
+    is_ingested: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=false(), index=True)
     published: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
     ingested: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
 
@@ -188,13 +207,19 @@ class ObjectEntity(Base):
     xml_document: Mapped[str] = mapped_column(TypeXML, nullable=True)
 
     created: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        default=lambda: datetime.now(timezone.utc),  # For SQLLite
+        index=True,
     )
     modified: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+        default=lambda: datetime.now(timezone.utc),  # For SQLLite
+        server_onupdate=func.now(),
+        onupdate=lambda: datetime.now(timezone.utc),  # For SQLLite
         index=True,
     )
 
@@ -213,18 +238,44 @@ class ObjectEntity(Base):
 class IngestStatus(enum.Enum):
     """File ingest status."""
 
-    ADDED = "added"
-    READY = "ready"
-    VERIFIED = "verified"
-    COMPLETED = "completed"
-    FAILED = "failed"
+    # The file ingestion statuses are a subset of those defined in NeIC SDA.
+    SUBMITTED = "submitted"  # The file has been submitted and can be ingested once the submission has been published.
+    VERIFIED = "verified"  # File checksums have been verified.
+    READY = "ready"  # The file ingestion has completed.
+    ERROR = "error"  # The file ingestion has failed.
+
+
+class IngestErrorType(enum.Enum):
+    """File ingest error type."""
+
+    USER_ERROR = "user_error"
+    TRANSIENT_ERROR = "transient_error"
+    PERMANENT_ERROR = "permanent_error"
 
 
 class FileEntity(Base):
     """Table for submitted files."""
 
     __tablename__ = "files"
-    __table_args__ = (UniqueConstraint("submission_id", "path"),)
+    __table_args__ = (
+        UniqueConstraint("submission_id", "path"),
+        CheckConstraint(
+            f"unencrypted_checksum_type IN ({', '.join(repr(e.value) for e in ChecksumType)})",
+            name="ck_unencrypted_checksum_type",
+        ),
+        CheckConstraint(
+            f"encrypted_checksum_type IN ({', '.join(repr(e.value) for e in ChecksumType)})",
+            name="ck_encrypted_checksum_type",
+        ),
+        CheckConstraint(
+            f"ingest_status IN ({', '.join(repr(e.value) for e in IngestStatus)})",
+            name="ck_ingest_status",
+        ),
+        CheckConstraint(
+            f"ingest_error_type IN ({', '.join(repr(e.value) for e in IngestErrorType)})",
+            name="ck_ingest_error_type",
+        ),
+    )
 
     file_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     submission_id: Mapped[str] = mapped_column(
@@ -242,9 +293,28 @@ class FileEntity(Base):
     encrypted_checksum_type: Mapped[ChecksumType] = mapped_column(string_enum(ChecksumType), nullable=True)
 
     ingest_status: Mapped[IngestStatus] = mapped_column(
-        string_enum(IngestStatus), nullable=False, default=IngestStatus.ADDED, index=True
+        string_enum(IngestStatus), nullable=False, server_default=text(f"'{IngestStatus.SUBMITTED.value}'"), index=True
     )
     ingest_error: Mapped[str | None] = mapped_column(String, nullable=True)
+    ingest_error_type: Mapped[IngestErrorType | None] = mapped_column(string_enum(IngestErrorType), nullable=True)
+    ingest_error_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    created: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        default=lambda: datetime.now(timezone.utc),  # For SQLLite
+        index=True,
+    )
+    modified: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        default=lambda: datetime.now(timezone.utc),  # For SQLLite
+        server_onupdate=func.now(),
+        onupdate=lambda: datetime.now(timezone.utc),  # For SQLLite
+        index=True,
+    )
 
     submission: Mapped[Relationship[SubmissionEntity]] = relationship(
         SubmissionEntity,
@@ -293,13 +363,19 @@ class RegistrationEntity(Base):
     )
 
     created: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        default=lambda: datetime.now(timezone.utc),  # For SQLLite
+        index=True,
     )
     modified: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+        default=lambda: datetime.now(timezone.utc),  # For SQLLite
+        server_onupdate=func.now(),
+        onupdate=lambda: datetime.now(timezone.utc),  # For SQLLite
         index=True,
     )
 
