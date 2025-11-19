@@ -1,19 +1,23 @@
 """Test ObjectService."""
 
 import uuid
-from ctypes import c_char
 
-from metadata_backend.api.models import Object, SubmissionWorkflow
+import pytest
+
+from metadata_backend.api.exceptions import UserException
+from metadata_backend.api.models.models import Object
+from metadata_backend.api.models.submission import SubmissionWorkflow
+from metadata_backend.database.postgres.models import ObjectEntity
 from metadata_backend.database.postgres.repositories.object import ObjectRepository
 from metadata_backend.database.postgres.repositories.submission import SubmissionRepository
 from metadata_backend.database.postgres.repository import SessionFactory, transaction
 from metadata_backend.database.postgres.services.object import ObjectService
 from tests.unit.database.postgres.helpers import create_object_entity, create_submission_entity
 
-workflow = SubmissionWorkflow.SDS
+workflow = SubmissionWorkflow.SD
 
 
-async def test_add_object(
+async def test_add_update_delete_object(
     session_factory: SessionFactory,
     submission_repository: SubmissionRepository,
     object_repository: ObjectRepository,
@@ -22,39 +26,111 @@ async def test_add_object(
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
+        submission_id = submission.submission_id
 
-        schema: str = "test"
+        object_type: str = "test"
         document = {"test": "test"}
         xml_document = "<test/>"
+        project_id = f"project_{uuid.uuid4()}"
         object_id = f"id_{uuid.uuid4()}"
+        object_id2 = f"id_{uuid.uuid4()}"
         name = f"name_{uuid.uuid4()}"
+        name2 = f"name_{uuid.uuid4()}"
         title = "test"
         description = "test"
 
-        assert (
+        def _assert_object(objects: list[Object]):
+            assert len(objects) == 1
+            obj = objects[0]
+            assert obj.objectType == object_type
+            assert obj.objectId == object_id
+            assert obj.name == name
+            assert obj.title == title
+
+        def _assert_entity(entity: ObjectEntity):
+            assert entity.object_type == object_type
+            assert entity.object_id == object_id
+            assert entity.name == name
+            assert entity.title == title
+            assert entity.document == document
+            assert entity.xml_document == xml_document
+
+        # Add
+
+        async def _add_object(name_: str, object_id_: str) -> str:
+            return await object_service.add_object(
+                project_id,
+                submission_id,
+                name_,
+                object_type,
+                workflow,
+                document=document,
+                xml_document=xml_document,
+                object_id=object_id_,
+                title=title,
+                description=description,
+            )
+
+        assert await _add_object(name, object_id) == object_id
+        # Add second object to test that it is not returned by get_objects.
+        assert await _add_object(name2, object_id2) == object_id2
+
+        assert await object_service.is_object(object_id)
+
+        _assert_entity(await object_repository.get_object_by_id(object_id))
+        _assert_object(await object_service.get_objects(submission_id, object_type, object_id=object_id))
+        _assert_object(await object_service.get_objects(submission_id, object_type, name=name))
+        _assert_object(await object_service.get_objects(submission_id, object_type, object_id=object_id, name=name))
+        _assert_object(await object_service.get_objects(submission_id, object_id=object_id))
+        _assert_object(await object_service.get_objects(submission_id, name=name))
+
+        # Test that object name must be unique for an object type within a project.
+        with pytest.raises(
+            UserException,
+            match=f"Metadata object of type {object_type} with name {name} already exists in project {project_id}",
+        ):
             await object_service.add_object(
+                project_id,
                 submission.submission_id,
-                schema,
+                name,
+                object_type,
                 workflow,
                 document=document,
                 xml_document=xml_document,
                 object_id=object_id,
-                name=name,
                 title=title,
                 description=description,
             )
-            == object_id
+
+        # Update
+
+        document = {"update": "update"}
+        xml_document = "<update/>"
+        title = "update"
+        description = "update"
+
+        await object_service.update_object(
+            object_id,
+            document=document,
+            xml_document=xml_document,
+            title=title,
+            description=description,
         )
 
         assert await object_service.is_object(object_id)
-        result = await object_repository.get_object_by_id(object_id)
-        assert result.object_type == schema
-        assert result.object_id == object_id
-        assert result.name == name
-        assert result.title == title
-        assert result.document == document
-        assert result.xml_document == xml_document
-        assert result.title == title
+
+        _assert_entity(await object_repository.get_object_by_id(object_id))
+        _assert_object(await object_service.get_objects(submission_id, object_type, object_id=object_id))
+        _assert_object(await object_service.get_objects(submission_id, object_type, name=name))
+        _assert_object(await object_service.get_objects(submission_id, object_type, object_id=object_id, name=name))
+        _assert_object(await object_service.get_objects(submission_id, object_id=object_id))
+        _assert_object(await object_service.get_objects(submission_id, name=name))
+
+        # Delete
+
+        assert await object_service.is_object(object_id)
+        await object_service.delete_object_by_id(object_id)
+        assert not await object_service.is_object(object_id)
 
 
 async def test_is_object(
@@ -67,7 +143,7 @@ async def test_is_object(
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
 
-        obj = create_object_entity(submission.submission_id)
+        obj = create_object_entity(submission.project_id, submission.submission_id)
         assert not await object_service.is_object(obj.object_id)
         await object_repository.add_object(obj, workflow)
         assert await object_service.is_object(obj.object_id)
@@ -85,7 +161,7 @@ async def test_get_document(
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
 
-        obj = create_object_entity(submission.submission_id)
+        obj = create_object_entity(submission.project_id, submission.submission_id)
         object_id = await object_repository.add_object(obj, workflow)
 
         assert {**obj.document, "accessionId": object_id} == await object_service.get_document(object_id)
@@ -105,7 +181,10 @@ async def test_get_objects(
         object_type = "test"
 
         # Create objects.
-        object_entities = [create_object_entity(submission.submission_id, object_type=object_type) for _ in range(3)]
+        object_entities = [
+            create_object_entity(submission.project_id, submission.submission_id, object_type=object_type)
+            for _ in range(3)
+        ]
 
         objects = []
         for obj in object_entities:
@@ -113,9 +192,9 @@ async def test_get_objects(
             objects.append(
                 Object(
                     name=obj.name,
-                    object_id=object_id,
-                    object_type=object_type,
-                    submission_id=submission.submission_id,
+                    objectId=object_id,
+                    objectType=object_type,
+                    submissionId=submission.submission_id,
                     title=obj.title,
                     description=obj.description,
                 )
@@ -125,13 +204,13 @@ async def test_get_objects(
         results = await object_service.get_objects(submission.submission_id, object_type)
 
         # Compare objects.
-        objects_sorted = sorted(objects, key=lambda o: o.object_id)
-        results_sorted = sorted(results, key=lambda o: o.object_id)
+        objects_sorted = sorted(objects, key=lambda o: o.objectId)
+        results_sorted = sorted(results, key=lambda o: o.objectId)
         for obj, res in zip(objects_sorted, results_sorted):
             assert obj.name == res.name
-            assert obj.object_id == res.object_id
-            assert obj.object_type == res.object_type
-            assert obj.submission_id == res.submission_id
+            assert obj.objectId == res.objectId
+            assert obj.objectType == res.objectType
+            assert obj.submissionId == res.submissionId
             assert obj.title == res.title
             assert obj.description == res.description
             assert res.created is not None
@@ -151,7 +230,10 @@ async def test_get_documents(
         object_type = "test"
 
         # Create objects.
-        objects = [create_object_entity(submission.submission_id, object_type=object_type) for _ in range(3)]
+        objects = [
+            create_object_entity(submission.project_id, submission.submission_id, object_type=object_type)
+            for _ in range(3)
+        ]
         for obj in objects:
             await object_repository.add_object(obj, workflow)
 
@@ -178,49 +260,12 @@ async def test_count_objects(
 
         object_type = "test"
 
-        objects = [create_object_entity(submission.submission_id, object_type=object_type) for _ in range(3)]
+        objects = [
+            create_object_entity(submission.project_id, submission.submission_id, object_type=object_type)
+            for _ in range(3)
+        ]
         for obj in objects:
             await object_repository.add_object(obj, workflow)
 
         assert await object_service.count_objects(submission.submission_id, object_type) == 3
         assert await object_service.count_objects(submission.submission_id, "other") == 0
-
-
-async def test_update_object(
-    session_factory: SessionFactory,
-    submission_repository: SubmissionRepository,
-    object_repository: ObjectRepository,
-    object_service: ObjectService,
-):
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
-        submission = create_submission_entity()
-        await submission_repository.add_submission(submission)
-        obj = create_object_entity(submission.submission_id)
-        await object_repository.add_object(obj, workflow)
-
-        # document
-        document = {"test": str(uuid.uuid4())}
-        await object_service.update_document(obj.object_id, document)
-        assert (await object_repository.get_object_by_id(obj.object_id)).document == document
-
-        # xml document
-        xml_document = f'<test test="{str(uuid.uuid4())}"/>'
-        await object_service.update_xml_document(obj.object_id, xml_document)
-        assert (await object_repository.get_object_by_id(obj.object_id)).xml_document == xml_document
-
-
-async def test_delete_object(
-    session_factory: SessionFactory,
-    submission_repository: SubmissionRepository,
-    object_repository: ObjectRepository,
-    object_service: ObjectService,
-):
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
-        submission = create_submission_entity()
-        await submission_repository.add_submission(submission)
-        obj = create_object_entity(submission.submission_id)
-        await object_repository.add_object(obj, workflow)
-
-        assert await object_service.is_object(obj.object_id)
-        await object_service.delete_object_by_id(obj.object_id)
-        assert not await object_service.is_object(obj.object_id)

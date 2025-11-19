@@ -3,7 +3,7 @@
 from typing import Sequence
 
 from ....api.exceptions import NotFoundUserException, SystemException
-from ....api.models import Registration
+from ....api.models.models import Registration
 from ..models import RegistrationEntity
 from ..repositories.registration import RegistrationRepository
 
@@ -41,17 +41,17 @@ class RegistrationService:
             return None
 
         return Registration(
-            submission_id=entity.submission_id,
-            object_id=entity.object_id,
-            object_type=entity.object_type,
+            submissionId=entity.submission_id,
+            objectId=entity.object_id,
+            objectType=entity.object_type,
             title=entity.title,
             description=entity.description,
             doi=entity.doi,
-            metax_id=entity.metax_id,
-            datacite_url=entity.datacite_url,
-            rems_url=entity.rems_url,
-            rems_resource_id=entity.rems_resource_id,
-            rems_catalogue_id=entity.rems_catalogue_id,
+            metaxId=entity.metax_id,
+            dataciteUrl=entity.datacite_url,
+            remsUrl=entity.rems_url,
+            remsResourceId=entity.rems_resource_id,
+            remsCatalogueId=entity.rems_catalogue_id,
         )
 
     async def get_registration_by_id(self, registration_id: str) -> Registration | None:
@@ -114,17 +114,17 @@ class RegistrationService:
         """
         return await self.repository.add_registration(
             RegistrationEntity(
-                submission_id=registration.submission_id,
-                object_id=registration.object_id,
-                object_type=registration.object_type,
+                submission_id=registration.submissionId,
+                object_id=registration.objectId,
+                object_type=registration.objectType,
                 title=registration.title,
                 description=registration.description,
                 doi=registration.doi,
-                metax_id=registration.metax_id,
-                datacite_url=registration.datacite_url,
-                rems_url=registration.rems_url,
-                rems_resource_id=registration.rems_resource_id,
-                rems_catalogue_id=registration.rems_catalogue_id,
+                metax_id=registration.metaxId,
+                datacite_url=registration.dataciteUrl,
+                rems_url=registration.remsUrl,
+                rems_resource_id=registration.remsResourceId,
+                rems_catalogue_id=registration.remsCatalogueId,
             )
         )
 

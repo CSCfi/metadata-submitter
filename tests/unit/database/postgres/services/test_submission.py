@@ -1,21 +1,26 @@
 """Test SubmissionService."""
 
-import re
 import uuid
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, patch
 from zoneinfo import ZoneInfo
 
 import pytest
-from pydantic_core import to_jsonable_python
 
-from metadata_backend.api.models import Rems, SubmissionWorkflow
-from metadata_backend.database.postgres.repositories.submission import SubmissionRepository, SubmissionSort
+from metadata_backend.api.exceptions import UserException
+from metadata_backend.api.json import to_json_dict
+from metadata_backend.api.models.datacite import Creator, Subject
+from metadata_backend.api.models.submission import Rems, Submission, SubmissionMetadata, SubmissionWorkflow
+from metadata_backend.database.postgres.repositories.submission import (
+    SUB_FIELD_METADATA,
+    SUB_FIELD_REMS,
+    SubmissionRepository,
+    SubmissionSort,
+)
 from metadata_backend.database.postgres.repository import SessionFactory, transaction
 from metadata_backend.database.postgres.services.submission import (
     PublishedSubmissionUserException,
     SubmissionService,
-    SubmissionUserException,
     UnknownSubmissionUserException,
 )
 from tests.unit.database.postgres.helpers import create_submission_entity
@@ -24,38 +29,39 @@ from tests.unit.database.postgres.helpers import create_submission_entity
 async def test_add_and_get_submission(
     session_factory: SessionFactory, submission_repository: SubmissionRepository, submission_service: SubmissionService
 ):
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         name = f"name_{uuid.uuid4()}"
         project_id = f"project_{uuid.uuid4()}"
         bucket = "test"
-        workflow = SubmissionWorkflow.SDS
+        workflow = SubmissionWorkflow.SD
         title = "test"
         description = "test"
+        date = datetime.now() - timedelta(days=1)
         rems_organization_id = "1"
         rems_workflow_id = 2
         rems_licence_ids = [3, 4]
 
-        submission = {
+        submission = Submission(
             # Should be extracted from the document
-            "name": name,
-            "projectId": project_id,
-            "workflow": workflow.value,
-            "bucket": bucket,
-            "rems": {
-                "organizationId": rems_organization_id,
-                "workflowId": rems_workflow_id,
-                "licenses": rems_licence_ids,
-            },
+            name=name,
+            projectId=project_id,
+            workflow=workflow.value,
+            bucket=bucket,
+            rems=Rems(
+                organizationId=rems_organization_id,
+                workflowId=rems_workflow_id,
+                licenses=rems_licence_ids,
+            ),
             # Should be removed from the document
-            "submissionId": "test",
-            "dateCreated": "test",
-            "datePublished": "test",
-            "lastModified": "test",
-            "published": "test",
+            submissionId="test",
+            dateCreated=date,
+            datePublished=date,
+            lastModified=date,
+            published=True,
             # Should remain unchanged in the document
-            "title": title,
-            "description": description,
-        }
+            title=title,
+            description=description,
+        )
 
         submission_id = await submission_service.add_submission(submission)
 
@@ -71,41 +77,49 @@ async def test_add_and_get_submission(
         assert entity.workflow == workflow
         assert entity.bucket == bucket
         assert entity.created is not None
+        assert entity.created != date
         assert_recent(entity.created)
         assert entity.modified is not None
+        assert entity.modified != date
         assert_recent(entity.modified)
         assert entity.published is None
         assert entity.is_published is False
-        assert entity.document["rems"] == {
-            "licenses": rems_licence_ids,
-            "organizationId": rems_organization_id,
-            "workflowId": rems_workflow_id,
-        }
+        assert entity.document["rems"] == to_json_dict(
+            Rems(
+                licenses=rems_licence_ids,
+                organizationId=rems_organization_id,
+                workflowId=rems_workflow_id,
+            )
+        )
 
-        assert await submission_service.get_submission_by_id(submission_id) == {
-            "name": to_jsonable_python(name),
-            "text_name": to_jsonable_python(" ".join(re.split("[\\W_]", name))),
-            "projectId": to_jsonable_python(project_id),
-            "workflow": to_jsonable_python(workflow.value),
-            "bucket": to_jsonable_python(bucket),
-            "submissionId": to_jsonable_python(submission_id),
-            "dateCreated": to_jsonable_python(entity.created),
-            "lastModified": to_jsonable_python(entity.modified),
-            "published": to_jsonable_python(False),
-            "title": to_jsonable_python(title),
-            "description": to_jsonable_python(description),
-            "rems": {
-                "organizationId": to_jsonable_python(rems_organization_id),
-                "workflowId": to_jsonable_python(rems_workflow_id),
-                "licenses": to_jsonable_python(rems_licence_ids),
-            },
-        }
+        assert await submission_service.get_submission_by_id(submission_id) == Submission(
+            name=name,
+            projectId=project_id,
+            workflow=workflow.value,
+            bucket=bucket,
+            submissionId=submission_id,
+            dateCreated=entity.created,
+            lastModified=entity.modified,
+            datePublished=entity.published,
+            published=False,
+            title=title,
+            description=description,
+            rems=Rems(
+                organizationId=rems_organization_id,
+                workflowId=rems_workflow_id,
+                licenses=rems_licence_ids,
+            ),
+        )
+
+        # Test that submission name must be unique within a project.
+        with pytest.raises(UserException, match=f"Submission with name {name} already exists in project {project_id}"):
+            await submission_service.add_submission(submission)
 
 
 async def test_get_submissions(
     session_factory: SessionFactory, submission_repository: SubmissionRepository, submission_service: SubmissionService
 ):
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         project_id = f"project_{uuid.uuid4()}"
 
         search = "word"
@@ -113,10 +127,10 @@ async def test_get_submissions(
         search_name_2 = f"{uuid.uuid4()} {search}"
         names = [search_name_1, search_name_2, f"{uuid.uuid4()}"]
 
-        submissions = []
+        entities = []
         for name in names:
-            submissions.append(create_submission_entity(project_id=project_id, name=name))
-        for submission in submissions:
+            entities.append(create_submission_entity(project_id=project_id, name=name))
+        for submission in entities:
             await submission_repository.add_submission(submission)
 
         now = datetime.now(ZoneInfo("UTC"))
@@ -133,7 +147,7 @@ async def test_get_submissions(
             "get_submissions",
             new_callable=lambda: AsyncMock(wraps=submission_service.repository.get_submissions),
         ) as spy:
-            documents, cnt = await submission_service.get_submissions(
+            submissions, cnt = await submission_service.get_submissions(
                 project_id,
                 is_published=False,
                 is_ingested=False,
@@ -161,23 +175,23 @@ async def test_get_submissions(
             )
 
             assert cnt == 3
-            assert {s.submission_id for s in submissions} == {d["submissionId"] for d in documents}
+            assert {s.submission_id for s in entities} == {s.submissionId for s in submissions.submissions}
 
             # Search by name.
-            documents, cnt = await submission_service.get_submissions(
+            submissions, cnt = await submission_service.get_submissions(
                 project_id,
                 name=search,
             )
             assert cnt == 2
-            assert len(documents) == 2
-            assert search_name_1 in {d["name"] for d in documents}
-            assert search_name_2 in {d["name"] for d in documents}
+            assert len(submissions.submissions) == 2
+            assert search_name_1 in {s.name for s in submissions.submissions}
+            assert search_name_2 in {s.name for s in submissions.submissions}
 
 
 async def test_is_and_check_submission(
     session_factory: SessionFactory, submission_repository: SubmissionRepository, submission_service: SubmissionService
 ):
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         submission = create_submission_entity()
         assert not await submission_service.is_submission_by_id(submission.submission_id)
         with pytest.raises(UnknownSubmissionUserException):
@@ -206,7 +220,7 @@ async def test_is_and_check_not_published(
 async def test_get_project_id(
     session_factory: SessionFactory, submission_repository: SubmissionRepository, submission_service: SubmissionService
 ):
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
         assert await submission_service.get_project_id(submission.submission_id) == submission.project_id
@@ -215,7 +229,7 @@ async def test_get_project_id(
 async def test_get_workflow(
     session_factory: SessionFactory, submission_repository: SubmissionRepository, submission_service: SubmissionService
 ):
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
         assert await submission_service.get_workflow(submission.submission_id) == submission.workflow
@@ -224,7 +238,7 @@ async def test_get_workflow(
 async def test_get_bucket(
     session_factory: SessionFactory, submission_repository: SubmissionRepository, submission_service: SubmissionService
 ):
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
         assert await submission_service.get_bucket(submission.submission_id) == submission.bucket
@@ -233,91 +247,65 @@ async def test_get_bucket(
 async def test_update_submission(
     session_factory: SessionFactory, submission_repository: SubmissionRepository, submission_service: SubmissionService
 ):
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         submission = create_submission_entity()
         submission.bucket = None
         await submission_repository.add_submission(submission)
 
-        # name
-        name = f"name_{uuid.uuid4()}"
-        await submission_service.update_name(submission.submission_id, name)
-        assert (await submission_repository.get_submission_by_id(submission.submission_id)).name == name
-
-        # description
-        description = f"description_{uuid.uuid4()}"
-        await submission_service.update_description(submission.submission_id, description)
-        assert (await submission_repository.get_submission_by_id(submission.submission_id)).document[
-            "description"
-        ] == description
-
         # bucket
-        bucket = f"bucket_{uuid.uuid4()}"
+        bucket = f"bucket{uuid.uuid4()}"
         await submission_service.update_bucket(submission.submission_id, bucket)
-        assert (await submission_repository.get_submission_by_id(submission.submission_id)).bucket == bucket
-        with pytest.raises(SubmissionUserException):
-            await submission_service.update_bucket(submission.submission_id, bucket)
+        updated_submission = await submission_repository.get_submission_by_id(submission.submission_id)
+        assert updated_submission.bucket == bucket
+        with pytest.raises(UserException):
+            await submission_service.update_bucket(submission.submission_id, f"bucket{uuid.uuid4()}")
 
-        # doi info
-        doi_info = {
-            "creators": [{"givenName": "Alice", "familyName": "Smith", "affiliation": []}],
-            "subjects": [{"subject": "999 - Other"}],
-            "keywords": "test",
-        }
+        # metadata
+        metadata = SubmissionMetadata(
+            creators=[Creator(nameType="Personal", name="Name", givenName="Alice", familyName="Smith")],
+            subjects=[Subject(subject="999 - Other")],
+            keywords="test",
+        )
 
-        assert "doiInfo" not in (await submission_repository.get_submission_by_id(submission.submission_id)).document
-        await submission_service.update_doi_info(submission.submission_id, doi_info)
-        assert (await submission_service.get_doi_document(submission.submission_id)) == doi_info
+        assert (
+            SUB_FIELD_METADATA
+            not in (await submission_repository.get_submission_by_id(submission.submission_id)).document
+        )
+        await submission_service.update_metadata(submission.submission_id, metadata)
+        assert (await submission_service.get_metadata(submission.submission_id)) == metadata
+        actual_dict = (await submission_repository.get_submission_by_id(submission.submission_id)).document
+        assert SubmissionMetadata.model_validate(actual_dict[SUB_FIELD_METADATA]) == metadata
 
         # rems
         rems = Rems(workflowId=1, organizationId="2", licenses=[3, 4])
         await submission_service.update_rems(submission.submission_id, rems)
         assert (await submission_service.get_rems_document(submission.submission_id)) == rems
+        actual_dict = (await submission_repository.get_submission_by_id(submission.submission_id)).document
+        assert Rems.model_validate(actual_dict[SUB_FIELD_REMS]) == rems
 
-        # document: update fields
-        document = await submission_service.get_submission_by_id(submission.submission_id)
-        document["description"] = f"description_{uuid.uuid4()}"
-        document["rems"]["organizationId"] = f"organisation_{uuid.uuid4()}"
-        document["doiInfo"]["keywords"] = f"keyword_{uuid.uuid4()}"
-        await submission_service.update_submission(submission.submission_id, document)
-        expected = {k: v for k, v in document.items() if k != "lastModified"}
-        actual = {
-            k: v
-            for k, v in (await submission_service.get_submission_by_id(submission.submission_id)).items()
-            if k != "lastModified"
-        }
-        assert expected == actual
+        # update description and title
+        updated_submission = await submission_service.get_submission_by_id(submission.submission_id)
+        updated_submission.description = f"description_{uuid.uuid4()}"
+        updated_submission.title = f"title_{uuid.uuid4()}"
+        await submission_service.update_submission(
+            submission.submission_id, {"description": updated_submission.description, "title": updated_submission.title}
+        )
+        expected_dict = updated_submission.model_dump(exclude={"lastModified"})
+        actual_submission = await submission_service.get_submission_by_id(submission.submission_id)
+        actual_dict = actual_submission.model_dump(exclude={"lastModified"})
+        assert expected_dict == actual_dict
 
-        # document: immutable fields can't be updated
-        document = await submission_service.get_submission_by_id(submission.submission_id)
-        document["workflow"] = f"workflow_{uuid.uuid4()}"
-        document["projectId"] = f"project_{uuid.uuid4()}"
-        document["bucket"] = f"bucket_{uuid.uuid4()}"
-        await submission_service.update_submission(submission.submission_id, document)
-        actual = {
-            k: v
-            for k, v in (await submission_service.get_submission_by_id(submission.submission_id)).items()
-            if k != "lastModified"
-        }
-        # Expect that nothing has changed.
-        assert expected == actual
+        # Some fields can't be changed
+        async def assert_update_exception(_field: str) -> None:
+            with pytest.raises(UserException):
+                await submission_service.update_submission(submission.submission_id, {_field: f"{uuid.uuid4()}"})
 
-        # document: preserved fields can't be removed
-        document = await submission_service.get_submission_by_id(submission.submission_id)
-        document.pop("name", None)
-        document.pop("description", None)
-        document.pop("projectId", None)
-        document.pop("workflow", None)
-        document.pop("bucket", None)
-        document.pop("rems", None)
-        document.pop("doiInfo", None)
-        await submission_service.update_submission(submission.submission_id, document)
-        actual = {
-            k: v
-            for k, v in (await submission_service.get_submission_by_id(submission.submission_id)).items()
-            if k != "lastModified"
-        }
-        # Expect that nothing has changed.
-        assert expected == actual
+        await assert_update_exception("name")
+        await assert_update_exception("projectId")
+        await assert_update_exception("bucket")
+
+        with pytest.raises(UserException):
+            await submission_service.update_submission(submission.submission_id, {"workflow": SubmissionWorkflow.BP})
 
         # published
         assert not (await submission_repository.get_submission_by_id(submission.submission_id)).is_published
@@ -330,7 +318,7 @@ async def test_update_submission(
 async def test_delete_submission(
     session_factory: SessionFactory, submission_repository: SubmissionRepository, submission_service: SubmissionService
 ):
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
         assert await submission_service.is_submission_by_id(submission.submission_id)

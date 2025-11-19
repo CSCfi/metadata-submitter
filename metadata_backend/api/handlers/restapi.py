@@ -9,18 +9,17 @@ from aiohttp import web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
-from ...conf.conf import POLLING_INTERVAL, WORKFLOWS, get_workflow, schema_types
+from ...conf.conf import POLLING_INTERVAL
 from ...database.postgres.models import IngestStatus
 from ...helpers.logger import LOG
-from ...helpers.schema_loader import JSONSchemaLoader, SchemaFileNotFoundException
 from ...services.admin_service_handler import AdminServiceHandler
 from ...services.datacite_service_handler import DataciteServiceHandler
 from ...services.metax_service_handler import MetaxServiceHandler
 from ...services.pid_ms_handler import PIDServiceHandler
 from ...services.rems_service_handler import RemsServiceHandler
-from ..models import Rems
+from ..json import JSON, to_json
+from ..models.submission import Rems
 from ..resources import get_file_service
-from .common import to_json
 
 
 class RESTAPIHandler:
@@ -77,75 +76,12 @@ class RESTAPIHandler:
             raise web.HTTPBadRequest(reason=reason)
 
     @staticmethod
-    def _json_response(data: dict[str, Any] | list[dict[str, Any]] | list[str]) -> Response:
+    def _json_response(data: JSON) -> Response:
         """Reusable json response, serializing data with ujson.
 
         :param data: Data to be serialized and made into HTTP 200 response
         """
         return web.Response(body=to_json(data), status=200, content_type="application/json")
-
-    async def get_schema_types(self, _: Request) -> Response:
-        """Get all possible metadata schema types from database.
-
-        Basically returns which objects user can submit and query for.
-
-        :returns: JSON list of schema types
-        """
-        data = [x["description"] for x in schema_types.values()]
-        LOG.info("GET schema types. Retrieved %d schemas.", len(schema_types))
-        return self._json_response(data)
-
-    async def get_json_schema(self, req: Request) -> Response:
-        """
-        Get JSON Schema for a specific schema type.
-
-        :param req: GET Request
-        :raises: HTTPBadRequest if request does not find the schema
-        :returns: JSON list of schema types
-        """
-        schema_type = req.match_info["schema"]
-
-        if schema_type not in set(schema_types.keys()):
-            reason = f"Specified schema {schema_type} was not found."
-            LOG.error(reason)
-            raise web.HTTPNotFound(reason=reason)
-
-        try:
-            if schema_type == "datacite":
-                submission = JSONSchemaLoader().get_schema("submission")
-                schema = submission["properties"]["doiInfo"]
-            else:
-                schema = JSONSchemaLoader().get_schema(schema_type)
-            LOG.info("%s JSON schema loaded.", schema_type)
-            return self._json_response(schema)
-
-        except SchemaFileNotFoundException as error:
-            reason = f"{error} Occurred for JSON schema: '{schema_type}'."
-            LOG.exception(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
-    async def get_workflows(self, _: Request) -> Response:
-        """Get all JSON workflows.
-
-        Workflows tell what are the requirements for different 'types of submissions' (aka workflow)
-
-        :returns: JSON list of workflows
-        """
-        LOG.info("GET workflows. Retrieved %d workflows.", len(WORKFLOWS))
-        response = {workflow.name: workflow.description for workflow in WORKFLOWS.values()}
-        return self._json_response(response)
-
-    async def get_workflow_request(self, req: Request) -> Response:
-        """Get a single workflow definition by name.
-
-        :param req: GET Request
-        :raises: HTTPNotFound if workflow doesn't exist
-        :returns: workflow as a JSON object
-        """
-        workflow_name = req.match_info["workflow"]
-        LOG.info("GET workflow: %r.", workflow_name)
-        workflow = get_workflow(workflow_name)
-        return self._json_response(workflow.workflow)
 
     @staticmethod
     def _pagination_header_links(url: str, page: int, size: int, total_objects: int) -> CIMultiDict[str]:
@@ -192,7 +128,7 @@ class RESTAPIIntegrationHandler(RESTAPIHandler):
 
         :param rems: the REMS data
         """
-        await self.rems_handler.validate_workflow_licenses(rems.organization_id, rems.workflow_id, rems.licenses)
+        await self.rems_handler.validate_workflow_licenses(rems.organizationId, rems.workflowId, rems.licenses)
 
     async def start_file_polling(
         self, req: Request, files: dict[str, str], data: dict[str, str], ingest_status: IngestStatus

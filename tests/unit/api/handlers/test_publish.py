@@ -7,14 +7,18 @@ from unittest.mock import AsyncMock, call, patch
 
 import pytest
 
-from metadata_backend.api.models import Registration, Rems, SubmissionWorkflow
+from metadata_backend.api.json import to_json_dict
+from metadata_backend.api.models.datacite import Subject
+from metadata_backend.api.models.models import Registration
+from metadata_backend.api.models.submission import Rems, SubmissionMetadata, SubmissionWorkflow
 from metadata_backend.api.services.file import FileProviderService
-from metadata_backend.conf.conf import API_PREFIX, get_workflow
+from metadata_backend.api.services.publish import get_publish_config
+from metadata_backend.conf.conf import API_PREFIX
 from metadata_backend.database.postgres.models import FileEntity
 from metadata_backend.database.postgres.repositories.file import FileRepository
 from metadata_backend.database.postgres.repositories.object import ObjectRepository
 from metadata_backend.database.postgres.repositories.submission import (
-    SUB_FIELD_DOI,
+    SUB_FIELD_METADATA,
     SUB_FIELD_REMS,
     SubmissionRepository,
 )
@@ -38,16 +42,15 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         self.object_repository = object_repository
         self.file_repository = file_repository
 
-    async def test_publish_submission_csc(self):
+    async def test_publish_submission_sd(self):
         """Test publishing of CSC submission."""
 
         user_id = "mock-userid"
 
-        # DOI information.
-        doi_info = self.doi_info
+        submission_metadata = self.submission_metadata
 
         # REMS information.
-        rems = Rems(workflow_id=1, organization_id=f"organisation_{str(uuid.uuid4())}", licenses=[1, 2])
+        rems = Rems(workflowId=1, organizationId=f"organisation_{str(uuid.uuid4())}", licenses=[1, 2])
 
         # The submission contains no metadata objects.
 
@@ -70,13 +73,13 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         # Create submission and files to allow the submission to be published.
 
         # Create submission.
-        workflow = SubmissionWorkflow.SDS
-        workflow_config = get_workflow(workflow.value)
+        workflow = SubmissionWorkflow.SD
+        publish_config = get_publish_config(workflow)
         submission_entity = create_submission_entity(
             workflow=workflow,
             title=submission_title,
             description=submission_description,
-            document={SUB_FIELD_DOI: doi_info, SUB_FIELD_REMS: rems.to_json_dict()},
+            document={SUB_FIELD_METADATA: submission_metadata, SUB_FIELD_REMS: to_json_dict(rems)},
         )
         submission_id = await self.submission_repository.add_submission(submission_entity)
 
@@ -107,7 +110,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             # Metax
             patch.dict(os.environ, {"METAX_DISCOVERY_URL": metax_url}),
             patch(f"{metax_cls}.post_dataset_as_draft", new_callable=AsyncMock) as mock_metax_create,
-            patch(f"{metax_cls}.update_dataset_with_doi_info", new_callable=AsyncMock) as mock_metax_update_doi,
+            patch(f"{metax_cls}.update_dataset_metadata", new_callable=AsyncMock) as mock_metax_update_dataset_metadata,
             patch(f"{metax_cls}.update_draft_dataset_description", new_callable=AsyncMock) as mock_metax_update_descr,
             patch(f"{metax_cls}.publish_dataset", new_callable=AsyncMock) as mock_metax_publish,
             # REMS
@@ -140,7 +143,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                 "type": "dois",
                 "data": {
                     "attributes": {
-                        "publisher": "CSC - IT Center for Science",
+                        "publisher": {"name": "CSC - IT Center for Science"},
                         "publicationYear": datetime.now().year,
                         "event": "publish",
                         "schemaVersion": "https://schema.datacite.org/meta/kernel-4",
@@ -152,7 +155,6 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                             "bibtex": "misc",
                             "citeproc": "dataset",
                             "schemaOrg": "Dataset",
-                            "resourceTypeGeneral": "Dataset",
                         },
                         "url": f"{metax_url}{metax_id}",
                         "identifiers": [{"identifierType": "DOI", "doi": doi}],
@@ -162,6 +164,8 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                         ],
                         "creators": [
                             {
+                                "name": "Creator, Test",
+                                "nameType": "Personal",
                                 "givenName": "Test",
                                 "familyName": "Creator",
                                 "affiliation": [
@@ -174,6 +178,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                                 ],
                             }
                         ],
+                        "resourceType": {"resourceTypeGeneral": "Dataset", "resourceType": "Dataset"},
                         "subjects": [
                             {
                                 "subject": "999 - Other",
@@ -187,31 +192,29 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                 },
             }
 
-            if workflow_config.publish_config.datacite_config.service == "csc":
-                mock_pid_create_doi.assert_awaited_once_with()
-                mock_pid_publish.assert_awaited_once_with(datacite_data)
-            else:
-                mock_datacite_create_doi.assert_awaited_once_with("submission")
-                mock_datacite_publish.assert_awaited_once_with(datacite_data)
+            assert not publish_config.use_datacite_service
+            assert publish_config.use_pid_service
+
+            mock_pid_create_doi.assert_awaited_once_with()
+            mock_pid_publish.assert_awaited_once_with(datacite_data)
 
             # Assert Metax.
             mock_metax_create.assert_awaited_once_with(user_id, doi, submission_title, submission_description)
-            mock_metax_update_doi.assert_awaited_once_with(
-                {
-                    # Remove keywords.
-                    **{k: v for k, v in doi_info.items() if k != "keywords"},
-                    # Update subjects.
-                    "subjects": [
-                        {
-                            **s,
-                            "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
-                            "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
-                            "valueUri": f"http://www.yso.fi/onto/okm-tieteenala/ta{s['subject'].split(' - ')[0]}",
-                            "classificationCode": s["subject"].split(" - ")[0],
-                        }
-                        for s in doi_info.get("subjects", [])
-                    ],
-                },
+
+            expected_submission_metadata = SubmissionMetadata.model_validate(submission_metadata)
+            expected_submission_metadata.subjects = [
+                Subject(
+                    **s,
+                    subjectScheme="Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
+                    schemeUri="http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
+                    valueUri=f"http://www.yso.fi/onto/okm-tieteenala/ta{s['subject'].split(' - ')[0]}",
+                    classificationCode=s["subject"].split(" - ")[0],
+                )
+                for s in submission_metadata.get("subjects", [])
+            ]
+
+            mock_metax_update_dataset_metadata.assert_awaited_once_with(
+                expected_submission_metadata,
                 metax_id,
                 file_bytes,
                 related_dataset=None,
@@ -226,12 +229,12 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
 
             # Assert Rems.
             mock_rems_create_resource.assert_awaited_once_with(
-                doi=doi, organization_id=rems.organization_id, licenses=rems.licenses
+                doi=doi, organization_id=rems.organizationId, licenses=rems.licenses
             )
             mock_rems_create_catalogue_item.assert_awaited_once_with(
                 resource_id=rems_resource_id,
-                workflow_id=rems.workflow_id,
-                organization_id=rems.organization_id,
+                workflow_id=rems.workflowId,
+                organization_id=rems.organizationId,
                 localizations={"en": {"title": submission_title, "infourl": f"{metax_url}{metax_id}"}},
             )
 
@@ -240,11 +243,10 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
 
         user_id = "mock-userid"
 
-        # DOI information.
-        doi_info = self.doi_info
+        submission_metadata = self.submission_metadata
 
         # RENS information.
-        rems = Rems(workflow_id=1, organization_id=f"organisation_{str(uuid.uuid4())}", licenses=[1, 2])
+        rems = Rems(workflowId=1, organizationId=f"organisation_{str(uuid.uuid4())}", licenses=[1, 2])
 
         # The submission contains one dataset metadata object.
         dataset_object_type = "dataset"
@@ -273,9 +275,9 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
 
         # Create submission.
         workflow = SubmissionWorkflow.FEGA
-        workflow_config = get_workflow(workflow.value)
+        publish_config = get_publish_config(workflow)
         submission_entity = create_submission_entity(
-            workflow=workflow, document={SUB_FIELD_DOI: doi_info, SUB_FIELD_REMS: rems.to_json_dict()}
+            workflow=workflow, document={SUB_FIELD_METADATA: submission_metadata, SUB_FIELD_REMS: to_json_dict(rems)}
         )
         submission_id = await self.submission_repository.add_submission(submission_entity)
 
@@ -283,6 +285,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
 
         # Dataset.
         dataset_entity = create_object_entity(
+            project_id=submission_entity.project_id,
             submission_id=submission_entity.submission_id,
             object_type=dataset_object_type,
             document={"test": "test"},
@@ -292,17 +295,26 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         await self.object_repository.add_object(dataset_entity, workflow)
 
         # DAC.
-        dac_entity = create_object_entity(submission_id=submission_entity.submission_id, object_type="dac", document={})
+        dac_entity = create_object_entity(
+            project_id=submission_entity.project_id,
+            submission_id=submission_entity.submission_id,
+            object_type="dac",
+            document={},
+        )
         await self.object_repository.add_object(dac_entity, workflow)
 
         # Policy.
         policy_entity = create_object_entity(
-            submission_id=submission_entity.submission_id, object_type="policy", document={}
+            project_id=submission_entity.project_id,
+            submission_id=submission_entity.submission_id,
+            object_type="policy",
+            document={},
         )
         await self.object_repository.add_object(policy_entity, workflow)
 
         # Study.
         study_entity = create_object_entity(
+            project_id=submission_entity.project_id,
             submission_id=submission_entity.submission_id,
             object_type=study_object_type,
             document={},
@@ -340,7 +352,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             # Metax
             patch.dict(os.environ, {"METAX_DISCOVERY_URL": metax_url}),
             patch(f"{metax_cls}.post_dataset_as_draft", new_callable=AsyncMock) as mock_metax_create,
-            patch(f"{metax_cls}.update_dataset_with_doi_info", new_callable=AsyncMock) as mock_metax_update_doi,
+            patch(f"{metax_cls}.update_dataset_metadata", new_callable=AsyncMock) as mock_metax_update_dataset_metadata,
             patch(f"{metax_cls}.update_draft_dataset_description", new_callable=AsyncMock) as mock_metax_update_descr,
             patch(f"{metax_cls}.publish_dataset", new_callable=AsyncMock) as mock_metax_publish,
             # REMS
@@ -369,7 +381,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                 "type": "dois",
                 "data": {
                     "attributes": {
-                        "publisher": "CSC - IT Center for Science",
+                        "publisher": {"name": "CSC - IT Center for Science"},
                         "publicationYear": datetime.now().year,
                         "event": "publish",
                         "schemaVersion": "https://schema.datacite.org/meta/kernel-4",
@@ -381,7 +393,6 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                             "bibtex": "misc",
                             "citeproc": "dataset",
                             "schemaOrg": "Dataset",
-                            "resourceTypeGeneral": "Dataset",
                         },
                         "url": f"{metax_url}{metax_id}",
                         "identifiers": [{"identifierType": "DOI", "doi": doi}],
@@ -391,6 +402,8 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                         ],
                         "creators": [
                             {
+                                "name": "Creator, Test",
+                                "nameType": "Personal",
                                 "givenName": "Test",
                                 "familyName": "Creator",
                                 "affiliation": [
@@ -403,15 +416,8 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                                 ],
                             }
                         ],
-                        "subjects": [
-                            {
-                                "subject": "999 - Other",
-                                "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
-                                "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
-                                "valueUri": "http://www.yso.fi/onto/okm-tieteenala/ta999",
-                                "classificationCode": "999",
-                            }
-                        ],
+                        "resourceType": {"resourceTypeGeneral": "Dataset", "resourceType": "Dataset"},
+                        "subjects": [{"subject": "999 - Other"}],
                         "relatedIdentifiers": [
                             {
                                 "relationType": "IsDescribedBy",
@@ -429,7 +435,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                 "type": "dois",
                 "data": {
                     "attributes": {
-                        "publisher": "CSC - IT Center for Science",
+                        "publisher": {"name": "CSC - IT Center for Science"},
                         "publicationYear": datetime.now().year,
                         "event": "publish",
                         "schemaVersion": "https://schema.datacite.org/meta/kernel-4",
@@ -440,7 +446,6 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                             "bibtex": "misc",
                             "citeproc": "collection",
                             "schemaOrg": "Collection",
-                            "resourceTypeGeneral": "Collection",
                         },
                         "url": f"{metax_url}{metax_id}",
                         "identifiers": [{"identifierType": "DOI", "doi": doi}],
@@ -448,6 +453,8 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                         "descriptions": [{"lang": None, "description": study_description, "descriptionType": "Other"}],
                         "creators": [
                             {
+                                "name": "Creator, Test",
+                                "nameType": "Personal",
                                 "givenName": "Test",
                                 "familyName": "Creator",
                                 "affiliation": [
@@ -460,15 +467,8 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                                 ],
                             }
                         ],
-                        "subjects": [
-                            {
-                                "subject": "999 - Other",
-                                "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
-                                "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
-                                "valueUri": "http://www.yso.fi/onto/okm-tieteenala/ta999",
-                                "classificationCode": "999",
-                            }
-                        ],
+                        "resourceType": {"resourceTypeGeneral": "Collection", "resourceType": "Study"},
+                        "subjects": [{"subject": "999 - Other"}],
                         "relatedIdentifiers": [
                             {
                                 "relationType": "Describes",
@@ -481,92 +481,63 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                 },
             }
 
-            if workflow_config.publish_config.datacite_config.service == "csc":
-                assert mock_pid_create_doi.await_count == 2
-                assert mock_pid_publish.await_count == 2
-                assert call(dataset_datacite_data) in mock_pid_publish.await_args_list
-                assert call(study_datacite_data) in mock_pid_publish.await_args_list
-            else:
-                assert mock_datacite_create_doi.await_count == 2
-                assert call(dataset_object_type) in mock_datacite_create_doi.await_args_list
-                assert call(study_object_type) in mock_datacite_create_doi.await_args_list
-                assert mock_pid_publish.await_count == 2
-                assert call(dataset_datacite_data) in mock_datacite_publish.await_args_list
-                assert call(study_datacite_data) in mock_datacite_publish.await_args_list
+            assert not publish_config.use_datacite_service
+            assert publish_config.use_pid_service
+
+            assert mock_pid_create_doi.await_count == 2
+            assert mock_pid_publish.await_count == 2
+            assert call(dataset_datacite_data) in mock_pid_publish.await_args_list
+            assert call(study_datacite_data) in mock_pid_publish.await_args_list
 
             # Assert Metax.
             assert mock_metax_create.await_count == 2
             assert call(user_id, doi, dataset_title, dataset_description) in mock_metax_create.await_args_list
             assert call(user_id, doi, study_title, study_description) in mock_metax_create.await_args_list
-            assert mock_metax_update_doi.await_count == 2
+            assert mock_metax_update_dataset_metadata.await_count == 2
+
+            expected_submission_metadata = SubmissionMetadata.model_validate(submission_metadata)
+
             # Dataset.
             assert (
                 call(
-                    {
-                        # Remove keywords.
-                        **{k: v for k, v in doi_info.items() if k != "keywords"},
-                        # Update subjects.
-                        "subjects": [
-                            {
-                                **s,
-                                "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
-                                "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
-                                "valueUri": f"http://www.yso.fi/onto/okm-tieteenala/ta{s['subject'].split(' - ')[0]}",
-                                "classificationCode": s["subject"].split(" - ")[0],
-                            }
-                            for s in doi_info.get("subjects", [])
-                        ],
-                    },
+                    expected_submission_metadata,
+                    metax_id,
+                    file_bytes,
+                    related_dataset=Registration(
+                        submissionId=submission_id,
+                        objectId=dataset_entity.object_id,
+                        objectType=dataset_object_type,
+                        title=dataset_title,
+                        description=dataset_description,
+                        doi=doi,
+                        metaxId=metax_id,
+                        remsUrl=f"http://mockrems:8003/application?items={rems_catalogue_id}",
+                        remsResourceId=str(rems_resource_id),
+                        remsCatalogueId=rems_catalogue_id,
+                    ),
+                    related_study=None,
+                )
+                in mock_metax_update_dataset_metadata.await_args_list
+            )
+
+            # Study.
+            assert (
+                call(
+                    expected_submission_metadata,
                     metax_id,
                     file_bytes,
                     related_dataset=None,
                     related_study=Registration(
-                        submission_id=submission_id,
-                        object_id=study_entity.object_id,
-                        object_type=study_object_type,
+                        submissionId=submission_id,
+                        objectId=study_entity.object_id,
+                        objectType=study_object_type,
                         title=study_title,
                         description=study_description,
                         doi=doi,
-                        metax_id=metax_id,
+                        metaxId=metax_id,
                     ),
                 )
-                in mock_metax_update_doi.await_args_list
-            )
-            # Study.
-            assert (
-                call(
-                    {
-                        # Remove keywords.
-                        **{k: v for k, v in doi_info.items() if k != "keywords"},
-                        # Update subjects.
-                        "subjects": [
-                            {
-                                **s,
-                                "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
-                                "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
-                                "valueUri": f"http://www.yso.fi/onto/okm-tieteenala/ta{s['subject'].split(' - ')[0]}",
-                                "classificationCode": s["subject"].split(" - ")[0],
-                            }
-                            for s in doi_info.get("subjects", [])
-                        ],
-                    },
-                    metax_id,
-                    file_bytes,
-                    related_dataset=Registration(
-                        submission_id=submission_id,
-                        object_id=dataset_entity.object_id,
-                        object_type=dataset_object_type,
-                        title=dataset_title,
-                        description=dataset_description,
-                        doi=doi,
-                        metax_id=metax_id,
-                        rems_url=f"http://mockrems:8003/application?items={rems_catalogue_id}",
-                        rems_resource_id=str(rems_resource_id),
-                        rems_catalogue_id=rems_catalogue_id,
-                    ),
-                    related_study=None,
-                )
-                in mock_metax_update_doi.await_args_list
+                in mock_metax_update_dataset_metadata.await_args_list
             )
 
             mock_metax_update_descr.assert_awaited_once_with(
@@ -579,23 +550,22 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
 
             # Assert Rems.
             mock_rems_create_resource.assert_awaited_once_with(
-                doi=doi, organization_id=rems.organization_id, licenses=rems.licenses
+                doi=doi, organization_id=rems.organizationId, licenses=rems.licenses
             )
             mock_rems_create_catalogue_item.assert_awaited_once_with(
                 resource_id=rems_resource_id,
-                workflow_id=rems.workflow_id,
-                organization_id=rems.organization_id,
+                workflow_id=rems.workflowId,
+                organization_id=rems.organizationId,
                 localizations={"en": {"title": dataset_title, "infourl": f"{metax_url}{metax_id}"}},
             )
 
     async def test_publish_submission_bp(self):
         """Test publishing of BP submission."""
 
-        # DOI information.
-        doi_info = self.doi_info
+        submission_metadata = self.submission_metadata
 
         # RENS information.
-        rems = Rems(workflow_id=1, organization_id=f"organisation_{str(uuid.uuid4())}", licenses=[1, 2])
+        rems = Rems(workflowId=1, organizationId=f"organisation_{str(uuid.uuid4())}", licenses=[1, 2])
 
         # The submission contains one dataset metadata object.
         dataset_object_type = "dataset"
@@ -618,14 +588,15 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
 
         # Create submission.
         workflow = SubmissionWorkflow.BP
-        workflow_config = get_workflow(workflow.value)
+        publish_config = get_publish_config(workflow)
         submission_entity = create_submission_entity(
-            workflow=workflow, document={SUB_FIELD_DOI: doi_info, SUB_FIELD_REMS: rems.to_json_dict()}
+            workflow=workflow, document={SUB_FIELD_METADATA: submission_metadata, SUB_FIELD_REMS: to_json_dict(rems)}
         )
         submission_id = await self.submission_repository.add_submission(submission_entity)
 
         # Create metadata object.
         object_entity = create_object_entity(
+            project_id=submission_entity.project_id,
             submission_id=submission_entity.submission_id,
             object_type=dataset_object_type,
             document={},
@@ -680,12 +651,12 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
 
             # Assert Datacite.
 
-            datacite_data = {
+            expected_datacite_request = {
                 "id": doi,
                 "type": "dois",
                 "data": {
                     "attributes": {
-                        "publisher": "CSC - IT Center for Science",
+                        "publisher": {"name": "CSC - IT Center for Science"},
                         "publicationYear": datetime.now().year,
                         "event": "publish",
                         "schemaVersion": "https://schema.datacite.org/meta/kernel-4",
@@ -697,7 +668,6 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                             "bibtex": "misc",
                             "citeproc": "dataset",
                             "schemaOrg": "Dataset",
-                            "resourceTypeGeneral": "Dataset",
                         },
                         "url": f"{beacon_url}{doi}",
                         "identifiers": [{"identifierType": "DOI", "doi": doi}],
@@ -707,6 +677,8 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                         ],
                         "creators": [
                             {
+                                "name": "Creator, Test",
+                                "nameType": "Personal",
                                 "givenName": "Test",
                                 "familyName": "Creator",
                                 "affiliation": [
@@ -719,36 +691,32 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                                 ],
                             }
                         ],
+                        "resourceType": {"resourceTypeGeneral": "Dataset", "resourceType": "Dataset"},
                         "subjects": [
                             {
                                 "subject": "999 - Other",
-                                "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
-                                "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
-                                "valueUri": "http://www.yso.fi/onto/okm-tieteenala/ta999",
-                                "classificationCode": "999",
                             }
                         ],
                     }
                 },
             }
 
-            if workflow_config.publish_config.datacite_config.service == "csc":
-                mock_pid_create_doi.assert_awaited_once_with()
-                mock_pid_publish.assert_awaited_once_with(datacite_data)
-            else:
-                mock_datacite_create_doi.assert_awaited_once_with(dataset_object_type)
-                mock_datacite_publish.assert_awaited_once_with(datacite_data)
+            assert publish_config.use_datacite_service
+            assert not publish_config.use_pid_service
+
+            mock_datacite_create_doi.assert_awaited_once_with(dataset_object_type)
+            mock_datacite_publish.assert_awaited_once_with(expected_datacite_request)
 
             # Assert Beacon.
             # TODO(improve): BP beacon service not implement
 
             # Assert Rems.
             mock_rems_create_resource.assert_awaited_once_with(
-                doi=doi, organization_id=rems.organization_id, licenses=rems.licenses
+                doi=doi, organization_id=rems.organizationId, licenses=rems.licenses
             )
             mock_rems_create_catalogue_item.assert_awaited_once_with(
                 resource_id=rems_resource_id,
-                workflow_id=rems.workflow_id,
-                organization_id=rems.organization_id,
+                workflow_id=rems.workflowId,
+                organization_id=rems.organizationId,
                 localizations={"en": {"title": dataset_title, "infourl": f"{beacon_url}{doi}"}},
             )

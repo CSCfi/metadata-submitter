@@ -22,28 +22,3 @@ class TestPublicEndpoints:
             res = await resp.json()
             assert res["status"] == "Ok"
             assert res["services"]["aai"]["status"] == "Ok"
-
-
-class TestOtherApiEndpoints:
-    """Test other api endpoints."""
-
-    async def test_schemas_endpoint(self, client_logged_in):
-        """Test that schemas' endpoint return 200."""
-
-        test_schemas = ["submission"]
-
-        for schema in test_schemas:
-            async with client_logged_in.get(f"{schemas_url}/{schema}") as resp:
-                assert resp.status == 200
-
-    async def test_workflows_endpoint(self, client_logged_in):
-        """Test that schemas' endpoint return 200."""
-        async with client_logged_in.get(f"{workflows_url}") as resp:
-            assert resp.status == 200, resp.status
-            workflows = await resp.json()
-
-        for workflow_name in workflows.keys():
-            async with client_logged_in.get(f"{workflows_url}/{workflow_name}") as resp:
-                assert resp.status == 200, resp.status
-                workflow = await resp.json()
-                assert workflow_name == workflow["name"]

@@ -2,29 +2,19 @@
 
 import datetime
 import enum
-from typing import Callable, Sequence
+from typing import Awaitable, Callable, Sequence
 
 from sqlalchemy import and_, delete, func, select
 
+from metadata_backend.api.models.submission import Submission
 from metadata_backend.api.services.accession import generate_submission_accession
-from metadata_backend.helpers.validator import JSONValidator
 
 from ..models import SubmissionEntity
 from ..repository import SessionFactory, transaction
 
-SUB_FIELD_SUBMISSION_ID = "submissionId"
-SUB_FIELD_NAME = "name"
-SUB_FIELD_TITLE = "title"
-SUB_FIELD_DESCRIPTION = "description"
-SUB_FIELD_PROJECT_ID = "projectId"
-SUB_FIELD_BUCKET = "bucket"
-SUB_FIELD_WORKFLOW = "workflow"
-SUB_FIELD_DOI = "doiInfo"
+SUB_FIELD_METADATA = "metadata"
 SUB_FIELD_REMS = "rems"
-SUB_FIELD_PUBLISHED = "published"
-SUB_FIELD_PUBLISHED_DATE = "datePublished"
-SUB_FIELD_MODIFIED_DATE = "lastModified"
-SUB_FIELD_CREATED_DATE = "dateCreated"
+SUB_FIELD_BUCKET = "bucket"
 
 
 class SubmissionSort(enum.Enum):
@@ -57,8 +47,8 @@ class SubmissionRepository:
             The submission id used as the primary key value.
         """
         async with transaction(self._session_factory) as session:
-            # Validate submission document before storing it.
-            JSONValidator(entity.document, "submission").validate()
+            # Validate submission document.
+            Submission.model_validate(entity.document)
 
             # Generate accession.
             if entity.submission_id is None:
@@ -206,7 +196,7 @@ class SubmissionRepository:
         return submissions, total
 
     async def update_submission(
-        self, submission_id: str, update_callback: Callable[[SubmissionEntity], None]
+        self, submission_id: str, update_callback: Callable[[SubmissionEntity], Awaitable[None]]
     ) -> SubmissionEntity | None:
         """
         Update the submission entity.
@@ -223,10 +213,10 @@ class SubmissionRepository:
 
             if submission is None:
                 return None
-            update_callback(submission)
+            await update_callback(submission)
 
             # Validate submission document.
-            JSONValidator(submission.document, "submission").validate()
+            Submission.model_validate(submission.document)
 
             return submission
 

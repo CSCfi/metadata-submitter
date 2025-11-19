@@ -3,7 +3,7 @@ import uuid
 
 import ulid
 
-from metadata_backend.api.models import ChecksumType, SubmissionWorkflow
+from metadata_backend.api.models.submission import SubmissionWorkflow
 from metadata_backend.database.postgres.models import FileEntity, IngestStatus
 from metadata_backend.database.postgres.repositories.file import FileRepository
 from metadata_backend.database.postgres.repositories.object import ObjectRepository
@@ -11,19 +11,20 @@ from metadata_backend.database.postgres.repositories.submission import Submissio
 from metadata_backend.database.postgres.repository import SessionFactory, transaction
 from tests.unit.database.postgres.helpers import create_object_entity, create_submission_entity
 
-workflow = SubmissionWorkflow.SDS
+workflow = SubmissionWorkflow.SD
 
 
-async def add_submission(submission_repository: SubmissionRepository) -> str:
+async def add_submission(submission_repository: SubmissionRepository) -> tuple[str, str]:
     submission = create_submission_entity()
     now = datetime.datetime.now(datetime.timezone.utc)
     submission.created = now - datetime.timedelta(days=1)
     submission.modified = now - datetime.timedelta(days=1)
-    return await submission_repository.add_submission(submission)
+    submission_id = await submission_repository.add_submission(submission)
+    return submission.project_id, submission_id
 
 
-async def add_object(submission_id: str, object_repository: ObjectRepository) -> str:
-    obj = create_object_entity(submission_id)
+async def add_object(project_id: str, submission_id: str, object_repository: ObjectRepository) -> str:
+    obj = create_object_entity(project_id, submission_id)
     return await object_repository.add_object(obj, workflow)
 
 
@@ -34,12 +35,11 @@ async def test_add_get_delete_file(
     submission_repository: SubmissionRepository,
 ) -> None:
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
-        submission_id = await add_submission(submission_repository)
-        object_id = await add_object(submission_id, object_repository)
+        project_id, submission_id = await add_submission(submission_repository)
+        object_id = await add_object(project_id, submission_id, object_repository)
         unencrypted_checksum = f"unencrypted_{uuid.uuid4()}"
         encrypted_checksum = f"encrypted_{uuid.uuid4()}"
-        unencrypted_checksum_type = ChecksumType.SHA256
-        encrypted_checksum_type = ChecksumType.MD5
+        checksum_method = "MD5"
         path = f"path_{uuid.uuid4()}"
 
         def create_file() -> FileEntity:
@@ -47,10 +47,9 @@ async def test_add_get_delete_file(
                 submission_id=submission_id,
                 object_id=object_id,
                 bytes=1024,
+                checksum_method=checksum_method,
                 unencrypted_checksum=unencrypted_checksum,
                 encrypted_checksum=encrypted_checksum,
-                unencrypted_checksum_type=unencrypted_checksum_type,
-                encrypted_checksum_type=encrypted_checksum_type,
                 path=path,
             )
 
@@ -70,8 +69,7 @@ async def test_add_get_delete_file(
             assert entity.bytes == 1024
             assert entity.unencrypted_checksum == unencrypted_checksum
             assert entity.encrypted_checksum == encrypted_checksum
-            assert entity.unencrypted_checksum_type == unencrypted_checksum_type
-            assert entity.encrypted_checksum_type == encrypted_checksum_type
+            assert entity.checksum_method == checksum_method
             assert entity.path == path
             assert entity.ingest_status == IngestStatus.SUBMITTED
             assert entity.ingest_error is None
@@ -104,12 +102,11 @@ async def test_get_and_count_files_and_bytes(
     submission_repository: SubmissionRepository,
 ) -> None:
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
-        submission_id = await add_submission(submission_repository)
-        object_id = await add_object(submission_id, object_repository)
+        project_id, submission_id = await add_submission(submission_repository)
+        object_id = await add_object(project_id, submission_id, object_repository)
         unencrypted_checksum = f"unencrypted_{uuid.uuid4()}"
         encrypted_checksum = f"encrypted_{uuid.uuid4()}"
-        unencrypted_checksum_type = ChecksumType.SHA256
-        encrypted_checksum_type = ChecksumType.MD5
+        checksum_method = "MD5"
 
         path_1 = f"path_{uuid.uuid4()}"
 
@@ -119,10 +116,9 @@ async def test_get_and_count_files_and_bytes(
             submission_id=submission_id,
             object_id=object_id,
             bytes=bytes_1,
+            checksum_method=checksum_method,
             unencrypted_checksum=unencrypted_checksum,
             encrypted_checksum=encrypted_checksum,
-            unencrypted_checksum_type=unencrypted_checksum_type,
-            encrypted_checksum_type=encrypted_checksum_type,
             path=path_1,
             ingest_status=IngestStatus.SUBMITTED,
         )
@@ -133,10 +129,9 @@ async def test_get_and_count_files_and_bytes(
             submission_id=submission_id,
             object_id=object_id,
             bytes=bytes_2,
+            checksum_method=checksum_method,
             unencrypted_checksum=unencrypted_checksum,
             encrypted_checksum=encrypted_checksum,
-            unencrypted_checksum_type=unencrypted_checksum_type,
-            encrypted_checksum_type=encrypted_checksum_type,
             path=path_2,
             ingest_status=IngestStatus.ERROR,
         )
@@ -184,12 +179,11 @@ async def test_update_ingest_status(
     submission_repository: SubmissionRepository,
 ) -> None:
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
-        submission_id = await add_submission(submission_repository)
-        object_id = await add_object(submission_id, object_repository)
+        project_id, submission_id = await add_submission(submission_repository)
+        object_id = await add_object(project_id, submission_id, object_repository)
         unencrypted_checksum = f"unencrypted_{uuid.uuid4()}"
         encrypted_checksum = f"encrypted_{uuid.uuid4()}"
-        unencrypted_checksum_type = ChecksumType.SHA256
-        encrypted_checksum_type = ChecksumType.MD5
+        checksum_method = "MD5"
 
         path = f"path_{uuid.uuid4()}"
 
@@ -197,10 +191,9 @@ async def test_update_ingest_status(
             submission_id=submission_id,
             object_id=object_id,
             bytes=1024,
+            checksum_method=checksum_method,
             unencrypted_checksum=unencrypted_checksum,
             encrypted_checksum=encrypted_checksum,
-            unencrypted_checksum_type=unencrypted_checksum_type,
-            encrypted_checksum_type=encrypted_checksum_type,
             path=path,
             ingest_status=IngestStatus.SUBMITTED,
         )

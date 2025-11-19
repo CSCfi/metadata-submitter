@@ -3,7 +3,8 @@
 from typing import AsyncIterator, Sequence
 
 from ....api.exceptions import NotFoundUserException
-from ....api.models import File, SubmissionWorkflow
+from ....api.models.models import File
+from ....api.models.submission import SubmissionWorkflow
 from ..models import FileEntity, IngestErrorType, IngestStatus
 from ..repositories.file import FileRepository
 
@@ -39,15 +40,14 @@ class FileService:
         """
 
         return FileEntity(
-            file_id=file.file_id,
-            object_id=file.object_id,
-            submission_id=file.submission_id,
+            file_id=file.fileId,
+            object_id=file.objectId,
+            submission_id=file.submissionId,
             path=file.path,
             bytes=file.bytes,
-            unencrypted_checksum=file.unencrypted_checksum,
-            unencrypted_checksum_type=file.unencrypted_checksum_type,
-            encrypted_checksum=file.encrypted_checksum,
-            encrypted_checksum_type=file.encrypted_checksum_type,
+            checksum_method=file.checksumMethod,
+            unencrypted_checksum=file.unencryptedChecksum,
+            encrypted_checksum=file.encryptedChecksum,
         )
 
     @staticmethod
@@ -60,15 +60,14 @@ class FileService:
         """
 
         return File(
-            file_id=entity.file_id,
-            object_id=entity.object_id,
-            submission_id=entity.submission_id,
+            fileId=entity.file_id,
+            objectId=entity.object_id,
+            submissionId=entity.submission_id,
             path=entity.path,
             bytes=entity.bytes,
-            unencrypted_checksum=entity.unencrypted_checksum,
-            unencrypted_checksum_type=entity.unencrypted_checksum_type,
-            encrypted_checksum=entity.encrypted_checksum,
-            encrypted_checksum_type=entity.encrypted_checksum_type,
+            checksumMethod=entity.checksum_method,
+            unencryptedChecksum=entity.unencrypted_checksum,
+            encryptedChecksum=entity.encrypted_checksum,
         )
 
     async def add_file(self, file: File, workflow: SubmissionWorkflow) -> str:

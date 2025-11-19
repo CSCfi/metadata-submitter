@@ -17,73 +17,6 @@ tags:
   - name: Taxonomy
     description: Built-in API for autocompleting taxonomy names/ids in the UI
 paths:
-  /v1/schemas:
-    get:
-      tags:
-        - Query
-      summary: List of available schemas
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SchemasList"
-        404:
-          description: Not Found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/404NotFound"
-        401:
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/401Unauthorized"
-        403:
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/403Forbidden"
-  /v1/schemas/{schema}:
-    get:
-      tags:
-        - Query
-      summary: Retrieve JSON schema by its name
-      parameters:
-        - name: schema
-          in: path
-          description: Name of the schema.
-          schema:
-            type: string
-          required: true
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-        400:
-          description: Bad Request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/400BadRequest"
-        401:
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/401Unauthorized"
-        403:
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/403Forbidden"
   /v1/workflows/{workflow}/projects/{projectId}/submissions:
     post:
       tags:
@@ -413,62 +346,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/403Forbidden"
-  /v1/workflows:
-    get:
-      tags:
-        - Query
-      summary: List of available workflows
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                description: Workflow name as key, and description as value
-        401:
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/401Unauthorized"
-  /v1/workflows/{workflow}:
-    get:
-      tags:
-        - Query
-      summary: Retrieve a workflow definition by its name
-      parameters:
-        - name: workflow
-          in: path
-          description: Name of the workflow
-          schema:
-            type: string
-          required: true
-      responses:
-        200:
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-        401:
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/401Unauthorized"
-        404:
-          description: Not Found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/404NotFound"
-        403:
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/403Forbidden"
   /v1/submissions:
     get:
       tags:
@@ -716,11 +593,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/405MethodNotAllowed"
-  /v1/submissions/{submissionId}/doi:
+  /v1/submissions/{submissionId}/metadata:
     patch:
       tags:
         - Submission
-      summary: Update DOI for the submission with a specified submission ID
+      summary: Update metadata for the submission with a specified submission ID
       parameters:
         - name: submissionId
           in: path
@@ -732,7 +609,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/DoiInfo"
+              $ref: "#/components/schemas/Metadata"
       responses:
         200:
           description: OK
@@ -1448,137 +1325,8 @@ components:
         published:
           type: boolean
           description: If submission is published or not
-        doiInfo:
-          $ref: "#/components/schemas/DoiInfo"
-        extraInfo:
-          type: object
-          additionalProperties: false
-          properties:
-            studyIdentifier:
-              type: object
-              description: DOI id generated according to DOI recommendations
-              required:
-                - identifier
-                - url
-              properties:
-                identifier:
-                  type: object
-                  description: identifier object
-                  required:
-                    - identifierType
-                    - doi
-                  properties:
-                    identifierType:
-                      type: string
-                      description: Type of identifier (= DOI)
-                    doi:
-                      type: string
-                      description: A persistent identifier for a resource
-                url:
-                  type: string
-                  description: URL of the digital location of the object
-                types:
-                  type: object
-                  description: "Type info of the resource. Multiple types can be listed: ResourceTypeGeneral, schemaOrg etc."
-            datasetIdentifiers:
-              type: array
-              items:
-                type: object
-                required:
-                  - identifier
-                  - url
-                properties:
-                  identifier:
-                    type: object
-                    description: identifier object
-                    required:
-                      - identifierType
-                      - doi
-                    properties:
-                      identifierType:
-                        type: string
-                        description: Type of identifier (= DOI)
-                      doi:
-                        type: string
-                        description: A persistent identifier for a resource
-                  url:
-                    type: string
-                    description: URL of the digital location of the object
-                  types:
-                    type: object
-                    description: "Type info of the resource. Multiple types can be listed: ResourceTypeGeneral, schemaOrg etc."
-            publisher:
-              type: string
-              description: Full name of publisher from Research Organization Registry
-            publicationYear:
-              type: integer
-              description: Publication Year
-            version:
-              type: string
-              description: Version number of the resource
-        metadataObjects:
-          type: array
-          uniqueItems: true
-          items:
-            type: object
-            required:
-              - accessionId
-              - schema
-            properties:
-              accessionId:
-                type: string
-                description: Accession id generated to identify an object
-              schema:
-                type: string
-                description: type of schema this Accession ID relates to and was added in submit
-              tags:
-                type: object
-                description: Different tags to describe the object.
-                additionalProperties: true
-                properties:
-                  submissionType:
-                    type: string
-                    description: Type of submission
-                    enum: [ "XML", "CSV", "Form" ]
-              rems:
-                type: object
-                description: Preserved REMS information for each dataset
-                additionalProperties: true
-                properties:
-                  url:
-                    type: string
-                    description: URL for application to apply access for dataset in REMS
-                  resourceId:
-                    type: string
-                    description: REMS id of the resource created. Created automatically during the publication process
-                  catalogueItemId:
-                    type: string
-                    description: REMS id of the catalogue created. Created automatically during the publication process
-        drafts:
-          type: array
-          uniqueItems: true
-          items:
-            type: object
-            required:
-              - accessionId
-              - schema
-            additionalProperties: false
-            properties:
-              accessionId:
-                type: string
-                description: Accession id generated to identify an object
-              schema:
-                type: string
-                description: type of schema this Accession ID relates to and was added in submit
-              tags:
-                type: object
-                description: Different tags to describe the object.
-                additionalProperties: true
-                properties:
-                  submissionType:
-                    type: string
-                    description: Type of submission
-                    enum: [ "XML", "CSV", "Form" ]
+        metadata:
+          $ref: "#/components/schemas/Metadata"
     SubmissionList:
       type: object
       required:
@@ -1629,7 +1377,7 @@ components:
         userId:
           type: string
           description: Custom generated ID for the user object.
-    DoiInfo:
+    Metadata:
       required:
         - creators
         - subjects

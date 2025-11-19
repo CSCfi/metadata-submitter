@@ -111,7 +111,7 @@ def registration_repository() -> RegistrationRepository:
 
 @pytest.fixture
 def submission_service() -> SubmissionService:
-    return SubmissionService(_submission_repository)
+    return SubmissionService(_submission_repository, _registration_repository)
 
 
 @pytest.fixture

@@ -1,17 +1,13 @@
 """Python-based app configurations.
 
-1) Metadata schema types
-Schema types (e.g. ``"submission"``, ``"study"``, ``"sample"``) are needed in
-different parts of the application.
-
-2) Frontend static files folder
+1) Frontend static files folder
 Production version gets frontend SPA from this folder, after it has been built
 and inserted here in projects Dockerfile.
 
-3) AAI server
+2) AAI server
 AAI server is needed to authenticate users and get their user ID.
 
-4) External service integration
+3) External service integration
 External services are queried from the application, e.g. Datacite for DOIs.
 """
 
@@ -21,43 +17,15 @@ from typing import Any
 
 import ujson
 
-from ..api.exceptions import NotFoundUserException
-from ..helpers.workflow import Workflow
 from .taxonomy_files.taxonomy_conf import TAXONOMY_NAME_FILE
 
 API_PREFIX = "/v1"
 
-# 1) Load schema types, descriptions and workflows from json
-path_to_schema_file = Path(__file__).parent / "schemas.json"
-with open(path_to_schema_file, "rb") as schema_file:
-    schema_types = ujson.load(schema_file)
-
-path_to_workflows = Path(__file__).parent / "workflows"
-WORKFLOWS: dict[str, Workflow] = {}
-
-for workflow_path in path_to_workflows.iterdir():
-    with open(workflow_path, "rb") as workflow_file:
-        workflow = ujson.load(workflow_file)
-        WORKFLOWS[workflow["name"]] = Workflow(workflow)
-
-
-def get_workflow(workflow_name: str) -> Workflow:
-    """Get workflow definition by name.
-
-    :param workflow_name: Name of the workflow
-    :returns: The workflow definition.
-    """
-    if workflow_name not in WORKFLOWS:
-        raise NotFoundUserException(f"Invalid workflow {workflow_name}.")
-    return WORKFLOWS[workflow_name]
-
-
-# 2) Set frontend folder to be inside metadata_backend modules root
+# 1) Set frontend folder to be inside metadata_backend modules root
 frontend_static_files = Path(__file__).parent.parent / "frontend"
 
 # 2.1) Path to swagger HTML file
 swagger_static_path = Path(__file__).parent.parent / "swagger" / "index.html"
-
 
 # 3) Set up configurations for AAI server
 
@@ -74,13 +42,6 @@ aai_config = {
     "callback_url": f'{os.getenv("BASE_URL", "http://localhost:5430").rstrip("/")}/callback',
     "oidc_url": os.getenv("OIDC_URL", ""),
     "auth_method": os.getenv("AUTH_METHOD", "code"),
-}
-
-
-# 4) Set up external service integration config
-
-doi_config = {
-    "publisher": "CSC - IT Center for Science",
 }
 
 # Datacite API currently only for Bigpicture workflow

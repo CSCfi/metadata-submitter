@@ -13,7 +13,6 @@ from .api.handlers.files import FilesAPIHandler
 from .api.handlers.object import ObjectAPIHandler
 from .api.handlers.publish import PublishSubmissionAPIHandler
 from .api.handlers.rems_proxy import RemsAPIHandler
-from .api.handlers.restapi import RESTAPIHandler
 from .api.handlers.static import StaticHandler, html_handler_factory
 from .api.handlers.submission import SubmissionAPIHandler
 from .api.health import HealthHandler
@@ -78,7 +77,9 @@ async def init(
         set_resource(api, resource_type, resource)
         set_resource(server, resource_type, resource)
 
-    submission_service = SubmissionService(SubmissionRepository(session_factory))
+    registration_repository = RegistrationRepository(session_factory)
+
+    submission_service = SubmissionService(SubmissionRepository(session_factory), registration_repository)
     object_service = ObjectService(ObjectRepository(session_factory))
     file_provider_service = S3AllasFileProviderService()
 
@@ -87,7 +88,7 @@ async def init(
     _set_resource(ResourceType.SUBMISSION_SERVICE, submission_service)
     _set_resource(ResourceType.OBJECT_SERVICE, object_service)
     _set_resource(ResourceType.FILE_SERVICE, FileService(FileRepository(session_factory)))
-    _set_resource(ResourceType.REGISTRATION_SERVICE, RegistrationService(RegistrationRepository(session_factory)))
+    _set_resource(ResourceType.REGISTRATION_SERVICE, RegistrationService(registration_repository))
     _set_resource(ResourceType.FILE_PROVIDER_SERVICE, file_provider_service)
     _set_resource(ResourceType.SESSION_FACTORY, session_factory)
 
@@ -117,7 +118,6 @@ async def init(
 
     server.on_shutdown.append(close_http_clients)
 
-    _common_api_handler = RESTAPIHandler()
     _object = ObjectAPIHandler(
         metax_handler=metax_handler,
         datacite_handler=datacite_handler,
@@ -142,14 +142,11 @@ async def init(
     _file = FilesAPIHandler()
 
     api_routes = [
-        # Workflow requests.
-        web.get("/workflows", _common_api_handler.get_workflows),
-        web.get("/workflows/{workflow}", _common_api_handler.get_workflow_request),
-        # Schema requests.
-        web.get("/schemas", _common_api_handler.get_schema_types),
-        web.get("/schemas/{schema}", _common_api_handler.get_json_schema),
         # Metadata object requests.
-        web.post("/workflows/{workflow}/projects/{projectId}/submissions", _object.post_submission),
+        web.post("/workflows/{workflow}/projects/{projectId}/submissions", _object.add_submission),
+        web.patch("/workflows/{workflow}/projects/{projectId}/submissions/{submissionId}", _object.update_submission),
+        web.delete("/workflows/{workflow}/projects/{projectId}/submissions/{submissionId}", _object.delete_submission),
+        web.head("/workflows/{workflow}/projects/{projectId}/submissions/{submissionId}", _object.is_submission),
         web.get("/submissions/{submissionId}/objects", _object.list_objects),
         web.get("/submissions/{submissionId}/objects/docs", _object.get_objects),
         # Submission object requests.
@@ -158,9 +155,9 @@ async def init(
         web.get("/submissions/{submissionId}", _submission.get_submission),
         web.get("/submissions/{submissionId}/files", _submission.get_submission_files),
         web.get("/submissions/{submissionId}/registrations", _submission.get_submission_registrations),
-        web.patch("/submissions/{submissionId}/doi", _submission.patch_submission_doi),
+        web.patch("/submissions/{submissionId}/metadata", _submission.patch_submission_metadata),
         web.patch("/submissions/{submissionId}/rems", _submission.patch_submission_rems),
-        web.patch("/submissions/{submissionId}/bucket", _submission.patch_submission_linked_bucket),
+        web.patch("/submissions/{submissionId}/bucket", _submission.patch_submission_bucket),
         web.patch("/submissions/{submissionId}", _submission.patch_submission),
         web.delete("/submissions/{submissionId}", _submission.delete_submission),
         web.post("/submissions/{submissionId}/ingest", _submission.post_data_ingestion),

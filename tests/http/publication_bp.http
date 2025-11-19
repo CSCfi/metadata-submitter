@@ -59,10 +59,10 @@ GET {{api_url}}/v1/submissions
 ### Get submission
 GET {{api_url}}/v1/submissions/{{submission_id}}
 
-### Update DOI in submission
-PATCH {{api_url}}/v1/submissions/{{submission_id}}/doi
+### Update metadata in submission
+PATCH {{api_url}}/v1/submissions/{{submission_id}}/metadata
 
-< ../test_files/doi/test_doi.json
+< ../test_files/submission/metadata.json
 
 ### Add REMS data to a submission
 POST {{api_url}}/v1/objects/bprems

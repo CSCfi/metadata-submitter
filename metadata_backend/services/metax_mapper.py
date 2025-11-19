@@ -4,7 +4,17 @@ from copy import deepcopy
 from datetime import datetime
 from typing import Any
 
-from ..api.models import Registration
+from ..api.models.datacite import (
+    AlternateIdentifier,
+    Contributor,
+    Creator,
+    Date,
+    FundingReference,
+    GeoLocation,
+    Subject,
+)
+from ..api.models.models import Registration
+from ..api.models.submission import SubmissionMetadata
 from ..conf.conf import METAX_REFERENCE_DATA
 from ..helpers.logger import LOG
 
@@ -227,7 +237,7 @@ class MetaDataMapper:
     def __init__(
         self,
         metax_data: dict[str, Any],
-        doi_info: dict[str, Any],
+        metadata: SubmissionMetadata,
         file_bytes: int,
         *,
         related_dataset: Registration | None = None,
@@ -236,13 +246,13 @@ class MetaDataMapper:
         """Set variables.
 
         :param metax_data: Metax research_dataset metadata
-        :param doi_info: The DOI info
+        :param metadata: The submission metadata
         :param file_bytes: The number of file bytes
         :param related_dataset: A related dataset registration.
         :param related_study: A related study registration.
         """
         self.research_dataset = metax_data
-        self.doi_info = doi_info
+        self.metadata = metadata
         self.research_dataset["total_remote_resources_byte_size"] = file_bytes
         self.related_dataset = related_dataset
         self.related_study = related_study
@@ -263,27 +273,36 @@ class MetaDataMapper:
 
         :returns: Research dataset
         """
-        LOG.info("Mapping DataCite data to Metax metadata: %r.", self.doi_info)
-        for key, value in self.doi_info.items():
-            if key == "creators":
-                self._map_creators(value)
-            if key == "keywords":
-                self.research_dataset["keyword"] = value.split(",")
-            if key == "contributors":
-                self._map_contributors(value)
-            if key == "dates":
-                self._map_dates(value)
-            if key == "geoLocations":
-                self._map_spatial(value)
-            if key == "alternateIdentifiers":
-                self._map_other_identifier(value)
-            if key == "language":
-                self.research_dataset["language"] = []
-                self.research_dataset["language"].append({"title": {"en": value}, "identifier": self.languages[value]})
-            if key == "subjects":
-                self._map_field_of_science(value)
-            if key == "fundingReferences":
-                self._map_funding_references(value)
+        LOG.info("Mapping DataCite data to Metax metadata: %r.", self.metadata)
+
+        self._map_creators(self.metadata.creators)
+
+        if self.metadata.keywords:
+            self.research_dataset["keyword"] = self.metadata.keywords.split(",")
+
+        if self.metadata.contributors:
+            self._map_contributors(self.metadata.contributors)
+
+        if self.metadata.dates:
+            self._map_dates(self.metadata.dates)
+
+        if self.metadata.geoLocations:
+            self._map_spatial(self.metadata.geoLocations)
+
+        if self.metadata.alternateIdentifiers:
+            self._map_alternative_identifier(self.metadata.alternateIdentifiers)
+
+        if self.metadata.language:
+            self.research_dataset["language"] = []
+            self.research_dataset["language"].append(
+                {"title": {"en": self.metadata.language}, "identifier": self.languages[self.metadata.language]}
+            )
+
+        if self.metadata.subjects:
+            self._map_field_of_science(self.metadata.subjects)
+
+        if self.metadata.fundingReferences:
+            self._map_funding_references(self.metadata.fundingReferences)
 
         if self.related_study:
             self._map_related_dataset(self.related_study)
@@ -292,7 +311,7 @@ class MetaDataMapper:
 
         return self.research_dataset
 
-    def _map_creators(self, creators: list[Any]) -> None:
+    def _map_creators(self, creators: list[Creator]) -> None:
         """Map creators.
 
         :param creators: Creators data from datacite
@@ -302,27 +321,27 @@ class MetaDataMapper:
         self.research_dataset["creator"] = []
         for creator in creators:
             metax_creator = deepcopy(self.person)
-            metax_creator["name"] = str(creator["givenName"]).strip() + " " + str(creator["familyName"]).strip()
+            metax_creator["name"] = str(creator.givenName).strip() + " " + str(creator.familyName).strip()
 
             # Metax schema accepts only one affiliation per creator
             # so we take first one
-            if creator.get("affiliation", None):
-                affiliation = creator["affiliation"][0]
-                metax_creator["member_of"]["name"]["en"] = affiliation["name"]
-                if affiliation.get("affiliationIdentifier"):
-                    metax_creator["member_of"]["identifier"] = affiliation["affiliationIdentifier"]
+            if creator.affiliation:
+                affiliation = creator.affiliation[0]
+                metax_creator["member_of"]["name"]["en"] = affiliation.name
+                if affiliation.affiliationIdentifier:
+                    metax_creator["member_of"]["identifier"] = affiliation.affiliationIdentifier
                 # here we collect affiliations for
                 if metax_creator["member_of"] not in self.affiliations:
                     self.affiliations.append(metax_creator["member_of"])
             # Metax schema accepts only one identifier per creator
             # so we take first one
-            if creator.get("nameIdentifiers", None) and creator["nameIdentifiers"][0].get("nameIdentifier", None):
-                metax_creator["identifier"] = creator["nameIdentifiers"][0]["nameIdentifier"]
+            if creator.nameIdentifiers and creator.nameIdentifiers[0].nameIdentifier:
+                metax_creator["identifier"] = creator.nameIdentifiers[0].nameIdentifier
             else:
                 del metax_creator["identifier"]
             self.research_dataset["creator"].append(metax_creator)
 
-    def _map_contributors(self, contributors: list[Any]) -> None:
+    def _map_contributors(self, contributors: list[Contributor]) -> None:
         """Map contributors.
 
         :param contributors: Contributors data from
@@ -333,30 +352,26 @@ class MetaDataMapper:
 
         for contributor in contributors:
             metax_contributor = deepcopy(self.person)
-            metax_contributor["name"] = (
-                str(contributor["givenName"]).strip() + " " + str(contributor["familyName"]).strip()
-            )
+            metax_contributor["name"] = str(contributor.givenName).strip() + " " + str(contributor.familyName).strip()
             # Metax schema accepts only one affiliation per contributor
             # so we take first one
-            if contributor.get("affiliation", None):
-                affiliation = contributor["affiliation"][0]
-                metax_contributor["member_of"]["name"]["en"] = affiliation["name"]
-                if affiliation.get("affiliationIdentifier"):
-                    metax_contributor["member_of"]["identifier"] = affiliation["affiliationIdentifier"]
+            if contributor.affiliation:
+                affiliation = contributor.affiliation[0]
+                metax_contributor["member_of"]["name"]["en"] = affiliation.name
+                if affiliation.affiliationIdentifier:
+                    metax_contributor["member_of"]["identifier"] = affiliation.affiliationIdentifier
                 if metax_contributor["member_of"] not in self.affiliations:
                     self.affiliations.append(metax_contributor["member_of"])
             # Metax schema accepts only one identifier per contributor
             # so we take first one
-            if contributor.get("nameIdentifiers", None) and contributor["nameIdentifiers"][0].get(
-                "nameIdentifier", None
-            ):
-                metax_contributor["identifier"] = contributor["nameIdentifiers"][0]["nameIdentifier"]
+            if contributor.nameIdentifiers and contributor.nameIdentifiers[0].nameIdentifier:
+                metax_contributor["identifier"] = contributor.nameIdentifiers[0].nameIdentifier
             else:
                 del metax_contributor["identifier"]
 
             self.research_dataset["contributor"].append(metax_contributor)
 
-    def _map_dates(self, dates: list[Any]) -> None:
+    def _map_dates(self, dates: list[Date]) -> None:
         """Map dates.
 
         :param dates: Dates data from datacite
@@ -377,18 +392,18 @@ class MetaDataMapper:
 
         # format of date must be forced
         for date in dates:
-            date_list: list[Any] = list(filter(None, date["date"].split("/")))
-            if date["dateType"] == "Issued":
+            date_list: list[Any] = list(filter(None, date.date.split("/")))
+            if date.dateType == "Issued":
                 if not self.research_dataset.get("issued", None) or datetime.strptime(
                     self.research_dataset["issued"], "%Y-%m-%d"
                 ) > datetime.strptime(date_list[0], "%Y-%m-%d"):
                     self.research_dataset["issued"] = date_list[0]
-            if date["dateType"] == "Updated":
+            if date.dateType == "Updated":
                 if not self.research_dataset.get("modified", None) or datetime.strptime(
                     self.research_dataset["modified"][:9], "%Y-%m-%d"
                 ) < datetime.strptime(date_list[0], "%Y-%m-%d"):
                     self.research_dataset["modified"] = date_list[-1] + "T00:00:00+03:00"
-            if date["dateType"] == "Collected":
+            if date.dateType == "Collected":
                 temporal_date["start_date"] = date_list[0] + "T00:00:00+03:00"
                 temporal_date["end_date"] = date_list[-1] + "T00:00:00+03:00"
                 self.research_dataset["temporal"].append(temporal_date)
@@ -396,7 +411,7 @@ class MetaDataMapper:
         if not self.research_dataset["temporal"]:
             del self.research_dataset["temporal"]
 
-    def _map_spatial(self, locations: list[Any]) -> None:
+    def _map_spatial(self, locations: list[GeoLocation]) -> None:
         """Map geoLocations.
 
         If geoLocationPoint or geoLocationBox is coming with location data
@@ -412,17 +427,17 @@ class MetaDataMapper:
         for location in locations:
             spatial: dict[str, Any] = {}
             spatial["as_wkt"] = []
-            if location.get("geoLocationPlace", None):
-                spatial["geographic_name"] = location["geoLocationPlace"]
-            if location.get("geoLocationPoint", None):
-                lat = float(location["geoLocationPoint"]["pointLatitude"])
-                lon = float(location["geoLocationPoint"]["pointLongitude"])
+            if location.geoLocationPlace:
+                spatial["geographic_name"] = location.geoLocationPlace
+            if location.geoLocationPoint:
+                lat = location.geoLocationPoint.pointLatitude
+                lon = location.geoLocationPoint.pointLongitude
                 spatial["as_wkt"].append(f"POINT({lon} {lat})")
-            if location.get("geoLocationBox", None):
-                west_lon = float(location["geoLocationBox"]["westBoundLongitude"])
-                east_lon = float(location["geoLocationBox"]["eastBoundLongitude"])
-                north_lat = float(location["geoLocationBox"]["northBoundLatitude"])
-                south_lat = float(location["geoLocationBox"]["southBoundLatitude"])
+            if location.geoLocationBox:
+                west_lon = location.geoLocationBox.westBoundLongitude
+                east_lon = location.geoLocationBox.eastBoundLongitude
+                north_lat = location.geoLocationBox.northBoundLatitude
+                south_lat = location.geoLocationBox.southBoundLatitude
                 spatial["as_wkt"].append(
                     f"POLYGON(({west_lon} {north_lat}, {east_lon} {north_lat}, "
                     f"{east_lon} {south_lat}, {west_lon} {south_lat}, {west_lon} {north_lat}))"
@@ -431,7 +446,7 @@ class MetaDataMapper:
                 del spatial["as_wkt"]
             spatials.append(spatial)
 
-    def _map_other_identifier(self, identifiers: list[Any]) -> None:
+    def _map_alternative_identifier(self, identifiers: list[AlternateIdentifier]) -> None:
         """Map alternateIdentifiers.
 
         :param identifiers: Alternate identifiers data from datacite
@@ -448,12 +463,12 @@ class MetaDataMapper:
         }
         other_identifiers = self.research_dataset["other_identifier"] = []
         for identifier in identifiers:
-            other_identifier["notation"] = identifier["alternateIdentifier"]
-            identifier_type = self.identifier_types[identifier["alternateIdentifierType"].lower()]
+            other_identifier["notation"] = identifier.alternateIdentifier
+            identifier_type = self.identifier_types[identifier.alternateIdentifierType.lower()]
             other_identifier["type"]["identifier"] = identifier_type
             other_identifiers.append(other_identifier)
 
-    def _map_field_of_science(self, subjects: list[Any]) -> None:
+    def _map_field_of_science(self, subjects: list[Subject]) -> None:
         """Map subjects to field of science.
 
         :param subjects: Subjects data from datacite
@@ -470,7 +485,7 @@ class MetaDataMapper:
         field_of_science = self.research_dataset["field_of_science"] = []
         for subject in subjects:
             try:
-                subject_code = subject["subject"].split(" - ")[0]
+                subject_code = subject.subject.split(" - ")[0]
                 code = [i for i in self.fields_of_science if i == f"ta{subject_code}"]
                 fos["identifier"] = self.fields_of_science[code[0]]["uri"]
                 fos["pref_label"] = self.fields_of_science[code[0]]["label"]
@@ -488,7 +503,7 @@ class MetaDataMapper:
         self.research_dataset["relation"] = [
             {
                 "entity": {
-                    "identifier": registration.datacite_url,
+                    "identifier": registration.dataciteUrl,
                     "type": {
                         "in_scheme": "http://uri.suomi.fi/codelist/fairdata/resource_type",
                         "identifier": "http://uri.suomi.fi/codelist/fairdata/resource_type/code/dataset",
@@ -511,7 +526,7 @@ class MetaDataMapper:
         self.research_dataset["is_output_of"] = [
             {
                 "name": {"en": registration.title},
-                "identifier": registration.datacite_url,
+                "identifier": registration.dataciteUrl,
                 "source_organization": self.affiliations,
             }
         ]
@@ -519,7 +534,7 @@ class MetaDataMapper:
     # Metax mapping for fundingReferences is optional
     # It can be removed after we get the confirmation that it is not needed.
 
-    def _map_funding_references(self, funders: list[Any]) -> None:
+    def _map_funding_references(self, funders: list[FundingReference]) -> None:
         """Map funding references.
 
         :param funders: Funders data from datacite
@@ -540,7 +555,7 @@ class MetaDataMapper:
 
         for funder in funders:
             try:
-                fund = [i for i in self.funding_references if i == funder["funderName"]]
+                fund = [i for i in self.funding_references if i == funder.funderName]
                 funding["funder"]["organization"]["identifier"] = self.funding_references[fund[0]]["uris"]
                 funding["funder"]["organization"]["pref_label"] = self.funding_references[fund[0]]["label"]
 

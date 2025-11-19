@@ -41,17 +41,12 @@ class AppTestCase(AioHTTPTestCase):
     async def test_api_routes_are_set(self):
         """Test correct amount of API (no frontend) routes is set.
 
-        routes considered to be separate are e.g.:
-        - /submissions
-        - /submissions/{submissionId}
-        - /submissions/{submissionId}/doi
-
         NOTE: If there's swagger or frontend folder generated in metadata_backend
         tests will see more routes
 
         """
         server = await self.get_application()
-        self.assertIs(len(server.router.routes()), 53)
+        self.assertIs(len(server.router.routes()), 48)
 
     async def test_frontend_routes_are_set(self):
         """Test correct routes are set when frontend folder exists."""

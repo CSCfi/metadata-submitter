@@ -29,8 +29,9 @@ from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import DeclarativeBase, Mapped, Relationship, backref, mapped_column, relationship
 from sqlalchemy.sql.type_api import TypeEngine, UserDefinedType
 
-from metadata_backend.api.models import ChecksumType, SubmissionWorkflow
-from metadata_backend.api.services.accession import generate_default_accession
+from ...api.models.models import CHECKSUM_METHOD_TYPES
+from ...api.models.submission import SubmissionWorkflow
+from ...api.services.accession import generate_default_accession
 
 
 class TypeJSON(TypeDecorator[dict[str, Any]]):
@@ -199,6 +200,7 @@ class ObjectEntity(Base):
     submission_id: Mapped[str] = mapped_column(
         String(128), ForeignKey("submissions.submission_id", ondelete="CASCADE"), nullable=False, index=True
     )
+    project_id: Mapped[str] = mapped_column(String, nullable=False)
 
     title: Mapped[str] = mapped_column(String, nullable=True)
     description: Mapped[str] = mapped_column(Text, nullable=True)
@@ -260,12 +262,8 @@ class FileEntity(Base):
     __table_args__ = (
         UniqueConstraint("submission_id", "path"),
         CheckConstraint(
-            f"unencrypted_checksum_type IN ({', '.join(repr(e.value) for e in ChecksumType)})",
-            name="ck_unencrypted_checksum_type",
-        ),
-        CheckConstraint(
-            f"encrypted_checksum_type IN ({', '.join(repr(e.value) for e in ChecksumType)})",
-            name="ck_encrypted_checksum_type",
+            f"checksum_method IN ({', '.join(repr(e) for e in CHECKSUM_METHOD_TYPES)})",
+            name="ck_checksum_method",
         ),
         CheckConstraint(
             f"ingest_status IN ({', '.join(repr(e.value) for e in IngestStatus)})",
@@ -287,10 +285,9 @@ class FileEntity(Base):
     path: Mapped[str] = mapped_column(String(1024), nullable=False)
     bytes: Mapped[int] = mapped_column(Integer, nullable=True)
 
+    checksum_method: Mapped[str] = mapped_column(String(16), nullable=True)
     unencrypted_checksum: Mapped[str] = mapped_column(String(128), nullable=True)
-    unencrypted_checksum_type: Mapped[ChecksumType] = mapped_column(string_enum(ChecksumType), nullable=True)
     encrypted_checksum: Mapped[str] = mapped_column(String(128), nullable=True)
-    encrypted_checksum_type: Mapped[ChecksumType] = mapped_column(string_enum(ChecksumType), nullable=True)
 
     ingest_status: Mapped[IngestStatus] = mapped_column(
         string_enum(IngestStatus), nullable=False, server_default=text(f"'{IngestStatus.SUBMITTED.value}'"), index=True

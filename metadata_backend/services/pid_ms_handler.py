@@ -43,23 +43,23 @@ class PIDServiceHandler(ServiceHandler):
         LOG.info("PID: DOI draft created with identifier: %r.", doi)
         return doi
 
-    async def publish(self, doi_payload: dict[str, Any]) -> None:
+    async def publish(self, datacite_payload: dict[str, Any]) -> None:
         """Set DOI and associated metadata.
 
         Endpoint: PUT /v1/pid/doi/{prefix}/{suffix}
 
-        :param doi_payload: Dictionary with payload to send to PID ms
+        :param datacite_payload: Dictionary with payload to send to PID ms
         :raises: HTTPBadRequest if DOI payload is invalid
         :raises: HTTPBadRequest if DOI is missing in doi_payload
         :raises: HTTPInternalServerError if DOI update fails
         """
         try:
-            doi = doi_payload["id"]
+            doi = datacite_payload["id"]
         except KeyError as exc:
             raise self.make_exception(reason="Missing 'id' field in object data", status=400) from exc
         path = f"v1/pid/doi/{doi}"
         headers = {"Content-Type": "application/json", "apikey": pid_config["api_key"]}
-        await self._request(method="PUT", headers=headers, path=path, json_data=doi_payload)
+        await self._request(method="PUT", headers=headers, path=path, json_data=datacite_payload)
 
         LOG.info("PID: DOI %r updated.", doi)
 

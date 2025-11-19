@@ -4,7 +4,8 @@ from collections.abc import AsyncGenerator
 
 import pytest
 
-from metadata_backend.api.models import SubmissionWorkflow
+from metadata_backend.api.json import to_json_dict
+from metadata_backend.api.models.submission import SubmissionWorkflow
 from metadata_backend.database.postgres.models import IngestStatus
 from metadata_backend.database.postgres.repositories.file import FileRepository
 from metadata_backend.database.postgres.repositories.object import ObjectRepository
@@ -13,7 +14,7 @@ from metadata_backend.database.postgres.repository import SessionFactory, transa
 from metadata_backend.database.postgres.services.file import FileService, UnknownFileException
 from tests.unit.database.postgres.helpers import create_file, create_object_entity, create_submission_entity
 
-workflow = SubmissionWorkflow.SDS
+workflow = SubmissionWorkflow.SD
 
 
 @pytest.fixture()
@@ -49,7 +50,7 @@ async def test_is_file(
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
-        obj = create_object_entity(submission.submission_id)
+        obj = create_object_entity(submission.project_id, submission.submission_id)
         await object_repository.add_object(obj, workflow)
 
         file = create_file(submission.submission_id, obj.object_id)
@@ -68,17 +69,17 @@ async def test_get_file(
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
-        file = create_object_entity(submission.submission_id)
+        file = create_object_entity(submission.project_id, submission.submission_id)
         await object_repository.add_object(file, workflow)
 
         # Create file.
         file = create_file(submission.submission_id, file.object_id)
 
-        file.file_id = await service.add_file(file, workflow)
-        result = await service.get_file_by_id(file.file_id)
+        file.fileId = await service.add_file(file, workflow)
+        result = await service.get_file_by_id(file.fileId)
 
         # Assert file.
-        assert sorted(file.to_json_dict().items()) == sorted(result.to_json_dict().items())
+        assert sorted(to_json_dict(file).items()) == sorted(to_json_dict(result).items())
 
 
 async def test_get_files(
@@ -90,19 +91,19 @@ async def test_get_files(
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
-        file = create_object_entity(submission.submission_id)
+        file = create_object_entity(submission.project_id, submission.submission_id)
         await object_repository.add_object(file, workflow)
 
         # Create files.
         files = [create_file(submission.submission_id, file.object_id) for _ in range(3)]
         for file in files:
-            file.file_id = await service.add_file(file, workflow)
+            file.fileId = await service.add_file(file, workflow)
 
         # Get files.
         results = [file async for file in service.get_files(submission_id=submission.submission_id)]
 
         # Assert files.
-        assert sorted(f.to_json_dict().items() for f in files) == sorted(r.to_json_dict().items() for r in results)
+        assert sorted(to_json_dict(f).items() for f in files) == sorted(to_json_dict(r).items() for r in results)
 
         # Get files using initial ingest status.
         results = [
@@ -113,7 +114,7 @@ async def test_get_files(
         ]
 
         # Assert files.
-        assert sorted(f.to_json_dict().items() for f in files) == sorted(r.to_json_dict().items() for r in results)
+        assert sorted(to_json_dict(f).items() for f in files) == sorted(to_json_dict(r).items() for r in results)
 
         # Get files using other ingest status.
         results = [
@@ -136,13 +137,13 @@ async def test_count_files(
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
-        file = create_object_entity(submission.submission_id)
+        file = create_object_entity(submission.project_id, submission.submission_id)
         await object_repository.add_object(file, workflow)
 
         # Create files.
         files = [create_file(submission.submission_id, file.object_id) for _ in range(3)]
         for file in files:
-            file.file_id = await service.add_file(file, workflow)
+            file.fileId = await service.add_file(file, workflow)
 
         # Assert file count.
         assert await service.count_files(submission.submission_id) == 3
@@ -159,7 +160,7 @@ async def test_count_bytes(
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
-        file = create_object_entity(submission.submission_id)
+        file = create_object_entity(submission.project_id, submission.submission_id)
         await object_repository.add_object(file, workflow)
 
         file_bytes = 1024
@@ -167,7 +168,7 @@ async def test_count_bytes(
         # Create files.
         files = [create_file(submission.submission_id, file.object_id, bytes=file_bytes) for _ in range(3)]
         for file in files:
-            file.file_id = await service.add_file(file, workflow)
+            file.fileId = await service.add_file(file, workflow)
 
         # Assert file bytes.
         assert await service.count_bytes(submission.submission_id) == 3 * file_bytes
@@ -183,7 +184,7 @@ async def test_update_ingest_status(
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
-        obj = create_object_entity(submission.submission_id)
+        obj = create_object_entity(submission.project_id, submission.submission_id)
         await object_repository.add_object(obj, workflow)
 
         file = create_file(submission.submission_id, obj.object_id)
@@ -206,7 +207,7 @@ async def test_delete_file_by_id(
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
-        obj = create_object_entity(submission.submission_id)
+        obj = create_object_entity(submission.project_id, submission.submission_id)
         await object_repository.add_object(obj, workflow)
 
         file = create_file(submission.submission_id, obj.object_id)
@@ -229,7 +230,7 @@ async def test_delete_file_by_path(
     async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
-        obj = create_object_entity(submission.submission_id)
+        obj = create_object_entity(submission.project_id, submission.submission_id)
         await object_repository.add_object(obj, workflow)
 
         file = create_file(submission.submission_id, obj.object_id)

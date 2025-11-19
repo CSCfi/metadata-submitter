@@ -13,7 +13,9 @@ from metadata_backend.api.processors.xml.models import (
     XmlSchemaPath,
 )
 
-XML_SCHEMA_DIR = Path(__file__).parent.parent.parent.parent / "helpers" / "schemas"
+BP_XML_SCHEMA_DIR = Path(__file__).parent.parent.parent.parent / "schemas" / "xml" / "bigpicture"
+DATACITE_XML_SCHEMA_DIR = Path(__file__).parent.parent.parent.parent / "schemas" / "xml" / "datacite" / "4.5"
+FEGA_XML_SCHEMA_DIR = Path(__file__).parent.parent.parent.parent / "schemas" / "xml" / "fega"
 
 
 def _xml_schema_path(schema_type: str, root_paths: str | list[str], set_path: str) -> XmlSchemaPath:
@@ -172,7 +174,7 @@ def _xml_ref_path_bp(
 
 # BP submission configuration for a full non-incremental submission.
 BP_FULL_SUBMISSION_XML_OBJECT_CONFIG = XmlObjectConfig(
-    schema_dir=str(XML_SCHEMA_DIR),
+    schema_dir=str(BP_XML_SCHEMA_DIR),
     schema_file_resolver=lambda schema_type: "BP." + schema_type + ".xsd",
     schema_paths=[
         _xml_schema_path(*BP_ANNOTATION_SCHEMA_AND_PATH, BP_ANNOTATION_SET_PATH),
@@ -421,7 +423,7 @@ def fega_schema_file_resolver(schema_type: str) -> str:
 
 # FEGA submission configuration for a full non-incremental submission.
 FEGA_FULL_SUBMISSION_XML_OBJECT_CONFIG = XmlObjectConfig(
-    schema_dir=str(XML_SCHEMA_DIR),
+    schema_dir=str(FEGA_XML_SCHEMA_DIR),
     schema_file_resolver=fega_schema_file_resolver,
     schema_paths=[
         _xml_schema_path(*FEGA_DAC_SCHEMA_AND_PATH, FEGA_DAC_SET_PATH),

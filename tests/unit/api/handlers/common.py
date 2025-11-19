@@ -1,11 +1,12 @@
 """Test API endpoints from handlers module."""
 
 import uuid
+from datetime import date
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
-from aiohttp import FormData, web
+from aiohttp import web
 from aiohttp.test_utils import AioHTTPTestCase, make_mocked_coro
 from aiohttp.web import Request
 
@@ -62,7 +63,8 @@ class HandlersTestCase(AioHTTPTestCase):
         await self.client.start_server()
 
         self.project_id = "1001"
-        self.doi_info = {
+        self.submission_metadata = {
+            "publicationYear": date.today().year,
             "creators": [
                 {
                     "givenName": "Test",
@@ -109,7 +111,7 @@ class HandlersTestCase(AioHTTPTestCase):
         title: str | None = None,
         description: str | None = None,
         project_id: str | None = None,
-        workflow: str = "SDSX",
+        workflow: str = "SD",
     ) -> str:
         """Post a submission."""
 
@@ -126,14 +128,14 @@ class HandlersTestCase(AioHTTPTestCase):
             self.patch_verify_authorization,
             self.patch_verify_user_project,
         ):
-            data = {
+            submission = {
                 "name": name,
                 "title": title,
                 "description": description,
                 "projectId": project_id,
                 "workflow": workflow,
             }
-            response = await self.client.post(f"{API_PREFIX}/submissions", json=data)
+            response = await self.client.post(f"{API_PREFIX}/submissions", json=submission)
             response.raise_for_status()
             return (await response.json())["submissionId"]
 

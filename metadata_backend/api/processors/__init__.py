@@ -1,1 +1,1 @@
-"""API processors."""
+"""Metadata object processor to inject accession numbers."""

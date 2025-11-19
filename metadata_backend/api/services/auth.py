@@ -9,9 +9,9 @@ from datetime import datetime, timedelta, timezone
 
 import jwt
 
-from ...api.models import ApiKey
 from ...database.postgres.models import ApiKeyEntity
 from ...database.postgres.repositories.api_key import ApiKeyRepository
+from ..models.models import ApiKey
 
 JWT_ALGORITHM = "HS256"
 JWT_ISSUER = "SD Submit"

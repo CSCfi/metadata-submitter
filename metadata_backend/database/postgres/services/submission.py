@@ -1,38 +1,22 @@
 """Service for submissions."""
 
-import copy
-import re
 from datetime import datetime
-from typing import Any, cast
-
-from pydantic_core import to_jsonable_python
+from typing import Any
 
 from ....api.exceptions import NotFoundUserException, UserException
-from ....api.models import Rems, SubmissionWorkflow
+from ....api.json import to_json_dict
+from ....api.models.submission import Rems, Submission, SubmissionMetadata, Submissions, SubmissionWorkflow
 from ..models import SubmissionEntity
+from ..repositories.registration import RegistrationRepository
 from ..repositories.submission import (
     SUB_FIELD_BUCKET,
-    SUB_FIELD_CREATED_DATE,
-    SUB_FIELD_DESCRIPTION,
-    SUB_FIELD_DOI,
-    SUB_FIELD_MODIFIED_DATE,
-    SUB_FIELD_NAME,
-    SUB_FIELD_PROJECT_ID,
-    SUB_FIELD_PUBLISHED,
-    SUB_FIELD_PUBLISHED_DATE,
+    SUB_FIELD_METADATA,
     SUB_FIELD_REMS,
-    SUB_FIELD_SUBMISSION_ID,
-    SUB_FIELD_TITLE,
-    SUB_FIELD_WORKFLOW,
     SubmissionRepository,
     SubmissionSort,
 )
 
 # pylint: disable=too-many-public-methods
-
-
-class SubmissionUserException(UserException):
-    """Base exception for submission related user errors."""
 
 
 class UnknownSubmissionUserException(NotFoundUserException):
@@ -48,7 +32,7 @@ class UnknownSubmissionUserException(NotFoundUserException):
         super().__init__(message)
 
 
-class PublishedSubmissionUserException(SubmissionUserException):
+class PublishedSubmissionUserException(UserException):
     """Raised when a submission has been published and can't be modified."""
 
     def __init__(self, submission_id: str) -> None:
@@ -64,212 +48,167 @@ class PublishedSubmissionUserException(SubmissionUserException):
 class SubmissionService:
     """Service for submissions."""
 
-    def __init__(self, repository: SubmissionRepository) -> None:
+    def __init__(self, repository: SubmissionRepository, registration_repository: RegistrationRepository) -> None:
         """Initialize the service."""
         self.repository = repository
+        self.registration_repository = registration_repository
 
     @staticmethod
-    def _copy_str_field(document: dict[str, Any], name: str, *, mandatory: bool = False) -> str | None:
+    def ignore_fields(submission: Submission) -> None:
         """
-        Read a string field from the submission document.
+        Ignore fields in the submission document.
 
-        :param document: The submission document.
-        :param name: The field name.
-        :param mandatory: Whether the field is mandatory.
-        :return: The value as a string if the field exists and can be
-        converted to a string. Mandatory fields raise ValueError if the field
-        is missing or can't be converted to a string.
+        :param submission: the submission document
         """
-        value = document
-        try:
-            value = value[name]
-            return str(value)
-        except (KeyError, TypeError, ValueError):
-            if mandatory:
-                raise ValueError(f"Missing or invalid submission field: {name}")  # pylint: disable=raise-missing-from
-            return None
+        submission.submissionId = None
+        submission.published = None
+        submission.dateCreated = None
+        submission.lastModified = None
+        submission.datePublished = None
+        if submission.metadata:
+            submission.metadata.identifiers = None
 
     @staticmethod
-    def _remove_field(document: dict[str, Any], *names: str) -> None:
+    def convert_to_new_entity(submission: Submission) -> SubmissionEntity:
         """
-        Remove fields from submissions document.
+        Convert submission document to a new submission entity.
 
-        :param document: The submission document.
-        :param names: The field names.
-        """
-        for name in names:
-            document.pop(name, None)
-
-    @staticmethod
-    def _preserve_immutable_field(document: dict[str, Any], old_document: dict[str, Any], name: str) -> None:
-        """
-        Preserve immutable field value by copying it from the old submission document.
-
-        :param document: The submission document.
-        :param old_document: The old submission document.
-        :param name: The field name.
-        """
-        old_value = SubmissionService._copy_str_field(old_document, name)
-        if old_value:
-            # Keep old value regardless of the new value.
-            document[name] = old_value
-
-    @staticmethod
-    def _preserve_mutable_field(document: dict[str, Any], old_document: dict[str, Any], name: str) -> None:
-        """
-        Preserve mutable field value by copying it from the old submission document if it has been removed.
-
-        :param document: The submission document.
-        :param old_document: The old submission document.
-        :param name: The field name.
-        """
-        value = document.get(name)
-        old_value = old_document.get(name)
-        if old_value and not value:
-            # Keep old value if new value has not been defined.
-            document[name] = old_value
-
-    @staticmethod
-    def convert_to_entity(document: dict[str, Any], old_submission: SubmissionEntity | None = None) -> SubmissionEntity:
-        """
-        Convert submission document to a submission entity.
-
-        :param document: The new submission document
-        :param old_submission: The old submission entity if one exists.
+        :param submission: The new submission document
         "return: The submission entity
         """
-        new_document = copy.deepcopy(document)  # Create a copy so that the document is not modified.
+        # Create a copy so that the original document is not modified.
+        submission = submission.model_copy(deep=True)
 
-        _copy_str_field = SubmissionService._copy_str_field
-        _preserve_immutable_field = SubmissionService._preserve_immutable_field
-        _preserve_mutable_field = SubmissionService._preserve_mutable_field
-        _remove_field = SubmissionService._remove_field
+        SubmissionService.ignore_fields(submission)
 
-        # Ignored in the submission document.
-        _remove_field(
-            new_document,
-            SUB_FIELD_SUBMISSION_ID,
-            SUB_FIELD_PUBLISHED,
-            SUB_FIELD_CREATED_DATE,
-            SUB_FIELD_MODIFIED_DATE,
-            SUB_FIELD_PUBLISHED_DATE,
-            # No longer supported.
-            "metadataObjects",
-            "drafts",
-            "files",
-            "extraInfo",
-        )
-
-        if not old_submission:
-            # Create new submission.
-            name = _copy_str_field(new_document, SUB_FIELD_NAME, mandatory=True)
-            project_id = _copy_str_field(new_document, SUB_FIELD_PROJECT_ID, mandatory=True)
-            bucket = _copy_str_field(new_document, SUB_FIELD_BUCKET)
-            workflow_str = _copy_str_field(new_document, SUB_FIELD_WORKFLOW, mandatory=True)
-            try:
-                workflow = SubmissionWorkflow(workflow_str)
-            except ValueError:
-                raise UserException(  # pylint: disable=raise-missing-from
-                    f"Invalid submission workflow: {workflow_str}"
-                )
-            title = _copy_str_field(new_document, SUB_FIELD_TITLE)
-            description = _copy_str_field(new_document, SUB_FIELD_DESCRIPTION)
-
-            return SubmissionEntity(
-                name=name,
-                project_id=project_id,
-                bucket=bucket,
-                workflow=workflow,
-                title=title,
-                description=description,
-                document=new_document,
+        try:
+            workflow = SubmissionWorkflow(submission.workflow)
+        except ValueError:
+            raise UserException(  # pylint: disable=raise-missing-from
+                f"Invalid submission workflow: {submission.workflow.value}"
             )
 
-        # Update existing submission.
-
-        # The submission document can be updated by the user, however, some fields
-        # can't be removed or changed. If the following fields are absent from the
-        # updated document then the existing value in the current document is preserved:
-        # name, title, description, doiInfo, rems, projectId, workflow, bucket. Furthermore,
-        # if the following fields are changed then the existing value in the current document
-        # is preserved: projectId, workflow, bucket.
-
-        old_document = old_submission.document
-        _preserve_mutable_field(new_document, old_document, SUB_FIELD_NAME)
-        _preserve_mutable_field(new_document, old_document, SUB_FIELD_TITLE)
-        _preserve_mutable_field(new_document, old_document, SUB_FIELD_DESCRIPTION)
-        _preserve_immutable_field(new_document, old_document, SUB_FIELD_PROJECT_ID)
-        _preserve_immutable_field(new_document, old_document, SUB_FIELD_BUCKET)
-        _preserve_immutable_field(new_document, old_document, SUB_FIELD_WORKFLOW)
-        _preserve_mutable_field(new_document, old_document, SUB_FIELD_DOI)
-        _preserve_mutable_field(new_document, old_document, SUB_FIELD_REMS)
-
-        # Update mutable columns values.
-        old_submission.name = _copy_str_field(new_document, SUB_FIELD_NAME)
-        old_submission.title = _copy_str_field(new_document, SUB_FIELD_TITLE)
-        old_submission.description = _copy_str_field(new_document, SUB_FIELD_DESCRIPTION)
-        old_submission.bucket = _copy_str_field(new_document, SUB_FIELD_BUCKET)
-        old_submission.document = new_document
-        return old_submission
+        entity = SubmissionEntity(name=submission.name, project_id=submission.projectId, workflow=workflow)
+        SubmissionService._set_updatable_values(submission, entity)
+        return entity
 
     @staticmethod
-    def convert_from_entity(entity: SubmissionEntity) -> dict[str, Any] | None:
+    def _set_updatable_values(submission: Submission, entity: SubmissionEntity) -> None:
+        entity.bucket = submission.bucket
+        entity.title = submission.title
+        entity.description = submission.description
+        entity.document = to_json_dict(submission)
+
+    @staticmethod
+    async def convert_to_updated_entity(submission: dict[str, Any], old_entity: SubmissionEntity) -> SubmissionEntity:
         """
-        Convert submission JSON document to a submission dict.
+        Convert submission document to an updated submission entity.
+
+        :param submission: A completely or partially updated submission document.
+        :param old_entity: The old submission entity.
+        "return: The submission entity
+        """
+        old_submission = await SubmissionService.convert_from_entity(old_entity)
+
+        SubmissionService.ignore_fields(old_submission)
+
+        # Merge changes to the existing submission document.
+        updated_submission = Submission.model_validate({**to_json_dict(old_submission), **submission})
+
+        # Some field values can't be changed.
+        if updated_submission.name != old_entity.name:
+            raise UserException(f"Submission name '{old_entity.name}' can't be changed to '{updated_submission.name}'")
+        if updated_submission.workflow != old_entity.workflow:
+            raise UserException(
+                f"Submission workflow '{old_entity.workflow.value}' can't be changed to '{updated_submission.workflow}'"
+            )
+        if updated_submission.projectId != old_entity.project_id:
+            raise UserException(
+                f"Submission project '{old_entity.project_id}' can't be changed to '{updated_submission.projectId}'"
+            )
+        if old_entity.bucket and updated_submission.bucket != old_entity.bucket:
+            raise UserException(
+                f"Submission bucket '{old_entity.bucket}' can't be changed to '{updated_submission.bucket}'"
+            )
+
+        SubmissionService._set_updatable_values(updated_submission, old_entity)
+        return old_entity
+
+    @staticmethod
+    async def convert_from_entity(entity: SubmissionEntity) -> Submission | None:
+        """
+        Convert submission JSON document to a submission model.
 
         :param entity: the submission entity
-        :returns: the submission dict
+        :returns: the submission document
         """
 
         if entity is None:
             return None
 
-        # Make a deepcopy to prevent SQLAlchemy from tracking changes to the document.
-        document = copy.deepcopy(entity.document)
+        # Make a deepcopy to prevent SQLAlchemy from tracking changes.
+        submission = Submission.model_validate(entity.document).model_copy(deep=True)
 
-        document[SUB_FIELD_SUBMISSION_ID] = to_jsonable_python(entity.submission_id)
-        document[SUB_FIELD_PROJECT_ID] = to_jsonable_python(entity.project_id)
-        document[SUB_FIELD_NAME] = to_jsonable_python(entity.name)
-        document["text_name"] = to_jsonable_python(" ".join(re.split("[\\W_]", entity.name)))
-        document[SUB_FIELD_WORKFLOW] = to_jsonable_python(entity.workflow.value)
-        document[SUB_FIELD_PUBLISHED] = to_jsonable_python(entity.is_published)
+        submission.submissionId = entity.submission_id
+        submission.published = entity.is_published
         if entity.bucket is not None:
-            document[SUB_FIELD_BUCKET] = to_jsonable_python(entity.bucket)
+            submission.bucket = entity.bucket
         if entity.created is not None:
-            document[SUB_FIELD_CREATED_DATE] = to_jsonable_python(entity.created)
+            submission.dateCreated = entity.created
         if entity.modified is not None:
-            document[SUB_FIELD_MODIFIED_DATE] = to_jsonable_python(entity.modified)
+            submission.lastModified = entity.modified
         if entity.published is not None:
-            document[SUB_FIELD_PUBLISHED_DATE] = to_jsonable_python(entity.published)
+            submission.datePublished = entity.published
 
-        return document
+        return submission
 
-    async def add_submission(self, submission: dict[str, Any], *, submission_id: str | None = None) -> str:
+    async def add_submission(self, submission: Submission, *, submission_id: str | None = None) -> str:
         """Add a new submission to the database.
 
         :param submission: the submission
         :param submission_id: submission id that overrides the default one
         :returns: the automatically assigned submission id
         """
-        entity = self.convert_to_entity(submission)
+
+        # Check that the submission name does not already exist in the project.
+        if await self.is_submission_by_name(submission.projectId, submission.name):
+            raise UserException(
+                f"Submission with name {submission.name} already exists in project {submission.projectId}"
+            )
+
+        entity = self.convert_to_new_entity(submission)
         entity.submission_id = submission_id
+
         return await self.repository.add_submission(entity)
 
-    async def get_submission_by_id(self, submission_id: str) -> dict[str, Any] | None:
+    async def get_submission_by_id(self, submission_id: str) -> Submission | None:
         """Get the submission using submission id.
 
         :param submission_id: the submission id
         :returns: the submission
         """
-        return self.convert_from_entity(await self.repository.get_submission_by_id(submission_id))
+        return await self.convert_from_entity(await self.repository.get_submission_by_id(submission_id))
 
-    async def get_submission_by_name(self, project_id: str, name: str) -> dict[str, Any] | None:
+    async def get_submission_by_name(self, project_id: str, name: str) -> Submission | None:
         """Get the submission using submission name.
 
         :param project_id: The project_id.
         :param name: The name of the submission.
         """
-        return self.convert_from_entity(await self.repository.get_submission_by_name(project_id, name))
+        return await self.convert_from_entity(await self.repository.get_submission_by_name(project_id, name))
+
+    async def get_submission_by_id_or_name(self, project_id: str, submission_id_or_name: str) -> Submission | None:
+        """Get the submission using submission id or name.
+
+        :param project_id: the project id
+        :param submission_id_or_name: the submission id or submission name
+        :returns: submission id if the submission exists
+        """
+        submission = await self.get_submission_by_id(submission_id_or_name)
+        if not submission:
+            submission = await self.get_submission_by_name(project_id, submission_id_or_name)
+
+        return submission
 
     async def get_submissions(
         self,
@@ -285,7 +224,7 @@ class SubmissionService:
         sort: SubmissionSort = SubmissionSort.CREATED_DESC,
         page: int | None = None,
         page_size: int | None = None,
-    ) -> tuple[list[dict[str, Any]], int]:
+    ) -> tuple[Submissions, int]:
         """
         Get matching submissions.
 
@@ -321,7 +260,7 @@ class SubmissionService:
             page_size=page_size,
         )
 
-        return [self.convert_from_entity(submission) for submission in submissions], cnt
+        return Submissions(submissions=[await self.convert_from_entity(s) for s in submissions]), cnt
 
     async def is_submission_by_id(self, submission_id: str) -> bool:
         """Check if the submission exists.
@@ -422,20 +361,18 @@ class SubmissionService:
 
         return submission.workflow
 
-    async def get_doi_document(self, submission_id: str) -> dict[str, Any] | None:
-        """Get DOI sub-document.
+    async def get_metadata(self, submission_id: str) -> SubmissionMetadata | None:
+        """Get submission metadata sub-document.
 
         :param submission_id: the submission id
-        :returns: The DOI sub-document.
+        :returns: The submission metadata sub-document.
         """
 
         submission = await self.repository.get_submission_by_id(submission_id)
         if submission is None:
             raise UnknownSubmissionUserException(submission_id)
 
-        if SUB_FIELD_DOI in submission.document:
-            return cast(dict[str, Any], submission.document[SUB_FIELD_DOI])
-        return None
+        return SubmissionMetadata.model_validate(submission.document[SUB_FIELD_METADATA])
 
     async def get_rems_document(self, submission_id: str) -> Rems | None:
         """Get REMS sub-document.
@@ -465,47 +402,14 @@ class SubmissionService:
         return submission.bucket
 
     async def update_submission(self, submission_id: str, document: dict[str, Any]) -> None:
-        """Update the submission document.
-
-        The submission document can be updated by the user, however, some fields
-        can't be removed or changed. If the following fields are absent from the
-        updated document then the existing value in the current document is preserved:
-        name, description, doiInfo, rems, projectId, workflow, bucket. Furthermore,
-        if the following fields are changed then the existing value in the current document
-        is preserved: projectId, workflow, bucket.
+        """Update the existing submission document.
 
         :param submission_id: the submission id
-        :param document: the new submission document
+        :param document: a completely or partially updated submission document
         """
 
-        def update_callback(submission: SubmissionEntity) -> None:
-            self.convert_to_entity(document, submission)
-
-        if await self.repository.update_submission(submission_id, update_callback) is None:
-            raise UnknownSubmissionUserException(submission_id)
-
-    async def update_name(self, submission_id: str, name: str) -> None:
-        """Update submission name.
-
-        :param submission_id: the submission id
-        :param name: new name
-        """
-
-        def update_callback(submission: SubmissionEntity) -> None:
-            submission.name = name
-
-        if await self.repository.update_submission(submission_id, update_callback) is None:
-            raise UnknownSubmissionUserException(submission_id)
-
-    async def update_description(self, submission_id: str, description: str) -> None:
-        """Update submission description.
-
-        :param submission_id: the submission id
-        :param description: new description
-        """
-
-        def update_callback(submission: SubmissionEntity) -> None:
-            submission.document["description"] = description
+        async def update_callback(submission: SubmissionEntity) -> None:
+            await self.convert_to_updated_entity(document, submission)
 
         if await self.repository.update_submission(submission_id, update_callback) is None:
             raise UnknownSubmissionUserException(submission_id)
@@ -516,27 +420,15 @@ class SubmissionService:
         :param submission_id: the submission id
         :param bucket: new bucket
         """
+        await self.update_submission(submission_id, {SUB_FIELD_BUCKET: bucket})
 
-        def update_callback(submission: SubmissionEntity) -> None:
-            if submission.bucket is not None:
-                raise SubmissionUserException(f"Submission '{submission_id}' already has a linked bucket.")
-            submission.bucket = bucket
-
-        if await self.repository.update_submission(submission_id, update_callback) is None:
-            raise UnknownSubmissionUserException(submission_id)
-
-    async def update_doi_info(self, submission_id: str, doi_info: dict[str, Any]) -> None:
-        """Update submission doi info.
+    async def update_metadata(self, submission_id: str, metadata: SubmissionMetadata) -> None:
+        """Update submission metadata sub-document.
 
         :param submission_id: the submission id
-        :param doi_info: new doi info
+        :param metadata: new submission metadata
         """
-
-        def update_callback(submission: SubmissionEntity) -> None:
-            submission.document[SUB_FIELD_DOI] = doi_info
-
-        if await self.repository.update_submission(submission_id, update_callback) is None:
-            raise UnknownSubmissionUserException(submission_id)
+        await self.update_submission(submission_id, {SUB_FIELD_METADATA: to_json_dict(metadata)})
 
     async def update_rems(self, submission_id: str, rems: Rems) -> None:
         """Update dataset REMS resource information.
@@ -544,12 +436,7 @@ class SubmissionService:
         :param submission_id: the submission id
         :param rems: REMS data.
         """
-
-        def update_callback(submission: SubmissionEntity) -> None:
-            submission.document[SUB_FIELD_REMS] = rems.to_json_dict()
-
-        if await self.repository.update_submission(submission_id, update_callback) is None:
-            raise UnknownSubmissionUserException(submission_id)
+        await self.update_submission(submission_id, {SUB_FIELD_REMS: to_json_dict(rems)})
 
     async def publish(self, submission_id: str) -> None:
         """Publish the submission.
@@ -557,7 +444,7 @@ class SubmissionService:
         :param submission_id: the submission id
         """
 
-        def update_callback(submission: SubmissionEntity) -> None:
+        async def update_callback(submission: SubmissionEntity) -> None:
             if not submission.is_published:
                 submission.is_published = True
 

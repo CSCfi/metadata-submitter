@@ -6,7 +6,7 @@ from string import ascii_lowercase, digits
 
 import ulid
 
-from ..models import SubmissionWorkflow
+from ..models.submission import SubmissionWorkflow
 from ..processors.xml.configs import (
     BP_FILE_OBJECT_TYPE,
     BP_OBJECT_TYPES,

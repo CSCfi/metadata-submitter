@@ -4,7 +4,7 @@ from aiohttp import web
 from aiohttp.web import Request, Response
 
 from ..auth import get_authorized_user_id
-from ..models import ApiKey
+from ..models.models import ApiKey
 from ..resources import get_access_service
 from ..services.auth import AccessService
 

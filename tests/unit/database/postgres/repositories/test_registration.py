@@ -1,6 +1,6 @@
 import uuid
 
-from metadata_backend.api.models import SubmissionWorkflow
+from metadata_backend.api.models.submission import SubmissionWorkflow
 from metadata_backend.database.postgres.models import RegistrationEntity
 from metadata_backend.database.postgres.repositories.object import ObjectRepository
 from metadata_backend.database.postgres.repositories.registration import RegistrationRepository
@@ -8,7 +8,7 @@ from metadata_backend.database.postgres.repositories.submission import Submissio
 from metadata_backend.database.postgres.repository import SessionFactory, transaction
 from tests.unit.database.postgres.helpers import create_object_entity, create_submission_entity
 
-workflow = SubmissionWorkflow.SDS
+workflow = SubmissionWorkflow.SD
 
 
 async def test_add_get_registration(
@@ -20,7 +20,7 @@ async def test_add_get_registration(
     async with transaction(session_factory, requires_new=True, rollback_new=True):
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
-        obj = create_object_entity(submission.submission_id)
+        obj = create_object_entity(submission.project_id, submission.submission_id)
         await object_repository.add_object(obj, workflow)
 
         object_object_type = f"type_{uuid.uuid4()}"

@@ -1,7 +1,7 @@
 """HTTP handler for submission related requests."""
 
 import json
-import re
+import os
 from datetime import datetime
 from math import ceil
 
@@ -11,18 +11,19 @@ from multidict import CIMultiDict
 
 from ...database.postgres.models import IngestStatus
 from ...helpers.logger import LOG
-from ...helpers.validator import JSONValidator
 from ..auth import get_authorized_user_id
 from ..exceptions import UserException
-from ..models import Rems, SubmissionWorkflow
+from ..json import to_json_dict
+from ..models.submission import Bucket, Rems, Submission, SubmissionMetadata, SubmissionWorkflow
 from ..resources import (
     get_file_service,
     get_project_service,
     get_registration_service,
     get_submission_service,
 )
-from .common import to_json
 from .restapi import RESTAPIIntegrationHandler
+
+ALLOW_UNSAFE: bool = os.getenv("ALLOW_UNSAFE", "FALSE").strip().upper() == "TRUE"
 
 
 class SubmissionAPIHandler(RESTAPIIntegrationHandler):
@@ -82,6 +83,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         workflow: SubmissionWorkflow | None = None,
         project_id: str | None = None,
         search_name: bool = False,
+        unsafe: bool = False,
     ) -> str:
         """
         Check the that user is allowed to modify the submission.
@@ -91,8 +93,14 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         :param workflow: Optional workflow.
         :param project_id: Optional project id.
         :param search_name: Search also by submission name. Requires project id.
+        :param unsafe: Allow changes to the submission after publishing.
         :returns: The submission id.
         """
+        if ALLOW_UNSAFE and unsafe:
+            return await SubmissionAPIHandler.check_submission_retrievable(
+                req, submission_id, workflow=workflow, project_id=project_id, search_name=search_name
+            )
+
         submission_id = await SubmissionAPIHandler.check_submission_retrievable(
             req,
             submission_id,
@@ -156,17 +164,15 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
             page_size=page_size,
         )
 
-        body = to_json(
-            {
-                "page": {
-                    "page": page,
-                    "size": page_size,
-                    "totalPages": ceil(total_submissions / page_size),
-                    "totalSubmissions": total_submissions,
-                },
-                "submissions": submissions,
-            }
-        )
+        result = {
+            "page": {
+                "page": page,
+                "size": page_size,
+                "totalPages": ceil(total_submissions / page_size),
+                "totalSubmissions": total_submissions,
+            },
+            **to_json_dict(submissions),
+        }
 
         url = f"{req.scheme}://{req.host}{req.path}"
         link_headers = self._pagination_header_links(url, page, page_size, total_submissions)
@@ -177,12 +183,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
             total_submissions,
         )
 
-        return web.Response(
-            body=body,
-            status=200,
-            headers=link_headers,
-            content_type="application/json",
-        )
+        return web.json_response(result, status=200, headers=link_headers)
 
     async def post_submission(self, req: Request) -> Response:
         """Create new submission.
@@ -194,24 +195,19 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         project_service = get_project_service(req)
         submission_service = get_submission_service(req)
 
-        content = await self._json_data(req)
-
-        JSONValidator(content, "submission").validate()
+        submission = Submission.model_validate(await self._json_data(req))
 
         # Check that user is affiliated with the project.
-        await project_service.verify_user_project(user_id, content["projectId"])
-
-        # Get submission name.
-        name = content["name"]
+        await project_service.verify_user_project(user_id, submission.projectId)
 
         # Check if the name of the submission is unique within the project
-        existing_submission = await submission_service.get_submission_by_name(content["projectId"], name)
+        existing_submission = await submission_service.get_submission_by_name(submission.projectId, submission.name)
         if existing_submission:
-            reason = f"Submission with name '{content['name']}' already exists in project {content['projectId']}"
+            reason = f"Submission with name '{submission.name}' already exists in project {submission.projectId}"
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
 
-        submission_id = await submission_service.add_submission(content)
+        submission_id = await submission_service.add_submission(submission)
 
         url = f"{req.scheme}://{req.host}{req.path}"
         location_headers = CIMultiDict(Location=f"{url}/{submission_id}")
@@ -238,24 +234,13 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         submission = await submission_service.get_submission_by_id(submission_id)
 
         LOG.info("GET submission with ID: %r was successful.", submission_id)
-        return web.Response(
-            body=to_json(submission),
-            status=200,
-            content_type="application/json",
-        )
+        return web.json_response(to_json_dict(submission))
 
     async def patch_submission(self, req: Request) -> Response:
-        """Update submission document.
+        """
+        Update submission document.
 
-        The DOI and REMS sub-documents can be replaced but the submission repository
-        prevents them from being removed.
-
-        The submission document can be updated by the user, however, some fields
-        can't be removed or changed. If the following fields are absent from the
-        updated document then the existing value in the current document is preserved:
-        name, description, doiInfo, rems, projectId, workflow, bucket. Furthermore,
-        if the following fields are changed then the existing value in the current document
-        is preserved: projectId, workflow, bucket.
+        Changes are merged to the existing submission document.
 
         :param req: PATCH request
         :returns: JSON response containing submission ID for updated submission
@@ -266,18 +251,12 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         # Check that the submission can be modified by the user.
         await self.check_submission_modifiable(req, submission_id)
 
-        # Check patch operations in request are valid
+        # Merge the completely or partially updated submission document to the existing one.
         data = await self._json_data(req)
-        if not isinstance(data, dict):
-            reason = "Patch submission operation should be provided as a JSON object"
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason)
-
         await submission_service.update_submission(submission_id, data)
 
-        body = to_json({"submissionId": submission_id})
         LOG.info("PATCH submission with ID: %r was successful.", submission_id)
-        return web.Response(body=body, status=200, content_type="application/json")
+        return web.json_response({"submissionId": submission_id})
 
     async def delete_submission(self, req: Request) -> web.HTTPNoContent:
         """Delete object submission from database.
@@ -297,11 +276,11 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         LOG.info("DELETE submission with ID: %r was successful.", submission_id)
         return web.HTTPNoContent()
 
-    async def patch_submission_doi(self, req: Request) -> Response:
-        """Add or replace DOI information.
+    async def patch_submission_metadata(self, req: Request) -> Response:
+        """Update submission metadata.
 
-        :param req: PATCH request with metadata in the body
-        :returns: JSON response containing submission ID for updated submission
+        :param req: PATCH request
+        :returns: HTTP No Content response
         """
         submission_id = req.match_info["submissionId"]
         submission_service = get_submission_service(req)
@@ -309,14 +288,13 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         # Check that the submission can be modified by the user.
         await self.check_submission_modifiable(req, submission_id)
 
-        data = await self._json_data(req)
-        await submission_service.update_doi_info(submission_id, data)
+        metadata = SubmissionMetadata.model_validate(await self._json_data(req))
+        await submission_service.update_metadata(submission_id, metadata)
 
-        body = to_json({"submissionId": submission_id})
-        return web.Response(body=body, status=200, content_type="application/json")
+        return web.HTTPNoContent()
 
     async def patch_submission_rems(self, req: Request) -> Response:
-        """Add or replace REMS information.
+        """Update submission REMS.
 
         REMS example:
         {
@@ -325,58 +303,36 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
              "licenses": [1] # POLICY
         }
 
-        :param req: PATCH request with metadata in the body
-        :returns: JSON response containing submission ID for updated submission
-        """
-        submission_id = req.match_info["submissionId"]
-        submission_service = get_submission_service(req)
-
-        # Check that the submission can be modified by the user.
-        await self.check_submission_modifiable(req, submission_id)
-
-        data = await self._json_data(req)
-        rems = Rems(**data)
-        await self.check_rems_ok(rems)
-        await submission_service.update_rems(submission_id, rems)
-
-        body = to_json({"submissionId": submission_id})
-        return web.Response(body=body, status=200, content_type="application/json")
-
-    async def patch_submission_linked_bucket(self, req: Request) -> Response:
-        """Add or remove a linked bucket name to a submission.
-
-        :param req: PATCH request with metadata schema in the body
-        :raises: HTTP Bad Request if submission already has a bucket
-        or request has missing / invalid bucket
+        :param req: PATCH request
         :returns: HTTP No Content response
         """
         submission_id = req.match_info["submissionId"]
         submission_service = get_submission_service(req)
 
-        data: dict[str, str] = await self._json_data(req)
+        # Check that the submission can be modified by the user.
+        await self.check_submission_modifiable(req, submission_id)
+
+        rems = Rems.model_validate(await self._json_data(req))
+        await self.check_rems_ok(rems)
+        await submission_service.update_rems(submission_id, rems)
+
+        return web.HTTPNoContent()
+
+    async def patch_submission_bucket(self, req: Request) -> Response:
+        """Update submission bucket.
+
+        :param req: PATCH request
+        :returns: HTTP No Content response
+        """
+        submission_id = req.match_info["submissionId"]
+        submission_service = get_submission_service(req)
 
         # Check that the submission can be modified by the user.
         await self.check_submission_modifiable(req, submission_id)
 
-        # Container name limitations in SD Connect
-        pattern = re.compile(r"^[0-9a-zA-Z\.\-_]{3,}$")
+        bucket = Bucket.model_validate(await self._json_data(req))
+        await submission_service.update_bucket(submission_id, bucket.bucket)
 
-        bucket = data["bucket"]
-        try:
-            if bucket == "":
-                pass
-            elif pattern.match(bucket):
-                await submission_service.update_bucket(submission_id, bucket)  # Changing bucket is not supported.
-            else:
-                reason = "Provided an invalid bucket."
-                LOG.error(reason)
-                raise web.HTTPBadRequest(reason=reason)
-        except (KeyError, TypeError) as exc:
-            reason = "A bucket string is required."
-            LOG.error(reason)
-            raise web.HTTPBadRequest(reason=reason) from exc
-
-        LOG.info("PATCH a linked bucket in submission with ID: %r was successful.", submission_id)
         return web.HTTPNoContent()
 
     async def get_submission_files(self, req: Request) -> Response:
@@ -396,7 +352,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         LOG.info("GET files for submission with ID: %r was successful.", submission_id)
         return web.Response(
-            body=json.dumps([f.to_json_dict() for f in files]),
+            body=json.dumps([to_json_dict(f) for f in files]),
             status=200,
             content_type="application/json",
         )
@@ -418,7 +374,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         LOG.info("GET files for submission with ID: %r was successful.", submission_id)
         return web.Response(
-            body=json.dumps([r.to_json_dict() for r in registrations]),
+            body=json.dumps([to_json_dict(r) for r in registrations]),
             status=200,
             content_type="application/json",
         )
@@ -439,7 +395,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         await self.check_submission_modifiable(req, submission_id)
 
         workflow = await submission_service.get_workflow(submission_id)
-        if workflow == SubmissionWorkflow.SDS:
+        if workflow == SubmissionWorkflow.SD:
             # Use submission id as the dataset id for CSC submissions.
             dataset_id = submission_id
         else:
@@ -455,11 +411,11 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
                     "user": user_id,
                     "submissionId": submission_id,
                     "filepath": file.path,
-                    "accessionId": file.file_id,
+                    "accessionId": file.fileId,
                 },
             )
-            polling_file_data[file.path] = file.file_id
-            file_ids.append(file.file_id)
+            polling_file_data[file.path] = file.fileId
+            file_ids.append(file.fileId)
 
         LOG.info("Polling for status 'verified' in submission with ID: %r", submission_id)
         await self.start_file_polling(

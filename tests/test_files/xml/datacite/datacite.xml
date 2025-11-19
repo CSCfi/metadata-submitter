@@ -1,0 +1,141 @@
+<resource xmlns="http://datacite.org/schema/kernel-4">
+    <identifier identifierType="DOI">10.1234/example.doi</identifier>
+
+    <creators>
+        <creator>
+            <creatorName nameType="Personal">Smith, John</creatorName>
+            <givenName>John</givenName>
+            <familyName>Smith</familyName>
+            <nameIdentifier nameIdentifierScheme="ORCID" schemeURI="https://orcid.org">
+                https://orcid.org/0000-0002-1825-0097
+            </nameIdentifier>
+            <affiliation affiliationIdentifier="grid.1234.5" affiliationIdentifierScheme="GRID"
+                         schemeURI="https://www.grid.ac">
+                Example University
+            </affiliation>
+        </creator>
+    </creators>
+
+    <publisher publisherIdentifier="https://ror.org/04z8jg394" publisherIdentifierScheme="ROR"
+               schemeURI="https://ror.org/">
+        Helmholtz Centre Potsdam - GFZ German Research Centre for Geosciences
+    </publisher>
+
+    <contributors>
+        <contributor contributorType="DataManager">
+            <contributorName nameType="Personal">Doe, Jane</contributorName>
+            <givenName>Jane</givenName>
+            <familyName>Doe</familyName>
+        </contributor>
+    </contributors>
+
+    <titles>
+        <title>Sample Dataset</title>
+    </titles>
+
+    <publicationYear>2022</publicationYear>
+    <version>1.0</version>
+
+    <resourceType resourceTypeGeneral="Dataset">Dataset</resourceType>
+
+    <rightsList>
+        <rights rightsIdentifier="CC-BY-4.0"
+                rightsIdentifierScheme="SPDX"
+                schemeURI="https://spdx.org/licenses/"
+                rightsURI="https://creativecommons.org/licenses/by/4.0/">
+            Creative Commons Attribution 4.0 International License
+        </rights>
+    </rightsList>
+
+    <subjects>
+        <subject subjectScheme="LCSH" schemeURI="http://id.loc.gov/authorities/subjects"
+                 valueURI="http://example.org/subject/1" classificationCode="QA76">
+            Climate change
+        </subject>
+    </subjects>
+
+    <dates>
+        <date dateType="Created">2020-01-01</date>
+        <date dateType="Updated" dateInformation="Metadata updated">2022-01-01</date>
+    </dates>
+
+    <language>en</language>
+
+    <relatedIdentifiers>
+        <relatedIdentifier relatedIdentifierType="DOI" relationType="IsCitedBy"
+                           relatedMetadataScheme="datacite" schemeURI="http://example.org/scheme"
+                           schemeType="someType" resourceTypeGeneral="Dataset"
+        >10.2345/other.doi
+        </relatedIdentifier>
+    </relatedIdentifiers>
+
+    <alternateIdentifiers>
+        <alternateIdentifier alternateIdentifierType="LocalID">abc-123</alternateIdentifier>
+    </alternateIdentifiers>
+
+    <sizes>
+        <size>1GB</size>
+    </sizes>
+
+    <formats>
+        <format>text/csv</format>
+    </formats>
+
+    <descriptions>
+        <description descriptionType="Abstract" xml:lang="en">
+            This is a sample abstract description.
+        </description>
+    </descriptions>
+
+    <geoLocations>
+        <geoLocation>
+            <geoLocationPlace>Helsinki</geoLocationPlace>
+            <geoLocationPoint>
+                <pointLatitude>60.1699</pointLatitude>
+                <pointLongitude>24.9384</pointLongitude>
+            </geoLocationPoint>
+            <geoLocationBox>
+                <westBoundLongitude>24.0</westBoundLongitude>
+                <eastBoundLongitude>25.0</eastBoundLongitude>
+                <southBoundLatitude>60.0</southBoundLatitude>
+                <northBoundLatitude>61.0</northBoundLatitude>
+            </geoLocationBox>
+            <geoLocationPolygon>
+                <polygonPoint>
+                    <pointLatitude>41.991</pointLatitude>
+                    <pointLongitude>-71.032</pointLongitude>
+                </polygonPoint>
+                <polygonPoint>
+                    <pointLatitude>42.893</pointLatitude>
+                    <pointLongitude>-69.622</pointLongitude>
+                </polygonPoint>
+                <polygonPoint>
+                    <pointLatitude>41.991</pointLatitude>
+                    <pointLongitude>-68.211</pointLongitude>
+                </polygonPoint>
+                <polygonPoint>
+                    <pointLatitude>41.090</pointLatitude>
+                    <pointLongitude>-69.622</pointLongitude>
+                </polygonPoint>
+                <polygonPoint>
+                    <pointLatitude>41.991</pointLatitude>
+                    <pointLongitude>-71.032</pointLongitude>
+                </polygonPoint>
+                <inPolygonPoint>
+                    <pointLatitude>41.500</pointLatitude>
+                    <pointLongitude>-69.800</pointLongitude>
+                </inPolygonPoint>
+            </geoLocationPolygon>
+        </geoLocation>
+    </geoLocations>
+
+    <fundingReferences>
+        <fundingReference>
+            <funderName>European Commission</funderName>
+            <funderIdentifier funderIdentifierType="ROR" schemeURI="http://example.org/schema/SA12345">https://ror.org/013meh722</funderIdentifier>
+            <awardNumber awardURI="http://example.org/grant/GA12345">GA12345</awardNumber>
+            <awardTitle>Climate Research Grant</awardTitle>
+        </fundingReference>
+    </fundingReferences>
+
+</resource>

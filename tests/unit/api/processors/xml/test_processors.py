@@ -184,8 +184,8 @@ async def test_with_element_existing():
     assert processor.get_xml_object_identifier().id is None
 
     # Get title and description
-    assert processor.get_xml_object_title() == title
-    assert processor.get_xml_object_description() == description
+    assert processor.get_object_title() == title
+    assert processor.get_object_description() == description
 
     # Set id
     id = f"{str(uuid.uuid4())}"
@@ -194,7 +194,7 @@ async def test_with_element_existing():
     assert processor.get_xml_object_identifier().id == id
 
     # Get references
-    refs = processor.get_xml_object_references()
+    refs = processor.get_object_references()
     assert len(refs) == 2
     assert refs[0].name == ref_name_1
     assert refs[0].id is None
@@ -215,15 +215,15 @@ async def test_with_element_existing():
         schema_type=ref_schema_type, object_type=ref_object_type, root_path=ref_root_path, name=ref_name_2, id=ref_id_2
     )
     updated_refs = [ref_1, ref_2]
-    processor.set_xml_object_reference_ids(updated_refs)
-    refs = processor.get_xml_object_references()
+    processor.set_object_reference_ids(updated_refs)
+    refs = processor.get_object_references()
 
     assert len(refs) == 2
     assert ref_1 in refs
     assert ref_2 in refs
 
     # Check reference ids
-    assert processor.is_xml_object_reference_ids() == True
+    assert processor.is_object_reference_ids() == True
 
     # Check XML
 
@@ -330,7 +330,7 @@ async def test_with_id_element_missing():
     assert processor.get_xml_object_identifier().id == id
 
     # Get references
-    refs = processor.get_xml_object_references()
+    refs = processor.get_object_references()
     assert len(refs) == 2
     assert refs[0].name == ref_name_1
     assert refs[0].id is None
@@ -351,15 +351,15 @@ async def test_with_id_element_missing():
         schema_type=ref_schema_type, object_type=ref_object_type, root_path=ref_root_path, name=ref_name_2, id=ref_id_2
     )
     updated_refs = [ref_1, ref_2]
-    processor.set_xml_object_reference_ids(updated_refs)
-    refs = processor.get_xml_object_references()
+    processor.set_object_reference_ids(updated_refs)
+    refs = processor.get_object_references()
 
     assert len(refs) == 2
     assert ref_1 in refs
     assert ref_2 in refs
 
     # Check reference ids
-    assert processor.is_xml_object_reference_ids() == True
+    assert processor.is_object_reference_ids() == True
 
     # Check XML
 
@@ -445,8 +445,8 @@ async def test_with_attribute():
     assert processor.get_xml_object_identifier().id is None
 
     # Get title and description
-    assert processor.get_xml_object_title() == title
-    assert processor.get_xml_object_description() == description
+    assert processor.get_object_title() == title
+    assert processor.get_object_description() == description
 
     # Set id
     id = f"{str(uuid.uuid4())}"
@@ -455,7 +455,7 @@ async def test_with_attribute():
     assert processor.get_xml_object_identifier().id == id
 
     # Get references
-    refs = processor.get_xml_object_references()
+    refs = processor.get_object_references()
     assert len(refs) == 2
     assert refs[0].name == ref_name_1
     assert refs[0].id is None
@@ -476,15 +476,15 @@ async def test_with_attribute():
         schema_type=ref_schema_type, object_type=ref_object_type, root_path=ref_root_path, name=ref_name_2, id=ref_id_2
     )
     updated_refs = [ref_1, ref_2]
-    processor.set_xml_object_reference_ids(updated_refs)
-    refs = processor.get_xml_object_references()
+    processor.set_object_reference_ids(updated_refs)
+    refs = processor.get_object_references()
 
     assert len(refs) == 2
     assert ref_1 in refs
     assert ref_2 in refs
 
     # Check reference ids
-    assert processor.is_xml_object_reference_ids() == True
+    assert processor.is_object_reference_ids() == True
 
     # Check XML
 
@@ -615,7 +615,7 @@ async def test_with_both_element_and_attribute():
     assert processor.get_xml_object_identifier().id == id
 
     # Get references
-    refs = processor.get_xml_object_references()
+    refs = processor.get_object_references()
     assert len(refs) == 2
     assert refs[0].name == ref_name_1
     assert refs[0].id is None
@@ -636,15 +636,15 @@ async def test_with_both_element_and_attribute():
         schema_type=ref_schema_type, object_type=ref_object_type, root_path=ref_root_path, name=ref_name_2, id=ref_id_2
     )
     updated_refs = [ref_1, ref_2]
-    processor.set_xml_object_reference_ids(updated_refs)
-    refs = processor.get_xml_object_references()
+    processor.set_object_reference_ids(updated_refs)
+    refs = processor.get_object_references()
 
     assert len(refs) == 2
     assert ref_1 in refs
     assert ref_2 in refs
 
     # Check reference ids
-    assert processor.is_xml_object_reference_ids() == True
+    assert processor.is_object_reference_ids() == True
 
     # Check XML
 
@@ -739,11 +739,9 @@ def assert_object(
     assert processor.get_xml_object_identifier(schema_type, root_path, name).name == name
     assert processor.get_xml_object_identifier(schema_type, root_path, name).id == id
     if title:
-        assert processor.get_xml_object_processor(schema_type, root_path, name).get_xml_object_title() == title
+        assert processor.get_object_processor(schema_type, root_path, name).get_object_title() == title
     if description:
-        assert (
-            processor.get_xml_object_processor(schema_type, root_path, name).get_xml_object_description() == description
-        )
+        assert processor.get_object_processor(schema_type, root_path, name).get_object_description() == description
 
 
 def assert_ref_length(
@@ -751,7 +749,7 @@ def assert_ref_length(
 ) -> None:
     refs = XmlDocumentProcessor.get_xml_object_processor(
         processor.xml_processor, schema_type_and_root_path[0], schema_type_and_root_path[1], name
-    ).get_xml_object_references()
+    ).get_object_references()
     assert len(refs) == length
 
 
@@ -769,7 +767,7 @@ def assert_ref(
     ref_root_path = ref_schema_type_and_root_path[1]
     refs = XmlDocumentProcessor.get_xml_object_processor(
         processor.xml_processor, schema_type, root_path, name
-    ).get_xml_object_references()
+    ).get_object_references()
     for ref in refs:
         if (
             ref.schema_type == ref_schema_type
@@ -796,7 +794,7 @@ def create_xml_object_identifier_fega(schema_type: str, root_path: str, name: st
 async def test_bp_submission_1():
     """Test self-contained BP submission with alias references."""
 
-    submission_dir = TEST_FILES_DIR / "xml" / "bp" / "submission_1"
+    submission_dir = TEST_FILES_DIR / "xml" / "bigpicture"
 
     processor = XmlFileDocumentsProcessor(
         BP_FULL_SUBMISSION_XML_OBJECT_CONFIG,
@@ -977,40 +975,38 @@ async def test_bp_submission_1():
 
     # Annotation
     annotation_id = f"annotation_{str(uuid.uuid4())}"
-    processor.set_xml_object_id(
+    processor.set_object_id(
         create_xml_object_identifier_bp(BP_ANNOTATION_SCHEMA, BP_ANNOTATION_PATH, annotation_name, annotation_id)
     )
     # Dataset
     dataset_id = f"dataset_{str(uuid.uuid4())}"
-    processor.set_xml_object_id(
+    processor.set_object_id(
         create_xml_object_identifier_bp(BP_DATASET_SCHEMA, BP_DATASET_PATH, dataset_name, dataset_id)
     )
     # Image
     image_id = f"image_{str(uuid.uuid4())}"
-    processor.set_xml_object_id(create_xml_object_identifier_bp(BP_IMAGE_SCHEMA, BP_IMAGE_PATH, image_name, image_id))
+    processor.set_object_id(create_xml_object_identifier_bp(BP_IMAGE_SCHEMA, BP_IMAGE_PATH, image_name, image_id))
     # Observation
     observation_id = f"observation_{str(uuid.uuid4())}"
-    processor.set_xml_object_id(
+    processor.set_object_id(
         create_xml_object_identifier_bp(BP_OBSERVATION_SCHEMA, BP_OBSERVATION_PATH, observation_name, observation_id)
     )
     # Observer
     observer_id = f"observer_{str(uuid.uuid4())}"
-    processor.set_xml_object_id(
+    processor.set_object_id(
         create_xml_object_identifier_bp(BP_OBSERVER_SCHEMA, BP_OBSERVER_PATH, observer_name, observer_id)
     )
     # Policy
     policy_id = f"policy_{str(uuid.uuid4())}"
-    processor.set_xml_object_id(
-        create_xml_object_identifier_bp(BP_POLICY_SCHEMA, BP_POLICY_PATH, policy_name, policy_id)
-    )
+    processor.set_object_id(create_xml_object_identifier_bp(BP_POLICY_SCHEMA, BP_POLICY_PATH, policy_name, policy_id))
     # Staining
     staining_id = f"staining_{str(uuid.uuid4())}"
-    processor.set_xml_object_id(
+    processor.set_object_id(
         create_xml_object_identifier_bp(BP_STAINING_SCHEMA, BP_STAINING_PATH, staining_name, staining_id)
     )
     # Landing page
     landing_page_id = f"landing_page_{str(uuid.uuid4())}"
-    processor.set_xml_object_id(
+    processor.set_object_id(
         create_xml_object_identifier_bp(
             BP_LANDING_PAGE_SCHEMA, BP_LANDING_PAGE_PATH, landing_page_name, landing_page_id
         )
@@ -1021,35 +1017,35 @@ async def test_bp_submission_1():
     sample_specimen_id = f"sample_specimen_{str(uuid.uuid4())}"
     sample_block_id = f"sample_block_{str(uuid.uuid4())}"
     sample_slide_id = f"sample_slide_{str(uuid.uuid4())}"
-    processor.set_xml_object_id(
+    processor.set_object_id(
         create_xml_object_identifier_bp(
             BP_SAMPLE_SCHEMA, BP_SAMPLE_BIOLOGICAL_BEING_PATH, sample_biological_being_name, sample_biological_being_id
         )
     )
-    processor.set_xml_object_id(
+    processor.set_object_id(
         create_xml_object_identifier_bp(BP_SAMPLE_SCHEMA, BP_SAMPLE_CASE_PATH, sample_case_name, sample_case_id)
     )
-    processor.set_xml_object_id(
+    processor.set_object_id(
         create_xml_object_identifier_bp(
             BP_SAMPLE_SCHEMA, BP_SAMPLE_SPECIMEN_PATH, sample_specimen_name, sample_specimen_id
         )
     )
-    processor.set_xml_object_id(
+    processor.set_object_id(
         create_xml_object_identifier_bp(BP_SAMPLE_SCHEMA, BP_SAMPLE_BLOCK_PATH, sample_block_name, sample_block_id)
     )
-    processor.set_xml_object_id(
+    processor.set_object_id(
         create_xml_object_identifier_bp(BP_SAMPLE_SCHEMA, BP_SAMPLE_SLIDE_PATH, sample_slide_name, sample_slide_id)
     )
     # Organisation
     organisation_id = f"organisation_{str(uuid.uuid4())}"
-    processor.set_xml_object_id(
+    processor.set_object_id(
         create_xml_object_identifier_bp(
             BP_ORGANISATION_SCHEMA, BP_ORGANISATION_PATH, organisation_name, organisation_id
         )
     )
     # Rems
     rems_id = f"rems_{str(uuid.uuid4())}"
-    processor.set_xml_object_id(create_xml_object_identifier_bp(BP_REMS_SCHEMA, BP_REMS_PATH, rems_name, rems_id))
+    processor.set_object_id(create_xml_object_identifier_bp(BP_REMS_SCHEMA, BP_REMS_PATH, rems_name, rems_id))
 
     # Assert accessioned state
     #
@@ -1212,7 +1208,7 @@ async def test_bp_submission_1():
 async def test_fega_submission_1():
     """Test self-contained FEGA submission with alias references."""
 
-    submission_dir = TEST_FILES_DIR / "xml" / "fega" / "submission_1"
+    submission_dir = TEST_FILES_DIR / "xml" / "fega"
 
     processor = XmlFileDocumentsProcessor(
         FEGA_FULL_SUBMISSION_XML_OBJECT_CONFIG,
@@ -1301,43 +1297,41 @@ async def test_fega_submission_1():
 
     # Analysis
     analysis_id = f"analysis_{str(uuid.uuid4())}"
-    processor.set_xml_object_id(
+    processor.set_object_id(
         create_xml_object_identifier_fega(FEGA_ANALYSIS_SCHEMA, FEGA_ANALYSIS_PATH, analysis_name, analysis_id)
     )
     # Dac
     dac_id = f"dac_{str(uuid.uuid4())}"
-    processor.set_xml_object_id(create_xml_object_identifier_fega(FEGA_DAC_SCHEMA, FEGA_DAC_PATH, dac_name, dac_id))
+    processor.set_object_id(create_xml_object_identifier_fega(FEGA_DAC_SCHEMA, FEGA_DAC_PATH, dac_name, dac_id))
     # Dataset
     dataset_id = f"dataset_{str(uuid.uuid4())}"
-    processor.set_xml_object_id(
+    processor.set_object_id(
         create_xml_object_identifier_fega(FEGA_DATASET_SCHEMA, FEGA_DATASET_PATH, dataset_name, dataset_id)
     )
     # Experiment
     experiment_id = f"experiment_{str(uuid.uuid4())}"
-    processor.set_xml_object_id(
+    processor.set_object_id(
         create_xml_object_identifier_fega(FEGA_EXPERIMENT_SCHEMA, FEGA_EXPERIMENT_PATH, experiment_name, experiment_id)
     )
     # Policy
     policy_id = f"policy_{str(uuid.uuid4())}"
-    processor.set_xml_object_id(
+    processor.set_object_id(
         create_xml_object_identifier_fega(FEGA_POLICY_SCHEMA, FEGA_POLICY_PATH, policy_name, policy_id)
     )
     # Run
     run_id = f"run_{str(uuid.uuid4())}"
-    processor.set_xml_object_id(create_xml_object_identifier_fega(FEGA_RUN_SCHEMA, FEGA_RUN_PATH, run_name, run_id))
+    processor.set_object_id(create_xml_object_identifier_fega(FEGA_RUN_SCHEMA, FEGA_RUN_PATH, run_name, run_id))
     # Sample
     sample_id = f"sample_{str(uuid.uuid4())}"
-    processor.set_xml_object_id(
+    processor.set_object_id(
         create_xml_object_identifier_fega(FEGA_SAMPLE_SCHEMA, FEGA_SAMPLE_PATH, sample_name, sample_id)
     )
     # Study
     study_id = f"study_{str(uuid.uuid4())}"
-    processor.set_xml_object_id(
-        create_xml_object_identifier_fega(FEGA_STUDY_SCHEMA, FEGA_STUDY_PATH, study_name, study_id)
-    )
+    processor.set_object_id(create_xml_object_identifier_fega(FEGA_STUDY_SCHEMA, FEGA_STUDY_PATH, study_name, study_id))
     # Submission
     submission_id = f"submission_{str(uuid.uuid4())}"
-    processor.set_xml_object_id(
+    processor.set_object_id(
         create_xml_object_identifier_fega(FEGA_SUBMISSION_SCHEMA, FEGA_SUBMISSION_PATH, submission_name, submission_id)
     )
 

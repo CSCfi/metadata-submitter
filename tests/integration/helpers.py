@@ -7,23 +7,22 @@ import os
 import re
 from urllib.parse import urlencode
 from uuid import uuid4
+from xml.etree import ElementTree
 
 import aioboto3
 import aiofiles
 import ujson
 from aiohttp import ClientSession
 
-from metadata_backend.api.models import Submission, SubmissionWorkflow
+from metadata_backend.api.models.submission import Submission, SubmissionWorkflow
 
 from .conf import (
     API_PREFIX,
     admin_url,
     base_url,
-    metax_api,
     mock_auth_url,
     mock_s3_region,
     mock_s3_url,
-    objects_url,
     publish_url,
     submissions_url,
     taxonomy_url,
@@ -50,17 +49,20 @@ async def login(sess, sub, given, family):
         LOG.debug("Doing mock user login")
 
 
-async def get_request_data(schema, filename) -> str:
+async def get_request_data(dir, filename) -> str:
     """Get request data from a test file.
 
-    :param schema: name of the schema.
+    :param dir: name of the test directory.
     :param filename: name of the test file.
     :return: Contents of the test file.
     """
-    path_to_file = testfiles_root / schema / filename
+    path_to_file = testfiles_root / dir / filename
     path = path_to_file.as_posix()
     async with aiofiles.open(path, mode="r") as f:
         return await f.read()
+
+
+_is_submit_bp = False
 
 
 async def submit_bp(sess, project_id: str) -> Submission:
@@ -70,7 +72,7 @@ async def submit_bp(sess, project_id: str) -> Submission:
     :return: The submission document.
     """
 
-    submission_dir = testfiles_root / "xml" / "bp" / "submission_1"
+    submission_dir = testfiles_root / "xml" / "bigpicture"
     workflow = SubmissionWorkflow.BP.value
     files = [
         "dataset.xml",
@@ -91,11 +93,24 @@ async def submit_bp(sess, project_id: str) -> Submission:
     for file in files:
         data[file] = (submission_dir / file).open("rb")
 
+    # Delete submission if it exists.
+    dataset_xml = ElementTree.parse(data["dataset.xml"]).getroot()
+    submission_name = [elem.text for elem in dataset_xml.findall(".//SHORT_NAME")][0]
+    data["dataset.xml"].seek(0)
+
+    # Unsafe deletion if submission requires ALLOW_UNSAFE=TRUE.
+    async with sess.delete(
+        f"{base_url}{API_PREFIX}/workflows/{workflow}/projects/{project_id}/submissions/{submission_name}?unsafe=true",
+    ) as response:
+        assert response.status == 204
+
+    # Post submission.
     async with sess.post(
         f"{base_url}{API_PREFIX}/workflows/{workflow}/projects/{project_id}/submissions", data=data
     ) as response:
+        data = await response.json()
         assert response.status == 200
-        submission = Submission.model_validate(await response.json())
+        submission = Submission.model_validate(data)
         return submission
 
 
@@ -173,19 +188,16 @@ async def delete_published_submission(sess, submission_id, *, expected_status=40
         assert resp.status == expected_status, f"HTTP Status code error, got {resp.status}"
 
 
-async def patch_submission_doi(sess, submission_id, data):
-    """Patch doi into submission within session, returns submissionId.
+async def patch_submission_metadata(sess, submission_id, data):
+    """Patch metadata, returns submissionId.
 
     :param sess: HTTP session in which request call is made
     :param submission_id: id of the submission
     :param data: doi data used to update the submission
     :returns: Submission id for the submission inserted to database
     """
-    async with sess.patch(f"{submissions_url}/{submission_id}/doi", data=data) as resp:
-        ans = await resp.json()
-        assert resp.status == 200, f"HTTP Status code error {resp.status} {ans}"
-        LOG.debug("Adding doi to submission %s", ans["submissionId"])
-        return ans["submissionId"]
+    async with sess.patch(f"{submissions_url}/{submission_id}/metadata", data=data) as resp:
+        assert resp.status == 204
 
 
 async def patch_submission_rems(sess, submission_id, data: str):
@@ -197,10 +209,7 @@ async def patch_submission_rems(sess, submission_id, data: str):
     :returns: Submission id for the submission inserted to database
     """
     async with sess.patch(f"{submissions_url}/{submission_id}/rems", data=data) as resp:
-        ans = await resp.json()
-        assert resp.status == 200, f"HTTP Status code error {resp.status} {ans}"
-        LOG.debug("Adding REMS DAC to submission %s", ans["submissionId"])
-        return ans["submissionId"]
+        assert resp.status == 204
 
 
 async def create_submission(database, data):

@@ -1,6 +1,5 @@
 """Test API endpoints from SubmissionAPIHandler."""
 
-import re
 import uuid
 from datetime import datetime, timedelta
 from typing import Any
@@ -8,6 +7,7 @@ from typing import Any
 import ujson
 
 from metadata_backend.conf.conf import API_PREFIX
+from metadata_backend.database.postgres.repositories.submission import SUB_FIELD_METADATA
 
 from .common import HandlersTestCase
 
@@ -23,7 +23,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         name = f"name_{uuid.uuid4()}"
         description = f"description_{uuid.uuid4()}"
         project_id = f"project_{uuid.uuid4()}"
-        workflow = "SDSX"
+        workflow = "SD"
 
         # Post submission.
 
@@ -66,7 +66,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             "title": f"title_{uuid.uuid4()}",
             "description": f"description_{uuid.uuid4()}",
             "projectId": f"project_{uuid.uuid4()}",
-            "workflow": "SDSX",
+            "workflow": "SD",
         }
 
         async def assert_missing_field(field: str):
@@ -75,7 +75,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
                 response = await self.client.post(f"{API_PREFIX}/submissions", json=_data)
                 assert response.status == 400
                 result = await response.json()
-                assert f"'{field}' is a required property" in result["detail"]
+                assert f"'{field}': Field required"
 
         await assert_missing_field("name")
         await assert_missing_field("description")
@@ -102,7 +102,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             "title": f"title_{uuid.uuid4()}",
             "description": f"description_{uuid.uuid4()}",
             "projectId": project_id,
-            "workflow": "SDSX",
+            "workflow": "SD",
         }
 
         with (
@@ -124,7 +124,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         project_id = f"project_{uuid.uuid4()}"
         title = f"title_{uuid.uuid4()}"
         description = f"description_{uuid.uuid4()}"
-        workflow = "SDSX"
+        workflow = "SD"
 
         submission_id_1 = await self.post_submission(
             name=name_1, title=title, description=description, project_id=project_id, workflow=workflow
@@ -164,7 +164,6 @@ class SubmissionHandlerTestCase(HandlersTestCase):
                 "projectId": project_id,
                 "published": False,
                 "submissionId": submission_id_1,
-                "text_name": " ".join(re.split("[\\W_]", name_1)),
                 "workflow": workflow,
             } in result["submissions"]
             assert {
@@ -176,7 +175,6 @@ class SubmissionHandlerTestCase(HandlersTestCase):
                 "projectId": project_id,
                 "published": False,
                 "submissionId": submission_id_2,
-                "text_name": " ".join(re.split("[\\W_]", name_2)),
                 "workflow": workflow,
             } in result["submissions"]
 
@@ -188,7 +186,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         name_3 = f"{uuid.uuid4()} name"
         project_id = f"project_{uuid.uuid4()}"
         description = f"description_{uuid.uuid4()}"
-        workflow = "SDSX"
+        workflow = "SD"
 
         submission_id_1 = await self.post_submission(
             name=name_1, description=description, project_id=project_id, workflow=workflow
@@ -376,16 +374,16 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         name = f"name_{uuid.uuid4()}"
         project_id = f"project_{uuid.uuid4()}"
         description = f"description_{uuid.uuid4()}"
-        workflow = "SDSX"
+        workflow = "SD"
 
         submission_id = await self.post_submission(
             name=name, description=description, project_id=project_id, workflow=workflow
         )
 
-        # Update name.
+        # Update title.
 
-        new_name = f"name_{uuid.uuid4()}"
-        data = {"name": new_name}
+        new_title = f"title_{uuid.uuid4()}"
+        data = {"title": new_title}
         with (
             self.patch_verify_user_project,
             self.patch_verify_authorization,
@@ -394,7 +392,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             self.assertEqual(response.status, 200)
 
         submission = await self.get_submission(submission_id)
-        assert submission["name"] == new_name
+        assert submission["title"] == new_title
         assert submission["description"] == description
         assert submission["projectId"] == project_id
         assert submission["workflow"] == workflow
@@ -411,52 +409,56 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             self.assertEqual(response.status, 200)
 
         submission = await self.get_submission(submission_id)
-        assert submission["name"] == new_name
+        assert submission["title"] == new_title
         assert submission["description"] == new_description
         assert submission["projectId"] == project_id
         assert submission["workflow"] == workflow
 
-    async def test_patch_doi_info(self):
-        """Test changing doi info in the submission."""
+    async def test_patch_metadata(self):
+        """Test changing metadata in the submission document."""
         submission_id = await self.post_submission()
 
-        data = ujson.load(open(self.TESTFILES_ROOT / "doi" / "test_doi.json"))
+        metadata = ujson.load(open(self.TESTFILES_ROOT / "submission" / "metadata.json"))
+        saved_metadata = ujson.load(open(self.TESTFILES_ROOT / "submission" / "saved_metadata.json"))
 
         with (
             self.patch_verify_user_project,
             self.patch_verify_authorization,
         ):
-            response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/doi", json=data)
-            self.assertEqual(response.status, 200)
+            response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/metadata", json=metadata)
+            assert response.status == 204
 
         submission = await self.get_submission(submission_id)
-        assert data == submission["doiInfo"]
+        assert saved_metadata == submission[SUB_FIELD_METADATA]
 
-    async def test_patch_linked_bucket(self):
-        """Test changing linked bucket in the submission."""
+    async def test_patch_bucket(self):
+        """Test changing bucket in the submission."""
         submission_id = await self.post_submission()
         bucket = f"bucket_{uuid.uuid4()}"
-        data = {"bucket": bucket}
 
-        # Set linked bucket for the first time works.
+        # Set bucket for the first time works.
         with (
             self.patch_verify_user_project,
             self.patch_verify_authorization,
         ):
-            response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/bucket", json=data)
+            response = await self.client.patch(
+                f"{API_PREFIX}/submissions/{submission_id}/bucket", json={"bucket": bucket}
+            )
             self.assertEqual(response.status, 204)
 
         submission = await self.get_submission(submission_id)
         assert submission["bucket"] == bucket
 
-        # Change linked bucket fails.
+        # Change bucket fails.
         with (
             self.patch_verify_user_project,
             self.patch_verify_authorization,
         ):
-            response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/bucket", json=data)
-            self.assertEqual(response.status, 400)
-            self.assertIn("already has a linked bucket", await response.text())
+            response = await self.client.patch(
+                f"{API_PREFIX}/submissions/{submission_id}/bucket", json={"bucket": f"bucket_{uuid.uuid4()}"}
+            )
+            assert response.status == 400
+            self.assertIn("can't be changed to", await response.text())
 
         submission = await self.get_submission(submission_id)
         assert submission["bucket"] == bucket
@@ -471,7 +473,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
 
         with self.patch_verify_user_project, self.patch_verify_authorization, self.patch_verify_rems_workflow_licence:
             response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/rems", json=data)
-            self.assertEqual(response.status, 200)
+            assert response.status == 204
 
         submission = await self.get_submission(submission_id)
         assert submission["rems"] == data
@@ -482,7 +484,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
 
         with self.patch_verify_user_project, self.patch_verify_authorization, self.patch_verify_rems_workflow_licence:
             response = await self.client.patch(f"{API_PREFIX}/submissions/{submission_id}/rems", json=data)
-            self.assertEqual(response.status, 200)
+            assert response.status == 204
 
         submission = await self.get_submission(submission_id)
         assert submission["rems"] == data
