@@ -5,7 +5,7 @@
     "issued": "2020-10-10",
     "creator": [
         {
-            "name": "Test Creator",
+            "name": "Test1 Test2",
             "@type": "Person",
             "member_of": {
                 "name": {
@@ -64,7 +64,7 @@
                     "en": "affiliation place"
                 }
             },
-            "name": "Test contributor"
+            "name": "Test1 Test2"
         },
         {
             "@type": "Person",
@@ -75,18 +75,7 @@
                     "en": "affiliation place"
                 }
             },
-            "name": "Test Curator"
-        },
-        {
-            "@type": "Person",
-            "member_of": {
-                "@type": "Organization",
-                "identifier": "https://ror.org/test3",
-                "name": {
-                    "en": "affiliation place"
-                }
-            },
-            "name": "Rights Holder"
+            "name": "Test1 Test2"
         }
     ],
     "description": {

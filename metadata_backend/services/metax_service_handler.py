@@ -11,7 +11,8 @@ from aiohttp import BasicAuth, ClientTimeout, web
 from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
 from yarl import URL
 
-from ..api.models import Registration
+from ..api.models.models import Registration
+from ..api.models.submission import SubmissionMetadata
 from ..conf.conf import metax_config
 from ..helpers.logger import LOG
 from .metax_mapper import MetaDataMapper, SubjectNotFoundException
@@ -190,9 +191,9 @@ class MetaxServiceHandler(ServiceHandler):
     #     LOG.info("Deleting Metax draft dataset metax ID: %r", metax_id)
     #     await self._delete_draft(metax_id)
 
-    async def update_dataset_with_doi_info(
+    async def update_dataset_metadata(
         self,
-        doi_info: dict[str, Any],
+        metadata: SubmissionMetadata,
         metax_id: str,
         file_bytes: int,
         related_dataset: Registration | None = None,
@@ -200,7 +201,7 @@ class MetaxServiceHandler(ServiceHandler):
     ) -> None:
         """Update dataset for publishing.
 
-        :param doi_info: The DOI info
+        :param metadata: The submission metadata
         :param metax_id: The Metax ID
         :param file_bytes: The number of file bytes
         :param related_dataset: A related dataset registration.
@@ -213,7 +214,7 @@ class MetaxServiceHandler(ServiceHandler):
         # Map fields from doi info to Metax schema
         mapper = MetaDataMapper(
             metax_data["research_dataset"],
-            doi_info,
+            metadata,
             file_bytes,
             related_dataset=related_dataset,
             related_study=related_study,

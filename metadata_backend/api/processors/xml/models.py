@@ -1,9 +1,11 @@
-"""Xml metadata object processor."""
+"""XML metadata object models to inject accession numbers."""
 
 from typing import Callable, Type
 
 from lxml.etree import _Element as Element  # noqa
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from ..models import ObjectIdentifier
 
 # Callback to insert an XML element. Returns the inserted XML element.
 XmlElementInsertionCallback = Callable[[Element], Element]
@@ -135,14 +137,10 @@ class XmlReferencePaths(BaseModel):
         return validate_absolute_path(path)
 
 
-class XmlObjectIdentifier(BaseModel):
+class XmlObjectIdentifier(ObjectIdentifier):
     """Xml metadata object identifier with name and id."""
 
-    schema_type: str
-    object_type: str
     root_path: str  # Absolute XPath to the metadata object root element.
-    name: str
-    id: str | None
 
 
 class XmlObjectConfig(BaseModel):

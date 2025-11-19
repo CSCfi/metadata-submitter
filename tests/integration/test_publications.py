@@ -4,7 +4,9 @@ import json
 import logging
 from typing import Any
 
-from metadata_backend.api.models import Registration, Rems
+from metadata_backend.api.json import to_json
+from metadata_backend.api.models.models import Registration
+from metadata_backend.api.models.submission import Rems
 from tests.integration.conf import (
     auth,
     datacite_prefix,
@@ -17,7 +19,7 @@ from tests.integration.helpers import (
     get_request_data,
     get_submission,
     get_submission_files,
-    patch_submission_doi,
+    patch_submission_metadata,
     patch_submission_rems,
     publish_submission,
     submit_bp,
@@ -36,13 +38,13 @@ class TestMinimalPublication:
         :param client_logged_in: HTTP client in which request call is made
         :param submission_factory: The factory that creates and deletes submissions
         """
-        submission_id, _ = await submission_factory("SDSX")
+        submission_id, _ = await submission_factory("SD")
         mock_bucket = "bucket1"
         file_name = "test_object"
 
-        doi_data_raw = await get_request_data("doi", "test_doi.json")
-        await patch_submission_doi(client_logged_in, submission_id, doi_data_raw)
-        rems_data = await get_request_data("dac", "dac_rems.json")
+        doi_data_raw = await get_request_data("submission", "metadata.json")
+        await patch_submission_metadata(client_logged_in, submission_id, doi_data_raw)
+        rems_data = await get_request_data("submission", "rems.json")
         await patch_submission_rems(client_logged_in, submission_id, rems_data)
 
         await s3_manager.add_bucket(mock_bucket)
@@ -73,13 +75,13 @@ class TestPublication:
         :param client_logged_in: HTTP client in which request call is made
         :param submission_factory: The factory that creates and deletes submissions
         """
-        submission_id, _ = await submission_factory("SDSX")
+        submission_id, _ = await submission_factory("SD")
 
-        rems_data = await get_request_data("dac", "dac_rems.json")
+        rems_data = await get_request_data("submission", "rems.json")
         await patch_submission_rems(client_logged_in, submission_id, rems_data)
 
-        doi_data_raw = await get_request_data("doi", "test_doi.json")
-        await patch_submission_doi(client_logged_in, submission_id, doi_data_raw)
+        doi_data_raw = await get_request_data("submission", "metadata.json")
+        await patch_submission_metadata(client_logged_in, submission_id, doi_data_raw)
 
         await publish_submission(client_logged_in, submission_id)
 
@@ -96,18 +98,18 @@ class TestPublication:
             # Check DOI
             assert registration.doi.startswith(mock_pid_prefix)
             # Check that metax ID exists
-            assert registration.metax_id is not None
+            assert registration.metaxId is not None
             # Check REMS
-            assert registration.rems_resource_id is not None
-            assert registration.rems_catalogue_id is not None
-            assert registration.rems_url is not None
+            assert registration.remsResourceId is not None
+            assert registration.remsCatalogueId is not None
+            assert registration.remsUrl is not None
 
         # Check Metax mock service.
-        async with client_logged_in.get(f"{metax_api}/{registration.metax_id}", auth=auth) as metax_resp:
+        async with client_logged_in.get(f"{metax_api}/{registration.metaxId}", auth=auth) as metax_resp:
             metax = await metax_resp.json()
             assert metax_resp.status == 200, f"HTTP Status code error, got {metax_resp.status}"
             await assert_metax(
-                metax, registration.object_type, registration.title, registration.description, registration.doi
+                metax, registration.objectType, registration.title, registration.description, registration.doi
             )
 
     async def test_bigpicture_publication(self, client_logged_in, project_id):
@@ -117,15 +119,14 @@ class TestPublication:
         :param project_id: The project id.
         """
         submission = await submit_bp(client_logged_in, project_id)
-        submission_id = submission.submission_id
+        submission_id = submission.submissionId
 
-        # TODO(improve): Use datacite.xml instead of submission.json.
-        doi_data_raw = await get_request_data("doi", "test_doi.json")
-        await patch_submission_doi(client_logged_in, submission_id, doi_data_raw)
+        doi_data_raw = await get_request_data("submission", "metadata.json")
+        await patch_submission_metadata(client_logged_in, submission_id, doi_data_raw)
 
         # Change REMS information extracted from BP REMS XML and stored in submission.json.
         await patch_submission_rems(
-            client_logged_in, submission_id, Rems(workflow_id=1, organization_id="CSC", licenses=[1]).to_json_str()
+            client_logged_in, submission_id, to_json(Rems(workflowId=1, organizationId="CSC", licenses=[1]))
         )
 
         await publish_submission(client_logged_in, submission_id)
@@ -145,11 +146,11 @@ class TestPublication:
                 datacite_prefix
             ), "expected BP dataset DOI to be created directly with Datacite"
             # Check that metax ID does not exist
-            assert registration.metax_id is None
+            assert registration.metaxId is None
             # Check REMS
-            assert registration.rems_resource_id is not None
-            assert registration.rems_catalogue_id is not None
-            assert registration.rems_url is not None
+            assert registration.remsResourceId is not None
+            assert registration.remsCatalogueId is not None
+            assert registration.remsUrl is not None
 
 
 async def assert_metax(metax: dict[str, Any], schema: str, title: str, description: str, doi: str):

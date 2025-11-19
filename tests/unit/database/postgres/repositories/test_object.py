@@ -3,7 +3,7 @@ import uuid
 
 import ulid
 
-from metadata_backend.api.models import SubmissionWorkflow
+from metadata_backend.api.models.submission import SubmissionWorkflow
 from metadata_backend.database.postgres.models import ObjectEntity
 from metadata_backend.database.postgres.repositories.object import ObjectRepository
 from metadata_backend.database.postgres.repositories.submission import SubmissionRepository
@@ -11,7 +11,7 @@ from metadata_backend.database.postgres.repository import SessionFactory, transa
 
 from ..helpers import create_submission_entity
 
-workflow = SubmissionWorkflow.SDS
+workflow = SubmissionWorkflow.SD
 
 
 async def test_add_get_delete_object(
@@ -43,9 +43,10 @@ async def test_add_get_delete_object(
 
         async def _add_object() -> tuple[ObjectEntity, str]:
             _obj = ObjectEntity(
+                project_id=project_id,
+                submission_id=submission_id,
                 name=name,
                 object_type=object_type,
-                submission_id=submission_id,
                 title=title,
                 document=document,
                 xml_document=xml_document,
@@ -69,18 +70,18 @@ async def test_add_get_delete_object(
         assert_object(await object_repository.get_object_by_id(object_id))
 
         # Select the object by name
-        assert_object(await object_repository.get_object_by_name(submission_id, name))
+        assert_object(await object_repository.get_object_by_name(project_id, name, object_type))
 
         # Select the object by ID, acc or name
-        assert_object(await object_repository.get_object_by_id_or_name(submission_id, object_id))
-        assert_object(await object_repository.get_object_by_id_or_name(submission_id, name))
+        assert_object(await object_repository.get_object_by_id_or_name(project_id, object_id, object_type))
+        assert_object(await object_repository.get_object_by_id_or_name(project_id, name, object_type))
 
         # Delete by id
         assert await object_repository.delete_object_by_id(object_id)
         assert (await object_repository.get_object_by_id(object_id)) is None
-        assert (await object_repository.get_object_by_name(submission_id, name)) is None
-        assert (await object_repository.get_object_by_id_or_name(submission_id, object_id)) is None
-        assert (await object_repository.get_object_by_id_or_name(submission_id, name)) is None
+        assert (await object_repository.get_object_by_name(project_id, name, object_type)) is None
+        assert (await object_repository.get_object_by_id_or_name(project_id, object_id, object_type)) is None
+        assert (await object_repository.get_object_by_id_or_name(project_id, name, object_type)) is None
 
         # Delete by name
         obj, object_id = await _add_object()
@@ -141,9 +142,10 @@ async def test_get_and_count_objects(
         first_document = {"test": "test"}
 
         first_object = ObjectEntity(
+            project_id=first_project_id,
+            submission_id=first_submission_id,
             name=first_object_name,
             object_type=first_object_type,
-            submission_id=first_submission_id,
             document=first_document,
             xml_document="<test/>",
         )
@@ -153,9 +155,10 @@ async def test_get_and_count_objects(
         second_document = {"test": "test"}
 
         second_object = ObjectEntity(
+            project_id=second_project_id,
+            submission_id=first_submission_id,
             name=second_object_name,
             object_type=second_object_type,
-            submission_id=first_submission_id,
             document=second_document,
         )
 
@@ -164,9 +167,10 @@ async def test_get_and_count_objects(
         third_document = {"test": "test"}
 
         third_object = ObjectEntity(
+            project_id=second_project_id,
+            submission_id=second_submission_id,
             name=third_object_name,
             object_type=third_object_type,
-            submission_id=second_submission_id,
             document=third_document,
         )
 

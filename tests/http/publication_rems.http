@@ -72,15 +72,15 @@ POST {{backend_url}}/v1/objects/dataset
 ### Get dataset
 GET {{backend_url}}/v1/objects/dataset/{{dataset_id}}
 
-### Update DOI in submission
-PATCH {{backend_url}}/v1/submissions/{{submission_id}}/doi
+### Update metadata in submission
+PATCH {{backend_url}}/v1/submissions/{{submission_id}}/metadata
 
-< ../test_files/doi/test_doi.json
+< ../test_files/submission/metadata.json
 
 ### Update DAC in submission
 PATCH {{backend_url}}/v1/submissions/{{submission_id}}/rems
 
-< ../test_files/dac/dac_rems.json
+< ../test_files/submission/rems.json
 
 ### Publish submission
 PATCH {{backend_url}}/v1/publish/{{submission_id}}

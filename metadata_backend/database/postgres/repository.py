@@ -1,11 +1,12 @@
 """Postgres session."""
 
 import os
+import sqlite3
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from typing import AsyncIterator, TypeVar
 
-from sqlalchemy import create_mock_engine
+from sqlalchemy import create_mock_engine, event
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 
 from .models import Base
@@ -44,6 +45,15 @@ async def create_engine(db_url: str | None = None) -> AsyncEngine:
         raise ValueError(f"Missing PostgreSQL environmental variable: {PG_DATABASE_URL_ENV}")
 
     engine = create_async_engine(db_url, echo=True)
+
+    # Enable foreign keys in SQLite.
+    if engine.dialect.name == "sqlite":
+
+        @event.listens_for(engine.sync_engine, "connect")
+        def set_sqlite_pragma(dbapi_connection: sqlite3.Connection, _: object) -> None:
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
 
     await _create_schema(engine)
     return engine

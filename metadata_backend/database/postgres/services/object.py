@@ -1,10 +1,12 @@
 """Service for metadata objects."""
 
 import copy
+from datetime import datetime
 from typing import Any, AsyncIterator, Sequence
 
-from ....api.exceptions import NotFoundUserException
-from ....api.models import Object, SubmissionWorkflow
+from ....api.exceptions import NotFoundUserException, UserException
+from ....api.models.models import Object
+from ....api.models.submission import SubmissionWorkflow
 from ..models import ObjectEntity
 from ..repositories.object import ObjectRepository
 from ..repository import transaction
@@ -50,38 +52,47 @@ class ObjectService:
 
     async def add_object(
         self,
+        project_id: str,
         submission_id: str,
+        name: str,
         object_type: str,
         workflow: SubmissionWorkflow,
         *,
         document: dict[str, Any] | None = None,
         xml_document: str | None = None,
         object_id: str | None = None,
-        name: str | None = None,
         title: str | None = None,
         description: str | None = None,
     ) -> str:
         """Add a new metadata object to the database.
 
+        :param project_id: the project id
         :param submission_id: the submission id
+        :param name: the metadata object name
         :param object_type: the metadata object type
         :param workflow: the submission workflow
         :param document: the object metadata JSON document
         :param xml_document: the object metadata XML document
         :param object_id: metadata object id that overrides the default one
-        :param name: the metadata object name
         :param title: metadata object title
         :param description: metadata object description
         :returns: the metadata object id
         """
 
+        # Check that the object name does not already exist in the project.
+        if await self.is_object_by_name(project_id, name, object_type):
+            raise UserException(
+                f"Metadata object of type {object_type} with name {name} already exists in project {project_id}"
+            )
+
         obj = ObjectEntity(
+            project_id=project_id,
             submission_id=submission_id,
             object_type=object_type,
+            name=name,
+            object_id=object_id,
             document=document,
             xml_document=xml_document,
-            object_id=object_id,
-            name=name,
             title=title,
             description=description,
         )
@@ -90,6 +101,38 @@ class ObjectService:
             obj.object_id = object_id
 
         return await self.repository.add_object(obj, workflow)
+
+    async def update_object(
+        self,
+        object_id: str,
+        *,
+        document: dict[str, Any] | None = None,
+        xml_document: str | None = None,
+        title: str | None = None,
+        description: str | None = None,
+    ) -> None:
+        """Add a new metadata object to the database.
+
+        :param object_id: metadata object id that overrides the default one
+        :param document: the object metadata JSON document
+        :param xml_document: the object metadata XML document
+        :param title: metadata object title
+        :param description: metadata object description
+        """
+
+        def update_callback(obj: ObjectEntity) -> None:
+            if obj.document:
+                obj.document = document
+            if obj.xml_document:
+                obj.xml_document = xml_document
+            if obj.title:
+                obj.title = title
+            if obj.description:
+                obj.description = description
+            obj.modified = datetime.now()
+
+        if await self.repository.update_object(object_id, update_callback) is None:
+            raise UnknownObjectException(object_id)
 
     async def is_object(self, object_id: str, *, submission_id: str | None = None) -> bool:
         """Check if the metadata object exists.
@@ -107,6 +150,20 @@ class ObjectService:
 
         if submission_id is not None:
             return obj.submission_id == submission_id
+
+        return True
+
+    async def is_object_by_name(self, project_id: str, name: str, object_type: str) -> bool:
+        """Check if the metadata object exists.
+
+        project_id: The project id.
+        name: The name of the object.
+        object_type: The type of the object.
+        :returns: True if the metadata object exists.
+        """
+        obj = await self.repository.get_object_by_name(project_id, name, object_type)
+        if obj is None:
+            return False
 
         return True
 
@@ -164,9 +221,9 @@ class ObjectService:
         def _object(entity_: ObjectEntity) -> Object:
             return Object(
                 name=entity_.name,
-                object_id=entity_.object_id,
-                submission_id=entity_.submission_id,
-                object_type=entity_.object_type,
+                objectId=entity_.object_id,
+                submissionId=entity_.submission_id,
+                objectType=entity_.object_type,
                 title=entity_.title,
                 description=entity_.description,
                 created=entity_.created,
@@ -175,14 +232,16 @@ class ObjectService:
 
         objects = []
 
-        # Search by object type(s) and optional object id.
-        async for entity in self.repository.get_objects(submission_id, object_type, object_id=object_id):
-            objects.append(_object(entity))
-
-        if not objects and name is not None:
-            # Search by object type(s) and optional object name.
-            async for entity in self.repository.get_objects(submission_id, object_type, name=name):
+        if object_id is None and name is None:
+            async for entity in self.repository.get_objects(submission_id, object_type):
                 objects.append(_object(entity))
+        else:
+            if object_id is not None:
+                async for entity in self.repository.get_objects(submission_id, object_type, object_id=object_id):
+                    objects.append(_object(entity))
+            if not objects and name is not None:
+                async for entity in self.repository.get_objects(submission_id, object_type, name=name):
+                    objects.append(_object(entity))
 
         return objects
 
@@ -270,32 +329,6 @@ class ObjectService:
             raise UnknownObjectException(object_id)
 
         return obj.object_type
-
-    async def update_document(self, object_id: str, document: dict[str, Any]) -> None:
-        """Update metadata object JSON document.
-
-        :param object_id: the object id
-        :param document: new metadata object document.
-        """
-
-        def update_callback(obj: ObjectEntity) -> None:
-            obj.document = document
-
-        if await self.repository.update_object(object_id, update_callback) is None:
-            raise UnknownObjectException(object_id)
-
-    async def update_xml_document(self, object_id: str, xml_document: str) -> None:
-        """Update metadata object XML document.
-
-        :param object_id: the object id
-        :param xml_document: new metadata object document.
-        """
-
-        def update_callback(obj: ObjectEntity) -> None:
-            obj.xml_document = xml_document
-
-        if await self.repository.update_object(object_id, update_callback) is None:
-            raise UnknownObjectException(object_id)
 
     async def delete_object_by_id(self, object_id: str) -> None:
         """Delete metadata object.

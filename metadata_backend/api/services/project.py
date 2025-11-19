@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 
 from aiohttp import web
 
-from ..models import Project
+from ..models.models import Project
 from . import ldap
 
 

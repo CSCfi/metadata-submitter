@@ -4,7 +4,7 @@ from typing import AsyncIterator, Callable, Sequence
 
 from sqlalchemy import and_, delete, func, or_, select
 
-from metadata_backend.api.models import SubmissionWorkflow
+from metadata_backend.api.models.submission import SubmissionWorkflow
 from metadata_backend.api.services.accession import generate_file_accession
 
 from ..models import FileEntity, IngestStatus

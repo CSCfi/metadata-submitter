@@ -1,4 +1,4 @@
-"""Xml metadata object processor."""
+"""XML metadata object processor to inject accession numbers."""
 
 # pylint: disable=too-many-lines
 
@@ -6,7 +6,7 @@ import os
 from abc import ABC, abstractmethod
 from itertools import chain
 from pathlib import Path
-from typing import AsyncIterator, Awaitable, Callable, Iterable, cast, override
+from typing import AsyncIterator, Awaitable, Callable, Iterable, Sequence, cast, override
 
 import fsspec
 from lxml import etree
@@ -14,8 +14,10 @@ from lxml.etree import QName
 from lxml.etree import _Element as Element  # noqa
 from lxml.etree import _ElementTree as ElementTree  # noqa
 
-from metadata_backend.api.processors.xml.exceptions import SchemaValidationException
-from metadata_backend.api.processors.xml.models import (
+from ..models import ObjectIdentifier
+from ..processors import DocumentsProcessor, ObjectProcessor
+from .exceptions import SchemaValidationException
+from .models import (
     XmlElementInsertionCallback,
     XmlObjectConfig,
     XmlObjectIdentifier,
@@ -67,15 +69,18 @@ class XmlProcessor(ABC):
 
     @staticmethod
     def validate_schema(
-        xml: ElementTree | Element, schema_dir: str, schema_type: str, schema_file_resolver: Callable[[str], str]
+        xml: ElementTree | Element,
+        schema_dir: str,
+        schema_type: str,
+        schema_file_resolver: Callable[[str], str] = lambda schema_type: schema_type,
     ) -> None:
         """
         Validate XML against XML Schema. Raise SchemaValidationException on failure.
 
         :param xml: XML element or element tree.
         :param schema_dir: The directory for the XML schema files.
-        :param schema_type: The schema type must match the XML schema file name without the ".xsd" extension.
-        :param schema_file_resolver: Resolves the schema file given the schema type.
+        :param schema_type: The schema type must resolve to the XML schema file using the schema type resolver
+        :param schema_file_resolver: Resolves the XML schema file given the schema type.
         """
         xml_schema_file = schema_file_resolver(schema_type)
         xml_schema_path = os.path.join(schema_dir, xml_schema_file)
@@ -89,7 +94,7 @@ class XmlProcessor(ABC):
             raise SchemaValidationException(schema_type, xml_schema.error_log)
 
     @abstractmethod
-    def get_xml_object_references(self) -> list[XmlObjectIdentifier]:
+    def get_object_references(self) -> Sequence[XmlObjectIdentifier]:
         """
         Retrieve the metadata object references.
 
@@ -97,7 +102,7 @@ class XmlProcessor(ABC):
         """
 
     @abstractmethod
-    def set_xml_object_reference_ids(self, references: list[XmlObjectIdentifier]) -> None:
+    def set_object_reference_ids(self, references: list[XmlObjectIdentifier]) -> None:
         """
         Set the metadata object reference ids.
 
@@ -105,7 +110,7 @@ class XmlProcessor(ABC):
         """
 
     @abstractmethod
-    def is_xml_object_reference_ids(self) -> bool:
+    def is_object_reference_ids(self) -> bool:
         """
         Return true if all metadata object references in the XML have ids.
 
@@ -113,7 +118,7 @@ class XmlProcessor(ABC):
         """
 
     @abstractmethod
-    def get_xml_references_without_ids(self) -> list[XmlObjectIdentifier]:
+    def get_references_without_ids(self) -> Sequence[XmlObjectIdentifier]:
         """
         Return metadata object references without ids.
 
@@ -125,16 +130,16 @@ class XmlProcessor(ABC):
 #
 
 
-class XmlObjectProcessor(XmlProcessor):
+class XmlObjectProcessor(XmlProcessor, ObjectProcessor):
     """
-    Process one XML metadata object given an element tree.
+    Process one XML metadata object to inject accession numbers.
 
     Automatically identifies the metadata type.
     """
 
     def __init__(self, config: XmlObjectConfig, xml: ElementTree) -> None:
         """
-        Process one XML metadata object given an element tree.
+        Process one XML metadata object to inject accession numbers.
 
         Automatically identifies the metadata type.
 
@@ -145,7 +150,7 @@ class XmlObjectProcessor(XmlProcessor):
         self.xml = xml
 
         self.root_path = f"/{QName(xml.getroot().tag).localname}"
-        self.root_element = self._get_xml_element(self.root_path, self.xml)
+        self.root_element = self.get_xml_element(self.root_path, self.xml)
         self._object_type = config.get_object_type(self.root_path)
         self._schema_type = config.get_schema_type(self._object_type)
         # Validate XML schema.
@@ -290,7 +295,7 @@ class XmlObjectProcessor(XmlProcessor):
         return XmlObjectProcessor._normalise_xpath(path, "./")
 
     @staticmethod
-    def _get_xml_element(path: str, xml: ElementTree | Element, *, optional: bool = False) -> Element | None:
+    def get_xml_element(path: str, xml: ElementTree | Element, *, optional: bool = False) -> Element | None:
         """
         Retrieve the XML element using an XPath expression.
 
@@ -452,7 +457,7 @@ class XmlObjectProcessor(XmlProcessor):
                 parent_element = xml
             else:
                 parent_path = "./" + "/".join(parts[:-1])
-                parent_element = XmlObjectProcessor._get_xml_element(parent_path, xml)
+                parent_element = XmlObjectProcessor.get_xml_element(parent_path, xml)
             parent_element.set(attr_name, value)
         else:
             # Set element value. The element is expected to be created by the inserting callback if it is missing.
@@ -542,7 +547,7 @@ class XmlObjectProcessor(XmlProcessor):
         return self._object_type
 
     @override
-    def get_xml_object_references(self) -> list[XmlObjectIdentifier]:
+    def get_object_references(self) -> list[XmlObjectIdentifier]:
         """
         Retrieve the metadata object references.
 
@@ -572,7 +577,7 @@ class XmlObjectProcessor(XmlProcessor):
         return references
 
     @override
-    def set_xml_object_reference_ids(self, references: list[XmlObjectIdentifier]) -> None:
+    def set_object_reference_ids(self, references: list[XmlObjectIdentifier]) -> None:
         """
         Set the metadata object reference ids.
 
@@ -604,25 +609,26 @@ class XmlObjectProcessor(XmlProcessor):
                         )
 
     @override
-    def is_xml_object_reference_ids(self) -> bool:
+    def is_object_reference_ids(self) -> bool:
         """
         Return true if all metadata object references in the XML have ids.
 
         :return: true if all metadata object references in the XML have ids.
         """
 
-        return all(ref.id for ref in self.get_xml_object_references())
+        return all(ref.id for ref in self.get_object_references())
 
     @override
-    def get_xml_references_without_ids(self) -> list[XmlObjectIdentifier]:
+    def get_references_without_ids(self) -> list[XmlObjectIdentifier]:
         """
         Return metadata object references without ids.
 
         :return: metadata object references without ids.
         """
-        return [identifier for identifier in self.get_xml_object_references() if not identifier.id]
+        return [identifier for identifier in self.get_object_references() if not identifier.id]
 
-    def get_xml_object_title(self) -> str | None:
+    @override
+    def get_object_title(self) -> str | None:
         """
         Retrieve the metadata object title.
 
@@ -635,7 +641,8 @@ class XmlObjectProcessor(XmlProcessor):
             return self._get_xml_node_value(title_path, self.root_element, optional=True)
         return None
 
-    def get_xml_object_description(self) -> str | None:
+    @override
+    def get_object_description(self) -> str | None:
         """
         Retrieve the metadata object description.
 
@@ -651,14 +658,14 @@ class XmlObjectProcessor(XmlProcessor):
 
 class XmlDocumentProcessor(XmlProcessor):
     """
-    Process one or more XML metadata objects given a root element.
+    Process one or more XML metadata objects to inject accession numbers.
 
     Automatically identifies the metadata type.
     """
 
     def __init__(self, config: XmlObjectConfig, xml: ElementTree) -> None:
         """
-        Process one or more XML metadata objects given an element tree.
+        Process one or more XML metadata objects to inject accession numbers.
 
         Automatically identifies the metadata type.
 
@@ -764,6 +771,30 @@ class XmlDocumentProcessor(XmlProcessor):
         return processor
 
     @staticmethod
+    def get_xml_object_processors(
+        processors: dict[str, dict[str, dict[str, XmlObjectProcessor]]],
+        schema_type: str,
+        root_path: str,
+    ) -> list[XmlObjectProcessor]:
+        """
+        Retrieve the metadata object processors.
+
+        :param processors: The metadata object processors.
+        :param schema_type: The schema type.
+        :param root_path: The metadata object root path.
+        :return: metadata object processors.
+        """
+        schema_type_map = processors.get(schema_type)
+        if not schema_type_map:
+            raise ValueError(f"Unknown schema '{schema_type}'.")
+
+        root_path_map = schema_type_map.get(root_path)
+        if not root_path_map:
+            raise ValueError(f"Unknown '{schema_type}' path '{root_path}'.")
+
+        return list(root_path_map.values())
+
+    @staticmethod
     def set_xml_object_processor(
         processors: dict[str, dict[str, dict[str, XmlObjectProcessor]]], name: str, processor: XmlObjectProcessor
     ) -> None:
@@ -820,7 +851,7 @@ class XmlDocumentProcessor(XmlProcessor):
         return self._schema_type
 
     @override
-    def get_xml_object_references(self) -> list[XmlObjectIdentifier]:
+    def get_object_references(self) -> list[XmlObjectIdentifier]:
         """
         Retrieve the metadata object references.
 
@@ -828,38 +859,36 @@ class XmlDocumentProcessor(XmlProcessor):
         """
         references = []
         for processor in self.xml_processors:
-            references.extend(processor.get_xml_object_references())
+            references.extend(processor.get_object_references())
         return references
 
     @override
-    def set_xml_object_reference_ids(self, references: list[XmlObjectIdentifier]) -> None:
+    def set_object_reference_ids(self, references: list[XmlObjectIdentifier]) -> None:
         """
         Set the metadata object reference ids.
 
         :param references: The metadata object references.
         """
         for processor in self.xml_processors:
-            processor.set_xml_object_reference_ids(references)
+            processor.set_object_reference_ids(references)
 
     @override
-    def is_xml_object_reference_ids(self) -> bool:
+    def is_object_reference_ids(self) -> bool:
         """
         Return true if all metadata object references in the XML have ids.
 
         :return: true if all metadata object references in the XML have ids.
         """
-        return all(processor.is_xml_object_reference_ids() for processor in self.xml_processors)
+        return all(processor.is_object_reference_ids() for processor in self.xml_processors)
 
     @override
-    def get_xml_references_without_ids(self) -> list[XmlObjectIdentifier]:
+    def get_references_without_ids(self) -> list[XmlObjectIdentifier]:
         """
         Return metadata object references without ids.
 
         :return: metadata object references without ids.
         """
-        return list(
-            chain.from_iterable(processor.get_xml_references_without_ids() for processor in self.xml_processors)
-        )
+        return list(chain.from_iterable(processor.get_references_without_ids() for processor in self.xml_processors))
 
     @staticmethod
     async def write_xml_document(
@@ -907,12 +936,12 @@ class XmlDocumentProcessor(XmlProcessor):
         await writer(f"</{set_element}>\n".encode("utf-8"))
 
 
-class XmlDocumentsProcessor(XmlProcessor):
-    """Process one or more XML documents objects given their root elements."""
+class XmlDocumentsProcessor(XmlProcessor, DocumentsProcessor):
+    """Process one or more XML documents objects to inject accession numbers."""
 
     def __init__(self, config: XmlObjectConfig, xml: ElementTree | Iterable[ElementTree]) -> None:
         """
-        Process one or more XML documents objects given their element trees.
+        Process one or more XML documents objects to inject accession numbers.
 
         :param config: Configuration object for XML processing.
         :param xml: XML element trees.
@@ -942,7 +971,7 @@ class XmlDocumentsProcessor(XmlProcessor):
                 XmlDocumentProcessor.set_xml_object_processor(self.xml_processor, name, p)
 
         for o in config.object_paths:
-            identifiers = self.get_xml_object_identifiers(o.schema_type)
+            identifiers = self.get_object_identifiers(o.schema_type)
             if o.is_single and o.is_mandatory:
                 if len(identifiers) != 1:
                     raise ValueError(
@@ -973,19 +1002,31 @@ class XmlDocumentsProcessor(XmlProcessor):
             self.xml_processor, schema_type, root_path, name
         ).get_xml_object_identifier()
 
-    def get_xml_object_processor(self, schema_type: str, root_path: str, name: str) -> XmlObjectProcessor:
+    @override
+    def get_object_processor(self, schema_type: str, root_path: str, name: str) -> XmlObjectProcessor:
         """
-        Retrieve the metadata object identifier.
+        Retrieve the metadata object processor.
 
         :param schema_type: The schema type.
         :param root_path: The metadata object root path.
         :param name: The unique metadata object name.
-        :return: metadata object identifier.
+        :return: metadata object processor.
         """
 
         return XmlDocumentProcessor.get_xml_object_processor(self.xml_processor, schema_type, root_path, name)
 
-    def get_xml_object_identifiers(self, schema_type: str | None = None) -> list[XmlObjectIdentifier]:
+    def get_xml_object_processors(self, schema_type: str, root_path: str) -> list[XmlObjectProcessor]:
+        """
+        Retrieve the metadata object processors.
+
+        :param schema_type: The schema type.
+        :param root_path: The metadata object root path.
+        :return: metadata object processors.
+        """
+
+        return XmlDocumentProcessor.get_xml_object_processors(self.xml_processor, schema_type, root_path)
+
+    def get_object_identifiers(self, schema_type: str | None = None) -> Sequence[XmlObjectIdentifier]:
         """
         Retrieve the metadata object identifiers.
 
@@ -1002,13 +1043,16 @@ class XmlDocumentsProcessor(XmlProcessor):
 
         return identifiers
 
-    def set_xml_object_id(self, identifier: XmlObjectIdentifier) -> None:
+    def set_object_id(self, identifier: ObjectIdentifier) -> None:
         """
         Set the metadata object id.
 
         :param identifier: The metadata object identifier that must have the id. If the XML schema
         supports multiple metadata object types then must also have the root path.
         """
+        if not isinstance(identifier, XmlObjectIdentifier):
+            raise ValueError("Invalid identifier type")
+
         schema_type = identifier.schema_type
         root_path = identifier.root_path
         name = identifier.name
@@ -1020,10 +1064,10 @@ class XmlDocumentsProcessor(XmlProcessor):
         XmlDocumentProcessor.get_xml_object_processor(
             self.xml_processor, schema_type, root_path, name
         ).set_xml_object_id(id_)
-        self.set_xml_object_reference_ids([identifier])
+        self.set_object_reference_ids([identifier])
 
     @override
-    def get_xml_object_references(self) -> list[XmlObjectIdentifier]:
+    def get_object_references(self) -> Sequence[XmlObjectIdentifier]:
         """
         Retrieve the metadata object references.
 
@@ -1031,38 +1075,36 @@ class XmlDocumentsProcessor(XmlProcessor):
         """
         references = []
         for processor in self.xml_processors:
-            references.extend(processor.get_xml_object_references())
+            references.extend(processor.get_object_references())
         return references
 
     @override
-    def set_xml_object_reference_ids(self, references: list[XmlObjectIdentifier]) -> None:
+    def set_object_reference_ids(self, references: list[XmlObjectIdentifier]) -> None:
         """
         Set the metadata object reference ids.
 
         :param references: The metadata object references.
         """
         for processor in self.xml_processors:
-            processor.set_xml_object_reference_ids(references)
+            processor.set_object_reference_ids(references)
 
     @override
-    def is_xml_object_reference_ids(self) -> bool:
+    def is_object_reference_ids(self) -> bool:
         """
         Return true if all metadata object references in the XML have ids.
 
         :return: true if all metadata object references in the XML have ids.
         """
-        return all(processor.is_xml_object_reference_ids() for processor in self.xml_processors)
+        return all(processor.is_object_reference_ids() for processor in self.xml_processors)
 
     @override
-    def get_xml_references_without_ids(self) -> list[XmlObjectIdentifier]:
+    def get_references_without_ids(self) -> Sequence[XmlObjectIdentifier]:
         """
         Return metadata object references without ids.
 
         :return: metadata object references without ids.
         """
-        return list(
-            chain.from_iterable(processor.get_xml_references_without_ids() for processor in self.xml_processors)
-        )
+        return list(chain.from_iterable(processor.get_references_without_ids() for processor in self.xml_processors))
 
 
 class XmlStringDocumentsProcessor(XmlDocumentsProcessor):

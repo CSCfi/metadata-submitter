@@ -1,0 +1,38 @@
+<IMAGE_SET>
+    <IMAGE alias="1">
+        <IMAGE_OF alias="1"/>
+        <IMAGE_TYPE>
+            <WSI_IMAGE>test</WSI_IMAGE>
+        </IMAGE_TYPE>
+        <FILES>
+            <FILE filename="test.dcm" checksum_method="SHA256"
+                  checksum="8c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4"
+                  unencrypted_checksum="8c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4"
+                  filetype="dcm"/>
+        </FILES>
+        <ATTRIBUTES>
+            <STRING_ATTRIBUTE>
+                <TAG>test</TAG>
+                <VALUE>test</VALUE>
+            </STRING_ATTRIBUTE>
+        </ATTRIBUTES>
+    </IMAGE>
+    <IMAGE alias="3">
+        <IMAGE_OF alias="1"/>
+        <IMAGE_TYPE>
+            <WSI_IMAGE>test3</WSI_IMAGE>
+        </IMAGE_TYPE>
+        <FILES>
+            <FILE filename="test3.dcm" checksum_method="SHA256"
+                  checksum="3c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4"
+                  unencrypted_checksum="3c3a51adf8f8b1b7a2625d7ac9c12a08dcf9e6a10e87a1f8a215e67f87e7d2a4"
+                  filetype="dcm"/>
+        </FILES>
+        <ATTRIBUTES>
+            <STRING_ATTRIBUTE>
+                <TAG>test3</TAG>
+                <VALUE>test3</VALUE>
+            </STRING_ATTRIBUTE>
+        </ATTRIBUTES>
+    </IMAGE>
+</IMAGE_SET>

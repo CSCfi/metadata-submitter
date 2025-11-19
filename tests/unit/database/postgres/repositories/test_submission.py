@@ -3,7 +3,7 @@ import uuid
 
 import ulid
 
-from metadata_backend.api.models import SubmissionWorkflow
+from metadata_backend.api.models.submission import SubmissionWorkflow
 from metadata_backend.database.postgres.models import SubmissionEntity
 from metadata_backend.database.postgres.repositories.submission import SubmissionRepository
 from metadata_backend.database.postgres.repository import SessionFactory, transaction
@@ -23,7 +23,7 @@ async def test_add_get_delete_submission(
                 name=name,
                 project_id=project_id,
                 bucket="test",
-                workflow=SubmissionWorkflow.SDS,
+                workflow=SubmissionWorkflow.SD,
             )
 
             _submission_id = await submission_repository.add_submission(_submission)
@@ -37,7 +37,7 @@ async def test_add_get_delete_submission(
             assert entity.name == name
             assert entity.project_id == project_id
             assert entity.bucket == "test"
-            assert entity.workflow == SubmissionWorkflow.SDS
+            assert entity.workflow == SubmissionWorkflow.SD
             assert entity.document == submission.document
 
             assert entity.submission_id == submission_id
@@ -86,7 +86,7 @@ async def test_submitted_ingested_date(
             name=name,
             project_id=project_id,
             bucket="test",
-            workflow=SubmissionWorkflow.SDS,
+            workflow=SubmissionWorkflow.SD,
         )
 
         submission_id = await submission_repository.add_submission(submission)
@@ -117,7 +117,7 @@ async def test_get_submissions(session_factory: SessionFactory, submission_repos
             name=first_submission_name,
             project_id=first_project_id,
             bucket="test",
-            workflow=SubmissionWorkflow.SDS,
+            workflow=SubmissionWorkflow.SD,
             created=now - datetime.timedelta(days=1),
             modified=now - datetime.timedelta(days=1),
             is_published=True,
@@ -131,7 +131,7 @@ async def test_get_submissions(session_factory: SessionFactory, submission_repos
             name=second_submission_name,
             project_id=second_and_third_project_id,
             bucket="test",
-            workflow=SubmissionWorkflow.SDS,
+            workflow=SubmissionWorkflow.SD,
             created=now - datetime.timedelta(days=2),
             modified=now - datetime.timedelta(days=2),
             is_published=False,
@@ -144,7 +144,7 @@ async def test_get_submissions(session_factory: SessionFactory, submission_repos
             name=third_submission_name,
             project_id=second_and_third_project_id,
             bucket="test",
-            workflow=SubmissionWorkflow.SDS,
+            workflow=SubmissionWorkflow.SD,
             created=now - datetime.timedelta(days=3),
             modified=now - datetime.timedelta(days=3),
             is_published=False,

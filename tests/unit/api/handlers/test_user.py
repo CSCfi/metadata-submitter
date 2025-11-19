@@ -4,7 +4,7 @@ import json
 import os
 from unittest.mock import MagicMock, patch
 
-from metadata_backend.api.models import Project, User
+from metadata_backend.api.models.models import Project, User
 from metadata_backend.conf.conf import API_PREFIX
 
 from .common import HandlersTestCase

@@ -4,7 +4,7 @@ from aiohttp import web
 from aiohttp.web import Request, Response
 
 from ..auth import get_authorized_user_id, get_authorized_user_name
-from ..models import User
+from ..models.models import User
 from ..resources import get_project_service
 
 

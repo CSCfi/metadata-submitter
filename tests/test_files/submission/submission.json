@@ -1,0 +1,176 @@
+{
+  "name": "TestName",
+  "title": "TestTitle",
+  "description": "TestDescription",
+  "bucket": "TestBucket",
+  "rems": {
+    "workflowId": 1,
+    "organizationId": "CSC",
+    "licenses": [
+      1
+    ]
+  },
+  "metadata": {
+    "creators": [
+      {
+        "name": "Smith, John",
+        "nameType": "Personal",
+        "givenName": "John",
+        "familyName": "Smith",
+        "nameIdentifiers": [
+          {
+            "nameIdentifier": "https://orcid.org/0000-0002-1825-0097",
+            "nameIdentifierScheme": "ORCID",
+            "schemeUri": "https://orcid.org"
+          }
+        ],
+        "affiliation": [
+          {
+            "name": "Example University",
+            "affiliationIdentifier": "grid.1234.5",
+            "affiliationIdentifierScheme": "GRID",
+            "schemeUri": "https://www.grid.ac"
+          }
+        ]
+      }
+    ],
+    "publisher": {
+      "name": "Helmholtz Centre Potsdam - GFZ German Research Centre for Geosciences",
+      "publisherIdentifier": "https://ror.org/04z8jg394",
+      "publisherIdentifierScheme": "ROR",
+      "schemeUri": "https://ror.org/"
+    },
+    "titles": [
+      {
+        "title": "Sample Dataset"
+      }
+    ],
+    "publicationYear": 2022,
+    "version": "1.0",
+    "resourceType": {
+      "resourceTypeGeneral": "Dataset",
+      "resourceType": "Dataset"
+    },
+    "contributors": [
+      {
+        "name": "Doe, Jane",
+        "nameType": "Personal",
+        "givenName": "Jane",
+        "familyName": "Doe",
+        "contributorType": "DataManager"
+      }
+    ],
+    "subjects": [
+      {
+        "subject": "Climate change",
+        "subjectScheme": "LCSH",
+        "schemeUri": "http://id.loc.gov/authorities/subjects",
+        "valueUri": "http://example.org/subject/1",
+        "classificationCode": "QA76"
+      }
+    ],
+    "dates": [
+      {
+        "date": "2020-01-01",
+        "dateType": "Created"
+      },
+      {
+        "date": "2022-01-01",
+        "dateType": "Updated",
+        "dateInformation": "Metadata updated"
+      }
+    ],
+    "language": "en",
+    "alternateIdentifiers": [
+      {
+        "alternateIdentifier": "abc-123",
+        "alternateIdentifierType": "LocalID"
+      }
+    ],
+    "relatedIdentifiers": [
+      {
+        "relatedIdentifier": "10.2345/other.doi",
+        "relatedIdentifierType": "DOI",
+        "relationType": "IsCitedBy",
+        "relatedMetadataScheme": "datacite",
+        "schemeUri": "http://example.org/scheme",
+        "schemeType": "someType",
+        "resourceTypeGeneral": "Dataset"
+      }
+    ],
+    "sizes": [
+      "1GB"
+    ],
+    "formats": [
+      "text/csv"
+    ],
+    "rights": [
+      {
+        "rights": "Creative Commons Attribution 4.0 International License",
+        "rightsIdentifier": "CC-BY-4.0",
+        "rightsIdentifierScheme": "SPDX",
+        "schemeUri": "https://spdx.org/licenses/",
+        "rightsUri": "https://creativecommons.org/licenses/by/4.0/"
+      }
+    ],
+    "descriptions": [
+      {
+        "description": "This is a sample abstract description.",
+        "descriptionType": "Abstract",
+        "lang": "en"
+      }
+    ],
+    "geoLocations": [
+      {
+        "geoLocationPlace": "Helsinki",
+        "geoLocationPoint": {
+          "pointLatitude": "60.1699",
+          "pointLongitude": "24.9384"
+        },
+        "geoLocationBox": {
+          "westBoundLongitude": "24.0",
+          "eastBoundLongitude": "25.0",
+          "southBoundLatitude": "60.0",
+          "northBoundLatitude": "61.0"
+        },
+        "geoLocationPolygon": [
+          {
+            "pointLatitude": "41.991",
+            "pointLongitude": "-71.032"
+          },
+          {
+            "pointLatitude": "42.893",
+            "pointLongitude": "-69.622"
+          },
+          {
+            "pointLatitude": "41.991",
+            "pointLongitude": "-68.211"
+          },
+          {
+            "pointLatitude": "41.090",
+            "pointLongitude": "-69.622"
+          },
+          {
+            "pointLatitude": "41.991",
+            "pointLongitude": "-71.032"
+          }
+        ],
+        "inPolygonPoint": {
+          "pointLatitude": "41.500",
+          "pointLongitude": "-69.800"
+        }
+      }
+    ],
+    "fundingReferences": [
+      {
+        "funderName": "European Commission",
+        "funderIdentifier": "https://ror.org/013meh722",
+        "funderIdentifierType": "ROR",
+        "schemeUri": "http://example.org/schema/SA12345",
+        "awardNumber": "GA12345",
+        "awardUri": "http://example.org/grant/GA12345",
+        "awardTitle": "Climate Research Grant"
+      }
+    ]
+  }
+}

@@ -4,7 +4,7 @@ from typing import AsyncIterator, Callable, Sequence
 
 from sqlalchemy import and_, case, delete, func, select
 
-from metadata_backend.api.models import SubmissionWorkflow
+from metadata_backend.api.models.submission import SubmissionWorkflow
 from metadata_backend.api.services.accession import generate_accession
 
 from ..models import ObjectEntity
@@ -58,36 +58,44 @@ class ObjectRepository:
             result = await session.execute(stmt)
             return result.scalar_one_or_none()
 
-    async def get_object_by_name(self, submission_id: str, name: str) -> ObjectEntity | None:
+    async def get_object_by_name(self, project_id: str, name: str, object_type: str) -> ObjectEntity | None:
         """
-        Get the object entity using submission id and object name.
+        Get the object entity by object name.
 
         Args:
-            submission_id: The submission id.
+            project_id: The project id.
             name: The name of the object.
+            object_type: The type of the object.
 
         Returns:
             The object entity.
         """
         async with transaction(self._session_factory) as session:
-            stmt = select(ObjectEntity).where(ObjectEntity.name == name, ObjectEntity.submission_id == submission_id)
+            stmt = select(ObjectEntity).where(
+                ObjectEntity.name == name,
+                ObjectEntity.project_id == project_id,
+                ObjectEntity.object_type == object_type,
+            )
             result = await session.execute(stmt)
             return result.scalar_one_or_none()
 
-    async def get_object_by_id_or_name(self, submission_id: str, object_id: str) -> ObjectEntity | None:
+    async def get_object_by_id_or_name(
+        self, project_id: str, object_id_or_name: str, object_type: str
+    ) -> ObjectEntity | None:
         """
         Get the object entity using object id or name.
 
         Args:
-            submission_id: The submission id.
-            object_id: The object id or name.
+            project_id: The project id.
+            object_id_or_name: The object id or name.
+            object_type: The object type.
 
         Returns:
             The object entity.
         """
-        entity = await self.get_object_by_id(object_id)
+        entity = await self.get_object_by_id(object_id_or_name)
         if entity is None:
-            entity = await self.get_object_by_name(submission_id, object_id)
+            entity = await self.get_object_by_name(project_id, object_id_or_name, object_type)
 
         return entity
 

@@ -67,7 +67,7 @@ async def http_error_handler(req: web.Request, handler: Handler) -> web.StreamRe
         validation_exception.text = _json_problem(validation_exception, req.url, errors=e.messages)
         raise validation_exception from e
     except ValidationError as e:
-        reason = "; ".join(f"{err['loc']}: {err['msg']}" for err in e.errors())
+        reason = "; ".join(f"{'.'.join(map(str, err['loc']))}: {err['msg']}" for err in e.errors())
         validation_exception = web.HTTPBadRequest(reason=reason, content_type=c_type)
         validation_exception.text = _json_problem(validation_exception, req.url)
         raise validation_exception from e

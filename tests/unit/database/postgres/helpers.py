@@ -4,7 +4,8 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from metadata_backend.api.models import ChecksumType, File, SubmissionWorkflow
+from metadata_backend.api.models.models import File
+from metadata_backend.api.models.submission import SubmissionWorkflow
 from metadata_backend.database.postgres.models import ObjectEntity, SubmissionEntity
 
 # Create entities used in Postgres repositories.
@@ -16,7 +17,7 @@ def create_submission_entity(
     name: str | None = None,
     project_id: str | None = None,
     bucket: str | None = None,
-    workflow: SubmissionWorkflow | None = SubmissionWorkflow.SDS,
+    workflow: SubmissionWorkflow | None = SubmissionWorkflow.SD,
     title: str | None = None,
     description: str | None = None,
     document: dict[str, Any] | None = None,
@@ -64,6 +65,7 @@ def create_submission_entity(
 
 
 def create_object_entity(
+    project_id: str,
     submission_id: str,
     *,
     name: str | None = None,
@@ -87,6 +89,7 @@ def create_object_entity(
         xml_document = "<test/>"
 
     return ObjectEntity(
+        project_id=project_id,
         submission_id=submission_id,
         name=name,
         object_type=object_type,
@@ -107,10 +110,9 @@ def create_file(
     *,
     path: str | None = None,
     bytes: int = 1,
+    checksum_method: str | None = "MD5",
     unencrypted_checksum: str | None = None,
-    unencrypted_checksum_type: ChecksumType | None = ChecksumType.MD5,
     encrypted_checksum: str | None = None,
-    encrypted_checksum_type: ChecksumType | None = ChecksumType.MD5,
 ) -> File:
     if path is None:
         path = f"file{uuid.uuid4()}"
@@ -120,12 +122,11 @@ def create_file(
         encrypted_checksum = hashlib.md5(os.urandom(32)).hexdigest()
 
     return File(
-        submission_id=submission_id,
-        object_id=object_id,
+        submissionId=submission_id,
+        objectId=object_id,
         path=path,
         bytes=bytes,
-        unencrypted_checksum=unencrypted_checksum,
-        unencrypted_checksum_type=unencrypted_checksum_type,
-        encrypted_checksum=encrypted_checksum,
-        encrypted_checksum_type=encrypted_checksum_type,
+        checksumMethod=checksum_method,
+        unencryptedChecksum=unencrypted_checksum,
+        encryptedChecksum=encrypted_checksum,
     )

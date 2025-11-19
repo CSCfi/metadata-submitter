@@ -95,6 +95,8 @@ def update_dict(d, u):
     """Update values in a dictionary with values from another dictionary."""
     for k, v in u.items():
         if isinstance(v, collections.abc.Mapping):
+            if not isinstance(d.get(k), dict):
+                d[k] = {}
             d[k] = update_dict(d.get(k, {}), v)
         else:
             d[k] = v
@@ -121,7 +123,8 @@ async def create(req: web.Request) -> web.Response:
             {"identifier": f"https://mock_doi.org/{content['data']['attributes']['doi']}", "identifierType": "DOI"}
         ]
     except Exception as e:
-        reason = f"Provided payload did not include required attributes: {e}"
+        # LOG.info(content)
+        reason = f"DOI draft creation endpoint: provided payload did not include required attributes: {e}"
         LOG.exception(reason)
         raise web.HTTPBadRequest(reason=reason)
 
@@ -135,6 +138,8 @@ async def create(req: web.Request) -> web.Response:
 
 async def update(req: web.Request) -> web.Response:
     """DOI update endpoint."""
+    test = "1"
+
     try:
         content = await req.json()
         _doi = req.match_info["id"]
@@ -143,13 +148,16 @@ async def update(req: web.Request) -> web.Response:
         LOG.exception(reason)
         raise web.HTTPBadRequest(reason=reason)
 
+    test = "2"
     data = DATASETS[_doi]
     data["data"]["attributes"]["updated"] = str(datetime.now(UTC))
     data["included"][0]["attributes"]["updated"] = str(datetime.now(UTC))
     try:
+        test = "3"
         data = update_dict(data, content)
     except Exception as e:
-        reason = f"Provided payload did not include required attributes: {e}"
+        # LOG.info(content)
+        reason = f"XXXXX {test} XXXXX DOI update endpoint: provided payload did not include required attributes: {e}"
         LOG.exception(reason)
         raise web.HTTPBadRequest(reason=reason)
     return web.json_response(data, status=200)

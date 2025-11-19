@@ -5,6 +5,8 @@ from pathlib import Path
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import MagicMock
 
+from metadata_backend.api.models.datacite import Subject
+from metadata_backend.api.models.submission import SubmissionMetadata
 from metadata_backend.services.metax_mapper import MetaDataMapper, SubjectNotFoundException
 
 
@@ -17,13 +19,13 @@ class MetaDataMapperTestCase(IsolatedAsyncioTestCase):
         """Configure variables for tests."""
         self.client = MagicMock()
         self.bytes = 1024
-        doi_file = self.TESTFILES_ROOT / "doi" / "test_doi.json"
-        self.doi_info = json.loads(doi_file.read_text())
+        submission_metadata_file = self.TESTFILES_ROOT / "submission" / "metadata.json"
+        self.submission_metadata = SubmissionMetadata.model_validate(json.loads(submission_metadata_file.read_text()))
 
     async def test_map_metadata(self):
         """Test that Metax metadata receives new data from DOI of a submission."""
 
-        mapper = MetaDataMapper({}, self.doi_info, self.bytes)
+        mapper = MetaDataMapper({}, self.submission_metadata, self.bytes)
         research_dataset = await mapper.map_metadata()
         new_keys = [
             "creator",
@@ -42,10 +44,10 @@ class MetaDataMapperTestCase(IsolatedAsyncioTestCase):
     def test_map_creators(self):
         """Test that creators are mapped correctly from DOI."""
         mapper = MetaDataMapper({}, {}, self.bytes)
-        creators = self.doi_info["creators"]
+        creators = self.submission_metadata.creators
         mapper._map_creators(creators)
         self.assertEqual(
-            self.doi_info["creators"][0]["affiliation"][0]["affiliationIdentifier"],
+            self.submission_metadata.creators[0].affiliation[0].affiliationIdentifier,
             mapper.research_dataset["creator"][0]["member_of"]["identifier"],
         )
         self.assertEqual("Organization", mapper.research_dataset["creator"][0]["member_of"]["@type"])
@@ -53,7 +55,7 @@ class MetaDataMapperTestCase(IsolatedAsyncioTestCase):
     def test_map_field_of_science(self):
         """Test that field of science is mapped correctly from DOI subjects."""
         mapper = MetaDataMapper({}, {}, self.bytes)
-        subjects = self.doi_info["subjects"]
+        subjects = self.submission_metadata.subjects
         mapper._map_field_of_science(subjects)
         self.assertEqual(
             "http://www.yso.fi/onto/okm-tieteenala/ta999",
@@ -65,8 +67,8 @@ class MetaDataMapperTestCase(IsolatedAsyncioTestCase):
         """Test that field of science mapping method raises error response with a faulty subject title."""
         mapper = MetaDataMapper({}, {}, self.bytes)
         bad_subjects = [
-            {"subject": "this subject is not part of the submission schema"},
-            {"subject": "0 - neither is this"},
+            Subject(subject="this subject is not part of the submission schema"),
+            Subject(subject="0 - neither is this"),
         ]
         with self.assertRaises(SubjectNotFoundException):
             mapper._map_field_of_science(bad_subjects)
