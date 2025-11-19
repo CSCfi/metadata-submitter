@@ -9,6 +9,21 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- Made Pydantic models strict to fail fast and improve data validation.
+- patch /submissions/{submissionId}/rems to return 204 instead of submission id
+- patch /submissions/{submissionId}/metadata to return 204 instead of submission id
+- renamed patch /submissions/{submissionId}/doi endpoint to /submissions/{submissionId}/metadata
+- API model fields to either use Python case or camel case but not both. Simplifies code and reduces false positive lint errors.
+- Improved submission.json update to simply merge new field values to old values. Field values can't be accidentally removed but can be explicitly removed by setting field value to null or to empty collection.
+- Removed workflow.json and workflow configuration jsons as these are no longer used by the API.
+- "workflow" field "SDSX" enumeration value to "SD".
+- "workflow" field type to SubmissionWorkflow enum in Submission Pydantic model.
+- Renamed "doiInfo" to "metadata" in submission.json document.
+- validate and format Datacite subjects according to OKM field of science only when the workflow is SD.
+- Datacite Publisher is now set in the Pydantic model. Default is "CSC - IT Center for Science".
+- Datacite resourceTypeGeneral and resourceType are now set in Pydantic model. Can be overriden during publish if needed.
+- moved Datacite controlled vocabulary whitespace removal from publish to Pydantic model.
+- moved Datacite name field population using givenName and familyName from publish to Pydantic model.
 - using server side functionality to set all default and update values. Fallbacks exist for SQLLite.
 - added database check constraints for enumerations.
 - file postgres service and repository ingest status update to be able to update ingest error and error type.
@@ -63,6 +78,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- several bugs related to submission.json and metadata object submissions.
 - (users) changed ints to datetimes in submission model for date fields.
 - (users) submission.json serialization in Postgres submission service.
 - Metax 'creator' and 'contributors' mapping in MetaxMapper (#900)
@@ -74,6 +90,16 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- ALLOW_UNSAFE environmental variable to delete published submissions in integration tests.
+- post /workflows/{workflow}/projects/{projectId}/submissions/ now supports SD submissions (submission.json).
+- patch /workflows/{workflow}/projects/{projectId}/submissions/{submissionId} endpoints.
+- head and delete /workflows/{workflow}/projects/{projectId}/submissions/{submissionId} endpoints.
+- check that metadata object name is unique for an object type within a project before object is saved.
+- check that submission name is unique within a project before submission is saved.
+- project_id column to the objects Postgres table to easily find objects by name in a project.
+- Datacite xml reader creates the Pydantic datacite model.
+- Datacite nameType mandatory field population in Pydantic model when givenName and familyName have been provided.
+- all missing fields to datacite Pydantic model.
 - schema generation code.
 - files.created and modified columns.
 - files.ingest_error_count column.
@@ -129,6 +155,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Removed
 
+- text_name field from the Submission Pydantic model.
 - spell checking
 - pylint and flake linters
 - Removed Files and Datacite steps from workflow schemas
@@ -150,6 +177,10 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 - Spellchecking in gitlab-ci.yml (#858)
 - GitHub workflows.
 - overlapping tasks in gitlab-ci.yml, pre-commit and tox.
+
+### Deprecated
+
+- removed code and files no longer used by the API, for example unused XML, JSON and workflow code.
 
 ## [2025.4.0] - 2025-04-01
 
