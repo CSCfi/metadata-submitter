@@ -13,7 +13,6 @@ from ..api.models.datacite import (
     GeoLocation,
     Subject,
 )
-from ..api.models.models import Registration
 from ..api.models.submission import SubmissionMetadata
 from ..conf.conf import METAX_REFERENCE_DATA
 from ..helpers.logger import LOG
@@ -239,23 +238,16 @@ class MetaDataMapper:
         metax_data: dict[str, Any],
         metadata: SubmissionMetadata,
         file_bytes: int,
-        *,
-        related_dataset: Registration | None = None,
-        related_study: Registration | None = None,
     ) -> None:
         """Set variables.
 
         :param metax_data: Metax research_dataset metadata
         :param metadata: The submission metadata
         :param file_bytes: The number of file bytes
-        :param related_dataset: A related dataset registration.
-        :param related_study: A related study registration.
         """
         self.research_dataset = metax_data
         self.metadata = metadata
         self.research_dataset["total_remote_resources_byte_size"] = file_bytes
-        self.related_dataset = related_dataset
-        self.related_study = related_study
         self.affiliations: list[Any] = []
         self.identifier_types = METAX_REFERENCE_DATA["identifier_types"]
         self.languages = METAX_REFERENCE_DATA["languages"]
@@ -303,11 +295,6 @@ class MetaDataMapper:
 
         if self.metadata.fundingReferences:
             self._map_funding_references(self.metadata.fundingReferences)
-
-        if self.related_study:
-            self._map_related_dataset(self.related_study)
-        if self.related_dataset:
-            self._map_related_study(self.related_dataset)
 
         return self.research_dataset
 
@@ -493,43 +480,6 @@ class MetaDataMapper:
                 raise SubjectNotFoundException from exc
 
             field_of_science.append(fos)
-
-    def _map_related_study(self, registration: Registration) -> None:
-        """
-        Map related study.
-
-        :param registration: The registration information
-        """
-        self.research_dataset["relation"] = [
-            {
-                "entity": {
-                    "identifier": registration.dataciteUrl,
-                    "type": {
-                        "in_scheme": "http://uri.suomi.fi/codelist/fairdata/resource_type",
-                        "identifier": "http://uri.suomi.fi/codelist/fairdata/resource_type/code/dataset",
-                        "pref_label": {"en": "Dataset", "fi": "Tutkimusaineisto", "und": "Tutkimusaineisto"},
-                    },
-                },
-                "relation_type": {
-                    "identifier": "http://purl.org/dc/terms/relation",
-                    "pref_label": {"en": "Related dataset", "fi": "Liittyvä aineisto", "und": "Liittyvä aineisto"},
-                },
-            }
-        ]
-
-    def _map_related_dataset(self, registration: Registration) -> None:
-        """
-        Map related dataset.
-
-        :param registration: The registration information
-        """
-        self.research_dataset["is_output_of"] = [
-            {
-                "name": {"en": registration.title},
-                "identifier": registration.dataciteUrl,
-                "source_organization": self.affiliations,
-            }
-        ]
 
     # Metax mapping for fundingReferences is optional
     # It can be removed after we get the confirmation that it is not needed.

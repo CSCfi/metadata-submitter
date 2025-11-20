@@ -11,7 +11,6 @@ from aiohttp import BasicAuth, ClientTimeout, web
 from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
 from yarl import URL
 
-from ..api.models.models import Registration
 from ..api.models.submission import SubmissionMetadata
 from ..conf.conf import metax_config
 from ..helpers.logger import LOG
@@ -196,29 +195,19 @@ class MetaxServiceHandler(ServiceHandler):
         metadata: SubmissionMetadata,
         metax_id: str,
         file_bytes: int,
-        related_dataset: Registration | None = None,
-        related_study: Registration | None = None,
     ) -> None:
         """Update dataset for publishing.
 
         :param metadata: The submission metadata
         :param metax_id: The Metax ID
         :param file_bytes: The number of file bytes
-        :param related_dataset: A related dataset registration.
-        :param related_study: A related study registration.
         """
         LOG.info("Updating metadata with datacite info for Metax dataset: %r", metax_id)
 
         metax_data: dict[str, Any] = await self._get(metax_id)
 
         # Map fields from doi info to Metax schema
-        mapper = MetaDataMapper(
-            metax_data["research_dataset"],
-            metadata,
-            file_bytes,
-            related_dataset=related_dataset,
-            related_study=related_study,
-        )
+        mapper = MetaDataMapper(metax_data["research_dataset"], metadata, file_bytes)
         try:
             mapped_metax_data = await mapper.map_metadata()
         except SubjectNotFoundException as error:

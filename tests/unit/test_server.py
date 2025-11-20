@@ -46,7 +46,7 @@ class AppTestCase(AioHTTPTestCase):
 
         """
         server = await self.get_application()
-        self.assertIs(len(server.router.routes()), 48)
+        self.assertIs(len(server.router.routes()), 45)
 
     async def test_frontend_routes_are_set(self):
         """Test correct routes are set when frontend folder exists."""

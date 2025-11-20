@@ -15,10 +15,10 @@ from tests.integration.conf import (
     submissions_url,
 )
 from tests.integration.helpers import (
-    add_submission_linked_bucket,
     get_request_data,
     get_submission,
     get_submission_files,
+    patch_submission_bucket,
     patch_submission_metadata,
     patch_submission_rems,
     publish_submission,
@@ -50,7 +50,7 @@ class TestMinimalPublication:
         await s3_manager.add_bucket(mock_bucket)
         await s3_manager.set_bucket_policy(mock_bucket, project_id)
         await s3_manager.add_file_to_bucket(mock_bucket, file_name)
-        await add_submission_linked_bucket(client_logged_in, submission_id, mock_bucket)
+        await patch_submission_bucket(client_logged_in, submission_id, mock_bucket)
 
         await publish_submission(client_logged_in, submission_id, no_files=False)
 

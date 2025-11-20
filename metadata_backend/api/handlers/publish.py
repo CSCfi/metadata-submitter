@@ -23,7 +23,7 @@ from ..resources import (
     get_registration_service,
     get_submission_service,
 )
-from ..services.publish import PublishConfig, format_subject_okm_field_of_science, get_publish_config
+from ..services.publish import PublishConfig, PublishSource, format_subject_okm_field_of_science, get_publish_config
 from .restapi import RESTAPIIntegrationHandler
 from .submission import SubmissionAPIHandler
 
@@ -364,25 +364,18 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         registration: Registration,
         metadata: SubmissionMetadata,
         file_bytes: int,
-        *,
-        related_dataset: Registration | None = None,
-        related_study: Registration | None = None,
     ) -> None:
         """Update information in Metax.
 
         :param registration: The registration
         :param metadata: The submission metadata
         :param file_bytes: The number of file bytes
-        :param related_dataset: A related dataset registration
-        :param related_study: A related study registration
         """
         try:
             await self.metax_handler.update_dataset_metadata(
                 metadata,
                 registration.metaxId,
                 file_bytes,
-                related_dataset=related_dataset,
-                related_study=related_study,
             )
         except Exception as ex:
             raise SystemException(
@@ -565,7 +558,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         # Register DOI for submission.
 
-        if publish_config.publish_submission:
+        if publish_config.source == PublishSource.SUBMISSION:
             submission_registration = await registration_service.get_registration_by_submission_id(submission_id)
             if submission_registration is None:
                 doi = await self._register_draft_doi(publish_config, "submission")
@@ -577,9 +570,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         # Register DOI for metadata objects.
 
         async for obj in object_service.repository.get_objects(submission_id):
-            if (publish_config.publish_dataset and publish_config.object_type_dataset == obj.object_type) or (
-                publish_config.publish_study and publish_config.object_type_study == obj.object_type
-            ):
+            if publish_config.source == PublishSource.OBJECT and publish_config.object_type == obj.object_type:
                 registration = await registration_service.get_registration_by_object_id(obj.object_id)
                 if registration is None:
                     doi = await self._register_draft_doi(publish_config, obj.object_type)
@@ -599,20 +590,14 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
             predicate_: Callable[[Registration], bool] | None = None,
         ) -> Iterator[Registration]:
             # Yield submission registration.
-            if publish_config_.publish_submission:
+            if publish_config_.source == PublishSource.SUBMISSION:
                 if submission_registration and (predicate_ is None or predicate_(submission_registration)):
                     yield submission_registration
             # Yield metadata object registrations.
             for registration_ in object_registrations:
                 if (
-                    publish_config.publish_dataset
-                    and publish_config.object_type_dataset == registration_.objectType
-                    and (predicate_ is None or predicate_(registration_))
-                ):
-                    yield registration_
-                elif (
-                    publish_config.publish_study
-                    and publish_config.object_type_study == registration_.objectType
+                    publish_config_.source == PublishSource.OBJECT
+                    and publish_config.object_type == registration_.objectType
                     and (predicate_ is None or predicate_(registration_))
                 ):
                     yield registration_
@@ -641,32 +626,15 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         # Update Metax with DOI information and file bytes.
         if publish_config.use_metax_service:
 
-            def _get_related_object_registration(schema_: str) -> tuple[Registration | None, Registration | None]:
-                # Assumes that only a single study and dataset registration is allowed.
-                for registration_ in object_registrations:
-                    if schema_ != registration_.objectType:
-                        if registration_.objectType == "study":
-                            return None, registration_  # Related study registration.
-                        return registration_, None  # Related dataset registration.
-                return None, None
-
             for registration in _filtered_registrations(publish_config):
-                related_dataset, related_study = None, None
-                if registration.objectType is not None:
-                    related_dataset, related_study = _get_related_object_registration(registration.objectType)
-
                 # Update datacite metadata changed during DataCite publish.
                 metadata = submission.metadata
                 metadata.update_datacite(datacite)
-                await self._update_metax(
-                    registration, metadata, file_bytes, related_dataset=related_dataset, related_study=related_study
-                )
+                await self._update_metax(registration, metadata, file_bytes)
 
         # Publish to REMS and add REMS URL to Metax draft description.
         if publish_config.use_rems_service:
-            for registration in _filtered_registrations(
-                publish_config, predicate_=lambda r: r.objectType != publish_config.object_type_study
-            ):
+            for registration in _filtered_registrations(publish_config):
                 await self._publish_rems(rems, registration, publish_config, registration_service)
 
         # Publish to Metax.

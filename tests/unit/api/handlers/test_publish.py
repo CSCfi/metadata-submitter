@@ -214,11 +214,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             ]
 
             mock_metax_update_dataset_metadata.assert_awaited_once_with(
-                expected_submission_metadata,
-                metax_id,
-                file_bytes,
-                related_dataset=None,
-                related_study=None,
+                expected_submission_metadata, metax_id, file_bytes
             )
             mock_metax_update_descr.assert_awaited_once_with(
                 metax_id,
@@ -376,7 +372,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
 
             # Assert Datacite.
 
-            dataset_datacite_data = {
+            datacite_data = {
                 "id": doi,
                 "type": "dois",
                 "data": {
@@ -418,65 +414,6 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                         ],
                         "resourceType": {"resourceTypeGeneral": "Dataset", "resourceType": "Dataset"},
                         "subjects": [{"subject": "999 - Other"}],
-                        "relatedIdentifiers": [
-                            {
-                                "relationType": "IsDescribedBy",
-                                "relatedIdentifier": doi,
-                                "resourceTypeGeneral": "Collection",
-                                "relatedIdentifierType": "DOI",
-                            }
-                        ],
-                    }
-                },
-            }
-
-            study_datacite_data = {
-                "id": doi,
-                "type": "dois",
-                "data": {
-                    "attributes": {
-                        "publisher": {"name": "CSC - IT Center for Science"},
-                        "publicationYear": datetime.now().year,
-                        "event": "publish",
-                        "schemaVersion": "https://schema.datacite.org/meta/kernel-4",
-                        "doi": doi,
-                        "prefix": doi_part1,
-                        "suffix": doi_part2,
-                        "types": {
-                            "bibtex": "misc",
-                            "citeproc": "collection",
-                            "schemaOrg": "Collection",
-                        },
-                        "url": f"{metax_url}{metax_id}",
-                        "identifiers": [{"identifierType": "DOI", "doi": doi}],
-                        "titles": [{"lang": None, "title": study_title, "titleType": None}],
-                        "descriptions": [{"lang": None, "description": study_description, "descriptionType": "Other"}],
-                        "creators": [
-                            {
-                                "name": "Creator, Test",
-                                "nameType": "Personal",
-                                "givenName": "Test",
-                                "familyName": "Creator",
-                                "affiliation": [
-                                    {
-                                        "name": "affiliation place",
-                                        "schemeUri": "https://ror.org",
-                                        "affiliationIdentifier": "https://ror.org/test1",
-                                        "affiliationIdentifierScheme": "ROR",
-                                    }
-                                ],
-                            }
-                        ],
-                        "resourceType": {"resourceTypeGeneral": "Collection", "resourceType": "Study"},
-                        "subjects": [{"subject": "999 - Other"}],
-                        "relatedIdentifiers": [
-                            {
-                                "relationType": "Describes",
-                                "relatedIdentifier": doi,
-                                "resourceTypeGeneral": "Dataset",
-                                "relatedIdentifierType": "DOI",
-                            }
-                        ],
                     }
                 },
             }
@@ -484,59 +421,20 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             assert not publish_config.use_datacite_service
             assert publish_config.use_pid_service
 
-            assert mock_pid_create_doi.await_count == 2
-            assert mock_pid_publish.await_count == 2
-            assert call(dataset_datacite_data) in mock_pid_publish.await_args_list
-            assert call(study_datacite_data) in mock_pid_publish.await_args_list
+            assert mock_pid_create_doi.await_count == 1
+            assert mock_pid_publish.await_count == 1
+            assert call(datacite_data) in mock_pid_publish.await_args_list
 
             # Assert Metax.
-            assert mock_metax_create.await_count == 2
+            assert mock_metax_create.await_count == 1
             assert call(user_id, doi, dataset_title, dataset_description) in mock_metax_create.await_args_list
-            assert call(user_id, doi, study_title, study_description) in mock_metax_create.await_args_list
-            assert mock_metax_update_dataset_metadata.await_count == 2
+            assert mock_metax_update_dataset_metadata.await_count == 1
 
             expected_submission_metadata = SubmissionMetadata.model_validate(submission_metadata)
 
             # Dataset.
             assert (
-                call(
-                    expected_submission_metadata,
-                    metax_id,
-                    file_bytes,
-                    related_dataset=Registration(
-                        submissionId=submission_id,
-                        objectId=dataset_entity.object_id,
-                        objectType=dataset_object_type,
-                        title=dataset_title,
-                        description=dataset_description,
-                        doi=doi,
-                        metaxId=metax_id,
-                        remsUrl=f"http://mockrems:8003/application?items={rems_catalogue_id}",
-                        remsResourceId=str(rems_resource_id),
-                        remsCatalogueId=rems_catalogue_id,
-                    ),
-                    related_study=None,
-                )
-                in mock_metax_update_dataset_metadata.await_args_list
-            )
-
-            # Study.
-            assert (
-                call(
-                    expected_submission_metadata,
-                    metax_id,
-                    file_bytes,
-                    related_dataset=None,
-                    related_study=Registration(
-                        submissionId=submission_id,
-                        objectId=study_entity.object_id,
-                        objectType=study_object_type,
-                        title=study_title,
-                        description=study_description,
-                        doi=doi,
-                        metaxId=metax_id,
-                    ),
-                )
+                call(expected_submission_metadata, metax_id, file_bytes)
                 in mock_metax_update_dataset_metadata.await_args_list
             )
 
@@ -545,7 +443,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                 f"{dataset_description}\n\nSD Apply's Application link: {RemsServiceHandler.application_url(rems_catalogue_id)}",
             )
 
-            assert mock_metax_publish.await_count == 2
+            assert mock_metax_publish.await_count == 1
             assert call(metax_id, doi) in mock_metax_publish.await_args_list
 
             # Assert Rems.
