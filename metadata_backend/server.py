@@ -20,8 +20,16 @@ from .api.middlewares import authorization, http_error_handler
 from .api.resources import ResourceType, set_resource
 from .api.services.auth import AccessService
 from .api.services.file import S3AllasFileProviderService
-from .api.services.project import CscLdapProjectService
-from .conf.conf import API_PREFIX, aai_config, frontend_static_files, swagger_static_path
+from .api.services.project import CscProjectService, NbisProjectService
+from .conf.conf import (
+    API_PREFIX,
+    DEPLOYMENT_CSC,
+    DEPLOYMENT_NBIS,
+    aai_config,
+    config,
+    frontend_static_files,
+    swagger_static_path,
+)
 from .database.postgres.repositories.api_key import ApiKeyRepository
 from .database.postgres.repositories.file import FileRepository
 from .database.postgres.repositories.object import ObjectRepository
@@ -84,7 +92,12 @@ async def init(
     file_provider_service = S3AllasFileProviderService()
 
     _set_resource(ResourceType.ACCESS_SERVICE, AccessService(api_key_repository))
-    _set_resource(ResourceType.PROJECT_SERVICE, CscLdapProjectService())
+
+    if config.deployment == DEPLOYMENT_CSC:
+        _set_resource(ResourceType.PROJECT_SERVICE, CscProjectService())
+    elif config.deployment == DEPLOYMENT_NBIS:
+        _set_resource(ResourceType.PROJECT_SERVICE, NbisProjectService())
+
     _set_resource(ResourceType.SUBMISSION_SERVICE, submission_service)
     _set_resource(ResourceType.OBJECT_SERVICE, object_service)
     _set_resource(ResourceType.FILE_SERVICE, FileService(FileRepository(session_factory)))

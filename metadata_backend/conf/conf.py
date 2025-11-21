@@ -13,9 +13,10 @@ External services are queried from the application, e.g. Datacite for DOIs.
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import ujson
+from pydantic_settings import BaseSettings
 
 from .taxonomy_files.taxonomy_conf import TAXONOMY_NAME_FILE
 
@@ -26,6 +27,18 @@ frontend_static_files = Path(__file__).parent.parent / "frontend"
 
 # 2.1) Path to swagger HTML file
 swagger_static_path = Path(__file__).parent.parent / "swagger" / "index.html"
+
+DEPLOYMENT_CSC = "CSC"
+DEPLOYMENT_NBIS = "NBIS"
+
+
+# TODO(improve): load all configurations using BaseSettings
+class Config(BaseSettings):
+    deployment: Literal["CSC", "NBIS"] = "CSC"
+
+
+config = Config()
+
 
 # 3) Set up configurations for AAI server
 
