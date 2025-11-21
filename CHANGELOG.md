@@ -9,6 +9,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- Make project id optional in new submit URLs to make it possible for BigPicture Swedish submitter to submit without defining a project id. For BigPicture Swedish submitters the project_id is the user_id and this can be retrieved from the JWT token.
+- Simplify new submit URLs.
 - improved get and verify user projects tests.
 - moved ldap.py code to project.py file to have all ProjectService code in one place.
 - Made Pydantic models strict to fail fast and improve data validation.
