@@ -22,6 +22,7 @@ from ..resources import (
     get_session_factory,
     get_submission_service,
 )
+from ..services.project import ProjectService
 from ..services.submission.bigpicture import BigPictureObjectSubmissionService
 from ..services.submission.sensitive_data import SensitiveDataObjectSubmissionService
 from ..services.submission.submission import ObjectSubmission, ObjectSubmissionService
@@ -60,7 +61,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
     """API Handler for Objects."""
 
     @staticmethod
-    async def _get_project_id(user_id: str, req: Request) -> str:
+    async def _get_project_id(user_id: str, project_service: ProjectService) -> str:
         """
         Returns a single project id associated with the user. Raises an UserException if
         the user is not associated with a single project.
@@ -69,7 +70,6 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         :param req: HTTP request
         :returns: The project id.
         """
-        project_service = get_project_service(req)
         projects = await project_service.get_user_projects(user_id)
         if len(projects) != 1:
             raise UserException(
@@ -92,7 +92,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
 
         project_id = req.query.get("projectId")
         if not project_id:
-            project_id = await ObjectAPIHandler._get_project_id(user_id, req)
+            project_id = await ObjectAPIHandler._get_project_id(user_id, project_service)
 
         workflow = SubmissionWorkflow(workflow_name)
         if workflow not in SUBMISSION_CONFIG.add_submission_workflows:
@@ -116,6 +116,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
 
         :param req: HTTP request
         """
+        project_service = get_project_service(req)
         submission_service = get_submission_service(req)
         user_id = get_authorized_user_id(req)
 
@@ -124,7 +125,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
 
         project_id = req.query.get("projectId")
         if not project_id:
-            project_id = await ObjectAPIHandler._get_project_id(user_id, req)
+            project_id = await ObjectAPIHandler._get_project_id(user_id, project_service)
 
         unsafe = req.query.get("unsafe", "").lower() == "true"
 
@@ -151,6 +152,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
 
         :param req: HTTP request
         """
+        project_service = get_project_service(req)
         user_id = get_authorized_user_id(req)
 
         workflow_name = req.match_info["workflow"]
@@ -158,7 +160,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
 
         project_id = req.query.get("projectId")
         if not project_id:
-            project_id = await ObjectAPIHandler._get_project_id(user_id, req)
+            project_id = await ObjectAPIHandler._get_project_id(user_id, project_service)
 
         # Verify workflow.
         workflow = SubmissionWorkflow(workflow_name)
@@ -182,14 +184,15 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         :param req: POST multipart/form-data request
         :returns: The submission document.
         """
-        user_id = get_authorized_user_id(req)
+        project_service = get_project_service(req)
 
+        user_id = get_authorized_user_id(req)
         workflow_name = req.match_info["workflow"]
         submission_id = req.match_info["submissionId"]
 
         project_id = req.query.get("projectId")
         if not project_id:
-            project_id = await ObjectAPIHandler._get_project_id(user_id, req)
+            project_id = await ObjectAPIHandler._get_project_id(user_id, project_service)
 
         unsafe = req.query.get("unsafe", "").lower() == "true"
 

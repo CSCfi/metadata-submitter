@@ -11,6 +11,7 @@ from aiohttp.test_utils import AioHTTPTestCase, make_mocked_coro
 from aiohttp.web import Request
 
 from metadata_backend.api.handlers.restapi import RESTAPIHandler
+from metadata_backend.api.models.models import Project
 from metadata_backend.api.services.project import ProjectService
 from metadata_backend.conf.conf import API_PREFIX
 from metadata_backend.server import init
@@ -38,6 +39,8 @@ class HandlersTestCase(AioHTTPTestCase):
         self.server = await self.get_server(self.app)
         self.client = await self.get_client(self.server)
 
+        self.project_id = "1001"
+
         # Mock user authorisation.
         self.patch_verify_authorization = patch(
             "metadata_backend.api.middlewares.verify_authorization",
@@ -54,6 +57,16 @@ class HandlersTestCase(AioHTTPTestCase):
             new=AsyncMock(side_effect=web.HTTPUnauthorized(reason="Mocked unauthorized access")),
         )
 
+        # Mock get projects.
+        self.patch_get_user_projects = patch.object(
+            ProjectService, "get_user_projects", new=AsyncMock(return_value=[Project(project_id=self.project_id)])
+        )
+        self.patch_verify_user_project_failure = patch.object(
+            ProjectService,
+            "verify_user_project",
+            new=AsyncMock(side_effect=web.HTTPUnauthorized(reason="Mocked unauthorized access")),
+        )
+
         # Mock REMS license verification.
         self.patch_verify_rems_workflow_licence = patch(
             "metadata_backend.services.rems_service_handler.RemsServiceHandler.validate_workflow_licenses",
@@ -62,7 +75,6 @@ class HandlersTestCase(AioHTTPTestCase):
 
         await self.client.start_server()
 
-        self.project_id = "1001"
         self.submission_metadata = {
             "publicationYear": date.today().year,
             "creators": [
