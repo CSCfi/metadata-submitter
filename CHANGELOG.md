@@ -9,6 +9,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- improved get and verify user projects tests.
+- moved ldap.py code to project.py file to have all ProjectService code in one place.
 - Made Pydantic models strict to fail fast and improve data validation.
 - patch /submissions/{submissionId}/rems to return 204 instead of submission id
 - patch /submissions/{submissionId}/metadata to return 204 instead of submission id
@@ -90,6 +92,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- DEPLOYMENT env variable (CSC, NBIS) to prepare for BigPicture Swedish deployment. Selects the ProjectService.
+- NbisProjectService (NoProjectService) that uses user_id as the project_id.
 - ALLOW_UNSAFE environmental variable to delete published submissions in integration tests.
 - post /workflows/{workflow}/projects/{projectId}/submissions/ now supports SD submissions (submission.json).
 - patch /workflows/{workflow}/projects/{projectId}/submissions/{submissionId} endpoints.
