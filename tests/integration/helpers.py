@@ -100,14 +100,12 @@ async def submit_bp(sess, project_id: str) -> Submission:
 
     # Unsafe deletion if submission requires ALLOW_UNSAFE=TRUE.
     async with sess.delete(
-        f"{base_url}{API_PREFIX}/workflows/{workflow}/projects/{project_id}/submissions/{submission_name}?unsafe=true",
+        f"{base_url}{API_PREFIX}/submit/{workflow}/{submission_name}?projectId={project_id}&unsafe=true",
     ) as response:
         assert response.status == 204
 
     # Post submission.
-    async with sess.post(
-        f"{base_url}{API_PREFIX}/workflows/{workflow}/projects/{project_id}/submissions", data=data
-    ) as response:
+    async with sess.post(f"{base_url}{API_PREFIX}/submit/{workflow}?projectId={project_id}", data=data) as response:
         data = await response.json()
         assert response.status == 200
         submission = Submission.model_validate(data)

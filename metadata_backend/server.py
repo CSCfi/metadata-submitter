@@ -143,10 +143,10 @@ async def init(
 
     api_routes = [
         # Metadata object requests.
-        web.post("/workflows/{workflow}/projects/{projectId}/submissions", _object.add_submission),
-        web.patch("/workflows/{workflow}/projects/{projectId}/submissions/{submissionId}", _object.update_submission),
-        web.delete("/workflows/{workflow}/projects/{projectId}/submissions/{submissionId}", _object.delete_submission),
-        web.head("/workflows/{workflow}/projects/{projectId}/submissions/{submissionId}", _object.is_submission),
+        web.post("/submit/{workflow}", _object.add_submission),
+        web.patch("/submit/{workflow}/{submissionId}", _object.update_submission),
+        web.delete("/submit/{workflow}/{submissionId}", _object.delete_submission),
+        web.head("/submit/{workflow}/{submissionId}", _object.is_submission),
         web.get("/submissions/{submissionId}/objects", _object.list_objects),
         web.get("/submissions/{submissionId}/objects/docs", _object.get_objects),
         # Submission object requests.

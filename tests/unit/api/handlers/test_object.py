@@ -57,27 +57,25 @@ class ObjectHandlerTestCase(HandlersTestCase):
         with self.patch_verify_user_project, self.patch_verify_authorization:
             # Check if submission exists.
             response = await self.client.head(
-                f"{API_PREFIX}/workflows/{workflow}/projects/{project_id}/submissions/{submission_name}"
+                f"{API_PREFIX}/submit/{workflow}/{submission_name}?projectId={project_id}"
             )
             assert response.status in (204, 404)
 
             # Delete submission if it exists.
             response = await self.client.delete(
-                f"{API_PREFIX}/workflows/{workflow}/projects/{project_id}/submissions/{submission_name}"
+                f"{API_PREFIX}/submit/{workflow}/{submission_name}?projectId={project_id}"
             )
             assert response.status == 204
 
             # Check if submission exists.
             response = await self.client.head(
-                f"{API_PREFIX}/workflows/{workflow}/projects/{project_id}/submissions/{submission_name}"
+                f"{API_PREFIX}/submit/{workflow}/{submission_name}?projectId={project_id}"
             )
             assert response.status == 404
 
             # Test create submission.
             #
-            response = await self.client.post(
-                f"{API_PREFIX}/workflows/{workflow}/projects/{project_id}/submissions", data=file_data
-            )
+            response = await self.client.post(f"{API_PREFIX}/submit/{workflow}?projectId={project_id}", data=file_data)
             assert response.status == 200
             submission = Submission.model_validate(await response.json())
 
@@ -121,7 +119,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
             file_data[sd_file] = io.BytesIO(submission_bytes)  # type: ignore
 
             response = await self.client.patch(
-                f"{API_PREFIX}/workflows/{workflow}/projects/{project_id}/submissions/{submission_id}", data=file_data
+                f"{API_PREFIX}/submit/{workflow}/{submission_id}?projectId={project_id}", data=file_data
             )
             await _assert_update(response)
 
@@ -129,28 +127,28 @@ class ObjectHandlerTestCase(HandlersTestCase):
             submission.title = "UpdatedTestTitle2"
             submission.description = "UpdatedTestDescription2"
             response = await self.client.patch(
-                f"{API_PREFIX}/workflows/{workflow}/projects/{project_id}/submissions/{submission_id}",
+                f"{API_PREFIX}/submit/{workflow}/{submission_id}?projectId={project_id}",
                 json={"title": submission.title, "description": submission.description},
             )
             await _assert_update(response)
 
             # Test update of submission bucket (not allowed).
             response = await self.client.patch(
-                f"{API_PREFIX}/workflows/{workflow}/projects/{project_id}/submissions/{submission_id}",
+                f"{API_PREFIX}/submit/{workflow}/{submission_id}?projectId={project_id}",
                 json={"bucket": f"bucket_{uuid.uuid4()}"},
             )
             await _assert_not_allowed(response)
 
             # Test update of workflow (not allowed).
             response = await self.client.patch(
-                f"{API_PREFIX}/workflows/{workflow}/projects/{project_id}/submissions/{submission_id}",
+                f"{API_PREFIX}/submit/{workflow}/{submission_id}?projectId={project_id}",
                 json={"workflow": SubmissionWorkflow.BP.value},
             )
             await _assert_not_allowed(response)
 
             # Test update of project id (not allowed).
             response = await self.client.patch(
-                f"{API_PREFIX}/workflows/{workflow}/projects/{project_id}/submissions/{submission_id}",
+                f"{API_PREFIX}/submit/{workflow}/{submission_id}?projectId={project_id}",
                 json={"projectId": f"project_{uuid.uuid4()}"},
             )
             await _assert_not_allowed(response)
@@ -242,19 +240,19 @@ class ObjectHandlerTestCase(HandlersTestCase):
             with self.patch_verify_user_project, self.patch_verify_authorization:
                 # Check if submission exists.
                 response = await self.client.head(
-                    f"{API_PREFIX}/workflows/{workflow}/projects/{project_id}/submissions/{submission_name}"
+                    f"{API_PREFIX}/submit/{workflow}/{submission_name}?projectId={project_id}"
                 )
                 assert response.status in (204, 404)
 
                 # Delete submission if it exists.
                 response = await self.client.delete(
-                    f"{API_PREFIX}/workflows/{workflow}/projects/{project_id}/submissions/{submission_name}"
+                    f"{API_PREFIX}/submit/{workflow}/{submission_name}?projectId={project_id}"
                 )
                 assert response.status == 204
 
                 # Check if submission exists.
                 response = await self.client.head(
-                    f"{API_PREFIX}/workflows/{workflow}/projects/{project_id}/submissions/{submission_name}"
+                    f"{API_PREFIX}/submit/{workflow}/{submission_name}?projectId={project_id}"
                 )
                 assert response.status == 404
 
@@ -262,7 +260,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
                 #
 
                 response = await self.client.post(
-                    f"{API_PREFIX}/workflows/{workflow}/projects/{project_id}/submissions", data=file_data
+                    f"{API_PREFIX}/submit/{workflow}?projectId={project_id}", data=file_data
                 )
                 assert response.status == 200
                 submission = Submission.model_validate(await response.json())
@@ -295,7 +293,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
                 )
 
                 response = await self.client.patch(
-                    f"{API_PREFIX}/workflows/{workflow}/projects/{project_id}/submissions/{submission_id}",
+                    f"{API_PREFIX}/submit/{workflow}/{submission_id}?projectId={project_id}",
                     data=file_data,
                 )
                 assert response.status == 200
@@ -346,7 +344,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
                 )
 
                 response = await self.client.patch(
-                    f"{API_PREFIX}/workflows/{workflow}/projects/{project_id}/submissions/{submission_id}",
+                    f"{API_PREFIX}/submit/{workflow}/{submission_id}?projectId={project_id}",
                     data=file_data,
                 )
                 assert response.status == 200
