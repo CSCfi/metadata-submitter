@@ -186,7 +186,7 @@ async def delete_published_submission(sess, submission_id, *, expected_status=40
         assert resp.status == expected_status, f"HTTP Status code error, got {resp.status}"
 
 
-async def patch_submission_metadata(sess, submission_id, data):
+async def patch_submission_metadata(sess, submission_id: str, data: str):
     """Patch metadata, returns submissionId.
 
     :param sess: HTTP session in which request call is made
@@ -194,11 +194,12 @@ async def patch_submission_metadata(sess, submission_id, data):
     :param data: doi data used to update the submission
     :returns: Submission id for the submission inserted to database
     """
-    async with sess.patch(f"{submissions_url}/{submission_id}/metadata", data=data) as resp:
-        assert resp.status == 204
+    _json = {"metadata": json.loads(data)}
+    async with sess.patch(f"{submissions_url}/{submission_id}", json=_json) as resp:
+        assert resp.status == 200
 
 
-async def patch_submission_rems(sess, submission_id, data: str):
+async def patch_submission_rems(sess, submission_id: str, data: str):
     """Patch REMS (DAC) into submission within session, returns submissionId.
 
     :param sess: HTTP session in which request call is made
@@ -206,8 +207,22 @@ async def patch_submission_rems(sess, submission_id, data: str):
     :param data: REMS data used to update the submission
     :returns: Submission id for the submission inserted to database
     """
-    async with sess.patch(f"{submissions_url}/{submission_id}/rems", data=data) as resp:
-        assert resp.status == 204
+    _json = {"rems": json.loads(data)}
+    async with sess.patch(f"{submissions_url}/{submission_id}", json=_json) as resp:
+        assert resp.status == 200
+
+
+async def patch_submission_bucket(sess, submission_id: str, bucket: str):
+    """Patch REMS (DAC) into submission within session, returns submissionId.
+
+    :param sess: HTTP session in which request call is made
+    :param submission_id: id of the submission
+    :param bucket: The bucket name
+    :returns: Submission id for the submission inserted to database
+    """
+    _json = {"bucket": bucket}
+    async with sess.patch(f"{submissions_url}/{submission_id}", json=_json) as resp:
+        assert resp.status == 200
 
 
 async def create_submission(database, data):
@@ -282,23 +297,6 @@ async def get_submission(sess, submission_id):
         ans = await resp.json()
         assert resp.status == 200, f"HTTP Status code error {resp.status}"
         return ans
-
-
-async def add_submission_linked_bucket(sess, submission_id, name):
-    """Add a linked bucket name to a submission.
-
-    :param sess: HTTP session in which request call is made
-    :param submission_id: id of submission to add path to
-    :param name: bucket name string
-    """
-    data = {"bucket": name}
-    url = f"{submissions_url}/{submission_id}/bucket"
-
-    async with sess.patch(
-        url,
-        data=ujson.dumps(data),
-    ) as resp:
-        assert resp.status == 204, f"HTTP Status code error, got {resp.status}"
 
 
 async def remove_submission_file(sess, submission_id, file_path):

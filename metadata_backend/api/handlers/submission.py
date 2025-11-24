@@ -14,7 +14,7 @@ from ...helpers.logger import LOG
 from ..auth import get_authorized_user_id
 from ..exceptions import UserException
 from ..json import to_json_dict
-from ..models.submission import Bucket, Rems, Submission, SubmissionMetadata, SubmissionWorkflow
+from ..models.submission import Submission, SubmissionWorkflow
 from ..resources import (
     get_file_service,
     get_project_service,
@@ -274,65 +274,6 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         await submission_service.delete_submission(submission_id)  # Metadata objects and files are deleted as well.
 
         LOG.info("DELETE submission with ID: %r was successful.", submission_id)
-        return web.HTTPNoContent()
-
-    async def patch_submission_metadata(self, req: Request) -> Response:
-        """Update submission metadata.
-
-        :param req: PATCH request
-        :returns: HTTP No Content response
-        """
-        submission_id = req.match_info["submissionId"]
-        submission_service = get_submission_service(req)
-
-        # Check that the submission can be modified by the user.
-        await self.check_submission_modifiable(req, submission_id)
-
-        metadata = SubmissionMetadata.model_validate(await self._json_data(req))
-        await submission_service.update_metadata(submission_id, metadata)
-
-        return web.HTTPNoContent()
-
-    async def patch_submission_rems(self, req: Request) -> Response:
-        """Update submission REMS.
-
-        REMS example:
-        {
-             "workflowId": 1, # DAC
-             "organizationId": "CSC",
-             "licenses": [1] # POLICY
-        }
-
-        :param req: PATCH request
-        :returns: HTTP No Content response
-        """
-        submission_id = req.match_info["submissionId"]
-        submission_service = get_submission_service(req)
-
-        # Check that the submission can be modified by the user.
-        await self.check_submission_modifiable(req, submission_id)
-
-        rems = Rems.model_validate(await self._json_data(req))
-        await self.check_rems_ok(rems)
-        await submission_service.update_rems(submission_id, rems)
-
-        return web.HTTPNoContent()
-
-    async def patch_submission_bucket(self, req: Request) -> Response:
-        """Update submission bucket.
-
-        :param req: PATCH request
-        :returns: HTTP No Content response
-        """
-        submission_id = req.match_info["submissionId"]
-        submission_service = get_submission_service(req)
-
-        # Check that the submission can be modified by the user.
-        await self.check_submission_modifiable(req, submission_id)
-
-        bucket = Bucket.model_validate(await self._json_data(req))
-        await submission_service.update_bucket(submission_id, bucket.bucket)
-
         return web.HTTPNoContent()
 
     async def get_submission_files(self, req: Request) -> Response:

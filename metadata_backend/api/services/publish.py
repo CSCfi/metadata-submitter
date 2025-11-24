@@ -1,6 +1,8 @@
 """Publish service."""
 
-from pydantic import BaseModel, ConfigDict
+from enum import Enum
+
+from pydantic import BaseModel, ConfigDict, model_validator
 from pydantic_string_url import AnyUrl
 
 from ..exceptions import SystemException, UserException
@@ -8,10 +10,20 @@ from ..models.datacite import Subject
 from ..models.submission import SubmissionWorkflow
 
 
+class PublishSource(Enum):
+    """The source for publishing submissions."""
+
+    SUBMISSION = "submission"  # Publish using the submission document.
+    OBJECT = "object"  # Publish using a metadata object.
+
+
 class PublishConfig(BaseModel):
     """Service configuration for publishing submissions."""
 
     model_config = ConfigDict(frozen=True)
+
+    source: PublishSource
+    object_type: str | None = None
 
     use_pid_service: bool
     use_datacite_service: bool
@@ -19,48 +31,44 @@ class PublishConfig(BaseModel):
     use_metax_service: bool
     use_bp_beacon_service: bool
 
-    publish_submission: bool  # Publish using submission information.
-    publish_dataset: bool  # Publish using dataset information.
-    publish_study: bool  # Publish using study information.
-
-    object_type_dataset: str = "dataset"  # Object type for the dataset.
-    object_type_study: str = "study"  # Object type for the study.
-
     require_okm_field_of_science: bool = False  # Require OKM field of science: https://finto.fi/okm-tieteenala/en/
+
+    @model_validator(mode="after")
+    def model_validator_object_type(self) -> "PublishConfig":
+        """Check that object type is defined."""
+        if self.source == PublishSource.OBJECT and not self.object_type:
+            raise ValueError("object_type must be defined when source is 'object'")
+        return self
 
 
 SD_PUBLISH_CONFIG = PublishConfig(
+    source=PublishSource.SUBMISSION,
     use_pid_service=True,
     use_datacite_service=False,
     use_rems_service=True,
     use_metax_service=True,
     use_bp_beacon_service=False,
-    publish_submission=True,
-    publish_dataset=False,
-    publish_study=False,
     require_okm_field_of_science=True,
 )
 
 BP_PUBLISH_CONFIG = PublishConfig(
+    source=PublishSource.OBJECT,
+    object_type="dataset",
     use_pid_service=False,
     use_datacite_service=True,
     use_rems_service=True,
     use_metax_service=False,
     use_bp_beacon_service=True,
-    publish_submission=False,
-    publish_dataset=True,
-    publish_study=False,
 )
 
 FEGA_PUBLISH_CONFIG = PublishConfig(
+    source=PublishSource.OBJECT,
+    object_type="dataset",
     use_pid_service=True,
     use_datacite_service=False,
     use_rems_service=True,
     use_metax_service=True,
     use_bp_beacon_service=False,
-    publish_submission=False,
-    publish_dataset=True,
-    publish_study=True,
 )
 
 

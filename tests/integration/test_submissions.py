@@ -5,10 +5,10 @@ import logging
 
 from tests.integration.conf import publish_url
 from tests.integration.helpers import (
-    add_submission_linked_bucket,
     delete_submission,
     get_request_data,
     get_submission,
+    patch_submission_bucket,
     patch_submission_metadata,
     patch_submission_rems,
     publish_submission,
@@ -144,14 +144,16 @@ class TestSubmissionOperations:
             assert res["metadata"] == expected_submission_metadata, "submission doi does not match"
 
         # Test that an incomplete DOI object fails to patch into the submission
-        put_bad_metadata = {"extra": {}}
+        bad_metadata = {"invalid": {}}
         async with client_logged_in.patch(
-            f"{submissions_url}/{submission_id}/metadata", data=json.dumps(put_bad_metadata)
+            f"{submissions_url}/{submission_id}", json={"metadata": bad_metadata}
         ) as resp:
             LOG.debug("Tried updating submission %s", submission_id)
             assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
             res = await resp.json()
-            assert res["detail"] == "creators: Field required; extra: Extra inputs are not permitted"
+            assert (
+                res["detail"] == "metadata.creators: Field required; metadata.invalid: Extra inputs are not permitted"
+            )
 
         # Check the existing DOI info is not altered
         async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
@@ -181,7 +183,7 @@ class TestSubmissionOperations:
         assert "bucket" not in submission
 
         bucket = "test"
-        await add_submission_linked_bucket(client_logged_in, submission_id, bucket)
+        await patch_submission_bucket(client_logged_in, submission_id, bucket)
         submission = await get_submission(client_logged_in, submission_id)
         assert submission["bucket"] == bucket
 
@@ -213,13 +215,12 @@ class TestSubmissionOperations:
 
         # Test that an incorrect REMS object fails to patch into the submission
         # error case: REMS's licenses do not include DAC's linked license
-        put_bad_rems = {"workflowId": 1, "organizationId": "CSC", "licenses": [2, 3]}
-        async with client_logged_in.patch(
-            f"{submissions_url}/{submission_id}/rems", data=json.dumps(put_bad_rems)
-        ) as resp:
+        bad_rems = {"invalid": {}}
+        async with client_logged_in.patch(f"{submissions_url}/{submission_id}", json={"rems": bad_rems}) as resp:
             LOG.debug("Tried updating submission %s", submission_id)
             assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
             res = await resp.json()
             assert (
-                res["detail"] == "Rems error: Linked license '1' doesn't exist in licenses '[2, 3]'"
+                res["detail"]
+                == "rems.workflowId: Field required; rems.organizationId: Field required; rems.licenses: Field required; rems.invalid: Extra inputs are not permitted"
             ), "expected error mismatch"
