@@ -161,6 +161,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Removed
 
+- support for fega study is publish to simplify publish code and metax mapping.
+- unused api endpoints path /rems, /metadata, /bucket.
 - text_name field from the Submission Pydantic model.
 - spell checking
 - pylint and flake linters
