@@ -11,7 +11,6 @@ from .base import StrictBaseModel
 
 # https://datacite-metadata-schema.readthedocs.io/en/4.5/properties/
 
-DEFAULT_PUBLISHER = "CSC - IT Center for Science"  # TODO(improve): default publisher
 
 # Controlled vocabularies
 #
@@ -226,7 +225,7 @@ class Creator(StrictBaseModel):
 
 
 class Publisher(StrictBaseModel):
-    name: str = DEFAULT_PUBLISHER
+    name: str
     publisherIdentifier: AnyUrl | None = None
     publisherIdentifierScheme: str | None = None
     schemeUri: AnyUrl | None = None
@@ -409,7 +408,7 @@ class DataCiteMetadata(StrictBaseModel):
     identifiers: list[Identifier] | None = None  # Supported but ignored
     titles: list[Title] | None = None  # TODO(improve): Override default title during processing.
     creators: list[Creator]
-    publisher: Publisher = Publisher()
+    publisher: Publisher
     publicationYear: int | None = None  # Supported but ignored
     version: str | None = None
     rightsList: list[Rights] | None = None

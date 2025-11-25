@@ -25,17 +25,17 @@
         ],
         "affiliation": [
           {
-            "name": "Example University",
-            "affiliationIdentifier": "grid.1234.5",
-            "affiliationIdentifierScheme": "GRID",
-            "schemeUri": "https://www.grid.ac"
+            "name": "Academy of Medicine",
+            "affiliationIdentifier": "https://ror.org/00fnk0q46",
+            "affiliationIdentifierScheme": "ROR",
+            "schemeUri": "https://www.ror.org/"
           }
         ]
       }
     ],
     "publisher": {
-      "name": "Helmholtz Centre Potsdam - GFZ German Research Centre for Geosciences",
-      "publisherIdentifier": "https://ror.org/04z8jg394",
+      "name": "Attogen Biomedical Research",
+      "publisherIdentifier": "https://ror.org/01pbevv17",
       "publisherIdentifierScheme": "ROR",
       "schemeUri": "https://ror.org/"
     },
@@ -56,16 +56,24 @@
         "nameType": "Personal",
         "givenName": "Jane",
         "familyName": "Doe",
-        "contributorType": "DataManager"
+        "contributorType": "DataManager",
+        "affiliation": [
+          {
+            "name": "Academy of Medicine",
+            "affiliationIdentifier": "https://ror.org/00fnk0q46",
+            "affiliationIdentifierScheme": "ROR",
+            "schemeUri": "https://www.ror.org/"
+          }
+        ]
       }
     ],
     "subjects": [
       {
-        "subject": "Climate change",
-        "subjectScheme": "LCSH",
-        "schemeUri": "http://id.loc.gov/authorities/subjects",
-        "valueUri": "http://example.org/subject/1",
-        "classificationCode": "QA76"
+        "subject": "Literature studies",
+        "subjectScheme": "OKM Ontology",
+        "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
+        "valueUri": "http://www.yso.fi/onto/okm-tieteenala/ta6122",
+        "classificationCode": "6122"
       }
     ],
     "dates": [
@@ -77,6 +85,11 @@
         "date": "2022-01-01",
         "dateType": "Updated",
         "dateInformation": "Metadata updated"
+      },
+      {
+        "date": "2020-01-01/2023-12-31",
+        "dateType": "Other",
+        "dateInformation": "Time period covers the dataset"
       }
     ],
     "language": "en",
@@ -174,8 +187,8 @@
     ],
     "fundingReferences": [
       {
-        "funderName": "European Commission",
-        "funderIdentifier": "https://ror.org/013meh722",
+        "funderName": "Commission on Higher Education",
+        "funderIdentifier": "https://ror.org/04s346m05",
         "funderIdentifierType": "ROR",
         "schemeUri": "http://example.org/schema/SA12345",
         "awardNumber": "GA12345",

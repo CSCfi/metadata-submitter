@@ -18,6 +18,9 @@
     }
   ],
   "keywords": "test,keyword",
+  "publisher": {
+    "name": "University Health Care System"
+  },
   "contributors": [
     {
       "givenName": "Test1",

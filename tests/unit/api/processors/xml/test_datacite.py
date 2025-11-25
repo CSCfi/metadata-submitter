@@ -55,15 +55,15 @@ def assert_datacite(datacite: DataCiteMetadata, saved: bool) -> None:
     assert c.nameIdentifiers[0].nameIdentifierScheme == "ORCID"
     assert str(c.nameIdentifiers[0].schemeUri) == "https://orcid.org"
     assert c.affiliation is not None
-    assert c.affiliation[0].name == "Example University"
-    assert c.affiliation[0].affiliationIdentifier == "grid.1234.5"
-    assert c.affiliation[0].affiliationIdentifierScheme == "GRID"
-    assert str(c.affiliation[0].schemeUri) == "https://www.grid.ac"
+    assert c.affiliation[0].name == "Academy of Medicine"
+    assert c.affiliation[0].affiliationIdentifier == "https://ror.org/00fnk0q46"
+    assert c.affiliation[0].affiliationIdentifierScheme == "ROR"
+    assert str(c.affiliation[0].schemeUri) == "https://www.ror.org/"
 
     # publisher
     assert datacite.publisher == Publisher(
-        name="Helmholtz Centre Potsdam - GFZ German Research Centre for Geosciences",
-        publisherIdentifier=AnyUrl("https://ror.org/04z8jg394"),
+        name="Attogen Biomedical Research",
+        publisherIdentifier=AnyUrl("https://ror.org/01pbevv17"),
         publisherIdentifierScheme="ROR",
         schemeUri=AnyUrl("https://ror.org/"),
     )
@@ -78,11 +78,11 @@ def assert_datacite(datacite: DataCiteMetadata, saved: bool) -> None:
     # subjects
     assert datacite.subjects is not None
     s = datacite.subjects[0]
-    assert s.subject.strip() == "Climate change"
-    assert s.subjectScheme == "LCSH"
-    assert str(s.schemeUri) == "http://id.loc.gov/authorities/subjects"
-    assert str(s.valueUri) == "http://example.org/subject/1"
-    assert s.classificationCode == "QA76"
+    assert s.subject.strip() == "Literature studies"
+    assert s.subjectScheme == "OKM Ontology"
+    assert str(s.schemeUri) == "http://www.yso.fi/onto/okm-tieteenala/conceptscheme"
+    assert str(s.valueUri) == "http://www.yso.fi/onto/okm-tieteenala/ta6122"
+    assert s.classificationCode == "6122"
 
     # dates
     assert datacite.dates is not None
@@ -152,8 +152,8 @@ def assert_datacite(datacite: DataCiteMetadata, saved: bool) -> None:
     # fundingReferences
     assert datacite.fundingReferences is not None
     fr = datacite.fundingReferences[0]
-    assert fr.funderName == "European Commission"
-    assert fr.funderIdentifier == "https://ror.org/013meh722"
+    assert fr.funderName == "Commission on Higher Education"
+    assert fr.funderIdentifier == "https://ror.org/04s346m05"
     assert fr.funderIdentifierType == "ROR"
     assert fr.schemeUri == "http://example.org/schema/SA12345"
     assert fr.awardNumber == "GA12345"

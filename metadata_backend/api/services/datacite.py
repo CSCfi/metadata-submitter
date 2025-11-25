@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Any, cast
 
 from ...api.services.publish import format_subject_okm_field_of_science
+from ..exceptions import UserException
 from ..json import to_json_dict
 from ..models.datacite import AlternateIdentifier, DataCiteMetadata, Description, Title
 from ..models.models import Registration
@@ -75,6 +76,8 @@ class DataciteService(ABC):
         }
 
         if require_okm_field_of_science:
+            if datacite.subjects is None:
+                raise UserException("Datacite's subject is required.")
             format_subject_okm_field_of_science(datacite.subjects)
 
         cast(dict[str, Any], data["data"]["attributes"]).update(to_json_dict(datacite))

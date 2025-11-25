@@ -17,7 +17,6 @@ from yarl import URL
 
 from tests.integration.conf import (
     base_url,
-    metax_url,
     mock_auth_url,
     mock_s3_url,
     other_test_user,
@@ -165,14 +164,6 @@ async def fixture_project_id() -> str:
 async def fixture_project_id_2() -> str:
     """Return the second project id for the authenticated user."""
     return "2000"
-
-
-@pytest.fixture(name="clear_cache", autouse=True)
-async def fixture_clear_cache(client):
-    """Clear mock metax cache before and after each scoped test."""
-    await client.post(f"{metax_url}/purge")
-    yield
-    await client.post(f"{metax_url}/purge")
 
 
 @pytest.fixture

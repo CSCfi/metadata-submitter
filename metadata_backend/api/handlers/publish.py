@@ -9,11 +9,9 @@ from aiohttp import web
 from aiohttp.web import Request, Response
 
 from ...conf.deployment import deployment_config
-from ...database.postgres.services.file import FileService
 from ...database.postgres.services.object import ObjectService
 from ...database.postgres.services.registration import RegistrationService
 from ...helpers.logger import LOG
-from ..auth import get_authorized_user_id
 from ..exceptions import SystemException, UserException
 from ..json import to_json
 from ..models.datacite import DataCiteMetadata
@@ -90,10 +88,10 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         raise SystemException(f"Invalid publish configuration: {to_json(publish_config)}")
 
-    async def _register_metax_id(self, submission_id: str, user_id: str, registration: Registration) -> None:
+    async def _register_metax_id(self, submission_id: str, registration: Registration) -> None:
         try:
-            metax_id = await self.metax_handler.post_dataset_as_draft(
-                user_id, registration.doi, registration.title, registration.description
+            metax_id = await self.metax_handler.create_draft_dataset(
+                registration.doi, registration.title, registration.description
             )
             registration.metaxId = metax_id
 
@@ -140,24 +138,14 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                 f"Failed to publish submission in DataCite. Please try again later: {str(ex)}"
             ) from ex
 
-    async def _update_metax(
-        self,
-        registration: Registration,
-        metadata: SubmissionMetadata,
-        file_bytes: int,
-    ) -> None:
+    async def _update_metax(self, registration: Registration, metadata: SubmissionMetadata) -> None:
         """Update information in Metax.
 
         :param registration: The registration
         :param metadata: The submission metadata
-        :param file_bytes: The number of file bytes
         """
         try:
-            await self.metax_handler.update_dataset_metadata(
-                metadata,
-                registration.metaxId,
-                file_bytes,
-            )
+            await self.metax_handler.update_dataset_metadata(metadata, registration.metaxId)
         except Exception as ex:
             raise SystemException(
                 f"Failed to update submission '{registration.submissionId}' in Metax. Please try again later."
@@ -220,7 +208,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                 # Add rems URL to Metax description.
                 if registration.metaxId:
                     new_description = registration.description + f"\n\nSD Apply's Application link: {rems_url}"
-                    await self.metax_handler.update_draft_dataset_description(registration.metaxId, new_description)
+                    await self.metax_handler.update_dataset_description(registration.metaxId, new_description)
 
                 await registration_service.update_rems_url(registration.submissionId, rems_url)
                 registration.remsUrl = rems_url
@@ -262,7 +250,6 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         :returns: JSON response containing submission ID
         """
 
-        user_id = get_authorized_user_id(req)
         submission_id = req.match_info["submissionId"]
         # Hidden parameter to allow submission to be published without files.
         no_files = req.rel_url.query.get("no_files") == "true"
@@ -324,7 +311,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         if deployment_config.ALLOW_REGISTRATION:
             await self._register_submission(
-                user_id, submission, datacite, rems, object_service, file_service, registration_service, publish_config
+                submission, datacite, rems, object_service, registration_service, publish_config
             )
 
         # Update submission status to published.
@@ -335,24 +322,20 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
 
     async def _register_submission(
         self,
-        user_id: str,
         submission: Submission,
         datacite: DataCiteMetadata,
         rems: Rems,
         object_service: ObjectService,
-        file_service: FileService,
         registration_service: RegistrationService,
         publish_config: PublishConfig,
     ) -> None:
         """
         Register submission with external discovery services.
 
-        :param user_id: The user id
         :param submission: The submission
         :param datacite: The datacite metadata
         :param rems: The rems metadata
         :param object_service: The object service
-        :param file_service: The file service
         :param registration_service: The registration service
         :param publish_config: The publish configuration
         """
@@ -402,7 +385,7 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         # Register Metax ID for submission.
         if publish_config.use_metax_service:
             if registration.metaxId is None:
-                await self._register_metax_id(submission_id, user_id, registration)
+                await self._register_metax_id(submission_id, registration)
                 await registration_service.update_metax_id(submission_id, registration.metaxId)
 
         # Publish to DataCite. Requires DOIs. Modifies the datacite information.
@@ -414,14 +397,12 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                 publish_config,
             )
 
-        file_bytes = await file_service.count_bytes(submission_id)
-
-        # Update Metax with DOI information and file bytes.
+        # Update Metax with DOI information.
         if publish_config.use_metax_service:
             # Update datacite metadata changed during DataCite publish.
             metadata = submission.metadata
             metadata.update_datacite(datacite)
-            await self._update_metax(registration, metadata, file_bytes)
+            await self._update_metax(registration, metadata)
 
         # Publish to REMS and add REMS URL to Metax draft description.
         if publish_config.use_rems_service:

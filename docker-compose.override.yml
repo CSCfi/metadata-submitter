@@ -7,9 +7,6 @@ services:
       - "OIDC_URL_TEST=${OIDC_URL_TEST}"
     ports:
       - "8000:8000"
-  mockmetax:
-    ports:
-      - "8002:8002"
   mock-s3:
     ports:
       - "8006:8006"

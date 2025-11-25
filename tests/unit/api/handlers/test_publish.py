@@ -26,6 +26,10 @@ from tests.unit.database.postgres.helpers import create_object_entity, create_su
 from ...conftest import (
     patch_datacite_create_draft_doi,
     patch_datacite_publish,
+    patch_metax_create_draft_dataset,
+    patch_metax_publish_dataset,
+    patch_metax_update_dataset_description,
+    patch_metax_update_dataset_metadata,
     patch_pid_create_draft_doi,
     patch_pid_publish,
 )
@@ -48,8 +52,6 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
 
     async def test_publish_submission_sd(self):
         """Test publishing of CSC submission."""
-
-        user_id = "mock-userid"
 
         submission_metadata = self.submission_metadata
 
@@ -90,9 +92,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         await self.file_repository.add_file(file_entity, workflow)
 
         # Publish submission.
-        #
 
-        metax_cls = "metadata_backend.services.metax_service_handler.MetaxServiceHandler"
         rems_cls = "metadata_backend.services.rems_service_handler.RemsServiceHandler"
         file_provider_cls = "metadata_backend.api.services.file.FileProviderService"
 
@@ -105,10 +105,10 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             patch_pid_publish() as mock_pid_publish,
             # Metax
             patch.dict(os.environ, {"METAX_DISCOVERY_URL": metax_url}),
-            patch(f"{metax_cls}.post_dataset_as_draft", new_callable=AsyncMock) as mock_metax_create,
-            patch(f"{metax_cls}.update_dataset_metadata", new_callable=AsyncMock) as mock_metax_update_dataset_metadata,
-            patch(f"{metax_cls}.update_draft_dataset_description", new_callable=AsyncMock) as mock_metax_update_descr,
-            patch(f"{metax_cls}.publish_dataset", new_callable=AsyncMock) as mock_metax_publish,
+            patch_metax_create_draft_dataset(metax_id) as mock_metax_create_draft_dataset,
+            patch_metax_update_dataset_metadata() as mock_metax_update_dataset_metadata,
+            patch_metax_update_dataset_description() as mock_metax_update_dataset_description,
+            patch_metax_publish_dataset() as mock_metax_publish_dataset,
             # REMS
             patch(f"{rems_cls}.create_resource", new_callable=AsyncMock) as mock_rems_create_resource,
             patch(f"{rems_cls}.create_catalogue_item", new_callable=AsyncMock) as mock_rems_create_catalogue_item,
@@ -117,8 +117,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             mock_file_provider.return_value = FileProviderService.Files(
                 [FileProviderService.File(path=file_path, bytes=file_bytes)]
             )
-            # Mock Metax.
-            mock_metax_create.return_value = metax_id
+
             # Mock Rems.
             mock_rems_create_resource.return_value = rems_resource_id
             mock_rems_create_catalogue_item.return_value = rems_catalogue_id
@@ -137,7 +136,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             mock_pid_publish.assert_awaited_once()
 
             # Assert Metax.
-            mock_metax_create.assert_awaited_once_with(user_id, doi, submission_title, submission_description)
+            mock_metax_create_draft_dataset.assert_awaited_once_with(doi, submission_title, submission_description)
 
             expected_submission_metadata = SubmissionMetadata.model_validate(submission_metadata)
             expected_submission_metadata.subjects = [
@@ -152,13 +151,13 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             ]
 
             mock_metax_update_dataset_metadata.assert_awaited_once()
-            mock_metax_update_descr.assert_awaited_once_with(
+            mock_metax_update_dataset_description.assert_awaited_once_with(
                 metax_id,
                 f"{submission_description}\n\nSD Apply's Application link: "
                 f"{RemsServiceHandler.application_url(rems_catalogue_id)}",
             )
 
-            mock_metax_publish.assert_awaited_once_with(metax_id, doi)
+            mock_metax_publish_dataset.assert_awaited_once_with(metax_id, doi)
 
             # Assert Rems.
             mock_rems_create_resource.assert_awaited_once_with(
@@ -173,8 +172,6 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
 
     async def test_publish_submission_fega(self):
         """Test publishing of FEGA submission."""
-
-        user_id = "mock-userid"
 
         submission_metadata = self.submission_metadata
 
@@ -266,9 +263,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         await self.file_repository.add_file(file_entity, workflow)
 
         # Publish submission.
-        #
 
-        metax_cls = "metadata_backend.services.metax_service_handler.MetaxServiceHandler"
         rems_cls = "metadata_backend.services.rems_service_handler.RemsServiceHandler"
 
         with (
@@ -278,16 +273,14 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             patch_pid_publish() as mock_pid_publish,
             # Metax
             patch.dict(os.environ, {"METAX_DISCOVERY_URL": metax_url}),
-            patch(f"{metax_cls}.post_dataset_as_draft", new_callable=AsyncMock) as mock_metax_create,
-            patch(f"{metax_cls}.update_dataset_metadata", new_callable=AsyncMock) as mock_metax_update_dataset_metadata,
-            patch(f"{metax_cls}.update_draft_dataset_description", new_callable=AsyncMock) as mock_metax_update_descr,
-            patch(f"{metax_cls}.publish_dataset", new_callable=AsyncMock) as mock_metax_publish,
+            patch_metax_create_draft_dataset(metax_id) as mock_metax_create_draft_dataset,
+            patch_metax_update_dataset_metadata() as mock_metax_update_dataset_metadata,
+            patch_metax_update_dataset_description() as mock_metax_update_dataset_description,
+            patch_metax_publish_dataset() as mock_metax_publish_dataset,
             # REMS
             patch(f"{rems_cls}.create_resource", new_callable=AsyncMock) as mock_rems_create_resource,
             patch(f"{rems_cls}.create_catalogue_item", new_callable=AsyncMock) as mock_rems_create_catalogue_item,
         ):
-            # Mock Metax.
-            mock_metax_create.return_value = metax_id
             # Mock Rems.
             mock_rems_create_resource.return_value = rems_resource_id
             mock_rems_create_catalogue_item.return_value = rems_catalogue_id
@@ -306,26 +299,23 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             assert mock_pid_publish.await_count == 1
 
             # Assert Metax.
-            assert mock_metax_create.await_count == 1
-            assert call(user_id, doi, dataset_title, dataset_description) in mock_metax_create.await_args_list
+            assert mock_metax_create_draft_dataset.await_count == 1
+            assert call(doi, dataset_title, dataset_description) in mock_metax_create_draft_dataset.await_args_list
             assert mock_metax_update_dataset_metadata.await_count == 1
 
             expected_submission_metadata = SubmissionMetadata.model_validate(submission_metadata)
 
             # Dataset.
-            assert (
-                call(expected_submission_metadata, metax_id, file_bytes)
-                in mock_metax_update_dataset_metadata.await_args_list
-            )
+            assert call(expected_submission_metadata, metax_id) in mock_metax_update_dataset_metadata.await_args_list
 
-            mock_metax_update_descr.assert_awaited_once_with(
+            mock_metax_update_dataset_description.assert_awaited_once_with(
                 metax_id,
                 f"{dataset_description}\n\nSD Apply's Application link: "
                 f"{RemsServiceHandler.application_url(rems_catalogue_id)}",
             )
 
-            assert mock_metax_publish.await_count == 1
-            assert call(metax_id, doi) in mock_metax_publish.await_args_list
+            assert mock_metax_publish_dataset.await_count == 1
+            assert call(metax_id, doi) in mock_metax_publish_dataset.await_args_list
 
             # Assert Rems.
             mock_rems_create_resource.assert_awaited_once_with(
@@ -405,7 +395,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             patch_datacite_publish() as mock_datacite_publish,
             patch_pid_create_draft_doi(doi) as mock_pid_create_draft_doi,
             patch_pid_publish() as mock_pid_publish,
-            # Metax
+            # Beacon
             patch.dict(os.environ, {"BEACON_DISCOVERY_URL": beacon_url}),
             # REMS
             patch(f"{rems_cls}.create_resource", new_callable=AsyncMock) as mock_rems_create_resource,

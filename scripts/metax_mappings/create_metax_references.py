@@ -3,11 +3,16 @@
 
 Resources are fetched from external URI and parsed for submitter use in metax_mapper class.
 """
+import aiohttp
+import asyncio
 import json
 import logging
 import sys
 
 import requests
+from math import ceil
+from rdflib import Graph, Namespace
+
 
 log = logging.getLogger("metax")
 log.setLevel(logging.DEBUG)
@@ -24,9 +29,6 @@ def get_identifier_types() -> None:
     codes_json = requests.get(codes_url).json()["codes"]
     for code in codes_json:
         id_types[code["uri"].split("/")[-1]] = code["uri"]
-
-    # Print to console, so the script caller should output it to the correct file
-    print(json.dumps(id_types, indent=4, sort_keys=True))
 
 
 def get_languages() -> None:
@@ -58,9 +60,9 @@ def get_languages() -> None:
     lang_list = [lang.split("\n") for lang in lang_text.split("\n%%\n")]
 
     # Filter languages by "type: language" to reduce noise
-    # We get keys that are language names (description field), and values are language codes
+    # We get keys that are language codes (subtag field), and values are language names (description field)
     lang_dict = {
-        lang[2].split(": ")[1]: lang[1].split(": ")[1]
+        lang[1].split(": ")[1]: lang[2].split(": ")[1]
         for lang in lang_list[1:]
         if lang[0].split(": ")[1] in {"language"}
     }
@@ -70,7 +72,10 @@ def get_languages() -> None:
     for k, v in lang_dict.items():
         v = v.lower()
         try:
-            langs[k] = ISO_langs[v]
+            langs[k] = {
+                "label": v,
+                "uri": ISO_langs[k],
+            }
             n_matches += 1
         except KeyError:
             # We expect that not all languages will match.
@@ -78,9 +83,6 @@ def get_languages() -> None:
             no_matches += 1
             pass
     log.error("%i languages matched, and %i didn't", n_matches, no_matches)
-
-    # Print to console, so the script caller should output it to the correct file
-    print(json.dumps(langs, indent=4, sort_keys=True))
 
 
 def get_fields_of_science() -> None:
@@ -95,27 +97,101 @@ def get_fields_of_science() -> None:
             "label": fos["_source"]["label"],
         }
 
-    # Print to console, so the script caller should output it to the correct file
-    print(json.dumps(fields, indent=4, sort_keys=True))
+
+def get_geo_locations() -> None:
+    """Parse geo_location's uri and pref_label for mapping spatial."""
+
+    location_url = "https://api.finto.fi/rest/v1/yso-paikat/data?format=text/turtle"
+    SKOS = Namespace("http://www.w3.org/2004/02/skos/core#")
+    yso_namespace= "http://www.yso.fi/onto/yso"
+
+    g = Graph()
+    g.parse(location_url, format="turtle")
+
+    locations = []
+
+    for subject in g.subjects(predicate=SKOS.prefLabel):
+        uri_str = str(subject)
+
+        if not uri_str.startswith(yso_namespace):
+            continue
+
+        pref_labels = {}
+
+        for object in g.objects(subject=subject, predicate=SKOS.prefLabel):
+            if object.language is not None:
+                lang = object.language
+                pref_labels[lang] = str(object)
+
+        if not any([loc["uri"] == uri_str for loc in locations]):
+            locations.append({
+                "pref_label": pref_labels,
+                "uri": uri_str
+            })
 
 
-def get_funding_references() -> None:
-    """Parse codes for mapping funding references."""
+async def get_ror_organizations():
+    """Parse ROR organizations for mapping Metax's organizations.
 
-    funders = {}
+    There are 3 types of organizations that suit our case: education, funder, healthcare.
+    """
 
-    crossRef_url = "https://api.crossref.org/funders?filter=location:Finland"
-    crossRef_json = requests.get(crossRef_url).json()["message"]["items"]
-    for funding_ref in crossRef_json:
-        funders[funding_ref["name"]] = {
-            "id": funding_ref["id"],
-            "uri": funding_ref["uri"],
-            "label": {"fi": funding_ref["name"]},
-        }
+    ror_url = "https://api.ror.org/organizations"
+    filter = "types:education,types:funder,types:healthcare"
+    concurrent_requests = 10
+    orgs = []
 
-    # Print to console, so the script caller should output it to the correct file
-    print(json.dumps(funders, indent=4, sort_keys=True))
+    async def fetch_page(session, page):
+        params = {"filter": filter, "page": page}
+        async with session.get(ror_url, params=params) as resp:
+            resp.raise_for_status()
+            data = await resp.json()
+            return data.get("items", [])
+
+
+    async with aiohttp.ClientSession() as session:
+        params = {"filter": filter, "page": 1}
+        async with session.get(ror_url, params=params) as resp:
+            resp.raise_for_status()
+            first_page_data = await resp.json()
+
+        orgs = first_page_data.get("items")
+        total_items = first_page_data.get("number_of_results", 0)
+        total_pages = ceil(total_items / 20) # ROR by default returns max. 20 items per page
+
+        remaining_pages = list(range(2, total_pages + 1))
+
+        def page_chunks(pages, number_of_requests):
+            for n in range(0, len(pages), number_of_requests):
+                yield pages[n:n+number_of_requests]
+
+        for request_pages in page_chunks(remaining_pages, concurrent_requests):
+            tasks = [fetch_page(session, page) for page in request_pages]
+            results = await asyncio.gather(*tasks)
+            for res in results:
+                orgs.extend(res)
+            await asyncio.sleep(0.5)
+
+    filtered_orgs = {}
+    for org in orgs:
+        org_name = next((name["value"] for name in org.get("names") if "ror_display" in name.get("types")), None)
+        if org_name:
+            filtered_orgs[org_name.lower()] = {
+                "name": org_name,
+                "id": org.get("id")
+            }
+
+    return filtered_orgs
 
 
 if __name__ == "__main__":
-    globals()[sys.argv[1]]()
+    func_name = sys.argv[1]
+    func = globals()[func_name]
+
+    if asyncio.iscoroutinefunction(func):
+        result = asyncio.run(func())
+    else:
+        result = func()
+
+    # Print to console, so the script caller should output it to the correct file
+    print(json.dumps(result, indent=4, sort_keys=True, ensure_ascii=False))

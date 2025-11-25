@@ -91,6 +91,7 @@ class HandlersTestCase(AioHTTPTestCase):
             ],
             "subjects": [{"subject": "999 - Other"}],
             "keywords": "test,keyword",
+            "publisher": {"name": "University Health Care System"},
         }
         self.user_id = "USR12345678"
         self.test_user = {
