@@ -17,7 +17,7 @@ workflow = SubmissionWorkflow.SD
 async def test_add_get_delete_object(
     session_factory: SessionFactory, submission_repository: SubmissionRepository, object_repository: ObjectRepository
 ) -> None:
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         now = datetime.datetime.now(datetime.timezone.utc)
 
         submission_name = f"name_{uuid.uuid4()}"
@@ -103,7 +103,7 @@ async def test_add_get_delete_object(
 async def test_get_and_count_objects(
     session_factory: SessionFactory, submission_repository: SubmissionRepository, object_repository: ObjectRepository
 ) -> None:
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         now = datetime.datetime.now(datetime.timezone.utc)
 
         first_submission_name = f"name_{uuid.uuid4()}"

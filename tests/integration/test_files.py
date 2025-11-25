@@ -64,7 +64,7 @@ class TestFiles:
         response = await client_logged_in.put(f"{files_url}/{project_id}/buckets/{bucket_name}")
         assert response.status == 400
         resp = await response.json()
-        assert resp["detail"] == f"The specified bucket does not exist"
+        assert resp["detail"] == "The specified bucket does not exist"
 
         await s3_manager.add_bucket(bucket_name)
         response = await client_logged_in.head(f"{files_url}/{project_id}/buckets/{bucket_name}")

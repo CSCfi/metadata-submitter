@@ -4,10 +4,7 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Any
 
-import ujson
-
 from metadata_backend.conf.conf import API_PREFIX
-from metadata_backend.database.postgres.repositories.submission import SUB_FIELD_METADATA
 
 from .common import HandlersTestCase
 
@@ -74,7 +71,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
             with self.patch_verify_authorization:
                 response = await self.client.post(f"{API_PREFIX}/submissions", json=_data)
                 assert response.status == 400
-                result = await response.json()
+                await response.json()
                 assert f"'{field}': Field required"
 
         await assert_missing_field("name")
@@ -191,7 +188,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         submission_id_1 = await self.post_submission(
             name=name_1, description=description, project_id=project_id, workflow=workflow
         )
-        submission_id_2 = await self.post_submission(
+        await self.post_submission(
             name=name_2, description=description, project_id=project_id, workflow=workflow
         )
         submission_id_3 = await self.post_submission(

@@ -14,7 +14,7 @@ def repo(session_factory) -> ApiKeyRepository:
 
 async def test_add_and_get_api_key(session_factory: SessionFactory, repo: ApiKeyRepository) -> None:
     """Test adding and retrieving an API key."""
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         key_id = f"key_id{str(uuid.uuid4())}"
         user_id = f"user{str(uuid.uuid4())}"
         user_key_id = f"user_key_id{str(uuid.uuid4())}"
@@ -37,7 +37,7 @@ async def test_add_and_get_api_key(session_factory: SessionFactory, repo: ApiKey
 
 async def test_get_api_keys_masks_api_key(session_factory: SessionFactory, repo: ApiKeyRepository) -> None:
     """Test that get_api_keys masks the API key and salt."""
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         user_id = f"user{str(uuid.uuid4())}"
 
         # First key.
@@ -74,7 +74,7 @@ async def test_get_api_keys_masks_api_key(session_factory: SessionFactory, repo:
 
 async def test_delete_api_key(session_factory: SessionFactory, repo: ApiKeyRepository) -> None:
     """Test deleting an API key."""
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         key_id = f"key_id{str(uuid.uuid4())}"
         user_id = f"user{str(uuid.uuid4())}"
         user_key_id = f"user_key_id{str(uuid.uuid4())}"

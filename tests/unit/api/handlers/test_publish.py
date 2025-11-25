@@ -9,7 +9,6 @@ import pytest
 
 from metadata_backend.api.json import to_json_dict
 from metadata_backend.api.models.datacite import Subject
-from metadata_backend.api.models.models import Registration
 from metadata_backend.api.models.submission import Rems, SubmissionMetadata, SubmissionWorkflow
 from metadata_backend.api.services.file import FileProviderService
 from metadata_backend.api.services.publish import get_publish_config
@@ -106,7 +105,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             patch(f"{pid_cls}.publish", new_callable=AsyncMock) as mock_pid_publish,
             # Datacite (datacite)
             patch(f"{datacite_cls}.create_draft_doi_datacite", new_callable=AsyncMock) as mock_datacite_create_doi,
-            patch(f"{datacite_cls}.publish", new_callable=AsyncMock) as mock_datacite_publish,
+            patch(f"{datacite_cls}.publish", new_callable=AsyncMock),
             # Metax
             patch.dict(os.environ, {"METAX_DISCOVERY_URL": metax_url}),
             patch(f"{metax_cls}.post_dataset_as_draft", new_callable=AsyncMock) as mock_metax_create,
@@ -344,7 +343,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             patch(f"{pid_cls}.publish", new_callable=AsyncMock) as mock_pid_publish,
             # Datacite (datacite)
             patch(f"{datacite_cls}.create_draft_doi_datacite", new_callable=AsyncMock) as mock_datacite_create_doi,
-            patch(f"{datacite_cls}.publish", new_callable=AsyncMock) as mock_datacite_publish,
+            patch(f"{datacite_cls}.publish", new_callable=AsyncMock),
             # Metax
             patch.dict(os.environ, {"METAX_DISCOVERY_URL": metax_url}),
             patch(f"{metax_cls}.post_dataset_as_draft", new_callable=AsyncMock) as mock_metax_create,
@@ -524,7 +523,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             self.patch_verify_authorization,
             # Datacite (csc)
             patch(f"{pid_cls}.create_draft_doi_pid", new_callable=AsyncMock) as mock_pid_create_doi,
-            patch(f"{pid_cls}.publish", new_callable=AsyncMock) as mock_pid_publish,
+            patch(f"{pid_cls}.publish", new_callable=AsyncMock),
             # Datacite (datacite)
             patch(f"{datacite_cls}.create_draft_doi_datacite", new_callable=AsyncMock) as mock_datacite_create_doi,
             patch(f"{datacite_cls}.publish", new_callable=AsyncMock) as mock_datacite_publish,

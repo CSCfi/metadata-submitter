@@ -34,7 +34,7 @@ async def test_add_get_delete_file(
     object_repository: ObjectRepository,
     submission_repository: SubmissionRepository,
 ) -> None:
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         project_id, submission_id = await add_submission(submission_repository)
         object_id = await add_object(project_id, submission_id, object_repository)
         unencrypted_checksum = f"unencrypted_{uuid.uuid4()}"
@@ -101,7 +101,7 @@ async def test_get_and_count_files_and_bytes(
     object_repository: ObjectRepository,
     submission_repository: SubmissionRepository,
 ) -> None:
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         project_id, submission_id = await add_submission(submission_repository)
         object_id = await add_object(project_id, submission_id, object_repository)
         unencrypted_checksum = f"unencrypted_{uuid.uuid4()}"
@@ -178,7 +178,7 @@ async def test_update_ingest_status(
     object_repository: ObjectRepository,
     submission_repository: SubmissionRepository,
 ) -> None:
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         project_id, submission_id = await add_submission(submission_repository)
         object_id = await add_object(project_id, submission_id, object_repository)
         unencrypted_checksum = f"unencrypted_{uuid.uuid4()}"

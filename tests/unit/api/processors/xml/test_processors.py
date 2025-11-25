@@ -223,7 +223,7 @@ async def test_with_element_existing():
     assert ref_2 in refs
 
     # Check reference ids
-    assert processor.is_object_reference_ids() == True
+    assert processor.is_object_reference_ids()
 
     # Check XML
 
@@ -359,7 +359,7 @@ async def test_with_id_element_missing():
     assert ref_2 in refs
 
     # Check reference ids
-    assert processor.is_object_reference_ids() == True
+    assert processor.is_object_reference_ids()
 
     # Check XML
 
@@ -484,7 +484,7 @@ async def test_with_attribute():
     assert ref_2 in refs
 
     # Check reference ids
-    assert processor.is_object_reference_ids() == True
+    assert processor.is_object_reference_ids()
 
     # Check XML
 
@@ -644,7 +644,7 @@ async def test_with_both_element_and_attribute():
     assert ref_2 in refs
 
     # Check reference ids
-    assert processor.is_object_reference_ids() == True
+    assert processor.is_object_reference_ids()
 
     # Check XML
 
