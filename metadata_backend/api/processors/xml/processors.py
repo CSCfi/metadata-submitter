@@ -20,7 +20,6 @@ from .exceptions import SchemaValidationException
 from .models import (
     XmlElementInsertionCallback,
     XmlObjectConfig,
-    XmlObjectIdentifier,
     XmlObjectPaths,
     XmlReferencePaths,
     XmlSchemaPath,
@@ -94,7 +93,7 @@ class XmlProcessor(ABC):
             raise SchemaValidationException(schema_type, xml_schema.error_log)
 
     @abstractmethod
-    def get_object_references(self) -> Sequence[XmlObjectIdentifier]:
+    def get_object_references(self) -> Sequence[ObjectIdentifier]:
         """
         Retrieve the metadata object references.
 
@@ -102,7 +101,7 @@ class XmlProcessor(ABC):
         """
 
     @abstractmethod
-    def set_object_reference_ids(self, references: list[XmlObjectIdentifier]) -> None:
+    def set_object_reference_ids(self, references: list[ObjectIdentifier]) -> None:
         """
         Set the metadata object reference ids.
 
@@ -118,7 +117,7 @@ class XmlProcessor(ABC):
         """
 
     @abstractmethod
-    def get_references_without_ids(self) -> Sequence[XmlObjectIdentifier]:
+    def get_references_without_ids(self) -> Sequence[ObjectIdentifier]:
         """
         Return metadata object references without ids.
 
@@ -488,7 +487,7 @@ class XmlObjectProcessor(XmlProcessor, ObjectProcessor):
                 paths.append(path)
         return paths
 
-    def get_xml_object_identifier(self) -> XmlObjectIdentifier:
+    def get_xml_object_identifier(self) -> ObjectIdentifier:
         """
         Retrieve the metadata object identifier.
 
@@ -500,7 +499,7 @@ class XmlObjectProcessor(XmlProcessor, ObjectProcessor):
         # identifiers when the XML metadata object processor is created, and always changing them together.
         name_path = self._get_relative_xpath(self.object_paths.identifier_paths[0].name_path)
         id_path = self._get_relative_xpath(self.object_paths.identifier_paths[0].id_path)
-        return XmlObjectIdentifier(
+        return ObjectIdentifier(
             schema_type=self._schema_type,
             object_type=self._object_type,
             root_path=self.root_path,
@@ -547,7 +546,7 @@ class XmlObjectProcessor(XmlProcessor, ObjectProcessor):
         return self._object_type
 
     @override
-    def get_object_references(self) -> list[XmlObjectIdentifier]:
+    def get_object_references(self) -> list[ObjectIdentifier]:
         """
         Retrieve the metadata object references.
 
@@ -566,7 +565,7 @@ class XmlObjectProcessor(XmlProcessor, ObjectProcessor):
                 name_path = self._get_relative_xpath(p.name_path)
                 id_path = self._get_relative_xpath(p.id_path)
                 references.append(
-                    XmlObjectIdentifier(
+                    ObjectIdentifier(
                         schema_type=r.ref_schema_type,
                         object_type=r.ref_object_type,
                         root_path=r.ref_root_path,
@@ -577,14 +576,14 @@ class XmlObjectProcessor(XmlProcessor, ObjectProcessor):
         return references
 
     @override
-    def set_object_reference_ids(self, references: list[XmlObjectIdentifier]) -> None:
+    def set_object_reference_ids(self, references: list[ObjectIdentifier]) -> None:
         """
         Set the metadata object reference ids.
 
         :param references: The metadata object references.
         """
 
-        def _find_reference(schema_type_: str, root_path_: str, name_: str) -> XmlObjectIdentifier | None:
+        def _find_reference(schema_type_: str, root_path_: str, name_: str) -> ObjectIdentifier | None:
             # Find matching input reference.
             for ref in references:
                 if ref.schema_type == schema_type_ and ref.root_path == root_path_ and ref.name == name_:
@@ -619,7 +618,7 @@ class XmlObjectProcessor(XmlProcessor, ObjectProcessor):
         return all(ref.id for ref in self.get_object_references())
 
     @override
-    def get_references_without_ids(self) -> list[XmlObjectIdentifier]:
+    def get_references_without_ids(self) -> list[ObjectIdentifier]:
         """
         Return metadata object references without ids.
 
@@ -811,7 +810,7 @@ class XmlDocumentProcessor(XmlProcessor):
         processors[schema_type].setdefault(root_path, {})
         processors[schema_type][root_path][name] = processor
 
-    def get_xml_object_identifier(self, schema_type: str, root_path: str, name: str) -> XmlObjectIdentifier:
+    def get_xml_object_identifier(self, schema_type: str, root_path: str, name: str) -> ObjectIdentifier:
         """
         Retrieve the metadata object identifier.
 
@@ -824,7 +823,7 @@ class XmlDocumentProcessor(XmlProcessor):
             self.xml_processor, schema_type, root_path, name
         ).get_xml_object_identifier()
 
-    def set_xml_object_id(self, identifier: XmlObjectIdentifier) -> None:
+    def set_xml_object_id(self, identifier: ObjectIdentifier) -> None:
         """
         Set the metadata object id.
 
@@ -851,7 +850,7 @@ class XmlDocumentProcessor(XmlProcessor):
         return self._schema_type
 
     @override
-    def get_object_references(self) -> list[XmlObjectIdentifier]:
+    def get_object_references(self) -> list[ObjectIdentifier]:
         """
         Retrieve the metadata object references.
 
@@ -863,7 +862,7 @@ class XmlDocumentProcessor(XmlProcessor):
         return references
 
     @override
-    def set_object_reference_ids(self, references: list[XmlObjectIdentifier]) -> None:
+    def set_object_reference_ids(self, references: list[ObjectIdentifier]) -> None:
         """
         Set the metadata object reference ids.
 
@@ -882,7 +881,7 @@ class XmlDocumentProcessor(XmlProcessor):
         return all(processor.is_object_reference_ids() for processor in self.xml_processors)
 
     @override
-    def get_references_without_ids(self) -> list[XmlObjectIdentifier]:
+    def get_references_without_ids(self) -> list[ObjectIdentifier]:
         """
         Return metadata object references without ids.
 
@@ -988,7 +987,7 @@ class XmlDocumentsProcessor(XmlProcessor, DocumentsProcessor):
                         f"Expecting at most one '{o.schema_type}' metadata object but found {len(identifiers)}."
                     )
 
-    def get_xml_object_identifier(self, schema_type: str, root_path: str, name: str) -> XmlObjectIdentifier:
+    def get_xml_object_identifier(self, schema_type: str, root_path: str, name: str) -> ObjectIdentifier:
         """
         Retrieve the metadata object identifier.
 
@@ -1026,7 +1025,7 @@ class XmlDocumentsProcessor(XmlProcessor, DocumentsProcessor):
 
         return XmlDocumentProcessor.get_xml_object_processors(self.xml_processor, schema_type, root_path)
 
-    def get_object_identifiers(self, schema_type: str | None = None) -> Sequence[XmlObjectIdentifier]:
+    def get_object_identifiers(self, schema_type: str | None = None) -> Sequence[ObjectIdentifier]:
         """
         Retrieve the metadata object identifiers.
 
@@ -1034,7 +1033,7 @@ class XmlDocumentsProcessor(XmlProcessor, DocumentsProcessor):
         :return: metadata object identifiers.
         """
 
-        identifiers: list[XmlObjectIdentifier] = []
+        identifiers: list[ObjectIdentifier] = []
         for document_processor in self.xml_processors:
             for object_processor in document_processor.xml_processors:
                 identifier = object_processor.get_xml_object_identifier()
@@ -1050,7 +1049,7 @@ class XmlDocumentsProcessor(XmlProcessor, DocumentsProcessor):
         :param identifier: The metadata object identifier that must have the id. If the XML schema
         supports multiple metadata object types then must also have the root path.
         """
-        if not isinstance(identifier, XmlObjectIdentifier):
+        if not isinstance(identifier, ObjectIdentifier):
             raise ValueError("Invalid identifier type")
 
         schema_type = identifier.schema_type
@@ -1067,7 +1066,7 @@ class XmlDocumentsProcessor(XmlProcessor, DocumentsProcessor):
         self.set_object_reference_ids([identifier])
 
     @override
-    def get_object_references(self) -> Sequence[XmlObjectIdentifier]:
+    def get_object_references(self) -> Sequence[ObjectIdentifier]:
         """
         Retrieve the metadata object references.
 
@@ -1079,7 +1078,7 @@ class XmlDocumentsProcessor(XmlProcessor, DocumentsProcessor):
         return references
 
     @override
-    def set_object_reference_ids(self, references: list[XmlObjectIdentifier]) -> None:
+    def set_object_reference_ids(self, references: list[ObjectIdentifier]) -> None:
         """
         Set the metadata object reference ids.
 
@@ -1098,7 +1097,7 @@ class XmlDocumentsProcessor(XmlProcessor, DocumentsProcessor):
         return all(processor.is_object_reference_ids() for processor in self.xml_processors)
 
     @override
-    def get_references_without_ids(self) -> Sequence[XmlObjectIdentifier]:
+    def get_references_without_ids(self) -> Sequence[ObjectIdentifier]:
         """
         Return metadata object references without ids.
 

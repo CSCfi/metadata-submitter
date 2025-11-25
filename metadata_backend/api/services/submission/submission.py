@@ -4,6 +4,7 @@
 
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from typing import Sequence
 
 from pydantic import BaseModel, ValidationError
 
@@ -18,7 +19,7 @@ from ...models.submission import Submission, SubmissionWorkflow
 from ...processors.models import ObjectIdentifier
 from ...processors.processors import DocumentsProcessor, ObjectProcessor
 from ...processors.xml.processors import XmlObjectProcessor
-from ..accession import generate_accession, generate_submission_accession
+from ..accession import generate_accession
 from ..project import ProjectService
 
 
@@ -44,6 +45,14 @@ class ObjectSubmissionService(ABC):
 
         :param objects: The metadata object documents.
         :return: The documents processor.
+        """
+
+    @abstractmethod
+    def assign_submission_accession(self) -> str | None:
+        """
+        Assign submission accession number.
+
+        :return: the submission id.
         """
 
     @abstractmethod
@@ -124,7 +133,7 @@ class ObjectSubmissionService(ABC):
             await self._project_service.verify_user_project(user_id, project_id)
 
             processor = self.create_processor(objects)
-            object_identifiers = []
+            object_identifiers: Sequence[ObjectIdentifier] = []
             if processor:
                 # Get metadata object identifiers.
                 object_identifiers = processor.get_object_identifiers()
@@ -149,9 +158,6 @@ class ObjectSubmissionService(ABC):
                 if errors:
                     raise UserErrors(errors)
 
-            # Assign submission accession.
-            submission_id = generate_submission_accession(self._workflow)
-
             if processor:
                 # Assign metadata object accessions.
                 for identifier in object_identifiers:
@@ -161,6 +167,12 @@ class ObjectSubmissionService(ABC):
                 # Check that all metadata object references have accessions.
                 for identifier in processor.get_references_without_ids():
                     errors.append(f"Unknown '{identifier.schema_type}' metadata object '{identifier.id}' reference")
+
+            # Assign submission accession.
+            submission_id = self.assign_submission_accession()
+
+            if submission_id is None:
+                raise SystemException("Failed to assign submission id")
 
             # Prepare submission document.
             submission = self.prepare_create_submission(project_id, submission_id)

@@ -13,6 +13,7 @@ from ...models.submission import Rems, Submission, SubmissionMetadata, Submissio
 from ...processors.xml.configs import (
     BP_ANNOTATION_PATH,
     BP_ANNOTATION_SCHEMA,
+    BP_DATASET_OBJECT_TYPE,
     BP_DATASET_PATH,
     BP_DATASET_SCHEMA,
     BP_FULL_SUBMISSION_XML_OBJECT_CONFIG,
@@ -100,6 +101,22 @@ class BigPictureObjectSubmissionService(ObjectSubmissionService):
             BP_FULL_SUBMISSION_XML_OBJECT_CONFIG, [o.document for o in bp_objects]
         )
         return self._processor
+
+    @override
+    def assign_submission_accession(self) -> str | None:
+        """
+        Assign submission accession number.
+
+        :return: the submission id.
+        """
+
+        # Assign metadata object accessions.
+        for identifier in self._processor.get_object_identifiers():
+            if identifier.object_type == BP_DATASET_OBJECT_TYPE:
+                # Use dataset id as the submission accession.
+                return identifier.id
+
+        return None
 
     @override
     def prepare_create_submission(self, project_id: str, submission_id: str) -> Submission:

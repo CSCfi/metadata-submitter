@@ -415,7 +415,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         assert submission.name == submission_name
         assert submission.title == "test_title"
         assert submission.description == "test_description"
-        assert submission_id.startswith(generate_bp_accession_prefix(BP_SUBMISSION_OBJECT_TYPE))
+        assert submission_id.startswith(generate_bp_accession_prefix(BP_DATASET_OBJECT_TYPE))
 
     @staticmethod
     async def _assert_bp_rems(submission):
