@@ -5,7 +5,6 @@ import atexit
 import os
 import tempfile
 from typing import AsyncGenerator
-from unittest.mock import patch
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncEngine

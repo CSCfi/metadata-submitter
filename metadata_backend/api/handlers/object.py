@@ -12,7 +12,8 @@ from ..exceptions import SystemException, UserException
 from ..json import to_json_dict
 from ..models.models import Objects, Project
 from ..models.submission import SubmissionWorkflow
-from ..processors.xml.configs import BP_FULL_SUBMISSION_XML_OBJECT_CONFIG, FEGA_FULL_SUBMISSION_XML_OBJECT_CONFIG
+from ..processors.xml.bigpicture import BP_FULL_SUBMISSION_XML_OBJECT_CONFIG
+from ..processors.xml.fega import FEGA_FULL_SUBMISSION_XML_OBJECT_CONFIG
 from ..processors.xml.models import XmlObjectConfig
 from ..processors.xml.processors import XmlDocumentProcessor
 from ..resources import (

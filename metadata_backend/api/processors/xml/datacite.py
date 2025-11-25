@@ -4,6 +4,7 @@ Read DataCite XML.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import cast
 
 from lxml.etree import _Element as Element  # noqa
@@ -29,10 +30,13 @@ from ...models.datacite import (
     Subject,
     Title,
 )
-from .configs import DATACITE_XML_SCHEMA_DIR
 from .processors import XmlProcessor
 
+DATACITE_XML_SCHEMA_DIR = Path(__file__).parent.parent.parent.parent / "schemas" / "xml" / "datacite" / "4.5"
+
 DATACITE_NAMESPACE = {"d": "http://datacite.org/schema/kernel-4"}
+
+DATACITE_PATH = "/d:resource"
 
 
 def _elem(node: Element | list[Element] | None) -> Element | None:
@@ -97,7 +101,7 @@ def read_datacite_xml(source: str | bytes) -> DataCiteMetadata:
 
     # identifiers
     identifiers = []
-    for identifier_elem in _xpath(xml, "//d:identifier"):
+    for identifier_elem in _xpath(xml, f"{DATACITE_PATH}/d:identifier"):
         identifiers.append(
             Identifier(
                 identifier=_elem_text(identifier_elem), identifierType=_attr_text(identifier_elem, "identifierType")
@@ -105,14 +109,14 @@ def read_datacite_xml(source: str | bytes) -> DataCiteMetadata:
         )
 
     # publicationYear
-    publication_year = _elem_text(_xpath(xml, "//d:publicationYear"))
+    publication_year = _elem_text(_xpath(xml, f"{DATACITE_PATH}/d:publicationYear"))
 
     # version
-    version = _elem_text(_xpath(xml, "//d:version"))
+    version = _elem_text(_xpath(xml, f"{DATACITE_PATH}/d:version"))
 
     # rights
     rights = []
-    for rights_elem in _xpath(xml, "//d:rightsList/d:rights"):
+    for rights_elem in _xpath(xml, f"{DATACITE_PATH}/d:rightsList/d:rights"):
         rights.append(
             Rights(
                 rights=_elem_text(rights_elem),
@@ -125,7 +129,7 @@ def read_datacite_xml(source: str | bytes) -> DataCiteMetadata:
 
     # resourceType
     resource_type = None
-    resource_type_elem = _elem(_xpath(xml, "//d:resourceType"))
+    resource_type_elem = _elem(_xpath(xml, f"{DATACITE_PATH}/d:resourceType"))
     if resource_type_elem is not None:
         resource_type = ResourceType(
             resourceType=_elem_text(resource_type_elem),
@@ -134,12 +138,12 @@ def read_datacite_xml(source: str | bytes) -> DataCiteMetadata:
 
     # titles
     titles = []
-    for title_elem in _xpath(xml, "//d:titles/d:title"):
+    for title_elem in _xpath(xml, f"{DATACITE_PATH}/d:titles/d:title"):
         titles.append(Title(title=_elem_text(title_elem), titleType=_attr_text(title_elem, "titleType")))
 
     # creators
     creators = []
-    for creator_elem in _xpath(xml, "//d:creators/d:creator"):
+    for creator_elem in _xpath(xml, f"{DATACITE_PATH}/d:creators/d:creator"):
         name_identifiers = []
         for name_identifier_elem in _xpath(creator_elem, "d:nameIdentifier"):
             name_identifiers.append(
@@ -171,7 +175,7 @@ def read_datacite_xml(source: str | bytes) -> DataCiteMetadata:
         creators.append(creator)
 
     # publisher
-    publisher_elem = _elem(_xpath(xml, "//d:publisher"))
+    publisher_elem = _elem(_xpath(xml, f"{DATACITE_PATH}/d:publisher"))
     publisher = Publisher(
         name=_elem_text(publisher_elem),
         publisherIdentifier=_attr_text(publisher_elem, "publisherIdentifier"),
@@ -181,7 +185,7 @@ def read_datacite_xml(source: str | bytes) -> DataCiteMetadata:
 
     # contributors
     contributors = []
-    for contributor_elem in _xpath(xml, "//d:contributors/d:contributor"):
+    for contributor_elem in _xpath(xml, f"{DATACITE_PATH}/d:contributors/d:contributor"):
         name_identifiers = []
         for name_identifier_elem in _xpath(contributor_elem, "d:nameIdentifier"):
             name_identifiers.append(
@@ -216,7 +220,7 @@ def read_datacite_xml(source: str | bytes) -> DataCiteMetadata:
 
     # subjects
     subjects = []
-    for subject_element in _xpath(xml, "//d:subjects/d:subject"):
+    for subject_element in _xpath(xml, f"{DATACITE_PATH}/d:subjects/d:subject"):
         subjects.append(
             Subject(
                 subject=_elem_text(subject_element),
@@ -229,7 +233,7 @@ def read_datacite_xml(source: str | bytes) -> DataCiteMetadata:
 
     # dates
     dates = []
-    for date_elem in _xpath(xml, "//d:dates/d:date"):
+    for date_elem in _xpath(xml, f"{DATACITE_PATH}/d:dates/d:date"):
         dates.append(
             Date(
                 date=_elem_text(date_elem),
@@ -239,11 +243,11 @@ def read_datacite_xml(source: str | bytes) -> DataCiteMetadata:
         )
 
     # language
-    language = _elem_text(_xpath(xml, "//d:language"))
+    language = _elem_text(_xpath(xml, f"{DATACITE_PATH}/d:language"))
 
     # related identifiers
     related_identifiers = []
-    for related_identifier_elem in _xpath(xml, "//d:relatedIdentifiers/d:relatedIdentifier"):
+    for related_identifier_elem in _xpath(xml, f"{DATACITE_PATH}/d:relatedIdentifiers/d:relatedIdentifier"):
         related_identifiers.append(
             RelatedIdentifier(
                 relatedIdentifier=_elem_text(related_identifier_elem),
@@ -258,7 +262,7 @@ def read_datacite_xml(source: str | bytes) -> DataCiteMetadata:
 
     # alternate identifiers
     alternate_identifiers = []
-    for alternative_identifier_elem in _xpath(xml, "//d:alternateIdentifiers/d:alternateIdentifier"):
+    for alternative_identifier_elem in _xpath(xml, f"{DATACITE_PATH}/d:alternateIdentifiers/d:alternateIdentifier"):
         alternate_identifiers.append(
             AlternateIdentifier(
                 alternateIdentifier=_elem_text(alternative_identifier_elem),
@@ -267,14 +271,14 @@ def read_datacite_xml(source: str | bytes) -> DataCiteMetadata:
         )
 
     # sizes
-    sizes = [_elem_text(n) for n in _xpath(xml, "//d:sizes/d:size") if _elem_text(n)] or None
+    sizes = [_elem_text(n) for n in _xpath(xml, f"{DATACITE_PATH}/d:sizes/d:size") if _elem_text(n)] or None
 
     # formats
-    formats = [_elem_text(n) for n in _xpath(xml, "//d:formats/d:format") if _elem_text(n)] or None
+    formats = [_elem_text(n) for n in _xpath(xml, f"{DATACITE_PATH}/d:formats/d:format") if _elem_text(n)] or None
 
     # descriptions
     descriptions = []
-    for description_elem in _xpath(xml, "//d:descriptions/d:description"):
+    for description_elem in _xpath(xml, f"{DATACITE_PATH}/d:descriptions/d:description"):
         descriptions.append(
             Description(
                 description=_elem_text(description_elem),
@@ -285,7 +289,7 @@ def read_datacite_xml(source: str | bytes) -> DataCiteMetadata:
 
     # geoLocations
     geolocations = []
-    for geo_location_elem in _xpath(xml, "//d:geoLocations/d:geoLocation"):
+    for geo_location_elem in _xpath(xml, f"{DATACITE_PATH}/d:geoLocations/d:geoLocation"):
         point = None
         box = None
         polygons = None
@@ -332,7 +336,7 @@ def read_datacite_xml(source: str | bytes) -> DataCiteMetadata:
     # fundingReferences
     funding_references = []
 
-    for funding_reference_elem in _xpath(xml, "//d:fundingReferences/d:fundingReference"):
+    for funding_reference_elem in _xpath(xml, f"{DATACITE_PATH}/d:fundingReferences/d:fundingReference"):
         funder_identifier = None
         funder_identifier_type = None
         scheme_uri = None
