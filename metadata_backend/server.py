@@ -45,6 +45,7 @@ from .services.admin_service_handler import AdminServiceHandler
 from .services.datacite_service_handler import DataciteServiceHandler
 from .services.metax_service_handler import MetaxServiceHandler
 from .services.pid_ms_handler import PIDServiceHandler
+from .services.pouta_service_handler import KeystoneService
 from .services.rems_service_handler import RemsServiceHandler
 from .services.taxonomy_search_handler import TaxonomySearchHandler
 
@@ -90,6 +91,7 @@ async def init(
     submission_service = SubmissionService(SubmissionRepository(session_factory), registration_repository)
     object_service = ObjectService(ObjectRepository(session_factory))
     file_provider_service = S3AllasFileProviderService()
+    keystone_service = KeystoneService()
 
     _set_resource(ResourceType.ACCESS_SERVICE, AccessService(api_key_repository))
 
@@ -103,6 +105,7 @@ async def init(
     _set_resource(ResourceType.FILE_SERVICE, FileService(FileRepository(session_factory)))
     _set_resource(ResourceType.REGISTRATION_SERVICE, RegistrationService(registration_repository))
     _set_resource(ResourceType.FILE_PROVIDER_SERVICE, file_provider_service)
+    _set_resource(ResourceType.KEYSTONE_SERVICE, keystone_service)
     _set_resource(ResourceType.SESSION_FACTORY, session_factory)
 
     # Initialize handlers.
@@ -122,6 +125,7 @@ async def init(
         await datacite_handler.http_client_close()
         await rems_handler.http_client_close()
         await admin_handler.http_client_close()
+        await keystone_service.http_client_close()
 
     async def on_prepare(_: web.Request, response: web.StreamResponse) -> None:
         """Modify Server headers."""
@@ -215,6 +219,7 @@ async def init(
         rems_handler=rems_handler,
         aai_handler=aai_handler,
         admin_handler=admin_handler,
+        keystone_handler=keystone_service,
     )
     health_routes = [
         web.get("/health", _health.get_health_status),

@@ -10,6 +10,7 @@ from ..database.postgres.services.file import FileService
 from ..database.postgres.services.object import ObjectService
 from ..database.postgres.services.registration import RegistrationService
 from ..database.postgres.services.submission import SubmissionService
+from ..services.pouta_service_handler import KeystoneService
 from .services.auth import AccessService
 from .services.file import FileProviderService
 from .services.project import ProjectService
@@ -25,6 +26,7 @@ class ResourceType(Enum):
     FILE_SERVICE = "file_service"
     REGISTRATION_SERVICE = "registration_service"
     FILE_PROVIDER_SERVICE = "file_provider_service"
+    KEYSTONE_SERVICE = "keystone_service"
     SESSION_FACTORY = "session_factory"
 
 
@@ -38,6 +40,7 @@ APP_KEYS: dict[ResourceType, AppKey[Any]] = {
     ResourceType.FILE_SERVICE: AppKey("file_service"),
     ResourceType.REGISTRATION_SERVICE: AppKey("registration_service"),
     ResourceType.FILE_PROVIDER_SERVICE: AppKey("file_provider_service"),
+    ResourceType.KEYSTONE_SERVICE: AppKey("keystone_service"),
     ResourceType.SESSION_FACTORY: AppKey("session_factory"),
 }
 
@@ -143,6 +146,19 @@ def get_file_provider_service(req: Request) -> FileProviderService:
         FileProviderService: The FileProviderService attached to the application.
     """
     return cast(FileProviderService, req.app[APP_KEYS[ResourceType.FILE_PROVIDER_SERVICE]])
+
+
+def get_keystone_service(req: Request) -> KeystoneService:
+    """
+    Retrieve the KeystoneService from the application.
+
+    Args:
+        req: The incoming HTTP request containing the application context.
+
+    Returns:
+        KeystoneService: The KeystoneService attached to the application.
+    """
+    return cast(KeystoneService, req.app[APP_KEYS[ResourceType.KEYSTONE_SERVICE]])
 
 
 def get_session_factory(req: Request) -> SessionFactory:

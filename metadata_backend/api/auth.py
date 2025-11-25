@@ -9,22 +9,12 @@ from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
 from aiohttp.web import Request, Response
 from idpyoidc.client.rp_handler import RPHandler
 from idpyoidc.exception import OidcMsgError
-from pydantic import BaseModel, ConfigDict
 from yarl import URL
 
 from ..conf.conf import aai_config
 from ..helpers.logger import LOG
 from ..services.service_handler import ServiceHandler
 from .services.auth import JWT_EXPIRATION, AccessService
-
-
-class Authorization(BaseModel):
-    """Authorization token."""
-
-    user_id: str
-    user_name: str
-
-    model_config = ConfigDict(extra="ignore")  # Ignore any extra fields in the payload
 
 
 def get_authorized_user_id(req: Request) -> str:
@@ -184,6 +174,17 @@ class AccessHandler:
         response.set_cookie(
             name="access_token",
             value=jwt_token,
+            httponly=True,
+            secure=secure_cookie,
+            samesite="Strict",  # or "Lax" depending on your needs
+            path="/",
+            max_age=int(JWT_EXPIRATION.total_seconds()),
+        )
+        # Set access token cookie for Pouta access
+        pouta_access_token = session["userinfo"].get("pouta_access_token", "").strip()
+        response.set_cookie(
+            name="pouta_access_token",
+            value=pouta_access_token,
             httponly=True,
             secure=secure_cookie,
             samesite="Strict",  # or "Lax" depending on your needs

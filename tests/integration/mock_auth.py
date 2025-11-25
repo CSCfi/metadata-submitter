@@ -3,9 +3,9 @@
 import logging
 import urllib
 from os import getenv
-from time import time
+from time import sleep, time
 
-from aiohttp import web
+from aiohttp import ClientSession, web
 from authlib.jose import RSAKey, jwt
 
 FORMAT = "[%(asctime)s][%(levelname)-8s](L:%(lineno)s) %(funcName)s: %(message)s"
@@ -41,6 +41,12 @@ mock_family_name: str = DEFAULT_MOCK_FAMILY_NAME
 
 mock_auth_url_docker = getenv("OIDC_URL", "http://mockauth:8000")  # called from inside docker-network
 mock_auth_url_local = getenv("OIDC_URL_TEST", "http://localhost:8000")  # called from local machine
+mock_keystone_url_docker = getenv("KEYSTONE_ENDPOINT", "http://mockkeystone:5001")
+
+username: str = "swift"
+password: str = "veryfast"
+project: str = "service"
+pouta_token: str = ""
 
 header = {
     "jku": f"{mock_auth_url_docker}/jwk",
@@ -48,6 +54,27 @@ header = {
     "alg": "RS256",
     "typ": "JWT",
 }
+
+
+async def get_pouta_token() -> str:
+    auth_data = {
+        "auth": {
+            "identity": {
+                "methods": ["password"],
+                "password": {"user": {"domain": {"id": "default"}, "name": username, "password": password}},
+            }
+        }
+    }
+
+    async with ClientSession() as session:
+        async with session.post(f"{mock_keystone_url_docker}/v3/auth/tokens", json=auth_data) as resp:
+            result = await resp.json()
+
+            if "error" in result:
+                error_message = result["error"]["message"]
+                raise RuntimeError(f"Keystone auth failed: {error_message}")
+
+            return resp.headers["X-Subject-Token"]
 
 
 async def setmock(req: web.Request) -> web.Response:
@@ -144,6 +171,7 @@ async def userinfo(_: web.Request) -> web.Response:
         "schacHomeOrganization": "test.what",
         "family_name": mock_family_name,
         "email": mock_sub,
+        "pouta_access_token": pouta_token,
         "sdSubmitProjects": "1000 2000 3000",
         "eduperson_entitlement": [
             "test_namespace:test_root:group1#client",
@@ -283,6 +311,22 @@ async def init() -> web.Application:
     app.router.add_get("/keyset", jwk_response)
     app.router.add_get("/userinfo", userinfo)
     app.router.add_get("/.well-known/openid-configuration", oidc_config)
+
+    global pouta_token
+    connection_count = 10
+    async with ClientSession() as session:
+        while connection_count > 0:
+            connection_count = connection_count - 1
+            async with session.get(f"{mock_keystone_url_docker}/v3") as resp:
+                if resp.status >= 400:
+                    LOG.warning("Failed to connect to keystone, trying again")
+                    sleep(2)
+                    continue
+                if resp.status == 200:
+                    LOG.info("Keystone v3 endpoint reachable")
+
+    pouta_token = await get_pouta_token()
+
     return app
 
 

@@ -11,6 +11,22 @@ from .common import HandlersTestCase
 class FilesAPIHandlerTestCase(HandlersTestCase):
     """Files API handler test cases."""
 
+    async def asyncSetUp(self) -> None:
+        """Set up async test fixtures."""
+        await super().asyncSetUp()
+        self.patch_fetch_project_token = patch(
+            "metadata_backend.services.pouta_service_handler.KeystoneService.fetch_project_token",
+            return_value={},
+        )
+        self.patch_get_ec2 = patch(
+            "metadata_backend.services.pouta_service_handler.KeystoneService.get_ec2_for_project",
+            return_value={},
+        )
+        self.patch_delete_ec2 = patch(
+            "metadata_backend.services.pouta_service_handler.KeystoneService.delete_ec2_from_project",
+            return_value=204,
+        )
+
     async def test_get_project_buckets(self) -> None:
         """Test getting project buckets."""
 
@@ -19,6 +35,9 @@ class FilesAPIHandlerTestCase(HandlersTestCase):
         with (
             self.patch_verify_authorization,
             self.patch_verify_user_project,
+            self.patch_fetch_project_token,
+            self.patch_get_ec2,
+            self.patch_delete_ec2,
             patch(
                 "metadata_backend.api.services.file.FileProviderService.list_buckets",
                 return_value=["bucket1", "bucket2"],
@@ -75,6 +94,9 @@ class FilesAPIHandlerTestCase(HandlersTestCase):
         with (
             self.patch_verify_authorization,
             self.patch_verify_user_project,
+            self.patch_fetch_project_token,
+            self.patch_get_ec2,
+            self.patch_delete_ec2,
             patch(
                 "metadata_backend.api.services.file.FileProviderService.update_bucket_policy",
                 return_value=None,
