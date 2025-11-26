@@ -12,6 +12,7 @@ from ...json import to_json_dict
 from ...models.models import File
 from ...models.submission import Submission, SubmissionWorkflow
 from ...processors.xml.processors import XmlStringDocumentsProcessor
+from ..accession import generate_submission_accession
 from ..project import ProjectService
 from .submission import ObjectSubmission, ObjectSubmissionService
 
@@ -66,6 +67,16 @@ class SensitiveDataObjectSubmissionService(ObjectSubmissionService):
         self._submission_document = self._get_object(objects).document
 
         return None
+
+    @override
+    def assign_submission_accession(self) -> str | None:
+        """
+        Assign submission accession number.
+
+        :return: the submission id.
+        """
+
+        return generate_submission_accession(self._workflow)
 
     @override
     def prepare_create_submission(self, project_id: str, submission_id: str) -> Submission:

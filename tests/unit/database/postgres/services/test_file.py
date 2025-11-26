@@ -47,7 +47,7 @@ async def test_is_file(
     object_repository: ObjectRepository,
     service: FileService,
 ):
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
         obj = create_object_entity(submission.project_id, submission.submission_id)
@@ -66,7 +66,7 @@ async def test_get_file(
     object_repository: ObjectRepository,
     service: FileService,
 ):
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
         file = create_object_entity(submission.project_id, submission.submission_id)
@@ -88,7 +88,7 @@ async def test_get_files(
     object_repository: ObjectRepository,
     service: FileService,
 ):
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
         file = create_object_entity(submission.project_id, submission.submission_id)
@@ -134,7 +134,7 @@ async def test_count_files(
     object_repository: ObjectRepository,
     service: FileService,
 ):
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
         file = create_object_entity(submission.project_id, submission.submission_id)
@@ -157,7 +157,7 @@ async def test_count_bytes(
     object_repository: ObjectRepository,
     service: FileService,
 ):
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
         file = create_object_entity(submission.project_id, submission.submission_id)
@@ -181,7 +181,7 @@ async def test_update_ingest_status(
     file_repository: FileRepository,
     service: FileService,
 ):
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
         obj = create_object_entity(submission.project_id, submission.submission_id)
@@ -204,7 +204,7 @@ async def test_delete_file_by_id(
     object_repository: ObjectRepository,
     service: FileService,
 ):
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
         obj = create_object_entity(submission.project_id, submission.submission_id)
@@ -227,7 +227,7 @@ async def test_delete_file_by_path(
     object_repository: ObjectRepository,
     service: FileService,
 ):
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
         obj = create_object_entity(submission.project_id, submission.submission_id)

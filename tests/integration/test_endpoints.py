@@ -2,7 +2,7 @@
 
 import logging
 
-from tests.integration.conf import base_url, schemas_url, workflows_url
+from tests.integration.conf import base_url
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)

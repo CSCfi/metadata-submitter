@@ -14,7 +14,7 @@ from ..helpers import create_submission_entity
 async def test_add_get_delete_submission(
     session_factory: SessionFactory, submission_repository: SubmissionRepository
 ) -> None:
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         name = f"name_{uuid.uuid4()}"
         project_id = f"project_{uuid.uuid4()}"
 
@@ -107,7 +107,7 @@ async def test_submitted_ingested_date(
 
 
 async def test_get_submissions(session_factory: SessionFactory, submission_repository: SubmissionRepository) -> None:
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         now = datetime.datetime.now(datetime.timezone.utc)
 
         first_submission_name = f"name_{uuid.uuid4()}"

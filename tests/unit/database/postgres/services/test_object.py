@@ -23,7 +23,7 @@ async def test_add_update_delete_object(
     object_repository: ObjectRepository,
     object_service: ObjectService,
 ):
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
         submission_id = submission.submission_id
@@ -139,7 +139,7 @@ async def test_is_object(
     object_repository: ObjectRepository,
     object_service: ObjectService,
 ):
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
 
@@ -157,7 +157,7 @@ async def test_get_document(
     object_repository: ObjectRepository,
     object_service: ObjectService,
 ):
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
 
@@ -174,7 +174,7 @@ async def test_get_objects(
     object_repository: ObjectRepository,
     object_service: ObjectService,
 ):
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
 
@@ -223,7 +223,7 @@ async def test_get_documents(
     object_repository: ObjectRepository,
     object_service: ObjectService,
 ):
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
 
@@ -254,7 +254,7 @@ async def test_count_objects(
     object_repository: ObjectRepository,
     object_service: ObjectService,
 ):
-    async with transaction(session_factory, requires_new=True, rollback_new=True) as session:
+    async with transaction(session_factory, requires_new=True, rollback_new=True):
         submission = create_submission_entity()
         await submission_repository.add_submission(submission)
 

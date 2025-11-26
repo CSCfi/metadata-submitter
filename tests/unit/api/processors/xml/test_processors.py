@@ -5,6 +5,7 @@ import pytest
 from lxml import etree
 from lxml.etree import _Element as Element  # noqa
 
+from metadata_backend.api.processors.models import ObjectIdentifier
 from metadata_backend.api.processors.xml.configs import (
     BP_ANNOTATION_PATH,
     BP_ANNOTATION_SCHEMA,
@@ -84,7 +85,6 @@ from metadata_backend.api.processors.xml.configs import (
 from metadata_backend.api.processors.xml.models import (
     XmlIdentifierPath,
     XmlObjectConfig,
-    XmlObjectIdentifier,
     XmlObjectPaths,
     XmlReferencePaths,
     XmlSchemaPath,
@@ -208,10 +208,10 @@ async def test_with_element_existing():
     # Set reference ids
     ref_id_1 = f"{str(uuid.uuid4())}"
     ref_id_2 = f"{str(uuid.uuid4())}"
-    ref_1 = XmlObjectIdentifier(
+    ref_1 = ObjectIdentifier(
         schema_type=ref_schema_type, object_type=ref_object_type, root_path=ref_root_path, name=ref_name_1, id=ref_id_1
     )
-    ref_2 = XmlObjectIdentifier(
+    ref_2 = ObjectIdentifier(
         schema_type=ref_schema_type, object_type=ref_object_type, root_path=ref_root_path, name=ref_name_2, id=ref_id_2
     )
     updated_refs = [ref_1, ref_2]
@@ -223,7 +223,7 @@ async def test_with_element_existing():
     assert ref_2 in refs
 
     # Check reference ids
-    assert processor.is_object_reference_ids() == True
+    assert processor.is_object_reference_ids()
 
     # Check XML
 
@@ -344,10 +344,10 @@ async def test_with_id_element_missing():
     # Set reference ids
     ref_id_1 = f"{str(uuid.uuid4())}"
     ref_id_2 = f"{str(uuid.uuid4())}"
-    ref_1 = XmlObjectIdentifier(
+    ref_1 = ObjectIdentifier(
         schema_type=ref_schema_type, object_type=ref_object_type, root_path=ref_root_path, name=ref_name_1, id=ref_id_1
     )
-    ref_2 = XmlObjectIdentifier(
+    ref_2 = ObjectIdentifier(
         schema_type=ref_schema_type, object_type=ref_object_type, root_path=ref_root_path, name=ref_name_2, id=ref_id_2
     )
     updated_refs = [ref_1, ref_2]
@@ -359,7 +359,7 @@ async def test_with_id_element_missing():
     assert ref_2 in refs
 
     # Check reference ids
-    assert processor.is_object_reference_ids() == True
+    assert processor.is_object_reference_ids()
 
     # Check XML
 
@@ -469,10 +469,10 @@ async def test_with_attribute():
     # Set reference ids
     ref_id_1 = f"{str(uuid.uuid4())}"
     ref_id_2 = f"{str(uuid.uuid4())}"
-    ref_1 = XmlObjectIdentifier(
+    ref_1 = ObjectIdentifier(
         schema_type=ref_schema_type, object_type=ref_object_type, root_path=ref_root_path, name=ref_name_1, id=ref_id_1
     )
-    ref_2 = XmlObjectIdentifier(
+    ref_2 = ObjectIdentifier(
         schema_type=ref_schema_type, object_type=ref_object_type, root_path=ref_root_path, name=ref_name_2, id=ref_id_2
     )
     updated_refs = [ref_1, ref_2]
@@ -484,7 +484,7 @@ async def test_with_attribute():
     assert ref_2 in refs
 
     # Check reference ids
-    assert processor.is_object_reference_ids() == True
+    assert processor.is_object_reference_ids()
 
     # Check XML
 
@@ -629,10 +629,10 @@ async def test_with_both_element_and_attribute():
     # Set reference ids
     ref_id_1 = f"{str(uuid.uuid4())}"
     ref_id_2 = f"{str(uuid.uuid4())}"
-    ref_1 = XmlObjectIdentifier(
+    ref_1 = ObjectIdentifier(
         schema_type=ref_schema_type, object_type=ref_object_type, root_path=ref_root_path, name=ref_name_1, id=ref_id_1
     )
-    ref_2 = XmlObjectIdentifier(
+    ref_2 = ObjectIdentifier(
         schema_type=ref_schema_type, object_type=ref_object_type, root_path=ref_root_path, name=ref_name_2, id=ref_id_2
     )
     updated_refs = [ref_1, ref_2]
@@ -644,7 +644,7 @@ async def test_with_both_element_and_attribute():
     assert ref_2 in refs
 
     # Check reference ids
-    assert processor.is_object_reference_ids() == True
+    assert processor.is_object_reference_ids()
 
     # Check XML
 
@@ -780,13 +780,13 @@ def assert_ref(
 
 
 def create_xml_object_identifier_bp(schema_type: str, root_path: str, name: str, id: str):
-    return XmlObjectIdentifier(
+    return ObjectIdentifier(
         schema_type=schema_type, object_type=_get_xml_object_type_bp(root_path), root_path=root_path, name=name, id=id
     )
 
 
 def create_xml_object_identifier_fega(schema_type: str, root_path: str, name: str, id: str):
-    return XmlObjectIdentifier(
+    return ObjectIdentifier(
         schema_type=schema_type, object_type=_get_xml_object_type_fega(root_path), root_path=root_path, name=name, id=id
     )
 

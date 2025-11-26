@@ -10,3 +10,4 @@ class ObjectIdentifier(BaseModel):
     object_type: str
     name: str
     id: str | None
+    root_path: str  # Absolute path (e.g. XPath) to the metadata object root element.

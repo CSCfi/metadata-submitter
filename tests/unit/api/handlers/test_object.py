@@ -22,13 +22,11 @@ from metadata_backend.api.processors.xml.configs import (
     BP_SAMPLE_BIOLOGICAL_BEING_OBJECT_TYPE,
     BP_SAMPLE_BLOCK_OBJECT_TYPE,
     BP_SAMPLE_CASE_OBJECT_TYPE,
-    BP_SAMPLE_SET_PATH,
     BP_SAMPLE_SLIDE_OBJECT_TYPE,
     BP_SAMPLE_SPECIMEN_OBJECT_TYPE,
     BP_STAINING_OBJECT_TYPE,
-    BP_SUBMISSION_OBJECT_TYPE,
 )
-from metadata_backend.api.processors.xml.processors import XmlDocumentProcessor, XmlObjectProcessor, XmlProcessor
+from metadata_backend.api.processors.xml.processors import XmlDocumentProcessor, XmlProcessor
 from metadata_backend.api.services.accession import generate_bp_accession_prefix
 from metadata_backend.conf.conf import API_PREFIX
 
@@ -415,7 +413,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
         assert submission.name == submission_name
         assert submission.title == "test_title"
         assert submission.description == "test_description"
-        assert submission_id.startswith(generate_bp_accession_prefix(BP_SUBMISSION_OBJECT_TYPE))
+        assert submission_id.startswith(generate_bp_accession_prefix(BP_DATASET_OBJECT_TYPE))
 
     @staticmethod
     async def _assert_bp_rems(submission):

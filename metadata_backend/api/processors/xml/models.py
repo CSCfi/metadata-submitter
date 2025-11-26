@@ -5,8 +5,6 @@ from typing import Callable, Type
 from lxml.etree import _Element as Element  # noqa
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from ..models import ObjectIdentifier
-
 # Callback to insert an XML element. Returns the inserted XML element.
 XmlElementInsertionCallback = Callable[[Element], Element]
 
@@ -135,12 +133,6 @@ class XmlReferencePaths(BaseModel):
         """
         _ = cls  # silence vulture
         return validate_absolute_path(path)
-
-
-class XmlObjectIdentifier(ObjectIdentifier):
-    """Xml metadata object identifier with name and id."""
-
-    root_path: str  # Absolute XPath to the metadata object root element.
 
 
 class XmlObjectConfig(BaseModel):

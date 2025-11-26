@@ -142,7 +142,7 @@ async def test_update_and_verify_bucket_policy(s3_endpoint):
             resp = await service.update_bucket_policy(bucket, project_id_1)
             await resp.json()
             assert resp.status == 400
-            assert resp.detail == f"The specified bucket does not exist."
+            assert resp.detail == "The specified bucket does not exist."
 
         # Create bucket
         await s3.create_bucket(Bucket=bucket)
