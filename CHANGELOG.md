@@ -9,6 +9,9 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- Increased  mypy validation coverage and made related code changes. For example, replaced XmlObjectIdentifier with ObjectIdentifier.
+- Enabled ruff fixes and made related code changes in tests.
+- Use BigPicture dataset id as the submission id. BigPicture does not support submission ids.
 - Make project id optional in new submit URLs to make it possible for BigPicture Swedish submitter to submit without defining a project id. For BigPicture Swedish submitters the project_id is the user_id and this can be retrieved from the JWT token.
 - Simplify new submit URLs.
 - improved get and verify user projects tests.
@@ -161,6 +164,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Removed
 
+- Replaced black with ruff.
 - support for fega study is publish to simplify publish code and metax mapping.
 - unused api endpoints path /rems, /metadata, /bucket.
 - text_name field from the Submission Pydantic model.
