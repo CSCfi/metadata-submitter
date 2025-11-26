@@ -14,8 +14,10 @@ External services are queried from the application, e.g. Datacite for DOIs.
 import os
 from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import urljoin
 
 import ujson
+from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings
 
 from .taxonomy_files.taxonomy_conf import TAXONOMY_NAME_FILE
@@ -32,30 +34,56 @@ DEPLOYMENT_CSC = "CSC"
 DEPLOYMENT_NBIS = "NBIS"
 
 
-# TODO(improve): load all configurations using BaseSettings
-class Config(BaseSettings):
-    deployment: Literal["CSC", "NBIS"] = "CSC"
+class DeploymentConfig(BaseSettings):
+    """Deployment configuration."""
+
+    DEPLOYMENT: Literal["CSC", "NBIS"] = Field(default="CSC", description="The deployment type.")
+    ALLOW_UNSAFE: bool = Field(default=False, description="Allow published submissions to be modifiable.")
+    ALLOW_REGISTRATION: bool = Field(
+        default=True, description="Allow published submissions to be registered with external services."
+    )
 
 
-config = Config()
+deployment_config = DeploymentConfig()
 
 
-# 3) Set up configurations for AAI server
+class OIDCConfig(BaseSettings):
+    """OIDC configuration."""
 
-aai_config = {
-    "client_id": os.getenv("AAI_CLIENT_ID", "public"),
-    "client_secret": os.getenv("AAI_CLIENT_SECRET", "secret"),
-    "domain": os.getenv("BASE_URL", "http://localhost:5430"),
-    "redirect": (
-        f'{os.getenv("REDIRECT_URL")}'
-        if bool(os.getenv("REDIRECT_URL"))
-        else os.getenv("BASE_URL", "http://localhost:5430")
-    ),
-    "scope": os.getenv("OIDC_SCOPE", "openid profile email"),
-    "callback_url": f'{os.getenv("BASE_URL", "http://localhost:5430").rstrip("/")}/callback',
-    "oidc_url": os.getenv("OIDC_URL", ""),
-    "auth_method": os.getenv("AUTH_METHOD", "code"),
-}
+    model_config = {"extra": "allow"}  # Allow creation using the constructor.
+
+    BASE_URL: str = Field(description="Application URL")
+    OIDC_URL: str = Field(description="OIDC provider URL")
+    REDIRECT_URL: str | None = Field(
+        default=None,
+        description="OIDC redirection URL",
+    )
+    OIDC_CLIENT_ID: str = Field(
+        description="OIDC client ID",
+        validation_alias="AAI_CLIENT_ID",  # TODO(improve): rename to OIDC_CLIENT_ID
+    )
+    OIDC_CLIENT_SECRET: str = Field(
+        description="OIDC client secret",
+        validation_alias="AAI_CLIENT_SECRET",  # TODO(improve): rename to OIDC_CLIENT_SECRET
+    )
+    OIDC_SCOPE: str = Field(default="openid profile email", description="OIDC scopes")
+
+    @computed_field
+    def redirect_url(self) -> str:
+        """Return redirect URL or base URL."""
+
+        return self.REDIRECT_URL or self.BASE_URL
+
+    @computed_field
+    def callback_url(self) -> str:
+        """Return callback URL based on base URL."""
+
+        return urljoin(self.BASE_URL, "callback")
+
+
+oidc_config = OIDCConfig()
+
+# TODO(improve): read all env variables using BaseSettings
 
 # Datacite API currently only for Bigpicture workflow
 datacite_config = {
@@ -110,23 +138,6 @@ admin_config = {
 }
 
 BP_REMS_SCHEMA_TYPE = "bprems"  # Metadata object itself is not stored.
-
-BP_SCHEMA_TYPES = [
-    "bpannotation",
-    "bpdataset",
-    "bpimage",
-    "bpobservation",
-    "bpobserver",
-    "bprems",
-    "bpsample",
-    "bpstaining",
-    "bppolicy",
-    "bpbiologicalBeing",
-    "bpcase",
-    "bpspecimen",
-    "bpblock",
-    "bpslide",
-]
 
 TAXONOMY_NAME_DATA: dict[str, dict[Any, Any]] = {}
 # Load taxonomy name data into a single dict

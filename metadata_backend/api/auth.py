@@ -12,7 +12,7 @@ from idpyoidc.exception import OidcMsgError
 from pydantic import BaseModel, ConfigDict
 from yarl import URL
 
-from ..conf.conf import aai_config
+from ..conf.conf import OIDCConfig, oidc_config
 from ..helpers.logger import LOG
 from ..services.service_handler import ServiceHandler
 from .services.auth import JWT_EXPIRATION, AccessService
@@ -54,20 +54,20 @@ def get_authorized_user_name(req: Request) -> str:
 class AccessHandler:
     """Handler for user access methods."""
 
-    def __init__(self, aai: dict[str, Any]) -> None:
+    def __init__(self, config: OIDCConfig) -> None:
         """Define AAI variables and paths.
 
-        :param aai: dictionary with AAI specific config
+        :param config: dictionary with AAI specific config
         """
-        self.domain = aai["domain"]
-        self.redirect = aai["redirect"]
-        self.client_id = aai["client_id"]
-        self.client_secret = aai["client_secret"]
-        self.callback_url = aai["callback_url"]
-        self.oidc_url = aai["oidc_url"].rstrip("/") + "/.well-known/openid-configuration"
-        self.iss = aai["oidc_url"]
-        self.scope = aai["scope"]
-        self.auth_method = aai["auth_method"]
+        self.domain = config.BASE_URL
+        self.redirect = config.REDIRECT_URL
+        self.client_id = config.OIDC_CLIENT_ID
+        self.client_secret = config.OIDC_CLIENT_SECRET
+        self.callback_url = config.callback_url
+        self.oidc_url = config.OIDC_URL.rstrip("/") + "/.well-known/openid-configuration"
+        self.iss = config.OIDC_URL
+        self.scope = config.OIDC_SCOPE
+        self.auth_method = "code"
 
         self.oidc_conf = {
             "aai": {
@@ -246,7 +246,7 @@ class AAIServiceHandler(ServiceHandler):
     def __init__(self, headers: Optional[dict[str, Any]] = None) -> None:
         """Get AAI credentials from config."""
         super().__init__(
-            base_url=URL(aai_config["oidc_url"].rstrip("/")),
+            base_url=URL(oidc_config.OIDC_URL.rstrip("/")),
             http_client_headers=headers,
         )
 

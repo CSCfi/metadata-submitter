@@ -1,7 +1,6 @@
 """HTTP handler for submission related requests."""
 
 import json
-import os
 from datetime import datetime
 from math import ceil
 
@@ -9,6 +8,7 @@ from aiohttp import web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
+from ...conf.conf import deployment_config
 from ...database.postgres.models import IngestStatus
 from ...helpers.logger import LOG
 from ..auth import get_authorized_user_id
@@ -22,8 +22,6 @@ from ..resources import (
     get_submission_service,
 )
 from .restapi import RESTAPIIntegrationHandler
-
-ALLOW_UNSAFE: bool = os.getenv("ALLOW_UNSAFE", "FALSE").strip().upper() == "TRUE"
 
 
 class SubmissionAPIHandler(RESTAPIIntegrationHandler):
@@ -96,7 +94,7 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         :param unsafe: Allow changes to the submission after publishing.
         :returns: The submission id.
         """
-        if ALLOW_UNSAFE and unsafe:
+        if deployment_config.ALLOW_UNSAFE and unsafe:
             return await SubmissionAPIHandler.check_submission_retrievable(
                 req, submission_id, workflow=workflow, project_id=project_id, search_name=search_name
             )

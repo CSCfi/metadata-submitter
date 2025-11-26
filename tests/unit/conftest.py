@@ -5,6 +5,7 @@ import atexit
 import os
 import tempfile
 from typing import AsyncGenerator
+from unittest.mock import patch
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -40,6 +41,14 @@ os.environ.setdefault("S3_REGION", "us-east-1")
 os.environ.setdefault("S3_ENDPOINT", "http://localhost")
 
 
+def pytest_configure(config):
+    os.environ["BASE_URL"] = "http://test.local:5430"
+    os.environ["OIDC_URL"] = ""
+    os.environ["AAI_CLIENT_ID"] = "public"
+    os.environ["AAI_CLIENT_SECRET"] = "secret"
+    os.environ[BP_CENTER_ID_ENV] = "bb"
+
+
 async def _session_start():
     # Create SQLAlchemy engine and session factory.
     global _engine, _session_factory, _submission_repository, _object_repository, _file_repository, _registration_repository
@@ -73,14 +82,6 @@ def pytest_sessionfinish(session, exitstatus):
 @pytest.fixture
 async def session_factory() -> AsyncGenerator[SessionFactory, None]:
     yield _session_factory
-
-
-# Environmental variables
-
-
-@pytest.fixture(autouse=True, scope="session")
-def env():
-    os.environ[BP_CENTER_ID_ENV] = "bb"
 
 
 # Repositories

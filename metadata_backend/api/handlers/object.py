@@ -10,7 +10,7 @@ from ...database.postgres.services.submission import UnknownSubmissionUserExcept
 from ..auth import get_authorized_user_id
 from ..exceptions import SystemException, UserException
 from ..json import to_json_dict
-from ..models.models import Objects
+from ..models.models import Objects, Project
 from ..models.submission import SubmissionWorkflow
 from ..processors.xml.configs import BP_FULL_SUBMISSION_XML_OBJECT_CONFIG, FEGA_FULL_SUBMISSION_XML_OBJECT_CONFIG
 from ..processors.xml.models import XmlObjectConfig
@@ -70,7 +70,7 @@ class ObjectAPIHandler(RESTAPIIntegrationHandler):
         :param req: HTTP request
         :returns: The project id.
         """
-        projects = await project_service.get_user_projects(user_id)
+        projects: list[Project] = await project_service.get_user_projects(user_id)
         if len(projects) != 1:
             raise UserException(
                 f"A project_id must be provided because this user is associated with {len(projects)} projects."
