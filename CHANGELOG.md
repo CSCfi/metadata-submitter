@@ -9,6 +9,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- moved test specific defaults values from OIDC env variables to conftest.py.
+- read OIDC env variables using BaseSettings.
 - Get files in bucket and check bucket access endpoints use preset static EC2 credentials
 - List all buckets and grant access to bucket endpoints create user and project specific EC2 credentials upon request for a single use.
 - Increased  mypy validation coverage and made related code changes. For example, replaced XmlObjectIdentifier with ObjectIdentifier.
@@ -99,6 +101,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- tests for reading env variables using BaseSettings.
+- Added ALLOW_REGISTRATION env to disable registrations in QA deployment.
 - pouta_access_token from AAI userinfo object is stored in session cookies.
 - Integration with Pouta Keystone service for fetching project scoped EC2 credentials.
 - DEPLOYMENT env variable (CSC, NBIS) to prepare for BigPicture Swedish deployment. Selects the ProjectService.
