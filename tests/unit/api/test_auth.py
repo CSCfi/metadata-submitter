@@ -11,6 +11,7 @@ from metadata_backend.api.auth import AccessHandler
 from metadata_backend.api.services.auth import (
     JWT_SECRET_ENV,
 )
+from metadata_backend.conf.conf import OIDCConfig, oidc_config
 from metadata_backend.server import init
 
 from ..mockups import Mock_Request
@@ -83,17 +84,16 @@ class AccessHandlerPassTestCase(IsolatedAsyncioTestCase):
 
     def setUp(self):
         """Configure mock values for tests."""
-        access_config = {
-            "client_id": "aud2",
-            "client_secret": "secret",
-            "domain": "http://domain.com:5430",
-            "redirect": "http://domain.com:5430",
-            "scope": "openid profile email",
-            "callback_url": "http://domain.com:5430/callback",
-            "oidc_url": "http://auth.domain.com:5430",
-            "auth_method": "code",
-        }
-        self.AccessHandler = AccessHandler(access_config)
+        config = OIDCConfig(
+            OIDC_CLIENT_ID="aud2",
+            OIDC_CLIENT_SECRET="secret",
+            BASE_URL="http://domain.com:5430",
+            REDIRECT_URL="http://domain.com:5430",
+            OIDC_SCOPE="openid profile email",
+            OIDC_URL="http://auth.domain.com:5430",
+            AUTH_METHOD="code",
+        )
+        self.AccessHandler = AccessHandler(config)
 
         self.patch_verify_authorization = patch(
             "metadata_backend.api.middlewares.verify_authorization",

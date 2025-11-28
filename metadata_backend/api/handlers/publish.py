@@ -8,6 +8,9 @@ from typing import Any, Callable, Iterator
 from aiohttp import web
 from aiohttp.web import Request, Response
 
+from ...conf.conf import deployment_config
+from ...database.postgres.services.file import FileService
+from ...database.postgres.services.object import ObjectService
 from ...database.postgres.services.registration import RegistrationService
 from ...helpers.logger import LOG
 from ..auth import get_authorized_user_id
@@ -15,7 +18,7 @@ from ..exceptions import SystemException, UserException
 from ..json import to_json, to_json_dict
 from ..models.datacite import DataCiteMetadata
 from ..models.models import File, Registration
-from ..models.submission import Rems, SubmissionMetadata, SubmissionWorkflow
+from ..models.submission import Rems, Submission, SubmissionMetadata, SubmissionWorkflow
 from ..resources import (
     get_file_provider_service,
     get_file_service,
@@ -509,8 +512,8 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
             # Add all files in linked bucket to the submission.
             bucket = await submission_service.get_bucket(submission_id)
             if workflow == SubmissionWorkflow.SD:
-                project_íd = await submission_service.get_project_id(submission_id)
-                files = await file_provider_service.list_files_in_bucket(bucket, project_íd)
+                project_id = await submission_service.get_project_id(submission_id)
+                files = await file_provider_service.list_files_in_bucket(bucket, project_id)
                 for file in files.root:
                     # Check that we have not added the file already.
                     # For now, accept that file bytes might have changed and some files
@@ -546,6 +549,43 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         # Check that the submission contains REMS information.
         if publish_config.use_rems_service and not rems:
             raise UserException(f"Submission '{submission_id}' does not have required REMS information.")
+
+        if deployment_config.ALLOW_REGISTRATION:
+            await self._register_submission(
+                user_id, submission, datacite, rems, object_service, file_service, registration_service, publish_config
+            )
+
+        # Update submission status to published.
+        await submission_service.publish(submission_id)
+
+        LOG.info("Publishing submission with ID %r was successful.", submission_id)
+        return web.Response(body=to_json({"submissionId": submission_id}), status=200, content_type="application/json")
+
+    async def _register_submission(
+        self,
+        user_id: str,
+        submission: Submission,
+        datacite: DataCiteMetadata,
+        rems: Rems,
+        object_service: ObjectService,
+        file_service: FileService,
+        registration_service: RegistrationService,
+        publish_config: PublishConfig,
+    ) -> None:
+        """
+        Register submission with external discovery services.
+
+        :param user_id: The user id
+        :param submission: The submission
+        :param datacite: The datacite metadata
+        :param rems: The rems metadata
+        :param object_service: The object service
+        :param file_service: The file service
+        :param registration_service: The registration service
+        :param publish_config: The publish configuration
+        """
+
+        submission_id = submission.submissionId
 
         # Registrations are external identifiers assigned to the submission, e.g. a DOI or Metax ID.
         # We provide title, description and other descriptive information to register external
@@ -641,12 +681,6 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         if publish_config.use_metax_service:
             for registration in _filtered_registrations(publish_config):
                 await self._publish_metax(registration)
-
-        # Update submission status to published.
-        await submission_service.publish(submission_id)
-
-        LOG.info("Publishing submission with ID %r was successful.", submission_id)
-        return web.Response(body=to_json({"submissionId": submission_id}), status=200, content_type="application/json")
 
     @staticmethod
     def _create_submission_registration(submission_id: str, title: str, description: str, doi: str) -> Registration:

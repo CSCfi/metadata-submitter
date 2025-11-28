@@ -25,9 +25,9 @@ from .conf.conf import (
     API_PREFIX,
     DEPLOYMENT_CSC,
     DEPLOYMENT_NBIS,
-    aai_config,
-    config,
+    deployment_config,
     frontend_static_files,
+    oidc_config,
     swagger_static_path,
 )
 from .database.postgres.repositories.api_key import ApiKeyRepository
@@ -95,9 +95,9 @@ async def init(
 
     _set_resource(ResourceType.ACCESS_SERVICE, AccessService(api_key_repository))
 
-    if config.deployment == DEPLOYMENT_CSC:
+    if deployment_config.DEPLOYMENT == DEPLOYMENT_CSC:
         _set_resource(ResourceType.PROJECT_SERVICE, CscProjectService())
-    elif config.deployment == DEPLOYMENT_NBIS:
+    elif deployment_config.DEPLOYMENT == DEPLOYMENT_NBIS:
         _set_resource(ResourceType.PROJECT_SERVICE, NbisProjectService())
 
     _set_resource(ResourceType.SUBMISSION_SERVICE, submission_service)
@@ -204,7 +204,7 @@ async def init(
     server.add_subapp(API_PREFIX, api)
     LOG.info("API configurations and routes loaded")
 
-    _access = AccessHandler(aai_config)
+    _access = AccessHandler(oidc_config)
     aai_routes = [
         web.get("/aai", _access.login),
         web.get("/callback", _access.callback),
