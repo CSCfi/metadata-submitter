@@ -543,10 +543,10 @@ async def set_bucket_policy(bucket_name, project_id):
                             "Sid": "GrantSDSubmitReadAccess",
                             "Effect": "Allow",
                             "Principal": {
-                                "AWS": f"arn:aws:iam::${project_id}:root",
+                                "AWS": f"arn:aws:iam::{project_id}:root",
                             },
                             "Action": ["s3:GetObject", "s3:ListBucket", "s3:GetBucketPolicy"],
-                            "Resource": f"arn:aws:s3:::{bucket_name}/*",
+                            "Resource": [f"arn:aws:s3:::{bucket_name}", f"arn:aws:s3:::{bucket_name}/*"],
                         },
                     ],
                 },

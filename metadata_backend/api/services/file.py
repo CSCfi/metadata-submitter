@@ -10,9 +10,11 @@ from aiohttp import web
 from pydantic import BaseModel, RootModel
 
 from ...helpers.logger import LOG
+from ...services.keystone_service import KeystoneService
 
-S3_ACCESS_KEY_ENV = "S3_ACCESS_KEY"  # nosec
-S3_SECRET_KEY_ENV = "S3_SECRET_KEY"  # nosec
+S3_ACCESS_KEY_ENV = "STATIC_S3_ACCESS_KEY_ID"  # nosec
+S3_SECRET_KEY_ENV = "STATIC_S3_SECRET_ACCESS_KEY"  # nosec
+SD_SUBMIT_PROJECT_ID_ENV = "SD_SUBMIT_PROJECT_ID"
 S3_REGION_ENV = "S3_REGION"
 S3_ENDPOINT_ENV = "S3_ENDPOINT"
 
@@ -51,29 +53,24 @@ class FileProviderService(ABC):
             raise web.HTTPBadRequest(reason=reason)
         return size
 
-    async def list_buckets(self, project_id: str) -> list[str]:
+    async def list_buckets(self, credentials: KeystoneService.EC2Credentials) -> list[str]:
         """
         List all available buckets.
 
         Args:
-            project_id: The ID of the project.
+            credentials: The EC2 credentials for the project.
 
         Returns:
             A list of buckets found.
         """
-        buckets = await self._list_buckets()
-        buckets_with_policy = []
-        for bucket in buckets:
-            has_policy = await self._verify_bucket_policy(bucket, project_id)
-            if has_policy:
-                buckets_with_policy.append(bucket)
+        buckets = await self._list_buckets(credentials)
 
-        if not buckets_with_policy:
+        if not buckets:
             reason = "No buckets found."
             LOG.error(reason)
             raise web.HTTPNotFound(reason=reason)
 
-        return buckets_with_policy
+        return buckets
 
     async def list_files_in_bucket(self, bucket: str, project_id: str) -> Files:
         """
@@ -86,7 +83,7 @@ class FileProviderService(ABC):
         Returns:
             A list of files (objects) found.
         """
-        if not await self._verify_bucket_policy(bucket, project_id):
+        if not await self._verify_bucket_policy(bucket):
             reason = f"Bucket {bucket} is not accessible in project {project_id}."
             LOG.error(reason)
             raise web.HTTPBadRequest(reason=reason)
@@ -98,28 +95,29 @@ class FileProviderService(ABC):
             raise web.HTTPNotFound(reason=reason)
         return files
 
-    async def update_bucket_policy(self, bucket: str, project_id: str) -> None:
+    async def update_bucket_policy(self, bucket: str, creds: KeystoneService.EC2Credentials) -> None:
         """
         Assign a read access policy to the specified bucket.
+
+        This will make it possible for the API to read its files with static EC2 credentials.
 
         Args:
             bucket: The name of the bucket.
             project_id: The ID of the project.
         """
-        await self._update_bucket_policy(bucket, project_id)
+        await self._update_bucket_policy(bucket, creds)
 
-    async def verify_bucket_policy(self, bucket: str, project_id: str) -> bool:
+    async def verify_bucket_policy(self, bucket: str) -> bool:
         """
         Verify that the read access policy has been assigned to a bucket.
 
         Args:
             bucket: The name of the bucket.
-            project_id: The ID of the project.
 
         Returns:
             True if the policy is assigned, False otherwise.
         """
-        return await self._verify_bucket_policy(bucket, project_id)
+        return await self._verify_bucket_policy(bucket)
 
     @abstractmethod
     async def _verify_user_file(self, bucket: str, file: str) -> int | None:
@@ -135,9 +133,12 @@ class FileProviderService(ABC):
         """
 
     @abstractmethod
-    async def _list_buckets(self) -> list[str]:
+    async def _list_buckets(self, credentials: KeystoneService.EC2Credentials) -> list[str]:
         """
         List all buckets.
+
+        Args:
+            credentials: The EC2 credentials for the project.
 
         Returns:
             A list of bucket names.
@@ -156,23 +157,22 @@ class FileProviderService(ABC):
         """
 
     @abstractmethod
-    async def _update_bucket_policy(self, bucket: str, project_id: str) -> None:
+    async def _update_bucket_policy(self, bucket: str, creds: KeystoneService.EC2Credentials) -> None:
         """
         Assign a read access policy to the specified bucket.
 
         Args:
             bucket: The name of the bucket.
-            project_id: The ID of the project.
+            creds: The EC2 credentials of the user for the project.
         """
 
     @abstractmethod
-    async def _verify_bucket_policy(self, bucket: str, project_id: str) -> bool:
+    async def _verify_bucket_policy(self, bucket: str) -> bool:
         """
         Verify that the read access policy has been assigned to a bucket.
 
         Args:
             bucket: The name of the bucket.
-            project_id: The ID of the project.
 
         Returns:
             True if the policy is assigned, False otherwise.
@@ -193,14 +193,15 @@ class S3FileProviderService(FileProviderService):
 
         access_key = _env(S3_ACCESS_KEY_ENV)
         secret_key = _env(S3_SECRET_KEY_ENV)
-        region = _env(S3_REGION_ENV)
+        self.region = _env(S3_REGION_ENV)
         self.endpoint = _env(S3_ENDPOINT_ENV)
+        self.api_project_id = _env(SD_SUBMIT_PROJECT_ID_ENV)
 
-        """Initialize the S3 session."""
+        """Initialize the base S3 session with static credentials."""
         self._session = aioboto3.Session(
             aws_access_key_id=access_key,
             aws_secret_access_key=secret_key,
-            region_name=region,
+            region_name=self.region,
         )
 
     async def _verify_user_file(self, bucket: str, file: str) -> int | None:
@@ -226,14 +227,25 @@ class S3FileProviderService(FileProviderService):
                     return None
                 raise e
 
-    async def _list_buckets(self) -> list[str]:
+    async def _list_buckets(self, creds: KeystoneService.EC2Credentials) -> list[str]:
         """
-        List all available S3 buckets.
+        List all available S3 buckets with user's project scoped credentials.
+
+        Args:
+            credentials: The EC2 credentials for the project.
 
         Returns:
             A list of bucket names.
         """
-        async with self._session.client("s3", endpoint_url=self.endpoint, use_ssl=False) as s3:
+        session = aioboto3.Session()
+        async with session.client(
+            "s3",
+            endpoint_url=self.endpoint,
+            aws_access_key_id=creds.access,
+            aws_secret_access_key=creds.secret,
+            region_name=self.region,
+            use_ssl=False,
+        ) as s3:
             try:
                 response = await s3.list_buckets()
                 buckets = response.get("Buckets", [])
@@ -268,15 +280,23 @@ class S3FileProviderService(FileProviderService):
 class S3AllasFileProviderService(S3FileProviderService):
     """Service to manage S3 buckets in Allas."""
 
-    async def _update_bucket_policy(self, bucket: str, project_id: str) -> None:
+    async def _update_bucket_policy(self, bucket: str, creds: KeystoneService.EC2Credentials) -> None:
         """
         Assign a read access policy to the specified S3 bucket.
 
         Args:
             bucket: The name of the S3 bucket.
-            project_id: The ID of the project.
+            creds: EC2 credentials for the project.
         """
-        async with self._session.client("s3", endpoint_url=self.endpoint, use_ssl=False) as s3:
+        session = aioboto3.Session()
+        async with session.client(
+            "s3",
+            endpoint_url=self.endpoint,
+            aws_access_key_id=creds.access,
+            aws_secret_access_key=creds.secret,
+            region_name=self.region,
+            use_ssl=False,
+        ) as s3:
             try:
                 resp = await s3.get_bucket_policy(
                     Bucket=bucket,
@@ -297,10 +317,10 @@ class S3AllasFileProviderService(S3FileProviderService):
                     "Sid": "GrantSDSubmitReadAccess",
                     "Effect": "Allow",
                     "Principal": {
-                        "AWS": f"arn:aws:iam::${project_id}:root",
+                        "AWS": f"arn:aws:iam::{self.api_project_id}:root",
                     },
                     "Action": ["s3:GetObject", "s3:ListBucket", "s3:GetBucketPolicy"],
-                    "Resource": f"arn:aws:s3:::{bucket}/*",
+                    "Resource": [f"arn:aws:s3:::{bucket}", f"arn:aws:s3:::{bucket}/*"],
                 },
             ]
             + statements,
@@ -315,8 +335,13 @@ class S3AllasFileProviderService(S3FileProviderService):
                 raise web.HTTPBadRequest(reason=e.response["Error"]["Message"])
             raise e
 
-    async def _verify_bucket_policy(self, bucket: str, project_id: str) -> bool:
-        """Verify that the read access policy has been assigned to a bucket."""
+    async def _verify_bucket_policy(self, bucket: str) -> bool:
+        """Verify that the read access policy has been assigned to a bucket.
+
+        Args:
+            bucket: The name of the S3 bucket.
+        Returns:
+            True if the policy is assigned, False otherwise."""
         async with self._session.client("s3", endpoint_url=self.endpoint, use_ssl=False) as s3:
             try:
                 resp = await s3.get_bucket_policy(
@@ -332,7 +357,7 @@ class S3AllasFileProviderService(S3FileProviderService):
         policy = ujson.loads(resp["Policy"])
         for statement in policy["Statement"]:
             if statement["Sid"] == "GrantSDSubmitReadAccess":
-                if statement["Principal"]["AWS"] == f"arn:aws:iam::${project_id}:root":
+                if statement["Principal"]["AWS"] == f"arn:aws:iam::{self.api_project_id}:root":
                     return True
 
         return False

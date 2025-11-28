@@ -1,3 +1,4 @@
+import os
 import socket
 
 import pytest
@@ -13,6 +14,7 @@ from metadata_backend.api.services.file import (
     S3_SECRET_KEY_ENV,
     S3AllasFileProviderService,
 )
+from metadata_backend.services.keystone_service import KeystoneService
 
 
 @pytest.fixture(autouse=True)
@@ -96,25 +98,22 @@ async def test_list_buckets_and_files(s3_endpoint):
     bucket = "test-bucket"
     file = "test-file"
     content = b"test"
+    creds = KeystoneService.EC2Credentials(access="test-id", secret="test-key")
 
     async with session.client("s3", endpoint_url=s3_endpoint) as s3:
         # No buckets yet
         with pytest.raises(web.HTTPNotFound):
-            await service.list_buckets(project_id)
+            await service.list_buckets(creds)
 
         # Create bucket
         await s3.create_bucket(Bucket=bucket)
 
-        # No buckets found without bucket policy
-        with pytest.raises(web.HTTPNotFound):
-            await service.list_buckets(project_id)
-
         # Now one bucket should be returned
-        await service.update_bucket_policy(bucket, project_id)
-        buckets = await service.list_buckets(project_id)
+        buckets = await service.list_buckets(creds)
         assert buckets[0] == bucket
 
         # No files in bucket yet
+        await service.update_bucket_policy(bucket, creds)
         with pytest.raises(web.HTTPNotFound):
             await service.list_files_in_bucket(bucket, project_id)
 
@@ -133,32 +132,28 @@ async def test_update_and_verify_bucket_policy(s3_endpoint):
     session = service._session
 
     bucket = "test-bucket"
-    project_id_1 = "PRJ123"
-    project_id_2 = "PRJ456"
+    api_project = os.environ.get("SD_SUBMIT_PROJECT_ID")
+    creds = KeystoneService.EC2Credentials(access="test-id", secret="test-key")
 
     async with session.client("s3", endpoint_url=s3_endpoint) as s3:
         # Cannot assign to non-existant bucket
         with pytest.raises(web.HTTPBadRequest):
-            resp = await service.update_bucket_policy(bucket, project_id_1)
+            resp = await service.update_bucket_policy(bucket, creds)
             await resp.json()
             assert resp.status == 400
             assert resp.detail == "The specified bucket does not exist."
 
         # Create bucket
         await s3.create_bucket(Bucket=bucket)
+        assert not await service.verify_bucket_policy(bucket)
 
-        await service.update_bucket_policy(bucket, project_id_1)
+        await service.update_bucket_policy(bucket, creds)
 
         # Verify bucket policy
         resp = await s3.get_bucket_policy(Bucket=bucket)
         policy = ujson.loads(resp["Policy"])
         assert policy["Statement"][0]["Sid"] == "GrantSDSubmitReadAccess"
-        assert policy["Statement"][0]["Principal"]["AWS"] == f"arn:aws:iam::${project_id_1}:root"
-        assert policy["Statement"][0]["Resource"] == f"arn:aws:s3:::{bucket}/*"
+        assert policy["Statement"][0]["Principal"]["AWS"] == f"arn:aws:iam::{api_project}:root"
+        assert policy["Statement"][0]["Resource"] == [f"arn:aws:s3:::{bucket}", f"arn:aws:s3:::{bucket}/*"]
 
-        assert await service.verify_bucket_policy(bucket, project_id_1)
-        assert not await service.verify_bucket_policy(bucket, project_id_2)
-
-        # Replacing already existing policy with another project will not work
-        await service.update_bucket_policy(bucket, project_id_2)
-        assert not await service.verify_bucket_policy(bucket, project_id_2)
+        assert await service.verify_bucket_policy(bucket)

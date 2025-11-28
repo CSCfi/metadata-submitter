@@ -11,6 +11,22 @@ from .common import HandlersTestCase
 class FilesAPIHandlerTestCase(HandlersTestCase):
     """Files API handler test cases."""
 
+    async def asyncSetUp(self) -> None:
+        """Set up async test fixtures."""
+        await super().asyncSetUp()
+        self.patch_get_project_entry = patch(
+            "metadata_backend.services.keystone_service.KeystoneService.get_project_entry",
+            return_value={},
+        )
+        self.patch_get_ec2 = patch(
+            "metadata_backend.services.keystone_service.KeystoneService.get_ec2_for_project",
+            return_value={},
+        )
+        self.patch_delete_ec2 = patch(
+            "metadata_backend.services.keystone_service.KeystoneService.delete_ec2_from_project",
+            return_value=204,
+        )
+
     async def test_get_project_buckets(self) -> None:
         """Test getting project buckets."""
 
@@ -19,12 +35,15 @@ class FilesAPIHandlerTestCase(HandlersTestCase):
         with (
             self.patch_verify_authorization,
             self.patch_verify_user_project,
+            self.patch_get_project_entry,
+            self.patch_get_ec2,
+            self.patch_delete_ec2,
             patch(
                 "metadata_backend.api.services.file.FileProviderService.list_buckets",
                 return_value=["bucket1", "bucket2"],
             ),
         ):
-            response = await self.client.get(f"{API_PREFIX}/projects/{project_id}/buckets")
+            response = await self.client.get(f"{API_PREFIX}/buckets?projectId={project_id}")
             self.assertEqual(response.status, 200)
 
             buckets = await response.json()
@@ -47,7 +66,7 @@ class FilesAPIHandlerTestCase(HandlersTestCase):
                 return_value=False,
             ),
         ):
-            response = await self.client.get(f"{API_PREFIX}/projects/{project_id}/buckets/{bucket_name}/files")
+            response = await self.client.get(f"{API_PREFIX}/buckets/{bucket_name}/files?projectId={project_id}")
             self.assertEqual(response.status, 400)
 
         with (
@@ -58,7 +77,7 @@ class FilesAPIHandlerTestCase(HandlersTestCase):
                 return_value=FileProviderService.Files([file1, file2]),
             ),
         ):
-            response = await self.client.get(f"{API_PREFIX}/projects/{project_id}/buckets/{bucket_name}/files")
+            response = await self.client.get(f"{API_PREFIX}/buckets/{bucket_name}/files?projectId={project_id}")
             self.assertEqual(response.status, 200)
 
             files = await response.json()
@@ -75,12 +94,15 @@ class FilesAPIHandlerTestCase(HandlersTestCase):
         with (
             self.patch_verify_authorization,
             self.patch_verify_user_project,
+            self.patch_get_project_entry,
+            self.patch_get_ec2,
+            self.patch_delete_ec2,
             patch(
                 "metadata_backend.api.services.file.FileProviderService.update_bucket_policy",
                 return_value=None,
             ),
         ):
-            response = await self.client.put(f"{API_PREFIX}/projects/{project_id}/buckets/{bucket_name}")
+            response = await self.client.put(f"{API_PREFIX}/buckets/{bucket_name}?projectId={project_id}")
             self.assertEqual(response.status, 200)
 
     async def test_check_bucket_access(self) -> None:
@@ -97,7 +119,7 @@ class FilesAPIHandlerTestCase(HandlersTestCase):
                 return_value=True,
             ),
         ):
-            response = await self.client.head(f"{API_PREFIX}/projects/{project_id}/buckets/{bucket_name}")
+            response = await self.client.head(f"{API_PREFIX}/buckets/{bucket_name}?projectId={project_id}")
             self.assertEqual(response.status, 200)
 
         with (
@@ -108,5 +130,5 @@ class FilesAPIHandlerTestCase(HandlersTestCase):
                 return_value=False,
             ),
         ):
-            response = await self.client.head(f"{API_PREFIX}/projects/{project_id}/buckets/{bucket_name}")
+            response = await self.client.head(f"{API_PREFIX}/buckets/{bucket_name}?projectId={project_id}")
             self.assertEqual(response.status, 400)

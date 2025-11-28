@@ -15,6 +15,7 @@ services:
       - mockpid
       - mockldap
       - mock-s3
+      - mockkeystone
     restart: on-failure
     environment:
       - "AAI_CLIENT_SECRET=${AAI_CLIENT_SECRET}"
@@ -33,7 +34,6 @@ services:
       - "PID_APIKEY=${PID_APIKEY}"
       - "METAX_DISCOVERY_URL=${METAX_DISCOVERY_URL}"
       - "BEACON_DISCOVERY_URL=${BEACON_DISCOVERY_URL}"
-      - "METAX_ENABLED=${METAX_ENABLED}"
       - "METAX_USER=${METAX_USER}"
       - "METAX_PASS=${METAX_PASS}"
       - "METAX_URL=${METAX_URL}"
@@ -47,10 +47,12 @@ services:
       - "PG_DATABASE_URL=${PG_DATABASE_URL}"
       - "BP_CENTER_ID=${BP_CENTER_ID}"
       - "POLLING_INTERVAL=${POLLING_INTERVAL}"
-      - "S3_ACCESS_KEY=${S3_ACCESS_KEY}"
-      - "S3_SECRET_KEY=${S3_SECRET_KEY}"
+      - "STATIC_S3_ACCESS_KEY_ID=${STATIC_S3_ACCESS_KEY_ID}"
+      - "STATIC_S3_SECRET_ACCESS_KEY=${STATIC_S3_SECRET_ACCESS_KEY}"
+      - "SD_SUBMIT_PROJECT_ID=${SD_SUBMIT_PROJECT_ID}"
       - "S3_REGION=${S3_REGION}"
       - "S3_ENDPOINT=${S3_ENDPOINT}"
+      - "KEYSTONE_ENDPOINT=${KEYSTONE_ENDPOINT}"
       - "ALLOW_UNSAFE=${ALLOW_UNSAFE}"
   mockauth:
     build:
@@ -62,11 +64,15 @@ services:
       - "LOG_LEVEL=${LOG_LEVEL}"
       - "OIDC_URL=${OIDC_URL}"
       - "OIDC_URL_TEST=${OIDC_URL_TEST}"
+      - "KEYSTONE_ENDPOINT=${KEYSTONE_ENDPOINT}"
     hostname: mockauth
     expose:
       - 8000
     ports:
       - "8000:8000"
+    depends_on:
+      mockkeystone:
+        condition: service_started
     volumes:
       - ./tests/integration/mock_auth.py:/mock_auth.py
     entrypoint: [ "python", "/mock_auth.py", "0.0.0.0", "8000" ]
@@ -163,5 +169,10 @@ services:
       - "8006:8006"
     environment:
       - MOTO_PORT=8006
+  mockkeystone:
+    image: ghcr.io/cscfi/docker-keystone-swift:latest
+    hostname: mockkeystone
+    ports:
+      - "5001:5001"
 volumes:
   data:

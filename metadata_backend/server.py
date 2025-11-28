@@ -43,6 +43,7 @@ from .database.postgres.services.submission import SubmissionService
 from .helpers.logger import LOG
 from .services.admin_service_handler import AdminServiceHandler
 from .services.datacite_service_handler import DataciteServiceHandler
+from .services.keystone_service import KeystoneService
 from .services.metax_service_handler import MetaxServiceHandler
 from .services.pid_ms_handler import PIDServiceHandler
 from .services.rems_service_handler import RemsServiceHandler
@@ -90,6 +91,7 @@ async def init(
     submission_service = SubmissionService(SubmissionRepository(session_factory), registration_repository)
     object_service = ObjectService(ObjectRepository(session_factory))
     file_provider_service = S3AllasFileProviderService()
+    keystone_service = KeystoneService()
 
     _set_resource(ResourceType.ACCESS_SERVICE, AccessService(api_key_repository))
 
@@ -103,6 +105,7 @@ async def init(
     _set_resource(ResourceType.FILE_SERVICE, FileService(FileRepository(session_factory)))
     _set_resource(ResourceType.REGISTRATION_SERVICE, RegistrationService(registration_repository))
     _set_resource(ResourceType.FILE_PROVIDER_SERVICE, file_provider_service)
+    _set_resource(ResourceType.KEYSTONE_SERVICE, keystone_service)
     _set_resource(ResourceType.SESSION_FACTORY, session_factory)
 
     # Initialize handlers.
@@ -122,6 +125,7 @@ async def init(
         await datacite_handler.http_client_close()
         await rems_handler.http_client_close()
         await admin_handler.http_client_close()
+        await keystone_service.http_client_close()
 
     async def on_prepare(_: web.Request, response: web.StreamResponse) -> None:
         """Modify Server headers."""
@@ -181,10 +185,10 @@ async def init(
         web.delete("/api/keys", APIKeyHandler.delete_api_key),
         web.get("/api/keys", APIKeyHandler.get_api_keys),
         # File requests.
-        web.get("/projects/{projectId}/buckets", _file.get_project_buckets),
-        web.get("/projects/{projectId}/buckets/{bucket}/files", _file.get_files_in_bucket),
-        web.put("/projects/{projectId}/buckets/{bucket}", _file.grant_access_to_bucket),
-        web.head("/projects/{projectId}/buckets/{bucket}", _file.check_bucket_access),
+        web.get("/buckets", _file.get_project_buckets),
+        web.get("/buckets/{bucket}/files", _file.get_files_in_bucket),
+        web.put("/buckets/{bucket}", _file.grant_access_to_bucket),
+        web.head("/buckets/{bucket}", _file.check_bucket_access),
     ]
     _rems = RemsAPIHandler(
         metax_handler=metax_handler,
@@ -215,6 +219,7 @@ async def init(
         rems_handler=rems_handler,
         aai_handler=aai_handler,
         admin_handler=admin_handler,
+        keystone_handler=keystone_service,
     )
     health_routes = [
         web.get("/health", _health.get_health_status),

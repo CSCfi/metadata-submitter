@@ -43,6 +43,7 @@ CSCSPCommonStatus: ready
 CSCPrjNum: 1000
 CSCPrjNum: 2000
 CSCPrjNum: 3000
+CSCPrjNum: swift-project
 
 dn: cn=2,ou=SP_SD-SUBMIT,ou=idm,dc=csc,dc=fi
 objectClass: cscServiceProfile
@@ -52,6 +53,7 @@ CSCSPCommonStatus: ready
 CSCPrjNum: 1000
 CSCPrjNum: 2000
 CSCPrjNum: 3000
+CSCPrjNum: swift-project
 
 dn: cn=3,ou=SP_SD-SUBMIT,ou=idm,dc=csc,dc=fi
 objectClass: cscServiceProfile
@@ -61,6 +63,7 @@ CSCSPCommonStatus: ready
 CSCPrjNum: 1000
 CSCPrjNum: 2000
 CSCPrjNum: 3000
+CSCPrjNum: swift-project
 EOF
 
 # Validate the LDAP schema, entries and search.

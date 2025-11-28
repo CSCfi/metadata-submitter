@@ -9,6 +9,7 @@ from metadata_backend.api.auth import AAIServiceHandler
 from ..helpers.logger import LOG
 from ..services.admin_service_handler import AdminServiceHandler
 from ..services.datacite_service_handler import DataciteServiceHandler
+from ..services.keystone_service import KeystoneService
 from ..services.metax_service_handler import MetaxServiceHandler
 from ..services.pid_ms_handler import PIDServiceHandler
 from ..services.rems_service_handler import RemsServiceHandler
@@ -25,6 +26,7 @@ class HealthHandler:
         rems_handler: RemsServiceHandler,
         aai_handler: AAIServiceHandler,
         admin_handler: AdminServiceHandler,
+        keystone_handler: KeystoneService,
     ) -> None:
         """Endpoints should have access to metax, datacite, rems, aai, PID, and admin services."""
         self.metax_handler = metax_handler
@@ -33,6 +35,7 @@ class HealthHandler:
         self.rems_handler = rems_handler
         self.aai_handler = aai_handler
         self.admin_handler = admin_handler
+        self.keystone_handler = keystone_handler
 
     async def get_health_status(self, _: Request) -> Response:
         """Check health status of the application and return a JSON object portraying the status.
@@ -50,6 +53,7 @@ class HealthHandler:
         services["metax"] = await self.metax_handler._healthcheck()
         services["aai"] = await self.aai_handler._healthcheck()
         services["admin"] = await self.admin_handler._healthcheck()
+        services["keystone"] = await self.keystone_handler._healthcheck()
 
         full_status["status"] = "Ok"
 
