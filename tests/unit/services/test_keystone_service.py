@@ -5,8 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 from aiohttp import web
 
-from metadata_backend.services.pouta_service_handler import KeystoneService
-from tests.integration.helpers import LOG
+from metadata_backend.services.keystone_service import KeystoneService
 
 
 class KeystoneServiceTestCase(unittest.IsolatedAsyncioTestCase):
@@ -48,7 +47,7 @@ class KeystoneServiceTestCase(unittest.IsolatedAsyncioTestCase):
         """Close HTTP client after each test."""
         await self.keystone_service.http_client_close()
 
-    async def test_fetch_project_token_success(self):
+    async def test_get_project_entry_success(self):
         """Test successful project token fetch."""
         # Projects list response
         mock_projects_resp = {
@@ -90,11 +89,11 @@ class KeystoneServiceTestCase(unittest.IsolatedAsyncioTestCase):
                 mock_token_cm.__aexit__.return_value = None
                 mock_request.side_effect = [self.mock_oidc_cm, mock_token_cm]
 
-                result = await self.keystone_service.fetch_project_token(self.project.name, "token")
+                result = await self.keystone_service.get_project_entry(self.project.name, "token")
                 assert result == self.project
 
-    async def test_fetch_project_token_invalid_access_token(self):
-        """Test that fetching project token with invalid access token raises HTTPForbidden."""
+    async def test_get_project_entry_invalid_access_token(self):
+        """Test that getting project entry with invalid access token raises HTTPForbidden."""
         invalid_access_token = "invalid_token"
         project_name = "test_project"
         self.mock_oidc_resp.status = 401
@@ -103,10 +102,10 @@ class KeystoneServiceTestCase(unittest.IsolatedAsyncioTestCase):
         with patch.object(self.keystone_service._client, "request") as mock_request:
             mock_request.return_value = self.mock_oidc_cm
             with self.assertRaises(web.HTTPForbidden):
-                await self.keystone_service.fetch_project_token(project_name, invalid_access_token)
+                await self.keystone_service.get_project_entry(project_name, invalid_access_token)
 
-    async def test_fetch_project_token_project_not_found(self):
-        """Test that fetching token for non-existent project raises HTTPNotFound."""
+    async def test_get_project_entry_project_not_found(self):
+        """Test that getting project entry for non-existent project raises HTTPNotFound."""
         access_token = "valid_access_token"
         project_name = "nonexistent_project"
         mock_projects_resp = {"projects": [{"id": "other_project", "name": "project_other"}]}
@@ -116,7 +115,7 @@ class KeystoneServiceTestCase(unittest.IsolatedAsyncioTestCase):
             with patch.object(self.keystone_service, "_request", new_callable=AsyncMock) as mock_internal_request:
                 mock_internal_request.return_value = mock_projects_resp
                 with self.assertRaises(web.HTTPNotFound):
-                    await self.keystone_service.fetch_project_token(project_name, access_token)
+                    await self.keystone_service.get_project_entry(project_name, access_token)
 
     async def test_get_ec2_for_project_success(self):
         """Test successful EC2 credentials retrieval."""

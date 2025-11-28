@@ -38,14 +38,14 @@ class KeystoneService(ServiceHandler):
             raise RuntimeError(f"{KEYSTONE_ENDPOINT} environment variable is undefined.")
         super().__init__(base_url=URL(KEYSTONE_ENDPOINT.rstrip("/")))
 
-    async def fetch_project_token(self, project: str, access_token: str) -> ProjectEntry:
-        """Fetch project scoped token from OIDC userinfo.
+    async def get_project_entry(self, project: str, access_token: str) -> ProjectEntry:
+        """Get project entry containing project scoped token with unscoped access token provided by OIDC.
 
         :param project: The project ID.
         :param userinfo: The OIDC userinfo dictionary.
         :returns: The ProjectEntry containing scoped token and metadata.
         """
-        # First fetch an unscoped user token from Pouta API using the pouta access token
+        # First fetch an unscoped user token from Keystone API using the keystone access token
         async with self._client.request(
             method="GET",
             url=f"{self.base_url}/v3/OS-FEDERATION/identity_providers/oauth2_authentication/protocols/openid/auth",

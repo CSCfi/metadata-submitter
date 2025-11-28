@@ -10,7 +10,7 @@ from ..database.postgres.services.file import FileService
 from ..database.postgres.services.object import ObjectService
 from ..database.postgres.services.registration import RegistrationService
 from ..database.postgres.services.submission import SubmissionService
-from ..services.pouta_service_handler import KeystoneService
+from ..services.keystone_service import KeystoneService
 from .services.auth import AccessService
 from .services.file import FileProviderService
 from .services.project import ProjectService

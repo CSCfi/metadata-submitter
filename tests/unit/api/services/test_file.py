@@ -14,7 +14,7 @@ from metadata_backend.api.services.file import (
     S3_SECRET_KEY_ENV,
     S3AllasFileProviderService,
 )
-from metadata_backend.services.pouta_service_handler import KeystoneService
+from metadata_backend.services.keystone_service import KeystoneService
 
 
 @pytest.fixture(autouse=True)

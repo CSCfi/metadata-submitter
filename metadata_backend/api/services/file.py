@@ -10,7 +10,7 @@ from aiohttp import web
 from pydantic import BaseModel, RootModel
 
 from ...helpers.logger import LOG
-from ...services.pouta_service_handler import KeystoneService
+from ...services.keystone_service import KeystoneService
 
 S3_ACCESS_KEY_ENV = "STATIC_S3_ACCESS_KEY_ID"  # nosec
 S3_SECRET_KEY_ENV = "STATIC_S3_SECRET_ACCESS_KEY"  # nosec

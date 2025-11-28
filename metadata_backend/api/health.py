@@ -9,9 +9,9 @@ from metadata_backend.api.auth import AAIServiceHandler
 from ..helpers.logger import LOG
 from ..services.admin_service_handler import AdminServiceHandler
 from ..services.datacite_service_handler import DataciteServiceHandler
+from ..services.keystone_service import KeystoneService
 from ..services.metax_service_handler import MetaxServiceHandler
 from ..services.pid_ms_handler import PIDServiceHandler
-from ..services.pouta_service_handler import KeystoneService
 from ..services.rems_service_handler import RemsServiceHandler
 
 
@@ -53,7 +53,7 @@ class HealthHandler:
         services["metax"] = await self.metax_handler._healthcheck()
         services["aai"] = await self.aai_handler._healthcheck()
         services["admin"] = await self.admin_handler._healthcheck()
-        services["pouta"] = await self.keystone_handler._healthcheck()
+        services["keystone"] = await self.keystone_handler._healthcheck()
 
         full_status["status"] = "Ok"
 

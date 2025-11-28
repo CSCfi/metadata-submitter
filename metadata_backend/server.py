@@ -43,9 +43,9 @@ from .database.postgres.services.submission import SubmissionService
 from .helpers.logger import LOG
 from .services.admin_service_handler import AdminServiceHandler
 from .services.datacite_service_handler import DataciteServiceHandler
+from .services.keystone_service import KeystoneService
 from .services.metax_service_handler import MetaxServiceHandler
 from .services.pid_ms_handler import PIDServiceHandler
-from .services.pouta_service_handler import KeystoneService
 from .services.rems_service_handler import RemsServiceHandler
 from .services.taxonomy_search_handler import TaxonomySearchHandler
 
@@ -185,10 +185,10 @@ async def init(
         web.delete("/api/keys", APIKeyHandler.delete_api_key),
         web.get("/api/keys", APIKeyHandler.get_api_keys),
         # File requests.
-        web.get("/projects/{projectId}/buckets", _file.get_project_buckets),
-        web.get("/projects/{projectId}/buckets/{bucket}/files", _file.get_files_in_bucket),
-        web.put("/projects/{projectId}/buckets/{bucket}", _file.grant_access_to_bucket),
-        web.head("/projects/{projectId}/buckets/{bucket}", _file.check_bucket_access),
+        web.get("/buckets", _file.get_project_buckets),
+        web.get("/buckets/{bucket}/files", _file.get_files_in_bucket),
+        web.put("/buckets/{bucket}", _file.grant_access_to_bucket),
+        web.head("/buckets/{bucket}", _file.check_bucket_access),
     ]
     _rems = RemsAPIHandler(
         metax_handler=metax_handler,

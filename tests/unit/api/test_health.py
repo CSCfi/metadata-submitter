@@ -23,7 +23,7 @@ class HealthTestCase(AioHTTPTestCase):
                 "rems": {"status": "Down"},
                 "aai": {"status": "Error"},
                 "admin": {"status": "Down"},
-                "pouta": {"status": "Down"},
+                "keystone": {"status": "Down"},
             },
             "status": "Partially down",
         }
