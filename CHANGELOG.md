@@ -9,6 +9,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- Get files in bucket and check bucket access endpoints use preset static EC2 credentials
+- List all buckets and grant access to bucket endpoints create user and project specific EC2 credentials upon request for a single use.
 - Increased  mypy validation coverage and made related code changes. For example, replaced XmlObjectIdentifier with ObjectIdentifier.
 - Enabled ruff fixes and made related code changes in tests.
 - Use BigPicture dataset id as the submission id. BigPicture does not support submission ids.
@@ -97,6 +99,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- pouta_access_token from AAI userinfo object is stored in session cookies.
+- Integration with Pouta Keystone service for fetching project scoped EC2 credentials.
 - DEPLOYMENT env variable (CSC, NBIS) to prepare for BigPicture Swedish deployment. Selects the ProjectService.
 - NbisProjectService (NoProjectService) that uses user_id as the project_id.
 - ALLOW_UNSAFE environmental variable to delete published submissions in integration tests.
