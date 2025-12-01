@@ -41,9 +41,9 @@ class XmlSchemaPath(BaseModel):
     """Xml metadata object schema given an identifying XPath."""
 
     schema_type: str
-    # Root path for multiple metadata objects. If not given, one metadata object is expected.
+    # Optional root path for multiple metadata objects.
     set_path: str | None = None
-    # Absolute XPaths to the root elements of metadata objects. May be nested inside the optional root
+    # Absolute XPaths to the root elements of metadata objects. Nested inside the optional set
     # path for multiple metadata objects.
     root_paths: list[str]
 
@@ -234,3 +234,18 @@ class XmlObjectConfig(BaseModel):
             raise ValueError(f"Unknown object type for schema type : {schema_type}")
 
         return object_types
+
+
+def xml_schema_path(schema_type: str, root_paths: str | list[str], set_path: str | None = None) -> XmlSchemaPath:
+    """
+    Create the XML schema path.
+
+    :param schema_type: The schema type
+    :param root_paths: Absolute XPaths to the root elements of metadata objects. Nested inside
+    the optional set path for multiple metadata objects.
+    :param set_path: Optional root path for multiple metadata objects.
+    """
+
+    if isinstance(root_paths, str):
+        root_paths = [root_paths]
+    return XmlSchemaPath(set_path=set_path, schema_type=schema_type, root_paths=root_paths)

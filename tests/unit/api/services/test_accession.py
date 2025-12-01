@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from metadata_backend.api.processors.xml.configs import (
+from metadata_backend.api.processors.xml.bigpicture import (
     BP_ANNOTATION_OBJECT_TYPE,
     BP_DATASET_OBJECT_TYPE,
     BP_IMAGE_OBJECT_TYPE,

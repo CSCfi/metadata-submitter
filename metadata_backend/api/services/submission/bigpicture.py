@@ -10,7 +10,7 @@ from ...exceptions import UserException
 from ...models.datacite import DataCiteMetadata
 from ...models.models import File
 from ...models.submission import Rems, Submission, SubmissionMetadata, SubmissionWorkflow
-from ...processors.xml.configs import (
+from ...processors.xml.bigpicture import (
     BP_ANNOTATION_PATH,
     BP_ANNOTATION_SCHEMA,
     BP_DATASET_OBJECT_TYPE,

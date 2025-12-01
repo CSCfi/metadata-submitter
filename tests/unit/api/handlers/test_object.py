@@ -8,7 +8,7 @@ from xml.etree import ElementTree
 
 from metadata_backend.api.models.models import Files, Objects
 from metadata_backend.api.models.submission import Submission, SubmissionWorkflow
-from metadata_backend.api.processors.xml.configs import (
+from metadata_backend.api.processors.xml.bigpicture import (
     BP_ANNOTATION_OBJECT_TYPE,
     BP_DATASET_OBJECT_TYPE,
     BP_FULL_SUBMISSION_XML_OBJECT_CONFIG,
