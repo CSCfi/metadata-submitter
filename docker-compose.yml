@@ -8,14 +8,6 @@ services:
     container_name: "metadata-submitter-backend-dev"
     ports:
       - "5430:5430"
-    depends_on:
-      - mockauth
-      - mockdatacite
-      - mockmetax
-      - mockpid
-      - mockldap
-      - mock-s3
-      - mockkeystone
     restart: on-failure
     environment:
       - "AAI_CLIENT_SECRET=${AAI_CLIENT_SECRET}"
@@ -72,7 +64,7 @@ services:
       - "8000:8000"
     depends_on:
       mockkeystone:
-        condition: service_started
+        condition: service_healthy
     volumes:
       - ./tests/integration/mock_auth.py:/mock_auth.py
     entrypoint: [ "python", "/mock_auth.py", "0.0.0.0", "8000" ]
@@ -172,7 +164,13 @@ services:
   mockkeystone:
     image: ghcr.io/cscfi/docker-keystone-swift:latest
     hostname: mockkeystone
-    ports:
-      - "5001:5001"
+    expose:
+      - 5001
+    healthcheck:
+      test: curl --fail http://127.0.0.1:5001/ || exit 1
+      interval: 20s
+      timeout: 20s
+      retries: 5
+      start_period: 20s
 volumes:
   data:
