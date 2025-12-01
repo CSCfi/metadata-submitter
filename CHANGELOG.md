@@ -9,6 +9,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- Removed frontend from Dockerfile (#919)
+- Replaced Alpine container images with Debian trixie images in Dockerfile (#919)
 - Changed 'BP.bp' XML schema file prefix to 'BP.' to comply with official BigPicture naming convention.
 - Add and use DataCite XML document root path (DATACITE_PATH).
 - Moved BigPicture and FEGA XML processor tests in separate files. Shared test functions are test_utils.py.
@@ -93,6 +95,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- Dockerfile to run Python in the given normal user `submitter` space.
 - several bugs related to submission.json and metadata object submissions.
 - (users) changed ints to datetimes in submission model for date fields.
 - (users) submission.json serialization in Postgres submission service.
@@ -105,6 +108,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- Dockerfile-test to accomodate frontend to the container (#919)
 - Update DataCite and REMS URLs in BigPicture landing page XML.
 - tests for reading env variables using BaseSettings.
 - Added ALLOW_REGISTRATION env to disable registrations in QA deployment.
