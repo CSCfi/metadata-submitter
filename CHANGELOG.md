@@ -9,6 +9,10 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- Changed 'BP.bp' XML schema file prefix to 'BP.' to comply with official BigPicture naming convention.
+- Add and use DataCite XML document root path (DATACITE_PATH).
+- Moved BigPicture and FEGA XML processor tests in separate files. Shared test functions are test_utils.py.
+- Moved BigPicture and FEGA XML processor configurations in separate files.
 - moved test specific defaults values from OIDC env variables to conftest.py.
 - read OIDC env variables using BaseSettings.
 - Get files in bucket and check bucket access endpoints use preset static EC2 credentials
@@ -101,6 +105,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- Update DataCite and REMS URLs in BigPicture landing page XML.
 - tests for reading env variables using BaseSettings.
 - Added ALLOW_REGISTRATION env to disable registrations in QA deployment.
 - pouta_access_token from AAI userinfo object is stored in session cookies.
