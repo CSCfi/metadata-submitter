@@ -112,7 +112,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
-- Dockerfile-test to accomodate frontend to the container (#919)
+- CI/CD pipeline for automatically creating API docker images
 - Update DataCite and REMS URLs in BigPicture landing page XML.
 - tests for reading env variables using BaseSettings.
 - Added ALLOW_REGISTRATION env to disable registrations in QA deployment.

@@ -1,15 +1,20 @@
 stages:
   - verify
   - test
+  - deploy
   - release
 
 include:
-  - project: 'sds-dev/releases'
+  - project: "sds-dev/releases"
     ref: main
-    file: 'releases.yml'
+    file: "releases.yml"
 
 variables:
   BUILD_IMAGE: $ARTIFACTORY_SERVER/sds/sdd-common-ci
+
+# Make all jobs interruptible by default
+default:
+  interruptible: true
 
 verify:
   stage: verify
@@ -41,6 +46,87 @@ test:
     - uv tool run coverage report --precision=1
   coverage: '/TOTAL.*\s+(\d+\%)/'
 
+# Docker image build, scan and push pipeline
+1-build-image:
+  stage: deploy
+  tags:
+    - sds
+  needs: []
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: manual
+      allow_failure: true
+  script:
+    - |
+      if [ "$CI_PIPELINE_SOURCE" = "merge_request_event" ]; then
+        export IMAGE_TAG="$(echo ${ENVIRONMENT:-$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME} | tr '/' '-')"
+      elif [ "$CI_COMMIT_TAG" ]; then
+        export IMAGE_TAG="$CI_COMMIT_TAG"
+      else
+        export IMAGE_TAG="$CI_DEFAULT_BRANCH"
+      fi
+    - echo "Building image sd-submit-api:${IMAGE_TAG}"
+    - docker buildx build -t "$ARTIFACTORY_SERVER/sds/sd-submit-api:${IMAGE_TAG}" -f dockerfiles/Dockerfile .
+
+2-scan-image:
+  stage: deploy
+  tags:
+    - sds
+  needs:
+    - job: 1-build-image
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      allow_failure: true
+  script:
+    - jf config import "${JF_CONFIG}"
+    - |
+      if [ "$CI_PIPELINE_SOURCE" = "merge_request_event" ]; then
+        export IMAGE_TAG="$(echo ${ENVIRONMENT:-$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME} | tr '/' '-')"
+      elif [ "$CI_COMMIT_TAG" ]; then
+        export IMAGE_TAG="$CI_COMMIT_TAG"
+      else
+        export IMAGE_TAG="$CI_DEFAULT_BRANCH"
+      fi
+    - jf docker scan --licenses --extended-table --min-severity=Medium $ARTIFACTORY_SERVER/sds/sd-submit-api:${IMAGE_TAG}
+
+3-push-image:
+  stage: deploy
+  tags:
+    - sds
+  needs:
+    - job: 2-scan-image
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      allow_failure: true
+  before_script:
+    - echo "$ARTIFACTORY_USER_PASSWORD" | sudo docker login --username "$ARTIFACTORY_USER" --password-stdin "$ARTIFACTORY_SERVER"
+  script:
+    - |
+      if [ "$CI_PIPELINE_SOURCE" = "merge_request_event" ]; then
+        export IMAGE_TAG="$(echo ${ENVIRONMENT:-$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME} | tr '/' '-')"
+      elif [ "$CI_COMMIT_TAG" ]; then
+        export IMAGE_TAG="$CI_COMMIT_TAG"
+      else
+        export IMAGE_TAG="$CI_DEFAULT_BRANCH"
+      fi
+    - echo "Pushing image sd-submit-api:${IMAGE_TAG}"
+    - docker push "$ARTIFACTORY_SERVER/sds/sd-submit-api:${IMAGE_TAG}"
+  after_script:
+    - |
+      if [ "$CI_PIPELINE_SOURCE" = "merge_request_event" ]; then
+        export IMAGE_TAG="$(echo ${ENVIRONMENT:-$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME} | tr '/' '-')"
+      elif [ "$CI_COMMIT_TAG" ]; then
+        export IMAGE_TAG="$CI_COMMIT_TAG"
+      else
+        export IMAGE_TAG="$CI_DEFAULT_BRANCH"
+      fi
+    - docker rmi "$ARTIFACTORY_SERVER/sds/sd-submit-api:${IMAGE_TAG}" || true
 
 release-job:
   extends: .automated-release
@@ -58,8 +144,6 @@ update-versions:
   extends: .update-versions
   variables:
     UPDATE_VERSION_FILES_LIST: "docs/conf.py;docs/openapi.yml;metadata_backend/__init__.py"
-
-
 # TODO: implement integration tests
 
 # integration:
