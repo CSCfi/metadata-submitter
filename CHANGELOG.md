@@ -9,6 +9,9 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- simplified registration related unit tests.
+- support a single registration only in Postgres. Simplifies schema e.g. replaces registration_id with submission_id.
+- support a single registration only in API. Simplifies code e.g. replaces list of registrations with a single one.
 - Removed frontend from Dockerfile (#919)
 - Replaced Alpine container images with Debian trixie images in Dockerfile (#919)
 - Changed 'BP.bp' XML schema file prefix to 'BP.' to comply with official BigPicture naming convention.
@@ -95,6 +98,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- DataCite integration test mock service can now generate a DOI.
 - Dockerfile to run Python in the given normal user `submitter` space.
 - several bugs related to submission.json and metadata object submissions.
 - (users) changed ints to datetimes in submission model for date fields.
@@ -181,6 +185,9 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Removed
 
+- DATACITE_PREFIX mock environmental parameter as unnecessary.
+- support for DataCite related study references.
+- support for DataCite study registration.
 - Replaced black with ruff.
 - support for fega study is publish to simplify publish code and metax mapping.
 - unused api endpoints path /rems, /metadata, /bucket.
