@@ -9,7 +9,6 @@ from metadata_backend.api.models.models import Registration
 from metadata_backend.api.models.submission import Rems
 from tests.integration.conf import (
     auth,
-    datacite_prefix,
     metax_api,
     mock_pid_prefix,
     submissions_url,
@@ -137,9 +136,7 @@ async def test_bigpicture_publication(client_logged_in, project_id):
         res = await resp.json()
         registration = Registration(**res[0])
         # Check DOI
-        assert registration.doi.startswith(
-            datacite_prefix
-        ), "expected BP dataset DOI to be created directly with Datacite"
+        assert registration.doi.startswith("10.xxxx")
         # Check that metax ID does not exist
         assert registration.metaxId is None
         # Check REMS

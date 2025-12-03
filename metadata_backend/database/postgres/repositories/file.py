@@ -181,7 +181,7 @@ class FileRepository:
         async with transaction(self._session_factory) as session:
             stmt = delete(FileEntity).where(FileEntity.file_id == file_id)
             result = await session.execute(stmt)
-            return result.rowcount > 0
+            return result.rowcount > 0  # type: ignore
 
     async def delete_file_by_path(self, submission_id: str, path: str) -> bool:
         """
@@ -197,4 +197,4 @@ class FileRepository:
         async with transaction(self._session_factory) as session:
             stmt = delete(FileEntity).where(FileEntity.submission_id == submission_id, FileEntity.path == path)
             result = await session.execute(stmt)
-            return result.rowcount > 0
+            return result.rowcount > 0  # type: ignore

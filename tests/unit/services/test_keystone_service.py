@@ -74,7 +74,6 @@ class KeystoneServiceTestCase(unittest.IsolatedAsyncioTestCase):
         }
 
         with patch.object(self.keystone_service._client, "request") as mock_request:
-
             # Mock the _request method for projects list
             with patch.object(self.keystone_service, "_request", new_callable=AsyncMock) as mock_internal_request:
                 mock_internal_request.return_value = mock_projects_resp

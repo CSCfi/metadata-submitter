@@ -8,13 +8,9 @@
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 [![linting: pylint](https://img.shields.io/badge/linting-pylint-yellowgreen)](https://github.com/PyCQA/pylint)
 
-SD Submit API to support submissions of sensitive data. A submission consists of a
-generic submission JSON document, associated data files, and workflow specific metadata
-objects. The submissions are stored in a PostgreSQL relational database. The file processing
-is done using NeIC SRA ingest pipelines. The submission is registered to workflow specific
-services including DataCite, Metax, and REMS.
+SD Submit API supports sensitive data submissions.
 
-SD Submit UI frontend is implemented here: [metadata-submitter-frontend](https://github.com/CSCfi/metadata-submitter-frontend).
+The SD Submit UI is implemented here: [metadata-submitter-frontend](https://github.com/CSCfi/metadata-submitter-frontend).
 
 SD Submit API uses the following external services via their respective API:
 - SD Connect ([source code](https://github.com/CSCfi/swift-browser-ui))
@@ -44,9 +40,6 @@ flowchart LR
 ### Prerequisites
 
 - `Docker`
-- `Aspell` for spell checking:
-  - Mac: `brew install aspell`
-  - Ubuntu/Debian: `sudo apt-get install aspell`
 - [`Vault CLI`](https://developer.hashicorp.com/vault/docs/get-vault)
 - [`Git LFS`](https://git-lfs.com/)
 
@@ -67,23 +60,25 @@ cd metadata-submitter
 ```
 
 The project is managed by `uv` that creates a virtual environment in `.venv` directory
-using the python version defined in the `.python-version`. The  `uv` also installs the
-depencies defined in `uv.lock` file. The `uv.lock` file captures the exact versions of
-all direct and transitive dependencies specified in the `pyproject.toml` file. Tox
-depencies are managed in the `test` optional dependency group.  Dependencies are added and
-removed using the `uv add` and `uv remove` commands or by directly editing
-the `pyproject.toml` file. In the latter case run `uv sync` or `uv sync --dev` to update
-the `uv.lock` file.
+using the python version defined in the `.python-version`. The  `uv` installs the
+dependencies in `uv.lock` file that have bee specified in the `pyproject.toml` file.
+Dependencies are added and removed using the `uv add` and `uv remove` commands
+or by directly editing the `pyproject.toml` file. In the latter case, run `uv sync` or
+`uv sync --dev` to update the `uv.lock` file.
 
-Create and activate the virtual environment, install the dependencies and the tox and
-pre-commit tools:
+Install uv, tox and pre-commit and create the virtual environment:
 
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
+curl -LsSf https://astral.sh/uv/0.9.15/install.sh | sh
 uv tool install tox --with tox-uv
 uv tool install pre-commit --with pre-commit-uv
 uv sync --dev
 pre-commit install
+```
+
+If needed, activate the virtual environment using:
+```bash
+source .venv/bin/activate
 ```
 
 ### Configure environmental variables

@@ -79,7 +79,7 @@ async def get_pouta_token() -> str:
 
 async def setmock(req: web.Request) -> web.Response:
     """Mock OIDC claims."""
-    global mock_sub, mock_family_name, mock_given_name  # noqa: F824
+    global mock_sub, mock_family_name, mock_given_name
     mock_sub = req.query["sub"]
     mock_family_name = req.query["family"]
     mock_given_name = req.query["given"]
@@ -95,7 +95,7 @@ async def authorize(req: web.Request) -> web.Response:
         "state": req.query["state"],
         "code": "code",
     }
-    global nonce  # noqa: F824
+    global nonce
     nonce = req.query["nonce"]
 
     callback_url = req.query["redirect_uri"]

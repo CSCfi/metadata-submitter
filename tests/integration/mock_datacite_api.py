@@ -3,6 +3,8 @@
 import collections.abc
 import json
 import logging
+import secrets
+import string
 from copy import deepcopy
 from datetime import UTC, date, datetime
 from os import getenv
@@ -15,7 +17,7 @@ logging.basicConfig(format=FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
 LOG = logging.getLogger("server")
 LOG.setLevel(getenv("LOG_LEVEL", "INFO"))
 
-datacite_prefix = getenv("DATACITE_PREFIX", "10.xxxx")
+datacite_prefix = "10.xxxx"
 
 BASE_RESPONSE = {
     "data": {
@@ -114,13 +116,17 @@ async def create(req: web.Request) -> web.Response:
 
     data = deepcopy(BASE_RESPONSE)
     try:
-        _doi = content["data"]["attributes"]["doi"]
-        data["data"]["id"] = content["data"]["attributes"]["doi"]
-        data["data"]["attributes"]["doi"] = _doi
-        data["data"]["attributes"]["prefix"] = _doi.split("/")[0]
-        data["data"]["attributes"]["suffix"] = _doi.split("/")[1]
+        if "doi" in content["data"]["attributes"]:
+            doi = content["data"]["attributes"]["doi"]
+        else:
+            chars = string.ascii_lowercase + string.digits
+            doi = f"{datacite_prefix}/" + "".join(secrets.choice(chars) for _ in range(10))
+        data["data"]["id"] = doi
+        data["data"]["attributes"]["doi"] = doi
+        data["data"]["attributes"]["prefix"] = doi.split("/")[0]
+        data["data"]["attributes"]["suffix"] = doi.split("/")[1]
         data["data"]["attributes"]["identifiers"] = [
-            {"identifier": f"https://mock_doi.org/{content['data']['attributes']['doi']}", "identifierType": "DOI"}
+            {"identifier": f"https://mock_doi.org/{doi}", "identifierType": "DOI"}
         ]
     except Exception as e:
         # LOG.info(content)
@@ -132,7 +138,7 @@ async def create(req: web.Request) -> web.Response:
     data["data"]["attributes"]["updated"] = str(datetime.now(UTC))
     data["included"][0]["attributes"]["created"] = str(datetime.now(UTC))
     data["included"][0]["attributes"]["updated"] = str(datetime.now(UTC))
-    DATASETS[_doi] = data
+    DATASETS[doi] = data
     return web.json_response(data, status=201)
 
 

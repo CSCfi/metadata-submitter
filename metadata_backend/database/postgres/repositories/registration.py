@@ -28,29 +28,14 @@ class RegistrationRepository:
             entity: The registration entity.
 
         Returns:
-            The registration id used as the primary key value.
+            The submission id.
         """
         async with transaction(self._session_factory) as session:
             session.add(entity)
             await session.flush()
-            return entity.registration_id
+            return entity.submission_id
 
-    async def get_registration_by_id(self, registration_id: str) -> RegistrationEntity | None:
-        """
-        Get the registration entity using registration id.
-
-        Args:
-            registration_id: The registration id.
-
-        Returns:
-            The registration entity.
-        """
-        async with transaction(self._session_factory) as session:
-            stmt = select(RegistrationEntity).where(RegistrationEntity.registration_id == registration_id)
-            result = await session.execute(stmt)
-            return result.scalar_one_or_none()
-
-    async def get_registration_by_submission_id(self, submission_id: str) -> RegistrationEntity | None:
+    async def get_registration(self, submission_id: str) -> RegistrationEntity | None:
         """
         Get the registration entity using submission id.
 
@@ -61,24 +46,7 @@ class RegistrationRepository:
             The registration entity.
         """
         async with transaction(self._session_factory) as session:
-            stmt = select(RegistrationEntity).where(
-                RegistrationEntity.submission_id == submission_id, RegistrationEntity.object_id.is_(None)
-            )
-            result = await session.execute(stmt)
-            return result.scalar_one_or_none()
-
-    async def get_registration_by_object_id(self, object_id: str) -> RegistrationEntity | None:
-        """
-        Get the registration entity using object id.
-
-        Args:
-            object_id: The object id.
-
-        Returns:
-            The registration entity.
-        """
-        async with transaction(self._session_factory) as session:
-            stmt = select(RegistrationEntity).where(RegistrationEntity.object_id == object_id)
+            stmt = select(RegistrationEntity).where(RegistrationEntity.submission_id == submission_id)
             result = await session.execute(stmt)
             return result.scalar_one_or_none()
 
@@ -98,20 +66,20 @@ class RegistrationRepository:
             return result.scalars().all()
 
     async def update_registration(
-        self, registration_id: str, update_callback: Callable[[RegistrationEntity], None]
+        self, submission_id: str, update_callback: Callable[[RegistrationEntity], None]
     ) -> RegistrationEntity | None:
         """
         Update the registration entity.
 
         Args:
-            registration_id: the registration id.
+            submission_id: the submission id.
             update_callback: A coroutine function that updates the registration entity.
 
         Returns:
-            The updated registration entity or None if the registration id was not found.
+            The updated registration entity or None if the registration was not found.
         """
         async with transaction(self._session_factory):
-            registration = await self.get_registration_by_id(registration_id)
+            registration = await self.get_registration(submission_id)
             if registration is None:
                 return None
             update_callback(registration)

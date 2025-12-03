@@ -309,11 +309,10 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
         # Check that the submission can be retrieved by the user.
         await self.check_submission_retrievable(req, submission_id)
 
-        registrations = await registration_service.get_registrations(submission_id)
+        registration = await registration_service.get_registration(submission_id)
 
-        LOG.info("GET files for submission with ID: %r was successful.", submission_id)
         return web.Response(
-            body=json.dumps([to_json_dict(r) for r in registrations]),
+            body=json.dumps([to_json_dict(registration)]),
             status=200,
             content_type="application/json",
         )

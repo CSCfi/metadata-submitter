@@ -101,10 +101,10 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             # File provider
             patch(f"{file_provider_cls}.list_files_in_bucket", new_callable=AsyncMock) as mock_file_provider,
             # Datacite (csc)
-            patch(f"{pid_cls}.create_draft_doi_pid", new_callable=AsyncMock) as mock_pid_create_doi,
+            patch(f"{pid_cls}.create_draft_doi", new_callable=AsyncMock) as mock_pid_create_doi,
             patch(f"{pid_cls}.publish", new_callable=AsyncMock) as mock_pid_publish,
             # Datacite (datacite)
-            patch(f"{datacite_cls}.create_draft_doi_datacite", new_callable=AsyncMock) as mock_datacite_create_doi,
+            patch(f"{datacite_cls}.create_draft_doi", new_callable=AsyncMock) as mock_datacite_create_doi,
             patch(f"{datacite_cls}.publish", new_callable=AsyncMock),
             # Metax
             patch.dict(os.environ, {"METAX_DISCOVERY_URL": metax_url}),
@@ -194,7 +194,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             assert not publish_config.use_datacite_service
             assert publish_config.use_pid_service
 
-            mock_pid_create_doi.assert_awaited_once_with()
+            mock_pid_create_doi.assert_awaited_once()
             mock_pid_publish.assert_awaited_once_with(datacite_data)
 
             # Assert Metax.
@@ -217,7 +217,8 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             )
             mock_metax_update_descr.assert_awaited_once_with(
                 metax_id,
-                f"{submission_description}\n\nSD Apply's Application link: {RemsServiceHandler.application_url(rems_catalogue_id)}",
+                f"{submission_description}\n\nSD Apply's Application link: "
+                f"{RemsServiceHandler.application_url(rems_catalogue_id)}",
             )
 
             mock_metax_publish.assert_awaited_once_with(metax_id, doi)
@@ -339,10 +340,10 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             self.patch_verify_user_project,
             self.patch_verify_authorization,
             # Datacite (csc)
-            patch(f"{pid_cls}.create_draft_doi_pid", new_callable=AsyncMock) as mock_pid_create_doi,
+            patch(f"{pid_cls}.create_draft_doi", new_callable=AsyncMock) as mock_pid_create_doi,
             patch(f"{pid_cls}.publish", new_callable=AsyncMock) as mock_pid_publish,
             # Datacite (datacite)
-            patch(f"{datacite_cls}.create_draft_doi_datacite", new_callable=AsyncMock) as mock_datacite_create_doi,
+            patch(f"{datacite_cls}.create_draft_doi", new_callable=AsyncMock) as mock_datacite_create_doi,
             patch(f"{datacite_cls}.publish", new_callable=AsyncMock),
             # Metax
             patch.dict(os.environ, {"METAX_DISCOVERY_URL": metax_url}),
@@ -439,7 +440,8 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
 
             mock_metax_update_descr.assert_awaited_once_with(
                 metax_id,
-                f"{dataset_description}\n\nSD Apply's Application link: {RemsServiceHandler.application_url(rems_catalogue_id)}",
+                f"{dataset_description}\n\nSD Apply's Application link: "
+                f"{RemsServiceHandler.application_url(rems_catalogue_id)}",
             )
 
             assert mock_metax_publish.await_count == 1
@@ -522,10 +524,10 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             self.patch_verify_user_project,
             self.patch_verify_authorization,
             # Datacite (csc)
-            patch(f"{pid_cls}.create_draft_doi_pid", new_callable=AsyncMock) as mock_pid_create_doi,
+            patch(f"{pid_cls}.create_draft_doi", new_callable=AsyncMock) as mock_pid_create_doi,
             patch(f"{pid_cls}.publish", new_callable=AsyncMock),
             # Datacite (datacite)
-            patch(f"{datacite_cls}.create_draft_doi_datacite", new_callable=AsyncMock) as mock_datacite_create_doi,
+            patch(f"{datacite_cls}.create_draft_doi", new_callable=AsyncMock) as mock_datacite_create_doi,
             patch(f"{datacite_cls}.publish", new_callable=AsyncMock) as mock_datacite_publish,
             # Metax
             patch.dict(os.environ, {"BEACON_DISCOVERY_URL": beacon_url}),
@@ -601,7 +603,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             assert publish_config.use_datacite_service
             assert not publish_config.use_pid_service
 
-            mock_datacite_create_doi.assert_awaited_once_with(dataset_object_type)
+            mock_datacite_create_doi.assert_awaited_once()
             mock_datacite_publish.assert_awaited_once_with(expected_datacite_request)
 
             # Assert Beacon.

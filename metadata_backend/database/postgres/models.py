@@ -31,7 +31,6 @@ from sqlalchemy.sql.type_api import TypeEngine, UserDefinedType
 
 from ...api.models.models import CHECKSUM_METHOD_TYPES
 from ...api.models.submission import SubmissionWorkflow
-from ...api.services.accession import generate_default_accession
 
 
 class TypeJSON(TypeDecorator[dict[str, Any]]):
@@ -341,7 +340,12 @@ class RegistrationEntity(Base):
 
     __tablename__ = "registrations"
 
-    registration_id: Mapped[str] = mapped_column(String(128), primary_key=True, default=generate_default_accession)
+    submission_id: Mapped[str] = mapped_column(
+        String(128), ForeignKey("submissions.submission_id", ondelete="CASCADE"), primary_key=True
+    )
+    object_id: Mapped[str] = mapped_column(
+        String(128), ForeignKey("objects.object_id", ondelete="CASCADE"), nullable=True, index=True, unique=True
+    )
     title: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     object_type: Mapped[str] = mapped_column(String(256), nullable=True)
@@ -351,13 +355,6 @@ class RegistrationEntity(Base):
     rems_url = mapped_column(String, nullable=True)
     rems_resource_id = mapped_column(String, nullable=True)
     rems_catalogue_id = mapped_column(String, nullable=True)
-
-    submission_id: Mapped[str] = mapped_column(
-        String(128), ForeignKey("submissions.submission_id", ondelete="CASCADE"), nullable=False, index=True
-    )
-    object_id: Mapped[str] = mapped_column(
-        String(128), ForeignKey("objects.object_id", ondelete="CASCADE"), nullable=True, index=True, unique=True
-    )
 
     created: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

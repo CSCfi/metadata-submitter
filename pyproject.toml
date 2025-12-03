@@ -65,8 +65,6 @@ dev = [
     "types-requests==2.32.4.20250913",
     "types-ujson==5.10.0.20250822",
     "types-python-dateutil>=2.9.0.20241206",
-    # black
-    "black==25.11.0",
     # ruff
     "ruff==0.14.7",
     # pytest
@@ -82,16 +80,6 @@ dev = [
     "moto[server]>=5.1.6",
 ]
 
-[tool.black]
-line-length = 120
-target-version = ['py313']
-
-[tool.isort]
-atomic = true
-profile = "black"
-line_length = 120
-py_version = 313
-
 [project.scripts]
 metadata_submitter = "metadata_backend.server:main"
 
@@ -100,23 +88,15 @@ Source = "https://github.com/CSCfi/metadata_submitter"
 
 [project.optional-dependencies]
 verify = [
-    # isort
-    "isort>=6.0.1",
     # mypy
     "mypy>=1.15.0",
     "types-requests==2.32.4.20250913",
     "types-ujson==5.10.0.20250822",
     "types-python-dateutil>=2.9.0.20241206",
-    # black
-    "black==25.11.0",
     # ruff
     "ruff==0.14.7",
-    # bandit
-    "bandit>=1.8.3",
     # vulture
-    "vulture>=2.14",
-    # pyspelling (requires aspell command line program)
-    "pyspelling>=2.10",
+    "vulture>=2.14"
 ]
 
 test = [
@@ -140,6 +120,25 @@ allow-direct-references = true
 
 # Tool configuration options
 #
+
+[tool.ruff]
+line-length = 120
+fix = true
+
+[tool.ruff.lint]
+# https://docs.astral.sh/ruff/rules/
+# I: isort
+# E: pycodestyle errors
+# W: pycodestyle warnings
+# F: Pyflake
+# B: Bandit
+select = ["I", "E", "W", "F", "B"]
+ignore = [
+    # Raise without from inside except.
+    "B904",
+    # Assert False.
+    "B011"
+]
 
 [tool.mypy]
 strict = true

@@ -207,7 +207,7 @@ class ObjectRepository:
         async with transaction(self._session_factory) as session:
             stmt = delete(ObjectEntity).where(ObjectEntity.object_id == object_id)
             result = await session.execute(stmt)
-            return result.rowcount > 0
+            return result.rowcount > 0  # type: ignore
 
     async def delete_object_by_name(self, submission_id: str, name: str) -> bool:
         """
@@ -223,7 +223,7 @@ class ObjectRepository:
         async with transaction(self._session_factory) as session:
             stmt = delete(ObjectEntity).where(ObjectEntity.submission_id == submission_id, ObjectEntity.name == name)
             result = await session.execute(stmt)
-            return result.rowcount > 0
+            return result.rowcount > 0  # type: ignore
 
     async def delete_object_by_id_or_name(self, submission_id: str, object_id: str) -> bool:
         """

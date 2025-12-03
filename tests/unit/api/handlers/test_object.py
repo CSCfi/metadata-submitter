@@ -320,9 +320,9 @@ class ObjectHandlerTestCase(HandlersTestCase):
                 updated_object_lookup = {(o.objectType, o.name): o for o in updated_objects}
                 for created_obj in created_objects:
                     updated_obj = updated_object_lookup.get((created_obj.objectType, created_obj.name))
-                    assert (
-                        updated_obj is not None
-                    ), f"Updated '{created_obj.objectType}' metadata object '{created_obj.name}' not found"
+                    assert updated_obj is not None, (
+                        f"Updated '{created_obj.objectType}' metadata object '{created_obj.name}' not found"
+                    )
                     _assert_unchanged_object(created_obj, updated_obj)
 
                 # Test update submission (image changes).
@@ -367,9 +367,9 @@ class ObjectHandlerTestCase(HandlersTestCase):
                 for created_obj in created_objects:
                     if created_obj.objectType != BP_IMAGE_OBJECT_TYPE:
                         updated_obj = updated_object_lookup.get((created_obj.objectType, created_obj.name))
-                        assert (
-                            updated_obj is not None
-                        ), f"Updated '{created_obj.objectType}' metadata object '{created_obj.name}' not found"
+                        assert updated_obj is not None, (
+                            f"Updated '{created_obj.objectType}' metadata object '{created_obj.name}' not found"
+                        )
                         _assert_unchanged_object(created_obj, updated_obj)
 
                 # Assert image metadata objects.
@@ -378,9 +378,9 @@ class ObjectHandlerTestCase(HandlersTestCase):
                         updated_obj = updated_object_lookup.get((created_obj.objectType, created_obj.name))
                         if created_obj.name in updated_object_types[BP_IMAGE_OBJECT_TYPE]:
                             # Check that the object still exists.
-                            assert (
-                                updated_obj is not None
-                            ), f"Updated '{created_obj.objectType}' metadata object '{created_obj.name}' not found"
+                            assert updated_obj is not None, (
+                                f"Updated '{created_obj.objectType}' metadata object '{created_obj.name}' not found"
+                            )
                             _assert_unchanged_object(created_obj, updated_obj)
                         else:
                             # Check that the object has been removed.
@@ -390,9 +390,9 @@ class ObjectHandlerTestCase(HandlersTestCase):
                         created_obj = created_object_lookup.get((updated_obj.objectType, updated_obj.name))
                         if updated_obj.name in object_types[BP_IMAGE_OBJECT_TYPE]:
                             # Check that the object was created previously.
-                            assert (
-                                created_obj is not None
-                            ), f"Created '{updated_obj.objectType}' metadata object '{updated_obj.name}' not found"
+                            assert created_obj is not None, (
+                                f"Created '{updated_obj.objectType}' metadata object '{updated_obj.name}' not found"
+                            )
                             _assert_unchanged_object(created_obj, updated_obj)
                         else:
                             # Check that the object has been assigned a new id.
@@ -421,7 +421,6 @@ class ObjectHandlerTestCase(HandlersTestCase):
         assert submission.rems.organizationId == "12"
 
     async def _assert_bp_metadata_objects(self, expected_submission, object_types, sample_object_types, xml_config):
-
         project_id = expected_submission.projectId
         submission_id = expected_submission.submissionId
         submission_name = expected_submission.name

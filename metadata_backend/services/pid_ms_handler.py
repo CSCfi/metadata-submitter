@@ -23,7 +23,7 @@ class PIDServiceHandler(ServiceHandler):
             base_url=URL(pid_config["api_url"]),
         )
 
-    async def create_draft_doi_pid(self) -> str:
+    async def create_draft_doi(self) -> str:
         """POST request to create a draft DOI to CSC PID microservice.
 
         Draft does not include publish event in data. Requires another request to publish.

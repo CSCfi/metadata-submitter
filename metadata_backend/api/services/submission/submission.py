@@ -142,8 +142,8 @@ class ObjectSubmissionService(ABC):
                 for identifier in object_identifiers:
                     if identifier.id is not None:
                         errors.append(
-                            f"Update of previously submitted '{identifier.schema_type}' metadata object '{identifier.id}'"
-                            "is not supported"
+                            f"Update of previously submitted '{identifier.schema_type}' "
+                            f"metadata object '{identifier.id}' is not supported"
                         )
 
                 if not self._supports_references:
@@ -182,7 +182,6 @@ class ObjectSubmissionService(ABC):
 
             # Create and save submission and metadata objects within one transaction.
             async with transaction(self._session_factory):
-
                 # Add submission.
                 saved_submission_id = await self._submission_service.add_submission(
                     submission, submission_id=submission_id
@@ -351,7 +350,6 @@ class ObjectSubmissionService(ABC):
 
             # Create and save submission and metadata objects within one transaction.
             async with transaction(self._session_factory):
-
                 # Update submission.
                 await self._submission_service.update_submission(submission_id, to_json_dict(submission))
 
