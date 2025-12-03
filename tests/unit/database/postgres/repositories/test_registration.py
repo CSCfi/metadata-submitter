@@ -23,111 +23,44 @@ async def test_add_get_registration(
         obj = create_object_entity(submission.project_id, submission.submission_id)
         await object_repository.add_object(obj, workflow)
 
-        object_object_type = f"type_{uuid.uuid4()}"
-        object_title = f"title_{uuid.uuid4()}"
-        object_description = f"description_{uuid.uuid4()}"
-        object_doi = f"doi_{uuid.uuid4()}"
-        object_metax_id = f"metax_{uuid.uuid4()}"
-        object_datacite_url = f"datacite_{uuid.uuid4()}"
-        object_rems_url = f"rems_url_{uuid.uuid4()}"
-        object_rems_resource_id = f"rems_resource_{uuid.uuid4()}"
-        object_rems_catalogue_id = f"rems_catalogue_{uuid.uuid4()}"
+        object_type = f"type_{uuid.uuid4()}"
+        title = f"title_{uuid.uuid4()}"
+        description = f"description_{uuid.uuid4()}"
+        doi = f"doi_{uuid.uuid4()}"
+        metax_id = f"metax_{uuid.uuid4()}"
+        datacite_url = f"datacite_{uuid.uuid4()}"
+        rems_url = f"rems_url_{uuid.uuid4()}"
+        rems_resource_id = f"rems_resource_{uuid.uuid4()}"
+        rems_catalogue_id = f"rems_catalogue_{uuid.uuid4()}"
 
-        submission_object_type = f"type_{uuid.uuid4()}"
-        submission_title = f"title_{uuid.uuid4()}"
-        submission_description = f"description_{uuid.uuid4()}"
-        submission_doi = f"doi_{uuid.uuid4()}"
-        submission_metax_id = f"metax_{uuid.uuid4()}"
-        submission_datacite_url = f"datacite_{uuid.uuid4()}"
-        submission_rems_url = f"rems_url_{uuid.uuid4()}"
-        submission_rems_resource_id = f"rems_resource_{uuid.uuid4()}"
-        submission_rems_catalogue_id = f"rems_catalogue_{uuid.uuid4()}"
-
-        def assert_object_registration(entity: RegistrationEntity):
+        def assert_registration(entity: RegistrationEntity):
             assert entity is not None
             assert entity.submission_id == submission.submission_id
             assert entity.object_id == obj.object_id
-            assert entity.object_type == object_object_type
-            assert entity.title == object_title
-            assert entity.description == object_description
-            assert entity.doi == object_doi
-            assert entity.metax_id == object_metax_id
-            assert entity.datacite_url == object_datacite_url
-            assert entity.rems_url == object_rems_url
-            assert entity.rems_resource_id == object_rems_resource_id
-            assert entity.rems_catalogue_id == object_rems_catalogue_id
+            assert entity.object_type == object_type
+            assert entity.title == title
+            assert entity.description == description
+            assert entity.doi == doi
+            assert entity.metax_id == metax_id
+            assert entity.datacite_url == datacite_url
+            assert entity.rems_url == rems_url
+            assert entity.rems_resource_id == rems_resource_id
+            assert entity.rems_catalogue_id == rems_catalogue_id
 
-        def assert_submission_registration(entity: RegistrationEntity):
-            assert entity is not None
-            assert entity.submission_id == submission.submission_id
-            assert entity.object_id is None
-            assert entity.doi == submission_doi
-            assert entity.object_type == submission_object_type
-            assert entity.title == submission_title
-            assert entity.description == submission_description
-            assert entity.metax_id == submission_metax_id
-            assert entity.datacite_url == submission_datacite_url
-            assert entity.rems_url == submission_rems_url
-            assert entity.rems_resource_id == submission_rems_resource_id
-            assert entity.rems_catalogue_id == submission_rems_catalogue_id
-
-        object_registration = RegistrationEntity(
+        registration = RegistrationEntity(
             submission_id=submission.submission_id,
             object_id=obj.object_id,
-            object_type=object_object_type,
-            title=object_title,
-            description=object_description,
-            doi=object_doi,
-            metax_id=object_metax_id,
-            datacite_url=object_datacite_url,
-            rems_url=object_rems_url,
-            rems_resource_id=object_rems_resource_id,
-            rems_catalogue_id=object_rems_catalogue_id,
+            object_type=object_type,
+            title=title,
+            description=description,
+            doi=doi,
+            metax_id=metax_id,
+            datacite_url=datacite_url,
+            rems_url=rems_url,
+            rems_resource_id=rems_resource_id,
+            rems_catalogue_id=rems_catalogue_id,
         )
 
-        object_registration_id = await registration_repository.add_registration(object_registration)
+        await registration_repository.add_registration(registration)
 
-        # Object
-
-        # Select the object registration by registration id
-        assert_object_registration(await registration_repository.get_registration_by_id(object_registration_id))
-
-        # Select the submission registration by submission id
-        assert (await registration_repository.get_registration_by_submission_id(submission.submission_id)) is None
-
-        # Select the object registration by object id
-        assert_object_registration(await registration_repository.get_registration_by_object_id(obj.object_id))
-
-        # Select the object registration by getting all registrations for the submission
-        assert_object_registration((await registration_repository.get_registrations(submission.submission_id))[0])
-
-        # Submission
-
-        submission_registration = RegistrationEntity(
-            submission_id=submission.submission_id,
-            object_type=submission_object_type,
-            title=submission_title,
-            description=submission_description,
-            doi=submission_doi,
-            metax_id=submission_metax_id,
-            datacite_url=submission_datacite_url,
-            rems_url=submission_rems_url,
-            rems_resource_id=submission_rems_resource_id,
-            rems_catalogue_id=submission_rems_catalogue_id,
-        )
-
-        submission_registration_id = await registration_repository.add_registration(submission_registration)
-
-        # Select the submission registration by registration id
-        assert_submission_registration(await registration_repository.get_registration_by_id(submission_registration_id))
-
-        # Select the submission registration by submission id
-        assert_submission_registration(
-            await registration_repository.get_registration_by_submission_id(submission.submission_id)
-        )
-
-        # Select the object registration by registration id
-        assert_object_registration(await registration_repository.get_registration_by_id(object_registration_id))
-
-        # Select the object registration by object id
-        assert_object_registration(await registration_repository.get_registration_by_object_id(obj.object_id))
+        assert_registration(await registration_repository.get_registration(registration.submission_id))

@@ -9,7 +9,6 @@ Test account access: https://doi.test.datacite.org/sign-in
 
 import time
 from typing import Any
-from uuid import uuid4
 
 import ujson
 from aiohttp import BasicAuth, ClientTimeout, web
@@ -34,7 +33,6 @@ class DataciteServiceHandler(ServiceHandler):
             http_client_timeout=ClientTimeout(total=2 * 60),  # 2 minutes timeout
             http_client_headers={"Content-Type": "application/vnd.api+json"},
         )
-        self.doi_prefix = datacite_config["prefix"]
 
     @staticmethod
     def _process_error(error: str) -> str:
@@ -80,22 +78,17 @@ class DataciteServiceHandler(ServiceHandler):
 
         return " | ".join(error_messages)
 
-    async def create_draft_doi_datacite(self, draft_doi_prefix: str) -> str:
+    async def create_draft_doi(self) -> str:
         """Create draft DOI directly with Datacite API.
 
         The Draft DOI will be created on POST.
 
-        :param draft_doi_prefix: Draft DOI prefix.
         :raises: HTTPBadRequest if schema is invalid
         :raises: HTTPInternalServerError if we the Datacite DOI draft registration fails
         :returns: created DOI
         """
-        suffix = uuid4().hex[:10]
-        doi_suffix = f"{suffix[:4]}-{suffix[4:]}"
-        doi_suffix = f"{draft_doi_prefix}." + doi_suffix
-
         # this payload is sufficient to get a draft DOI
-        doi_payload = {"data": {"type": "dois", "attributes": {"doi": f"{self.doi_prefix}/{doi_suffix}"}}}
+        doi_payload = {"data": {"type": "dois", "attributes": {}}}
 
         draft_resp = await self._request(method="POST", path="/dois", json_data=doi_payload)
         doi: str = draft_resp["data"]["attributes"]["doi"]

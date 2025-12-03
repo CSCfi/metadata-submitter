@@ -33,5 +33,5 @@ class TestLogging(unittest.TestCase):
         mock_log.debug.assert_called_once()
         args, _ = mock_log.debug.call_args
         logged_output = args[0]
-        expected_output = "{\n" '    "name": "test_name",\n' '    "value": 42\n' "}"
+        expected_output = '{\n    "name": "test_name",\n    "value": 42\n}'
         self.assertEqual(logged_output, expected_output)

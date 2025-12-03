@@ -184,9 +184,9 @@ class XmlObjectProcessor(XmlProcessor, ObjectProcessor):
             if len(unique_name) == 0:
                 raise ValueError("No metadata object name.")
             if len(unique_name) > 1:
-                raise ValueError(f"Non-unique metadata object name: {", ".join(unique_name)}")
+                raise ValueError(f"Non-unique metadata object name: {', '.join(unique_name)}")
             if len(unique_id) > 1:
-                raise ValueError(f"Non-unique metadata object id.: {", ".join(unique_id)}")
+                raise ValueError(f"Non-unique metadata object id.: {', '.join(unique_id)}")
 
             if unique_name:
                 self._set_xml_object_name(next(iter(unique_name)))
@@ -223,9 +223,9 @@ class XmlObjectProcessor(XmlProcessor, ObjectProcessor):
                     if len(unique_name) == 0:
                         raise ValueError("No metadata object reference name.")
                     if len(unique_name) > 1:
-                        raise ValueError(f"Conflicting metadata object reference name: {", ".join(unique_name)}")
+                        raise ValueError(f"Conflicting metadata object reference name: {', '.join(unique_name)}")
                     if len(unique_id) > 1:
-                        raise ValueError(f"Conflicting metadata object reference id: {", ".join(unique_id)}")
+                        raise ValueError(f"Conflicting metadata object reference id: {', '.join(unique_id)}")
 
                     for p in r.paths:
                         if unique_name:

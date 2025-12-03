@@ -1,4 +1,4 @@
-﻿"""Class for integrating with Admin API service."""
+"""Class for integrating with Admin API service."""
 
 import time
 from typing import Any, cast

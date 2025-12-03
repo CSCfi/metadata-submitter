@@ -90,7 +90,8 @@ CREATE INDEX ix_files_created ON files (created)
 CREATE INDEX ix_files_ingest_status ON files (ingest_status)
 
 CREATE TABLE registrations (
-	registration_id VARCHAR(128) NOT NULL,
+	submission_id VARCHAR(128) NOT NULL,
+	object_id VARCHAR(128),
 	title TEXT NOT NULL,
 	description TEXT NOT NULL,
 	object_type VARCHAR(256),
@@ -100,20 +101,17 @@ CREATE TABLE registrations (
 	rems_url VARCHAR,
 	rems_resource_id VARCHAR,
 	rems_catalogue_id VARCHAR,
-	submission_id VARCHAR(128) NOT NULL,
-	object_id VARCHAR(128),
 	created TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
 	modified TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
-	PRIMARY KEY (registration_id),
+	PRIMARY KEY (submission_id),
 	FOREIGN KEY(submission_id) REFERENCES submissions (submission_id) ON DELETE CASCADE,
 	FOREIGN KEY(object_id) REFERENCES objects (object_id) ON DELETE CASCADE
 )
 
 
+CREATE INDEX ix_registrations_created ON registrations (created)
 CREATE INDEX ix_registrations_modified ON registrations (modified)
 CREATE UNIQUE INDEX ix_registrations_object_id ON registrations (object_id)
-CREATE INDEX ix_registrations_created ON registrations (created)
-CREATE INDEX ix_registrations_submission_id ON registrations (submission_id)
 COMMENT ON COLUMN registrations.doi IS 'Digital Object identifier'
 COMMENT ON COLUMN registrations.metax_id IS 'Metax identifier'
 COMMENT ON COLUMN registrations.datacite_url IS 'Datacite discovery URL'

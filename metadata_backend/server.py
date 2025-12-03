@@ -178,7 +178,6 @@ async def init(
         # User requests.
         web.get("/users", UserHandler.get_user),
         # Publish request.
-        # TODO(Improve): change to "/submissions/{submissionId}/publish"
         web.patch("/publish/{submissionId}", _publish_submission.publish_submission),
         # Api key requests.
         web.post("/api/keys", APIKeyHandler.post_api_key),

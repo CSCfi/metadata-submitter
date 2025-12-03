@@ -188,9 +188,7 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         submission_id_1 = await self.post_submission(
             name=name_1, description=description, project_id=project_id, workflow=workflow
         )
-        await self.post_submission(
-            name=name_2, description=description, project_id=project_id, workflow=workflow
-        )
+        await self.post_submission(name=name_2, description=description, project_id=project_id, workflow=workflow)
         submission_id_3 = await self.post_submission(
             name=name_3, description=description, project_id=project_id, workflow=workflow
         )

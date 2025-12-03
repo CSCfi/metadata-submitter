@@ -206,7 +206,7 @@ async def test_get_objects(
         # Compare objects.
         objects_sorted = sorted(objects, key=lambda o: o.objectId)
         results_sorted = sorted(results, key=lambda o: o.objectId)
-        for obj, res in zip(objects_sorted, results_sorted):
+        for obj, res in zip(objects_sorted, results_sorted, strict=False):
             assert obj.name == res.name
             assert obj.objectId == res.objectId
             assert obj.objectType == res.objectType

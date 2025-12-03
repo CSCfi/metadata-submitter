@@ -88,7 +88,6 @@ oidc_config = OIDCConfig()
 # Datacite API currently only for Bigpicture workflow
 datacite_config = {
     "api": os.getenv("DATACITE_API", "http://localhost:8001/dois"),
-    "prefix": os.getenv("DATACITE_PREFIX", "10.xxxx"),
     "user": os.getenv("DATACITE_USER", ""),
     "key": os.getenv("DATACITE_KEY", ""),
     "url": os.getenv("DATACITE_URL", "https://doi.org"),

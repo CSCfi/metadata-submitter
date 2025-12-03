@@ -224,7 +224,7 @@ class BigPictureObjectSubmissionService(ObjectSubmissionService):
             filename_lower = obj.filename.lower()
 
             if filename_lower not in (f.lower() for f in filenames):
-                raise UserException(f"Invalid file name: {obj.filename}. Expected file names: {", ".join(filenames)}.")
+                raise UserException(f"Invalid file name: {obj.filename}. Expected file names: {', '.join(filenames)}.")
 
             if filename_lower in filenames_seen:
                 raise ValueError(f"Duplicate file name: {obj.filename}")

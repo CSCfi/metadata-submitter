@@ -233,7 +233,7 @@ class SubmissionRepository:
         async with transaction(self._session_factory) as session:
             stmt = delete(SubmissionEntity).where(SubmissionEntity.submission_id == submission_id)
             result = await session.execute(stmt)
-            return result.rowcount > 0
+            return result.rowcount > 0  # type: ignore
 
     async def delete_submission_by_name(self, project_id: str, name: str) -> bool:
         """
@@ -251,7 +251,7 @@ class SubmissionRepository:
                 SubmissionEntity.project_id == project_id, SubmissionEntity.name == name
             )
             result = await session.execute(stmt)
-            return result.rowcount > 0
+            return result.rowcount > 0  # type: ignore
 
     async def delete_submission_by_id_or_name(self, project_id: str, submission_id: str) -> bool:
         """

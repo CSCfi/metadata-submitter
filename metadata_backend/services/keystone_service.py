@@ -4,7 +4,7 @@ import os
 import time
 
 from aiohttp import ClientTimeout, web
-from aiohttp.client_exceptions import ClientConnectorError, InvalidURL
+from aiohttp.client_exceptions import ClientConnectorError
 from pydantic import BaseModel
 from yarl import URL
 
@@ -181,10 +181,11 @@ class KeystoneService(ServiceHandler):
                 url=f"{self.base_url}/v3",
                 timeout=ClientTimeout(total=10),
             ) as response:
-                content = await response.json()
-                LOG.debug("Keystone REST API response content is: %r.", content)
-                if response.status == 200 and "version" in content:
-                    status = "Ok" if (time.time() - start) < 1000 else "Degraded"
+                if response.status == 200:
+                    content = await response.json()
+                    status = content["version"]["status"]
+                    LOG.debug("Keystone REST API response content is: %r.", content)
+                    status = "Ok" if (time.time() - start) < 1000 and status == "stable" else "Degraded"
                 else:
                     status = "Down"
 
@@ -192,9 +193,6 @@ class KeystoneService(ServiceHandler):
         except ClientConnectorError as e:
             LOG.exception("Keystone REST API is down with error: %r.", e)
             return {"status": "Down"}
-        except InvalidURL as e:
-            LOG.exception("Keystone REST API status retrieval failed with: %r.", e)
-            return {"status": "Error"}
-        except web.HTTPError as e:
+        except Exception as e:
             LOG.exception("Keystone REST API status retrieval failed with: %r.", e)
             return {"status": "Error"}

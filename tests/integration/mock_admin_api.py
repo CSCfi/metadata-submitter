@@ -116,7 +116,7 @@ async def ingest_file(req: web.Request) -> web.Response:
     if resp is not None:
         return resp
 
-    global files_in_inbox  # noqa: F824
+    global files_in_inbox
     try:
         content = await req.json()
         ingestion_data = FileModel(**content)
@@ -147,7 +147,7 @@ async def post_accession_id(req: web.Request) -> web.Response:
     if resp is not None:
         return resp
 
-    global files_in_inbox, file_accession_ids  # noqa: F824
+    global files_in_inbox, file_accession_ids
     try:
         content = await req.json()
         accession_data = AccessionModel(**content)
@@ -196,7 +196,7 @@ async def create_file(req: web.Request) -> web.Response:
     if resp is not None:
         return resp
 
-    global files_in_inbox  # noqa: F824
+    global files_in_inbox
     try:
         content = await req.json()
         file_data = FileModel(**content)
@@ -234,10 +234,10 @@ async def create_dataset(req: web.Request) -> web.Response:
             status=400,
         )
 
-    global file_accession_ids, datasets, files_in_inbox  # noqa: F824
+    global file_accession_ids, datasets, files_in_inbox
     found = [id in file_accession_ids.keys() for id in dataset_data.accession_ids]
     if not all(found):
-        invalid_ids = [id for (id, f) in zip(dataset_data.accession_ids, found) if not f]
+        invalid_ids = [id for (id, f) in zip(dataset_data.accession_ids, found, strict=False) if not f]
         LOG.error("Accession IDs %s not found", invalid_ids)
         return web.json_response(
             "accession IDs are not valid",
@@ -267,7 +267,7 @@ async def release_dataset(req: web.Request) -> web.Response:
     if resp is not None:
         return resp
 
-    global datasets  # noqa: F824
+    global datasets
     dataset = req.match_info["dataset"]
     if dataset not in datasets:
         reason = "Dataset not found"
@@ -332,7 +332,7 @@ async def post_key(req: web.Request) -> web.Response:
     if resp is not None:
         return resp
 
-    global public_keys  # noqa: F824
+    global public_keys
     try:
         content = await req.json()
         key_data = KeyModel(**content)

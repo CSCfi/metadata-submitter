@@ -52,7 +52,13 @@ def pytest_configure(config):
 
 async def _session_start():
     # Create SQLAlchemy engine and session factory.
-    global _engine, _session_factory, _submission_repository, _object_repository, _file_repository, _registration_repository
+    global \
+        _engine, \
+        _session_factory, \
+        _submission_repository, \
+        _object_repository, \
+        _file_repository, \
+        _registration_repository
 
     _temp_sqlite_file = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
     atexit.register(lambda: os.remove(_temp_sqlite_file.name))
