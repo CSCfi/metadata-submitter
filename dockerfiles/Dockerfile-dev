@@ -16,15 +16,14 @@ COPY .python-version .
 COPY README.md .
 COPY metadata_backend ./metadata_backend
 COPY scripts ./scripts
+COPY tests ./tests
+COPY .pytest.ini .
 
 # Install dependencies and create virtual environment
 RUN uv sync --dev
 
 # Use virtual environment by default
 ENV PATH="/app/.venv/bin:$PATH"
-
-# Container listens on port 5430
-EXPOSE 5430
 
 #=======================
 FROM appbase AS develop

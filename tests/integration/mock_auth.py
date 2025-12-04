@@ -40,7 +40,7 @@ mock_given_name: str = DEFAULT_MOCK_GIVEN_NAME
 mock_family_name: str = DEFAULT_MOCK_FAMILY_NAME
 
 mock_auth_url_docker = getenv("OIDC_URL", "http://mockauth:8000")  # called from inside docker-network
-mock_auth_url_local = getenv("OIDC_URL_TEST", "http://localhost:8000")  # called from local machine
+# mock_auth_url_local = getenv("OIDC_URL_TEST", "http://localhost:8000")  # called from local machine
 mock_keystone_url_docker = getenv("KEYSTONE_ENDPOINT", "http://mockkeystone:5001")
 
 username: str = "swift"
@@ -84,7 +84,7 @@ async def setmock(req: web.Request) -> web.Response:
     mock_family_name = req.query["family"]
     mock_given_name = req.query["given"]
 
-    LOG.info("%s: %s, %s, %s", mock_auth_url_local, mock_sub, mock_family_name, mock_given_name)
+    LOG.info("%s: %s, %s, %s", mock_auth_url_docker, mock_sub, mock_family_name, mock_given_name)
 
     return web.HTTPOk()
 
@@ -189,7 +189,7 @@ async def oidc_config(_: web.Request) -> web.Response:
     """OIDC standard OIDC configuration endpoint."""
     oidc_config_json = {
         "issuer": mock_auth_url_docker,
-        "authorization_endpoint": f"{mock_auth_url_local}/authorize",
+        "authorization_endpoint": f"{mock_auth_url_docker}/authorize",
         "token_endpoint": f"{mock_auth_url_docker}/token",
         "userinfo_endpoint": f"{mock_auth_url_docker}/userinfo",
         "jwks_uri": f"{mock_auth_url_docker}/keyset",

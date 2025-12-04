@@ -1,13 +1,10 @@
 services:
-  backend:
+  sd-submit-api:
     build:
       dockerfile: ./dockerfiles/Dockerfile-dev
       context: .
       target: develop
     image: cscfi/metadata-submitter-dev
-    container_name: "metadata-submitter-backend-dev"
-    ports:
-      - "5430:5430"
     restart: on-failure
     environment:
       - "AAI_CLIENT_SECRET=${AAI_CLIENT_SECRET}"
@@ -51,7 +48,7 @@ services:
     build:
       dockerfile: ./dockerfiles/Dockerfile-dev
       context: .
-      target: develop
+      target: appbase
     image: cscfi/metadata-submitter-dev
     environment:
       - "LOG_LEVEL=${LOG_LEVEL}"
@@ -59,10 +56,6 @@ services:
       - "OIDC_URL_TEST=${OIDC_URL_TEST}"
       - "KEYSTONE_ENDPOINT=${KEYSTONE_ENDPOINT}"
     hostname: mockauth
-    expose:
-      - 8000
-    ports:
-      - "8000:8000"
     depends_on:
       mockkeystone:
         condition: service_healthy
@@ -73,13 +66,9 @@ services:
     build:
       dockerfile: ./dockerfiles/Dockerfile-dev
       context: .
-      target: develop
+      target: appbase
     image: cscfi/metadata-submitter-dev
     hostname: mockmetax
-    expose:
-      - 8002
-    ports:
-      - "8002:8002"
     volumes:
       - ./tests/integration/mock_metax_api.py:/mock_metax_api.py
     entrypoint: [ "python", "/mock_metax_api.py", "0.0.0.0", "8002" ]
@@ -87,13 +76,9 @@ services:
     build:
       dockerfile: ./dockerfiles/Dockerfile-dev
       context: .
-      target: develop
+      target: appbase
     image: cscfi/metadata-submitter-dev
     hostname: mockrems
-    expose:
-      - 8003
-    ports:
-      - "8003:8003"
     volumes:
       - ./tests/integration/mock_rems_api.py:/mock_rems_api.py
     entrypoint: [ "python", "/mock_rems_api.py", "0.0.0.0", "8003" ]
@@ -101,16 +86,12 @@ services:
     build:
       dockerfile: ./dockerfiles/Dockerfile-dev
       context: .
-      target: develop
+      target: appbase
     image: cscfi/metadata-submitter-dev
     environment:
       - "LOG_LEVEL=${LOG_LEVEL}"
-      - "OIDC_URL_TEST=${OIDC_URL}"
+      - "OIDC_URL=${OIDC_URL}"
     hostname: mockadmin
-    expose:
-      - 8004
-    ports:
-      - "8004:8004"
     volumes:
       - ./tests/integration/mock_admin_api.py:/mock_admin_api.py
     entrypoint: [ "python", "/mock_admin_api.py", "0.0.0.0", "8004" ]
@@ -123,22 +104,14 @@ services:
       context: .
     image: cscfi/mockldap
     hostname: mockldap
-    expose:
-      - 389
-    ports:
-      - "389:389"
   mock-s3:
     image: motoserver/moto:latest
     hostname: s3mock
-    ports:
-      - "8006:8006"
     environment:
       - MOTO_PORT=8006
   mockkeystone:
     image: ghcr.io/cscfi/docker-keystone-swift:latest
     hostname: mockkeystone
-    expose:
-      - 5001
     healthcheck:
       test: curl --fail http://127.0.0.1:5001/ || exit 1
       interval: 20s
