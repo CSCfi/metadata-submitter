@@ -165,7 +165,7 @@ Restart the server, and the swagger docs will be available at http://localhost:5
 **Swagger docs requirements:**
 
 - `bash`
-- `Python 3.13+`
+- `Python 3.14+`
 - `PyYaml` (installed via the development dependencies)
 - `realpath` (default Linux terminal command)
 
