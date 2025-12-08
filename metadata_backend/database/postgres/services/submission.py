@@ -16,8 +16,6 @@ from ..repositories.submission import (
     SubmissionSort,
 )
 
-# pylint: disable=too-many-public-methods
-
 
 class UnknownSubmissionUserException(NotFoundUserException):
     """Raised when a submission cannot be found."""
@@ -84,7 +82,7 @@ class SubmissionService:
         try:
             workflow = SubmissionWorkflow(submission.workflow)
         except ValueError:
-            raise UserException(  # pylint: disable=raise-missing-from
+            raise UserException(
                 f"Invalid submission workflow: {submission.workflow.value}"
             )
 

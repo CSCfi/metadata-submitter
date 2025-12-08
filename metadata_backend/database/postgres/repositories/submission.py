@@ -184,7 +184,7 @@ class SubmissionRepository:
 
             if is_paginated:
                 total_stmt = (
-                    select(func.count())  # pylint: disable=not-callable
+                    select(func.count())
                     .select_from(SubmissionEntity)
                     .where(and_(*filters))
                 )
