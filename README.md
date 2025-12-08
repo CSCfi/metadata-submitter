@@ -46,7 +46,7 @@ flowchart LR
 - [`Git LFS`](https://git-lfs.com/)
 
 Git LFS is required to checkout the `metadata_backend/conf/taxonomy_files/names.json` file.
-This file can be generated from NCBI taxonomy using the following command:
+Without Git LFS, this file can also be generated from NCBI taxonomy using the following command:
 
 ```bash
 scripts/taxonomy/generate_name_taxonomy.sh
@@ -61,30 +61,27 @@ git clone
 cd metadata-submitter
 ```
 
-The project is managed by `uv` that creates a virtual environment in `.venv` directory
-using the python version defined in the `.python-version`. The  `uv` installs the
-dependencies in `uv.lock` file that have bee specified in the `pyproject.toml` file.
-Dependencies are added and removed using the `uv add` and `uv remove` commands
-or by directly editing the `pyproject.toml` file. In the latter case, run `uv sync` or
-`uv sync --dev` to update the `uv.lock` file.
-
-Install uv, tox and pre-commit and create the virtual environment:
+Install `uv`, `tox` and `pre-commit` tools for development:
 
 ```bash
-curl -LsSf https://astral.sh/uv/0.9.15/install.sh | sh
+curl -LsSf https://astral.sh/uv/install.sh | sh
 uv tool install tox --with tox-uv
 uv tool install pre-commit --with pre-commit-uv
-uv sync --dev
 pre-commit install
 ```
 
-If needed, activate the virtual environment using:
+The project is managed by [`uv`](https://docs.astral.sh/uv/) (Python package and project manager),
+which creates a virtual Python environment in `.venv` directory using the version defined in the [`.python-version`](.python-version).
+`uv` installs the dependencies in `uv.lock` file that are specified in the `pyproject.toml` file.
 
+Whenever initiating a local development environment, it is a good idea to run the following commands:
 ```bash
-source .venv/bin/activate
+uv self update  # update uv
+uv sync --dev  # sync all python dependencies
+source .venv/bin/activate  # activate the uv venv
 ```
 
-### Configure environmental variables
+### Configure environment variables
 
 Copy the contents of `.env.example` file to `.env` file and edit it as needed:
 
@@ -117,8 +114,8 @@ _**Python virtual environment using a Procfile**_, which is described here below
 
 ### Developing with Python virtual environment
 
-Please use `uv` to create the virtual environment for development and testing as instructed above. Then follows these
-instructions:
+Use `uv` to create and activate the virtual environment for development and testing as [instructed above](#initialise-the-project-for-development-and-testing).
+Then follow these instructions:
 
 ```bash
 # Optional: update references for metax integration
@@ -148,7 +145,7 @@ make get_env  # This will prompt a login in the web browser
 Finally, start the servers with code reloading enabled, so any code changes restarts the servers automatically:
 
 ```bash
-uv run honcho start
+honcho start
 ```
 
 The development server should now be accessible at `localhost:5430`.
@@ -195,13 +192,22 @@ see [contributing guidelines for Github](CONTRIBUTING.md).
 
 <details><summary>Click to expand</summary>
 
-Please use `uv` to create the virtual environment and run unit and integration tests
-as instructed below. A pre-commit hook runs the unit tests before each commit, and the
-unit test are also run in the CI/CD pipeline for every merge request.
+For local testing, see [above instructions](#initialise-the-project-for-development-and-testing) 
+for installing `uv` to create a virtual environment.
 
-### Unit tests
+Install all testing dependencies in the virtual environment by running the following commands:
+```bash
+uv pip install ".[verify,test,docs]"
+source .venv/bin/activate  # activate uv virtual env
+```
 
-Linting and unit tests are run by using tox:
+A pre-commit hook will execute all linting and unit tests before each commit.
+All tests are also run in the Gitlab CI/CD pipeline for every merge request.
+
+### Linting and Unit tests
+
+Majority of the automated tests (such as unit tests, code style checks etc.)
+can be run with [`tox`](https://tox.wiki/en/4.24.2/) automation with the following command:
 
 ```bash
 tox -p auto
@@ -209,18 +215,21 @@ tox -p auto
 
 ### Integration tests
 
+Integration tests are run separately with [`pytest`](https://docs.pytest.org/en/stable/)
+after the containerized testing environment has been set up.
+
 Integration tests can be run using mock services:
 
 ```bash
-docker compose --env-file tests/integration/.env.example up --build -d
+docker compose --env-file tests/integration/.env.example --profile dev up --build -d
 pytest tests/integration
 ```
 
-or using external services configured with secrets:
+Or using external services configured with secrets:
 
 ```bash
 make get_env
-docker compose --env-file tests/integration/.env up --build -d
+docker compose --env-file tests/integration/.env --profile dev up --build -d
 pytest tests/integration
 ```
 
