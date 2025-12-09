@@ -15,9 +15,6 @@ COPY .python-version .
 # Copy project files
 COPY README.md .
 COPY metadata_backend ./metadata_backend
-COPY scripts ./scripts
-COPY tests ./tests
-COPY .pytest.ini .
 
 # Install dependencies and create virtual environment
 RUN uv sync --dev
@@ -29,8 +26,6 @@ ENV PATH="/app/.venv/bin:$PATH"
 FROM appbase AS develop
 #=======================
 
-COPY ./deploy/app.sh .
-RUN chmod +x /app/app.sh
-
-# Start up the web server (metadata_submitter is a pyproject.toml script).
-CMD ["uv", "run", "metadata_submitter"]
+# Copy test files so tests can be run in the dev container
+COPY tests ./tests
+COPY .pytest.ini .

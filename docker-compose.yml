@@ -9,6 +9,13 @@ services:
     profiles:
       - ci
       - dev
+    command: ["uv", "run", "metadata_submitter"]
+    healthcheck:
+      test: curl --fail http://127.0.0.1:5430/health || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     environment:
       - "AAI_CLIENT_SECRET=${AAI_CLIENT_SECRET}"
       - "AAI_CLIENT_ID=${AAI_CLIENT_ID}"
@@ -65,6 +72,12 @@ services:
     depends_on:
       mockkeystone:
         condition: service_healthy
+    healthcheck:
+      test: curl --fail http://127.0.0.1:8000/.well-known/openid-configuration || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     volumes:
       - ./tests/integration/mock_auth.py:/mock_auth.py
     entrypoint: [ "python", "/mock_auth.py", "0.0.0.0", "8000" ]
@@ -78,6 +91,12 @@ services:
     profiles:
       - ci
       - dev
+    healthcheck:
+      test: curl --fail http://127.0.0.1:8002/watchman/ping/ || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     volumes:
       - ./tests/integration/mock_metax_api.py:/mock_metax_api.py
     entrypoint: [ "python", "/mock_metax_api.py", "0.0.0.0", "8002" ]
@@ -91,6 +110,12 @@ services:
     profiles:
       - ci
       - dev
+    healthcheck:
+      test: curl --fail http://127.0.0.1:8003/api/health || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     volumes:
       - ./tests/integration/mock_rems_api.py:/mock_rems_api.py
     entrypoint: [ "python", "/mock_rems_api.py", "0.0.0.0", "8003" ]
@@ -104,6 +129,12 @@ services:
       - "LOG_LEVEL=${LOG_LEVEL}"
       - "OIDC_URL=${OIDC_URL}"
     hostname: mockadmin
+    healthcheck:
+      test: curl --fail http://127.0.0.1:8004/ready || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     volumes:
       - ./tests/integration/mock_admin_api.py:/mock_admin_api.py
     entrypoint: [ "python", "/mock_admin_api.py", "0.0.0.0", "8004" ]
@@ -125,6 +156,12 @@ services:
     profiles:
       - ci
       - dev
+    healthcheck:
+      test: curl --fail http://127.0.0.1:8006/ || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     environment:
       - MOTO_PORT=8006
   mockkeystone:
