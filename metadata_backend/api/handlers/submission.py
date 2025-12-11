@@ -8,7 +8,7 @@ from aiohttp import web
 from aiohttp.web import Request, Response
 from multidict import CIMultiDict
 
-from ...conf.conf import deployment_config
+from ...conf.deployment import deployment_config
 from ...database.postgres.models import IngestStatus
 from ...helpers.logger import LOG
 from ..auth import get_authorized_user_id
@@ -311,11 +311,10 @@ class SubmissionAPIHandler(RESTAPIIntegrationHandler):
 
         registration = await registration_service.get_registration(submission_id)
 
-        return web.Response(
-            body=json.dumps([to_json_dict(registration)]),
-            status=200,
-            content_type="application/json",
-        )
+        if not registration:
+            return web.Response(status=404)
+
+        return web.json_response([to_json_dict(registration)])
 
     async def post_data_ingestion(self, req: Request) -> web.HTTPNoContent:
         """Start the data ingestion.

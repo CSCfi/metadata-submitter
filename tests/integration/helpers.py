@@ -86,6 +86,7 @@ async def submit_bp(sess, project_id: str) -> Submission:
         "landing_page.xml",
         "rems.xml",
         "organisation.xml",
+        "datacite.xml",
     ]
 
     # Read XML files.
@@ -196,6 +197,8 @@ async def patch_submission_metadata(sess, submission_id: str, data: str):
     """
     _json = {"metadata": json.loads(data)}
     async with sess.patch(f"{submissions_url}/{submission_id}", json=_json) as resp:
+        result = await resp.text()
+        LOG.info(result)
         assert resp.status == 200
 
 
@@ -222,6 +225,8 @@ async def patch_submission_bucket(sess, submission_id: str, bucket: str):
     """
     _json = {"bucket": bucket}
     async with sess.patch(f"{submissions_url}/{submission_id}", json=_json) as resp:
+        result = await resp.text()
+        LOG.debug(result)
         assert resp.status == 200
 
 

@@ -3,8 +3,11 @@
 import asyncio
 import atexit
 import os
+import sys
 import tempfile
+import uuid
 from typing import AsyncGenerator
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -50,6 +53,49 @@ def pytest_configure(config):
     os.environ[BP_CENTER_ID_ENV] = "bb"
 
 
+# Mock service handlers to avoid importing undefined environmental variables.
+
+
+class MockDataciteServiceHandler:
+    create_draft_doi = AsyncMock(return_value=str(uuid.uuid4()))
+    publish = AsyncMock(return_value={})
+    http_client_close = AsyncMock(return_value=None)
+
+
+class MockPidServiceHandler:
+    create_draft_doi = AsyncMock(return_value=str(uuid.uuid4()))
+    publish = AsyncMock(return_value={})
+    http_client_close = AsyncMock(return_value=None)
+
+
+datacite_module_path = "metadata_backend.services.datacite_service"
+pid_module_path = "metadata_backend.services.pid_service"
+
+if datacite_module_path not in sys.modules:
+    sys.modules[datacite_module_path] = type("MockModule", (), {"DataciteServiceHandler": MockDataciteServiceHandler})()
+
+if pid_module_path not in sys.modules:
+    sys.modules[pid_module_path] = type("MockModule", (), {"PIDServiceHandler": MockPidServiceHandler})()
+
+
+def patch_datacite_create_draft_doi(doi: str):
+    return patch(
+        f"{datacite_module_path}.DataciteServiceHandler.create_draft_doi", new_callable=AsyncMock, return_value=doi
+    )
+
+
+def patch_datacite_publish():
+    return patch(f"{datacite_module_path}.DataciteServiceHandler.publish", new_callable=AsyncMock, return_value=None)
+
+
+def patch_pid_create_draft_doi(doi: str):
+    return patch(f"{pid_module_path}.PIDServiceHandler.create_draft_doi", new_callable=AsyncMock, return_value=doi)
+
+
+def patch_pid_publish():
+    return patch(f"{pid_module_path}.PIDServiceHandler.publish", new_callable=AsyncMock, return_value=None)
+
+
 async def _session_start():
     # Create SQLAlchemy engine and session factory.
     global \
@@ -84,6 +130,9 @@ def pytest_sessionstart(session):
 
 def pytest_sessionfinish(session, exitstatus):
     asyncio.run(_session_finish())
+
+
+# Session
 
 
 @pytest.fixture

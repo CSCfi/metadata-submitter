@@ -21,6 +21,7 @@ from ...models.datacite import (
     GeoLocation,
     GeoLocationBox,
     GeoLocationPoint,
+    GeoLocationPolygonPoint,
     Identifier,
     NameIdentifier,
     Publisher,
@@ -115,9 +116,9 @@ def read_datacite_xml(source: str | bytes) -> DataCiteMetadata:
     version = _elem_text(_xpath(xml, f"{DATACITE_PATH}/d:version"))
 
     # rights
-    rights = []
+    rights_list = []
     for rights_elem in _xpath(xml, f"{DATACITE_PATH}/d:rightsList/d:rights"):
-        rights.append(
+        rights_list.append(
             Rights(
                 rights=_elem_text(rights_elem),
                 rightsUri=_attr_text(rights_elem, "rightsURI"),
@@ -292,8 +293,7 @@ def read_datacite_xml(source: str | bytes) -> DataCiteMetadata:
     for geo_location_elem in _xpath(xml, f"{DATACITE_PATH}/d:geoLocations/d:geoLocation"):
         point = None
         box = None
-        polygons = None
-        in_polygon_point = None
+        polygon = None
         if _xpath(geo_location_elem, "d:geoLocationPoint"):
             e = _xpath(geo_location_elem, "d:geoLocationPoint")[0]
             point = GeoLocationPoint(
@@ -309,18 +309,24 @@ def read_datacite_xml(source: str | bytes) -> DataCiteMetadata:
                 northBoundLatitude=_elem_text(_xpath(e, "d:northBoundLatitude")),
             )
         if _xpath(geo_location_elem, "d:geoLocationPolygon/d:polygonPoint"):
-            polygons = []
+            polygon = []
             for e in _xpath(geo_location_elem, "d:geoLocationPolygon/d:polygonPoint"):
-                polygons.append(
-                    GeoLocationPoint(
-                        pointLatitude=_elem_text(_xpath(e, "d:pointLatitude")),
-                        pointLongitude=_elem_text(_xpath(e, "d:pointLongitude")),
+                polygon.append(
+                    GeoLocationPolygonPoint(
+                        polygonPoint=GeoLocationPoint(
+                            pointLatitude=_elem_text(_xpath(e, "d:pointLatitude")),
+                            pointLongitude=_elem_text(_xpath(e, "d:pointLongitude")),
+                        )
                     )
                 )
             for e in _xpath(geo_location_elem, "d:geoLocationPolygon/d:inPolygonPoint"):
-                in_polygon_point = GeoLocationPoint(
-                    pointLatitude=_elem_text(_xpath(e, "d:pointLatitude")),
-                    pointLongitude=_elem_text(_xpath(e, "d:pointLongitude")),
+                polygon.append(
+                    GeoLocationPolygonPoint(
+                        inPolygonPoint=GeoLocationPoint(
+                            pointLatitude=_elem_text(_xpath(e, "d:pointLatitude")),
+                            pointLongitude=_elem_text(_xpath(e, "d:pointLongitude")),
+                        )
+                    )
                 )
                 break
         geolocations.append(
@@ -328,8 +334,7 @@ def read_datacite_xml(source: str | bytes) -> DataCiteMetadata:
                 geoLocationPlace=_elem_text(_xpath(geo_location_elem, "d:geoLocationPlace")),
                 geoLocationPoint=point,
                 geoLocationBox=box,
-                geoLocationPolygon=polygons or None,
-                inPolygonPoint=in_polygon_point or None,
+                geoLocationPolygon=polygon,
             )
         )
 
@@ -363,8 +368,8 @@ def read_datacite_xml(source: str | bytes) -> DataCiteMetadata:
         identifiers=identifiers or None,
         publicationYear=publication_year,
         version=version,
-        rights=rights,
-        resourceType=resource_type,
+        rightsList=rights_list,
+        types=resource_type,
         titles=titles or None,
         creators=creators,
         publisher=publisher,

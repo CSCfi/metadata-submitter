@@ -35,10 +35,10 @@ def assert_datacite(datacite: DataCiteMetadata, saved: bool) -> None:
     assert datacite.version == "1.0"
 
     # rights
-    rights = datacite.rights[0]
-    assert rights.rights == "Creative Commons Attribution 4.0 International License"
-    assert rights.rightsUri == "https://creativecommons.org/licenses/by/4.0/"
-    assert rights.rightsIdentifier == "CC-BY-4.0"
+    rights = datacite.rightsList[0]
+    assert rights.rights == "Creative Commons Attribution 4.0 International"
+    assert rights.rightsUri == "https://creativecommons.org/licenses/by/4.0/legalcode"
+    assert rights.rightsIdentifier == "cc-by-4.0"
     assert rights.rightsIdentifierScheme == "SPDX"
     assert rights.schemeUri == "https://spdx.org/licenses/"
 
@@ -127,27 +127,27 @@ def assert_datacite(datacite: DataCiteMetadata, saved: bool) -> None:
     gl = datacite.geoLocations[0]
     assert gl.geoLocationPlace == "Helsinki"
     assert gl.geoLocationPoint is not None
-    assert gl.geoLocationPoint.pointLatitude == "60.1699"
-    assert gl.geoLocationPoint.pointLongitude == "24.9384"
+    assert gl.geoLocationPoint.pointLatitude == 60.1699
+    assert gl.geoLocationPoint.pointLongitude == 24.9384
     assert gl.geoLocationBox is not None
-    assert gl.geoLocationBox.westBoundLongitude == "24.0"
-    assert gl.geoLocationBox.eastBoundLongitude == "25.0"
-    assert gl.geoLocationBox.southBoundLatitude == "60.0"
-    assert gl.geoLocationBox.northBoundLatitude == "61.0"
+    assert gl.geoLocationBox.westBoundLongitude == 24.0
+    assert gl.geoLocationBox.eastBoundLongitude == 25.0
+    assert gl.geoLocationBox.southBoundLatitude == 60.0
+    assert gl.geoLocationBox.northBoundLatitude == 61.0
     assert gl.geoLocationPolygon is not None
-    assert len(gl.geoLocationPolygon) == 5
+    assert len(gl.geoLocationPolygon) == 6
     expected_points = [
-        ("41.991", "-71.032"),
-        ("42.893", "-69.622"),
-        ("41.991", "-68.211"),
-        ("41.090", "-69.622"),
-        ("41.991", "-71.032"),
+        (41.991, -71.032),
+        (42.893, -69.622),
+        (41.991, -68.211),
+        (41.090, -69.622),
+        (41.991, -71.032),
     ]
     for idx, (lat, lon) in enumerate(expected_points):
-        assert gl.geoLocationPolygon[idx].pointLatitude == lat
-        assert gl.geoLocationPolygon[idx].pointLongitude == lon
-    assert gl.inPolygonPoint.pointLatitude == "41.500"
-    assert gl.inPolygonPoint.pointLongitude == "-69.800"
+        assert gl.geoLocationPolygon[idx].polygonPoint.pointLatitude == lat
+        assert gl.geoLocationPolygon[idx].polygonPoint.pointLongitude == lon
+    assert gl.geoLocationPolygon[5].inPolygonPoint.pointLatitude == 41.500
+    assert gl.geoLocationPolygon[5].inPolygonPoint.pointLongitude == -69.800
 
     # fundingReferences
     assert datacite.fundingReferences is not None

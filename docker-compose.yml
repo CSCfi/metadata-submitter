@@ -18,11 +18,12 @@ services:
       - "BASE_URL=${BASE_URL}"
       - "REDIRECT_URL=${REDIRECT_URL}"
       - "LOG_LEVEL=${LOG_LEVEL}"
-      - "DATACITE_API=${DATACITE_API}"
-      - "DATACITE_USER=${DATACITE_USER}"
-      - "DATACITE_KEY=${DATACITE_KEY}"
-      - "PID_URL=${PID_URL}"
-      - "PID_APIKEY=${PID_APIKEY}"
+      - "DATACITE_API=${DATACITE_API:?DATACITE_API must be defined}"
+      - "DATACITE_USER=${DATACITE_USER:?DATACITE_USER must be defined}"
+      - "DATACITE_KEY=${DATACITE_KEY:?DATACITE_KEY must be defined}"
+      - "DATACITE_DOI_PREFIX=${DATACITE_DOI_PREFIX:?DATACITE_DOI_PREFIX must be defined}"
+      - "CSC_PID_URL=${CSC_PID_URL:?CSC_PID_URL must be defined}"
+      - "CSC_PID_KEY=${CSC_PID_KEY:?CSC_PID_KEY must be defined}"
       - "METAX_DISCOVERY_URL=${METAX_DISCOVERY_URL}"
       - "BEACON_DISCOVERY_URL=${BEACON_DISCOVERY_URL}"
       - "METAX_USER=${METAX_USER}"
@@ -45,6 +46,7 @@ services:
       - "S3_ENDPOINT=${S3_ENDPOINT}"
       - "KEYSTONE_ENDPOINT=${KEYSTONE_ENDPOINT}"
       - "ALLOW_UNSAFE=${ALLOW_UNSAFE}"
+      - "ALLOW_REGISTRATION=False"
   mockauth:
     build:
       dockerfile: ./dockerfiles/Dockerfile-dev
@@ -67,20 +69,6 @@ services:
     volumes:
       - ./tests/integration/mock_auth.py:/mock_auth.py
     entrypoint: [ "python", "/mock_auth.py", "0.0.0.0", "8000" ]
-  mockdatacite:
-    build:
-      dockerfile: ./dockerfiles/Dockerfile-dev
-      context: .
-      target: develop
-    image: cscfi/metadata-submitter-dev
-    hostname: mockdatacite
-    expose:
-      - 8001
-    ports:
-      - "8001:8001"
-    volumes:
-      - ./tests/integration/mock_datacite_api.py:/mock_datacite_api.py
-    entrypoint: [ "python", "/mock_datacite_api.py", "0.0.0.0", "8001" ]
   mockmetax:
     build:
       dockerfile: ./dockerfiles/Dockerfile-dev
@@ -129,20 +117,6 @@ services:
     depends_on:
       mockauth:
         condition: service_started
-  mockpid:
-    build:
-      dockerfile: ./dockerfiles/Dockerfile-dev
-      context: .
-      target: develop
-    image: cscfi/metadata-submitter-dev
-    hostname: mockpid
-    expose:
-      - 8005
-    ports:
-      - "8005:8005"
-    volumes:
-      - ./tests/integration/mock_pid_api.py:/mock_pid_api.py
-    entrypoint: [ "python", "/mock_pid_api.py", "0.0.0.0", "8005" ]
   mockldap:
     build:
       dockerfile: ./dockerfiles/Dockerfile-ldap-dev

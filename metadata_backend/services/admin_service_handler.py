@@ -95,7 +95,7 @@ class AdminServiceHandler(ServiceHandler):
         await self._request(method="POST", path=f"/dataset/release/{dataset}", headers=admin_auth_headers)
         LOG.info("Dataset %s has been released", dataset)
 
-    async def _healthcheck(self) -> dict[str, Any]:
+    async def healthcheck(self) -> dict[str, Any]:
         """Check Admin service readiness.
 
         This can return 200 or 503.

@@ -13,9 +13,9 @@ from ...conf.conf import POLLING_INTERVAL
 from ...database.postgres.models import IngestStatus
 from ...helpers.logger import LOG
 from ...services.admin_service_handler import AdminServiceHandler
-from ...services.datacite_service_handler import DataciteServiceHandler
+from ...services.datacite_service import DataciteServiceHandler
 from ...services.metax_service_handler import MetaxServiceHandler
-from ...services.pid_ms_handler import PIDServiceHandler
+from ...services.pid_service import PIDServiceHandler
 from ...services.rems_service_handler import RemsServiceHandler
 from ..json import JSON, to_json
 from ..models.submission import Rems

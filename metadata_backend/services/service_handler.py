@@ -96,7 +96,7 @@ class ServiceHandler(ABC):
         return error
 
     @abstractmethod
-    async def _healthcheck(self) -> dict[str, Any]:
+    async def healthcheck(self) -> dict[str, Any]:
         """Override in subclass and return formatted status message."""
 
     @retry(total_tries=5)

@@ -11,7 +11,7 @@ from idpyoidc.client.rp_handler import RPHandler
 from idpyoidc.exception import OidcMsgError
 from yarl import URL
 
-from ..conf.conf import OIDCConfig, oidc_config
+from ..conf.oidc import OIDCConfig, oidc_config
 from ..helpers.logger import LOG
 from ..services.service_handler import ServiceHandler
 from .services.auth import JWT_EXPIRATION, AccessService
@@ -251,7 +251,7 @@ class AAIServiceHandler(ServiceHandler):
             http_client_headers=headers,
         )
 
-    async def _healthcheck(self) -> dict[str, str]:
+    async def healthcheck(self) -> dict[str, str]:
         """Check AAI service heartbeat.
 
         This will return a JSON with well-known OIDC endpoints.

@@ -8,14 +8,14 @@ from typing import Any
 from aiohttp import web
 from aiohttp.web import Request, Response
 
-from ...conf.conf import deployment_config
+from ...conf.deployment import deployment_config
 from ...database.postgres.services.file import FileService
 from ...database.postgres.services.object import ObjectService
 from ...database.postgres.services.registration import RegistrationService
 from ...helpers.logger import LOG
 from ..auth import get_authorized_user_id
 from ..exceptions import SystemException, UserException
-from ..json import to_json, to_json_dict
+from ..json import to_json
 from ..models.datacite import DataCiteMetadata
 from ..models.models import File, Registration
 from ..models.submission import Rems, Submission, SubmissionMetadata, SubmissionWorkflow
@@ -26,7 +26,8 @@ from ..resources import (
     get_registration_service,
     get_submission_service,
 )
-from ..services.publish import PublishConfig, PublishSource, format_subject_okm_field_of_science, get_publish_config
+from ..services.datacite import DataciteService
+from ..services.publish import PublishConfig, PublishSource, get_publish_config
 from .restapi import RESTAPIIntegrationHandler
 from .submission import SubmissionAPIHandler
 
@@ -73,72 +74,6 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         except KeyError as ex:
             raise SystemException("Missing required environment variable: BEACON_DISCOVERY_URL") from ex
 
-    @staticmethod
-    def _prepare_datacite(
-        doi: str,
-        title: str,
-        description: str,
-        discovery_url: str,
-        datacite: DataCiteMetadata,
-        publish_config: PublishConfig,
-    ) -> dict[str, Any]:
-        """Prepare dataset for DataCite publishing.
-
-        :param doi: The DOI
-        :param title: the title
-        :param description: the description
-        :param discovery_url: URL pointing to a  discovery service
-        :param datacite: the DataCite metadata
-        :returns: Data for DataCite publishing.
-        """
-        try:
-            data: dict[str, Any] = {
-                "id": doi,
-                "type": "dois",
-                "data": {
-                    "attributes": {
-                        "event": "publish",
-                        "schemaVersion": "https://schema.datacite.org/meta/kernel-4",
-                        "doi": doi,
-                        "prefix": doi.split("/")[0],
-                        "suffix": doi.split("/")[1],
-                        "types": {
-                            "ris": "DATA",
-                            "bibtex": "misc",
-                            "citeproc": "dataset",
-                            "schemaOrg": "Dataset",
-                        },
-                        "url": discovery_url,
-                        "identifiers": [
-                            {
-                                "identifierType": "DOI",
-                                "doi": doi,
-                            }
-                        ],
-                    },
-                },
-            }
-
-            data["data"]["attributes"]["titles"] = [{"lang": None, "title": title, "titleType": None}]
-
-            data["data"]["attributes"]["descriptions"] = [
-                {
-                    "lang": None,
-                    "description": description,
-                    "descriptionType": "Other",
-                }
-            ]
-
-            if publish_config.require_okm_field_of_science:
-                format_subject_okm_field_of_science(datacite.subjects)
-
-            data["data"]["attributes"].update(to_json_dict(datacite))
-            LOG.debug("prepared dataset info: %r", data)
-        except KeyError as e:
-            raise SystemException(f"Could not prepare DOI data for DataCite: {str(e)}") from e
-
-        return data
-
     async def _register_draft_doi(self, publish_config: PublishConfig) -> str:
         """Register a draft DOI through Datacite directly or through CSC PID.
 
@@ -167,27 +102,6 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
                 f"Failed to register Metax ID in submission '{submission_id}'. Please try again later."
             ) from ex
 
-    async def _prepare_datacite_data(
-        self, registration: Registration, datacite: DataCiteMetadata, publish_config: PublishConfig
-    ) -> dict[str, Any]:
-        """Prepare list of data to publish in DataCite.
-
-        :param registration: The registration.
-        :param datacite: The DataCite metadata
-        :param publish_config: The publish configuration
-        :returns: DataCite data
-        """
-
-        try:
-            discovery_url = self._make_discovery_url(registration, publish_config)
-            datacite_data = self._prepare_datacite(
-                registration.doi, registration.title, registration.description, discovery_url, datacite, publish_config
-            )
-        except KeyError as e:
-            raise SystemException(f"Could not prepare data for DataCite: {str(e)}") from e
-
-        return datacite_data
-
     async def _publish_datacite(
         self,
         registration: Registration,
@@ -203,18 +117,24 @@ class PublishSubmissionAPIHandler(RESTAPIIntegrationHandler):
         :param publish_config: The publish configuration
         """
         try:
-            data = await self._prepare_datacite_data(registration, datacite, publish_config)
+            discovery_url = self._make_discovery_url(registration, publish_config)
 
             if not registration.dataciteUrl:
                 if publish_config.use_datacite_service:
-                    await self.datacite_handler.publish(data)
+                    publish_service: DataciteService = self.datacite_handler
                 elif publish_config.use_pid_service:
-                    await self.pid_handler.publish(data)
+                    publish_service = self.pid_handler
                 else:
                     raise SystemException(f"Invalid publish configuration: {to_json(publish_config)}")
 
-                datacite_url = data["data"]["attributes"]["url"]
-                await registration_service.update_datacite_url(registration.submissionId, datacite_url)
+                await publish_service.publish(
+                    registration,
+                    datacite,
+                    discovery_url,
+                    require_okm_field_of_science=publish_config.require_okm_field_of_science,
+                )
+
+                await registration_service.update_datacite_url(registration.submissionId, discovery_url)
         except Exception as ex:
             raise SystemException(
                 f"Failed to publish submission in DataCite. Please try again later: {str(ex)}"

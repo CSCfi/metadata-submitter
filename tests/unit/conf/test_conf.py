@@ -1,6 +1,6 @@
 import pytest
 
-from metadata_backend.conf.conf import DeploymentConfig
+from metadata_backend.conf.deployment import DeploymentConfig
 
 
 def test_config_defaults():

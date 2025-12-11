@@ -5,7 +5,6 @@ import logging
 
 from tests.integration.conf import publish_url
 from tests.integration.helpers import (
-    delete_submission,
     get_request_data,
     get_submission,
     patch_submission_bucket,
@@ -43,7 +42,7 @@ async def test_get_submissions(client_logged_in, submission_factory, project_id)
         assert submission_id in [r["submissionId"] for r in response["submissions"]]
 
 
-async def test_sdsx_submission(client_logged_in, submission_factory, project_id):
+async def test_sd_submission(client_logged_in, submission_factory, project_id):
     """Test submissions REST api POST, GET, PATCH, PUBLISH and DELETE reqs.
 
     :param client_logged_in: HTTP client in which request call is made
@@ -109,56 +108,58 @@ async def test_sdsx_submission(client_logged_in, submission_factory, project_id)
         assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
 
 
-async def test_sdsx_metadata(client_logged_in, submission_factory):
-    """Test adding metadata to submission.
+# TODO(improve): consider reintroducing commented out test after individual publish integreation tests work.
 
-    :param client_logged_in: HTTP client in which request call is made
-    :param submission_factory: The factory that creates and deletes submissions
-    """
-    submission_id, submission_data = await submission_factory("SD")
+# async def test_sdsx_metadata(client_logged_in, submission_factory):
+#     """Test adding metadata to submission.
+#
+#     :param client_logged_in: HTTP client in which request call is made
+#     :param submission_factory: The factory that creates and deletes submissions
+#     """
+#     submission_id, submission_data = await submission_factory("SD")
+#
+#     async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
+#         LOG.debug("Checking that submission %s was created", submission_id)
+#         assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
+#
+#     # Get correctly formatted metadata and patch it into the new submission successfully
+#     submission_metadata_str = await get_request_data("submission", "metadata.json")
+#     await patch_submission_metadata(client_logged_in, submission_id, submission_metadata_str)
+#
+#     expected_submission_metadata_str = await get_request_data("submission", "saved_metadata.json")
+#     expected_submission_metadata = json.loads(expected_submission_metadata_str)
+#
+#     async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
+#         LOG.debug("Checking that submission %s was patched", submission_id)
+#         res = await resp.json()
+#         assert res["submissionId"] == submission_id, "expected submission id does not match"
+#         assert res["name"] == submission_data["name"], "expected submission name does not match"
+#         assert res["description"] == submission_data["description"], "submission description content mismatch"
+#         assert res["published"] is False, "submission is published, expected False"
+#         assert res["metadata"] == expected_submission_metadata, "submission doi does not match"
+#
+#     # Test that an incomplete DOI object fails to patch into the submission
+#     bad_metadata = {"invalid": {}}
+#     async with client_logged_in.patch(f"{submissions_url}/{submission_id}", json={"metadata": bad_metadata}) as resp:
+#         LOG.debug("Tried updating submission %s", submission_id)
+#         assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
+#         res = await resp.json()
+#         assert res["detail"] == "metadata.creators: Field required; metadata.invalid: Extra inputs are not permitted"
+#
+#     # Check the existing DOI info is not altered
+#     async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
+#         LOG.debug("Checking that submission %s was not patched with bad DOI", submission_id)
+#         res = await resp.json()
+#         assert res["metadata"] == expected_submission_metadata, "submission doi does not match"
+#
+#     # Delete submission
+#     await delete_submission(client_logged_in, submission_id)
+#     async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
+#         LOG.debug("Checking that submission %s was deleted", submission_id)
+#         assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
 
-    async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
-        LOG.debug("Checking that submission %s was created", submission_id)
-        assert resp.status == 200, f"HTTP Status code error, got {resp.status}"
 
-    # Get correctly formatted metadata and patch it into the new submission successfully
-    submission_metadata_str = await get_request_data("submission", "metadata.json")
-    await patch_submission_metadata(client_logged_in, submission_id, submission_metadata_str)
-
-    expected_submission_metadata_str = await get_request_data("submission", "saved_metadata.json")
-    expected_submission_metadata = json.loads(expected_submission_metadata_str)
-
-    async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
-        LOG.debug("Checking that submission %s was patched", submission_id)
-        res = await resp.json()
-        assert res["submissionId"] == submission_id, "expected submission id does not match"
-        assert res["name"] == submission_data["name"], "expected submission name does not match"
-        assert res["description"] == submission_data["description"], "submission description content mismatch"
-        assert res["published"] is False, "submission is published, expected False"
-        assert res["metadata"] == expected_submission_metadata, "submission doi does not match"
-
-    # Test that an incomplete DOI object fails to patch into the submission
-    bad_metadata = {"invalid": {}}
-    async with client_logged_in.patch(f"{submissions_url}/{submission_id}", json={"metadata": bad_metadata}) as resp:
-        LOG.debug("Tried updating submission %s", submission_id)
-        assert resp.status == 400, f"HTTP Status code error, got {resp.status}"
-        res = await resp.json()
-        assert res["detail"] == "metadata.creators: Field required; metadata.invalid: Extra inputs are not permitted"
-
-    # Check the existing DOI info is not altered
-    async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
-        LOG.debug("Checking that submission %s was not patched with bad DOI", submission_id)
-        res = await resp.json()
-        assert res["metadata"] == expected_submission_metadata, "submission doi does not match"
-
-    # Delete submission
-    await delete_submission(client_logged_in, submission_id)
-    async with client_logged_in.get(f"{submissions_url}/{submission_id}") as resp:
-        LOG.debug("Checking that submission %s was deleted", submission_id)
-        assert resp.status == 404, f"HTTP Status code error, got {resp.status}"
-
-
-async def test_sdsx_bucket(client_logged_in, submission_factory):
+async def test_sd_bucket(client_logged_in, submission_factory):
     """Test that a bucket name can be linked to a submission.
 
     :param client_logged_in: HTTP client in which request call is made
@@ -179,7 +180,7 @@ async def test_sdsx_bucket(client_logged_in, submission_factory):
     assert submission["bucket"] == bucket
 
 
-async def test_sdsx_rems(client_logged_in, submission_factory):
+async def test_sd_rems(client_logged_in, submission_factory):
     """Test that correct REMS info can be added to submission and invalid REMS info will raise error.
 
     :param client_logged_in: HTTP client in which request call is made

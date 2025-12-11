@@ -10,9 +10,11 @@
 
 SD Submit API supports sensitive data submissions.
 
-The SD Submit UI is implemented here: [metadata-submitter-frontend](https://github.com/CSCfi/metadata-submitter-frontend).
+The SD Submit UI is implemented
+here: [metadata-submitter-frontend](https://github.com/CSCfi/metadata-submitter-frontend).
 
 SD Submit API uses the following external services via their respective API:
+
 - SD Connect ([source code](https://github.com/CSCfi/swift-browser-ui))
 - Imaging Beacon ([source code](https://github.com/CSCfi/imaging-beacon))
 - NeIC Sensitive Data Archive ([docs](https://neic-sda.readthedocs.io/en/latest/))
@@ -77,6 +79,7 @@ pre-commit install
 ```
 
 If needed, activate the virtual environment using:
+
 ```bash
 source .venv/bin/activate
 ```
@@ -98,17 +101,24 @@ make get_env  # This will prompt a login in the web browser
 
 ### Run the web service and database locally
 
-Launch both server and database with Docker by running: `docker compose up --build` (add `-d` flag to the command to run containers in the background).
+Launch both server and database with Docker by running: `docker compose up --build` (add `-d` flag to the command to run
+containers in the background).
 
 Server can then be found from `http://localhost:5430`.
 
-> **If you also need to initiate the graphical UI for developing the API**, check out [metadata-submitter-frontend](https://github.com/CSCfi/metadata-submitter-frontend/) repository and follow its development instructions. You will then also need to set the `REDIRECT_URL` environment variable to the UI address (e.g. add `REDIRECT_URL=http://localhost:3000` into the `.env` file) and relaunch the development environment as specified above.
+> **If you also need to initiate the graphical UI for developing the API**, check
+> out [metadata-submitter-frontend](https://github.com/CSCfi/metadata-submitter-frontend/) repository and follow its
+> development instructions. You will then also need to set the `REDIRECT_URL` environment variable to the UI address (e.g.
+> add `REDIRECT_URL=http://localhost:3000` into the `.env` file) and relaunch the development environment as specified
+> above.
 
-Alternatively, there is a more convenient method for developing the SD Submit API via a _**Python virtual environment using a Procfile**_, which is described here below.
+Alternatively, there is a more convenient method for developing the SD Submit API via a
+_**Python virtual environment using a Procfile**_, which is described here below.
 
 ### Developing with Python virtual environment
 
-Please use `uv` to create the virtual environment for development and testing as instructed above. Then follows these instructions:
+Please use `uv` to create the virtual environment for development and testing as instructed above. Then follows these
+instructions:
 
 ```bash
 # Optional: update references for metax integration
@@ -127,7 +137,8 @@ You will have to change the hostnames to `localhost`.
 cp .env.example .env  # Make any changes you need to the file
 ```
 
-Secrets, which are used for testing against other services are fetched from Vault and added to the `.env` file with the following:
+Secrets, which are used for testing against other services are fetched from Vault and added to the `.env` file with the
+following:
 
 ```bash
 export VAULT_ADDR=  # Add correct URL here
@@ -141,15 +152,18 @@ uv run honcho start
 ```
 
 The development server should now be accessible at `localhost:5430`.
-If it doesn't work right away, check your settings in `.env` and restart the servers manually if you make changes to `.env` file.
+If it doesn't work right away, check your settings in `.env` and restart the servers manually if you make changes to
+`.env` file.
 
 ### OpenAPI Specification docs with Swagger
 
-Swagger UI for viewing the API specs is already available in the production docker image. During development, you can enable it by executing: `bash scripts/swagger/generate.sh`.
+Swagger UI for viewing the API specs is already available in the production docker image. During development, you can
+enable it by executing: `bash scripts/swagger/generate.sh`.
 
 Restart the server, and the swagger docs will be available at http://localhost:5430/swagger.
 
 **Swagger docs requirements:**
+
 - `bash`
 - `Python 3.13+`
 - `PyYaml` (installed via the development dependencies)
@@ -157,9 +171,11 @@ Restart the server, and the swagger docs will be available at http://localhost:5
 
 ### Keeping Python requirements up to date
 
-The project Python package dependencies are automatically being kept up to date with [renovatebot](https://github.com/renovatebot/renovate).
+The project Python package dependencies are automatically being kept up to date
+with [renovatebot](https://github.com/renovatebot/renovate).
 
-Dependencies are added and removed to the project using the `uv` commands or by directly editing the `pyproject.toml` file. In the latter case run `uv sync` or `uv sync --dev` to update the `uv.lock` file.
+Dependencies are added and removed to the project using the `uv` commands or by directly editing the `pyproject.toml`
+file. In the latter case run `uv sync` or `uv sync --dev` to update the `uv.lock` file.
 
 </details>
 
@@ -167,9 +183,11 @@ Dependencies are added and removed to the project using the `uv` commands or by 
 
 <details><summary>Click to expand</summary>
 
-Development team members should check internal [contributing guidelines for Gitlab](https://gitlab.ci.csc.fi/groups/sds-dev/-/wikis/Guides/Contributing).
+Development team members should check
+internal [contributing guidelines for Gitlab](https://gitlab.ci.csc.fi/groups/sds-dev/-/wikis/Guides/Contributing).
 
-If you are not part of CSC and our development team, your help is nevertheless very welcome. Please see [contributing guidelines for Github](CONTRIBUTING.md).
+If you are not part of CSC and our development team, your help is nevertheless very welcome. Please
+see [contributing guidelines for Github](CONTRIBUTING.md).
 
 </details>
 
@@ -177,20 +195,34 @@ If you are not part of CSC and our development team, your help is nevertheless v
 
 <details><summary>Click to expand</summary>
 
-Majority of the automated tests (such as unit tests, code style checks etc.) can be run with [`tox`](https://tox.wiki/en/4.24.2/) automation. Integration tests are run separately with [`pytest`](https://docs.pytest.org/en/stable/) as they require the full test environment to be running with a local database instance and all the mocked versions of related external services.
+Please use `uv` to create the virtual environment and run unit and integration tests
+as instructed below. A pre-commit hook runs the unit tests before each commit, and the
+unit test are also run in the CI/CD pipeline for every merge request.
 
-Please use `uv` to create the virtual environment for development and testing as instructed above. Then follows the minimal instructions below for executing the automated tests of this project locally. Run the below commands in the project root:
+### Unit tests
+
+Linting and unit tests are run by using tox:
 
 ```bash
-# Unit tests, linting, etc.
 tox -p auto
+```
 
-# Integration tests
-docker compose --env-file .env.example up --build -d
+### Integration tests
+
+Integration tests can be run using mock services:
+
+```bash
+docker compose --env-file tests/integration/.env.example up --build -d
 pytest tests/integration
 ```
 
-Additionally, we use pre-commit hooks in the CI/CD pipeline for automated tests in every merge/pull request. The pre-commit hooks include some extra tests such as spellchecking so installing pre-commit hooks locally (with `pre-commit install`) is also useful.
+or using external services configured with secrets:
+
+```bash
+make get_env
+docker compose --env-file tests/integration/.env up --build -d
+pytest tests/integration
+```
 
 </details>
 
@@ -199,12 +231,14 @@ Additionally, we use pre-commit hooks in the CI/CD pipeline for automated tests 
 <details><summary>Click to expand</summary>
 
 Production version can be built and run with following docker commands:
+
 ```bash
 docker build --no-cache -f dockerfiles/Dockerfile -t cscfi/metadata-submitter .
 docker run -p 5430:5430 cscfi/metadata-submitter
 ```
 
-The [frontend](https://github.com/CSCfi/metadata-submitter-frontend) is built and added as static files to the backend deployment with this method.
+The [frontend](https://github.com/CSCfi/metadata-submitter-frontend) is built and added as static files to the backend
+deployment with this method.
 
 > Helm charts for a kubernetes cluster deployment will also be available soon™️.
 

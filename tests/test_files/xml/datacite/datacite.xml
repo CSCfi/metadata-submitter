@@ -39,11 +39,11 @@
     <resourceType resourceTypeGeneral="Dataset">Dataset</resourceType>
 
     <rightsList>
-        <rights rightsIdentifier="CC-BY-4.0"
+        <rights rightsIdentifier="cc-by-4.0"
                 rightsIdentifierScheme="SPDX"
                 schemeURI="https://spdx.org/licenses/"
-                rightsURI="https://creativecommons.org/licenses/by/4.0/">
-            Creative Commons Attribution 4.0 International License
+                rightsURI="https://creativecommons.org/licenses/by/4.0/legalcode">
+            Creative Commons Attribution 4.0 International
         </rights>
     </rightsList>
 
