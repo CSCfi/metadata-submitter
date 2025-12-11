@@ -9,6 +9,9 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- Overhauled integration test setup to accommodate testing against test DataCite and PID API services.
+- Updated DataCite schema handling (types, rightsList, geolocation points, polygon handling) and improved BigPicture XML/DataCite parsing.
+- Refactored PID, DataCite, OIDC, and deployment environment configurations to use Pydantic and reorganized them under conf/ for isolated loading.
 - simplified registration related unit tests.
 - support a single registration only in Postgres. Simplifies schema e.g. replaces registration_id with submission_id.
 - support a single registration only in API. Simplifies code e.g. replaces list of registrations with a single one.
@@ -98,6 +101,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Fixed
 
+- (users) Submission registration endpoint now returns 404 when publish has not been called.
 - DataCite integration test mock service can now generate a DOI.
 - Dockerfile to run Python in the given normal user `submitter` space.
 - several bugs related to submission.json and metadata object submissions.
@@ -112,6 +116,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- Low-level integration testing for DataCite and CSC PID service handlers, including DOI creation logic and new GET support.
+- Centralized DataCiteService providing DataCite and CSC PID DOI creation, publishing, and shared functionality.
 - CI/CD pipeline for automatically creating API docker images
 - Update DataCite and REMS URLs in BigPicture landing page XML.
 - tests for reading env variables using BaseSettings.
@@ -185,6 +191,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Removed
 
+- DataCite and PID mock services from testing environment.
 - DATACITE_PREFIX mock environmental parameter as unnecessary.
 - support for DataCite related study references.
 - support for DataCite study registration.
