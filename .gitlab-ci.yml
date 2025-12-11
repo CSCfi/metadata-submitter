@@ -42,10 +42,9 @@ unit-test:
     - curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="/uv" sh
     - export PATH="/uv:/root/.local/bin:$PATH"
     - uv tool install tox --with tox-uv
-    - uv sync --dev
     - uv tool run pre-commit run test --all-files -c .pre-commit-config.yaml --show-diff-on-failure --color never
-    - uv run coverage report --precision=1
-  coverage: '/TOTAL.*\s+(\d+\%)/'
+    - uv tool run coverage report --precision=1
+  coverage: '/TOTAL.*?([\d.]+%)/'
 
 integration-test:
   stage: test
@@ -59,9 +58,9 @@ integration-test:
   script:
     - rm -f docker-compose.override.yml
     # Start containerized services on the CI runner and wait until they are healthy
-    - docker compose -f docker-compose.yml --env-file .env.example --profile ci up --build -d --wait
+    - docker compose -f docker-compose.yml --env-file tests/integration/.env.example --profile ci up --build -d --wait
     # List statuses of the containers of the current CI job
-    - docker compose -f docker-compose.yml --env-file .env.example --profile ci ps
+    - docker compose -f docker-compose.yml --env-file tests/integration/.env.example --profile ci ps
     # Run integration tests inside the sd-submit-api container
     - docker compose --profile ci exec sd-submit-api pytest tests/integration
   after_script:

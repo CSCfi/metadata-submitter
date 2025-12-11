@@ -192,7 +192,7 @@ see [contributing guidelines for Github](CONTRIBUTING.md).
 
 <details><summary>Click to expand</summary>
 
-For local testing, see [above instructions](#initialise-the-project-for-development-and-testing) 
+For local testing, see [above instructions](#initialise-the-project-for-development-and-testing)
 for installing `uv` to create a virtual environment.
 
 Install all testing dependencies in the virtual environment by running the following commands:
