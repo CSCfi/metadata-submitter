@@ -11,7 +11,7 @@ from metadata_backend.api.auth import AccessHandler
 from metadata_backend.api.services.auth import (
     JWT_SECRET_ENV,
 )
-from metadata_backend.conf.conf import OIDCConfig
+from metadata_backend.conf.oidc import OIDCConfig
 from metadata_backend.server import init
 
 from ..mockups import Mock_Request

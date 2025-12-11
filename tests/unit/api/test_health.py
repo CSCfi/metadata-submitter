@@ -17,8 +17,8 @@ class HealthTestCase(AioHTTPTestCase):
         """Configure values and patches for testing."""
         self.health_status = {
             "services": {
-                "datacite": {"status": "Down"},
-                "pid": {"status": "Down"},
+                "datacite": {"status": "Error"},
+                "pid": {"status": "Error"},
                 "metax": {"status": "Down"},
                 "rems": {"status": "Down"},
                 "aai": {"status": "Error"},

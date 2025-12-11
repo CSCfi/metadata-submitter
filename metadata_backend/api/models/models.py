@@ -71,7 +71,7 @@ class Files(RootModel[list[File]]):
 class Registration(StrictBaseModel):
     """A registration entry to an external service."""
 
-    submissionId: str = None
+    submissionId: Optional[str] = None
     objectId: Optional[str] = None
     objectType: Optional[str] = None
     title: str

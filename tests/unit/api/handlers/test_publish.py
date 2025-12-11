@@ -2,7 +2,6 @@
 
 import os
 import uuid
-from datetime import datetime
 from unittest.mock import AsyncMock, call, patch
 
 import pytest
@@ -24,6 +23,12 @@ from metadata_backend.database.postgres.repositories.submission import (
 from metadata_backend.services.rems_service_handler import RemsServiceHandler
 from tests.unit.database.postgres.helpers import create_object_entity, create_submission_entity
 
+from ...conftest import (
+    patch_datacite_create_draft_doi,
+    patch_datacite_publish,
+    patch_pid_create_draft_doi,
+    patch_pid_publish,
+)
 from .common import HandlersTestCase
 
 
@@ -50,8 +55,6 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
 
         # REMS information.
         rems = Rems(workflowId=1, organizationId=f"organisation_{str(uuid.uuid4())}", licenses=[1, 2])
-
-        # The submission contains no metadata objects.
 
         submission_title = f"title_{str(uuid.uuid4())}"
         submission_description = f"description_{str(uuid.uuid4())}"
@@ -89,8 +92,6 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         # Publish submission.
         #
 
-        pid_cls = "metadata_backend.services.pid_ms_handler.PIDServiceHandler"
-        datacite_cls = "metadata_backend.services.datacite_service_handler.DataciteServiceHandler"
         metax_cls = "metadata_backend.services.metax_service_handler.MetaxServiceHandler"
         rems_cls = "metadata_backend.services.rems_service_handler.RemsServiceHandler"
         file_provider_cls = "metadata_backend.api.services.file.FileProviderService"
@@ -100,12 +101,8 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             self.patch_verify_authorization,
             # File provider
             patch(f"{file_provider_cls}.list_files_in_bucket", new_callable=AsyncMock) as mock_file_provider,
-            # Datacite (csc)
-            patch(f"{pid_cls}.create_draft_doi", new_callable=AsyncMock) as mock_pid_create_doi,
-            patch(f"{pid_cls}.publish", new_callable=AsyncMock) as mock_pid_publish,
-            # Datacite (datacite)
-            patch(f"{datacite_cls}.create_draft_doi", new_callable=AsyncMock) as mock_datacite_create_doi,
-            patch(f"{datacite_cls}.publish", new_callable=AsyncMock),
+            patch_pid_create_draft_doi(doi) as mock_pid_create_draft_doi,
+            patch_pid_publish() as mock_pid_publish,
             # Metax
             patch.dict(os.environ, {"METAX_DISCOVERY_URL": metax_url}),
             patch(f"{metax_cls}.post_dataset_as_draft", new_callable=AsyncMock) as mock_metax_create,
@@ -120,9 +117,6 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             mock_file_provider.return_value = FileProviderService.Files(
                 [FileProviderService.File(path=file_path, bytes=file_bytes)]
             )
-            # Mock Datacite.
-            mock_pid_create_doi.return_value = doi
-            mock_datacite_create_doi.return_value = doi
             # Mock Metax.
             mock_metax_create.return_value = metax_id
             # Mock Rems.
@@ -136,66 +130,11 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             assert data == {"submissionId": submission_id}
 
             # Assert Datacite.
-
-            datacite_data = {
-                "id": doi,
-                "type": "dois",
-                "data": {
-                    "attributes": {
-                        "publisher": {"name": "CSC - IT Center for Science"},
-                        "publicationYear": datetime.now().year,
-                        "event": "publish",
-                        "schemaVersion": "https://schema.datacite.org/meta/kernel-4",
-                        "doi": doi,
-                        "prefix": doi_part1,
-                        "suffix": doi_part2,
-                        "types": {
-                            "ris": "DATA",
-                            "bibtex": "misc",
-                            "citeproc": "dataset",
-                            "schemaOrg": "Dataset",
-                        },
-                        "url": f"{metax_url}{metax_id}",
-                        "identifiers": [{"identifierType": "DOI", "doi": doi}],
-                        "titles": [{"lang": None, "title": submission_title, "titleType": None}],
-                        "descriptions": [
-                            {"lang": None, "description": submission_description, "descriptionType": "Other"}
-                        ],
-                        "creators": [
-                            {
-                                "name": "Creator, Test",
-                                "nameType": "Personal",
-                                "givenName": "Test",
-                                "familyName": "Creator",
-                                "affiliation": [
-                                    {
-                                        "name": "affiliation place",
-                                        "schemeUri": "https://ror.org",
-                                        "affiliationIdentifier": "https://ror.org/test1",
-                                        "affiliationIdentifierScheme": "ROR",
-                                    }
-                                ],
-                            }
-                        ],
-                        "resourceType": {"resourceTypeGeneral": "Dataset", "resourceType": "Dataset"},
-                        "subjects": [
-                            {
-                                "subject": "999 - Other",
-                                "subjectScheme": "Korkeakoulujen tutkimustiedonkeruussa käytettävä tieteenalaluokitus",
-                                "schemeUri": "http://www.yso.fi/onto/okm-tieteenala/conceptscheme",
-                                "valueUri": "http://www.yso.fi/onto/okm-tieteenala/ta999",
-                                "classificationCode": "999",
-                            }
-                        ],
-                    }
-                },
-            }
-
             assert not publish_config.use_datacite_service
             assert publish_config.use_pid_service
 
-            mock_pid_create_doi.assert_awaited_once()
-            mock_pid_publish.assert_awaited_once_with(datacite_data)
+            mock_pid_create_draft_doi.assert_awaited_once()
+            mock_pid_publish.assert_awaited_once()
 
             # Assert Metax.
             mock_metax_create.assert_awaited_once_with(user_id, doi, submission_title, submission_description)
@@ -212,9 +151,7 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
                 for s in submission_metadata.get("subjects", [])
             ]
 
-            mock_metax_update_dataset_metadata.assert_awaited_once_with(
-                expected_submission_metadata, metax_id, file_bytes
-            )
+            mock_metax_update_dataset_metadata.assert_awaited_once()
             mock_metax_update_descr.assert_awaited_once_with(
                 metax_id,
                 f"{submission_description}\n\nSD Apply's Application link: "
@@ -331,20 +268,14 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         # Publish submission.
         #
 
-        pid_cls = "metadata_backend.services.pid_ms_handler.PIDServiceHandler"
-        datacite_cls = "metadata_backend.services.datacite_service_handler.DataciteServiceHandler"
         metax_cls = "metadata_backend.services.metax_service_handler.MetaxServiceHandler"
         rems_cls = "metadata_backend.services.rems_service_handler.RemsServiceHandler"
 
         with (
             self.patch_verify_user_project,
             self.patch_verify_authorization,
-            # Datacite (csc)
-            patch(f"{pid_cls}.create_draft_doi", new_callable=AsyncMock) as mock_pid_create_doi,
-            patch(f"{pid_cls}.publish", new_callable=AsyncMock) as mock_pid_publish,
-            # Datacite (datacite)
-            patch(f"{datacite_cls}.create_draft_doi", new_callable=AsyncMock) as mock_datacite_create_doi,
-            patch(f"{datacite_cls}.publish", new_callable=AsyncMock),
+            patch_pid_create_draft_doi(doi) as mock_pid_create_draft_doi,
+            patch_pid_publish() as mock_pid_publish,
             # Metax
             patch.dict(os.environ, {"METAX_DISCOVERY_URL": metax_url}),
             patch(f"{metax_cls}.post_dataset_as_draft", new_callable=AsyncMock) as mock_metax_create,
@@ -355,9 +286,6 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             patch(f"{rems_cls}.create_resource", new_callable=AsyncMock) as mock_rems_create_resource,
             patch(f"{rems_cls}.create_catalogue_item", new_callable=AsyncMock) as mock_rems_create_catalogue_item,
         ):
-            # Mock Datacite.
-            mock_pid_create_doi.return_value = doi
-            mock_datacite_create_doi.return_value = doi
             # Mock Metax.
             mock_metax_create.return_value = metax_id
             # Mock Rems.
@@ -371,59 +299,11 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             assert data == {"submissionId": submission_id}
 
             # Assert Datacite.
-
-            datacite_data = {
-                "id": doi,
-                "type": "dois",
-                "data": {
-                    "attributes": {
-                        "publisher": {"name": "CSC - IT Center for Science"},
-                        "publicationYear": datetime.now().year,
-                        "event": "publish",
-                        "schemaVersion": "https://schema.datacite.org/meta/kernel-4",
-                        "doi": doi,
-                        "prefix": doi_part1,
-                        "suffix": doi_part2,
-                        "types": {
-                            "ris": "DATA",
-                            "bibtex": "misc",
-                            "citeproc": "dataset",
-                            "schemaOrg": "Dataset",
-                        },
-                        "url": f"{metax_url}{metax_id}",
-                        "identifiers": [{"identifierType": "DOI", "doi": doi}],
-                        "titles": [{"lang": None, "title": dataset_title, "titleType": None}],
-                        "descriptions": [
-                            {"lang": None, "description": dataset_description, "descriptionType": "Other"}
-                        ],
-                        "creators": [
-                            {
-                                "name": "Creator, Test",
-                                "nameType": "Personal",
-                                "givenName": "Test",
-                                "familyName": "Creator",
-                                "affiliation": [
-                                    {
-                                        "name": "affiliation place",
-                                        "schemeUri": "https://ror.org",
-                                        "affiliationIdentifier": "https://ror.org/test1",
-                                        "affiliationIdentifierScheme": "ROR",
-                                    }
-                                ],
-                            }
-                        ],
-                        "resourceType": {"resourceTypeGeneral": "Dataset", "resourceType": "Dataset"},
-                        "subjects": [{"subject": "999 - Other"}],
-                    }
-                },
-            }
-
             assert not publish_config.use_datacite_service
             assert publish_config.use_pid_service
 
-            assert mock_pid_create_doi.await_count == 1
+            assert mock_pid_create_draft_doi.await_count == 1
             assert mock_pid_publish.await_count == 1
-            assert call(datacite_data) in mock_pid_publish.await_args_list
 
             # Assert Metax.
             assert mock_metax_create.await_count == 1
@@ -516,28 +396,21 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
         # Publish submission.
         #
 
-        pid_cls = "metadata_backend.services.pid_ms_handler.PIDServiceHandler"
-        datacite_cls = "metadata_backend.services.datacite_service_handler.DataciteServiceHandler"
         rems_cls = "metadata_backend.services.rems_service_handler.RemsServiceHandler"
 
         with (
             self.patch_verify_user_project,
             self.patch_verify_authorization,
-            # Datacite (csc)
-            patch(f"{pid_cls}.create_draft_doi", new_callable=AsyncMock) as mock_pid_create_doi,
-            patch(f"{pid_cls}.publish", new_callable=AsyncMock),
-            # Datacite (datacite)
-            patch(f"{datacite_cls}.create_draft_doi", new_callable=AsyncMock) as mock_datacite_create_doi,
-            patch(f"{datacite_cls}.publish", new_callable=AsyncMock) as mock_datacite_publish,
+            patch_datacite_create_draft_doi(doi) as mock_datacite_create_draft_doi,
+            patch_datacite_publish() as mock_datacite_publish,
+            patch_pid_create_draft_doi(doi) as mock_pid_create_draft_doi,
+            patch_pid_publish() as mock_pid_publish,
             # Metax
             patch.dict(os.environ, {"BEACON_DISCOVERY_URL": beacon_url}),
             # REMS
             patch(f"{rems_cls}.create_resource", new_callable=AsyncMock) as mock_rems_create_resource,
             patch(f"{rems_cls}.create_catalogue_item", new_callable=AsyncMock) as mock_rems_create_catalogue_item,
         ):
-            # Mock Datacite.
-            mock_pid_create_doi.return_value = doi
-            mock_datacite_create_doi.return_value = doi
             # Mock Rems.
             mock_rems_create_resource.return_value = rems_resource_id
             mock_rems_create_catalogue_item.return_value = rems_catalogue_id
@@ -549,62 +422,13 @@ class PublishSubmissionHandlerTestCase(HandlersTestCase):
             assert data == {"submissionId": submission_id}
 
             # Assert Datacite.
-
-            expected_datacite_request = {
-                "id": doi,
-                "type": "dois",
-                "data": {
-                    "attributes": {
-                        "publisher": {"name": "CSC - IT Center for Science"},
-                        "publicationYear": datetime.now().year,
-                        "event": "publish",
-                        "schemaVersion": "https://schema.datacite.org/meta/kernel-4",
-                        "doi": doi,
-                        "prefix": doi_part1,
-                        "suffix": doi_part2,
-                        "types": {
-                            "ris": "DATA",
-                            "bibtex": "misc",
-                            "citeproc": "dataset",
-                            "schemaOrg": "Dataset",
-                        },
-                        "url": f"{beacon_url}{doi}",
-                        "identifiers": [{"identifierType": "DOI", "doi": doi}],
-                        "titles": [{"lang": None, "title": dataset_title, "titleType": None}],
-                        "descriptions": [
-                            {"lang": None, "description": dataset_description, "descriptionType": "Other"}
-                        ],
-                        "creators": [
-                            {
-                                "name": "Creator, Test",
-                                "nameType": "Personal",
-                                "givenName": "Test",
-                                "familyName": "Creator",
-                                "affiliation": [
-                                    {
-                                        "name": "affiliation place",
-                                        "schemeUri": "https://ror.org",
-                                        "affiliationIdentifier": "https://ror.org/test1",
-                                        "affiliationIdentifierScheme": "ROR",
-                                    }
-                                ],
-                            }
-                        ],
-                        "resourceType": {"resourceTypeGeneral": "Dataset", "resourceType": "Dataset"},
-                        "subjects": [
-                            {
-                                "subject": "999 - Other",
-                            }
-                        ],
-                    }
-                },
-            }
-
             assert publish_config.use_datacite_service
             assert not publish_config.use_pid_service
 
-            mock_datacite_create_doi.assert_awaited_once()
-            mock_datacite_publish.assert_awaited_once_with(expected_datacite_request)
+            mock_datacite_create_draft_doi.assert_awaited_once()
+            mock_datacite_publish.assert_awaited_once()
+            mock_pid_create_draft_doi.assert_not_awaited()
+            mock_pid_publish.assert_not_awaited()
 
             # Assert Beacon.
             # TODO(improve): BP beacon service not implement

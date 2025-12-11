@@ -4,6 +4,7 @@ import io
 import json
 import uuid
 from collections import defaultdict
+from pathlib import Path
 from xml.etree import ElementTree
 
 from metadata_backend.api.models.models import Files, Objects
@@ -33,6 +34,11 @@ from metadata_backend.conf.conf import API_PREFIX
 from ..processors.xml.test_datacite import assert_datacite
 from .common import HandlersTestCase
 
+TEST_ROOT_DIR = Path(__file__).parent.parent.parent.parent / "test_files"
+SUBMISSION_JSON = TEST_ROOT_DIR / "submission" / "submission.json"
+BP_SUBMISSION_DIR = TEST_ROOT_DIR / "xml" / "bigpicture"
+DATACITE_SUBMISSION_DIR = TEST_ROOT_DIR / "xml" / "datacite"
+
 
 class ObjectHandlerTestCase(HandlersTestCase):
     """Object API endpoint class test cases."""
@@ -40,17 +46,14 @@ class ObjectHandlerTestCase(HandlersTestCase):
     async def test_submission_sd(self):
         """Test SD submission."""
 
-        sd_submission_dir = self.TESTFILES_ROOT / "submission"
         workflow = SubmissionWorkflow.SD.value
         project_id = self.project_id
 
-        sd_file = "submission.json"
-
-        file_data = {sd_file: (sd_submission_dir / sd_file).open("rb")}
+        file_data = SUBMISSION_JSON.open("rb")
 
         # Get submission name.
-        submission_name = json.load(file_data[sd_file]).get("name")
-        file_data[sd_file].seek(0)
+        submission_name = json.load(file_data).get("name")
+        file_data.seek(0)
 
         with self.patch_verify_user_project, self.patch_verify_authorization:
             # Check if submission exists.
@@ -98,9 +101,9 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
             async def _assert_update(_response):
                 assert _response.status == 200
-                assert submission.model_dump(exclude={"lastModified"}) == Submission.model_validate(
+                assert submission.model_dump(exclude={"lastModified", "bucket"}) == Submission.model_validate(
                     await _response.json()
-                ).model_dump(exclude={"lastModified"})
+                ).model_dump(exclude={"lastModified", "bucket"})
 
             async def _assert_not_allowed(_response):
                 assert _response.status == 400
@@ -109,12 +112,12 @@ class ObjectHandlerTestCase(HandlersTestCase):
             # Test update of full document with changed submission title and description.
             submission.title = "UpdatedTestTitle"
             submission.description = "UpdatedTestDescription"
-            file_data = {sd_file: (sd_submission_dir / sd_file).open("rb")}
-            updated_submission_dict = json.load(file_data[sd_file])
+            file_data = SUBMISSION_JSON.open("rb")
+            updated_submission_dict = json.load(file_data)
             updated_submission_dict["title"] = submission.title
             updated_submission_dict["description"] = submission.description
             submission_bytes = json.dumps(updated_submission_dict).encode("utf-8")
-            file_data[sd_file] = io.BytesIO(submission_bytes)  # type: ignore
+            file_data = io.BytesIO(submission_bytes)  # type: ignore
 
             response = await self.client.patch(
                 f"{API_PREFIX}/submit/{workflow}/{submission_id}?projectId={project_id}", data=file_data
@@ -127,6 +130,13 @@ class ObjectHandlerTestCase(HandlersTestCase):
             response = await self.client.patch(
                 f"{API_PREFIX}/submit/{workflow}/{submission_id}?projectId={project_id}",
                 json={"title": submission.title, "description": submission.description},
+            )
+            await _assert_update(response)
+
+            # Test set submission bucket.
+            response = await self.client.patch(
+                f"{API_PREFIX}/submit/{workflow}/{submission_id}?projectId={project_id}",
+                json={"bucket": f"bucket_{uuid.uuid4()}"},
             )
             await _assert_update(response)
 
@@ -154,8 +164,6 @@ class ObjectHandlerTestCase(HandlersTestCase):
     async def test_submission_bp(self):
         """Test BigPicture submission."""
 
-        bp_submission_dir = self.TESTFILES_ROOT / "xml" / "bigpicture"
-        datacite_submission_dir = self.TESTFILES_ROOT / "xml" / "datacite"
         workflow = SubmissionWorkflow.BP.value
         project_id = self.project_id
         xml_config = BP_FULL_SUBMISSION_XML_OBJECT_CONFIG
@@ -226,9 +234,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
 
         for test_datacite in [True, False]:
             # Read XML files.
-            file_data = await self._read_bp_files(
-                bp_files, bp_submission_dir, datacite_files, datacite_submission_dir, test_datacite
-            )
+            file_data = await self._read_submission_files(bp_files, datacite_files, test_datacite)
 
             # Get submission name.
             dataset_xml = ElementTree.parse(file_data["dataset.xml"]).getroot()
@@ -278,9 +284,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
                 #
 
                 # Read XML files.
-                file_data = await self._read_bp_files(
-                    bp_files, bp_submission_dir, datacite_files, datacite_submission_dir, test_datacite
-                )
+                file_data = await self._read_submission_files(bp_files, datacite_files, test_datacite)
 
                 response = await self.client.patch(
                     f"{API_PREFIX}/submit/{workflow}/{submission_id}",
@@ -329,9 +333,7 @@ class ObjectHandlerTestCase(HandlersTestCase):
                 #
 
                 # Read XML files.
-                file_data = await self._read_bp_files(
-                    updated_bp_files, bp_submission_dir, datacite_files, datacite_submission_dir, test_datacite
-                )
+                file_data = await self._read_submission_files(updated_bp_files, datacite_files, test_datacite)
 
                 response = await self.client.patch(
                     f"{API_PREFIX}/submit/{workflow}/{submission_id}",
@@ -399,13 +401,13 @@ class ObjectHandlerTestCase(HandlersTestCase):
                             assert updated_obj.objectId not in [o.objectId for o in created_objects]
 
     @staticmethod
-    async def _read_bp_files(bp_files, bp_submission_dir, datacite_files, datacite_submission_dir, test_datacite):
+    async def _read_submission_files(bp_files, datacite_files, test_datacite):
         file_data = {}
         for file in bp_files:
-            file_data[file] = (bp_submission_dir / file).open("rb")
+            file_data[file] = (BP_SUBMISSION_DIR / file).open("rb")
         if test_datacite:
             for file in datacite_files:
-                file_data[file] = (datacite_submission_dir / file).open("rb")
+                file_data[file] = (DATACITE_SUBMISSION_DIR / file).open("rb")
         return file_data
 
     @staticmethod

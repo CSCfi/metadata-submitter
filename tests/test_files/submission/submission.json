@@ -2,7 +2,6 @@
   "name": "TestName",
   "title": "TestTitle",
   "description": "TestDescription",
-  "bucket": "TestBucket",
   "rems": {
     "workflowId": 1,
     "organizationId": "CSC",
@@ -47,7 +46,7 @@
     ],
     "publicationYear": 2022,
     "version": "1.0",
-    "resourceType": {
+    "types": {
       "resourceTypeGeneral": "Dataset",
       "resourceType": "Dataset"
     },
@@ -104,13 +103,13 @@
     "formats": [
       "text/csv"
     ],
-    "rights": [
+    "rightsList": [
       {
-        "rights": "Creative Commons Attribution 4.0 International License",
-        "rightsIdentifier": "CC-BY-4.0",
+        "rights": "Creative Commons Attribution 4.0 International",
+        "rightsIdentifier": "cc-by-4.0",
         "rightsIdentifierScheme": "SPDX",
         "schemeUri": "https://spdx.org/licenses/",
-        "rightsUri": "https://creativecommons.org/licenses/by/4.0/"
+        "rightsUri": "https://creativecommons.org/licenses/by/4.0/legalcode"
       }
     ],
     "descriptions": [
@@ -124,41 +123,53 @@
       {
         "geoLocationPlace": "Helsinki",
         "geoLocationPoint": {
-          "pointLatitude": "60.1699",
-          "pointLongitude": "24.9384"
+          "pointLatitude": 60.1699,
+          "pointLongitude": 24.9384
         },
         "geoLocationBox": {
-          "westBoundLongitude": "24.0",
-          "eastBoundLongitude": "25.0",
-          "southBoundLatitude": "60.0",
-          "northBoundLatitude": "61.0"
+          "westBoundLongitude": 24.0,
+          "eastBoundLongitude": 25.0,
+          "southBoundLatitude": 60.0,
+          "northBoundLatitude": 61.0
         },
         "geoLocationPolygon": [
           {
-            "pointLatitude": "41.991",
-            "pointLongitude": "-71.032"
+            "polygonPoint": {
+              "pointLatitude": 41.991,
+              "pointLongitude": -71.032
+            }
           },
           {
-            "pointLatitude": "42.893",
-            "pointLongitude": "-69.622"
+            "polygonPoint": {
+              "pointLatitude": 42.893,
+              "pointLongitude": -69.622
+            }
           },
           {
-            "pointLatitude": "41.991",
-            "pointLongitude": "-68.211"
+            "polygonPoint": {
+              "pointLatitude": 41.991,
+              "pointLongitude": -68.211
+            }
           },
           {
-            "pointLatitude": "41.090",
-            "pointLongitude": "-69.622"
+            "polygonPoint": {
+              "pointLatitude": 41.090,
+              "pointLongitude": -69.622
+            }
           },
           {
-            "pointLatitude": "41.991",
-            "pointLongitude": "-71.032"
+            "polygonPoint": {
+              "pointLatitude": 41.991,
+              "pointLongitude": -71.032
+            }
+          },
+          {
+            "inPolygonPoint": {
+              "pointLatitude": 41.500,
+              "pointLongitude": -69.800
+            }
           }
-        ],
-        "inPolygonPoint": {
-          "pointLatitude": "41.500",
-          "pointLongitude": "-69.800"
-        }
+        ]
       }
     ],
     "fundingReferences": [

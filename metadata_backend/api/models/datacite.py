@@ -340,17 +340,32 @@ class Description(StrictBaseModel):
 class GeoLocationPoint(StrictBaseModel):
     """Datacite geographic location point."""
 
-    pointLatitude: str
-    pointLongitude: str
+    pointLatitude: float
+    pointLongitude: float
 
 
 class GeoLocationBox(StrictBaseModel):
     """Datacite geographic location box."""
 
-    westBoundLongitude: str
-    eastBoundLongitude: str
-    southBoundLatitude: str
-    northBoundLatitude: str
+    westBoundLongitude: float
+    eastBoundLongitude: float
+    southBoundLatitude: float
+    northBoundLatitude: float
+
+
+class GeoLocationPolygonPoint(StrictBaseModel):
+    """Datacite geographic polygon."""
+
+    polygonPoint: GeoLocationPoint | None = None
+    inPolygonPoint: GeoLocationPoint | None = None
+
+    @model_validator(mode="after")
+    def check_lne_exists(self) -> "GeoLocationPolygonPoint":
+        if (self.polygonPoint is None and self.inPolygonPoint is None) or (
+            self.polygonPoint is not None and self.inPolygonPoint is not None
+        ):
+            raise ValueError("Exactly one of 'polygonPoint' or 'inPolygonPoint' must be provided")
+        return self
 
 
 class GeoLocation(StrictBaseModel):
@@ -359,8 +374,7 @@ class GeoLocation(StrictBaseModel):
     geoLocationPlace: str | None = None
     geoLocationPoint: GeoLocationPoint | None = None
     geoLocationBox: GeoLocationBox | None = None
-    geoLocationPolygon: list[GeoLocationPoint] | None = None
-    inPolygonPoint: Optional[GeoLocationPoint] = None
+    geoLocationPolygon: list[GeoLocationPolygonPoint] | None = None
 
 
 class FundingReference(StrictBaseModel):
@@ -398,8 +412,8 @@ class DataCiteMetadata(StrictBaseModel):
     publisher: Publisher = Publisher()
     publicationYear: int | None = None  # Supported but ignored
     version: str | None = None
-    rights: list[Rights] | None = None
-    resourceType: ResourceType = ResourceType(resourceTypeGeneral="Dataset")
+    rightsList: list[Rights] | None = None
+    types: ResourceType = ResourceType(resourceTypeGeneral="Dataset")
     contributors: list[Contributor] | None = None
     subjects: list[Subject] | None = None
     dates: list[Date] | None = None

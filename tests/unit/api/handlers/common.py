@@ -2,7 +2,6 @@
 
 import uuid
 from datetime import date
-from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -20,7 +19,6 @@ from metadata_backend.server import init
 class HandlersTestCase(AioHTTPTestCase):
     """API endpoint class test cases."""
 
-    TESTFILES_ROOT = Path(__file__).parent.parent.parent.parent / "test_files"
     API_PREFIX = API_PREFIX
 
     async def get_application(self) -> web.Application:
@@ -124,8 +122,12 @@ class HandlersTestCase(AioHTTPTestCase):
         description: str | None = None,
         project_id: str | None = None,
         workflow: str = "SD",
-    ) -> str:
+        *,
+        submission: dict[str, Any] | None = None,
+    ) -> str | tuple[str, dict[str, Any]]:
         """Post a submission."""
+
+        is_submission = submission is not None
 
         if name is None:
             name = f"name_{uuid.uuid4()}"
@@ -140,16 +142,29 @@ class HandlersTestCase(AioHTTPTestCase):
             self.patch_verify_authorization,
             self.patch_verify_user_project,
         ):
-            submission = {
-                "name": name,
-                "title": title,
-                "description": description,
-                "projectId": project_id,
-                "workflow": workflow,
-            }
+            if not is_submission:
+                submission = {
+                    "name": name,
+                    "title": title,
+                    "description": description,
+                    "projectId": project_id,
+                    "workflow": workflow,
+                }
+            else:
+                submission["name"] = name
+                submission["title"] = title
+                submission["description"] = description
+                submission["projectId"] = project_id
+                submission["workflow"] = workflow
+
             response = await self.client.post(f"{API_PREFIX}/submissions", json=submission)
             response.raise_for_status()
-            return (await response.json())["submissionId"]
+
+            submission_id = (await response.json())["submissionId"]
+
+            if is_submission:
+                return submission_id, submission
+            return submission_id
 
     async def get_submission(self, submission_id) -> dict[str, Any]:
         """Get a submission."""

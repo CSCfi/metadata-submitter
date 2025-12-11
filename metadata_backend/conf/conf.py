@@ -13,12 +13,9 @@ External services are queried from the application, e.g. Datacite for DOIs.
 
 import os
 from pathlib import Path
-from typing import Any, Literal
-from urllib.parse import urljoin
+from typing import Any
 
 import ujson
-from pydantic import Field, computed_field
-from pydantic_settings import BaseSettings
 
 from .taxonomy_files.taxonomy_conf import TAXONOMY_NAME_FILE
 
@@ -33,71 +30,7 @@ swagger_static_path = Path(__file__).parent.parent / "swagger" / "index.html"
 DEPLOYMENT_CSC = "CSC"
 DEPLOYMENT_NBIS = "NBIS"
 
-
-class DeploymentConfig(BaseSettings):
-    """Deployment configuration."""
-
-    DEPLOYMENT: Literal["CSC", "NBIS"] = Field(default="CSC", description="The deployment type.")
-    ALLOW_UNSAFE: bool = Field(default=False, description="Allow published submissions to be modifiable.")
-    ALLOW_REGISTRATION: bool = Field(
-        default=True, description="Allow published submissions to be registered with external services."
-    )
-
-
-deployment_config = DeploymentConfig()
-
-
-class OIDCConfig(BaseSettings):
-    """OIDC configuration."""
-
-    model_config = {"extra": "allow"}  # Allow creation using the constructor.
-
-    BASE_URL: str = Field(description="Application URL")
-    OIDC_URL: str = Field(description="OIDC provider URL")
-    REDIRECT_URL: str | None = Field(
-        default=None,
-        description="OIDC redirection URL",
-    )
-    OIDC_CLIENT_ID: str = Field(
-        description="OIDC client ID",
-        validation_alias="AAI_CLIENT_ID",  # TODO(improve): rename to OIDC_CLIENT_ID
-    )
-    OIDC_CLIENT_SECRET: str = Field(
-        description="OIDC client secret",
-        validation_alias="AAI_CLIENT_SECRET",  # TODO(improve): rename to OIDC_CLIENT_SECRET
-    )
-    OIDC_SCOPE: str = Field(default="openid profile email", description="OIDC scopes")
-
-    @computed_field
-    def redirect_url(self) -> str:
-        """Return redirect URL or base URL."""
-
-        return self.REDIRECT_URL or self.BASE_URL
-
-    @computed_field
-    def callback_url(self) -> str:
-        """Return callback URL based on base URL."""
-
-        return urljoin(self.BASE_URL, "callback")
-
-
-oidc_config = OIDCConfig()
-
 # TODO(improve): read all env variables using BaseSettings
-
-# Datacite API currently only for Bigpicture workflow
-datacite_config = {
-    "api": os.getenv("DATACITE_API", "http://localhost:8001/dois"),
-    "user": os.getenv("DATACITE_USER", ""),
-    "key": os.getenv("DATACITE_KEY", ""),
-    "url": os.getenv("DATACITE_URL", "https://doi.org"),
-}
-
-# CSC PID microservice for other cases
-pid_config = {
-    "api_url": os.getenv("PID_URL", "http://mockpid:8005"),
-    "api_key": os.getenv("PID_APIKEY", ""),
-}
 
 metax_config = {
     "username": os.getenv("METAX_USER", "sd"),

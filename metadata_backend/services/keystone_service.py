@@ -15,6 +15,8 @@ from .service_handler import ServiceHandler
 class KeystoneService(ServiceHandler):
     """Handler for Keystone API Calls."""
 
+    service_name = "Keystone"
+
     class ProjectEntry(BaseModel):
         """Model for a project entry containing Keystone token."""
 
@@ -168,7 +170,7 @@ class KeystoneService(ServiceHandler):
             )
             return int(resp.status)  # 204 on success
 
-    async def _healthcheck(self) -> dict[str, str]:
+    async def healthcheck(self) -> dict[str, str]:
         """Check Keystone service heartbeat.
 
         :returns: Dict with status of the keystone status

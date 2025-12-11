@@ -1,12 +1,17 @@
 """Test API endpoints from SubmissionAPIHandler."""
 
+import json
 import uuid
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 from metadata_backend.conf.conf import API_PREFIX
 
 from .common import HandlersTestCase
+
+TEST_ROOT_DIR = Path(__file__).parent.parent.parent.parent / "test_files"
+SUBMISSION_JSON = TEST_ROOT_DIR / "submission" / "submission.json"
 
 
 class SubmissionHandlerTestCase(HandlersTestCase):
@@ -408,3 +413,38 @@ class SubmissionHandlerTestCase(HandlersTestCase):
         assert submission["description"] == new_description
         assert submission["projectId"] == project_id
         assert submission["workflow"] == workflow
+
+    async def test_submission_json(self):
+        """Test that submission json test file works."""
+
+        submission = json.loads(SUBMISSION_JSON.read_text())
+
+        # Test valid submission.
+
+        name = f"name_{uuid.uuid4()}"
+
+        description = f"description_{uuid.uuid4()}"
+        project_id = f"project_{uuid.uuid4()}"
+        workflow = "SD"
+
+        # Post submission.
+
+        submission_id, submission = await self.post_submission(
+            name=name, description=description, project_id=project_id, workflow=workflow, submission=submission
+        )
+
+        # Get submission.
+
+        saved_submission = await self.get_submission(submission_id)
+
+        assert saved_submission["dateCreated"] is not None
+        assert saved_submission["lastModified"] is not None
+        assert saved_submission["published"] is False
+        assert saved_submission["submissionId"] == submission_id
+
+        del saved_submission["dateCreated"]
+        del saved_submission["lastModified"]
+        del saved_submission["published"]
+        del saved_submission["submissionId"]
+
+        assert submission == saved_submission

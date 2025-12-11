@@ -1,8 +1,29 @@
+# Write a line to .env and tests/integration/.env files.
+define write_line
+@printf "%s\n" "$(1)" >> .env
+@printf "%s\n" "$(1)" >> tests/integration/.env
+endef
+
+# Write the secret to .env file.
 define write_secret
 printf "%s=" $(1) >> .env; \
 vault kv get --field=$(3) secret/$(2) >> .env; \
 echo >> .env;
 endef
+
+# Write the secret to .env, tests/integration/.env and tests/integration/.env.secret  files.
+define write_integration_test_secret
+printf "%s=" $(1) >> .env; \
+vault kv get --field=$(3) secret/$(2) >> .env; \
+echo >> .env; \
+printf "%s=" $(1) >> tests/integration/.env; \
+vault kv get --field=$(3) secret/$(2) >> tests/integration/.env; \
+echo >> tests/integration/.env; \
+printf "%s=" $(1) >> tests/integration/.env.secret; \
+vault kv get --field=$(3) secret/$(2) >> tests/integration/.env.secret; \
+echo >> tests/integration/.env.secret;
+endef
+
 
 # Default target
 # Print list of available targets. Only rows in the format `target: ## description` are printed
@@ -16,7 +37,16 @@ get_env: ## Get secrets needed for integration tests from vault
 		echo "VAULT_ADDR environment variable needs to be set. Aborting."; \
 		exit 1; \
 	fi
-	@printf "\n### VAULT SECRETS START ###\n" >> .env
+
+	# Create empty .env file.
+	> .env
+
+	# Create .tests/integration/.env file.
+	cp tests/integration/.env.example tests/integration/.env
+
+	$(call write_line,### VAULT SECRETS START ###)
+
+	# Write secrets to .env and tests/integration/.env files.
 	@export VAULT_TOKEN=$$(vault login -method=oidc -token-only); \
 	$(call write_secret,CSC_LDAP_HOST,sd-submit/secrets,ldap_host) \
 	$(call write_secret,CSC_LDAP_USER,sd-submit/secrets,ldap_user) \
@@ -29,6 +59,13 @@ get_env: ## Get secrets needed for integration tests from vault
 	$(call write_secret,SD_SUBMIT_PROJECT_ID,sd-submit/secrets,sd_submit_project_id) \
 	$(call write_secret,S3_ENDPOINT,sd-submit/secrets,allas_host) \
 	$(call write_secret,KEYSTONE_ENDPOINT,sd-submit/secrets,pouta_host) \
+	$(call write_integration_test_secret,DATACITE_API,sd-submit/datacite_test,DOI_API) \
+	$(call write_integration_test_secret,DATACITE_USER,sd-submit/datacite_test,DOI_USER) \
+	$(call write_integration_test_secret,DATACITE_KEY,sd-submit/datacite_test,DOI_KEY) \
+	$(call write_integration_test_secret,DATACITE_DOI_PREFIX,sd-submit/datacite_test,DOI_PREFIX) \
+	$(call write_integration_test_secret,CSC_PID_URL,sd-submit/pid,PID_URL) \
+	$(call write_integration_test_secret,CSC_PID_KEY,sd-submit/pid,PID_APIKEY)
 
-	printf "### VAULT SECRETS END ###\n" >> .env
+	$(call write_line,### VAULT SECRETS END ###)
+
 	@echo "Secrets written successfully"

@@ -5,12 +5,14 @@ to share functionality of the `class` scoped fixtures.
 """
 
 import logging
+import os
 import uuid
-from typing import AsyncGenerator
+from typing import Any, AsyncGenerator
 from urllib.parse import urlencode
 
 import aiohttp
 import pytest
+from dotenv import dotenv_values
 from yarl import URL
 
 from tests.integration.conf import (
@@ -44,7 +46,16 @@ def pytest_addoption(parser):
     )
 
 
-# Submission factory
+@pytest.fixture
+def secret_env(monkeypatch):
+    base_dir = os.path.dirname(__file__)
+    dotenv_path = os.path.join(base_dir, ".env.secret")
+    if not os.path.exists(dotenv_path):
+        pytest.fail(f"{dotenv_path} does not exist")
+
+    for k, v in dotenv_values(dotenv_path).items():
+        monkeypatch.setenv(k, v)
+    yield
 
 
 @pytest.fixture
@@ -52,16 +63,34 @@ async def submission_factory(client_logged_in: aiohttp.ClientSession, project_id
     default_project_id = project_id
     submissions_ids = []
 
-    async def _create_submission(workflow: str, *, name: str | None = None, project_id: str | None = None):  # noqa
+    async def _create_submission(
+        workflow: str,
+        *,
+        name: str | None = None,
+        project_id: str | None = None,
+        submission: dict[str, Any] | None = None,
+    ):  # noqa
         if name is None:
             name = f"name_{uuid.uuid4()}"
-        submission = {
-            "name": name,
-            "title": f"test submission for {workflow} workflow",
-            "description": f"test submission for {workflow} workflow",
-            "projectId": project_id or default_project_id,
-            "workflow": workflow,
-        }
+
+        title = f"test submission for {workflow} workflow"
+        description = f"test submission for {workflow} workflow"
+
+        if not submission:
+            submission = {
+                "name": name,
+                "title": title,
+                "description": description,
+                "projectId": project_id or default_project_id,
+                "workflow": workflow,
+            }
+        else:
+            submission["name"] = name
+            submission["title"] = title
+            submission["description"] = description
+            submission["projectId"] = project_id or default_project_id
+            submission["workflow"] = workflow
+
         submission_id = await post_submission(client_logged_in, submission)
         submissions_ids.append(submission_id)
         return submission_id, submission
