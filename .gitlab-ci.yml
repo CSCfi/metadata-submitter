@@ -54,15 +54,20 @@ integration-test:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
   image: $BUILD_IMAGE
   variables:
-    COMPOSE_PROJECT_NAME: "${CI_JOB_ID}"
+    COMPOSE_PROJECT_NAME: $CI_JOB_ID
+    VAULT_ADDR: $VAULT_TEST_ADDR
+    VAULT_ROLE_ID: $VAULT_ROLE_ID
+    VAULT_SECRET_ID: $VAULT_SECRET_ID
   script:
+    # Get secrets from Vault for testing
+    - make get_ci_env
     - rm -f docker-compose.override.yml
     # Start containerized services on the CI runner and wait until they are healthy
-    - docker compose -f docker-compose.yml --env-file tests/integration/.env.example --profile ci up --build -d --wait
+    - docker compose -f docker-compose.yml --env-file tests/integration/.env --profile ci up --build -d --wait
     # List statuses of the containers of the current CI job
-    - docker compose -f docker-compose.yml --env-file tests/integration/.env.example --profile ci ps
+    - docker compose -f docker-compose.yml --env-file tests/integration/.env --profile ci ps
     # Run integration tests inside the sd-submit-api container
-    - docker compose --profile ci exec sd-submit-api pytest tests/integration
+    - docker compose --env-file tests/integration/.env --profile ci exec sd-submit-api pytest tests/integration
   after_script:
     # Shut down containers and remove volumes after the tests finish
     - docker compose --profile ci down -v
