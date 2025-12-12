@@ -18,7 +18,6 @@ async def test_taxonomy_search_by_name_works(client_logged_in):
     assert len(res) == 10
     for item in res:
         assert item["scientific_name"].lower().startswith(query) or item["common_name"].lower().startswith(query)
-    LOG.debug(res)
 
 
 async def test_taxonomy_search_by_id_works(client_logged_in):
@@ -31,7 +30,6 @@ async def test_taxonomy_search_by_id_works(client_logged_in):
     assert len(res) == 10
     for item in res:
         assert item["tax_id"].startswith(query)
-    LOG.debug(res)
 
 
 async def test_taxonomy_limit_search_results_works(client_logged_in):
@@ -43,7 +41,6 @@ async def test_taxonomy_limit_search_results_works(client_logged_in):
     max_results = 5
     res = await search_taxonomy(client_logged_in, query, max_results)
     assert len(res) == max_results
-    LOG.debug(res)
 
 
 async def test_taxonomy_invalid_query_fails(client_logged_in):

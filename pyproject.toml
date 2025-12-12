@@ -7,7 +7,7 @@ name = "metadata_backend"
 dynamic = ["version"]
 description = "metadata_backend"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 license = { text = "MIT License" }
 authors = [
     { name = "CSC Developers" },
@@ -17,7 +17,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "Intended Audience :: Information Technology",
     "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
 ]
 

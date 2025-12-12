@@ -47,7 +47,7 @@ test_fega_json_files = [
 
 API_PREFIX = "/v1"
 base_url = os.getenv("BASE_URL", "http://localhost:5430")
-mock_auth_url = os.getenv("OIDC_URL_TEST", "http://localhost:8000")
+mock_auth_url = os.getenv("OIDC_URL", "http://localhost:8000")
 objects_url = f"{base_url}{API_PREFIX}/objects"
 submissions_url = f"{base_url}{API_PREFIX}/submissions"
 publish_url = f"{base_url}{API_PREFIX}/publish"

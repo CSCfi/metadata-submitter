@@ -21,7 +21,7 @@ logging.basicConfig(format=FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
 LOG = logging.getLogger("server")
 LOG.setLevel(getenv("LOG_LEVEL", "INFO"))
 
-mock_auth_url = getenv("OIDC_URL_TEST", "http://localhost:8000")
+mock_auth_url = getenv("OIDC_URL", "http://localhost:8000")
 
 admins = ["admin_user@test.what"]
 files_in_inbox = {

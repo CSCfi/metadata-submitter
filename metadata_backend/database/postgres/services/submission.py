@@ -16,8 +16,6 @@ from ..repositories.submission import (
     SubmissionSort,
 )
 
-# pylint: disable=too-many-public-methods
-
 
 class UnknownSubmissionUserException(NotFoundUserException):
     """Raised when a submission cannot be found."""
@@ -84,9 +82,7 @@ class SubmissionService:
         try:
             workflow = SubmissionWorkflow(submission.workflow)
         except ValueError:
-            raise UserException(  # pylint: disable=raise-missing-from
-                f"Invalid submission workflow: {submission.workflow.value}"
-            )
+            raise UserException(f"Invalid submission workflow: {submission.workflow.value}")
 
         entity = SubmissionEntity(name=submission.name, project_id=submission.projectId, workflow=workflow)
         SubmissionService._set_updatable_values(submission, entity)

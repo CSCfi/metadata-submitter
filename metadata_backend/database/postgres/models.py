@@ -1,7 +1,5 @@
 """Postgres models."""
 
-# pylint:skip-file
-
 import enum
 from datetime import datetime, timezone
 from typing import Any, Callable, Optional, Type

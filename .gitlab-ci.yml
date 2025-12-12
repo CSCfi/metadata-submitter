@@ -30,7 +30,7 @@ verify:
     - uv tool install tox --with tox-uv
     - SKIP=test uv tool run pre-commit run --all-files -c .pre-commit-config.yaml --show-diff-on-failure --color never
 
-test:
+unit-test:
   stage: test
   tags:
     - docker-exec
@@ -44,7 +44,33 @@ test:
     - uv tool install tox --with tox-uv
     - uv tool run pre-commit run test --all-files -c .pre-commit-config.yaml --show-diff-on-failure --color never
     - uv tool run coverage report --precision=1
-  coverage: '/TOTAL.*\s+(\d+\%)/'
+  coverage: '/TOTAL.*?([\d.]+%)/'
+
+integration-test:
+  stage: test
+  tags:
+    - sds
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  image: $BUILD_IMAGE
+  variables:
+    COMPOSE_PROJECT_NAME: $CI_JOB_ID
+    VAULT_ADDR: $VAULT_TEST_ADDR
+    VAULT_ROLE_ID: $VAULT_ROLE_ID
+    VAULT_SECRET_ID: $VAULT_SECRET_ID
+  script:
+    # Get secrets from Vault for testing
+    - make get_ci_env
+    - rm -f docker-compose.override.yml
+    # Start containerized services on the CI runner and wait until they are healthy
+    - docker compose -f docker-compose.yml --env-file tests/integration/.env --profile ci up --build -d --wait
+    # List statuses of the containers of the current CI job
+    - docker compose -f docker-compose.yml --env-file tests/integration/.env --profile ci ps
+    # Run integration tests inside the sd-submit-api container
+    - docker compose --env-file tests/integration/.env --profile ci exec sd-submit-api pytest tests/integration
+  after_script:
+    # Shut down containers and remove volumes after the tests finish
+    - docker compose --profile ci down -v
 
 # Docker image build, scan and push pipeline
 1-build-image:
@@ -144,103 +170,3 @@ update-versions:
   extends: .update-versions
   variables:
     UPDATE_VERSION_FILES_LIST: "docs/conf.py;docs/openapi.yml;metadata_backend/__init__.py"
-# TODO: implement integration tests
-
-# integration:
-#   stage: verify
-#   tags:
-#     - docker-exec
-#   rules:
-#     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
-#   services:
-#     - name: registry.hub.docker.com/library/docker:24.0.6-dind
-#       alias: docker
-#   variables:
-#     DOCKER_HOST: tcp://docker:2375/
-#     DOCKER_DRIVER: overlay2
-#     BASE_URL: http://localhost:5430
-#     OIDC_URL: http://localhost:8000
-#     OIDC_URL_TEST: http://mockauth:8000
-#     FF_NETWORK_PER_BUILD: "true"
-#   image: docker:24.0.6
-#   before_script:
-#     - apk --update --no-cache add python3
-#     - python3 -m ensurepip
-#     - pip3 install --no-cache --upgrade pip setuptools
-#     - pip install aiohttp aiofiles motor pytest pytest-asyncio
-#   script:
-#     - docker compose -f docker-compose.yml --env-file .env.example up --build -d
-#     - sleep 30
-#     - docker network inspect metadata-submitter_default
-#     - docker compose -f docker-compose.yml --env-file .env.example ps
-#     - pytest tests/integration/
-#   after_script:
-#     - docker compose down -v
-
-# TODO: implement integration tests (from GitHub)
-
-# name: Integration Tests
-# on: [push]
-# jobs:
-#   build:
-#     strategy:
-#       max-parallel: 4
-#       matrix:
-#         os: [ubuntu-latest]
-#         python-version: ["3.12"]
-#     runs-on: ${{ matrix.os }}
-#     name: Integration Tests
-#     steps:
-#       - uses: actions/checkout@v4
-#       - name: Set up Python ${{ matrix.python-version }}
-#         uses: actions/setup-python@v5
-#         with:
-#           python-version: ${{ matrix.python-version }}
-#       - name: Install requirements
-#         run: |
-#           pip install uv
-#           uv sync --dev
-#       - name: Start Services
-#         run: |
-#           docker compose --env-file .env.example up -d --build
-#           sleep 45
-#       - name: Run Integration test
-#         run: |
-#           uv run pytest tests/integration
-#         env:
-#           BASE_URL: http://localhost:5430
-#           OIDC_URL: http://localhost:8000
-#       - name: Collect logs from docker
-#         if: ${{ failure() }}
-#         run: docker compose logs --no-color -t > tests/dockerlogs || true
-#       - name: Persist log files
-#         if: ${{ failure() }}
-#         uses: actions/upload-artifact@v4
-#         with:
-#           name: test_debugging_help
-#           path: tests
-#       - name: Shut down services and remove volumes
-#         run: |
-#           docker compose down -v
-#           sleep 30
-#       - name: Create TLS keys and certificates
-#         run: uv run ./scripts/tls/tls_helper.sh
-#       - name: Start services with TLS enabled
-#         run: |
-#           docker compose -f docker-compose-tls.yml --env-file .env.example up -d
-#           sleep 45
-#       - name: Run Integration test
-#         run: |
-#           uv run pytest tests/integration
-#         env:
-#           BASE_URL: http://localhost:5430
-#           OIDC_URL: http://localhost:8000
-#       - name: Collect logs from docker
-#         if: ${{ failure() }}
-#         run: docker compose logs --no-color -t > tests/dockerlogs || true
-#       - name: Persist log files
-#         if: ${{ failure() }}
-#         uses: actions/upload-artifact@v4
-#         with:
-#           name: test_debugging_help_tls
-#           path: tests

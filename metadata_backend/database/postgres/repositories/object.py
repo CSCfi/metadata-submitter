@@ -168,7 +168,7 @@ class ObjectRepository:
         if object_type is not None:
             filters.append(ObjectEntity.object_type == object_type)
 
-        stmt = select(func.count()).select_from(ObjectEntity).where(and_(*filters))  # pylint: disable=not-callable
+        stmt = select(func.count()).select_from(ObjectEntity).where(and_(*filters))
 
         async with transaction(self._session_factory) as session:
             result = await session.execute(stmt)

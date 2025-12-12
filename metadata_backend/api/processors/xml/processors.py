@@ -1,7 +1,5 @@
 """XML metadata object processor to inject accession numbers."""
 
-# pylint: disable=too-many-lines
-
 import os
 from abc import ABC, abstractmethod
 from itertools import chain

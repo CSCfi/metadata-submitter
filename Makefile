@@ -11,7 +11,7 @@ vault kv get --field=$(3) secret/$(2) >> .env; \
 echo >> .env;
 endef
 
-# Write the secret to .env, tests/integration/.env and tests/integration/.env.secret  files.
+# Write the secret to .env, tests/integration/.env and tests/integration/.env.secret files.
 define write_integration_test_secret
 printf "%s=" $(1) >> .env; \
 vault kv get --field=$(3) secret/$(2) >> .env; \
@@ -69,3 +69,28 @@ get_env: ## Get secrets needed for integration tests from vault
 	$(call write_line,### VAULT SECRETS END ###)
 
 	@echo "Secrets written successfully"
+
+get_ci_env: ## Get secrets needed for CI tests from vault
+	@vault -v > /dev/null 2>&1 || { echo "Vault CLI is not installed. Aborting."; exit 1; }
+	@if [ -z "$$VAULT_ADDR" ]; then \
+		echo "VAULT_ADDR environment variable needs to be set. Aborting."; \
+		exit 1; \
+	fi
+
+	# Create .tests/integration/.env file.
+	cp tests/integration/.env.example tests/integration/.env
+
+	$(call write_line,### VAULT SECRETS START ###)
+
+	# Write secrets to .env file.
+	@export VAULT_TOKEN=$$(vault write -field=token auth/approle/login role_id="$$VAULT_ROLE_ID" secret_id="$$VAULT_SECRET_ID"); \
+	$(call write_integration_test_secret,DATACITE_API,sd-submit/datacite_test,DOI_API) \
+	$(call write_integration_test_secret,DATACITE_USER,sd-submit/datacite_test,DOI_USER) \
+	$(call write_integration_test_secret,DATACITE_KEY,sd-submit/datacite_test,DOI_KEY) \
+	$(call write_integration_test_secret,DATACITE_DOI_PREFIX,sd-submit/datacite_test,DOI_PREFIX) \
+	$(call write_integration_test_secret,CSC_PID_URL,sd-submit/pid,PID_URL) \
+	$(call write_integration_test_secret,CSC_PID_KEY,sd-submit/pid,PID_APIKEY)
+
+	$(call write_line,### VAULT SECRETS END ###)
+
+	@echo "CI Secrets written successfully"
