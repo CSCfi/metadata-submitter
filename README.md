@@ -1,38 +1,45 @@
 # SD Submit API
 
-![Python Unit Tests](https://github.com/CSCfi/metadata-submitter/workflows/Python%20Unit%20Tests/badge.svg)
-![Integration Tests](https://github.com/CSCfi/metadata-submitter/workflows/Integration%20Tests/badge.svg)
-![Documentation Checks](https://github.com/CSCfi/metadata-submitter/workflows/Documentation%20Checks/badge.svg)
-![Python style check](https://github.com/CSCfi/metadata-submitter/workflows/Python%20style%20check/badge.svg)
-[![Coverage Status](https://coveralls.io/repos/github/CSCfi/metadata-submitter/badge.svg?branch=main)](https://coveralls.io/github/CSCfi/metadata-submitter?branch=main)
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
-[![linting: pylint](https://img.shields.io/badge/linting-pylint-yellowgreen)](https://github.com/PyCQA/pylint)
 
 SD Submit API supports sensitive data submissions.
 
 The SD Submit UI is implemented
 here: [metadata-submitter-frontend](https://github.com/CSCfi/metadata-submitter-frontend).
 
-SD Submit API uses the following external services via their respective API:
+SD Submit API integrates with the following external services:
 
-- SD Connect ([source code](https://github.com/CSCfi/swift-browser-ui))
-- Imaging Beacon ([source code](https://github.com/CSCfi/imaging-beacon))
-- NeIC Sensitive Data Archive ([docs](https://neic-sda.readthedocs.io/en/latest/))
-- REMS ([source code](https://github.com/CSCfi/rems))
-- Metax ([docs](https://metax.fairdata.fi/docs/))
-- DataCite ([docs](https://support.datacite.org/))
+- PostgreSQL database
+- CSC LDAP service
+- Keystone (OpenStack Identity API) ([docs](https://docs.openstack.org/api-ref/identity/v3/))
+- S3 ([docs](https://docs.aws.amazon.com/AmazonS3/latest/API/Type_API_Reference.html))
+- DataCite ([docs](https://support.datacite.org/docs/api))
 - CSC PID
+- Metax ([docs](https://metax.fairdata.fi/docs/))
+- REMS ([source code](https://github.com/CSCfi/rems))
+- NeIC Sensitive Data Archive ([docs](https://neic-sda.readthedocs.io/en/latest/))
+- Imaging Beacon ([source code](https://github.com/CSCfi/imaging-beacon))
 
 ```mermaid
 flowchart LR
-    SD-Connect(SD Connect) -->|Information about files| SD-Submit[SD Submit API]
-    SD-Submit -->|Bigpicture metadata| Bigpicture-Discovery(Imaging Beacon)
-    SD-Submit <-->|Ingestion pipeline actions| NEIC-SDA(NEIC SDA)
-    REMS -->|Workflows/Licenses/Organizations| SD-Submit -->|Resources/Catalogue items| REMS(REMS)
-    SD-Submit -->|EGA/SDSX metadata| Metax(Metax API)
-    Metax --> Fairdata-Etsin(FairData Etsin)
-    SD-Submit <-->|DOI for Bigpicture| DataCite(DataCite)
-    SD-Submit <-->|DOI for EGA/SDSX| PID(PID) <--> DataCite
+    subgraph SD Submit
+        UI(SD Submit UI) --> API(SD Submit API)
+    end
+    subgraph External services
+        direction LR
+        API -->|All database operations| Postgres(PostgreSQL DB)
+        API -->|User project listing| LDAP(LDAP Service)
+        API -->|EC2 credential handling| Keystone(Keystone) --> OS(Object storage)
+        API -->|Bucket/object operations| Allas(S3 API) --> OS
+        API -->|DOI creation for Bigpicture| DataCiteAPI(DataCite API) --> DataCite
+        API -->|DOI creation for SD| PID(PID API) --> DataCite(DataCite)
+        API -->|Discovery metadata mapping| Metax(Metax API) --> Fairdata-Etsin(FairData Etsin)
+        API -->|Dataset access registeration| REMS(REMS API) --> Apply(SD Apply/REMS)
+        API -->|Bigpicture file ingestion| Admin(Admin API) --> SDA(NEIC SDA)
+        API -->|Bigpicture metadata| Beacon(Imaging Beacon API) --> BP-Discovery(Bigpicture Discovery)
+    end
 ```
 
 ## 💻 Development
