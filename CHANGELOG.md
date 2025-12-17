@@ -9,6 +9,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Changed
 
+- Migrated to using Metax V3 API
 - Overhauled integration test setup to accommodate testing against test DataCite and PID API services.
 - Updated DataCite schema handling (types, rightsList, geolocation points, polygon handling) and improved BigPicture XML/DataCite parsing.
 - Refactored PID, DataCite, OIDC, and deployment environment configurations to use Pydantic and reorganized them under conf/ for isolated loading.
@@ -116,6 +117,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Added
 
+- Script for generating Metax reference data for ROR organizations and geolocations
+- Mapping from Datacite's metadata to Metax V3's fields
 - Low-level integration testing for DataCite and CSC PID service handlers, including DOI creation logic and new GET support.
 - Centralized DataCiteService providing DataCite and CSC PID DOI creation, publishing, and shared functionality.
 - CI/CD pipeline for automatically creating API docker images
@@ -191,6 +194,8 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Removed
 
+- Mock metax service and use real Metax test instance for integration test
+- Metax reference data for funding reference
 - DataCite and PID mock services from testing environment.
 - DATACITE_PREFIX mock environmental parameter as unnecessary.
 - support for DataCite related study references.
@@ -223,6 +228,7 @@ and this project adheres to [Calendar Versioning](https://calver.org/).
 
 ### Deprecated
 
+- Usage of Metax V2
 - removed code and files no longer used by the API, for example unused XML, JSON and workflow code.
 
 ## [2025.4.0] - 2025-04-01
