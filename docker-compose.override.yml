@@ -13,3 +13,6 @@ services:
   mock-s3:
     ports:
       - "8006:8006"
+  postgres:
+    ports:
+      - "5432:5432"
